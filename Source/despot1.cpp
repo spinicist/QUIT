@@ -148,12 +148,8 @@ int main(int argc, char **argv) {
 	typedef ImageToVectorFilter<float> Converter;
 	cout << "Creating converter" << endl;
 	Converter::Pointer convert = Converter::New();
-	cout << "Setting input" << endl;
 	convert->SetInput(input->GetOutput());
-	cout << "Updating" << endl;
-	//convert->Update();
 
-	//Agilent::ProcPar pp; ReadPP(spgrFile, pp);
 	SPGRSimple spgrSequence(prompt);
 	if (verbose) {
 		cout << spgrSequence;
@@ -161,25 +157,15 @@ int main(int argc, char **argv) {
 	}
 
 	auto vectorImage = convert->GetOutput();
-	cout << vectorImage->GetLargestPossibleRegion() << endl;
 	cout << "Creating DESPOT1 Filter" << endl;
 	DESPOT1::Pointer d1 = DESPOT1::New();
 	d1->SetInput(convert->GetOutput());
 	d1->SetMask(mask->GetOutput());
-	cout << "Setting B1" << endl;
 	d1->SetB1(B1->GetOutput());
 	d1->SetSequence(spgrSequence);
 	d1->SetAlgorithm(algo);
 	d1->SetIterations(nIterations);
 	cout << "Created filter" << endl;
-
-	/*if (verbose) {
-		clock_t loopEnd = clock();
-		if (voxCount > 0)
-			cout << voxCount << " unmasked voxels, CPU time per voxel was "
-					  << ((loopEnd - loopStart) / ((float)voxCount * CLOCKS_PER_SEC)) << " s, ";
-		cout << "finished." << endl;
-	*/
 
 	if (verbose)
 		cout << "Writing results." << endl;
@@ -198,11 +184,9 @@ int main(int argc, char **argv) {
 	PDFile->SetInput(d1->GetOutput(1));
 	ResFile->SetInput(d1->GetOutput(2));
 
-	cout << "PrintDirections" << endl;
-	d1->PrintDirections();
-	cout << "Calling update" << endl;
+	cout << "Processing" << endl;
 	d1->Update();
-	cout << "Updating output files" << endl;
+	cout << "Writing output files" << endl;
 	T1File->Update();
 	PDFile->Update();
 	ResFile->Update();

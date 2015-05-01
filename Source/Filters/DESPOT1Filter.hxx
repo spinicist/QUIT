@@ -91,7 +91,6 @@ DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int
 
 template< typename TVectorImage, typename TImage>
 TImage* DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
 	return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i) );
 }
 
@@ -108,7 +107,6 @@ template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
 	Superclass::GenerateOutputInformation();
 	auto size = this->GetInput()->GetNumberOfComponentsPerPixel();
-	cout << "Size check: " << m_sequence.size() << "/" << size << endl;
 	if (m_sequence.size() != size) {
 		throw(std::runtime_error("Specified number of flip-angles does not match number of volumes in input."));
 	}
@@ -116,7 +114,6 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
 	typename TVectorImage::ConstPointer spgrData = this->GetInput();
 
 	typename TImage::ConstPointer maskData = this->GetMask();
