@@ -92,19 +92,9 @@ DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int
 }
 
 template< typename TVectorImage, typename TImage>
-TImage* DESPOT1Filter<TVectorImage, TImage>::GetOutputT1() {
+TImage* DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
 	cout << __PRETTY_FUNCTION__ << endl;
-	return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(0) );
-}
-template< typename TVectorImage, typename TImage>
-TImage* DESPOT1Filter<TVectorImage, TImage>::GetOutputPD() {
-	cout << __PRETTY_FUNCTION__ << endl;
-	return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(1) );
-}
-template< typename TVectorImage, typename TImage>
-TImage* DESPOT1Filter<TVectorImage, TImage>::GetOutputRes() {
-	cout << __PRETTY_FUNCTION__ << endl;
-	return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(2) );
+	return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i) );
 }
 
 template<typename TVectorImage, typename TImage>
@@ -123,9 +113,9 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
 	typename TImage::ConstPointer maskData = this->GetMask();
 	typename TImage::ConstPointer B1Data   = this->GetB1();
 
-	typename TImage::Pointer T1Data = this->GetOutputT1();
-	typename TImage::Pointer PDData = this->GetOutputPD();
-	typename TImage::Pointer ResData = this->GetOutputRes();
+	typename TImage::Pointer T1Data = this->GetOutput(0);
+	typename TImage::Pointer PDData = this->GetOutput(1);
+	typename TImage::Pointer ResData = this->GetOutput(2);
 
 	typename TImage::RegionType region = maskData->GetLargestPossibleRegion();
 	T1Data->SetRegions(region);

@@ -26,9 +26,7 @@ public:
 	typename TImage::ConstPointer GetMask();
 	void SetB1(const TImage *B1);
 	typename TImage::ConstPointer GetB1();
-	TImage *GetOutputT1();
-	TImage *GetOutputPD();
-	TImage *GetOutputRes();
+	TImage *GetOutput(const size_t i);
 
 	void SetSequence(const SPGRSimple &seq);
 	void SetAlgorithm(const Algos &a);

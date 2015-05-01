@@ -209,9 +209,9 @@ int main(int argc, char **argv) {
 	PDFile->SetFileName(outPrefix + "PD.nii");
 	ResFile->SetFileName(outPrefix + "residual.nii");
 
-	T1File->SetInput(d1->GetOutputT1());
-	PDFile->SetInput(d1->GetOutputPD());
-	ResFile->SetInput(d1->GetOutputRes());
+	T1File->SetInput(d1->GetOutput(0));
+	PDFile->SetInput(d1->GetOutput(1));
+	ResFile->SetInput(d1->GetOutput(2));
 
 	cout << "PrintDirections" << endl;
 	d1->PrintDirections();
