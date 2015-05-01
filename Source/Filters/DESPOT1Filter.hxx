@@ -4,6 +4,7 @@
 #include "itkObjectFactory.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
+#include "itkNormalizedCorrelationImageFilter.hxx"
 
 namespace itk {
 
@@ -12,7 +13,7 @@ DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter() :
 	m_sequence({},0)
 {
 	//std::cout << __PRETTY_FUNCTION__ << endl;
-	this->SetNumberOfRequiredInputs(3);
+	this->SetNumberOfRequiredInputs(1);
 	this->SetNumberOfRequiredOutputs(3);
 
 	this->SetNthOutput(0, this->MakeOutput(0));
@@ -123,7 +124,7 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
 	typename TImage::Pointer PDData = this->GetOutput(1);
 	typename TImage::Pointer ResData = this->GetOutput(2);
 
-	typename TImage::RegionType region = maskData->GetLargestPossibleRegion();
+	typename TImage::RegionType region = spgrData->GetLargestPossibleRegion();
 	T1Data->SetRegions(region);
 	PDData->SetRegions(region);
 	ResData->SetRegions(region);
@@ -132,16 +133,22 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
 	ResData->Allocate();
 
 	ImageRegionConstIterator<TVectorImage> SPGRIter(spgrData, spgrData->GetLargestPossibleRegion());
-	ImageRegionConstIterator<TImage> maskIter(maskData, maskData->GetLargestPossibleRegion());
-	ImageRegionConstIterator<TImage> B1Iter(B1Data, B1Data->GetLargestPossibleRegion());
+	ImageRegionConstIterator<TImage> maskIter, B1Iter;
+	if (maskData)
+		maskIter = ImageRegionConstIterator<TImage>(maskData, maskData->GetLargestPossibleRegion());
+	if (B1Data)
+		B1Iter = ImageRegionConstIterator<TImage>(B1Data, B1Data->GetLargestPossibleRegion());
 	ImageRegionIterator<TImage> T1Iter(T1Data, T1Data->GetLargestPossibleRegion());
 	ImageRegionIterator<TImage> PDIter(PDData, PDData->GetLargestPossibleRegion());
 	ImageRegionIterator<TImage> ResIter(ResData, ResData->GetLargestPossibleRegion());
 
 	shared_ptr<SCD> model = make_shared<SCD>();
+	cout << "Starting" << endl;
 	while(!T1Iter.IsAtEnd()) {
-		if (maskIter.Get()) {
-			double B1 = B1Iter.Get();
+		if (!maskData || maskIter.Get()) {
+			double B1 = 1;
+			if (B1Data)
+				B1 = B1Iter.Get();
 			ArrayXd localAngles = m_sequence.flip() * B1;
 			double T1, PD;
 			VariableLengthVector<float> signalVector = SPGRIter.Get();
@@ -186,7 +193,11 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
 			//PDIter.Set(0);
 			//ResIter.Set(0);
 		}
-		++SPGRIter; ++maskIter; ++B1Iter;
+		++SPGRIter;
+		if (maskData)
+			++maskIter;
+		if (B1Data)
+			++B1Iter;
 		++T1Iter; ++PDIter; ++ResIter;
 	}
 }

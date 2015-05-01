@@ -91,8 +91,8 @@ int main(int argc, char **argv) {
 	typedef itk::ImageFileReader<itk::Image<float, 4>> Reader4D;
 	typedef itk::ImageFileWriter<FloatImage> Writer;
 
-	Reader::Pointer mask = Reader::New();
-	Reader::Pointer B1   = Reader::New();
+	Reader::Pointer mask = ITK_NULLPTR;
+	Reader::Pointer B1   = ITK_NULLPTR;
 
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'm':
 				cout << "Opening mask file " << optarg << endl;
+				mask = Reader::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -109,6 +110,7 @@ int main(int argc, char **argv) {
 				break;
 			case 'b':
 				cout << "Opening B1 file: " << optarg << endl;
+				B1 = Reader::New();
 				B1->SetFileName(optarg);
 				break;
 			case 'a':
@@ -160,8 +162,10 @@ int main(int argc, char **argv) {
 	cout << "Creating DESPOT1 Filter" << endl;
 	DESPOT1::Pointer d1 = DESPOT1::New();
 	d1->SetInput(convert->GetOutput());
-	d1->SetMask(mask->GetOutput());
-	d1->SetB1(B1->GetOutput());
+	if (mask)
+		d1->SetMask(mask->GetOutput());
+	if (B1)
+		d1->SetB1(B1->GetOutput());
 	d1->SetSequence(spgrSequence);
 	d1->SetAlgorithm(algo);
 	d1->SetIterations(nIterations);
