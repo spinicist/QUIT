@@ -7,13 +7,11 @@
 
 namespace itk {
 
-
-
 template<typename TVectorImage, typename TImage>
 DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter() :
 	m_sequence({},0)
 {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	this->SetNumberOfRequiredInputs(3);
 	this->SetNumberOfRequiredOutputs(3);
 
@@ -24,61 +22,61 @@ DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter() :
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetInput(const TVectorImage *image) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	this->SetNthInput(0, const_cast<TVectorImage*>(image));
-	cout << this->GetInput()->GetDirection() << endl;
+	//std::cout << this->GetInput()->GetDirection() << endl;
 }
 template< typename TVectorImage, typename TImage>
 typename TVectorImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetInput() {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	return static_cast<const TVectorImage *> (this->ProcessObject::GetInput(0));
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetMask(const TImage* image) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	this->SetNthInput(1, const_cast<TImage*>(image));
-	cout << this->GetMask()->GetDirection() << endl;
+	//std::cout << this->GetMask()->GetDirection() << endl;
 }
 template< typename TVectorImage, typename TImage>
 typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetMask() {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	return static_cast<const TImage *>(this->ProcessObject::GetInput(1));
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetB1(const TImage* image) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	this->SetNthInput(2, const_cast<TImage*>(image));
-	cout << this->GetB1()->GetDirection() << endl;
+	//std::cout << this->GetB1()->GetDirection() << endl;
 }
 template<typename TVectorImage, typename TImage>
 typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetB1() {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	return static_cast<const TImage *>(this->ProcessObject::GetInput(2));
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetSequence(const SPGRSimple &seq) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	m_sequence = seq;
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetAlgorithm(const Algos &a) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	m_algorithm = a;
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetIterations(const size_t &n) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	m_iterations = n;
 }
 
 template<typename TVectorImage, typename TImage>
 DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int idx) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	DataObject::Pointer output;
 
 	switch ( idx ) {
@@ -93,23 +91,34 @@ DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int
 
 template< typename TVectorImage, typename TImage>
 TImage* DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i) );
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::Update() {
-	cout << __PRETTY_FUNCTION__ << endl;
-	cout << static_cast<const TVectorImage *>(this->ProcessObject::GetInput(0))->GetDirection() << endl;
-	cout << static_cast<const TImage *>(this->ProcessObject::GetInput(1))->GetDirection() << endl;
-	cout << static_cast<const TImage *>(this->ProcessObject::GetInput(2))->GetDirection() << endl;
+	std::cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << static_cast<const TVectorImage *>(this->ProcessObject::GetInput(0))->GetDirection() << endl;
+	//std::cout << static_cast<const TImage *>(this->ProcessObject::GetInput(1))->GetDirection() << endl;
+	//std::cout << static_cast<const TImage *>(this->ProcessObject::GetInput(2))->GetDirection() << endl;
 	Superclass::Update();
 }
 
 template<typename TVectorImage, typename TImage>
+void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
+	Superclass::GenerateOutputInformation();
+	auto size = this->GetInput()->GetNumberOfComponentsPerPixel();
+	cout << "Size check: " << m_sequence.size() << "/" << size << endl;
+	if (m_sequence.size() != size) {
+		throw(std::runtime_error("Specified number of flip-angles does not match number of volumes in input."));
+	}
+}
+
+template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
-	cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout << __PRETTY_FUNCTION__ << endl;
 	typename TVectorImage::ConstPointer spgrData = this->GetInput();
+
 	typename TImage::ConstPointer maskData = this->GetMask();
 	typename TImage::ConstPointer B1Data   = this->GetB1();
 

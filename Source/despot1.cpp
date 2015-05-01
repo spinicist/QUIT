@@ -144,7 +144,6 @@ int main(int argc, char **argv) {
 	cout << "Opening SPGR file: " << argv[optind] << endl;
 	Reader4D::Pointer input = Reader4D::New();
 	input->SetFileName(argv[optind]);
-	input->Update();
 
 	typedef ImageToVectorFilter<float> Converter;
 	cout << "Creating converter" << endl;
@@ -152,10 +151,7 @@ int main(int argc, char **argv) {
 	cout << "Setting input" << endl;
 	convert->SetInput(input->GetOutput());
 	cout << "Updating" << endl;
-	convert->Update();
-
-	cout << "Input direction: " << endl << input->GetOutput()->GetDirection() << endl;
-	cout << "Output direction: " << endl << convert->GetOutput()->GetDirection() << endl;
+	//convert->Update();
 
 	//Agilent::ProcPar pp; ReadPP(spgrFile, pp);
 	SPGRSimple spgrSequence(prompt);
@@ -164,24 +160,13 @@ int main(int argc, char **argv) {
 		cout << "Ouput prefix will be: " << outPrefix << endl;
 	}
 
-	cout << "Checking size" << endl;
-	auto size = input->GetOutput()->GetLargestPossibleRegion().GetSize();
-	cout << spgrSequence.size() << " " << input->GetFileName() << " " << size[3] << endl;
-	if (spgrSequence.size() != size[3]) {
-		throw(std::runtime_error("Specified number of flip-angles does not match number of volumes in file: " + input->GetFileName()));
-	}
 	auto vectorImage = convert->GetOutput();
 	cout << vectorImage->GetLargestPossibleRegion() << endl;
 	cout << "Creating DESPOT1 Filter" << endl;
 	DESPOT1::Pointer d1 = DESPOT1::New();
-	cout << "Input direction is: " << endl << convert->GetOutput()->GetDirection() << endl;
-	cout << "Setting input" << endl;
 	d1->SetInput(convert->GetOutput());
-	cout << "Setting mask" << endl;
-	mask->Update();
 	d1->SetMask(mask->GetOutput());
 	cout << "Setting B1" << endl;
-	B1->Update();
 	d1->SetB1(B1->GetOutput());
 	d1->SetSequence(spgrSequence);
 	d1->SetAlgorithm(algo);

@@ -32,6 +32,7 @@ public:
 	void SetAlgorithm(const Algos &a);
 	void SetIterations(const size_t &n);
 
+	virtual void GenerateOutputInformation();
 	virtual void Update();
 
 	void PrintDirections() {
