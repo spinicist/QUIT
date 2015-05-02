@@ -11,10 +11,10 @@ class DESPOT1Filter : public ImageToImageFilter<TVectorImage, TImage>
 {
 public:
 	/** Standard class typedefs. */
-	typedef DESPOT1Filter                      Self;
+	typedef DESPOT1Filter                            Self;
 	typedef ImageToImageFilter<TVectorImage, TImage> Superclass;
-	typedef SmartPointer<Self>                 Pointer;
-
+	typedef SmartPointer<Self>                       Pointer;
+	typedef typename TImage::RegionType              RegionType;
 	enum class Algos { LLS, WLLS, NLLS };
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
@@ -51,7 +51,8 @@ protected:
 	DESPOT1Filter();
 	~DESPOT1Filter(){}
 
-	virtual void GenerateData(); // Does the work
+	virtual void ThreadedGenerateData(const RegionType & outputRegionForThread,
+	                                  ThreadIdType threadId); // Does the work
 	DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
 
 private:

@@ -111,10 +111,15 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
 	if (m_sequence.size() != size) {
 		throw(std::runtime_error("Specified number of flip-angles does not match number of volumes in input."));
 	}
+
+	for (size_t i = 0; i < 3; i++) {
+		this->GetOutput(i)->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+		this->GetOutput(i)->Allocate();
+	}
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
+void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
 	typename TVectorImage::ConstPointer spgrData = this->GetInput();
 
 	typename TImage::ConstPointer maskData = this->GetMask();
@@ -124,26 +129,17 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateData() {
 	typename TImage::Pointer PDData = this->GetOutput(1);
 	typename TImage::Pointer ResData = this->GetOutput(2);
 
-	typename TImage::RegionType region = spgrData->GetLargestPossibleRegion();
-	T1Data->SetRegions(region);
-	PDData->SetRegions(region);
-	ResData->SetRegions(region);
-	T1Data->Allocate();
-	PDData->Allocate();
-	ResData->Allocate();
-
-	ImageRegionConstIterator<TVectorImage> SPGRIter(spgrData, spgrData->GetLargestPossibleRegion());
+	ImageRegionConstIterator<TVectorImage> SPGRIter(spgrData, region);
 	ImageRegionConstIterator<TImage> maskIter, B1Iter;
 	if (maskData)
-		maskIter = ImageRegionConstIterator<TImage>(maskData, maskData->GetLargestPossibleRegion());
+		maskIter = ImageRegionConstIterator<TImage>(maskData, region);
 	if (B1Data)
-		B1Iter = ImageRegionConstIterator<TImage>(B1Data, B1Data->GetLargestPossibleRegion());
-	ImageRegionIterator<TImage> T1Iter(T1Data, T1Data->GetLargestPossibleRegion());
-	ImageRegionIterator<TImage> PDIter(PDData, PDData->GetLargestPossibleRegion());
-	ImageRegionIterator<TImage> ResIter(ResData, ResData->GetLargestPossibleRegion());
+		B1Iter = ImageRegionConstIterator<TImage>(B1Data, region);
+	ImageRegionIterator<TImage> T1Iter(T1Data, region);
+	ImageRegionIterator<TImage> PDIter(PDData, region);
+	ImageRegionIterator<TImage> ResIter(ResData, region);
 
 	shared_ptr<SCD> model = make_shared<SCD>();
-	cout << "Starting" << endl;
 	while(!T1Iter.IsAtEnd()) {
 		if (!maskData || maskIter.Get()) {
 			double B1 = 1;
