@@ -28,6 +28,7 @@
 #include "Filters/DESPOT1Filter.h"
 #include "Model.h"
 #include "Sequence.h"
+#include "Algorithm.h"
 
 using namespace std;
 using namespace Eigen;
