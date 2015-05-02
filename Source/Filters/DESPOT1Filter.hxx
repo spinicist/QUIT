@@ -9,8 +9,7 @@
 namespace itk {
 
 template<typename TVectorImage, typename TImage>
-DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter() :
-	m_sequence({},0)
+DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter()
 {
 	//std::cout << __PRETTY_FUNCTION__ << endl;
 	this->SetNumberOfRequiredInputs(1);
@@ -58,21 +57,15 @@ typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetB1() {
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetSequence(const SPGRSimple &seq) {
+void DESPOT1Filter<TVectorImage, TImage>::SetSequence(const shared_ptr<SPGRSimple> &seq) {
 	//std::cout << __PRETTY_FUNCTION__ << endl;
 	m_sequence = seq;
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetAlgorithm(const Algos &a) {
+void DESPOT1Filter<TVectorImage, TImage>::SetAlgorithm(const shared_ptr<Algorithm> &a) {
 	//std::cout << __PRETTY_FUNCTION__ << endl;
 	m_algorithm = a;
-}
-
-template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetIterations(const size_t &n) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	m_iterations = n;
 }
 
 template<typename TVectorImage, typename TImage>
@@ -108,7 +101,7 @@ template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
 	Superclass::GenerateOutputInformation();
 	auto size = this->GetInput()->GetNumberOfComponentsPerPixel();
-	if (m_sequence.size() != size) {
+	if (m_sequence->size() != size) {
 		throw(std::runtime_error("Specified number of flip-angles does not match number of volumes in input."));
 	}
 
@@ -139,51 +132,26 @@ void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType 
 	ImageRegionIterator<TImage> PDIter(PDData, region);
 	ImageRegionIterator<TImage> ResIter(ResData, region);
 
-	shared_ptr<SCD> model = make_shared<SCD>();
 	while(!T1Iter.IsAtEnd()) {
 		if (!maskData || maskIter.Get()) {
-			double B1 = 1;
+			VectorXd consts = VectorXd::Ones(1);
 			if (B1Data)
-				B1 = B1Iter.Get();
-			ArrayXd localAngles = m_sequence.flip() * B1;
-			double T1, PD;
+				consts[0] = B1Iter.Get();
+
 			VariableLengthVector<float> signalVector = SPGRIter.Get();
-			Map<const ArrayXf> signalf(signalVector.GetDataPointer(), m_sequence.size());
-			ArrayXd signal = signalf.cast<double>();
-			VectorXd Y = signal / localAngles.sin();
-			MatrixXd X(Y.rows(), 2);
-			X.col(0) = signal / localAngles.tan();
-			X.col(1).setOnes();
-			VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-			T1 = -m_sequence.TR() / log(b[0]);
-			PD = b[1] / (1. - b[0]);
-			if (m_algorithm == Algos::WLLS) {
-				VectorXd W(m_sequence.size());
-				for (size_t n = 0; n < m_iterations; n++) {
-					W = (localAngles.sin() / (1. - (exp(-m_sequence.TR()/T1)*localAngles.cos()))).square();
-					b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
-					T1 = -m_sequence.TR() / log(b[0]);
-					PD = b[1] / (1. - b[0]);
-				}
-			} else if (m_algorithm == Algos::NLLS) {
-				/*DESPOTFunctor f(spgrSequence, Pools::One, signal.cast<complex<double>>(), B1, false, false);
-				NumericalDiff<DESPOTFunctor> nDiff(f);
-				LevenbergMarquardt<NumericalDiff<DESPOTFunctor>> lm(nDiff);
-				lm.parameters.maxfev = m_iterations;
-				VectorXd p(4);
-				p << PD, T1, 0., 0.; // Don't need T2 of f0 for this (yet)
-				lm.lmder1(p);
-				PD = p(0); T1 = p(1);*/
-			}
-			VectorXd pars(5); pars << PD, T1, 0., 0., B1;
-			ArrayXd theory = m_sequence.signal(model, pars).abs();
-			ArrayXd resids = (signal - theory);
+			Map<const ArrayXf> signalf(signalVector.GetDataPointer(), m_sequence->size());
+
+			VectorXd outputs(m_algorithm->numOutputs());
+			ArrayXd resids(m_sequence->size());
+
+			m_algorithm->apply(m_sequence, signalf.cast<double>(), consts, outputs, resids);
+
 			/*if (all_residuals) {
 				ResidsVols.slice<1>({i,j,k,0},{0,0,0,-1}).asArray() = resids.cast<float>();
 			}*/
-			T1Iter.Set(static_cast<float>(T1));
-			PDIter.Set(static_cast<float>(PD));
-			ResIter.Set(static_cast<float>(sqrt(resids.square().sum() / resids.rows()) / PD));
+			T1Iter.Set(static_cast<float>(outputs[1]));
+			PDIter.Set(static_cast<float>(outputs[0]));
+			ResIter.Set(static_cast<float>(sqrt(resids.square().sum() / resids.rows())));
 		} else {
 			//T1Iter.Set(0);
 			//PDIter.Set(0);

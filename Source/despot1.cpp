@@ -17,9 +17,6 @@
 #include <atomic>
 #include <Eigen/Dense>
 
-#include <unsupported/Eigen/NonLinearOptimization>
-#include <unsupported/Eigen/NumericalDiff>
-
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkVectorImage.h"
@@ -63,7 +60,7 @@ typedef itk::DESPOT1Filter<FloatVectorImage, FloatImage> DESPOT1;
 static bool verbose = false, prompt = true, all_residuals = false;
 static size_t nIterations = 4;
 static string outPrefix;
-static DESPOT1::Algos algo;
+static shared_ptr<D1> algo = make_shared<D1>();
 static struct option long_options[] =
 {
 	{"help", no_argument, 0, 'h'},
@@ -115,9 +112,9 @@ int main(int argc, char **argv) {
 				break;
 			case 'a':
 				switch (*optarg) {
-					case 'l': algo = DESPOT1::Algos::LLS;  cout << "LLS algorithm selected." << endl; break;
-					case 'w': algo = DESPOT1::Algos::WLLS; cout << "WLLS algorithm selected." << endl; break;
-					case 'n': algo = DESPOT1::Algos::NLLS; cout << "NLLS algorithm selected." << endl; break;
+					case 'l': algo->setType(D1::Type::LLS);  cout << "LLS algorithm selected." << endl; break;
+					case 'w': algo->setType(D1::Type::WLLS); cout << "WLLS algorithm selected." << endl; break;
+					case 'n': algo->setType(D1::Type::NLLS); cout << "NLLS algorithm selected." << endl; break;
 					default:
 						cout << "Unknown algorithm type " << optarg << endl;
 						return EXIT_FAILURE;
@@ -152,7 +149,7 @@ int main(int argc, char **argv) {
 	Converter::Pointer convert = Converter::New();
 	convert->SetInput(input->GetOutput());
 
-	SPGRSimple spgrSequence(prompt);
+	shared_ptr<SPGRSimple> spgrSequence = make_shared<SPGRSimple>(prompt);
 	if (verbose) {
 		cout << spgrSequence;
 		cout << "Ouput prefix will be: " << outPrefix << endl;
@@ -167,8 +164,8 @@ int main(int argc, char **argv) {
 	if (B1)
 		d1->SetB1(B1->GetOutput());
 	d1->SetSequence(spgrSequence);
+	algo->setIterations(nIterations);
 	d1->SetAlgorithm(algo);
-	d1->SetIterations(nIterations);
 	cout << "Created filter" << endl;
 
 	if (verbose)
