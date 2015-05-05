@@ -293,15 +293,12 @@ int main(int argc, char **argv) {
 	PDFile->Update();
 	ResFile->Update();
 
-	/*
 	if (all_residuals) {
-		outHdr.intent_name = "Residuals";
-		outHdr.setDim(4, spgrSequence.size());
-		outFile.setHeader(outHdr);
-		outFile.open(outPrefix + "residuals" + OutExt(), Nifti::Mode::Write);
-		outFile.writeVolumes(ResidsVols.begin(), ResidsVols.end(), 0, spgrSequence.size());
-		outFile.close();
-	}*/
+		auto vecWriter = itk::ImageFileWriter<FloatVectorImage>::New();
+		vecWriter->SetFileName(outPrefix + "residuals.nii");
+		vecWriter->SetInput(d1->GetResidOutput());
+		vecWriter->Update();
+	}
 	cout << "All done." << endl;
 	} catch (exception &e) {
 		cerr << e.what() << endl;
