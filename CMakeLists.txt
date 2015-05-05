@@ -23,5 +23,5 @@ include(${ITK_USE_FILE})
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-add_executable(despot1 Source/despot1.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Algorithm.cpp Source/Sequence.cpp Source/Util.cpp Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx Source/Filters/DESPOT1Filter.h Source/Filters/DESPOT1Filter.hxx)
+add_executable(despot1 Source/despot1.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp Source/Util.cpp Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx Source/Filters/DESPOT1Filter.h Source/Filters/DESPOT1Filter.hxx)
 target_link_libraries(despot1 ${ITK_LIBRARIES})
