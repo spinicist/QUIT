@@ -34,7 +34,7 @@ class SequenceBase {
 		virtual size_t size() const = 0;
 		virtual void write(ostream &os) const = 0;
 		virtual string name() const = 0;
-
+		virtual size_t count() const { return 1; }
 		double TR() const { return m_TR; }
 		void setTR(const double TR) { m_TR = TR; }
 };
@@ -149,7 +149,7 @@ public:
 	void write(ostream &os) const override;
 	string name() const override { return "Sequences"; }
 
-	size_t count() const;
+	size_t count() const override;
 	shared_ptr<SteadyState> sequence(const size_t i) const;
 	vector<shared_ptr<SteadyState>> &sequences();
 
