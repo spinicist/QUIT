@@ -115,14 +115,19 @@ DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int
 	return output.GetPointer();
 }
 
-template< typename TVectorImage, typename TImage>
+template<typename TVectorImage, typename TImage>
 TImage *DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numOutputs()) {
-		return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i+1) );
+		return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i+1));
 	} else {
 		throw(runtime_error("Requested output " + to_string(i) + " is past maximum (" + to_string(m_algorithm->numOutputs()) + ")"));
 	}
+}
+
+template<typename TVectorImage, typename TImage>
+TVectorImage *DESPOT1Filter<TVectorImage, TImage>::GetResidOutput() {
+	return dynamic_cast<TVectorImage *>(this->ProcessObject::GetOutput(0));
 }
 
 template<typename TVectorImage, typename TImage>
@@ -175,6 +180,7 @@ void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType 
 	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 		outputIters[i] = ImageRegionIterator<TImage>(this->GetOutput(i), region);
 	}
+	ImageRegionIterator<TVectorImage> residIter(this->GetResidOutput(), region);
 
 	VectorXd constants = m_algorithm->defaultConsts();
 	while(!dataIters[0].IsAtEnd()) {
@@ -193,22 +199,18 @@ void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType 
 				allData.segment(dataIndex, data.rows()) = data;
 			}
 			VectorXd outputs(m_algorithm->numOutputs());
+
 			ArrayXd resids(m_sequence->size());
 
 			m_algorithm->apply(m_sequence, allData.cast<double>(), constants, outputs, resids);
 
-			/*if (all_residuals) {
-				ResidsVols.slice<1>({i,j,k,0},{0,0,0,-1}).asArray() = resids.cast<float>();
-			}*/
-
 			for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 				outputIters[i].Set(static_cast<float>(outputs[i]));
-				//ResIter.Set(static_cast<float>(sqrt(resids.square().sum() / resids.rows())));
 			}
-		} else {
-			//T1Iter.Set(0);
-			//PDIter.Set(0);
-			//ResIter.Set(0);
+			ArrayXf residF = resids.cast<float>();
+			VariableLengthVector<float> residVector(residF.data(), m_sequence->size());
+
+			residIter.Set(residVector);
 		}
 		for (size_t i = 0; i < m_sequence->count(); i++) {
 			++dataIters[i];
@@ -222,6 +224,7 @@ void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType 
 		for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 			++outputIters[i];
 		}
+		++residIter;
 	}
 }
 } // namespace ITK

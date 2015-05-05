@@ -23,7 +23,7 @@
 #include "itkImageToImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkComposeImageFilter.h"
-
+#include "itkVectorMagnitudeImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/DESPOT1Filter.h"
 #include "Model.h"
@@ -281,14 +281,17 @@ int main(int argc, char **argv) {
 
 	PDFile->SetInput(d1->GetOutput(0));
 	T1File->SetInput(d1->GetOutput(1));
-	//ResFile->SetInput(d1->GetOutput(2));
+
+	auto magFilter = itk::VectorMagnitudeImageFilter<FloatVectorImage, FloatImage>::New();
+	magFilter->SetInput(d1->GetResidOutput());
+	ResFile->SetInput(magFilter->GetOutput());
 
 	cout << "Processing" << endl;
 	d1->Update();
 	cout << "Writing output files" << endl;
 	T1File->Update();
 	PDFile->Update();
-	//ResFile->Update();
+	ResFile->Update();
 
 	/*
 	if (all_residuals) {

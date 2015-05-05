@@ -43,6 +43,7 @@ public:
 	typename TImage::ConstPointer GetConstInput(const size_t i) const;
 	typename TImage::ConstPointer GetMask() const;
 	TImage *GetOutput(const size_t i);
+	TVectorImage *GetResidOutput();
 
 	void SetSequence(const shared_ptr<SPGRSimple> &seq);
 	void SetAlgorithm(const shared_ptr<Algorithm> &a);
