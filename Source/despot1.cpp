@@ -25,7 +25,7 @@
 #include "itkComposeImageFilter.h"
 #include "itkVectorMagnitudeImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
-#include "Filters/DESPOT1Filter.h"
+#include "Filters/ApplyAlgorithmFilter.h"
 #include "Model.h"
 #include "Sequence.h"
 
@@ -151,7 +151,7 @@ Options:\n\
 
 typedef itk::Image<float, 3> FloatImage;
 typedef itk::VectorImage<float, 3> FloatVectorImage;
-typedef itk::DESPOT1Filter<FloatVectorImage, FloatImage> DESPOT1;
+typedef itk::ApplyAlgorithmFilter<FloatVectorImage, FloatImage> DESPOT1;
 
 static bool verbose = false, prompt = true, all_residuals = false;
 static size_t nIterations = 4;

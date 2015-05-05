@@ -1,5 +1,5 @@
-#ifndef DESPOT1FILTER_HXX
-#define DESPOT1FILTER_HXX
+#ifndef APPLYALGORITHMFILTER_HXX
+#define APPLYALGORITHMFILTER_HXX
 
 #include "itkObjectFactory.h"
 #include "itkImageRegionIterator.h"
@@ -9,12 +9,12 @@
 namespace itk {
 
 template<typename TVectorImage, typename TImage>
-DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter() {
+ApplyAlgorithmFilter<TVectorImage, TImage>::ApplyAlgorithmFilter() {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::Setup() {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::Setup() {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (!(m_sequence && m_algorithm))
 		throw(runtime_error("Sequence and Algorithm must be set first"));
@@ -33,7 +33,7 @@ void DESPOT1Filter<TVectorImage, TImage>::Setup() {
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetDataInput(const size_t i, const TVectorImage *image) {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::SetDataInput(const size_t i, const TVectorImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_sequence->count()) {
 		this->SetNthInput(i, const_cast<TVectorImage*>(image));
@@ -43,7 +43,7 @@ void DESPOT1Filter<TVectorImage, TImage>::SetDataInput(const size_t i, const TVe
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetConstInput(const size_t i, const TImage *image) {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::SetConstInput(const size_t i, const TImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		this->SetNthInput(m_sequence->count() + 1 + i, const_cast<TImage*>(image));
@@ -53,13 +53,13 @@ void DESPOT1Filter<TVectorImage, TImage>::SetConstInput(const size_t i, const TI
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetMask(const TImage *image) {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::SetMask(const TImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	this->SetNthInput(m_sequence->count(), const_cast<TImage*>(image));
 }
 
 template< typename TVectorImage, typename TImage>
-typename TVectorImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetDataInput(const size_t i) const {
+typename TVectorImage::ConstPointer ApplyAlgorithmFilter<TVectorImage, TImage>::GetDataInput(const size_t i) const {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_sequence->count()) {
 		return static_cast<const TVectorImage *> (this->ProcessObject::GetInput(i));
@@ -69,7 +69,7 @@ typename TVectorImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetData
 }
 
 template< typename TVectorImage, typename TImage>
-typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetConstInput(const size_t i) const {
+typename TImage::ConstPointer ApplyAlgorithmFilter<TVectorImage, TImage>::GetConstInput(const size_t i) const {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		size_t index = m_sequence->count() + 1 + i;
@@ -80,27 +80,26 @@ typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetConstInput
 }
 
 template< typename TVectorImage, typename TImage>
-typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetMask() const {
+typename TImage::ConstPointer ApplyAlgorithmFilter<TVectorImage, TImage>::GetMask() const {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	return static_cast<const TImage *>(this->ProcessObject::GetInput(m_sequence->count()));
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetSequence(const shared_ptr<SPGRSimple> &seq) {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::SetSequence(const shared_ptr<SPGRSimple> &seq) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	m_sequence = seq;
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetAlgorithm(const shared_ptr<Algorithm> &a) {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::SetAlgorithm(const shared_ptr<Algorithm> &a) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	m_algorithm = a;
 }
 
 template<typename TVectorImage, typename TImage>
-DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int idx) {
+DataObject::Pointer ApplyAlgorithmFilter<TVectorImage, TImage>::MakeOutput(unsigned int idx) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	cout << "idx = " << idx << endl;
 	DataObject::Pointer output;
 	if (idx == 0) {
 		typename TVectorImage::Pointer img = TVectorImage::New();
@@ -116,7 +115,7 @@ DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int
 }
 
 template<typename TVectorImage, typename TImage>
-TImage *DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
+TImage *ApplyAlgorithmFilter<TVectorImage, TImage>::GetOutput(const size_t i) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numOutputs()) {
 		return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i+1));
@@ -126,12 +125,12 @@ TImage *DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
 }
 
 template<typename TVectorImage, typename TImage>
-TVectorImage *DESPOT1Filter<TVectorImage, TImage>::GetResidOutput() {
+TVectorImage *ApplyAlgorithmFilter<TVectorImage, TImage>::GetResidOutput() {
 	return dynamic_cast<TVectorImage *>(this->ProcessObject::GetOutput(0));
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::Update() {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::Update() {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	//std::cout <<  static_cast<const TVectorImage *>(this->ProcessObject::GetInput(0))->GetDirection() << endl;
 	//std::cout <<  static_cast<const TImage *>(this->ProcessObject::GetInput(1))->GetDirection() << endl;
@@ -140,7 +139,7 @@ void DESPOT1Filter<TVectorImage, TImage>::Update() {
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::GenerateOutputInformation() {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	Superclass::GenerateOutputInformation();
 	size_t size = 0;
@@ -159,7 +158,7 @@ void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
+void ApplyAlgorithmFilter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	vector<ImageRegionConstIterator<TVectorImage>> dataIters(m_sequence->count());
 	for (size_t i = 0; i < m_sequence->count(); i++) {
@@ -229,5 +228,5 @@ void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType 
 }
 } // namespace ITK
 
-#endif // DESPOT1FILTER_HXX
+#endif // APPLYALGORITHMFILTER_HXX
 

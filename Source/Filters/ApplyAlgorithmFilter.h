@@ -1,5 +1,5 @@
-#ifndef DESPOT1FILTER_H
-#define DESPOT1FILTER_H
+#ifndef APPLYALGOFILTER_H
+#define APPLYALGOFILTER_H
 
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
@@ -24,17 +24,17 @@ class Algorithm {
 namespace itk{
 
 template<typename TVectorImage, typename TImage>
-class DESPOT1Filter : public ImageToImageFilter<TVectorImage, TImage>
+class ApplyAlgorithmFilter : public ImageToImageFilter<TVectorImage, TImage>
 {
 public:
 	/** Standard class typedefs. */
-	typedef DESPOT1Filter                            Self;
+	typedef ApplyAlgorithmFilter                            Self;
 	typedef ImageToImageFilter<TVectorImage, TImage> Superclass;
 	typedef SmartPointer<Self>                       Pointer;
 	typedef typename TImage::RegionType              RegionType;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
-	itkTypeMacro(DESPOT1Filter, ImageToImageFilter); /** Run-time type information (and related methods). */
+	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
 	void SetDataInput(const size_t i, const TVectorImage *img);
 	void SetConstInput(const size_t i, const TImage *img);
@@ -65,8 +65,8 @@ public:
 	}
 
 protected:
-	DESPOT1Filter();
-	~DESPOT1Filter(){}
+	ApplyAlgorithmFilter();
+	~ApplyAlgorithmFilter(){}
 
 	virtual void ThreadedGenerateData(const RegionType & outputRegionForThread,
 	                                  ThreadIdType threadId); // Does the work
@@ -76,11 +76,11 @@ protected:
 	shared_ptr<Algorithm> m_algorithm;
 
 private:
-	DESPOT1Filter(const Self &); //purposely not implemented
+	ApplyAlgorithmFilter(const Self &); //purposely not implemented
 	void operator=(const Self &);  //purposely not implemented
 };
 }
 
-#include "DESPOT1Filter.hxx"
+#include "ApplyAlgorithmFilter.hxx"
 
-#endif // DESPOT1FILTER_H
+#endif // APPLYAGLOFILTER_H
