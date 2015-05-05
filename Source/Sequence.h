@@ -26,13 +26,19 @@ using namespace std;
 using namespace Eigen;
 
 class SequenceBase {
+	protected:
+		double m_TR;
 
 	public:
 		virtual ArrayXcd signal(const shared_ptr<Model> m, const VectorXd &p) const = 0;
 		virtual size_t size() const = 0;
 		virtual void write(ostream &os) const = 0;
 		virtual string name() const = 0;
+
+		double TR() const { return m_TR; }
+		void setTR(const double TR) { m_TR = TR; }
 };
+
 ostream& operator<<(ostream& os, const SequenceBase& s);
 
 class MultiEcho : public SequenceBase {
@@ -52,7 +58,6 @@ class MultiEcho : public SequenceBase {
 
 class SteadyState : public SequenceBase {
 	protected:
-		double m_TR;
 		ArrayXd m_flip;
 
 
@@ -64,7 +69,6 @@ class SteadyState : public SequenceBase {
 		virtual size_t angles() const { return m_flip.rows(); }
 		virtual size_t phases() const { return 1; }
 
-		double TR() const { return m_TR; }
 		const ArrayXd & flip() const { return m_flip; }
 };
 
