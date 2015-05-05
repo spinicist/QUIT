@@ -9,160 +9,219 @@
 namespace itk {
 
 template<typename TVectorImage, typename TImage>
-DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter()
-{
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	this->SetNumberOfRequiredInputs(1);
-	this->SetNumberOfRequiredOutputs(3);
-
-	this->SetNthOutput(0, this->MakeOutput(0));
-	this->SetNthOutput(1, this->MakeOutput(1));
-	this->SetNthOutput(2, this->MakeOutput(2));
+DESPOT1Filter<TVectorImage, TImage>::DESPOT1Filter() {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 }
 
 template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetInput(const TVectorImage *image) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	this->SetNthInput(0, const_cast<TVectorImage*>(image));
-	//std::cout << this->GetInput()->GetDirection() << endl;
+void DESPOT1Filter<TVectorImage, TImage>::Setup() {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	if (!(m_sequence && m_algorithm))
+		throw(runtime_error("Sequence and Algorithm must be set first"));
+
+	// +1 is for mask.
+	// Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
+	size_t totalInputs = m_sequence->count() + m_algorithm->numConsts() + 1;
+	this->SetNumberOfRequiredInputs(m_sequence->count());
+	// +1 is for residuals vector
+	size_t totalOutputs = m_algorithm->numOutputs() + 1;
+	this->SetNumberOfRequiredOutputs(totalOutputs);
+
+	for (size_t i = 0; i < totalOutputs; i++) {
+		this->SetNthOutput(i, this->MakeOutput(i));
+	}
 }
+
+template<typename TVectorImage, typename TImage>
+void DESPOT1Filter<TVectorImage, TImage>::SetDataInput(const size_t i, const TVectorImage *image) {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	if (i < m_sequence->count()) {
+		this->SetNthInput(i, const_cast<TVectorImage*>(image));
+	} else {
+		throw(runtime_error("Data input exceeds range"));
+	}
+}
+
+template<typename TVectorImage, typename TImage>
+void DESPOT1Filter<TVectorImage, TImage>::SetConstInput(const size_t i, const TImage *image) {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	if (i < m_algorithm->numConsts()) {
+		this->SetNthInput(m_sequence->count() + 1 + i, const_cast<TImage*>(image));
+	} else {
+		throw(runtime_error("Const input out of range"));
+	}
+}
+
+template<typename TVectorImage, typename TImage>
+void DESPOT1Filter<TVectorImage, TImage>::SetMask(const TImage *image) {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	this->SetNthInput(m_sequence->count(), const_cast<TImage*>(image));
+}
+
 template< typename TVectorImage, typename TImage>
-typename TVectorImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetInput() {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	return static_cast<const TVectorImage *> (this->ProcessObject::GetInput(0));
+typename TVectorImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetDataInput(const size_t i) const {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	if (i < m_sequence->count()) {
+		return static_cast<const TVectorImage *> (this->ProcessObject::GetInput(i));
+	} else {
+		throw(runtime_error("Get Data Input out of range."));
+	}
 }
 
-template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetMask(const TImage* image) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	this->SetNthInput(1, const_cast<TImage*>(image));
-	//std::cout << this->GetMask()->GetDirection() << endl;
-}
 template< typename TVectorImage, typename TImage>
-typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetMask() {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	return static_cast<const TImage *>(this->ProcessObject::GetInput(1));
+typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetConstInput(const size_t i) const {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	if (i < m_algorithm->numConsts()) {
+		size_t index = m_sequence->count() + 1 + i;
+		return static_cast<const TImage *> (this->ProcessObject::GetInput(index));
+	} else {
+		throw(runtime_error("Get Data Input out of range."));
+	}
 }
 
-template<typename TVectorImage, typename TImage>
-void DESPOT1Filter<TVectorImage, TImage>::SetB1(const TImage* image) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	this->SetNthInput(2, const_cast<TImage*>(image));
-	//std::cout << this->GetB1()->GetDirection() << endl;
-}
-template<typename TVectorImage, typename TImage>
-typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetB1() {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
-	return static_cast<const TImage *>(this->ProcessObject::GetInput(2));
+template< typename TVectorImage, typename TImage>
+typename TImage::ConstPointer DESPOT1Filter<TVectorImage, TImage>::GetMask() const {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	return static_cast<const TImage *>(this->ProcessObject::GetInput(m_sequence->count()));
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetSequence(const shared_ptr<SPGRSimple> &seq) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	m_sequence = seq;
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::SetAlgorithm(const shared_ptr<Algorithm> &a) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	m_algorithm = a;
 }
 
 template<typename TVectorImage, typename TImage>
 DataObject::Pointer DESPOT1Filter<TVectorImage, TImage>::MakeOutput(unsigned int idx) {
-	//std::cout << __PRETTY_FUNCTION__ << endl;
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	cout << "idx = " << idx << endl;
 	DataObject::Pointer output;
-
-	switch ( idx ) {
-	case 0: case 1: case 2: output = ( TImage::New() ).GetPointer(); break;
-	default:
+	if (idx == 0) {
+		typename TVectorImage::Pointer img = TVectorImage::New();
+		img->SetNumberOfComponentsPerPixel(m_sequence->size());
+		output = img;
+	} else if (idx < (m_algorithm->numOutputs() + 1)) {
+		output = (TImage::New()).GetPointer();
+	} else {
 		std::cerr << "No output " << idx << std::endl;
 		output = NULL;
-		break;
 	}
 	return output.GetPointer();
 }
 
 template< typename TVectorImage, typename TImage>
-TImage* DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
-	return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i) );
+TImage *DESPOT1Filter<TVectorImage, TImage>::GetOutput(const size_t i) {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	if (i < m_algorithm->numOutputs()) {
+		return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i+1) );
+	} else {
+		throw(runtime_error("Requested output " + to_string(i) + " is past maximum (" + to_string(m_algorithm->numOutputs()) + ")"));
+	}
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::Update() {
-	std::cout << __PRETTY_FUNCTION__ << endl;
-	//std::cout << static_cast<const TVectorImage *>(this->ProcessObject::GetInput(0))->GetDirection() << endl;
-	//std::cout << static_cast<const TImage *>(this->ProcessObject::GetInput(1))->GetDirection() << endl;
-	//std::cout << static_cast<const TImage *>(this->ProcessObject::GetInput(2))->GetDirection() << endl;
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	//std::cout <<  static_cast<const TVectorImage *>(this->ProcessObject::GetInput(0))->GetDirection() << endl;
+	//std::cout <<  static_cast<const TImage *>(this->ProcessObject::GetInput(1))->GetDirection() << endl;
+	//std::cout <<  static_cast<const TImage *>(this->ProcessObject::GetInput(2))->GetDirection() << endl;
 	Superclass::Update();
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::GenerateOutputInformation() {
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	Superclass::GenerateOutputInformation();
-	auto size = this->GetInput()->GetNumberOfComponentsPerPixel();
+	size_t size = 0;
+	for (size_t i = 0; i < m_sequence->count(); i++) {
+		size += this->GetDataInput(i)->GetNumberOfComponentsPerPixel();
+	}
 	if (m_sequence->size() != size) {
 		throw(std::runtime_error("Specified number of flip-angles does not match number of volumes in input."));
 	}
 
-	for (size_t i = 0; i < 3; i++) {
-		this->GetOutput(i)->SetRegions(this->GetInput()->GetLargestPossibleRegion());
-		this->GetOutput(i)->Allocate();
+	for (size_t i = 0; i < (m_algorithm->numOutputs()); i++) {
+		const auto op = this->GetOutput(i);
+		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+		op->Allocate();
 	}
 }
 
 template<typename TVectorImage, typename TImage>
 void DESPOT1Filter<TVectorImage, TImage>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
-	typename TVectorImage::ConstPointer spgrData = this->GetInput();
+	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	vector<ImageRegionConstIterator<TVectorImage>> dataIters(m_sequence->count());
+	for (size_t i = 0; i < m_sequence->count(); i++) {
+		dataIters[i] = ImageRegionConstIterator<TVectorImage>(this->GetDataInput(i), region);
+	}
+	ImageRegionConstIterator<TImage> maskIter;
+	if (this->GetMask()) {
+		maskIter = ImageRegionConstIterator<TImage>(this->GetMask(), region);
+	}
+	vector<ImageRegionConstIterator<TImage>> constIters(m_algorithm->numConsts());
+	for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
+		typename TImage::ConstPointer c = this->GetConstInput(i);
+		if (c) {
+			constIters[i] = ImageRegionConstIterator<TImage>(c, region);
+		}
+	}
+	vector<ImageRegionIterator<TImage>> outputIters(m_algorithm->numOutputs());
+	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
+		outputIters[i] = ImageRegionIterator<TImage>(this->GetOutput(i), region);
+	}
 
-	typename TImage::ConstPointer maskData = this->GetMask();
-	typename TImage::ConstPointer B1Data   = this->GetB1();
+	VectorXd constants = m_algorithm->defaultConsts();
+	while(!dataIters[0].IsAtEnd()) {
+		typename TImage::ConstPointer m = this->GetMask();
+		if (!m || maskIter.Get()) {
+			for (size_t i = 0; i < constIters.size(); i++) {
+				if (this->GetConstInput(i))
+					constants[i] = constIters[i].Get();
+			}
 
-	typename TImage::Pointer T1Data = this->GetOutput(0);
-	typename TImage::Pointer PDData = this->GetOutput(1);
-	typename TImage::Pointer ResData = this->GetOutput(2);
-
-	ImageRegionConstIterator<TVectorImage> SPGRIter(spgrData, region);
-	ImageRegionConstIterator<TImage> maskIter, B1Iter;
-	if (maskData)
-		maskIter = ImageRegionConstIterator<TImage>(maskData, region);
-	if (B1Data)
-		B1Iter = ImageRegionConstIterator<TImage>(B1Data, region);
-	ImageRegionIterator<TImage> T1Iter(T1Data, region);
-	ImageRegionIterator<TImage> PDIter(PDData, region);
-	ImageRegionIterator<TImage> ResIter(ResData, region);
-
-	while(!T1Iter.IsAtEnd()) {
-		if (!maskData || maskIter.Get()) {
-			VectorXd consts = VectorXd::Ones(1);
-			if (B1Data)
-				consts[0] = B1Iter.Get();
-
-			VariableLengthVector<float> signalVector = SPGRIter.Get();
-			Map<const ArrayXf> signalf(signalVector.GetDataPointer(), m_sequence->size());
-
+			ArrayXf allData(m_sequence->size());
+			size_t dataIndex = 0;
+			for (size_t i = 0; i < m_sequence->count(); i++) {
+				VariableLengthVector<float> dataVector = dataIters[i].Get();
+				Map<const ArrayXf> data(dataVector.GetDataPointer(), dataVector.Size());
+				allData.segment(dataIndex, data.rows()) = data;
+			}
 			VectorXd outputs(m_algorithm->numOutputs());
 			ArrayXd resids(m_sequence->size());
 
-			m_algorithm->apply(m_sequence, signalf.cast<double>(), consts, outputs, resids);
+			m_algorithm->apply(m_sequence, allData.cast<double>(), constants, outputs, resids);
 
 			/*if (all_residuals) {
 				ResidsVols.slice<1>({i,j,k,0},{0,0,0,-1}).asArray() = resids.cast<float>();
 			}*/
-			T1Iter.Set(static_cast<float>(outputs[1]));
-			PDIter.Set(static_cast<float>(outputs[0]));
-			ResIter.Set(static_cast<float>(sqrt(resids.square().sum() / resids.rows())));
+
+			for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
+				outputIters[i].Set(static_cast<float>(outputs[i]));
+				//ResIter.Set(static_cast<float>(sqrt(resids.square().sum() / resids.rows())));
+			}
 		} else {
 			//T1Iter.Set(0);
 			//PDIter.Set(0);
 			//ResIter.Set(0);
 		}
-		++SPGRIter;
-		if (maskData)
+		for (size_t i = 0; i < m_sequence->count(); i++) {
+			++dataIters[i];
+		}
+		if (this->GetMask())
 			++maskIter;
-		if (B1Data)
-			++B1Iter;
-		++T1Iter; ++PDIter; ++ResIter;
+		for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
+			if (this->GetConstInput(i))
+				++constIters[i];
+		}
+		for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
+			++outputIters[i];
+		}
 	}
 }
 } // namespace ITK

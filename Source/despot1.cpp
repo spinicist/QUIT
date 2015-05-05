@@ -86,6 +86,12 @@ class D1 : public Algorithm {
 		size_t numConsts() const override { return 1; }
 		size_t numOutputs() const override { return 2; }
 
+		virtual VectorXd defaultConsts() {
+			// Only B1, default is 1
+			VectorXd def = VectorXd::Ones(1);
+			return def;
+		}
+
 		virtual void apply(const shared_ptr<SteadyState> sequence,
 		                   const VectorXd &data,
 		                   const VectorXd &inputs,
@@ -216,7 +222,7 @@ int main(int argc, char **argv) {
 				nIterations = atoi(optarg);
 				break;
 			case 'T':
-				//threads.resize(atoi(optarg));
+				itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg));
 				break;
 			case 'r': all_residuals = true; break;
 			case 'h':
@@ -247,14 +253,17 @@ int main(int argc, char **argv) {
 	auto vectorImage = convert->GetOutput();
 	cout << "Creating DESPOT1 Filter" << endl;
 	DESPOT1::Pointer d1 = DESPOT1::New();
-	d1->SetInput(convert->GetOutput());
-	if (mask)
-		d1->SetMask(mask->GetOutput());
-	if (B1)
-		d1->SetB1(B1->GetOutput());
 	d1->SetSequence(spgrSequence);
-	algo->setIterations(nIterations);
 	d1->SetAlgorithm(algo);
+	d1->Setup();
+	d1->SetDataInput(0, convert->GetOutput());
+	if (mask) {
+		cout << "Setting mask" << endl;
+		d1->SetMask(mask->GetOutput());
+	}
+	if (B1)
+		d1->SetConstInput(0, B1->GetOutput());
+	algo->setIterations(nIterations);
 	cout << "Created filter" << endl;
 
 	if (verbose)
@@ -270,16 +279,16 @@ int main(int argc, char **argv) {
 	PDFile->SetFileName(outPrefix + "PD.nii");
 	ResFile->SetFileName(outPrefix + "residual.nii");
 
-	T1File->SetInput(d1->GetOutput(0));
-	PDFile->SetInput(d1->GetOutput(1));
-	ResFile->SetInput(d1->GetOutput(2));
+	PDFile->SetInput(d1->GetOutput(0));
+	T1File->SetInput(d1->GetOutput(1));
+	//ResFile->SetInput(d1->GetOutput(2));
 
 	cout << "Processing" << endl;
 	d1->Update();
 	cout << "Writing output files" << endl;
 	T1File->Update();
 	PDFile->Update();
-	ResFile->Update();
+	//ResFile->Update();
 
 	/*
 	if (all_residuals) {

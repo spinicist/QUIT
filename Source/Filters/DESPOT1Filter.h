@@ -14,9 +14,11 @@ class Algorithm {
 
 		virtual void apply(const shared_ptr<SteadyState> sequence,
 		                   const VectorXd &data,
-		                   const VectorXd &inputs,
+		                   const VectorXd &consts,
 		                   VectorXd &outputs,
 		                   ArrayXd &resids) const = 0;
+
+		virtual VectorXd defaultConsts() = 0;
 };
 
 namespace itk{
@@ -34,16 +36,17 @@ public:
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(DESPOT1Filter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
-	void SetInput(const TVectorImage *SPGR);
-	typename TVectorImage::ConstPointer GetInput();
+	void SetDataInput(const size_t i, const TVectorImage *img);
+	void SetConstInput(const size_t i, const TImage *img);
 	void SetMask(const TImage *mask);
-	typename TImage::ConstPointer GetMask();
-	void SetB1(const TImage *B1);
-	typename TImage::ConstPointer GetB1();
+	typename TVectorImage::ConstPointer GetDataInput(const size_t i) const;
+	typename TImage::ConstPointer GetConstInput(const size_t i) const;
+	typename TImage::ConstPointer GetMask() const;
 	TImage *GetOutput(const size_t i);
 
 	void SetSequence(const shared_ptr<SPGRSimple> &seq);
 	void SetAlgorithm(const shared_ptr<Algorithm> &a);
+	void Setup();
 
 	virtual void GenerateOutputInformation();
 	virtual void Update();
@@ -68,13 +71,12 @@ protected:
 	                                  ThreadIdType threadId); // Does the work
 	DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
 
+	shared_ptr<SPGRSimple> m_sequence;
+	shared_ptr<Algorithm> m_algorithm;
+
 private:
 	DESPOT1Filter(const Self &); //purposely not implemented
 	void operator=(const Self &);  //purposely not implemented
-
-	shared_ptr<SPGRSimple> m_sequence;
-	shared_ptr<Algorithm> m_algorithm;
-	size_t m_iterations;
 };
 }
 
