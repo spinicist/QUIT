@@ -35,7 +35,7 @@ using namespace Eigen;
 //******************************************************************************
 // Algorithm Subclass
 //******************************************************************************
-class D1 : public Algorithm {
+class DESPOT1 : public Algorithm<double> {
 	public:
 		enum class Type { LLS, WLLS, NLLS };
 	private:
@@ -45,14 +45,14 @@ class D1 : public Algorithm {
 		// T1 only Functor
 		class T1Functor : public DenseFunctor<double> {
 			protected:
-				const shared_ptr<SteadyState> m_sequence;
+				const shared_ptr<SequenceBase> m_sequence;
 				const ArrayXd m_data;
 				const bool m_debug;
 				const double m_B1;
 				const shared_ptr<SCD> m_model = make_shared<SCD>();
 
 			public:
-				T1Functor(const shared_ptr<SteadyState> cs, const ArrayXd &data,
+				T1Functor(const shared_ptr<SequenceBase> cs, const ArrayXd &data,
 						  const double B1, const bool debug) :
 					DenseFunctor<double>(2, cs->size()),
 					m_sequence(cs), m_data(data),
@@ -92,7 +92,7 @@ class D1 : public Algorithm {
 			return def;
 		}
 
-		virtual void apply(const shared_ptr<SteadyState> sequence,
+		virtual void apply(const shared_ptr<SequenceBase> sequence,
 		                   const VectorXd &data,
 		                   const VectorXd &inputs,
 		                   VectorXd &outputs,
@@ -149,10 +149,6 @@ Options:\n\
 	--threads, -T N   : Use N threads (default=hardware limit)\n"
 };
 
-typedef itk::Image<float, 3> FloatImage;
-typedef itk::VectorImage<float, 3> FloatVectorImage;
-typedef itk::ApplyAlgorithmFilter<FloatVectorImage, FloatImage> DESPOT1;
-
 static bool verbose = false, prompt = true, all_residuals = false;
 static size_t nIterations = 4;
 static string outPrefix;
@@ -180,6 +176,9 @@ int main(int argc, char **argv) {
 	//cout << version << endl << credit_shared << endl;
 	Eigen::initParallel();
 
+	typedef itk::Image<float, 3> FloatImage;
+	typedef itk::VectorImage<float, 3> FloatVectorImage;
+
 	typedef itk::ImageFileReader<FloatImage> Reader;
 	typedef itk::ImageFileReader<itk::Image<float, 4>> Reader4D;
 	typedef itk::ImageFileWriter<FloatImage> Writer;
@@ -187,7 +186,7 @@ int main(int argc, char **argv) {
 	Reader::Pointer mask = ITK_NULLPTR;
 	Reader::Pointer B1   = ITK_NULLPTR;
 
-	shared_ptr<D1> algo = make_shared<D1>();
+	shared_ptr<DESPOT1> algo = make_shared<DESPOT1>();
 
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
@@ -210,9 +209,9 @@ int main(int argc, char **argv) {
 				break;
 			case 'a':
 				switch (*optarg) {
-					case 'l': algo->setType(D1::Type::LLS);  cout << "LLS algorithm selected." << endl; break;
-					case 'w': algo->setType(D1::Type::WLLS); cout << "WLLS algorithm selected." << endl; break;
-					case 'n': algo->setType(D1::Type::NLLS); cout << "NLLS algorithm selected." << endl; break;
+					case 'l': algo->setType(DESPOT1::Type::LLS);  cout << "LLS algorithm selected." << endl; break;
+					case 'w': algo->setType(DESPOT1::Type::WLLS); cout << "WLLS algorithm selected." << endl; break;
+					case 'n': algo->setType(DESPOT1::Type::NLLS); cout << "NLLS algorithm selected." << endl; break;
 					default:
 						cout << "Unknown algorithm type " << optarg << endl;
 						return EXIT_FAILURE;
@@ -245,14 +244,10 @@ int main(int argc, char **argv) {
 	convert->SetInput(input->GetOutput());
 
 	shared_ptr<SPGRSimple> spgrSequence = make_shared<SPGRSimple>(prompt);
-	if (verbose) {
-		cout << spgrSequence;
-		cout << "Ouput prefix will be: " << outPrefix << endl;
-	}
+	if (verbose) cout << spgrSequence << endl;
 
-	auto vectorImage = convert->GetOutput();
 	cout << "Creating DESPOT1 Filter" << endl;
-	DESPOT1::Pointer d1 = DESPOT1::New();
+	auto d1 = itk::ApplyAlgorithmFilter<float, DESPOT1>::New();
 	d1->SetSequence(spgrSequence);
 	d1->SetAlgorithm(algo);
 	d1->Setup();
