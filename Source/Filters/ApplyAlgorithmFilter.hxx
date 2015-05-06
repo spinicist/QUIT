@@ -144,7 +144,7 @@ void ApplyAlgorithmFilter<TData, TAlgo>::GenerateOutputInformation() {
 		size += this->GetDataInput(i)->GetNumberOfComponentsPerPixel();
 	}
 	if (m_sequence->size() != size) {
-		throw(std::runtime_error("Specified number of flip-angles does not match number of volumes in input."));
+		throw(std::runtime_error("Sequence size (" + to_string(m_sequence->size()) + ") does not match input size (" + to_string(size) + ")"));
 	}
 
 	for (size_t i = 0; i < (m_algorithm->numOutputs()); i++) {
