@@ -27,7 +27,8 @@ using namespace Eigen;
 
 class SequenceBase {
 	protected:
-		double m_TR;
+		double m_TR = 0.;
+		ArrayXd m_flip = ArrayXd::Zero(1);
 
 	public:
 		virtual ArrayXcd signal(const shared_ptr<Model> m, const VectorXd &p) const = 0;
@@ -37,6 +38,8 @@ class SequenceBase {
 		virtual size_t count() const { return 1; }
 		double TR() const { return m_TR; }
 		void setTR(const double TR) { m_TR = TR; }
+		const ArrayXd & flip() const { return m_flip; }
+		void setFlip(const ArrayXd &f) { m_flip = f; }
 };
 
 ostream& operator<<(ostream& os, const SequenceBase& s);
@@ -57,10 +60,6 @@ class MultiEcho : public SequenceBase {
 };
 
 class SteadyState : public SequenceBase {
-	protected:
-		ArrayXd m_flip;
-
-
 	public:
 		SteadyState();
 		SteadyState(const ArrayXd &flip, const double TR);
@@ -68,8 +67,6 @@ class SteadyState : public SequenceBase {
 		virtual size_t size() const override { return angles() * phases(); }
 		virtual size_t angles() const { return m_flip.rows(); }
 		virtual size_t phases() const { return 1; }
-
-		const ArrayXd & flip() const { return m_flip; }
 };
 
 class SPGRSimple : public SteadyState {

@@ -59,9 +59,10 @@ void MultiEcho::write(ostream &os) const {
  *****************************************************************************/
 SteadyState::SteadyState() : SequenceBase() {}
 SteadyState::SteadyState(const ArrayXd &flip, const double TR) :
-	SequenceBase(), m_flip(flip)
+	SequenceBase()
 {
 	m_TR = TR;
+	m_flip = flip;
 }
 
 SPGRSimple::SPGRSimple(const ArrayXd &flip, const double TR) :
