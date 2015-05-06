@@ -56,20 +56,8 @@ public:
 	void SetAlgorithm(const shared_ptr<TAlgo> &a);
 	void Setup();
 
-	virtual void GenerateOutputInformation();
-	virtual void Update();
-
-	void PrintDirections() {
-		cout << __PRETTY_FUNCTION__ << endl;
-		typedef ImageBase< 3 > ImageBaseType;
-		ImageBaseType *ptr = ITK_NULLPTR;
-		InputDataObjectIterator it(this);
-
-		for(; !it.IsAtEnd(); ++it ) {
-			ptr = dynamic_cast< ImageBaseType * >( it.GetInput() );
-			cout << it.GetName() << endl << ptr->GetDirection() << endl;
-		}
-	}
+	virtual void GenerateOutputInformation() override;
+	virtual void Update() override;
 
 protected:
 	ApplyAlgorithmFilter();
