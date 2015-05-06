@@ -8,7 +8,7 @@
 # First, create input data
 
 source ./test_common.sh
-SILENCE_TESTS="1"
+SILENCE_TESTS="0"
 
 DATADIR="scdespot"
 mkdir -p $DATADIR
@@ -62,14 +62,14 @@ $MPRAGE_PAR
 $MPRAGE_FILE
 END"
 echo "$MCSIG_INPUT" > mcsignal.in
-run_test "CREATE_SIGNALS" mcsignal --1 < mcsignal.in
+run_test "CREATE_SIGNALS" mcsignal --1 -n -v < mcsignal.in
 
 echo "$SPGR_PAR" > despot1.in
 echo "$SPGR_PAR\n$MPRAGE_PAR" > despot1hifi.in
 echo "$SSFP_PAR" > despot2fm.in
 echo "$D2GS_PAR" > despot2gs.in
 
-run_test "DESPOT1" $QUITDIR/despot1 $SPGR_FILE -n -bB1.nii < despot1.in
+run_test "DESPOT1" $QUITDIR/despot1 $SPGR_FILE -n -v -bB1.nii < despot1.in
 run_test "DESPOT1LM" $QUITDIR/despot1 $SPGR_FILE -n -an -oN -bB1.nii < despot1.in
 run_test "DESPOT1HIFI" $QUITDIR/despot1hifi $SPGR_FILE $MPRAGE_FILE -n -N < despot1hifi.in
 run_test "SSFPBANDS" $QUITDIR/ssfpbands -22 $SSFP_FILE
