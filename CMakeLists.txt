@@ -26,7 +26,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 add_library(quitk_core Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp Source/Util.cpp)
 add_custom_target(quitk_templ SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx)
 
-set(PROGRAMS despot1 despot2)
+set(PROGRAMS despot1 despot2 mcsignal)
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
 	target_link_libraries(${PROGRAM} quitk_core ${ITK_LIBRARIES})
