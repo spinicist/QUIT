@@ -24,6 +24,7 @@
 #include "itkExtractImageFilter.h"
 #include "itkComposeImageFilter.h"
 #include "itkVectorMagnitudeImageFilter.h"
+#include "itkComplexToModulusImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Model.h"
@@ -234,19 +235,37 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	cout << "Opening SPGR file: " << argv[optind] << endl;
-	Reader4D::Pointer input = Reader4D::New();
-	input->SetFileName(argv[optind]);
-
-	typedef ImageToVectorFilter<float> Converter;
-	cout << "Creating converter" << endl;
-	Converter::Pointer convert = Converter::New();
-	convert->SetInput(input->GetOutput());
+	if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
+	// Deal with possible complex data
+	string inputFilename = argv[optind++];
+	auto input = itk::ImageFileReader<itk::Image<float, 4>>::New();
+	auto cinput = itk::ImageFileReader<itk::Image<complex<float>, 4>>::New();
+	auto mag = itk::ComplexToModulusImageFilter<itk::Image<complex<float>, 4>, itk::Image<float, 4>>::New();
+	auto convert = ImageToVectorFilter<float>::New();
+	auto imageIO = itk::ImageIOFactory::CreateImageIO(inputFilename.c_str(), itk::ImageIOFactory::ReadMode);
+	imageIO->SetFileName(inputFilename);
+	imageIO->ReadImageInformation();
+	const itk::ImageIOBase::IOPixelType pType = imageIO->GetPixelType();
+	switch (pType) {
+		case itk::ImageIOBase::SCALAR: {
+			// Just read as is
+			input->SetFileName(inputFilename);
+			convert->SetInput(input->GetOutput());
+		} break;
+		case itk::ImageIOBase::COMPLEX: {
+			// Convert to magnitude first
+			cinput->SetFileName(inputFilename);
+			mag->SetInput(cinput->GetOutput());
+			convert->SetInput(mag->GetOutput());
+		} break;
+		default:
+			throw(runtime_error("Pixel Type (" + imageIO->GetPixelTypeAsString(pType) + ") not supported."));
+			break;
+	}
 
 	shared_ptr<SPGRSimple> spgrSequence = make_shared<SPGRSimple>(prompt);
-	if (verbose) cout << spgrSequence << endl;
+	if (verbose) cout << *spgrSequence;
 
-	cout << "Creating DESPOT1 Filter" << endl;
 	auto d1 = itk::ApplyAlgorithmFilter<float, DESPOT1>::New();
 	d1->SetSequence(spgrSequence);
 	d1->SetAlgorithm(algo);
@@ -259,13 +278,13 @@ int main(int argc, char **argv) {
 	if (B1)
 		d1->SetConstInput(0, B1->GetOutput());
 	algo->setIterations(nIterations);
-	cout << "Created filter" << endl;
+	if (verbose) cout << "Processing" << endl;
+	d1->Update();
 
 	if (verbose)
 		cout << "Writing results." << endl;
 	outPrefix = outPrefix + "D1_";
 
-	cout << "Creating Writers" << endl;
 	Writer::Pointer T1File = Writer::New();
 	Writer::Pointer PDFile = Writer::New();
 	Writer::Pointer ResFile = Writer::New();
@@ -281,9 +300,6 @@ int main(int argc, char **argv) {
 	magFilter->SetInput(d1->GetResidOutput());
 	ResFile->SetInput(magFilter->GetOutput());
 
-	cout << "Processing" << endl;
-	d1->Update();
-	cout << "Writing output files" << endl;
 	T1File->Update();
 	PDFile->Update();
 	ResFile->Update();
