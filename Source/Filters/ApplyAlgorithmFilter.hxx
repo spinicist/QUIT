@@ -103,7 +103,6 @@ DataObject::Pointer ApplyAlgorithmFilter<TData, TAlgo>::MakeOutput(unsigned int 
 	DataObject::Pointer output;
 	if (idx == 0) {
 		typename TResidImage::Pointer img = TResidImage::New();
-		img->SetNumberOfComponentsPerPixel(m_sequence->size());
 		output = img;
 	} else if (idx < (m_algorithm->numOutputs() + 1)) {
 		output = (TImage::New()).GetPointer();
@@ -148,10 +147,15 @@ void ApplyAlgorithmFilter<TData, TAlgo>::GenerateOutputInformation() {
 	}
 
 	for (size_t i = 0; i < (m_algorithm->numOutputs()); i++) {
-		const auto op = this->GetOutput(i);
+		auto op = this->GetOutput(i);
 		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
 		op->Allocate();
 	}
+	auto r = this->GetResidOutput();
+	r->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+	r->SetNumberOfComponentsPerPixel(size);
+	r->Allocate();
+
 }
 
 template<typename TData, typename TAlgo>
