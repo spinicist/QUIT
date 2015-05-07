@@ -20,6 +20,9 @@
 #include "itkImageFileWriter.h"
 #include "itkVectorImage.h"
 #include "itkImageToImageFilter.h"
+#include "itkComplexToModulusImageFilter.h"
+
+#include "Filters/VectorToImageFilter.h"
 
 #include "Model.h"
 #include "Sequence.h"
@@ -181,13 +184,14 @@ Options:\n\
 	--no-prompt, -n   : Don't print prompts for input.\n\
 	--noise, -N val   : Add complex noise with std=val.\n\
 	--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
+	--complex, -x     : Output complex-valued signal.\n\
 	--sequences, -M s : Use simple sequences (default).\n\
 	            f     : Use Finite Pulse Length correction.\n\
 	--threads, -T N   : Use N threads (default=hardware limit)\n"
 };
 
 static shared_ptr<Model> model = make_shared<SCD>();
-static bool verbose = false, prompt = true, finitesequences = false;
+static bool verbose = false, prompt = true, finitesequences = false, outputComplex = false;
 static string outPrefix = "";
 static double sigma = 0.;
 static struct option long_opts[] = {
@@ -200,11 +204,12 @@ static struct option long_opts[] = {
 	{"1", no_argument, 0, '1'},
 	{"2", no_argument, 0, '2'},
 	{"3", no_argument, 0, '3'},
+	{"complex", no_argument, 0, 'x'},
 	{"sequences", no_argument, 0, 'M'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnN:m:o:123M:T:";
+static const char *short_opts = "hvnN:m:o:123xM:T:";
 //******************************************************************************
 #pragma mark Read in all required files and data from cin
 //******************************************************************************
@@ -273,6 +278,7 @@ int main(int argc, char **argv)
 			case '1': model = make_shared<SCD>(); break;
 			case '2': model = make_shared<MCD2>(); break;
 			case '3': model = make_shared<MCD3>(); break;
+			case 'x': outputComplex = true; break;
 			case 'M':
 				switch (*optarg) {
 					case 's': finitesequences = false; if (prompt) cout << "Simple sequences selected." << endl; break;
@@ -322,22 +328,28 @@ int main(int argc, char **argv)
 	vector<shared_ptr<SequenceBase>> sequences;
 	vector<string> filenames;
 	parseInput(sequences, filenames);
-	if (verbose) {
-		for (auto& s : sequences) {
-			cout << *s << endl;
+	for (size_t i = 0; i < sequences.size(); i++) {
+		if (verbose) {
+			cout << "Calculating sequence: " << endl << *(sequences[i]);
+		}
+		calcSignal->SetSequence(sequences[i]);
+		auto VecTo4D = VectorToImageFilter<complex<float>>::New();
+		VecTo4D->SetInput(calcSignal->GetOutput());
+		if (outputComplex) {
+			auto writer = itk::ImageFileWriter<itk::Image<complex<float>,4>>::New();
+			writer->SetInput(VecTo4D->GetOutput());
+			writer->SetFileName(filenames[i]);
+			writer->Update();
+		} else {
+			auto writer = itk::ImageFileWriter<itk::Image<float, 4>>::New();
+			auto abs = itk::ComplexToModulusImageFilter<itk::Image<complex<float>, 4>, itk::Image<float, 4>>::New();
+			abs->SetInput(VecTo4D->GetOutput());
+			writer->SetInput(abs->GetOutput());
+			writer->SetFileName(filenames[i]);
+			writer->Update();
 		}
 	}
-
-	if (verbose) cout << "Calculating." << endl;
-
-	auto vecWriter = itk::ImageFileWriter<itk::VectorImage<complex<float>,3>>::New();
-	for (size_t i = 0; i < sequences.size(); i++) {
-		calcSignal->SetSequence(sequences[i]);
-		calcSignal->Update();
-		vecWriter->SetInput(calcSignal->GetOutput());
-		vecWriter->SetFileName(filenames[i]);
-		vecWriter->Update();
-	}
+	if (verbose) cout << "Finished all sequences." << endl;
 	} catch (exception &e) {
 		cerr << e.what() << endl;
 		return EXIT_FAILURE;
