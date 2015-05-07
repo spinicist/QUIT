@@ -24,7 +24,9 @@ find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 add_library(quitk_core Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp Source/Util.cpp)
-add_custom_target(quitk_templ SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx)
+add_custom_target(quitk_templ SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
+                                      Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
+                                      Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx)
 
 set(PROGRAMS despot1 despot2 mcsignal)
 foreach(PROGRAM ${PROGRAMS})
