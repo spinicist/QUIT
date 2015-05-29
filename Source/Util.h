@@ -23,6 +23,10 @@
 
 #include <Eigen/Dense>
 
+#include "itkImageFileWriter.h"
+#include "itkVectorMagnitudeImageFilter.h"
+#include "Filters/VectorToImageFilter.h"
+
 namespace QUITK {
 
 const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
@@ -31,6 +35,9 @@ time_t printElapsedTime(const time_t &start);
 void printElapsedClock(const clock_t &clockStart, const int voxCount);
 void printLoopTime(const clock_t &loopStart, const int voxCount);
 std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
+
+void writeResult(const itk::Image<float, 3>::Pointer img, const std::string path);
+void writeResiduals(const itk::VectorImage<float, 3>::Pointer img, const std::string prefix, const bool allResids = false);
 
 template<typename T> bool Read(const std::string &s, T &val) {
 	std::istringstream stream(s);
