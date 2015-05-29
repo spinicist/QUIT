@@ -1,5 +1,3 @@
-#include "ImageToVectorFilter.h"
-
 template<typename PixelType>
 ImageToVectorFilter<PixelType>::ImageToVectorFilter() {
 	m_compose = ComposeType::New();

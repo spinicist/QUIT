@@ -1,6 +1,11 @@
 #ifndef IMAGETOVECTORFILTER_H
 #define IMAGETOVECTORFILTER_H
 
+#include "itkVectorImage.h"
+#include "itkImageToImageFilter.h"
+#include "itkExtractImageFilter.h"
+#include "itkComposeImageFilter.h"
+
 template<typename PixelType>
 class ImageToVectorFilter : public itk::ImageToImageFilter<itk::Image<PixelType, 4>, itk::VectorImage<PixelType, 3>>
 {
