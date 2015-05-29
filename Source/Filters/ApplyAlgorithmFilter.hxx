@@ -198,6 +198,7 @@ void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType &
 				VariableLengthVector<TData> dataVector = dataIters[i].Get();
 				Map<const Eigen::Array<TData, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
 				allData.segment(dataIndex, data.rows()) = data.template cast<TInput>();
+				dataIndex += data.rows();
 			}
 			VectorXd outputs(m_algorithm->numOutputs());
 
