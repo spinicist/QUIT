@@ -18,17 +18,12 @@
 #include <Eigen/Dense>
 
 #include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkVectorImage.h"
-#include "itkImageToImageFilter.h"
-#include "itkExtractImageFilter.h"
-#include "itkComposeImageFilter.h"
-#include "itkVectorMagnitudeImageFilter.h"
-#include "itkComplexToModulusImageFilter.h"
+
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Model.h"
 #include "Sequence.h"
+#include "Util.h"
 
 using namespace std;
 using namespace Eigen;
@@ -163,11 +158,11 @@ static struct option long_options[] =
 	{"B1", required_argument, 0, 'b'},
 	{"algo", required_argument, 0, 'a'},
 	{"its", required_argument, 0, 'i'},
-	{"threads", required_argument, 0, 'T'},
 	{"resids", no_argument, 0, 'r'},
+	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnm:o:b:a:i:T:r";
+static const char *short_opts = "hvnm:o:b:a:i:rT:";
 
 //******************************************************************************
 // Main
@@ -182,7 +177,6 @@ int main(int argc, char **argv) {
 
 	typedef itk::ImageFileReader<FloatImage> Reader;
 	typedef itk::ImageFileReader<itk::Image<float, 4>> Reader4D;
-	typedef itk::ImageFileWriter<FloatImage> Writer;
 
 	Reader::Pointer mask = ITK_NULLPTR;
 	Reader::Pointer B1   = ITK_NULLPTR;
@@ -195,16 +189,16 @@ int main(int argc, char **argv) {
 			case 'v': verbose = true; break;
 			case 'n': prompt = false; break;
 			case 'm':
-				cout << "Opening mask file " << optarg << endl;
+				if (verbose) cout << "Opening mask file " << optarg << endl;
 				mask = Reader::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
-				cout << "Output prefix will be: " << outPrefix << endl;
+				if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
 				break;
 			case 'b':
-				cout << "Opening B1 file: " << optarg << endl;
+				if (verbose) cout << "Opening B1 file: " << optarg << endl;
 				B1 = Reader::New();
 				B1->SetFileName(optarg);
 				break;
@@ -219,12 +213,12 @@ int main(int argc, char **argv) {
 						break;
 				} break;
 			case 'i':
-				nIterations = atoi(optarg);
+				algo->setIterations(atoi(optarg));
 				break;
+			case 'r': all_residuals = true; break;
 			case 'T':
 				itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg));
 				break;
-			case 'r': all_residuals = true; break;
 			case 'h':
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
@@ -235,82 +229,35 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
-	// Deal with possible complex data
 	string inputFilename = argv[optind++];
-	auto input = itk::ImageFileReader<itk::Image<float, 4>>::New();
-	auto cinput = itk::ImageFileReader<itk::Image<complex<float>, 4>>::New();
-	auto mag = itk::ComplexToModulusImageFilter<itk::Image<complex<float>, 4>, itk::Image<float, 4>>::New();
+	if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
+	auto input = Reader4D::New();
 	auto convert = ImageToVectorFilter<float>::New();
-	auto imageIO = itk::ImageIOFactory::CreateImageIO(inputFilename.c_str(), itk::ImageIOFactory::ReadMode);
-	imageIO->SetFileName(inputFilename);
-	imageIO->ReadImageInformation();
-	const itk::ImageIOBase::IOPixelType pType = imageIO->GetPixelType();
-	switch (pType) {
-		case itk::ImageIOBase::SCALAR: {
-			// Just read as is
-			input->SetFileName(inputFilename);
-			convert->SetInput(input->GetOutput());
-		} break;
-		case itk::ImageIOBase::COMPLEX: {
-			// Convert to magnitude first
-			cinput->SetFileName(inputFilename);
-			mag->SetInput(cinput->GetOutput());
-			convert->SetInput(mag->GetOutput());
-		} break;
-		default:
-			throw(runtime_error("Pixel Type (" + imageIO->GetPixelTypeAsString(pType) + ") not supported."));
-			break;
-	}
+	input->SetFileName(inputFilename);
+	convert->SetInput(input->GetOutput());
 
 	shared_ptr<SPGRSimple> spgrSequence = make_shared<SPGRSimple>(prompt);
 	if (verbose) cout << *spgrSequence;
 
-	auto d1 = itk::ApplyAlgorithmFilter<float, DESPOT1>::New();
-	d1->SetSequence(spgrSequence);
-	d1->SetAlgorithm(algo);
-	d1->Setup();
-	d1->SetDataInput(0, convert->GetOutput());
-	if (mask) {
-		cout << "Setting mask" << endl;
-		d1->SetMask(mask->GetOutput());
-	}
+	auto apply = itk::ApplyAlgorithmFilter<float, DESPOT1>::New();
+	apply->SetSequence(spgrSequence);
+	apply->SetAlgorithm(algo);
+	apply->Setup();
+	apply->SetDataInput(0, convert->GetOutput());
+	if (mask)
+		apply->SetMask(mask->GetOutput());
 	if (B1)
-		d1->SetConstInput(0, B1->GetOutput());
-	algo->setIterations(nIterations);
+		apply->SetConstInput(0, B1->GetOutput());
 	if (verbose) cout << "Processing" << endl;
-	d1->Update();
-
-	if (verbose)
-		cout << "Writing results." << endl;
+	apply->Update();
+	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "D1_";
 
-	Writer::Pointer T1File = Writer::New();
-	Writer::Pointer PDFile = Writer::New();
-	Writer::Pointer ResFile = Writer::New();
+	QUITK::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+	QUITK::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
+	QUITK::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
-	T1File->SetFileName(outPrefix + "T1.nii");
-	PDFile->SetFileName(outPrefix + "PD.nii");
-	ResFile->SetFileName(outPrefix + "residual.nii");
-
-	PDFile->SetInput(d1->GetOutput(0));
-	T1File->SetInput(d1->GetOutput(1));
-
-	auto magFilter = itk::VectorMagnitudeImageFilter<FloatVectorImage, FloatImage>::New();
-	magFilter->SetInput(d1->GetResidOutput());
-	ResFile->SetInput(magFilter->GetOutput());
-
-	T1File->Update();
-	PDFile->Update();
-	ResFile->Update();
-
-	if (all_residuals) {
-		auto vecWriter = itk::ImageFileWriter<FloatVectorImage>::New();
-		vecWriter->SetFileName(outPrefix + "residuals.nii");
-		vecWriter->SetInput(d1->GetResidOutput());
-		vecWriter->Update();
-	}
-	cout << "All done." << endl;
+	if (verbose) cout << "Finished." << endl;
 	} catch (exception &e) {
 		cerr << e.what() << endl;
 		return EXIT_FAILURE;
