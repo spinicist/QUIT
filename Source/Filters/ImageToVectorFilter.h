@@ -6,25 +6,32 @@
 #include "itkExtractImageFilter.h"
 #include "itkComposeImageFilter.h"
 
-template<typename PixelType>
-class ImageToVectorFilter : public itk::ImageToImageFilter<itk::Image<PixelType, 4>, itk::VectorImage<PixelType, 3>>
-{
-public:
-	typedef itk::Image<PixelType, 4> InputType;
-	typedef itk::Image<PixelType, 3> VolumeType;
-	typedef itk::VectorImage<PixelType, 3> OutputType;
+namespace itk {
 
-	typedef ImageToVectorFilter                            Self;
-	typedef itk::ImageToImageFilter<InputType, OutputType> Superclass;
-	typedef itk::SmartPointer<Self>                        Pointer;
+template<typename TInput>
+class ImageToVectorFilter : public ImageToImageFilter<TInput, VectorImage<typename TInput::PixelType, TInput::ImageDimension - 1>>
+{
+protected:
+	size_t m_start, m_stop, m_stride = 0;
+
+public:
+	typedef typename TInput::PixelType                      TPixel;
+	typedef VectorImage<TPixel, TInput::ImageDimension - 1> TOutput;
+	typedef Image<TPixel, TInput::ImageDimension - 1>       TVolume;
+
+	typedef ImageToVectorFilter                 Self;
+	typedef ImageToImageFilter<TInput, TOutput> Superclass;
+	typedef itk::SmartPointer<Self>             Pointer;
 
 	itkNewMacro(Self);
 	itkTypeMacro(ImageToVectorFilter, ImageToImageFilter);
 
+	void SetStartStop(size_t start, size_t stop) const;
+	void SetStride(size_t stride) const;
+
 protected:
-	typedef itk::ExtractImageFilter<InputType, VolumeType>  ExtractType;
-	typedef itk::ComposeImageFilter<VolumeType, OutputType> ComposeType;
-	//typename ExtractType::Pointer m_ExtractVolume
+	typedef ExtractImageFilter<TInput, TVolume>  ExtractType;
+	typedef ComposeImageFilter<TVolume, TOutput> ComposeType;
 	typename ComposeType::Pointer m_compose;
 
 	ImageToVectorFilter();
@@ -39,6 +46,7 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 };
 
+} // End namespace itk
 
 #include "ImageToVectorFilter.hxx"
 
