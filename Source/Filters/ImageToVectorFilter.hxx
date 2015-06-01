@@ -1,19 +1,31 @@
 namespace itk {
 
-template<typename PixelType>
-ImageToVectorFilter<PixelType>::ImageToVectorFilter() {
+template<typename TInput>
+ImageToVectorFilter<TInput>::ImageToVectorFilter() {
 	m_compose = ComposeType::New();
 }
 
 template<typename TInput>
+void ImageToVectorFilter<TInput>::SetStartStop(size_t start, size_t stop) {
+	m_start = start;
+	m_stop = stop;
+}
+
+template<typename TInput>
+void ImageToVectorFilter<TInput>::SetStride(size_t s) {
+	m_stride = s;
+}
+
+template<typename TInput>
 void ImageToVectorFilter<TInput>::GenerateOutputInformation() {
+	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
 	typename Superclass::InputImageConstPointer inputPtr  = this->GetInput();
 	if ( !outputPtr || !inputPtr ) {
 		return;
 	}
 	typename TInput::RegionType inputRegion = inputPtr->GetLargestPossibleRegion();
-	outputPtr->SetLargestPossibleRegion(inputRegion.Slice(3));
+	outputPtr->SetLargestPossibleRegion(inputRegion.Slice(OutputDimension));
 
 	typename TInput::SpacingType spacing = inputPtr->GetSpacing();
 	typename TInput::PointType   origin  = inputPtr->GetOrigin();
@@ -22,33 +34,38 @@ void ImageToVectorFilter<TInput>::GenerateOutputInformation() {
 	typename TOutput::PointType   outOrigin;
 	typename TOutput::DirectionType outDirection;
 
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < (OutputDimension); i++) {
 		outSpacing[i] = spacing[i];
 		outOrigin[i] =  origin[i];
-		for (int j = 0; j < 3; j++) {
+		for (int j = 0; j < (OutputDimension); j++) {
 			outDirection[i][j] = direction[i][j];
 		}
 	}
 	outputPtr->SetSpacing(outSpacing);
 	outputPtr->SetOrigin(outOrigin);
 	outputPtr->SetDirection(outDirection);
-	outputPtr->SetNumberOfComponentsPerPixel(inputRegion.GetSize()[3]);
+
+	if (m_stop == 0)
+		m_stop = inputPtr->GetLargestPossibleRegion().GetSize()[OutputDimension];
+	m_size = (m_stop - m_start) / m_stride;
+	outputPtr->SetNumberOfComponentsPerPixel(m_size);
+	//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
 }
 
-template<typename PixelType>
-void ImageToVectorFilter<PixelType>::GenerateData() {
+template<typename TInput>
+void ImageToVectorFilter<TInput>::GenerateData() {
 	auto input = this->GetInput();
 	auto region = input->GetLargestPossibleRegion();
-	size_t nVols = region.GetSize()[3];
-	region.GetModifiableSize()[3] = 0;
-	for (int i = 0; i < nVols; i++) {
-		region.GetModifiableIndex()[3] = i;
+	region.GetModifiableSize()[OutputDimension] = 0;
+	int outI = 0;
+	for (int i = m_start; i < m_stop; i += m_stride) {
+		region.GetModifiableIndex()[OutputDimension] = i;
 		auto volume = ExtractType::New();
 		volume->SetExtractionRegion(region);
 		volume->SetInput(input);
 		volume->SetDirectionCollapseToSubmatrix();
 		volume->Update();
-		m_compose->SetInput(i, volume->GetOutput());
+		m_compose->SetInput(outI++, volume->GetOutput());
 	}
 	m_compose->Update();
 	this->GraftOutput(m_compose->GetOutput());

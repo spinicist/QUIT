@@ -12,12 +12,15 @@ template<typename TInput>
 class ImageToVectorFilter : public ImageToImageFilter<TInput, VectorImage<typename TInput::PixelType, TInput::ImageDimension - 1>>
 {
 protected:
-	size_t m_start, m_stop, m_stride = 0;
+	size_t m_start, m_stop, m_size = 0;
+	size_t m_stride = 1;
 
 public:
 	typedef typename TInput::PixelType                      TPixel;
 	typedef VectorImage<TPixel, TInput::ImageDimension - 1> TOutput;
 	typedef Image<TPixel, TInput::ImageDimension - 1>       TVolume;
+	static const size_t InputDimension = TInput::ImageDimension;
+	static const size_t OutputDimension = TInput::ImageDimension - 1;
 
 	typedef ImageToVectorFilter                 Self;
 	typedef ImageToImageFilter<TInput, TOutput> Superclass;
@@ -26,8 +29,8 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(ImageToVectorFilter, ImageToImageFilter);
 
-	void SetStartStop(size_t start, size_t stop) const;
-	void SetStride(size_t stride) const;
+	void SetStartStop(size_t start, size_t stop);
+	void SetStride(size_t stride);
 
 protected:
 	typedef ExtractImageFilter<TInput, TVolume>  ExtractType;
