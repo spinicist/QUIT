@@ -35,7 +35,7 @@ typedef itk::VectorImage<float, 3> FloatVectorImage;
 typedef itk::Image<float, 4> FloatTimeseries;
 
 typedef itk::Image<std::complex<float>, 3> XFloatImage;
-typedef itk::VectorImage<std::complex<float>, 3> XVectorImage;
+typedef itk::VectorImage<std::complex<float>, 3> XFloatVectorImage;
 typedef itk::Image<std::complex<float>, 4> XFloatTimeseries;
 
 typedef itk::ImageFileReader<FloatImage> ReadFloatImage;
