@@ -16,7 +16,8 @@
 #include <atomic>
 #include "Eigen/Dense"
 
-#include "itkImageFileReader.h"
+#include "itkConstNeighborhoodIterator.h"
+#include "itkInPlaceImageFilter.h"
 
 #include "Util.h"
 #include "Filters/ImageToVectorFilter.h"
@@ -52,7 +53,7 @@ Options:\n\
 	--secondpass, -2  : Perform a 2nd pass as per Xiang and Hoff\n"
 };
 
-static bool verbose = false, pass2 = false, pass22d = false, alternate = false;
+static bool verbose = false, do_pass2 = false, alternate = false;
 static string prefix;
 const struct option long_options[] = {
 	{"help", no_argument, 0, 'h'},
@@ -83,6 +84,82 @@ unsigned long long choose(unsigned long long n, unsigned long long k) {
 
 namespace itk {
 
+class ReorderFilter : public InPlaceImageFilter<XFloatVectorImage> {
+private:
+	ReorderFilter(const Self &); //purposely not implemented
+	void operator=(const Self &);  //purposely not implemented
+
+protected:
+	size_t m_phases = 4, m_flips = 0;
+	bool m_phase_first, m_alternate = false;
+
+public:
+	typedef ReorderFilter                         Self;
+	typedef InPlaceImageFilter<XFloatVectorImage> Superclass;
+	typedef SmartPointer<Self>                    Pointer;
+
+	itkNewMacro(Self);
+	itkTypeMacro(ReorderFilter, InPlaceImageFilter);
+
+	void SetPhases(size_t p) { m_phases = p; }
+	void SetPhaseFirst(bool p) { m_phase_first = p; }
+	void SetAlternate(bool a) { m_alternate = a; }
+	virtual void GenerateOutputInformation() override {
+		//std::cout << __PRETTY_FUNCTION__ << std::endl;
+		const auto input = this->GetInput();
+		const auto size = input->GetNumberOfComponentsPerPixel();
+		if ((size % m_phases) != 0) {
+			throw(std::runtime_error("Input size and number of phases do not match"));
+		}
+		m_flips = size / m_phases;
+		Superclass::GenerateOutputInformation();
+		//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+	}
+
+protected:
+	ReorderFilter() {}
+	~ReorderFilter() {}
+
+	virtual void ThreadedGenerateData(const XFloatVectorImage::RegionType &region, ThreadIdType threadId) {
+		//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
+		ImageRegionConstIterator<XFloatVectorImage> inputIter(this->GetInput(), region);
+		ImageRegionIterator<XFloatVectorImage> outputIter(this->GetOutput(), region);
+
+		while(!inputIter.IsAtEnd()) {
+			VariableLengthVector<complex<float>> inputVector = inputIter.Get();
+			ArrayXXcf allInput;
+			if (m_phase_first) {
+				// Do nothing, it's in the expected order
+				allInput = Map<const ArrayXXcf>(inputVector.GetDataPointer(), m_phases, m_flips);
+			} else {
+				ArrayXXcf temp = Map<const Eigen::Array<complex<float>, Dynamic, Dynamic, RowMajor>>(inputVector.GetDataPointer(), m_phases, m_flips);
+				allInput = temp;
+			}
+
+			if (m_alternate) {
+				size_t m_lines = m_phases / 2;
+				for (int f = 0; f < m_flips; f++) {
+					ArrayXcf thisFlip = allInput.col(f);
+					ArrayXcf a, b;
+					a = Map<ArrayXcf, Unaligned, Stride<2, 1>>(thisFlip.data(), m_lines);
+					b = Map<ArrayXcf, Unaligned, Stride<2, 1>>(thisFlip.data()+1, m_lines);
+					thisFlip.segment(0, m_lines) = a;
+					thisFlip.segment(m_lines, m_lines) = b;
+					allInput.col(f) = thisFlip;
+				}
+			} else {
+				// Do nothing, it's in the expected order
+			}
+
+			VariableLengthVector<complex<float>> outputVector(allInput.data(), inputVector.GetSize());
+			outputIter.Set(outputVector);
+			++inputIter;
+			++outputIter;
+		}
+		//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+	}
+};
+
 class FirstPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, VectorImage<complex<float>, 3>>
 {
 public:
@@ -94,12 +171,12 @@ protected:
 	Save m_mode = Save::LR;
 public:
 	/** Standard class typedefs. */
-	typedef VectorImage<complex<float>, 3>      TImage;
-	typedef Image<float, 3>                     TMask;
-	typedef FirstPassFilter                     Self;
+	typedef VectorImage<complex<float>, 3>     TImage;
+	typedef Image<float, 3>                    TMask;
+	typedef FirstPassFilter                    Self;
 	typedef ImageToImageFilter<TImage, TImage> Superclass;
-	typedef SmartPointer<Self>                  Pointer;
-	typedef typename TImage::RegionType         RegionType;
+	typedef SmartPointer<Self>                 Pointer;
+	typedef typename TImage::RegionType        RegionType;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(FirstPassFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
@@ -172,22 +249,11 @@ protected:
 				VariableLengthVector<complex<float>> inputVector = inputIter.Get();
 				VariableLengthVector<complex<float>> outputVector(m_flips);
 
-				ArrayXXcf allInput;
-				if (m_phase_first) {
-					allInput = Eigen::Map<const Eigen::Array<complex<float>, Eigen::Dynamic, Eigen::Dynamic>>(inputVector.GetDataPointer(), m_phases, m_flips);
-				} else {
-					allInput = Eigen::Map<const Eigen::Array<complex<float>, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(inputVector.GetDataPointer(), m_phases, m_flips);
-				}
+				Map<const ArrayXXcf> allInput(inputVector.GetDataPointer(), m_phases, m_flips);
 				for (int f = m_flips - 1; f > -1; f--) {
-					ArrayXcf thisFlip = allInput.col(f);
-					ArrayXcd a, b;
-					if (m_alternate) {
-						a = Map<Eigen::ArrayXcf, Eigen::Unaligned, Eigen::Stride<2, 1>>(thisFlip.data(), m_lines).cast<complex<double>>();
-						b = Map<Eigen::ArrayXcf, Eigen::Unaligned, Eigen::Stride<2, 1>>(thisFlip.data()+1, m_lines).cast<complex<double>>();
-					} else {
-						a = thisFlip.segment(0, m_lines).cast<complex<double>>();
-						b = thisFlip.segment(m_lines, m_lines).cast<complex<double>>();
-					}
+					ArrayXcd a = allInput.col(f).segment(0, m_lines).cast<complex<double>>();
+					ArrayXcd b = allInput.col(f).segment(m_lines, m_lines).cast<complex<double>>();
+
 					Eigen::MatrixXd sols = Eigen::MatrixXd::Zero(2, m_crossings);
 					size_t si = 0;
 					for (size_t li = 0; li < m_lines; li++) {
@@ -262,52 +328,143 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 };
 
-} // End namespace itk
+class SecondPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, VectorImage<complex<float>, 3>>
+{
+protected:
+	size_t m_flips, m_phases, m_lines = 0;
+	bool m_phase_first, m_alternate, m_2D = false;
 
-/*
-class Pass2 : public Algorithm {
-		if (pass2) {
-			for (size_t vk = 0; vk < d[2]; vk++) {
-			//size_t vk = 27;
-				function<void (const size_t, const size_t)> processVox = [&] (const size_t vi, const size_t vj) {
-					complex<float> sp(0.,0.);
-					if (!maskFile || (maskData[{vi,vj,vk}])) {
-						for (size_t li = 0; li < nLines; li++) {
-							float num = 0, den = 0;
-							for (int k = ((!pass22d && (vk > 0)) ? -1 : 0); k < ((!pass22d && (vk < d[2] - 1)) ? 2 : 1); k++) {
-								for (int j = (vj > 0 ? -1 : 0); j < (vj < d[1] - 1 ? 2 : 1); j++) {
-									for (int i = (vi > 0 ? -1 : 0); i < (vi < d[0] - 1 ? 2 : 1); i++) {
-										idx_t idx; idx << vi + i,vj + j,vk + k,0,0;
-										idx[flip_dim] = vol;
-										idx[phase_dim] = li;
-										complex<float> a_i = aData[idx];
-										complex<float> b_i = bData[idx];
-										complex<float> s_i = output[{vi+i,vj+j,vk+k,vol}];
-										num += real(conj(b_i - s_i)*(a_i - b_i) + conj(a_i - b_i)*(b_i - s_i));
-										den += real(conj(a_i - b_i)*(a_i - b_i));
-									}
-								}
-							}
-							float w = -num / (2. * den);
-							if (isfinite(w)) {
-								idx_t sidx; sidx << vi,vj,vk,0,0;
-								sidx[flip_dim] = vol;
-								sidx[phase_dim] = li;
-								complex<float> s = (aData[sidx]*w + (1.f-w)*bData[sidx]);
-								sp += (s / static_cast<float>(nLines));
-							}
+public:
+	typedef VectorImage<complex<float>, 3>     TImage;
+	typedef Image<float, 3>                    TMask;
+	typedef SecondPassFilter                   Self;
+	typedef ImageToImageFilter<TImage, TImage> Superclass;
+	typedef SmartPointer<Self>                 Pointer;
+	typedef typename TImage::RegionType        RegionType;
+
+	itkNewMacro(Self);
+	itkTypeMacro(SecondPassFilter, ImageToImageFilter);
+
+	void SetPhaseFirst(const bool f) { m_phase_first = f; }
+	void SetAlternate(const bool a) { m_alternate = a; }
+	void Set2D(const bool d) { m_2D = d; }
+	void SetPhases(const size_t p) {
+		if (p < 4)
+			throw(runtime_error("Must have a minimum of 4 phase-cycling patterns."));
+		if ((p % 2) != 0)
+			throw(runtime_error("Number of phases must be even."));
+		m_phases = p;
+		m_lines = m_phases / 2;
+	}
+	void SetInput(const TImage *img) { this->SetNthInput(0, const_cast<TImage*>(img)); }
+	void SetPass1(const TImage *img) { this->SetNthInput(1, const_cast<TImage*>(img)); }
+	void SetMask(const TMask *mask) { this->SetNthInput(2, const_cast<TMask*>(mask)); }
+	typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
+	typename TImage::ConstPointer GetPass1() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
+	typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(2)); }
+
+	virtual void GenerateOutputInformation() override {
+		Superclass::GenerateOutputInformation();
+		if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
+			throw(std::runtime_error("Input size and number of phases do not match"));
+		}
+		m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
+		if (this->GetPass1()->GetNumberOfComponentsPerPixel() != m_flips) {
+			throw(std::runtime_error("First passs output has incorrect number of flip-angles"));
+		}
+		auto op = this->GetOutput();
+		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+		op->SetNumberOfComponentsPerPixel(m_flips);
+		op->Allocate();
+	}
+
+protected:
+	SecondPassFilter() {
+		this->SetNumberOfRequiredInputs(2);
+		this->SetNumberOfRequiredOutputs(1);
+		this->SetNthOutput(0, this->MakeOutput(0));
+		this->SetPhases(4);
+	}
+	~SecondPassFilter() {}
+
+	DataObject::Pointer MakeOutput(unsigned int idx) {
+		//std::cout <<  __PRETTY_FUNCTION__ << endl;
+		if (idx == 0) {
+			DataObject::Pointer output = (TImage::New()).GetPointer();
+			return output.GetPointer();
+		} else {
+			std::cerr << "No output " << idx << std::endl;
+			return NULL;
+		}
+	}
+
+	virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) {
+		//std::cout <<  __PRETTY_FUNCTION__ << endl;
+		ConstNeighborhoodIterator<TImage>::RadiusType radius;
+		radius.Fill(1);
+		if (m_2D)
+			radius[TImage::ImageDimension - 1] = 0;
+		ConstNeighborhoodIterator<TImage> inputIter(radius, this->GetInput(), region);
+		ConstNeighborhoodIterator<TImage> pass1Iter(radius, this->GetPass1(), region);
+
+		auto m = this->GetMask();
+		ImageRegionConstIterator<TMask> maskIter;
+		if (m) {
+			maskIter = ImageRegionConstIterator<TMask>(m, region);
+		}
+		ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
+		while(!inputIter.IsAtEnd()) {
+			if (!m || maskIter.Get()) {
+				VariableLengthVector<complex<float>> outputVector(m_flips);
+				ArrayXd num = ArrayXd::Zero(m_flips), den = ArrayXd::Zero(m_flips);
+
+				for (int p = 0; p < inputIter.Size(); ++p) {
+					VariableLengthVector<complex<float>> pass1Vector = pass1Iter.GetPixel(p);
+					VariableLengthVector<complex<float>> inputVector = inputIter.GetPixel(p);
+					Map<const ArrayXXcf> allInput(inputVector.GetDataPointer(), m_phases, m_flips);
+					for (int f = 0; f < m_flips; f++) {
+						ArrayXcd a = allInput.col(f).segment(0, m_lines).cast<complex<double>>();
+						ArrayXcd b = allInput.col(f).segment(m_lines, m_lines).cast<complex<double>>();
+						complex<double> s_i = pass1Vector.GetElement(f);
+						for (int li = 0; li < m_lines; li++) {
+							complex<double> a_i = a[li];
+							complex<double> b_i = b[li];
+							num += real(conj(b_i - s_i)*(a_i - b_i) + conj(a_i - b_i)*(b_i - s_i));
+							den += real(conj(a_i - b_i)*(a_i - b_i));
 						}
 					}
-					second_pass[{vi,vj,vk,vol}] = sp;
-				};
-				threads.for_loop2(processVox, 0, d[0], 1, 0, d[1], 1);
-				if (threads.interrupted())
-					break;
+				}
+
+				ArrayXd w = -num / (2. * den);
+				VariableLengthVector<complex<float>> inputVector = inputIter.GetCenterPixel();
+				Map<const ArrayXXcf> allInput(inputVector.GetDataPointer(), m_phases, m_flips);
+				for (int f = 0; f < m_flips; f++) {
+					if (isfinite(w[f])) {
+						ArrayXcd a = allInput.col(f).segment(0, m_lines).cast<complex<double>>();
+						ArrayXcd b = allInput.col(f).segment(m_lines, m_lines).cast<complex<double>>();
+						for (int li = 0; li < m_lines; li++) {
+							complex<double> s = (a[li]*w[f] + (1.f-w[f])*b[li]);
+							outputVector[f] += static_cast<complex<float>>(s / static_cast<double>(m_lines));
+						}
+					}
+				}
+				outputIter.Set(outputVector);
 			}
+			++inputIter;
+			++pass1Iter;
+			if (m)
+				++maskIter;
+			++outputIter;
 		}
+		//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+	}
 
-};*/
+private:
+	SecondPassFilter(const Self &); //purposely not implemented
+	void operator=(const Self &);  //purposely not implemented
+};
 
+} // End namespace itk
 
 //******************************************************************************
 // Main
@@ -316,7 +473,9 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 
 	itk::ImageFileReader<itk::Image<float, 3>>::Pointer mask = ITK_NULLPTR;
+	auto reorder = itk::ReorderFilter::New();
 	auto pass1 = itk::FirstPassFilter::New();
+	auto pass2 = itk::SecondPassFilter::New();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -325,17 +484,20 @@ int main(int argc, char **argv) {
 				if (verbose) cout << "Reading mask file " << optarg << endl;
 				mask = itk::ImageFileReader<itk::Image<float, 3>>::New();
 				mask->SetFileName(optarg);
+				pass1->SetMask(mask->GetOutput());
+				pass2->SetMask(mask->GetOutput());
 				break;
 			case 'o':
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
 				break;
 			case 'F':
-				pass1->SetPhaseFirst(true); break;
+				reorder->SetPhaseFirst(true); break;
 			case 'p':
+				reorder->SetPhases(atoi(optarg));
 				pass1->SetPhases(atoi(optarg));
 				break;
-			case 'a': pass1->SetAlternate(true); break;
+			case 'a': reorder->SetAlternate(true); break;
 			case 's':
 				switch(*optarg) {
 					case 'L': pass1->SetSave(itk::FirstPassFilter::Save::LR); break;
@@ -348,7 +510,7 @@ int main(int argc, char **argv) {
 						return EXIT_FAILURE;
 				}
 				break;
-			case '2': pass2 = true; if (optarg) pass22d = true; break;
+			case '2': do_pass2 = true; if (optarg) pass2->Set2D(true); break;
 			case 'T':
 				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
 				break;
@@ -357,7 +519,6 @@ int main(int argc, char **argv) {
 				return EXIT_FAILURE;
 		}
 	}
-	if (pass22d) cout << "2D second pass selected." << endl;
 	if ((argc - optind) != 1) {
 		cout << "Incorrect number of arguments." << endl << usage << endl;
 		return EXIT_FAILURE;
@@ -365,15 +526,15 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
 	string fname(argv[optind++]);
 
-	auto inFile = itk::ImageFileReader<itk::Image<complex<float>, 4>>::New();
-	auto inImage = ImageToVectorFilter<complex<float>>::New();
+	auto inFile = QUITK::ReadXFloatTimeseries::New();
 	inFile->SetFileName(fname);
+	auto inImage = itk::ImageToVectorFilter<QUITK::XFloatTimeseries>::New();
 	inImage->SetInput(inFile->GetOutput());
-	pass1->SetInput(inImage->GetOutput());
+	reorder->SetInput(inImage->GetOutput());
+	pass1->SetInput(reorder->GetOutput());
 	auto outImage = VectorToImageFilter<complex<float>>::New();
 	auto outFile = itk::ImageFileWriter<itk::Image<complex<float>, 4>>::New();
-	outImage->SetInput(pass1->GetOutput());
-	outFile->SetInput(outImage->GetOutput());
+
 	if (prefix == "")
 		prefix = fname.substr(0, fname.find(".nii"));
 	string outname = prefix;
@@ -384,10 +545,19 @@ int main(int argc, char **argv) {
 		case itk::FirstPassFilter::Save::CS: outname.append("_cs"); break;
 		case itk::FirstPassFilter::Save::PS: outname.append("_ps"); break;
 	}
-	if (pass2) outname.append("_2p");
+	if (do_pass2) {
+		outname.append("_2p");
+		pass2->SetInput(reorder->GetOutput());
+		pass2->SetPass1(pass1->GetOutput());
+		outImage->SetInput(pass2->GetOutput());
+	} else {
+		outImage->SetInput(pass1->GetOutput());
+	}
 	outname.append(OutExt());
 	if (verbose) cout << "Output filename: " << outname << endl;
+	outFile->SetInput(outImage->GetOutput());
 	outFile->SetFileName(outname);
+	if (verbose) cout << "Processing..." << endl;
 	outFile->Update();
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;

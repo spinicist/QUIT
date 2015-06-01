@@ -15,11 +15,12 @@ mkdir -p $DATADIR
 cd $DATADIR
 
 DIMS="11 11 11"
-niicreate -d "$DIMS" -f 1 PD.nii
-niicreate -d "$DIMS" -g "0 0.5 5" T1.nii
-niicreate -d "$DIMS" -g "1 0.05 0.5" T2.nii
-niicreate -d "$DIMS" -g "2 -25.0 25.0" f0.nii
-niicreate -d "$DIMS" -g "2 0.5 1.5" B1.nii
+VOXDIMS="2 2 2"
+niicreate -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
+niicreate -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 5" T1.nii
+niicreate -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
+niicreate -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
+niicreate -d "$DIMS" -v "$VOXDIMS" -g "2 0.5 1.5" B1.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
@@ -44,6 +45,8 @@ MPRAGE_PAR="5
 1
 0.5
 0"
+HIFI_PAR="$SPGR_PAR
+$MPRAGE_PAR"
 
 # Create input for Single Component
 MCSIG_INPUT="PD.nii
@@ -62,24 +65,42 @@ $MPRAGE_PAR
 $MPRAGE_FILE
 END"
 echo "$MCSIG_INPUT" > mcsignal.in
-run_test "CREATE_SIGNALS" mcsignal --1 -n -v < mcsignal.in
+run_test "CREATE_REAL_SIGNALS" $QUITDIR/mcsignal --1 -n < mcsignal.in
+
+run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/mcsignal --1 -x -v <<END_IN
+PD.nii
+T1.nii
+T2.nii
+f0.nii
+B1.nii
+SSFP
+$SSFP_PAR
+ssfp_x.nii
+SSFPEllipse
+$D2GS_PAR
+ssfp_gs.nii
+END
+END_IN
 
 echo "$SPGR_PAR" > despot1.in
-echo "$SPGR_PAR\n$MPRAGE_PAR" > despot1hifi.in
+echo "$HIFI_PAR" > despot1hifi.in
 echo "$SSFP_PAR" > despot2fm.in
 echo "$D2GS_PAR" > despot2gs.in
 
-run_test "DESPOT1" $QUITDIR/despot1 $SPGR_FILE -n -v -bB1.nii < despot1.in
-run_test "DESPOT1LM" $QUITDIR/despot1 $SPGR_FILE -n -an -oN -bB1.nii < despot1.in
-run_test "DESPOT1HIFI" $QUITDIR/despot1hifi $SPGR_FILE $MPRAGE_FILE -n -N < despot1hifi.in
-run_test "SSFPBANDS" $QUITDIR/ssfpbands -22 $SSFP_FILE
-run_test "DESPOT2FM" $QUITDIR/despot2fm D1_T1.nii $SSFP_FILE -n -v -S1 -bB1.nii < despot2fm.in
-run_test "DESPOT2GS" $QUITDIR/despot2 -e D1_T1.nii ${SSFP_FILE%.nii}_lreg_2p.nii -n -bB1.nii < despot2gs.in
+run_test "DESPOT1" $QUITDIR/despot1 $SPGR_FILE -n -bB1.nii < despot1.in
 compare_test "DESPOT1" T1.nii D1_T1.nii 0.01
+run_test "DESPOT1LM" $QUITDIR/despot1 $SPGR_FILE -n -an -oN -bB1.nii < despot1.in
 compare_test "DESPOT1LM" T1.nii ND1_T1.nii 0.01
+run_test "DESPOT1HIFI" $QUITDIR/despot1hifi $SPGR_FILE $MPRAGE_FILE -M -n < despot1hifi.in
 compare_test "HIFI_T1" T1.nii HIFI_T1.nii 0.01
-compare_test "DESPOT2FM" T2.nii FM_T2.nii 0.01
+run_test "SSFPGS" $QUITDIR/ssfpgs ssfp_x.nii
+run_test "SSFPGS2P" $QUITDIR/ssfpgs -2 ssfp_x.nii
+run_test "DESPOT2GS" $QUITDIR/despot2 -e D1_T1.nii ssfp_x_lreg.nii -n -bB1.nii < despot2gs.in
+run_test "DESPOT2GS2P" $QUITDIR/despot2 -e D1_T1.nii ssfp_x_lreg_2p.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS" T2.nii D2_T2.nii 0.01
+compare_test "DESPOT2GS" T2.nii 2pD2_T2.nii 0.05
+run_test "DESPOT2FM" $QUITDIR/despot2fm D1_T1.nii $SSFP_FILE -n -v -S1 -bB1.nii < despot2fm.in
+compare_test "DESPOT2FM" T2.nii FM_T2.nii 0.01
 
 cd ..
 SILENCE_TESTS="0"
