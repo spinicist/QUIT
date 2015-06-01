@@ -316,9 +316,9 @@ int main(int argc, char **argv)
 	T1File->SetFileName(argv[optind++]);
 
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-	auto ssfp4D = itk::ImageFileReader<itk::Image<complex<float>, 4>>::New();
+	auto ssfp4D = QUITK::ReadXFloatTimeseries::New();
 	ssfp4D->SetFileName(argv[optind++]);
-	auto ssfp3D = ImageToVectorFilter<complex<float>>::New();
+	auto ssfp3D = itk::ImageToVectorFilter<QUITK::XFloatTimeseries>::New();
 	ssfp3D->SetInput(ssfp4D->GetOutput());
 
 	shared_ptr<SteadyState> ssfp;
