@@ -13,14 +13,6 @@ else
 	echo "FSL not detected. Cannot run comparison tests."
 fi
 
-# Check for presence of niicreate
-if [ -n "$(which niicreate)" ]; then
-	echo "niicreate detected."
-else
-	echo "niicreate not detected. Cannot run tests."
-	exit 1
-fi
-
 # Simple test function
 SILENCE_TESTS=0
 function run_test {

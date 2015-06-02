@@ -11,16 +11,17 @@ source ./test_common.sh
 SILENCE_TESTS="0"
 
 DATADIR="scdespot"
+rm -r $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
 
 DIMS="11 11 11"
 VOXDIMS="2 2 2"
-niicreate -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
-niicreate -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 5" T1.nii
-niicreate -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
-niicreate -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
-niicreate -d "$DIMS" -v "$VOXDIMS" -g "2 0.5 1.5" B1.nii
+$QUITDIR/qinewimg -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
+$QUITDIR/qinewimg -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 5" T1.nii
+$QUITDIR/qinewimg -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
+$QUITDIR/qinewimg -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
+$QUITDIR/qinewimg -d "$DIMS" -v "$VOXDIMS" -g "2 0.5 1.5" B1.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
