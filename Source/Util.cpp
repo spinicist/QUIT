@@ -105,7 +105,7 @@ void writeResiduals(const itk::VectorImage<float, 3>::Pointer img,
 	magFile->SetFileName(prefix + "residual.nii");
 	magFile->Update();
 	if (allResids) {
-		auto to4D = VectorToImageFilter<float>::New();
+		auto to4D = itk::VectorToImageFilter<float>::New();
 		auto allFile = itk::ImageFileWriter<itk::Image<float, 4>>::New();
 		to4D->SetInput(img);
 		allFile->SetInput(to4D->GetOutput());

@@ -27,6 +27,7 @@
 #include "itkImageFileWriter.h"
 #include "itkVectorMagnitudeImageFilter.h"
 #include "Filters/VectorToImageFilter.h"
+#include "Filters/ImageToVectorFilter.h"
 
 namespace QUITK {
 
@@ -40,9 +41,12 @@ typedef itk::Image<std::complex<float>, 4> XFloatTimeseries;
 
 typedef itk::ImageFileReader<FloatImage> ReadFloatImage;
 typedef itk::ImageFileReader<FloatTimeseries> ReadFloatTimeseries;
+typedef itk::ImageToVectorFilter<FloatTimeseries> FloatTimeseriesToVector;
 
 typedef itk::ImageFileReader<XFloatImage> ReadXFloatImage;
 typedef itk::ImageFileReader<XFloatTimeseries> ReadXFloatTimeseries;
+typedef itk::ImageToVectorFilter<XFloatTimeseries> XFloatTimeseriesToVector;
+
 
 const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
 time_t printStartTime();
