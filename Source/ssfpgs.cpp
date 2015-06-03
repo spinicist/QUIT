@@ -17,11 +17,9 @@
 #include "Eigen/Dense"
 
 #include "itkConstNeighborhoodIterator.h"
-#include "itkInPlaceImageFilter.h"
 
+#include "Filters/ReorderVectorFilter.h"
 #include "Util.h"
-#include "Filters/ImageToVectorFilter.h"
-#include "Filters/VectorToImageFilter.h"
 
 using namespace std;
 using namespace Eigen;
@@ -53,14 +51,15 @@ Options:\n\
 	--secondpass, -2  : Perform a 2nd pass as per Xiang and Hoff\n"
 };
 
-static bool verbose = false, do_pass2 = false, alternate = false;
+static bool verbose = false, do_pass2 = false, phaseflip = false, alternate = false;
+static size_t nPhases = 4;
 static string prefix;
 const struct option long_options[] = {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
 	{"out", required_argument, 0, 'o'},
 	{"mask", required_argument, 0, 'm'},
-	{"flip", required_argument, 0, 'F'},
+	{"phaseflip", required_argument, 0, 'F'},
 	{"phases", required_argument, 0, 'p'},
 	{"alternate", no_argument, 0, 'a'},
 	{"threads", required_argument, 0, 'T'},
@@ -84,82 +83,6 @@ unsigned long long choose(unsigned long long n, unsigned long long k) {
 
 namespace itk {
 
-class ReorderFilter : public InPlaceImageFilter<XFloatVectorImage> {
-private:
-	ReorderFilter(const Self &); //purposely not implemented
-	void operator=(const Self &);  //purposely not implemented
-
-protected:
-	size_t m_phases = 4, m_flips = 0;
-	bool m_phase_first, m_alternate = false;
-
-public:
-	typedef ReorderFilter                         Self;
-	typedef InPlaceImageFilter<XFloatVectorImage> Superclass;
-	typedef SmartPointer<Self>                    Pointer;
-
-	itkNewMacro(Self);
-	itkTypeMacro(ReorderFilter, InPlaceImageFilter);
-
-	void SetPhases(size_t p) { m_phases = p; }
-	void SetPhaseFirst(bool p) { m_phase_first = p; }
-	void SetAlternate(bool a) { m_alternate = a; }
-	virtual void GenerateOutputInformation() override {
-		//std::cout << __PRETTY_FUNCTION__ << std::endl;
-		const auto input = this->GetInput();
-		const auto size = input->GetNumberOfComponentsPerPixel();
-		if ((size % m_phases) != 0) {
-			throw(std::runtime_error("Input size and number of phases do not match"));
-		}
-		m_flips = size / m_phases;
-		Superclass::GenerateOutputInformation();
-		//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
-	}
-
-protected:
-	ReorderFilter() {}
-	~ReorderFilter() {}
-
-	virtual void ThreadedGenerateData(const XFloatVectorImage::RegionType &region, ThreadIdType threadId) {
-		//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
-		ImageRegionConstIterator<XFloatVectorImage> inputIter(this->GetInput(), region);
-		ImageRegionIterator<XFloatVectorImage> outputIter(this->GetOutput(), region);
-
-		while(!inputIter.IsAtEnd()) {
-			VariableLengthVector<complex<float>> inputVector = inputIter.Get();
-			ArrayXXcf allInput;
-			if (m_phase_first) {
-				// Do nothing, it's in the expected order
-				allInput = Map<const ArrayXXcf>(inputVector.GetDataPointer(), m_phases, m_flips);
-			} else {
-				ArrayXXcf temp = Map<const Eigen::Array<complex<float>, Dynamic, Dynamic, RowMajor>>(inputVector.GetDataPointer(), m_phases, m_flips);
-				allInput = temp;
-			}
-
-			if (m_alternate) {
-				size_t m_lines = m_phases / 2;
-				for (int f = 0; f < m_flips; f++) {
-					ArrayXcf thisFlip = allInput.col(f);
-					ArrayXcf a, b;
-					a = Map<ArrayXcf, Unaligned, Stride<2, 1>>(thisFlip.data(), m_lines);
-					b = Map<ArrayXcf, Unaligned, Stride<2, 1>>(thisFlip.data()+1, m_lines);
-					thisFlip.segment(0, m_lines) = a;
-					thisFlip.segment(m_lines, m_lines) = b;
-					allInput.col(f) = thisFlip;
-				}
-			} else {
-				// Do nothing, it's in the expected order
-			}
-
-			VariableLengthVector<complex<float>> outputVector(allInput.data(), inputVector.GetSize());
-			outputIter.Set(outputVector);
-			++inputIter;
-			++outputIter;
-		}
-		//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
-	}
-};
-
 class FirstPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, VectorImage<complex<float>, 3>>
 {
 public:
@@ -167,7 +90,6 @@ public:
 
 protected:
 	size_t m_flips, m_lines, m_crossings, m_phases = 0;
-	bool m_phase_first, m_alternate = false;
 	Save m_mode = Save::LR;
 public:
 	/** Standard class typedefs. */
@@ -183,8 +105,6 @@ public:
 
 	void SetSave(Save s) { m_mode = s; }
 	Save GetSave() { return m_mode; }
-	void SetPhaseFirst(const bool f) { m_phase_first = f; }
-	void SetAlternate(const bool a) { m_alternate = a; }
 	void SetPhases(const size_t p) {
 		if (p < 4)
 			throw(runtime_error("Must have a minimum of 4 phase-cycling patterns."));
@@ -332,7 +252,7 @@ class SecondPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3
 {
 protected:
 	size_t m_flips, m_phases, m_lines = 0;
-	bool m_phase_first, m_alternate, m_2D = false;
+	bool m_2D = false;
 
 public:
 	typedef VectorImage<complex<float>, 3>     TImage;
@@ -345,8 +265,6 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(SecondPassFilter, ImageToImageFilter);
 
-	void SetPhaseFirst(const bool f) { m_phase_first = f; }
-	void SetAlternate(const bool a) { m_alternate = a; }
 	void Set2D(const bool d) { m_2D = d; }
 	void SetPhases(const size_t p) {
 		if (p < 4)
@@ -473,9 +391,8 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 
 	itk::ImageFileReader<itk::Image<float, 3>>::Pointer mask = ITK_NULLPTR;
-	auto reorder = itk::ReorderFilter::New();
-	auto pass1 = itk::FirstPassFilter::New();
-	auto pass2 = itk::SecondPassFilter::New();
+	auto pass1 = itk::FirstPassFilter::New(); // Needs to be here so save option can be set
+	auto pass2 = itk::SecondPassFilter::New(); // Needs to be here so 2D option can be set
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -491,13 +408,9 @@ int main(int argc, char **argv) {
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
 				break;
-			case 'F':
-				reorder->SetPhaseFirst(true); break;
-			case 'p':
-				reorder->SetPhases(atoi(optarg));
-				pass1->SetPhases(atoi(optarg));
-				break;
-			case 'a': reorder->SetAlternate(true); break;
+			case 'F': phaseflip = true; break;
+			case 'p': nPhases = atoi(optarg); break;
+			case 'a': alternate = true; break;
 			case 's':
 				switch(*optarg) {
 					case 'L': pass1->SetSave(itk::FirstPassFilter::Save::LR); break;
@@ -527,14 +440,28 @@ int main(int argc, char **argv) {
 	string fname(argv[optind++]);
 
 	auto inFile = QUITK::ReadXFloatTimeseries::New();
-	inFile->SetFileName(fname);
-	auto inImage = itk::ImageToVectorFilter<QUITK::XFloatTimeseries>::New();
-	inImage->SetInput(inFile->GetOutput());
-	reorder->SetInput(inImage->GetOutput());
-	pass1->SetInput(reorder->GetOutput());
-	auto outImage = VectorToImageFilter<complex<float>>::New();
-	auto outFile = itk::ImageFileWriter<itk::Image<complex<float>, 4>>::New();
+	auto inData = QUITK::XFloatTimeseriesToVector::New();
+	auto reorderFlips = itk::ReorderVectorFilter<XFloatVectorImage>::New();
+	auto reorderPhase = itk::ReorderVectorFilter<XFloatVectorImage>::New();
 
+	inFile->SetFileName(fname);
+	inData->SetInput(inFile->GetOutput());
+	reorderFlips->SetInput(inData->GetOutput());       // Does nothing unless stride set
+	if (!phaseflip) {
+		inData->Update(); // We need to know the vector length to get the number of flips from the number of phases
+		size_t nFlips = inData->GetOutput()->GetNumberOfComponentsPerPixel() / nPhases;
+		reorderFlips->SetStride(nFlips);
+	}
+	reorderPhase->SetInput(reorderFlips->GetOutput()); // Does nothing unless stride set
+	if (alternate) {
+		reorderPhase->SetStride(2);
+		reorderPhase->SetBlockSize(nPhases);
+	}
+	pass1->SetInput(reorderPhase->GetOutput());
+	pass1->SetPhases(nPhases);
+	pass2->SetPhases(nPhases);
+	auto outImage = itk::VectorToImageFilter<complex<float>>::New();
+	auto outFile = itk::ImageFileWriter<itk::Image<complex<float>, 4>>::New();
 	if (prefix == "")
 		prefix = fname.substr(0, fname.find(".nii"));
 	string outname = prefix;
@@ -547,7 +474,7 @@ int main(int argc, char **argv) {
 	}
 	if (do_pass2) {
 		outname.append("_2p");
-		pass2->SetInput(reorder->GetOutput());
+		pass2->SetInput(reorderPhase->GetOutput());
 		pass2->SetPass1(pass1->GetOutput());
 		outImage->SetInput(pass2->GetOutput());
 	} else {
