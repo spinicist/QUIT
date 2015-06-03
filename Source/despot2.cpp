@@ -15,13 +15,6 @@
 #include <atomic>
 #include <Eigen/Dense>
 
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkVectorImage.h"
-#include "itkImageToImageFilter.h"
-#include "itkExtractImageFilter.h"
-#include "itkComposeImageFilter.h"
-#include "itkVectorMagnitudeImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Model.h"
@@ -30,6 +23,7 @@
 
 using namespace std;
 using namespace Eigen;
+using namespace QUITK;
 
 //******************************************************************************
 // Algorithm Subclass
@@ -238,23 +232,10 @@ static const char *short_opts = "hm:o:b:t:c:vna:i:T:er";
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv)
-{
-	try { // To fix uncaught exceptions on Mac
-
+int main(int argc, char **argv) {
 	Eigen::initParallel();
-
-	typedef itk::Image<float, 3> FloatImage;
-	typedef itk::VectorImage<float, 3> FloatVectorImage;
-	typedef itk::Image<complex<float>, 3> CFloatImage;
-	typedef itk::VectorImage<complex<float>, 3> CFloatVectorImage;
-	typedef itk::ImageFileReader<FloatImage> Reader;
-
-	typedef itk::ImageFileWriter<FloatImage> Writer;
-
-	Reader::Pointer mask = ITK_NULLPTR;
-	Reader::Pointer B1   = ITK_NULLPTR;
-
+	ReadFloatImage::Pointer mask = ITK_NULLPTR;
+	ReadFloatImage::Pointer B1   = ITK_NULLPTR;
 	shared_ptr<D2> algo = make_shared<D2>();
 
 	int indexptr = 0, c;
@@ -266,12 +247,12 @@ int main(int argc, char **argv)
 				break;
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = Reader::New();
+				mask = ReadFloatImage::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = Reader::New();
+				B1 = ReadFloatImage::New();
 				B1->SetFileName(optarg);
 				break;
 			case 't': algo->setThreshold(atof(optarg)); break;
@@ -294,7 +275,7 @@ int main(int argc, char **argv)
 			case 'e': elliptical = true; algo->setElliptical(elliptical); break;
 			case 'r': all_residuals = true; break;
 			case 'T':
-				itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg));
+				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
 				break;
 			case 0:
 				// Just a flag
@@ -312,13 +293,13 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-	Reader::Pointer T1File = Reader::New();
+	auto T1File = ReadFloatImage::New();
 	T1File->SetFileName(argv[optind++]);
 
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-	auto ssfp4D = QUITK::ReadXFloatTimeseries::New();
+	auto ssfp4D = ReadFloatTimeseries::New();
 	ssfp4D->SetFileName(argv[optind++]);
-	auto ssfp3D = itk::ImageToVectorFilter<QUITK::XFloatTimeseries>::New();
+	auto ssfp3D = itk::ImageToVectorFilter<FloatTimeseries>::New();
 	ssfp3D->SetInput(ssfp4D->GetOutput());
 
 	shared_ptr<SteadyState> ssfp;
@@ -329,7 +310,7 @@ int main(int argc, char **argv)
 	}
 	if (verbose) cout << *ssfp << endl;
 
-	auto DESPOT2 = itk::ApplyAlgorithmFilter<complex<float>, D2>::New();
+	auto DESPOT2 = itk::ApplyAlgorithmFilter<float, D2>::New();
 	DESPOT2->SetSequence(ssfp);
 	DESPOT2->SetAlgorithm(algo);
 	DESPOT2->Setup();
@@ -350,42 +331,11 @@ int main(int argc, char **argv)
 		QUITK::printElapsedTime(startTime);
 		cout << "Writing results." << endl;
 	}
-
 	outPrefix = outPrefix + "D2_";
+	writeResult(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
+	writeResult(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
+	writeResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals);
 
-	Writer::Pointer PDFile = Writer::New();
-	Writer::Pointer T2File = Writer::New();
-	Writer::Pointer f0File = Writer::New();
-	Writer::Pointer ResFile = Writer::New();
-
-	PDFile->SetFileName(outPrefix + "PD.nii");
-	PDFile->SetInput(DESPOT2->GetOutput(0));
-	PDFile->Update();
-	T2File->SetFileName(outPrefix + "T2.nii");
-	T2File->SetInput(DESPOT2->GetOutput(1));
-	T2File->Update();
-	if (elliptical) {
-		f0File->SetFileName(outPrefix + "f0.nii");
-		f0File->SetInput(DESPOT2->GetOutput(2));
-		f0File->Update();
-	}
-
-	auto magFilter = itk::VectorMagnitudeImageFilter<FloatVectorImage, FloatImage>::New();
-	magFilter->SetInput(DESPOT2->GetResidOutput());
-	ResFile->SetFileName(outPrefix + "residual.nii");
-	ResFile->SetInput(magFilter->GetOutput());
-	ResFile->Update();
-
-	if (all_residuals) {
-		auto vecWriter = itk::ImageFileWriter<FloatVectorImage>::New();
-		vecWriter->SetFileName(outPrefix + "residuals.nii");
-		vecWriter->SetInput(DESPOT2->GetResidOutput());
-		vecWriter->Update();
-	}
 	if (verbose) cout << "All done." << endl;
-	} catch (exception &e) {
-		cerr << e.what() << endl;
-		return EXIT_FAILURE;
-	}
 	return EXIT_SUCCESS;
 }
