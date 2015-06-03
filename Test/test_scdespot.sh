@@ -95,11 +95,13 @@ compare_test "DESPOT1LM" T1.nii ND1_T1.nii 0.01
 run_test "DESPOT1HIFI" $QUITDIR/despot1hifi $SPGR_FILE $MPRAGE_FILE -M -n < despot1hifi.in
 compare_test "HIFI_T1" T1.nii HIFI_T1.nii 0.01
 run_test "SSFPGS" $QUITDIR/ssfpgs ssfp_x.nii
-run_test "SSFPGS2P" $QUITDIR/ssfpgs -2 ssfp_x.nii
-run_test "DESPOT2GS" $QUITDIR/despot2 -e D1_T1.nii ssfp_x_lreg.nii -n -bB1.nii < despot2gs.in
-run_test "DESPOT2GS2P" $QUITDIR/despot2 -e D1_T1.nii ssfp_x_lreg_2p.nii -n -bB1.nii -o 2p < despot2gs.in
+run_test "SSFPGSMAG" $QUITDIR/qcomplex -x ssfp_x_lreg.nii -om ssfp_x_lreg_mag.nii
+run_test "DESPOT2GS" $QUITDIR/despot2 -e D1_T1.nii ssfp_x_lreg_mag.nii -n -bB1.nii < despot2gs.in
 compare_test "DESPOT2GS" T2.nii D2_T2.nii 0.01
-compare_test "DESPOT2GS" T2.nii 2pD2_T2.nii 0.05
+run_test "SSFPGS2P" $QUITDIR/ssfpgs -2 ssfp_x.nii
+run_test "SSFPGS2PMAG" $QUITDIR/qcomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_2p_mag.nii
+run_test "DESPOT2GS2P" $QUITDIR/despot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
+compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
 run_test "DESPOT2FM" $QUITDIR/despot2fm D1_T1.nii $SSFP_FILE -n -v -S1 -bB1.nii < despot2fm.in
 compare_test "DESPOT2FM" T2.nii FM_T2.nii 0.01
 

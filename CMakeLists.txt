@@ -25,9 +25,11 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 add_library(quitk_core Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp Source/Util.cpp)
 add_custom_target(quitk_templ SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
-                                      Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx)
+                                      Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
+                                      Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
+                                      Source/RegionContraction.h)
 
-set(PROGRAMS despot1 despot1hifi despot2 mcsignal ssfpgs qinewimg)
+set(PROGRAMS despot1 despot1hifi despot2 mcsignal ssfpgs despot2fm qinewimg qcomplex)
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
 	target_link_libraries(${PROGRAM} quitk_core ${ITK_LIBRARIES})
