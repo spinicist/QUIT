@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 				break;
 			case 'r': all_residuals = true; break;
 			case 'T':
-				itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg));
+				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
 				break;
 			case 'h':
 			case '?': // getopt will print an error message
@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
 	string inputFilename = argv[optind++];
 	if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
 	auto input = QUITK::ReadFloatTimeseries::New();
-	auto convert = itk::ImageToVectorFilter<QUITK::FloatTimeseries>::New();
+	auto convert = QUITK::FloatTimeseriesToVector::New();
 	input->SetFileName(inputFilename);
 	convert->SetInput(input->GetOutput());
 
