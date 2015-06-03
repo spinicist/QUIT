@@ -130,8 +130,9 @@ auto ApplyAlgorithmFilter<TData, TAlgo>::GetResidOutput() -> TResidImage *{
 
 template<typename TData, typename TAlgo>
 void ApplyAlgorithmFilter<TData, TAlgo>::Update() {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
 	Superclass::Update();
+	//std::cout << "Finished " << __PRETTY_FUNCTION__ << std::endl;
 }
 
 template<typename TData, typename TAlgo>
@@ -155,12 +156,12 @@ void ApplyAlgorithmFilter<TData, TAlgo>::GenerateOutputInformation() {
 	r->SetRegions(this->GetInput()->GetLargestPossibleRegion());
 	r->SetNumberOfComponentsPerPixel(size);
 	r->Allocate();
-
+	//std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
 
 template<typename TData, typename TAlgo>
 void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
 	vector<ImageRegionConstIterator<TInputImage>> dataIters(m_sequence->count());
 	for (size_t i = 0; i < m_sequence->count(); i++) {
 		dataIters[i] = ImageRegionConstIterator<TInputImage>(this->GetDataInput(i), region);
@@ -228,6 +229,7 @@ void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType &
 		}
 		++residIter;
 	}
+	//std::cout << "Finished " << std::endl;
 }
 } // namespace ITK
 

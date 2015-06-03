@@ -1,3 +1,6 @@
+#ifndef IMAGETOVECTORFILTER_HXX
+#define IMAGETOVECTORFILTER_HXX
+
 namespace itk {
 
 template<typename TInput>
@@ -72,3 +75,5 @@ void ImageToVectorFilter<TInput>::GenerateData() {
 }
 
 } // End namespace itk
+
+#endif // Define IMAGETOVECTORFILTER_HXX

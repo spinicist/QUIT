@@ -1,3 +1,8 @@
+#ifndef VECTORTOIMAGEFILTER_HXX
+#define VECTORTOIMAGEFILTER_HXX
+
+namespace itk {
+
 template<typename TPixel>
 VectorToImageFilter<TPixel>::VectorToImageFilter() {
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
@@ -34,3 +39,7 @@ void VectorToImageFilter<TPixel>::Update() {
 	m_tiler->Update();
 	//this->GraftOutput(m_tiler->GetOutput());
 }
+
+} // End namespace itk
+
+#endif // Define VECTORTOIMAGEFILTER_HXX

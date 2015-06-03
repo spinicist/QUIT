@@ -2,8 +2,11 @@
 #define VECTORTOIMAGEFILTER_H
 
 #include "itkImageToImageFilter.h"
+#include "itkVectorImage.h"
 #include "itkVectorIndexSelectionCastImageFilter.h"
 #include "itkTileImageFilter.h"
+
+namespace itk {
 
 template<typename TPixel>
 class VectorToImageFilter  : public itk::ImageToImageFilter<itk::VectorImage<TPixel, 3>, itk::Image<TPixel, 4>>
@@ -38,6 +41,8 @@ private:
 	VectorToImageFilter(const Self &); //purposely not implemented
 	void operator=(const Self &);      //purposely not implemented
 };
+
+} // End namespace itk
 
 #include "VectorToImageFilter.hxx"
 
