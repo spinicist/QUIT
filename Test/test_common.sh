@@ -19,7 +19,7 @@ function run_test {
 	# $1 is test name, remainder is command to run
 	NAME="$1"
 	shift
-	echo "Starting test $NAME"
+	printf "Starting test $NAME..."
 	if [ "$SILENCE_TESTS" -eq "1" ]; then
 		"$@" > "$NAME.log"
 	else
@@ -27,10 +27,10 @@ function run_test {
 	fi
 	local STATUS=$?
 	if [ $STATUS -ne 0 ]; then
-		echo "Test $NAME failed." >&2
+		printf "Failed.\n" >&2
 		exit $STATUS
 	else
-		echo "Test $NAME passed." >&1
+		printf "Passed.\n" >&1
 	fi
 	return $STATUS
 }
