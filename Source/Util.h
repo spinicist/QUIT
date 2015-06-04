@@ -60,19 +60,28 @@ template<typename T> bool Read(std::istream &in, T &val) {
 	return Read(line, val);
 }
 
-template<typename Derived> void ReadEigen(const std::string &s, const Eigen::DenseBase<Derived> &cvals) {
+template<typename Scalar>
+void ReadArray(const std::string &s, Eigen::Array<Scalar, Eigen::Dynamic, 1> &array) {
 	std::istringstream stream(s);
-	Eigen::DenseBase<Derived> &vals = const_cast<Eigen::DenseBase<Derived> &>(cvals);
-	for (typename Eigen::DenseBase<Derived>::Index i = 0; i < vals.size(); i++) {
-		if (!(stream >> vals[i])) {
+	std::vector<Scalar> vals;
+
+	while (!stream.eof()) {
+		Scalar temp;
+		if (!(stream >> temp)) {
 			throw(std::runtime_error("Failed to parse input: " + s));
 		}
+		vals.push_back(temp);
+	}
+
+	array = Eigen::Array<Scalar, Eigen::Dynamic, 1>(vals.size());
+	for (int i = 0; i < vals.size(); i++) {
+		array[i] = vals[i];
 	}
 }
 
-template<typename Derived> void ReadEigen(std::istream &in, const Eigen::DenseBase<Derived> &cvals) {
+template<typename Scalar>
+void ReadArray(std::istream &in, Eigen::Array<Scalar, Eigen::Dynamic, 1> &array) {
 	std::string line;
-	Eigen::DenseBase<Derived> &vals = const_cast<Eigen::DenseBase<Derived> &>(cvals);
 	// Ignore comment lines. Use shell script convention
 	while (in.peek() == '#') {
 		if (!std::getline(in, line))
@@ -81,7 +90,7 @@ template<typename Derived> void ReadEigen(std::istream &in, const Eigen::DenseBa
 	if (!std::getline(in, line)) {
 		throw(std::runtime_error("Failed to read input."));
 	}
-	ReadEigen(line, vals);
+	ReadArray(line, array);
 }
 
 } // End namespace QUIT

@@ -29,20 +29,15 @@ $QUITDIR/qnewimage -d "$DIMS" -g "2 0.1 0.25" f_a.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
-SPGR_PAR="8
-3 4 5 6 7 9 13 18
+SPGR_PAR="3 4 5 6 7 9 13 18
 0.0065"
 SSFP_FILE="ssfp.nii"
 SSFP_FLIP="12 16 21 27 33 40 51 68"
 SSFP_TR="0.005"
-SSFP_PAR_180_0="$( echo "$SSFP_FLIP" | wc -w )
-$SSFP_FLIP
-2
+SSFP_PAR_180_0="$SSFP_FLIP
 180 0
 $SSFP_TR"
-SSFP_PAR_90_270="$( echo "$SSFP_FLIP" | wc -w )
-$SSFP_FLIP
-2
+SSFP_PAR_90_270="$SSFP_FLIP
 90 270
 $SSFP_TR"
 

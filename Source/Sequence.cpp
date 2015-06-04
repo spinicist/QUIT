@@ -69,13 +69,9 @@ SPGRSimple::SPGRSimple(const ArrayXd &flip, const double TR) :
 	SteadyState(flip, TR)
 {}
 SPGRSimple::SPGRSimple(const bool prompt) : SteadyState() {
-	size_t nFlip;
-	if (prompt) cout << "Enter number of flip-angles: " << flush;
-	QI::Read(cin, nFlip);
-	ArrayXd inAngles(nFlip);
-	if (prompt) cout << "Enter " << inAngles.size() << " flip-angles (degrees): " << flush;
-	QI::ReadEigen(cin, inAngles);
-	m_flip = inAngles * M_PI / 180.;
+	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
+	QI::ReadArray(cin, m_flip);
+	m_flip *= M_PI / 180.;
 	if (prompt) cout << "Enter TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
 }
@@ -118,28 +114,24 @@ MPRAGE::MPRAGE(const ArrayXd &TI, const double TD, const double TR, const int N,
 
 MPRAGE::MPRAGE(const bool prompt) : SteadyState() {
 	if (prompt) cout << "Enter read-out flip-angle (degrees): " << flush;
-	ArrayXd inFlip(1);
-	QI::ReadEigen(cin, inFlip);
-	m_flip = inFlip * M_PI / 180.;
+	double inFlip;
+	QI::Read(cin, inFlip);
+	m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
 	if (prompt) cout << "Enter read-out TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
 	if (prompt) cout << "Enter segment size: " << flush;
 	QI::Read(cin, m_N);
-	size_t nTI;
-	if (prompt) cout << "Enter number of inversion times: " << flush;
-	QI::Read(cin, nTI);
-	m_TI.resize(nTI);
-	if (prompt) cout << "Enter " << m_TI.size() << " inversion times (seconds): " << flush;
-	QI::ReadEigen(cin, m_TI);
+	if (prompt) cout << "Enter inversion times (seconds): " << flush;
+	QI::ReadArray(cin, m_TI);
 	if (prompt) cout << "Enter delay time (seconds): " << flush;
 	QI::Read(cin, m_TD);
 }
 
 IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
 	if (prompt) cout << "Enter read-out flip-angle (degrees): " << flush;
-	ArrayXd inFlip(1);
-	QI::ReadEigen(cin, inFlip);
-	m_flip = inFlip * M_PI / 180.;
+	double inFlip;
+	QI::Read(cin, inFlip);
+	m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
 	if (prompt) cout << "Enter read-out TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
 
@@ -148,12 +140,8 @@ IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
 	QI::Read(cin, NPE2);
 	m_N = (NPE2 / 2) + 2;
 
-	int nTI;
-	if (prompt) cout << "Enter number of TIs: " << flush;
-	QI::Read(cin, nTI);
-	m_TI.resize(nTI);
-	if (prompt) cout << "Enter " << m_TI.size() << " TIs (seconds): " << flush;
-	QI::ReadEigen(cin, m_TI);
+	if (prompt) cout << "Enter TIs (seconds): " << flush;
+	QI::ReadArray(cin, m_TI);
 }
 
 ArrayXcd MPRAGE::signal(shared_ptr<Model> m, const VectorXd &par) const {
@@ -173,20 +161,12 @@ SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phas
 SSFPSimple::SSFPSimple(const bool prompt) :
 	SteadyState()
 {
-	size_t nFlip;
-	if (prompt) cout << "Enter number of flip-angles: " << flush;
-	QI::Read(cin, nFlip);
-	ArrayXd inAngles(nFlip);
-	if (prompt) cout << "Enter " << inAngles.size() << " flip-angles (degrees): " << flush;
-	QI::ReadEigen(cin, inAngles);
-	m_flip = inAngles * M_PI / 180.;
-	size_t nPhases;
-	if (prompt) cout << "Enter number of phase-cycles: " << flush;
-	QI::Read(cin, nPhases);
-	ArrayXd inPhases(nPhases);
-	if (prompt) cout << "Enter " << inPhases.size() << " phase-cycles (degrees): " << flush;
-	QI::ReadEigen(cin, inPhases);
-	m_phases = inPhases * M_PI / 180.;
+	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
+	QI::ReadArray(cin, m_flip);
+	m_flip *= M_PI / 180.;
+	if (prompt) cout << "Enter phase-cycles (degrees): " << flush;
+	QI::ReadArray(cin, m_phases);
+	m_phases *= M_PI / 180.;
 	if (prompt) cout << "Enter TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
 }
@@ -265,13 +245,9 @@ ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
 SSFPEllipse::SSFPEllipse(const bool prompt) :
 	SteadyState()
 {
-	size_t nFlip;
-	if (prompt) cout << "Enter number of flip-angles: " << flush;
-	QI::Read(cin, nFlip);
-	ArrayXd inAngles(nFlip);
-	if (prompt) cout << "Enter " << inAngles.size() << " flip-angles (degrees): " << flush;
-	QI::ReadEigen(cin, inAngles);
-	m_flip = inAngles * M_PI / 180.;
+	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
+	QI::ReadArray(cin, m_flip);
+	m_flip *= M_PI / 180.;
 	if (prompt) cout << "Enter TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
 }

@@ -319,7 +319,7 @@ int main(int argc, char **argv) {
 			case 'c': {
 				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
 				ArrayXi in = ArrayXi::Zero(3);
-				QI::ReadEigen(cin, in);
+				QI::ReadArray(cin, in);
 				mcd->setRCPars(in[0], in[1], in[2]);
 			} break;
 			case 'r': all_residuals = true; break;
