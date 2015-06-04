@@ -1,8 +1,8 @@
 /*
- *  mcsignal_main.cpp
+ *  qsignal.cpp
  *
- *  Created by Tobias Wood on 12/11/2012.
- *  Copyright (c) 2013 Tobias Wood.
+ *  Created by Tobias Wood on 2015/06/02.
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
