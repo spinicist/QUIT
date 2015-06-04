@@ -8,23 +8,24 @@
 # First, create input data
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
-DATADIR="mcdespot_$QUITVER"
+DATADIR="mcdespot"
+rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
 
 DIMS="5 5 4"
 
-$QUITDIR/qinewimg -d "$DIMS" -f "1.0" PD.nii
-$QUITDIR/qinewimg -d "$DIMS" -f "0.465" T1_a.nii
-$QUITDIR/qinewimg -d "$DIMS" -f "0.026" T2_a.nii
-$QUITDIR/qinewimg -d "$DIMS" -f "1.070" T1_b.nii
-$QUITDIR/qinewimg -d "$DIMS" -f "0.117" T2_b.nii
-$QUITDIR/qinewimg -d "$DIMS" -f "0.18" tau_a.nii
-$QUITDIR/qinewimg -d "$DIMS" -g "0 -25. 25." f0.nii
-$QUITDIR/qinewimg -d "$DIMS" -g "1 0.75 1.25" B1.nii
-$QUITDIR/qinewimg -d "$DIMS" -g "2 0.1 0.25" f_a.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "1.0" PD.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.465" T1_a.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.026" T2_a.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "1.070" T1_b.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.117" T2_b.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.18" tau_a.nii
+$QUITDIR/qnewimage -d "$DIMS" -g "0 -25. 25." f0.nii
+$QUITDIR/qnewimage -d "$DIMS" -g "1 0.75 1.25" B1.nii
+$QUITDIR/qnewimage -d "$DIMS" -g "2 0.1 0.25" f_a.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
@@ -45,7 +46,7 @@ $SSFP_FLIP
 90 270
 $SSFP_TR"
 
-run_test "CREATE_SIGNALS" $QUITDIR/mcsignal --2 -n << END_MCSIG
+run_test "CREATE_SIGNALS" $QUITDIR/qsignal --2 -n << END_MCSIG
 PD.nii
 T1_a.nii
 T2_a.nii

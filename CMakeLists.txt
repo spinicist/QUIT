@@ -1,4 +1,4 @@
-project(QUITK)
+project(QUIT)
 cmake_minimum_required(VERSION 2.8)
 aux_source_directory(. SRC_LIST)
 
@@ -22,20 +22,22 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-add_library(quitk_core Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp Source/Util.cpp)
-add_custom_target(quitk_templ SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
-                                      Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
-                                      Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
-                                      Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
-                                      Source/RegionContraction.h)
+include_directories(Source)
 
-set(PROGRAMS despot1 despot1hifi despot2 mcsignal ssfpgs despot2fm
-             qmcdespot
-             qinewimg qcomplex)
+add_library(quit_core Source/Types.h Source/Util.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
+add_custom_target(quit_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
+                                        Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
+                                        Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
+                                        Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
+                                        Source/RegionContraction.h)
+
+set(PROGRAMS qnewimage qcomplex qsignal
+             qdespot1 qdespot2 qdespot1hifi qdespot2fm qmcdespot
+             qssfpbands)
 
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-	target_link_libraries(${PROGRAM} quitk_core ${ITK_LIBRARIES})
+	target_link_libraries(${PROGRAM} quit_core ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
 set(TESTS test_common.sh test_scdespot.sh test_mcdespot.sh test_all.sh)

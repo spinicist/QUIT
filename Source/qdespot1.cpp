@@ -172,8 +172,8 @@ int main(int argc, char **argv) {
 	//cout << version << endl << credit_shared << endl;
 	Eigen::initParallel();
 
-	QUITK::ReadFloatImage::Pointer mask = ITK_NULLPTR;
-	QUITK::ReadFloatImage::Pointer B1   = ITK_NULLPTR;
+	QI::ReadImageF::Pointer mask = ITK_NULLPTR;
+	QI::ReadImageF::Pointer B1   = ITK_NULLPTR;
 
 	shared_ptr<DESPOT1> algo = make_shared<DESPOT1>();
 
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'm':
 				if (verbose) cout << "Opening mask file " << optarg << endl;
-				mask = QUITK::ReadFloatImage::New();
+				mask = QI::ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 				break;
 			case 'b':
 				if (verbose) cout << "Opening B1 file: " << optarg << endl;
-				B1 = QUITK::ReadFloatImage::New();
+				B1 = QI::ReadImageF::New();
 				B1->SetFileName(optarg);
 				break;
 			case 'a':
@@ -225,8 +225,8 @@ int main(int argc, char **argv) {
 
 	string inputFilename = argv[optind++];
 	if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
-	auto input = QUITK::ReadFloatTimeseries::New();
-	auto convert = QUITK::FloatTimeseriesToVector::New();
+	auto input = QI::ReadTimeseriesF::New();
+	auto convert = QI::TimeseriesToVectorF::New();
 	input->SetFileName(inputFilename);
 	convert->SetInput(input->GetOutput());
 
@@ -247,9 +247,9 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "D1_";
 
-	QUITK::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-	QUITK::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
-	QUITK::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+	QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
+	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	if (verbose) cout << "Finished." << endl;
 	} catch (exception &e) {

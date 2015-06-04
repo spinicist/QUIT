@@ -2,7 +2,7 @@
  *  Util.h
  *  Part of the QUantitative Image Toolbox
  *
- *  Copyright (c) 2014 Tobias Wood. All rights reserved.
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -23,30 +23,11 @@
 
 #include <Eigen/Dense>
 
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
 #include "itkVectorMagnitudeImageFilter.h"
-#include "Filters/VectorToImageFilter.h"
-#include "Filters/ImageToVectorFilter.h"
 
-namespace QUITK {
+#include "Types.h"
 
-typedef itk::Image<float, 3> FloatImage;
-typedef itk::VectorImage<float, 3> FloatVectorImage;
-typedef itk::Image<float, 4> FloatTimeseries;
-
-typedef itk::Image<std::complex<float>, 3> XFloatImage;
-typedef itk::VectorImage<std::complex<float>, 3> XFloatVectorImage;
-typedef itk::Image<std::complex<float>, 4> XFloatTimeseries;
-
-typedef itk::ImageFileReader<FloatImage> ReadFloatImage;
-typedef itk::ImageFileReader<FloatTimeseries> ReadFloatTimeseries;
-typedef itk::ImageToVectorFilter<FloatTimeseries> FloatTimeseriesToVector;
-
-typedef itk::ImageFileReader<XFloatImage> ReadXFloatImage;
-typedef itk::ImageFileReader<XFloatTimeseries> ReadXFloatTimeseries;
-typedef itk::ImageToVectorFilter<XFloatTimeseries> XFloatTimeseriesToVector;
-
+namespace QI {
 
 const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
 time_t printStartTime();
@@ -55,8 +36,8 @@ void printElapsedClock(const clock_t &clockStart, const int voxCount);
 void printLoopTime(const clock_t &loopStart, const int voxCount);
 std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 
-void writeResult(const typename FloatImage::Pointer img, const std::string path);
-void writeResiduals(const typename FloatVectorImage::Pointer img, const std::string prefix, const bool allResids = false);
+void writeResult(const typename ImageF::Pointer img, const std::string path);
+void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
 
 template<typename T> bool Read(const std::string &s, T &val) {
 	std::istringstream stream(s);

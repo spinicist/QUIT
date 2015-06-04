@@ -77,11 +77,11 @@ static const char* short_opts = "hd:v:f:g:s:"; /* p:x:r: */
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	QUITK::FloatImage::Pointer newimg = QUITK::FloatImage::New();
-	QUITK::FloatImage::RegionType imgRegion;
-	QUITK::FloatImage::IndexType imgIndex;
-	QUITK::FloatImage::SizeType imgSize;
-	QUITK::FloatImage::SpacingType imgSpacing;
+	QI::ImageF::Pointer newimg = QI::ImageF::New();
+	QI::ImageF::RegionType imgRegion;
+	QI::ImageF::IndexType imgIndex;
+	QI::ImageF::SizeType imgSize;
+	QI::ImageF::SpacingType imgSpacing;
 	imgIndex.Fill(0);
 	imgSize.Fill(0);
 	imgSpacing.Fill(1.0);
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
 	newimg->SetSpacing(imgSpacing);
 	newimg->Allocate();
 
-	itk::ImageSliceIteratorWithIndex<QUITK::FloatImage> it(newimg, imgRegion);
+	itk::ImageSliceIteratorWithIndex<QI::ImageF> it(newimg, imgRegion);
 
 	switch (fillDim) {
 		case 0: it.SetFirstDirection(1); it.SetSecondDirection(2); break;
@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
 		it.NextSlice();
 		if ((it.GetIndex()[fillDim] % stepLength) == (stepLength - 1)) val += deltaVal;
 	}
-	QUITK::writeResult(newimg, fName);
+	QI::writeResult(newimg, fName);
 
 	return EXIT_SUCCESS;
 }

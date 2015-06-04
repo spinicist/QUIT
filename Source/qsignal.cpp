@@ -30,7 +30,7 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QUITK;
+using namespace QI;
 
 //******************************************************************************
 // Filter
@@ -333,16 +333,16 @@ int main(int argc, char **argv)
 			cout << "Calculating sequence: " << endl << *(sequences[i]);
 		}
 		calcSignal->SetSequence(sequences[i]);
-		auto VecTo4D = itk::VectorToImageFilter<complex<float>>::New();
+		auto VecTo4D = QI::VectorToTimeseriesXF::New();
 		VecTo4D->SetInput(calcSignal->GetOutput());
 		if (outputComplex) {
-			auto writer = itk::ImageFileWriter<itk::Image<complex<float>,4>>::New();
+			auto writer = QI::WriteTimeseriesXF::New();
 			writer->SetInput(VecTo4D->GetOutput());
 			writer->SetFileName(filenames[i]);
 			writer->Update();
 		} else {
-			auto writer = itk::ImageFileWriter<itk::Image<float, 4>>::New();
-			auto abs = itk::ComplexToModulusImageFilter<itk::Image<complex<float>, 4>, itk::Image<float, 4>>::New();
+			auto writer = QI::WriteTimeseriesF::New();
+			auto abs = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
 			abs->SetInput(VecTo4D->GetOutput());
 			writer->SetInput(abs->GetOutput());
 			writer->SetFileName(filenames[i]);

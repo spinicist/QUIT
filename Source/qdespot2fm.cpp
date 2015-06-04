@@ -27,7 +27,6 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QUITK;
 
 //******************************************************************************
 // Arguments / Usage
@@ -176,7 +175,7 @@ class FMAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	ReadFloatImage::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<FMAlgo> fm = make_shared<FMAlgo>();
 
 	int indexptr = 0, c;
@@ -186,7 +185,7 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = ReadFloatImage::New();
+				mask = QI::ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -195,12 +194,12 @@ int main(int argc, char **argv) {
 				break;
 			case 'f':
 				if (verbose) cout << "Reading f0 file: " << optarg << endl;
-				f0 = ReadFloatImage::New();
+				f0 = QI::ReadImageF::New();
 				f0->SetFileName(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = ReadFloatImage::New();
+				B1 = QI::ReadImageF::New();
 				B1->SetFileName(optarg);
 				break;
 			/*case 's': start_slice = atoi(optarg); break;
@@ -255,15 +254,15 @@ int main(int argc, char **argv) {
 	if (verbose) cout << *ssfpSequence << endl;
 
 	if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-	auto T1File = ReadFloatImage::New();
+	auto T1File = QI::ReadImageF::New();
 	T1File->SetFileName(argv[optind++]);
 
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-	auto ssfpFile = ReadFloatTimeseries::New();
+	auto ssfpFile = QI::ReadTimeseriesF::New();
 	ssfpFile->SetFileName(argv[optind++]);
-	auto ssfpData = FloatTimeseriesToVector::New();
+	auto ssfpData = QI::TimeseriesToVectorF::New();
 	ssfpData->SetInput(ssfpFile->GetOutput());
-	auto reorderFlip = itk::ReorderVectorFilter<FloatVectorImage>::New();
+	auto reorderFlip = QI::ReorderF::New();
 	if (flipData) {
 		reorderFlip->SetStride(ssfpSequence->phases());
 	}
@@ -282,14 +281,14 @@ int main(int argc, char **argv) {
 		apply->SetMask(mask->GetOutput());
 
 	time_t startTime;
-	if (verbose) startTime = printStartTime();
+	if (verbose) startTime = QI::printStartTime();
 	apply->Update();
-	printElapsedTime(startTime);
+	QI::printElapsedTime(startTime);
 
 	outPrefix = outPrefix + "FM_";
-	writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-	writeResult(apply->GetOutput(1), outPrefix + "T2.nii");
-	writeResult(apply->GetOutput(2), outPrefix + "f0.nii");
-	writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+	QI::writeResult(apply->GetOutput(1), outPrefix + "T2.nii");
+	QI::writeResult(apply->GetOutput(2), outPrefix + "f0.nii");
+	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 	return EXIT_SUCCESS;
 }

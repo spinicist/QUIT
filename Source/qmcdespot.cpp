@@ -99,27 +99,27 @@ static const char* short_options = "hvm:o:f:b:s:p:S:gt:FT:M:crn123i:j:";
 /*
  * Read in all required files and data from cin
  */
-void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QUITK::ReadFloatTimeseries::Pointer> &files, vector<typename QUITK::FloatTimeseriesToVector::Pointer> &data, vector<typename itk::ReorderVectorFilter<QUITK::FloatVectorImage>::Pointer> &order, Array2d &f0Bandwidth, bool flip);
+void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::ReadTimeseriesF::Pointer> &files, vector<typename QI::TimeseriesToVectorF::Pointer> &data, vector<typename QI::ReorderF::Pointer> &order, Array2d &f0Bandwidth, bool flip);
 void parseInput(shared_ptr<SequenceGroup> seq,
-                vector<typename QUITK::ReadFloatTimeseries::Pointer> &files,
-                vector<typename QUITK::FloatTimeseriesToVector::Pointer> &data,
-                vector<typename itk::ReorderVectorFilter<QUITK::FloatVectorImage>::Pointer> &order,
+                vector<typename QI::ReadTimeseriesF::Pointer> &files,
+                vector<typename QI::TimeseriesToVectorF::Pointer> &data,
+                vector<typename QI::ReorderF::Pointer> &order,
                 Array2d &f0Bandwidth, bool flip)
 {
 	string type, path;
 	if (prompt) cout << "Specify next image type (SPGR/SSFP): " << flush;
 	f0Bandwidth = Array2d::Zero();
-	while (QUITK::Read(cin, type) && (type != "END") && (type != "")) {
+	while (QI::Read(cin, type) && (type != "END") && (type != "")) {
 		if (type != "SPGR" && type != "SSFP") {
 			throw(std::runtime_error("Unknown signal type: " + type));
 		}
 		if (prompt) cout << "Enter image path: " << flush;
-		QUITK::Read(cin, path);
-		files.push_back(QUITK::ReadFloatTimeseries::New());
+		QI::Read(cin, path);
+		files.push_back(QI::ReadTimeseriesF::New());
 		files.back()->SetFileName(path);
-		data.push_back(QUITK::FloatTimeseriesToVector::New());
+		data.push_back(QI::TimeseriesToVectorF::New());
 		data.back()->SetInput(files.back()->GetOutput());
-		order.push_back(itk::ReorderVectorFilter<QUITK::FloatVectorImage>::New());
+		order.push_back(itk::ReorderVectorFilter<QI::VectorImageF>::New());
 		order.back()->SetInput(data.back()->GetOutput());
 		if (verbose) cout << "Opened: " << path << endl;
 		if ((type == "SPGR") && !fitFinite) {
@@ -239,7 +239,7 @@ class MCDAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	QUITK::ReadFloatImage::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
 	shared_ptr<Model> model;
 	// Deal with these options in first pass to ensure the correct model is selected
@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
 		switch (c) {
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = QUITK::ReadFloatImage::New();
+				mask = QI::ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -270,12 +270,12 @@ int main(int argc, char **argv) {
 				break;
 			case 'f':
 				if (verbose) cout << "Reading f0 file: " << optarg << endl;
-				f0 = QUITK::ReadFloatImage::New();
+				f0 = QI::ReadImageF::New();
 				f0->SetFileName(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = QUITK::ReadFloatImage::New();
+				B1 = QI::ReadImageF::New();
 				B1->SetFileName(optarg);
 				break;
 			case 's': start_slice = atoi(optarg); break;
@@ -319,7 +319,7 @@ int main(int argc, char **argv) {
 			case 'c': {
 				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
 				ArrayXi in = ArrayXi::Zero(3);
-				QUITK::ReadEigen(cin, in);
+				QI::ReadEigen(cin, in);
 				mcd->setRCPars(in[0], in[1], in[2]);
 			} break;
 			case 'r': all_residuals = true; break;
@@ -338,9 +338,9 @@ int main(int argc, char **argv) {
 	Array2d f0Bandwidth;
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
-	vector<QUITK::ReadFloatTimeseries::Pointer> inFiles;
-	vector<QUITK::FloatTimeseriesToVector::Pointer> inData;
-	vector<itk::ReorderVectorFilter<QUITK::FloatVectorImage>::Pointer> inOrder;
+	vector<QI::ReadTimeseriesF::Pointer> inFiles;
+	vector<QI::TimeseriesToVectorF::Pointer> inData;
+	vector<itk::ReorderVectorFilter<QI::VectorImageF>::Pointer> inOrder;
 	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, flipData);
 
 	ArrayXXd bounds = model->Bounds(tesla, 0);
@@ -379,15 +379,15 @@ int main(int argc, char **argv) {
 		apply->SetMask(mask->GetOutput());
 
 	time_t startTime;
-	if (verbose) startTime = QUITK::printStartTime();
+	if (verbose) startTime = QI::printStartTime();
 	apply->Update();
-	QUITK::printElapsedTime(startTime);
+	QI::printElapsedTime(startTime);
 
 	outPrefix = outPrefix + model->Name() + "_";
 	for (int i = 0; i < model->nParameters(); i++) {
-		QUITK::writeResult(apply->GetOutput(i), outPrefix + model->Names()[i] + QUITK::OutExt());
+		QI::writeResult(apply->GetOutput(i), outPrefix + model->Names()[i] + QI::OutExt());
 	}
-	QUITK::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 	return EXIT_SUCCESS;
 }
 

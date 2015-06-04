@@ -23,7 +23,7 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QUITK;
+using namespace QI;
 
 //******************************************************************************
 // Arguments / Usage
@@ -439,10 +439,10 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
 	string fname(argv[optind++]);
 
-	auto inFile = QUITK::ReadXFloatTimeseries::New();
-	auto inData = QUITK::XFloatTimeseriesToVector::New();
-	auto reorderFlips = itk::ReorderVectorFilter<XFloatVectorImage>::New();
-	auto reorderPhase = itk::ReorderVectorFilter<XFloatVectorImage>::New();
+	auto inFile = QI::ReadTimeseriesXF::New();
+	auto inData = QI::TimeseriesToVectorXF::New();
+	auto reorderFlips = QI::ReorderXF::New();
+	auto reorderPhase = QI::ReorderXF::New();
 
 	inFile->SetFileName(fname);
 	inData->SetInput(inFile->GetOutput());
@@ -460,8 +460,8 @@ int main(int argc, char **argv) {
 	pass1->SetInput(reorderPhase->GetOutput());
 	pass1->SetPhases(nPhases);
 	pass2->SetPhases(nPhases);
-	auto outImage = itk::VectorToImageFilter<complex<float>>::New();
-	auto outFile = itk::ImageFileWriter<itk::Image<complex<float>, 4>>::New();
+	auto outImage = QI::VectorToTimeseriesXF::New();
+	auto outFile = QI::WriteTimeseriesXF::New();
 	if (prefix == "")
 		prefix = fname.substr(0, fname.find(".nii"));
 	string outname = prefix;

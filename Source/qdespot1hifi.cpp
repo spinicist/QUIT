@@ -29,7 +29,7 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QUITK;
+using namespace QI;
 
 //******************************************************************************
 // Arguments / Usage
@@ -188,14 +188,14 @@ int main(int argc, char **argv) {
 	
 	if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
 	auto spgrFile = Reader4D::New();
-	auto spgrImg = itk::ImageToVectorFilter<QUITK::FloatTimeseries>::New();
+	auto spgrImg = itk::ImageToVectorFilter<QI::TimeseriesF>::New();
 	spgrFile->SetFileName(argv[optind++]);
 	spgrImg->SetInput(spgrFile->GetOutput());
 	auto spgrSequence = make_shared<SPGRSimple>(prompt);
 
 	if (verbose) cout << "Opening IR-SPGR file: " << argv[optind] << endl;
 	auto irFile = Reader4D::New();
-	auto irImg = itk::ImageToVectorFilter<QUITK::FloatTimeseries>::New();
+	auto irImg = itk::ImageToVectorFilter<QI::TimeseriesF>::New();
 	irFile->SetFileName(argv[optind++]);
 	irImg->SetInput(irFile->GetOutput());
 	shared_ptr<SteadyState> irSequence;
@@ -221,10 +221,10 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "HIFI_";
 
-	QUITK::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-	QUITK::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
-	QUITK::writeResult(apply->GetOutput(2), outPrefix + "B1.nii");
-	QUITK::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+	QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
+	QI::writeResult(apply->GetOutput(2), outPrefix + "B1.nii");
+	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;

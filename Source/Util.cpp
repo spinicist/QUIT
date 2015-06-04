@@ -2,7 +2,7 @@
  *  Util.cpp
  *  Part of the QUantitative Image Toolbox
  *
- *  Copyright (c) 2014 Tobias Wood. All rights reserved.
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace QUITK {
+namespace QI {
 
 const std::string &OutExt() {
 	static char *env_ext = getenv("QUIT_EXT");
@@ -87,26 +87,26 @@ mt19937_64::result_type RandomSeed() {
 	return r;
 }
 
-void writeResult(const itk::Image<float, 3>::Pointer img,
+void writeResult(const ImageF::Pointer img,
                  const string path) {
-	auto file = itk::ImageFileWriter<itk::Image<float, 3>>::New();
+	auto file = WriteImageF::New();
 	file->SetFileName(path);
 	file->SetInput(img);
 	file->Update();
 }
 
-void writeResiduals(const itk::VectorImage<float, 3>::Pointer img,
+void writeResiduals(const VectorImageF::Pointer img,
                     const string prefix,
                     const bool allResids) {
-	auto magFilter = itk::VectorMagnitudeImageFilter<itk::VectorImage<float, 3>, itk::Image<float, 3>>::New();
-	auto magFile = itk::ImageFileWriter<itk::Image<float, 3>>::New();
+	auto magFilter = itk::VectorMagnitudeImageFilter<VectorImageF, ImageF>::New();
+	auto magFile = WriteImageF::New();
 	magFilter->SetInput(img);
 	magFile->SetInput(magFilter->GetOutput());
 	magFile->SetFileName(prefix + "residual.nii");
 	magFile->Update();
 	if (allResids) {
-		auto to4D = itk::VectorToImageFilter<float>::New();
-		auto allFile = itk::ImageFileWriter<itk::Image<float, 4>>::New();
+		auto to4D = QI::VectorToTimeseriesF::New();
+		auto allFile = QI::WriteTimeseriesF::New();
 		to4D->SetInput(img);
 		allFile->SetInput(to4D->GetOutput());
 		allFile->SetFileName(prefix + "residuals.nii");

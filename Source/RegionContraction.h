@@ -88,7 +88,7 @@ class RegionContraction {
 			eigen_assert((thresh >= 0.).all() && (thresh <= 1.).all());
 
 			if (seed < 0) {
-				m_rng = mt19937_64(QUITK::RandomSeed());
+				m_rng = mt19937_64(QI::RandomSeed());
 			} else {
 				m_rng = mt19937_64(seed);
 			}
