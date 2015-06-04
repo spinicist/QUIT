@@ -29,13 +29,16 @@ add_custom_target(quitk_templ SOURCES Source/Filters/ImageToVectorFilter.h Sourc
                                       Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
                                       Source/RegionContraction.h)
 
-set(PROGRAMS despot1 despot1hifi despot2 mcsignal ssfpgs despot2fm qinewimg qcomplex)
+set(PROGRAMS despot1 despot1hifi despot2 mcsignal ssfpgs despot2fm
+             qmcdespot
+             qinewimg qcomplex)
+
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
 	target_link_libraries(${PROGRAM} quitk_core ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
-set(TESTS test_common.sh test_scdespot.sh test_all.sh)
+set(TESTS test_common.sh test_scdespot.sh test_mcdespot.sh test_all.sh)
 foreach(TEST ${TESTS})
 	configure_file(Test/${TEST} Test/${TEST} COPYONLY)
 endforeach(TEST)
