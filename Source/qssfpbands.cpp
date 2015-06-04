@@ -23,7 +23,7 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QUITK;
+using namespace QI;
 
 //******************************************************************************
 // Arguments / Usage
@@ -439,8 +439,8 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
 	string fname(argv[optind++]);
 
-	auto inFile = QUITK::ReadXFloatTimeseries::New();
-	auto inData = QUITK::XFloatTimeseriesToVector::New();
+	auto inFile = QI::ReadXFloatTimeseries::New();
+	auto inData = QI::XFloatTimeseriesToVector::New();
 	auto reorderFlips = itk::ReorderVectorFilter<XFloatVectorImage>::New();
 	auto reorderPhase = itk::ReorderVectorFilter<XFloatVectorImage>::New();
 

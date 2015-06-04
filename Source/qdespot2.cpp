@@ -23,7 +23,7 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QUITK;
+using namespace QI;
 
 //******************************************************************************
 // Algorithm Subclass
@@ -324,11 +324,11 @@ int main(int argc, char **argv) {
 	time_t startTime;
 	if (verbose) {
 		cout << "DESPOT2 setup complete. Processing." << endl;
-		startTime = QUITK::printStartTime();
+		startTime = QI::printStartTime();
 	}
 	DESPOT2->Update();
 	if (verbose) {
-		QUITK::printElapsedTime(startTime);
+		QI::printElapsedTime(startTime);
 		cout << "Writing results." << endl;
 	}
 	outPrefix = outPrefix + "D2_";

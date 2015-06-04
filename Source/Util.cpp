@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace QUITK {
+namespace QI {
 
 const std::string &OutExt() {
 	static char *env_ext = getenv("QUIT_EXT");

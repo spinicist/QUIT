@@ -29,7 +29,7 @@
 #include "Filters/VectorToImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
 
-namespace QUITK {
+namespace QI {
 
 typedef itk::Image<float, 3> FloatImage;
 typedef itk::VectorImage<float, 3> FloatVectorImage;
