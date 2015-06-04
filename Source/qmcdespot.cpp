@@ -1,8 +1,8 @@
 /*
- *  mcdespot_main.cpp
+ *  qmcdespot.cpp
  *
- *  Created by Tobias Wood on 14/02/2012.
- *  Copyright (c) 2012-2013 Tobias Wood.
+ *  Created by Tobias Wood on 03/06/2015.
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,7 +11,6 @@
  */
 
 #include <iostream>
-#include <atomic>
 #include <getopt.h>
 #include <time.h>
 #include <fstream>
@@ -19,15 +18,15 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
-#include "Nifti/Nifti.h"
-#include "QUIT/QUIT.h"
-#include "Models.h"
+#include "Util.h"
+#include "Filters/ApplyAlgorithmFilter.h"
+#include "Filters/ReorderVectorFilter.h"
+#include "Model.h"
 #include "Sequence.h"
 #include "RegionContraction.h"
 
 using namespace std;
 using namespace Eigen;
-using namespace QUIT;
 
 //******************************************************************************
 // Arguments / Usage
@@ -60,19 +59,15 @@ Options:\n\
 	            u     : User specified boundaries from stdin\n\
 	--sequences, -M s : Use simple sequences (default)\n\
 	            f     : Use Finite Pulse Length correction\n\
-	--complex, -x     : Fit to complex data\n\
 	--contract, -c n  : Read contraction settings from stdin (Will prompt)\n\
 	--resids, -r      : Write out per flip-angle residuals\n\
 	--threads, -T N   : Use N threads (default=hardware limit)\n"
 };
 
-static shared_ptr<Model> model = make_shared<MCD3>();
 static auto tesla = FieldStrength::Three;
 static size_t start_slice = 0, stop_slice = numeric_limits<size_t>::max();
 static int verbose = false, prompt = true, all_residuals = false,
-           fitFinite = false, fitComplex = false, flipData = false,
-           gauss = false, samples = 5000, retain = 50, contract = 10,
-           voxI = 0, voxJ = 0;
+           fitFinite = false, flipData = false;
 static double expand = 0., scaling = 0.;
 static string outPrefix;
 static const struct option long_options[] = {
@@ -89,7 +84,7 @@ static const struct option long_options[] = {
 	{"flip", required_argument, 0, 'F'},
 	{"tesla", required_argument, 0, 't'},
 	{"sequences", no_argument, 0, 'M'},
-	{"complex", no_argument, 0, 'x'},
+	/*{"complex", no_argument, 0, 'x'},*/
 	{"contract", no_argument, 0, 'c'},
 	{"resids", no_argument, 0, 'r'},
 	{"threads", required_argument, 0, 'T'},
@@ -99,71 +94,65 @@ static const struct option long_options[] = {
 	{"3", no_argument, 0, '3'},
 	{0, 0, 0, 0}
 };
-static const char* short_options = "hvm:o:f:b:s:p:S:gt:FT:M:xcrn123i:j:";
+static const char* short_options = "hvm:o:f:b:s:p:S:gt:FT:M:crn123i:j:";
 
-//******************************************************************************
-#pragma mark Read in all required files and data from cin
-//******************************************************************************
-Nifti::Header parseInput(SequenceGroup &seq, vector<MultiArray<complex<float>, 4>> &signalVols, Array2d &f0Bandwidth);
-Nifti::Header parseInput(SequenceGroup &seq, vector<MultiArray<complex<float>, 4>> &signalVols, Array2d &f0Bandwidth)
+/*
+ * Read in all required files and data from cin
+ */
+void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QUITK::ReadFloatTimeseries::Pointer> &files, vector<typename QUITK::FloatTimeseriesToVector::Pointer> &data, vector<typename itk::ReorderVectorFilter<QUITK::FloatVectorImage>::Pointer> &order, Array2d &f0Bandwidth, bool flip);
+void parseInput(shared_ptr<SequenceGroup> seq,
+                vector<typename QUITK::ReadFloatTimeseries::Pointer> &files,
+                vector<typename QUITK::FloatTimeseriesToVector::Pointer> &data,
+                vector<typename itk::ReorderVectorFilter<QUITK::FloatVectorImage>::Pointer> &order,
+                Array2d &f0Bandwidth, bool flip)
 {
-	Nifti::Header hdr;
 	string type, path;
 	if (prompt) cout << "Specify next image type (SPGR/SSFP): " << flush;
 	f0Bandwidth = Array2d::Zero();
-	while (Read(cin, type) && (type != "END") && (type != "")) {
+	while (QUITK::Read(cin, type) && (type != "END") && (type != "")) {
 		if (type != "SPGR" && type != "SSFP") {
 			throw(std::runtime_error("Unknown signal type: " + type));
 		}
 		if (prompt) cout << "Enter image path: " << flush;
-		Read(cin, path);
-		Nifti::File inFile(path);
-		if (signalVols.size() == 0) {
-			hdr = inFile.header(); // Save header info for later
-		} else {
-			checkHeaders(hdr, {inFile});
-		}
-		if (verbose) cout << "Opened: " << inFile.imagePath() << endl;
-		Agilent::ProcPar pp; ReadPP(inFile, pp);
+		QUITK::Read(cin, path);
+		files.push_back(QUITK::ReadFloatTimeseries::New());
+		files.back()->SetFileName(path);
+		data.push_back(QUITK::FloatTimeseriesToVector::New());
+		data.back()->SetInput(files.back()->GetOutput());
+		order.push_back(itk::ReorderVectorFilter<QUITK::FloatVectorImage>::New());
+		order.back()->SetInput(data.back()->GetOutput());
+		if (verbose) cout << "Opened: " << path << endl;
 		if ((type == "SPGR") && !fitFinite) {
-			seq.addSequence(make_shared<SPGRSimple>(prompt, pp));
+			seq->addSequence(make_shared<SPGRSimple>(prompt));
 		} else if ((type == "SPGR" && fitFinite)) {
-			seq.addSequence(make_shared<SPGRFinite>(prompt, pp));
+			seq->addSequence(make_shared<SPGRFinite>(prompt));
 		} else if ((type == "SSFP" && !fitFinite)) {
-			auto s = make_shared<SSFPSimple>(prompt, pp);
+			auto s = make_shared<SSFPSimple>(prompt);
 			f0Bandwidth = s->bandwidth();
-			seq.addSequence(s);
+			seq->addSequence(s);
+			if (flip)
+				order.back()->SetStride(s->phases());
 		} else if ((type == "SSFP" && fitFinite)) {
-			auto s = make_shared<SSFPFinite>(prompt, pp);
+			auto s = make_shared<SSFPFinite>(prompt);
 			f0Bandwidth = s->bandwidth();
-			seq.addSequence(s);
+			seq->addSequence(s);
+			if (flip)
+				order.back()->SetStride(s->phases());
 		}
-		if (seq.sequence(seq.count() - 1)->size() != inFile.dim(4)) {
-			throw(std::runtime_error("Number of volumes in file " + inFile.imagePath() + " does not match input."));
-		}
-		MultiArray<complex<float>, 4> inData(inFile.dims().head(4));
-		if (verbose) cout << "Reading data..." << flush;
-		inFile.readVolumes(inData.begin(), inData.end());
-		signalVols.push_back(inData);
-		inFile.close();
-		if (verbose) cout << "done." << endl;
 		// Print message ready for next loop
 		if (prompt) cout << "Specify next image type (SPGR/SSFP, END to finish input): " << flush;
 	}
-	return hdr;
 }
 
 class MCDFunctor : public DenseFunctor<double> {
 	public:
-		const SequenceBase &m_sequence;
-		const ArrayXcd &m_data;
-		const bool m_complex, m_debug;
+		const shared_ptr<SequenceBase> m_sequence;
+		const ArrayXd m_data;
 		const shared_ptr<Model> m_model;
 
-		MCDFunctor(SequenceBase &s, const ArrayXcd &d, shared_ptr<Model> m,
-		           const bool fitComplex, const bool debug = false) :
-			DenseFunctor<double>(m->nParameters(), s.size()),
-			m_sequence(s), m_data(d), m_model(m), m_complex(fitComplex), m_debug(debug)
+		MCDFunctor(shared_ptr<Model> m,shared_ptr<SequenceBase> s, const ArrayXd &d) :
+			DenseFunctor<double>(m->nParameters(), s->size()),
+			m_sequence(s), m_data(d), m_model(m)
 		{
 			assert(static_cast<size_t>(m_data.rows()) == values());
 		}
@@ -174,20 +163,74 @@ class MCDFunctor : public DenseFunctor<double> {
 
 		int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
 			eigen_assert(diffs.size() == values());
-			ArrayXcd s = m_sequence.signal(m_model, params);
-			if (m_complex) {
-				diffs = (s - m_data).abs();
-			} else {
-				diffs = s.abs() - m_data.abs();
-			}
-			if (m_debug) {
-				cout << endl << __PRETTY_FUNCTION__ << endl;
-				cout << "p:     " << params.transpose() << endl;
-				cout << "s:     " << s.transpose() << endl;
-				cout << "data:  " << m_data.transpose() << endl;
-				cout << "diffs: " << diffs.transpose() << endl;
-			}
+			ArrayXcd s = m_sequence->signal(m_model, params);
+			diffs = s.abs() - m_data;
 			return 0;
+		}
+};
+
+class MCDAlgo : public Algorithm<double> {
+	private:
+		size_t m_samples = 5000, m_retain = 50, m_contractions = 10;
+		bool m_gauss = false;
+		ArrayXXd m_bounds;
+		shared_ptr<Model> m_model = nullptr;
+
+	public:
+		void setModel(shared_ptr<Model> &m) { m_model = m; }
+		void setSamples(size_t s) { m_samples = s; }
+		void setRetain(size_t r) { m_retain = r; }
+		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
+		void setScaling(Model::Scale s) { m_model->setScaling(s); }
+		void setBounds(ArrayXXd b) { m_bounds = b; }
+		void setGauss(bool g) { m_gauss = g; }
+
+		size_t numConsts() const override { return 2; }
+		size_t numOutputs() const override { return m_model->nParameters(); }
+
+		virtual VectorXd defaultConsts() {
+			// f0, B1
+			VectorXd def = VectorXd::Ones(2);
+			def[0] = NAN;
+			return def;
+		}
+
+		virtual void apply(const shared_ptr<SequenceBase> sequence,
+		                   const VectorXd &data,
+		                   const VectorXd &inputs,
+		                   VectorXd &outputs,
+		                   ArrayXd &resids) const override
+		{
+			ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
+			ArrayXd weights = ArrayXd::Ones(sequence->size());
+			double f0 = inputs[0];
+			double B1 = inputs[1];
+			ArrayXXd localBounds = m_bounds;
+			if (!std::isnan(f0))
+				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
+			if (m_model->scaling() == Model::Scale::None) {
+				if (scaling == 0.) {
+					localBounds(0, 0) = 0.;
+					localBounds(0, 1) = data.array().maxCoeff() * 25;
+				} else {
+					localBounds.row(0).setConstant(scaling);
+				}
+			}
+			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
+			//cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
+			//cout << bounds << endl;
+			//cout << "data " << data.transpose() << endl;
+			//cout << "f0 " << f0 << " B1 " << B1 << endl;
+			//cout << "lb" << endl << localBounds.transpose() << endl;
+			//cout << "data " << data.transpose() << endl;
+			MCDFunctor func(m_model, sequence, data);
+			//cout << "data " << data.transpose() << endl;
+			RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
+			                                m_samples, m_retain, m_contractions, 0., true, false);
+			//cout << "data " << data.transpose() << endl;
+			rc.optimise(outputs);
+			//cout << "outputs " << outputs.transpose() << endl;
+			resids = rc.residuals();
 		}
 };
 
@@ -195,14 +238,11 @@ class MCDFunctor : public DenseFunctor<double> {
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	try { // To fix uncaught exceptions on Mac
-	cout << version << endl << credit_me << endl;
 	Eigen::initParallel();
-	Nifti::File maskFile, f0File, B1File;
-	MultiArray<int8_t, 3> maskVol;
-	MultiArray<float, 3> f0Vol, B1Vol;
-	ThreadPool threads;
-
+	QUITK::ReadFloatImage::Pointer mask, B1, f0 = ITK_NULLPTR;
+	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
+	shared_ptr<Model> model;
+	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -211,27 +251,32 @@ int main(int argc, char **argv) {
 			case '1': model = make_shared<SCD>(); break;
 			case '2': model = make_shared<MCD2>(); break;
 			case '3': model = make_shared<MCD3>(); break;
+			default:
+				break;
+		}
+	}
+	// Now reset and do a second pass
+	optind = 1;
+	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+		switch (c) {
 			case 'm':
-				cout << "Reading mask file " << optarg << endl;
-				maskFile.open(optarg, Nifti::Mode::Read);
-				maskVol.resize(maskFile.matrix());
-				maskFile.readVolumes(maskVol.begin(), maskVol.end(), 0, 1);
+				if (verbose) cout << "Reading mask file " << optarg << endl;
+				mask = QUITK::ReadFloatImage::New();
+				mask->SetFileName(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
-				cout << "Output prefix will be: " << outPrefix << endl;
+				if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
 				break;
 			case 'f':
-				cout << "Reading f0 file: " << optarg << endl;
-				f0File.open(optarg, Nifti::Mode::Read);
-				f0Vol.resize(f0File.matrix());
-				f0File.readVolumes(f0Vol.begin(), f0Vol.end(), 0, 1);
+				if (verbose) cout << "Reading f0 file: " << optarg << endl;
+				f0 = QUITK::ReadFloatImage::New();
+				f0->SetFileName(optarg);
 				break;
 			case 'b':
-				cout << "Reading B1 file: " << optarg << endl;
-				B1File.open(optarg, Nifti::Mode::Read);
-				B1Vol.resize(B1File.matrix());
-				B1File.readVolumes(B1Vol.begin(), B1Vol.end(), 0, 1);
+				if (verbose) cout << "Reading B1 file: " << optarg << endl;
+				B1 = QUITK::ReadFloatImage::New();
+				B1->SetFileName(optarg);
 				break;
 			case 's': start_slice = atoi(optarg); break;
 			case 'p': stop_slice = atoi(optarg); break;
@@ -249,22 +294,16 @@ int main(int argc, char **argv) {
 					scaling = atof(optarg);
 				}
 			} break;
-			case 'g':
-				gauss = true;
-				break;
-			case 'F':
-				flipData = true;
-				break;
-			case 'T':
-				threads.resize(atoi(optarg));
-				break;
+			case 'g': mcd->setGauss(true); break;
+			case 'F': flipData = true; break;
+			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break; break;
 			case 't':
 				switch (*optarg) {
 					case '3': tesla = FieldStrength::Three; break;
 					case '7': tesla = FieldStrength::Seven; break;
 					case 'u': tesla = FieldStrength::User; break;
 					default:
-						cout << "Unknown boundaries type " << *optarg << endl;
+						cerr << "Unknown boundaries type " << *optarg << endl;
 						return EXIT_FAILURE;
 						break;
 			} break;
@@ -277,22 +316,15 @@ int main(int argc, char **argv) {
 						return EXIT_FAILURE;
 						break;
 			} break;
-			case 'x':
-				fitComplex = true;
-				break;
-			case 'c':
-				cout << "Enter max number of contractions: " << flush; cin >> contract;
-				cout << "Enter number of samples per contraction: " << flush; cin >> samples;
-				cout << "Enter number of samples to retain: " << flush; cin >> retain;
-				cout << "Enter fraction to expand region by: " << flush; cin >> expand;
-				{ string dummy; getline(cin, dummy); } // Eat newlines
-				break;
+			case 'c': {
+				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
+				ArrayXi in = ArrayXi::Zero(3);
+				QUITK::ReadEigen(cin, in);
+				mcd->setRCPars(in[0], in[1], in[2]);
+			} break;
 			case 'r': all_residuals = true; break;
-			case 'i': voxI = atoi(optarg); break;
-			case 'j': voxJ = atoi(optarg); break;
 			case 'h':
 			case '?': // getopt will print an error message
-			default:
 				cout << usage << endl;
 				return EXIT_FAILURE;
 		}
@@ -302,24 +334,15 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	//**************************************************************************
-	#pragma mark  Read input and set up corresponding SPGR & SSFP lists
-	//**************************************************************************
-	SequenceGroup sequences;
+	shared_ptr<SequenceGroup> sequences = make_shared<SequenceGroup>();
 	Array2d f0Bandwidth;
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
-	vector<MultiArray<complex<float>, 4>> signalVols;
-	Nifti::Header hdr = parseInput(sequences, signalVols, f0Bandwidth);
-	checkHeaders(hdr, {maskFile, f0File, B1File});
-	//**************************************************************************
-	#pragma mark Allocate memory and set up boundaries.
-	//**************************************************************************
-	MultiArray<float, 4> paramsVols(hdr.matrix(), model->nParameters());
-	MultiArray<float, 4> ResidsVols(hdr.matrix(), sequences.size());;
-	MultiArray<float, 3> ResVol(hdr.matrix());
-	
-	ArrayXd threshes(model->nParameters()); threshes.setConstant(0.05);
+	vector<QUITK::ReadFloatTimeseries::Pointer> inFiles;
+	vector<QUITK::FloatTimeseriesToVector::Pointer> inData;
+	vector<itk::ReorderVectorFilter<QUITK::FloatVectorImage>::Pointer> inOrder;
+	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, flipData);
+
 	ArrayXXd bounds = model->Bounds(tesla, 0);
 	if (tesla == FieldStrength::User) {
 		if (prompt) cout << "Enter parameter pairs (low then high)" << endl;
@@ -329,9 +352,10 @@ int main(int argc, char **argv) {
 		}
 	}
 	bounds.row(model->nParameters() - 2) = f0Bandwidth;
-	ArrayXd weights(sequences.size()); weights.setOnes();
+	mcd->setModel(model);
+	mcd->setBounds(bounds);
 	if (verbose) {
-		cout << sequences;
+		cout << *sequences;
 		cout << "Bounds:" << endl <<  bounds.transpose() << endl;
 		ofstream boundsFile(outPrefix + "bounds.txt");
 		for (size_t p = 0; p < model->nParameters(); p++) {
@@ -340,105 +364,30 @@ int main(int argc, char **argv) {
 		boundsFile.close();
 	}
 	
-	//**************************************************************************
-	#pragma mark Do the fitting
-	//**************************************************************************
-	if (stop_slice > hdr.dim(3))
-		stop_slice = hdr.dim(3);
-    time_t procStart = time(NULL);
-	char theTime[512];
-	strftime(theTime, 512, "%H:%M:%S", localtime(&procStart));
-	cout << "Started processing at " << theTime << endl;
-	for (size_t k = start_slice; k < stop_slice; k++) {
-		if (verbose) cout << "Processing slice " << k << "..." << flush;
-		atomic<int> voxCount{0};
-		clock_t loopStart = clock();
+	auto apply = itk::ApplyAlgorithmFilter<float, MCDAlgo>::New();
+	apply->SetSequence(sequences);
+	apply->SetAlgorithm(mcd);
+	apply->Setup();
+	for (int i = 0; i < inOrder.size(); i++) {
+		apply->SetDataInput(i, inOrder.at(i)->GetOutput());
+	}
+	if (f0)
+		apply->SetConstInput(0, f0->GetOutput());
+	if (B1)
+		apply->SetConstInput(1, B1->GetOutput());
+	if (mask)
+		apply->SetMask(mask->GetOutput());
 
-		function<void (const size_t, const size_t)>
-		processVox = [&] (const size_t i, const size_t j) {
-			if (!maskFile || maskVol[{i,j,k}]) {
-				ArrayXcd signal = sequences.loadSignals(signalVols, i, j, k, flipData);
-				double B1 = B1File ? B1Vol[{i,j,k}] : 1.;
-				ArrayXXd localBounds = bounds;
-				if (f0File) {
-					localBounds.row(model->nParameters() - 2).setConstant(f0Vol[{i,j,k}]);
-				}
-				localBounds.row(model->nParameters() - 1).setConstant(B1);
-				if (model->scaling() == Model::Scale::None) {
-					if (scaling == 0.) {
-						localBounds(0, 0) = 0.;
-						localBounds(0, 1) = signal.abs().maxCoeff() * 25;
-					} else {
-						localBounds.row(0).setConstant(scaling);
-					}
-				}
-				MCDFunctor func(sequences, signal, model, fitComplex, false);
-				RegionContraction<MCDFunctor> rc(func, localBounds, weights, threshes,
-													samples, retain, contract, expand, gauss, (voxI != 0));
-				ArrayXd params(model->nParameters());
-				rc.optimise(params); // Add the voxel number to the time to get a decent random seed
-				paramsVols.slice<1>({i,j,k,0},{0,0,0,-1}).asArray() = params.cast<float>();
-				ResidsVols.slice<1>({i,j,k,0},{0,0,0,-1}).asArray() = rc.residuals().cast<float>();
-				ResVol[{i,j,k}] = static_cast<float>(rc.SoS());
-				if ((rc.status() == RCStatus::Converged) || (rc.status() == RCStatus::IterationLimit)) {
-					voxCount++;
-				}
-			}
-		};
-		if (voxI == 0) {
-			threads.for_loop2(processVox, hdr.dim(1), hdr.dim(2));
-			if (threads.interrupted())
-				break;
-		} else {
-			processVox(voxI, voxJ);
-			return EXIT_SUCCESS;
-		}
-		if (verbose) {
-			clock_t loopEnd = clock();
-			if (voxCount > 0)
-				cout << voxCount << " unmasked voxels, CPU time per voxel was "
-				          << ((loopEnd - loopStart) / ((float)voxCount * CLOCKS_PER_SEC)) << " s, ";
-			cout << "finished." << endl;
-		}
-		if (threads.interrupted())
-			break;
-	}
-	time_t procEnd = time(NULL);
-	strftime(theTime, 512, "%H:%M:%S", localtime(&procEnd));
-	cout << "Finished processing at " << theTime << ". Run-time was " 
-		 << difftime(procEnd, procStart) << " s." << endl;
-	// Residuals can only be written here if we want them to go in a 4D gzipped file
+	time_t startTime;
+	if (verbose) startTime = QUITK::printStartTime();
+	apply->Update();
+	QUITK::printElapsedTime(startTime);
+
 	outPrefix = outPrefix + model->Name() + "_";
-	hdr.setDim(4, 1);
-	hdr.setDatatype(Nifti::DataType::FLOAT32);
-	hdr.description = version;
-	hdr.intent = Nifti::Intent::Estimate;
-	size_t start = (model->scaling() == Model::Scale::None) ? 0 : 1; // Skip PD
-	size_t end = model->nParameters() - 1; // Skip B1 for now
-	for (size_t p = start; p < end; p++) {
-		hdr.intent_name = model->Names().at(p);
-		Nifti::File file(hdr, outPrefix + model->Names().at(p) + "" + OutExt());
-		auto param = paramsVols.slice<3>({0,0,0,p},{-1,-1,-1,0});
-		file.writeVolumes(param.begin(), param.end());
-		file.close();
+	for (int i = 0; i < model->nParameters(); i++) {
+		QUITK::writeResult(apply->GetOutput(i), outPrefix + model->Names()[i] + QUITK::OutExt());
 	}
-	hdr.intent_name = "Fractional Residual";
-	Nifti::File SoS(hdr, outPrefix + "residual" + OutExt());
-	SoS.writeVolumes(ResVol.begin(), ResVol.end());
-	SoS.close();
-	if (all_residuals) {
-		hdr.setDim(4, static_cast<int>(sequences.size()));
-		hdr.intent_name = "Residuals";
-		Nifti::File res(hdr, outPrefix + "residuals" + OutExt());
-		res.writeVolumes(ResidsVols.begin(), ResidsVols.end());
-		res.close();
-	}
-	cout << "Finished writing data." << endl;
-	
-	} catch (exception &e) {
-		cerr << e.what() << endl;
-		return EXIT_FAILURE;
-	}
+	QUITK::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 	return EXIT_SUCCESS;
 }
 
