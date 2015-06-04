@@ -56,7 +56,7 @@ function compare_test {
 			exit 1
 		fi
 		# Now do the tolerance test
-		TEST=$(echo "$ABSMEAN $TOL" | awk ' { if(strtonum($1)<=strtonum($2)) { print 1 } else { print 0 }}')
+		TEST=$(echo "$ABSMEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
 		if [ "$TEST" -eq "1" ]; then
 			echo "Comparison test $NAME passed, mean diff was $ABSMEAN tolerance $TOL (std was $STD)"
 		else

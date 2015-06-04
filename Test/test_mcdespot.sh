@@ -8,7 +8,7 @@
 # First, create input data
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
 DATADIR="mcdespot"
 rm -rf $DATADIR
