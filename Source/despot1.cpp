@@ -2,8 +2,8 @@
  *  despot1.cpp
  *  Part of quitk
  *
- *  Created by Tobias Wood on 12/01/2015.
- *  Copyright (c) 2011-2013 Tobias Wood.
+ *  Created by Tobias Wood on 2015/01/12
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -198,11 +198,11 @@ int main(int argc, char **argv) {
 				break;
 			case 'a':
 				switch (*optarg) {
-					case 'l': algo->setType(DESPOT1::Type::LLS);  cout << "LLS algorithm selected." << endl; break;
-					case 'w': algo->setType(DESPOT1::Type::WLLS); cout << "WLLS algorithm selected." << endl; break;
-					case 'n': algo->setType(DESPOT1::Type::NLLS); cout << "NLLS algorithm selected." << endl; break;
+					case 'l': algo->setType(DESPOT1::Type::LLS);  if (verbose) cout << "LLS algorithm selected." << endl; break;
+					case 'w': algo->setType(DESPOT1::Type::WLLS); if (verbose) cout << "WLLS algorithm selected." << endl; break;
+					case 'n': algo->setType(DESPOT1::Type::NLLS); if (verbose) cout << "NLLS algorithm selected." << endl; break;
 					default:
-						cout << "Unknown algorithm type " << optarg << endl;
+						cerr << "Unknown algorithm type " << optarg << endl;
 						return EXIT_FAILURE;
 						break;
 				} break;
