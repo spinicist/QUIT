@@ -48,7 +48,7 @@ void ApplyAlgorithmFilter<TData, TAlgo>::SetConstInput(const size_t i, const TIm
 	if (i < m_algorithm->numConsts()) {
 		this->SetNthInput(m_sequence->count() + 1 + i, const_cast<TImage*>(image));
 	} else {
-		throw(runtime_error("Const input out of range"));
+		throw(runtime_error("ConstInput " + to_string(i) + " out of range (there are " + to_string(m_algorithm->numConsts()) + " inputs)"));
 	}
 }
 
