@@ -49,7 +49,14 @@ function compare_test {
 		MEAN=$( fslstats $DIFF -M )
 		STD=$( fslstats $DIFF -s )
 		ABSMEAN=$(echo $MEAN | awk ' { print sqrt($1*$1) } ' )
-		TEST=$(echo "$ABSMEAN $TOL" | awk ' { if($1<=$2) { print 1 } else { print 0 }}')
+		# Check for nan/inf/etc. because on some platforms awk will treat these as 0
+		REGEXP='^-?[0-9]+([.][0-9]+)?$'
+		if ! [[ $ABSMEAN =~ $REGEXP ]] ; then
+			echo "Comparison test $NAME failed, mean diff is not a valid number"
+			exit 1
+		fi
+		# Now do the tolerance test
+		TEST=$(echo "$ABSMEAN $TOL" | awk ' { if(strtonum($1)<=strtonum($2)) { print 1 } else { print 0 }}')
 		if [ "$TEST" -eq "1" ]; then
 			echo "Comparison test $NAME passed, mean diff was $ABSMEAN tolerance $TOL (std was $STD)"
 		else
