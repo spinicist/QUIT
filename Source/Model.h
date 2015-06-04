@@ -1,7 +1,7 @@
 /*
- *  Models.h
+ *  Model.h
  *
- *  Created by Tobias Wood on 12/03/2015.
+ *  Created by Tobias Wood on 2015/03/12.
  *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
@@ -10,8 +10,8 @@
  *
  */
 
-#ifndef MODELS_H
-#define MODELS_H
+#ifndef MODEL_H
+#define MODEL_H
 
 #include <string>
 #include <vector>
@@ -52,6 +52,7 @@ public:
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const;
 	virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const;
+	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const;
 	virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const;
 	virtual VectorXcd SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const;
 	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const;
@@ -73,6 +74,7 @@ class SCD : public Model {
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
 	virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const override;
+	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
 	virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const override;
 	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const override;
 	virtual VectorXcd SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const;
@@ -106,4 +108,4 @@ class MCD3 : public Model {
 };*/
 
 #undef DECLARE_INTERFACE
-#endif // MODELS_H
+#endif // MODEL_H

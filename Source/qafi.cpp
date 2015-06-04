@@ -43,7 +43,7 @@ static struct option long_options[] = {
 	{"ratio",   required_argument, 0, 'r'},
 	{0, 0, 0, 0}
 };
-static const char *short_options = "vm:o:f:r:";
+static const char *short_options = "vm:o:f:r:T:";
 
 template<class TPixel> class AFI {
 public:
@@ -68,7 +68,7 @@ public:
 
 int main(int argc, char **argv) {
 	int indexptr = 0, c;
-	string outPrefix = "";
+	string outPrefix = "AFI_";
 	bool verbose = false;
 	double n = 5., nomFlip = 55.;
 	QI::ReadImageF::Pointer maskFile = ITK_NULLPTR;
@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
 				break;
 			case 'f': nomFlip = atof(optarg); break;
 			case 'r': n = atof(optarg); break;
+			case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
 			case '?': // getopt will print an error message
 			default:
 				cout << usage << endl;
@@ -99,12 +100,11 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file " << argv[optind] << endl;
 	auto inFile = QI::ReadTimeseriesF::New();
 	inFile->SetFileName(argv[optind]);
+	inFile->Update();
 	if (verbose) {
 		cout << "Nominal flip-angle is " << nomFlip << " degrees." << endl;
 		cout << "TR2:TR1 ratio is " << n << endl;
 	}
-	nomFlip = nomFlip * M_PI / 180.;
-
 	auto volume1 = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
 	auto volume2 = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
 	auto region = inFile->GetOutput()->GetLargestPossibleRegion();
@@ -119,14 +119,15 @@ int main(int argc, char **argv) {
 	volume2->SetDirectionCollapseToSubmatrix();
 
 	auto imageRatio = itk::DivideImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
-	imageRatio->SetInput(0, volume1->GetOutput());
-	imageRatio->SetInput(1, volume2->GetOutput());
+	imageRatio->SetInput(0, volume2->GetOutput());
+	imageRatio->SetInput(1, volume1->GetOutput());
 	auto afi = itk::BinaryFunctorImageFilter<QI::ImageF, QI::ImageF, QI::ImageF, AFI<float>>::New();
 	afi->SetInput1(imageRatio->GetOutput());
 	afi->SetConstant2(n);
 	auto B1 = itk::DivideImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
 	B1->SetInput1(afi->GetOutput());
 	B1->SetConstant2(nomFlip);
+	B1->Update();
 	QI::writeResult(afi->GetOutput(), outPrefix + "angle" + QI::OutExt());
 	QI::writeResult(B1->GetOutput(),  outPrefix + "B1" + QI::OutExt());
 	if (verbose) cout << "Finished." << endl;

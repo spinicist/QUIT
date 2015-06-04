@@ -37,6 +37,7 @@ VectorXcd Model::MultiEcho(cvecd &, carrd &) const { throw(logic_error(std::stri
 VectorXcd Model::SPGR(cvecd &params, carrd &a, cdbl TR) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
@@ -85,6 +86,10 @@ VectorXcd SCD::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const 
 
 VectorXcd SCD::MPRAGE(cvecd &p, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const {
 	return scale(MP_RAGE(a, TR, N, TI, TD, p[0], p[1], p[4]));
+}
+
+VectorXcd SCD::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const {
+	return scale(One_AFI(a, TR1, TR2, p[0], p[1], p[4]));
 }
 
 VectorXcd SCD::SSFP(cvecd &p, carrd &a, cdbl TR, cdbl phi) const {

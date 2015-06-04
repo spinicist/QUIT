@@ -232,6 +232,8 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 			cs.push_back(make_shared<IRSPGR>(prompt));
 		} else if (type == "MPRAGE") {
 			cs.push_back(make_shared<MPRAGE>(prompt));
+		} else if (type == "AFI") {
+			cs.push_back(make_shared<AFI>(prompt));
 		} else if (type == "SPINECHO") {
 			cs.push_back(make_shared<MultiEcho>(prompt));
 		} else {
@@ -289,9 +291,7 @@ int main(int argc, char **argv)
 						break;
 				}
 				break;
-			case 'T':
-				itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg));
-				break;
+			case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
 			case 'h':
 			case '?': // getopt will print an error message
 			default:

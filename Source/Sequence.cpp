@@ -262,6 +262,28 @@ ArrayXcd SSFPEllipse::signal(shared_ptr<Model> m, const VectorXd &p) const {
 	return m->SSFPEllipse(p, m_flip, m_TR);
 }
 
+AFI::AFI(const bool prompt) : SteadyState() {
+	if (prompt) cout << "Enter flip-angle (degrees): " << flush;
+	double inFlip;
+	QI::Read(cin, inFlip);
+	m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
+	if (prompt) cout << "Enter TR1 & TR2 (seconds): " << flush;
+	ArrayXd temp;
+	QI::ReadArray(cin, temp);
+	if (temp.rows() != 2)
+		throw(runtime_error("Must enter 2 TR values."));
+	m_TR1 = temp[0]; m_TR2 = temp[1];
+}
+
+void AFI::write(ostream &os) const {
+	os << name() << endl;
+	os << "TR1: " << m_TR1 << " TR2: " << m_TR2 << endl;
+	os << "Angle: " << (m_flip * 180. / M_PI).transpose() << endl;
+}
+
+ArrayXcd AFI::signal(shared_ptr<Model> m, const VectorXd &p) const {
+	return m->AFI(p, m_flip[0], m_TR1, m_TR2);
+}
 /******************************************************************************
  * SequenceGroup Class
  *****************************************************************************/

@@ -222,6 +222,17 @@ VectorXcd MP_RAGE(cdbl flip, cdbl TR, const int N, carrd &TI, cdbl TD,
 	return M;
 }
 
+VectorXcd One_AFI(cdbl flip, cdbl TR1, cdbl TR2, cdbl PD, cdbl T1, cdbl B1) {
+	VectorXcd M = VectorXcd::Zero(2);
+	const double E1 = exp(-TR1 / T1);
+	const double E2 = exp(-TR2 / T1);
+	const double s = sin(B1 * flip);
+	const double c = cos(B1 * flip);
+	M.real()[0] = PD * s * (1. - E2 + (1. - E1)*E2*c) / (1. - E1*E2*c*c);
+	M.real()[1] = PD * s * (1. - E1 + (1. - E2)*E1*c) / (1. - E1*E2*c*c);
+	return M;
+}
+
 /******************************************************************************
  * Two Component Signals
  *****************************************************************************/

@@ -60,6 +60,7 @@ VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl
                           cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 VectorXcd MP_RAGE(cdbl flip, cdbl TR, const int N, carrd &TI, cdbl TD, cdbl PD, cdbl T1, cdbl B1);
+VectorXcd One_AFI(cdbl flip, cdbl TR1, cdbl TR2, cdbl PD, cdbl T1, cdbl B1);
 
 VectorXcd Two_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1_a, cdbl T1_b, cdbl tau_a, cdbl f_a, cdbl B1);
 VectorXcd Two_SSFP(carrd &flip, cdbl TR, cdbl ph, cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1);

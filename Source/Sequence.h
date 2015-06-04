@@ -137,6 +137,21 @@ class SSFPEllipse : public SteadyState {
 		string name() const override { return "SSFP_Ellipse"; }
 };
 
+class AFI : public SteadyState {
+protected:
+	double m_TR1, m_TR2;
+	public:
+		AFI(const bool prompt);
+
+		virtual size_t size() const override { return 2; }
+		virtual size_t angles() const { return m_flip.rows(); }
+		virtual size_t phases() const { return 1; }
+
+		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
+		void write(ostream& os) const override;
+		string name() const override { return "AFI"; }
+};
+
 class SequenceGroup : public SequenceBase {
 private:
 	vector<shared_ptr<SteadyState>> m_sequences;

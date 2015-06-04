@@ -43,7 +43,9 @@ MPRAGE_PAR="5
 0"
 HIFI_PAR="$SPGR_PAR
 $MPRAGE_PAR"
-
+AFI_FILE="afi.nii"
+AFI_PAR="55.
+0.02 0.1"
 # Create input for Single Component
 MCSIG_INPUT="PD.nii
 T1.nii
@@ -59,11 +61,14 @@ $SSFP_FILE
 MPRAGE
 $MPRAGE_PAR
 $MPRAGE_FILE
+AFI
+$AFI_PAR
+$AFI_FILE
 END"
-echo "$MCSIG_INPUT" > mcsignal.in
-run_test "CREATE_REAL_SIGNALS" $QUITDIR/qsignal --1 -n < mcsignal.in
+echo "$MCSIG_INPUT" > signal.in
+run_test "CREATE_REAL_SIGNALS" $QUITDIR/qsignal --1 -n < signal.in
 
-run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qsignal --1 -x -v <<END_IN
+run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qsignal --1 -x <<END_IN
 PD.nii
 T1.nii
 T2.nii
@@ -89,6 +94,8 @@ run_test "DESPOT1LM" $QUITDIR/qdespot1 $SPGR_FILE -n -an -oN -bB1.nii < despot1.
 compare_test "DESPOT1LM" T1.nii ND1_T1.nii 0.01
 run_test "DESPOT1HIFI" $QUITDIR/qdespot1hifi $SPGR_FILE $MPRAGE_FILE -M -n < despot1hifi.in
 compare_test "HIFI_T1" T1.nii HIFI_T1.nii 0.01
+run_test "AFI" $QUITDIR/qafi $AFI_FILE
+compare_test "AFI_B1" B1.nii AFI_B1.nii 0.01
 run_test "SSFPGS" $QUITDIR/qssfpbands ssfp_x.nii
 run_test "SSFPGSMAG" $QUITDIR/qcomplex -x ssfp_x_lreg.nii -om ssfp_x_lreg_mag.nii
 run_test "DESPOT2GS" $QUITDIR/qdespot2 -e D1_T1.nii ssfp_x_lreg_mag.nii -n -bB1.nii < despot2gs.in
