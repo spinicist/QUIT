@@ -29,9 +29,9 @@ add_custom_target(quitk_templ SOURCES Source/Filters/ImageToVectorFilter.h Sourc
                                       Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
                                       Source/RegionContraction.h)
 
-set(PROGRAMS despot1 despot1hifi despot2 mcsignal ssfpgs despot2fm
-             qmcdespot
-             qinewimg qcomplex)
+set(PROGRAMS qnewimage qcomplex qsignal
+             qdespot1 qdespot2 qdespot1hifi qdespot2fm qmcdespot
+             qssfpbands)
 
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
