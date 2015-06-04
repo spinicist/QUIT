@@ -2,7 +2,7 @@
  *  Util.h
  *  Part of the QUantitative Image Toolbox
  *
- *  Copyright (c) 2014 Tobias Wood. All rights reserved.
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -29,24 +29,9 @@
 #include "Filters/VectorToImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
 
+#include "Types.h"
+
 namespace QI {
-
-typedef itk::Image<float, 3> FloatImage;
-typedef itk::VectorImage<float, 3> FloatVectorImage;
-typedef itk::Image<float, 4> FloatTimeseries;
-
-typedef itk::Image<std::complex<float>, 3> XFloatImage;
-typedef itk::VectorImage<std::complex<float>, 3> XFloatVectorImage;
-typedef itk::Image<std::complex<float>, 4> XFloatTimeseries;
-
-typedef itk::ImageFileReader<FloatImage> ReadFloatImage;
-typedef itk::ImageFileReader<FloatTimeseries> ReadFloatTimeseries;
-typedef itk::ImageToVectorFilter<FloatTimeseries> FloatTimeseriesToVector;
-
-typedef itk::ImageFileReader<XFloatImage> ReadXFloatImage;
-typedef itk::ImageFileReader<XFloatTimeseries> ReadXFloatTimeseries;
-typedef itk::ImageToVectorFilter<XFloatTimeseries> XFloatTimeseriesToVector;
-
 
 const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
 time_t printStartTime();
