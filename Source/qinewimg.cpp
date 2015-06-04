@@ -2,7 +2,7 @@
  *  qinewimg.cpp
  *
  *  Created by Tobias Wood on 02/06/2015.
- *  Copyright (c) 2014 Tobias Wood.
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,6 +15,7 @@
 #include <random>
 #include <functional>
 
+#include "itkImage.h"
 #include "itkImageSliceIteratorWithIndex.h"
 
 #include "Util.h"
