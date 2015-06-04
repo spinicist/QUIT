@@ -253,15 +253,7 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 int main(int argc, char **argv)
 {
 	Eigen::initParallel();
-
-	try { // To fix uncaught exceptions on Mac
-	
-	typedef itk::Image<float, 3> FloatImage;
-	typedef itk::VectorImage<float, 3> FloatVectorImage;
-
-	typedef itk::ImageFileReader<FloatImage> Reader;
-
-	Reader::Pointer mask = ITK_NULLPTR;
+	QI::ReadImageF::Pointer mask = ITK_NULLPTR;
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
@@ -270,7 +262,7 @@ int main(int argc, char **argv)
 			case 'N': sigma = atof(optarg); break;
 			case 'm':
 				cout << "Reading mask file " << optarg << endl;
-				mask = Reader::New();
+				mask = QI::ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -310,14 +302,14 @@ int main(int argc, char **argv)
 	 **************************************************************************/
 	SignalsFilter::Pointer calcSignal = SignalsFilter::New();
 	calcSignal->SetModel(model);
-	vector<Reader::Pointer> pFiles(model->nParameters());
+	vector<QI::ReadImageF::Pointer> pFiles(model->nParameters());
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
 		if (prompt) cout << "Enter path to " << model->Names()[i] << " file: " << flush;
 		string filename;
 		getline(cin, filename);
 		if (verbose) cout << "Opening " << filename << endl;
-		pFiles[i] = Reader::New();
+		pFiles[i] = QI::ReadImageF::New();
 		pFiles[i]->SetFileName(filename);
 		calcSignal->SetInput(i, pFiles[i]->GetOutput());
 	}
@@ -350,10 +342,6 @@ int main(int argc, char **argv)
 		}
 	}
 	if (verbose) cout << "Finished all sequences." << endl;
-	} catch (exception &e) {
-		cerr << e.what() << endl;
-		return EXIT_FAILURE;
-	}
 	return EXIT_SUCCESS;
 }
 
