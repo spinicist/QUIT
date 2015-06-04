@@ -1,8 +1,8 @@
 /*
- *  mcDESPOT_main.cpp
+ *  despot2fm.cpp
  *
- *  Created by Tobias Wood on 2013/08/12.
- *  Copyright (c) 2013 Tobias Wood.
+ *  Created by Tobias Wood on 2015/06/03.
+ *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -87,9 +87,6 @@ static struct option long_opts[] = {
 };
 static const char* short_opts = "hvnm:o:f:b:s:p:S:FT:M:xcrd:";
 
-//******************************************************************************
-// T2 Only Functor
-//******************************************************************************
 class FMFunctor : public DenseFunctor<double> {
 	public:
 		const shared_ptr<SequenceBase> m_sequence;
@@ -217,15 +214,9 @@ int main(int argc, char **argv) {
 						return EXIT_FAILURE;
 						break;
 				} break;
-			case 'F':
-				flipData = true;
-				break;
-			case 'T':
-				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
-				break;
-			case 'd':
-				seed = atoi(optarg);
-				break;
+			case 'F': flipData = true; break;
+			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+			case 'd': seed = atoi(optarg); break;
 			case 'M':
 				switch (*optarg) {
 					case 's': fitFinite = false; cout << "Simple sequences selected." << endl; break;
