@@ -16,11 +16,11 @@ protected:
 	size_t m_stride = 1;
 
 public:
-	typedef typename TInput::PixelType                      TPixel;
-	typedef VectorImage<TPixel, TInput::ImageDimension - 1> TOutput;
-	typedef Image<TPixel, TInput::ImageDimension - 1>       TVolume;
 	static const size_t InputDimension = TInput::ImageDimension;
 	static const size_t OutputDimension = TInput::ImageDimension - 1;
+	typedef typename TInput::PixelType           TPixel;
+	typedef VectorImage<TPixel, OutputDimension> TOutput;
+	typedef Image<TPixel, OutputDimension>       TVolume;
 
 	typedef ImageToVectorFilter                 Self;
 	typedef ImageToImageFilter<TInput, TOutput> Superclass;
