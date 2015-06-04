@@ -460,8 +460,8 @@ int main(int argc, char **argv) {
 	pass1->SetInput(reorderPhase->GetOutput());
 	pass1->SetPhases(nPhases);
 	pass2->SetPhases(nPhases);
-	auto outImage = itk::VectorToImageFilter<complex<float>>::New();
-	auto outFile = itk::ImageFileWriter<itk::Image<complex<float>, 4>>::New();
+	auto outImage = QI::VectorToTimeseriesXF::New();
+	auto outFile = QI::WriteTimeseriesXF::New();
 	if (prefix == "")
 		prefix = fname.substr(0, fname.find(".nii"));
 	string outname = prefix;

@@ -8,24 +8,27 @@
 
 namespace itk {
 
-template<typename TPixel>
-class VectorToImageFilter  : public itk::ImageToImageFilter<itk::VectorImage<TPixel, 3>, itk::Image<TPixel, 4>>
+template<typename TInput>
+class VectorToImageFilter  : public ImageToImageFilter<TInput, Image<typename TInput::InternalPixelType, TInput::ImageDimension + 1>>
 {
 public:
-	typedef itk::Image<TPixel, 3> TImage;
-	typedef itk::VectorImage<TPixel, 3> TInput;
-	typedef itk::Image<TPixel, 4> TOutput;
+	static const size_t InputDimension = TInput::ImageDimension;
+	static const size_t OutputDimension = TInput::ImageDimension + 1;
+	typedef typename TInput::InternalPixelType TPixel;
+	typedef Image<TPixel, OutputDimension>     TOutput;
+	typedef Image<TPixel, InputDimension>      TVolume;
 
-	typedef VectorToImageFilter                            Self;
+
+	typedef VectorToImageFilter                      Self;
 	typedef itk::ImageToImageFilter<TInput, TOutput> Superclass;
-	typedef itk::SmartPointer<Self>                        Pointer;
+	typedef itk::SmartPointer<Self>                  Pointer;
 
 	itkNewMacro(Self);
 	itkTypeMacro(Self, Superclass);
 
 protected:
-	typedef itk::VectorIndexSelectionCastImageFilter<TInput, TImage> TIndexer;
-	typedef itk::TileImageFilter<TImage, TOutput> TTiler;
+	typedef itk::VectorIndexSelectionCastImageFilter<TInput, TVolume> TIndexer;
+	typedef itk::TileImageFilter<TVolume, TOutput> TTiler;
 	typename TTiler::Pointer m_tiler;
 	std::vector<typename TIndexer::Pointer> m_indexers;
 

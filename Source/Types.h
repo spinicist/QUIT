@@ -28,8 +28,11 @@ typedef itk::Image<float, 4> TimeseriesF;
 typedef itk::VectorImage<float, 3> VectorImageF;
 
 typedef itk::ImageFileReader<ImageF> ReadImageF;
+typedef itk::ImageFileWriter<ImageF> WriteImageF;
 typedef itk::ImageFileReader<TimeseriesF> ReadTimeseriesF;
+typedef itk::ImageFileWriter<TimeseriesF> WriteTimeseriesF;
 typedef itk::ImageToVectorFilter<TimeseriesF> TimeseriesToVectorF;
+typedef itk::VectorToImageFilter<VectorImageF> VectorToTimeseriesF;
 typedef itk::ReorderVectorFilter<VectorImageF> ReorderF;
 
 typedef itk::Image<std::complex<float>, 3> ImageXF;
@@ -37,8 +40,11 @@ typedef itk::Image<std::complex<float>, 4> TimeseriesXF;
 typedef itk::VectorImage<std::complex<float>, 3> VectorImageXF;
 
 typedef itk::ImageFileReader<ImageXF> ReadImageXF;
+typedef itk::ImageFileWriter<ImageXF> WriteImageXF;
 typedef itk::ImageFileReader<TimeseriesXF> ReadTimeseriesXF;
+typedef itk::ImageFileWriter<TimeseriesXF> WriteTimeseriesXF;
 typedef itk::ImageToVectorFilter<TimeseriesXF> TimeseriesToVectorXF;
+typedef itk::VectorToImageFilter<VectorImageXF> VectorToTimeseriesXF;
 typedef itk::ReorderVectorFilter<VectorImageXF> ReorderXF;
 
 } // End namespace QI
