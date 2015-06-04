@@ -333,7 +333,7 @@ int main(int argc, char **argv)
 			cout << "Calculating sequence: " << endl << *(sequences[i]);
 		}
 		calcSignal->SetSequence(sequences[i]);
-		auto VecTo4D = VectorToImageFilter<complex<float>>::New();
+		auto VecTo4D = itk::VectorToImageFilter<complex<float>>::New();
 		VecTo4D->SetInput(calcSignal->GetOutput());
 		if (outputComplex) {
 			auto writer = itk::ImageFileWriter<itk::Image<complex<float>,4>>::New();
