@@ -33,14 +33,15 @@ add_custom_target(quit_template SOURCES Source/Filters/ImageToVectorFilter.h Sou
 
 set(PROGRAMS qnewimage qcomplex qsignal
              qdespot1 qdespot2 qdespot1hifi qdespot2fm qmcdespot
-             qssfpbands)
+             qafi qssfpbands
+             qmultiecho)
 
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
 	target_link_libraries(${PROGRAM} quit_core ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
-set(TESTS test_common.sh test_scdespot.sh test_mcdespot.sh test_all.sh)
+set(TESTS test_common.sh test_scdespot.sh test_mcdespot.sh test_relax.sh test_all.sh)
 foreach(TEST ${TESTS})
 	configure_file(Test/${TEST} Test/${TEST} COPYONLY)
 endforeach(TEST)

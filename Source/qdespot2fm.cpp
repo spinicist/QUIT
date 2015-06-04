@@ -20,7 +20,6 @@
 
 #include "Util.h"
 #include "Filters/ApplyAlgorithmFilter.h"
-#include "Filters/ReorderVectorFilter.h"
 #include "Model.h"
 #include "Sequence.h"
 #include "RegionContraction.h"
