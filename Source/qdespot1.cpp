@@ -172,8 +172,8 @@ int main(int argc, char **argv) {
 	//cout << version << endl << credit_shared << endl;
 	Eigen::initParallel();
 
-	QI::ReadFloatImage::Pointer mask = ITK_NULLPTR;
-	QI::ReadFloatImage::Pointer B1   = ITK_NULLPTR;
+	QI::ReadImageF::Pointer mask = ITK_NULLPTR;
+	QI::ReadImageF::Pointer B1   = ITK_NULLPTR;
 
 	shared_ptr<DESPOT1> algo = make_shared<DESPOT1>();
 
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'm':
 				if (verbose) cout << "Opening mask file " << optarg << endl;
-				mask = QI::ReadFloatImage::New();
+				mask = QI::ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 				break;
 			case 'b':
 				if (verbose) cout << "Opening B1 file: " << optarg << endl;
-				B1 = QI::ReadFloatImage::New();
+				B1 = QI::ReadImageF::New();
 				B1->SetFileName(optarg);
 				break;
 			case 'a':
@@ -225,8 +225,8 @@ int main(int argc, char **argv) {
 
 	string inputFilename = argv[optind++];
 	if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
-	auto input = QI::ReadFloatTimeseries::New();
-	auto convert = QI::FloatTimeseriesToVector::New();
+	auto input = QI::ReadTimeseriesF::New();
+	auto convert = QI::TimeseriesToVectorF::New();
 	input->SetFileName(inputFilename);
 	convert->SetInput(input->GetOutput());
 

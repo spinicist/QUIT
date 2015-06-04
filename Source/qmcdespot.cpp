@@ -99,11 +99,11 @@ static const char* short_options = "hvm:o:f:b:s:p:S:gt:FT:M:crn123i:j:";
 /*
  * Read in all required files and data from cin
  */
-void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::ReadFloatTimeseries::Pointer> &files, vector<typename QI::FloatTimeseriesToVector::Pointer> &data, vector<typename itk::ReorderVectorFilter<QI::FloatVectorImage>::Pointer> &order, Array2d &f0Bandwidth, bool flip);
+void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::ReadTimeseriesF::Pointer> &files, vector<typename QI::TimeseriesToVectorF::Pointer> &data, vector<typename QI::ReorderF::Pointer> &order, Array2d &f0Bandwidth, bool flip);
 void parseInput(shared_ptr<SequenceGroup> seq,
-                vector<typename QI::ReadFloatTimeseries::Pointer> &files,
-                vector<typename QI::FloatTimeseriesToVector::Pointer> &data,
-                vector<typename itk::ReorderVectorFilter<QI::FloatVectorImage>::Pointer> &order,
+                vector<typename QI::ReadTimeseriesF::Pointer> &files,
+                vector<typename QI::TimeseriesToVectorF::Pointer> &data,
+                vector<typename QI::ReorderF::Pointer> &order,
                 Array2d &f0Bandwidth, bool flip)
 {
 	string type, path;
@@ -115,11 +115,11 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 		}
 		if (prompt) cout << "Enter image path: " << flush;
 		QI::Read(cin, path);
-		files.push_back(QI::ReadFloatTimeseries::New());
+		files.push_back(QI::ReadTimeseriesF::New());
 		files.back()->SetFileName(path);
-		data.push_back(QI::FloatTimeseriesToVector::New());
+		data.push_back(QI::TimeseriesToVectorF::New());
 		data.back()->SetInput(files.back()->GetOutput());
-		order.push_back(itk::ReorderVectorFilter<QI::FloatVectorImage>::New());
+		order.push_back(itk::ReorderVectorFilter<QI::VectorImageF>::New());
 		order.back()->SetInput(data.back()->GetOutput());
 		if (verbose) cout << "Opened: " << path << endl;
 		if ((type == "SPGR") && !fitFinite) {
@@ -239,7 +239,7 @@ class MCDAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	QI::ReadFloatImage::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
 	shared_ptr<Model> model;
 	// Deal with these options in first pass to ensure the correct model is selected
@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
 		switch (c) {
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = QI::ReadFloatImage::New();
+				mask = QI::ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -270,12 +270,12 @@ int main(int argc, char **argv) {
 				break;
 			case 'f':
 				if (verbose) cout << "Reading f0 file: " << optarg << endl;
-				f0 = QI::ReadFloatImage::New();
+				f0 = QI::ReadImageF::New();
 				f0->SetFileName(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = QI::ReadFloatImage::New();
+				B1 = QI::ReadImageF::New();
 				B1->SetFileName(optarg);
 				break;
 			case 's': start_slice = atoi(optarg); break;
@@ -338,9 +338,9 @@ int main(int argc, char **argv) {
 	Array2d f0Bandwidth;
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
-	vector<QI::ReadFloatTimeseries::Pointer> inFiles;
-	vector<QI::FloatTimeseriesToVector::Pointer> inData;
-	vector<itk::ReorderVectorFilter<QI::FloatVectorImage>::Pointer> inOrder;
+	vector<QI::ReadTimeseriesF::Pointer> inFiles;
+	vector<QI::TimeseriesToVectorF::Pointer> inData;
+	vector<itk::ReorderVectorFilter<QI::VectorImageF>::Pointer> inOrder;
 	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, flipData);
 
 	ArrayXXd bounds = model->Bounds(tesla, 0);

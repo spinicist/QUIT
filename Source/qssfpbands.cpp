@@ -439,10 +439,10 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
 	string fname(argv[optind++]);
 
-	auto inFile = QI::ReadXFloatTimeseries::New();
-	auto inData = QI::XFloatTimeseriesToVector::New();
-	auto reorderFlips = itk::ReorderVectorFilter<XFloatVectorImage>::New();
-	auto reorderPhase = itk::ReorderVectorFilter<XFloatVectorImage>::New();
+	auto inFile = QI::ReadTimeseriesXF::New();
+	auto inData = QI::TimeseriesToVectorXF::New();
+	auto reorderFlips = QI::ReorderXF::New();
+	auto reorderPhase = QI::ReorderXF::New();
 
 	inFile->SetFileName(fname);
 	inData->SetInput(inFile->GetOutput());

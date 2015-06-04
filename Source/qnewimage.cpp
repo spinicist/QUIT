@@ -77,11 +77,11 @@ static const char* short_opts = "hd:v:f:g:s:"; /* p:x:r: */
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	QI::FloatImage::Pointer newimg = QI::FloatImage::New();
-	QI::FloatImage::RegionType imgRegion;
-	QI::FloatImage::IndexType imgIndex;
-	QI::FloatImage::SizeType imgSize;
-	QI::FloatImage::SpacingType imgSpacing;
+	QI::ImageF::Pointer newimg = QI::ImageF::New();
+	QI::ImageF::RegionType imgRegion;
+	QI::ImageF::IndexType imgIndex;
+	QI::ImageF::SizeType imgSize;
+	QI::ImageF::SpacingType imgSpacing;
 	imgIndex.Fill(0);
 	imgSize.Fill(0);
 	imgSpacing.Fill(1.0);
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
 	newimg->SetSpacing(imgSpacing);
 	newimg->Allocate();
 
-	itk::ImageSliceIteratorWithIndex<QI::FloatImage> it(newimg, imgRegion);
+	itk::ImageSliceIteratorWithIndex<QI::ImageF> it(newimg, imgRegion);
 
 	switch (fillDim) {
 		case 0: it.SetFirstDirection(1); it.SetSecondDirection(2); break;

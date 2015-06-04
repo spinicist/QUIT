@@ -188,14 +188,14 @@ int main(int argc, char **argv) {
 	
 	if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
 	auto spgrFile = Reader4D::New();
-	auto spgrImg = itk::ImageToVectorFilter<QI::FloatTimeseries>::New();
+	auto spgrImg = itk::ImageToVectorFilter<QI::TimeseriesF>::New();
 	spgrFile->SetFileName(argv[optind++]);
 	spgrImg->SetInput(spgrFile->GetOutput());
 	auto spgrSequence = make_shared<SPGRSimple>(prompt);
 
 	if (verbose) cout << "Opening IR-SPGR file: " << argv[optind] << endl;
 	auto irFile = Reader4D::New();
-	auto irImg = itk::ImageToVectorFilter<QI::FloatTimeseries>::New();
+	auto irImg = itk::ImageToVectorFilter<QI::TimeseriesF>::New();
 	irFile->SetFileName(argv[optind++]);
 	irImg->SetInput(irFile->GetOutput());
 	shared_ptr<SteadyState> irSequence;

@@ -23,11 +23,7 @@
 
 #include <Eigen/Dense>
 
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
 #include "itkVectorMagnitudeImageFilter.h"
-#include "Filters/VectorToImageFilter.h"
-#include "Filters/ImageToVectorFilter.h"
 
 #include "Types.h"
 
@@ -40,8 +36,8 @@ void printElapsedClock(const clock_t &clockStart, const int voxCount);
 void printLoopTime(const clock_t &loopStart, const int voxCount);
 std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 
-void writeResult(const typename FloatImage::Pointer img, const std::string path);
-void writeResiduals(const typename FloatVectorImage::Pointer img, const std::string prefix, const bool allResids = false);
+void writeResult(const typename ImageF::Pointer img, const std::string path);
+void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
 
 template<typename T> bool Read(const std::string &s, T &val) {
 	std::istringstream stream(s);
