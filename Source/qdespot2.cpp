@@ -82,15 +82,14 @@ public:
 			E2 = exp(-TR / T2);
 			PD = b[1] * (1. - E1*E2) / (1. - E1);
 		}
-		if (PD < m_thresh)
-			PD = T2 = 0.;
-		T2 = clamp(T2, m_lo, m_hi);
-
-		outputs[0] = PD;
-		outputs[1] = T2;
 		VectorXd p(5); p << PD, T1, T2, 0, B1;
 		ArrayXd theory = m_sequence->signal(m_model, p).abs();
 		resids = data.array() - theory;
+		if (PD < m_thresh)
+			PD = T2 = 0.;
+		T2 = clamp(T2, m_lo, m_hi);
+		outputs[0] = PD;
+		outputs[1] = T2;
 	}
 };
 
@@ -138,15 +137,14 @@ public:
 				PD = b[1] * (1. - E1*E2) / (1. - E1);
 			}
 		}
-		if (PD < m_thresh)
-			PD = T2 = 0.;
-		T2 = clamp(T2, m_lo, m_hi);
-
-		outputs[0] = PD;
-		outputs[1] = T2;
 		VectorXd p(5); p << PD, T1, T2, 0, B1;
 		ArrayXd theory = m_sequence->signal(m_model, p).abs();
 		resids = data.array() - theory;
+		if (PD < m_thresh)
+			PD = T2 = 0.;
+		T2 = clamp(T2, m_lo, m_hi);
+		outputs[0] = PD;
+		outputs[1] = T2;
 	}
 };
 
@@ -197,6 +195,9 @@ public:
 		VectorXd fullp(5); fullp << outputs[0], T1, outputs[1], 0, B1; // Assume on-resonance
 		ArrayXd theory = m_sequence->signal(m_model, fullp).abs(); // Sequence will already be elliptical if necessary
 		resids = data.array() - theory;
+		if (outputs[0] < m_thresh)
+			outputs.setZero();
+		outputs[1] = clamp(outputs[1], m_lo, m_hi);
 	}
 };
 
@@ -214,7 +215,7 @@ Options:\n\
 	--out, -o path    : Add a prefix to the output filenames.\n\
 	--B1 file         : B1 Map file.\n\
 	--thresh, -t n    : Threshold maps at PD < n\n\
-	--clamp, -c n     : Clamp T1 between 0 and n\n\
+	--clamp, -c n     : Clamp T2 between 0 and n\n\
 	--algo, -a l      : LLS algorithm (default)\n\
 	           w      : WLLS algorithm\n\
 	           n      : NLLS (Levenberg-Marquardt)\n\
