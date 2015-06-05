@@ -122,16 +122,20 @@ class FMAlgo : public Algorithm<double> {
 		size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
 		Array2d m_f0Bounds = Array2d::Zero();
 		const shared_ptr<SCD> m_model = make_shared<SCD>();
+		shared_ptr<SteadyState> m_sequence;
 
 	public:
+		void setSequence(shared_ptr<SteadyState> s) { m_sequence = s; }
 		void setSamples(size_t s) { m_samples = s; }
 		void setRetain(size_t r) { m_retain = r; }
 		void setContractions(size_t c) { m_contractions = c; }
 		void setScaling(Model::Scale s) { m_model->setScaling(s); }
 		void setf0Bounds(Array2d b) { m_f0Bounds = b; }
 
-		size_t numConsts() const override { return 2; }
+		size_t numInputs() const override  { return m_sequence->count(); }
+		size_t numConsts() const override  { return 2; }
 		size_t numOutputs() const override { return 3; }
+		size_t dataSize() const override   { return m_sequence->size(); }
 
 		virtual VectorXd defaultConsts() {
 			// T1 & B1
@@ -139,14 +143,11 @@ class FMAlgo : public Algorithm<double> {
 			return def;
 		}
 
-		virtual void apply(const shared_ptr<SequenceBase> sequence,
-		                   const VectorXd &data,
-		                   const VectorXd &inputs,
-		                   VectorXd &outputs,
-		                   ArrayXd &resids) const override
+		virtual void apply(const VectorXd &data, const VectorXd &inputs,
+		                   VectorXd &outputs, ArrayXd &resids) const override
 		{
 			ArrayXd thresh(3); thresh.setConstant(0.05);
-			ArrayXd weights(sequence->size()); weights.setOnes();
+			ArrayXd weights(m_sequence->size()); weights.setOnes();
 			ArrayXXd bounds = ArrayXXd::Zero(3, 2);
 			double T1 = inputs[0];
 			double B1 = inputs[1];
@@ -161,7 +162,7 @@ class FMAlgo : public Algorithm<double> {
 			bounds.row(2) = m_f0Bounds;
 			//cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
 			//cout << bounds << endl;
-			FMFunctor func(m_model, T1, sequence, data, B1);
+			FMFunctor func(m_model, T1, m_sequence, data, B1);
 			RegionContraction<FMFunctor> rc(func, bounds, weights, thresh,
 			                                m_samples, m_retain, m_contractions, expand, false, false);
 			rc.optimise(outputs);
@@ -268,10 +269,9 @@ int main(int argc, char **argv) {
 	reorderFlip->SetInput(ssfpData->GetOutput());
 
 	auto apply = itk::ApplyAlgorithmFilter<float, FMAlgo>::New();
-	apply->SetSequence(ssfpSequence);
+	fm->setSequence(ssfpSequence);
 	fm->setf0Bounds(ssfpSequence->bandwidth());
 	apply->SetAlgorithm(fm);
-	apply->Setup();
 	apply->SetDataInput(0, reorderFlip->GetOutput());
 	apply->SetConstInput(0, T1File->GetOutput());
 	if (B1)

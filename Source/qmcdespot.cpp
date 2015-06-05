@@ -175,9 +175,11 @@ class MCDAlgo : public Algorithm<double> {
 		bool m_gauss = false;
 		ArrayXXd m_bounds;
 		shared_ptr<Model> m_model = nullptr;
+		shared_ptr<SequenceGroup> m_sequence;
 
 	public:
 		void setModel(shared_ptr<Model> &m) { m_model = m; }
+		void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
 		void setSamples(size_t s) { m_samples = s; }
 		void setRetain(size_t r) { m_retain = r; }
 		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
@@ -185,8 +187,10 @@ class MCDAlgo : public Algorithm<double> {
 		void setBounds(ArrayXXd b) { m_bounds = b; }
 		void setGauss(bool g) { m_gauss = g; }
 
-		size_t numConsts() const override { return 2; }
+		size_t numInputs() const override  { return m_sequence->count(); }
+		size_t numConsts() const override  { return 2; }
 		size_t numOutputs() const override { return m_model->nParameters(); }
+		size_t dataSize() const override   { return m_sequence->size(); }
 
 		virtual VectorXd defaultConsts() {
 			// f0, B1
@@ -195,14 +199,11 @@ class MCDAlgo : public Algorithm<double> {
 			return def;
 		}
 
-		virtual void apply(const shared_ptr<SequenceBase> sequence,
-		                   const VectorXd &data,
-		                   const VectorXd &inputs,
-		                   VectorXd &outputs,
-		                   ArrayXd &resids) const override
+		virtual void apply(const VectorXd &data, const VectorXd &inputs,
+		                   VectorXd &outputs, ArrayXd &resids) const override
 		{
 			ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
-			ArrayXd weights = ArrayXd::Ones(sequence->size());
+			ArrayXd weights = ArrayXd::Ones(m_sequence->size());
 			double f0 = inputs[0];
 			double B1 = inputs[1];
 			ArrayXXd localBounds = m_bounds;
@@ -217,19 +218,10 @@ class MCDAlgo : public Algorithm<double> {
 				}
 			}
 			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
-			//cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
-			//cout << bounds << endl;
-			//cout << "data " << data.transpose() << endl;
-			//cout << "f0 " << f0 << " B1 " << B1 << endl;
-			//cout << "lb" << endl << localBounds.transpose() << endl;
-			//cout << "data " << data.transpose() << endl;
-			MCDFunctor func(m_model, sequence, data);
-			//cout << "data " << data.transpose() << endl;
+			MCDFunctor func(m_model, m_sequence, data);
 			RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
 			                                m_samples, m_retain, m_contractions, 0., true, false);
-			//cout << "data " << data.transpose() << endl;
 			rc.optimise(outputs);
-			//cout << "outputs " << outputs.transpose() << endl;
 			resids = rc.residuals();
 		}
 };
@@ -365,9 +357,8 @@ int main(int argc, char **argv) {
 	}
 	
 	auto apply = itk::ApplyAlgorithmFilter<float, MCDAlgo>::New();
-	apply->SetSequence(sequences);
+	mcd->setSequence(sequences);
 	apply->SetAlgorithm(mcd);
-	apply->Setup();
 	for (int i = 0; i < inOrder.size(); i++) {
 		apply->SetDataInput(i, inOrder.at(i)->GetOutput());
 	}

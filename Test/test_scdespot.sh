@@ -68,7 +68,7 @@ END"
 echo "$MCSIG_INPUT" > signal.in
 run_test "CREATE_REAL_SIGNALS" $QUITDIR/qsignal --1 -n < signal.in
 
-run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qsignal --1 -x <<END_IN
+run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qsignal --1 -n -x <<END_IN
 PD.nii
 T1.nii
 T2.nii
@@ -92,7 +92,7 @@ run_test "DESPOT1" $QUITDIR/qdespot1 $SPGR_FILE -n -bB1.nii < despot1.in
 compare_test "DESPOT1" T1.nii D1_T1.nii 0.01
 run_test "DESPOT1LM" $QUITDIR/qdespot1 $SPGR_FILE -n -an -oN -bB1.nii < despot1.in
 compare_test "DESPOT1LM" T1.nii ND1_T1.nii 0.01
-run_test "DESPOT1HIFI" $QUITDIR/qdespot1hifi $SPGR_FILE $MPRAGE_FILE -M -n < despot1hifi.in
+run_test "DESPOT1HIFI" $QUITDIR/qdespot1hifi $SPGR_FILE $MPRAGE_FILE -M -n -T1 < despot1hifi.in
 compare_test "HIFI_T1" T1.nii HIFI_T1.nii 0.01
 run_test "AFI" $QUITDIR/qafi $AFI_FILE
 compare_test "AFI_B1" B1.nii AFI_B1.nii 0.01
@@ -104,7 +104,7 @@ run_test "SSFPGS2P" $QUITDIR/qssfpbands -2 ssfp_x.nii
 run_test "SSFPGS2PMAG" $QUITDIR/qcomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_2p_mag.nii
 run_test "DESPOT2GS2P" $QUITDIR/qdespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
-run_test "DESPOT2FM" $QUITDIR/qdespot2fm D1_T1.nii $SSFP_FILE -n -v -S1 -bB1.nii < despot2fm.in
+run_test "DESPOT2FM" $QUITDIR/qdespot2fm D1_T1.nii $SSFP_FILE -n -S1 -bB1.nii < despot2fm.in
 compare_test "DESPOT2FM" T2.nii FM_T2.nii 0.01
 
 cd ..

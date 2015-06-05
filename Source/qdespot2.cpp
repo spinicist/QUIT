@@ -26,94 +26,108 @@ using namespace Eigen;
 using namespace QI;
 
 //******************************************************************************
-// Algorithm Subclass
+// Algorithm Subclasses
 //******************************************************************************
-class D2 : public Algorithm<complex<double>> {
-	public:
-		enum class Type { LLS, WLLS, NLLS };
-	private:
-		Type m_type = Type::LLS;
-		size_t m_iterations = 10;
-		bool m_elliptical = false, m_negflip;
-		double m_thresh = -numeric_limits<double>::infinity();
-		double m_lo = -numeric_limits<double>::infinity();
-		double m_hi = numeric_limits<double>::infinity();
+class D2Algo : public Algorithm<double> {
+protected:
+	const shared_ptr<SCD> m_model = make_shared<SCD>();
+	shared_ptr<SteadyState> m_sequence;
+	size_t m_iterations = 15;
+	bool m_elliptical = false;
+	double m_thresh = -numeric_limits<double>::infinity();
+	double m_lo = -numeric_limits<double>::infinity();
+	double m_hi = numeric_limits<double>::infinity();
 
-		//******************************************************************************
-		// T2 Only Functor
-		//******************************************************************************
-		class D2Functor : public DenseFunctor<double> {
-			public:
-				const shared_ptr<SequenceBase> m_sequence;
-				ArrayXcd m_data;
-				const double m_T1, m_B1;
-				const bool m_complex, m_debug;
-				const shared_ptr<SCD> m_model = make_shared<SCD>();
+public:
+	void setIterations(size_t n) { m_iterations = n; }
+	void setSequence(shared_ptr<SteadyState> &s) { m_sequence = s; }
+	void setElliptical(bool e) { m_elliptical = e; }
+	void setThreshold(double t) { m_thresh = t; }
+	void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
+	size_t numInputs() const override { return m_sequence->count(); }
+	size_t numConsts() const override { return 2; }  // T1, B1
+	size_t numOutputs() const override { return 2; } // PD, T2
+	size_t dataSize() const override { return m_sequence->size(); }
 
-				D2Functor(const double T1, const shared_ptr<SequenceBase> s, const ArrayXcd &d, const double B1, const bool fitComplex, const bool debug = false) :
-					DenseFunctor<double>(3, s->size()),
-					m_sequence(s), m_data(d), m_complex(fitComplex), m_debug(debug),
-					m_T1(T1), m_B1(B1)
-				{
-					assert(static_cast<size_t>(m_data.rows()) == values());
-				}
+	virtual VectorXd defaultConsts() {
+		// T1, B1
+		VectorXd def = VectorXd::Ones(2);
+		return def;
+	}
+};
 
-				int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-					eigen_assert(diffs.size() == values());
+class D2LLS : public D2Algo {
+public:
+	virtual void apply(const VectorXd &data, const VectorXd &constants,
+					   VectorXd &outputs, ArrayXd &resids) const override
+	{
+		const double TR = m_sequence->TR();
+		const double T1 = constants[0];
+		const double B1 = constants[1];
+		const double E1 = exp(-TR / T1);
+		double PD, T2, E2;
+		const ArrayXd angles = (m_sequence->flip() * B1);
 
-					ArrayXd fullparams(5);
-					fullparams << params(0), m_T1, params(1), params(2), m_B1;
-					ArrayXcd s = m_sequence->signal(m_model, fullparams);
-					if (m_complex) {
-						diffs = (s - m_data).abs();
-					} else {
-						diffs = s.abs() - m_data.abs();
-					}
-					if (m_debug) {
-						cout << endl << __PRETTY_FUNCTION__ << endl;
-						cout << "p:     " << params.transpose() << endl;
-						cout << "s:     " << s.transpose() << endl;
-						cout << "data:  " << m_data.transpose() << endl;
-						cout << "diffs: " << diffs.transpose() << endl;
-					}
-					return 0;
-				}
-		};
-
-	public:
-		void setElliptical(bool e) { m_elliptical = e; }
-		void setType(Type t) { m_type = t; }
-		void setIterations(size_t n) { m_iterations = n; }
-		void setThreshold(double t) { m_thresh = t; }
-		void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
-
-		size_t numConsts() const override { return 2; } // T1, B1
-		size_t numOutputs() const override { return 3; } // PD, T2, offRes (for elliptical)
-
-		virtual VectorXd defaultConsts() {
-			//T1 & B1
-			VectorXd def = VectorXd::Ones(2);
-			return def;
+		VectorXd Y = data.array() / angles.sin();
+		MatrixXd X(Y.rows(), 2);
+		X.col(0) = data.array() / angles.tan();
+		X.col(1).setOnes();
+		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+		if (m_elliptical) {
+			T2 = 2. * TR / log((b[0]*E1 - 1.) / (b[0] - E1));
+			E2 = exp(-TR / T2);
+			PD = b[1] * (1. - E1*E2*E2) / (sqrt(E2) * (1. - E1));
+		} else {
+			T2 = TR / log((b[0]*E1 - 1.)/(b[0] - E1));
+			E2 = exp(-TR / T2);
+			PD = b[1] * (1. - E1*E2) / (1. - E1);
 		}
+		if (PD < m_thresh)
+			PD = T2 = 0.;
+		T2 = clamp(T2, m_lo, m_hi);
 
-		virtual void apply(const shared_ptr<SequenceBase> sequence,
-		                   const VectorXcd &data,
-		                   const VectorXd &constants,
-		                   VectorXd &outputs,
-		                   ArrayXd &resids) const override
-		{
-			double T2, E2, PD, offRes;
-			const double TR = sequence->TR();
-			const double T1 = constants[0];
-			const double B1 = constants[1];
-			const double E1 = exp(-TR / T1);
-			const ArrayXd localAngles = (sequence->flip() * B1);
-			const ArrayXd s = data.array().abs();
-			VectorXd Y = s / localAngles.sin();
-			MatrixXd X(Y.rows(), 2);
-			X.col(0) = s / localAngles.tan();
-			X.col(1).setOnes();
-			VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+		outputs[0] = PD;
+		outputs[1] = T2;
+		VectorXd p(5); p << PD, T1, T2, 0, B1;
+		ArrayXd theory = m_sequence->signal(m_model, p).abs();
+		resids = data.array() - theory;
+	}
+};
+
+class D2WLLS : public D2Algo {
+public:
+	virtual void apply(const VectorXd &data, const VectorXd &constants,
+					   VectorXd &outputs, ArrayXd &resids) const override
+	{
+		const double TR = m_sequence->TR();
+		const double T1 = constants[0];
+		const double B1 = constants[1];
+		const double E1 = exp(-TR / T1);
+		double PD, T2, E2;
+		const ArrayXd angles = (m_sequence->flip() * B1);
+
+		VectorXd Y = data.array() / angles.sin();
+		MatrixXd X(Y.rows(), 2);
+		X.col(0) = data.array() / angles.tan();
+		X.col(1).setOnes();
+		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+		if (m_elliptical) {
+			T2 = 2. * TR / log((b[0]*E1 - 1.) / (b[0] - E1));
+			E2 = exp(-TR / T2);
+			PD = b[1] * (1. - E1*E2*E2) / (sqrt(E2) * (1. - E1));
+		} else {
+			T2 = TR / log((b[0]*E1 - 1.)/(b[0] - E1));
+			E2 = exp(-TR / T2);
+			PD = b[1] * (1. - E1*E2) / (1. - E1);
+		}
+		VectorXd W(m_sequence->size());
+		for (size_t n = 0; n < m_iterations; n++) {
+			if (m_elliptical) {
+				W = ((1. - E1*E2) * angles.sin() / (1. - E1*E2*E2 - (E1 - E2*E2)*angles.cos())).square();
+			} else {
+				W = ((1. - E1*E2) * angles.sin() / (1. - E1*E2 - (E1 - E2)*angles.cos())).square();
+			}
+			b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
 			if (m_elliptical) {
 				T2 = 2. * TR / log((b[0]*E1 - 1.) / (b[0] - E1));
 				E2 = exp(-TR / T2);
@@ -123,62 +137,68 @@ class D2 : public Algorithm<complex<double>> {
 				E2 = exp(-TR / T2);
 				PD = b[1] * (1. - E1*E2) / (1. - E1);
 			}
-			if (m_type == Type::WLLS) {
-				VectorXd W(sequence->size());
-				for (size_t n = 0; n < m_iterations; n++) {
-					if (m_elliptical) {
-						W = ((1. - E1*E2) * localAngles.sin() / (1. - E1*E2*E2 - (E1 - E2*E2)*localAngles.cos())).square();
-					} else {
-						W = ((1. - E1*E2) * localAngles.sin() / (1. - E1*E2 - (E1 - E2)*localAngles.cos())).square();
-					}
-					b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
-					if (m_elliptical) {
-						T2 = 2. * TR / log((b[0]*E1 - 1.) / (b[0] - E1));
-						E2 = exp(-TR / T2);
-						PD = b[1] * (1. - E1*E2*E2) / (sqrt(E2) * (1. - E1));
-					} else {
-						T2 = TR / log((b[0]*E1 - 1.)/(b[0] - E1));
-						E2 = exp(-TR / T2);
-						PD = b[1] * (1. - E1*E2) / (1. - E1);
-					}
-				}
-			} else if (m_type == Type::NLLS) {
-				D2Functor f(T1, sequence, data, B1, false, false);
-				NumericalDiff<D2Functor> nDiff(f);
-				LevenbergMarquardt<NumericalDiff<D2Functor>> lm(nDiff);
-				lm.setMaxfev(m_iterations * (sequence->size() + 1));
-				VectorXd p(3);
-				p << PD, T2, offRes;
-				lm.minimize(p);
-				PD = p(0); T2 = p(1); offRes = p(2);
-			}
-			if (PD < m_thresh) {
-				PD = 0.;
-				T2 = 0.;
-				offRes = 0.;
-			}
-			T2 = clamp(T2, m_lo, m_hi);
+		}
+		if (PD < m_thresh)
+			PD = T2 = 0.;
+		T2 = clamp(T2, m_lo, m_hi);
 
-			if (m_elliptical) {
-				// Use phase of mean instead of mean of phase to avoid wrap issues
-				if (m_negflip)
-					offRes = -arg(data.mean()) / (M_PI * TR);
-				else
-					offRes = arg(data.mean() / (M_PI * TR));
-			}
+		outputs[0] = PD;
+		outputs[1] = T2;
+		VectorXd p(5); p << PD, T1, T2, 0, B1;
+		ArrayXd theory = m_sequence->signal(m_model, p).abs();
+		resids = data.array() - theory;
+	}
+};
 
-			outputs[0] = PD;
-			outputs[1] = T2;
-			outputs[3] = offRes;
+//******************************************************************************
+// T2 Only Functor
+//******************************************************************************
+class D2Functor : public DenseFunctor<double> {
+	public:
+		const shared_ptr<SequenceBase> m_sequence;
+		const double m_T1, m_B1;
+		const shared_ptr<SCD> m_model = make_shared<SCD>();
+		const ArrayXd m_data;
 
-			VectorXd p(5); p << PD, T1, T2, offRes, B1;
-			shared_ptr<SCD> model = make_shared<SCD>();
-			ArrayXd theory = sequence->signal(model, p).abs();
-			resids = (s - theory);
+		D2Functor(const double T1, const shared_ptr<SequenceBase> s, const ArrayXd &d, const double B1, const bool fitComplex, const bool debug = false) :
+			DenseFunctor<double>(3, s->size()),
+			m_sequence(s), m_data(d),
+			m_T1(T1), m_B1(B1)
+		{
+			assert(static_cast<size_t>(m_data.rows()) == values());
+		}
 
+		int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+			eigen_assert(diffs.size() == values());
+			ArrayXd fullparams(5);
+			fullparams << params(0), m_T1, params(1), params(2), m_B1;
+			ArrayXcd s = m_sequence->signal(m_model, fullparams);
+			diffs = s.abs() - m_data;
+			return 0;
 		}
 };
 
+class D2NLLS : public D2Algo {
+public:
+	virtual void apply(const VectorXd &data, const VectorXd &inputs,
+	                   VectorXd &outputs, ArrayXd &resids) const override
+	{
+		double T1 = inputs[0];
+		double B1 = inputs[1];
+		D2Functor f(T1, m_sequence, data, B1, false, false);
+		NumericalDiff<D2Functor> nDiff(f);
+		LevenbergMarquardt<NumericalDiff<D2Functor>> lm(nDiff);
+		lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
+		outputs << data.array().maxCoeff() * 5., 0.1;
+		lm.minimize(outputs);
+		if (outputs[0] < m_thresh)
+			outputs.setZero();
+		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+		VectorXd fullp(5); fullp << outputs[0], T1, outputs[1], 0, B1; // Assume on-resonance
+		ArrayXd theory = m_sequence->signal(m_model, fullp).abs(); // Sequence will already be elliptical if necessary
+		resids = data.array() - theory;
+	}
+};
 
 //******************************************************************************
 // Arguments / Usage
@@ -201,20 +221,14 @@ Options:\n\
 	--its, -i N       : Max iterations for WLLS / NLLS (default 10)\n\
 	--resids, -r      : Write out per flip-angle residuals\n\
 	--threads, -T N   : Use N threads (default=hardware limit)\n\
-	--elliptical, -e  : Input is band-free elliptical data.\n\
-	Only applies for elliptical data:\n\
-	--negflip         : Flip-angles are in negative sense.\n"
+	--elliptical, -e  : Input is band-free elliptical data.\n"
 };
 
-enum class Algos { LLS, WLLS, NLLS };
-static int verbose = false, prompt = true, elliptical = false, negflip = false, all_residuals = false;
-static Algos algo;
+static int verbose = false, prompt = true, elliptical = false, all_residuals = false;
 static string outPrefix;
-static struct option long_opts[] =
-{
+static struct option long_opts[] = {
 	{"B1", required_argument, 0, '1'},
 	{"elliptical", no_argument, 0, 'e'},
-	{"negflip", no_argument, &negflip, true},
 	{"help", no_argument, 0, 'h'},
 	{"mask", required_argument, 0, 'm'},
 	{"verbose", no_argument, 0, 'v'},
@@ -236,11 +250,30 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 	ReadImageF::Pointer mask = ITK_NULLPTR;
 	ReadImageF::Pointer B1   = ITK_NULLPTR;
-	shared_ptr<D2> algo = make_shared<D2>();
+	shared_ptr<D2Algo> algo = make_shared<D2LLS>();
 
-	int indexptr = 0, c;
+	// Do first pass to get the algorithm type, then do everything else
+	int indexptr = 0;
+	char c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
+			case 'v': verbose = true; break;
+			case 'n': prompt = false; break;
+			case 'a':
+			switch (*optarg) {
+				case 'l': algo = make_shared<D2LLS>();   if (verbose) cout << "LLS algorithm selected." << endl; break;
+				case 'w': algo = make_shared<D2WLLS>();  if (verbose) cout << "WLLS algorithm selected." << endl; break;
+				case 'n': algo = make_shared<D2NLLS>(); if (verbose) cout << "NLLS algorithm selected." << endl; break;
+				default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
+			} break;
+			default: break;
+		}
+	}
+
+	optind = 1;
+	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
+		switch (c) {
+			case 'v': case 'n': case 'a': break; // Already handled
 			case 'o':
 				outPrefix = optarg;
 				if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
@@ -257,31 +290,12 @@ int main(int argc, char **argv) {
 				break;
 			case 't': algo->setThreshold(atof(optarg)); break;
 			case 'c': algo->setClamp(0, atof(optarg)); break;
-			case 'a':
-				switch (*optarg) {
-					case 'l': algo->setType(D2::Type::LLS);  cout << "LLS algorithm selected." << endl; break;
-					case 'w': algo->setType(D2::Type::WLLS); cout << "WLLS algorithm selected." << endl; break;
-					case 'n': algo->setType(D2::Type::NLLS); cout << "NLLS algorithm selected." << endl; break;
-					default:
-						cout << "Unknown algorithm type " << optarg << endl;
-						return EXIT_FAILURE;
-						break;
-				} break;
-			case 'i':
-				algo->setIterations(atoi(optarg));
-				break;
-			case 'v': verbose = true; break;
-			case 'n': prompt = false; break;
-			case 'e': elliptical = true; algo->setElliptical(elliptical); break;
+			case 'i': algo->setIterations(atoi(optarg));	break;
+			case 'e': elliptical = true; break;
 			case 'r': all_residuals = true; break;
-			case 'T':
-				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
-				break;
-			case 0:
-				// Just a flag
-				break;
-			case '?': // getopt will print an error message
-			case 'h':
+			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+			default: throw(runtime_error(string("Unhandled option: ") + string(1, c))); break;
+			case '?': case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
 		}
@@ -310,10 +324,10 @@ int main(int argc, char **argv) {
 	}
 	if (verbose) cout << *ssfp << endl;
 
-	auto DESPOT2 = itk::ApplyAlgorithmFilter<float, D2>::New();
-	DESPOT2->SetSequence(ssfp);
+	auto DESPOT2 = itk::ApplyAlgorithmFilter<float, D2Algo>::New();
+	algo->setSequence(ssfp);
+	algo->setElliptical(elliptical);
 	DESPOT2->SetAlgorithm(algo);
-	DESPOT2->Setup();
 	DESPOT2->SetDataInput(0, ssfp3D->GetOutput());
 	DESPOT2->SetConstInput(0, T1File->GetOutput());
 	if (B1)

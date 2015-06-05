@@ -73,6 +73,9 @@ static struct option long_options[] =
 };
 static const char *short_opts = "hvnm:Ssw::e:o:b:t:c:a:T:r";
 
+/*
+ * Base class for the 3 different algorithms
+ */
 class RelaxAlgo : public Algorithm<double> {
 private:
 	const shared_ptr<SCD> m_model = make_shared<SCD>();
@@ -80,8 +83,10 @@ protected:
 	shared_ptr<MultiEcho> m_sequence;
 public:
 	void setSequence(shared_ptr<MultiEcho> &s) { m_sequence = s; }
+	size_t numInputs() const override { return m_sequence->count(); }
 	size_t numConsts() const override { return 1; }
 	size_t numOutputs() const override { return 2; }
+	size_t dataSize() const override { return m_sequence->size(); }
 
 	virtual VectorXd defaultConsts() {
 		// B1
@@ -92,11 +97,8 @@ public:
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-	virtual void apply(const shared_ptr<SequenceBase> sequence,
-					   const VectorXd &data,
-					   const VectorXd &inputs,
-					   VectorXd &outputs,
-					   ArrayXd &resids) const override
+	virtual void apply(const VectorXd &data, const VectorXd &inputs,
+	                   VectorXd &outputs, ArrayXd &resids) const override
 	{
 			// Set up echo times array
 		MatrixXd X(m_sequence->size(), 2);
@@ -114,11 +116,8 @@ public:
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-	virtual void apply(const shared_ptr<SequenceBase> sequence,
-					   const VectorXd &data,
-					   const VectorXd &inputs,
-					   VectorXd &outputs,
-					   ArrayXd &resids) const override
+	virtual void apply(const VectorXd &data, const VectorXd &inputs,
+					   VectorXd &outputs, ArrayXd &resids) const override
 	{
 		double si2sum = 0, sidisum = 0;
 		for (int i = 0; i < m_sequence->size() - 2; i++) {
@@ -168,11 +167,8 @@ private:
 public:
 	void setIterations(size_t n) { m_iterations = n; }
 
-	virtual void apply(const shared_ptr<SequenceBase> sequence,
-					   const VectorXd &data,
-					   const VectorXd &inputs,
-					   VectorXd &outputs,
-					   ArrayXd &resids) const override
+	virtual void apply(const VectorXd &data, const VectorXd &inputs,
+					   VectorXd &outputs, ArrayXd &resids) const override
 	{
 		RelaxFunctor f(m_sequence, data);
 		NumericalDiff<RelaxFunctor> nDiff(f);
@@ -255,11 +251,9 @@ int main(int argc, char **argv) {
 		cout << "Thresh: " << thresh << endl;
 	}
 
-	auto apply = itk::ApplyAlgorithmFilter<float, RelaxAlgo>::New();
-	apply->SetSequence(multiecho);
 	algo->setSequence(multiecho);
+	auto apply = itk::ApplyAlgorithmFilter<float, RelaxAlgo>::New();
 	apply->SetAlgorithm(algo);
-	apply->Setup();
 	apply->SetDataInput(0, inputData->GetOutput());
 	if (mask)
 		apply->SetMask(mask->GetOutput());

@@ -99,12 +99,16 @@ class HIFIFunctor : public DenseFunctor<double> {
 
 class HIFIAlgo : public Algorithm<double> {
 	private:
+		shared_ptr<SequenceGroup> m_sequence;
 		size_t m_iterations = 15; // From tests this seems to be a sensible maximum number
 	public:
+		void setSequence(shared_ptr<SequenceGroup> & s) { m_sequence = s; }
 		void setIterations(size_t n) { m_iterations = n; }
 
-		size_t numConsts() const override { return 0; }
+		size_t numInputs() const override  { return m_sequence->count(); }
+		size_t numConsts() const override  { return 0; }
 		size_t numOutputs() const override { return 3; }
+		size_t dataSize() const override   { return m_sequence->size(); }
 
 		virtual VectorXd defaultConsts() {
 			// No constants for HIFI
@@ -112,23 +116,21 @@ class HIFIAlgo : public Algorithm<double> {
 			return def;
 		}
 
-		virtual void apply(const shared_ptr<SequenceBase> sequence,
-		                   const VectorXd &data,
+		virtual void apply(const VectorXd &data,
 		                   const VectorXd &, //No inputs, remove name to silence compiler warning
-		                   VectorXd &outputs,
-		                   ArrayXd &resids) const override
+		                   VectorXd &outputs, ArrayXd &resids) const override
 		{
-			HIFIFunctor f(sequence, data);
+			HIFIFunctor f(m_sequence, data);
 			NumericalDiff<HIFIFunctor> nDiff(f);
 			LevenbergMarquardt<NumericalDiff<HIFIFunctor>> lm(nDiff);
 			outputs << data.array().abs().maxCoeff() * 10., 1., 1.; // Initial guess
 			// LevenbergMarquardt does not currently have a good interface, have to do things in steps
-			lm.setMaxfev(m_iterations * (sequence->size() + 1));
+			lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
 			lm.minimize(outputs);
 			// PD, T1, B1
 			VectorXd pfull(5); pfull << outputs[0], outputs[1], 0, 0, outputs[2]; // Build full parameter vector
 			auto model = make_shared<SCD>();
-			ArrayXd theory = sequence->signal(model, pfull).abs();
+			ArrayXd theory = m_sequence->signal(model, pfull).abs();
 			resids = (data.array() - theory);
 		}
 };
@@ -210,9 +212,8 @@ int main(int argc, char **argv) {
 	combined->addSequence(irSequence);
 	if (verbose) cout << *combined << endl;
 	auto apply = itk::ApplyAlgorithmFilter<float, HIFIAlgo>::New();
-	apply->SetSequence(combined);
+	hifi->setSequence(combined);
 	apply->SetAlgorithm(hifi);
-	apply->Setup();
 	apply->SetDataInput(0, spgrImg->GetOutput());
 	apply->SetDataInput(1, irImg->GetOutput());
 	if (mask)

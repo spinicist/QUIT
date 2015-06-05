@@ -14,15 +14,13 @@ ApplyAlgorithmFilter<TData, TAlgo>::ApplyAlgorithmFilter() {
 }
 
 template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::Setup() {
+void ApplyAlgorithmFilter<TData, TAlgo>::SetAlgorithm(const shared_ptr<TAlgo> &a) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	if (!(m_sequence && m_algorithm))
-		throw(runtime_error("Sequence and Algorithm must be set first"));
-
+	m_algorithm = a;
 	// +1 is for mask.
 	// Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
-	size_t totalInputs = m_sequence->count() + m_algorithm->numConsts() + 1;
-	this->SetNumberOfRequiredInputs(m_sequence->count());
+	size_t totalInputs = m_algorithm->numInputs() + m_algorithm->numConsts() + 1;
+	this->SetNumberOfRequiredInputs(a->numInputs());
 	// +1 is for residuals vector
 	size_t totalOutputs = m_algorithm->numOutputs() + 1;
 	this->SetNumberOfRequiredOutputs(totalOutputs);
@@ -35,7 +33,7 @@ void ApplyAlgorithmFilter<TData, TAlgo>::Setup() {
 template<typename TData, typename TAlgo>
 void ApplyAlgorithmFilter<TData, TAlgo>::SetDataInput(const size_t i, const TInputImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	if (i < m_sequence->count()) {
+	if (i < m_algorithm->numInputs()) {
 		this->SetNthInput(i, const_cast<TInputImage*>(image));
 	} else {
 		throw(runtime_error("Data input exceeds range"));
@@ -46,7 +44,7 @@ template<typename TData, typename TAlgo>
 void ApplyAlgorithmFilter<TData, TAlgo>::SetConstInput(const size_t i, const TImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
-		this->SetNthInput(m_sequence->count() + 1 + i, const_cast<TImage*>(image));
+		this->SetNthInput(m_algorithm->numInputs() + 1 + i, const_cast<TImage*>(image));
 	} else {
 		throw(runtime_error("ConstInput " + to_string(i) + " out of range (there are " + to_string(m_algorithm->numConsts()) + " inputs)"));
 	}
@@ -55,13 +53,13 @@ void ApplyAlgorithmFilter<TData, TAlgo>::SetConstInput(const size_t i, const TIm
 template<typename TData, typename TAlgo>
 void ApplyAlgorithmFilter<TData, TAlgo>::SetMask(const TImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	this->SetNthInput(m_sequence->count(), const_cast<TImage*>(image));
+	this->SetNthInput(m_algorithm->numInputs(), const_cast<TImage*>(image));
 }
 
 template<typename TData, typename TAlgo>
 auto ApplyAlgorithmFilter<TData, TAlgo>::GetDataInput(const size_t i) const -> typename TInputImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	if (i < m_sequence->count()) {
+	if (i < m_algorithm->numInputs()) {
 		return static_cast<const TInputImage *> (this->ProcessObject::GetInput(i));
 	} else {
 		throw(runtime_error("Get Data Input out of range."));
@@ -72,7 +70,7 @@ template<typename TData, typename TAlgo>
 auto ApplyAlgorithmFilter<TData, TAlgo>::GetConstInput(const size_t i) const -> typename TImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
-		size_t index = m_sequence->count() + 1 + i;
+		size_t index = m_algorithm->numInputs() + 1 + i;
 		return static_cast<const TImage *> (this->ProcessObject::GetInput(index));
 	} else {
 		throw(runtime_error("Get Data Input out of range."));
@@ -82,19 +80,7 @@ auto ApplyAlgorithmFilter<TData, TAlgo>::GetConstInput(const size_t i) const -> 
 template<typename TData, typename TAlgo>
 auto ApplyAlgorithmFilter<TData, TAlgo>::GetMask() const -> typename TImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	return static_cast<const TImage *>(this->ProcessObject::GetInput(m_sequence->count()));
-}
-
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::SetSequence(const shared_ptr<SequenceBase> &seq) {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	m_sequence = seq;
-}
-
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::SetAlgorithm(const shared_ptr<TAlgo> &a) {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
-	m_algorithm = a;
+	return static_cast<const TImage *>(this->ProcessObject::GetInput(m_algorithm->numInputs()));
 }
 
 template<typename TData, typename TAlgo>
@@ -140,11 +126,11 @@ void ApplyAlgorithmFilter<TData, TAlgo>::GenerateOutputInformation() {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	Superclass::GenerateOutputInformation();
 	size_t size = 0;
-	for (size_t i = 0; i < m_sequence->count(); i++) {
+	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		size += this->GetDataInput(i)->GetNumberOfComponentsPerPixel();
 	}
-	if (m_sequence->size() != size) {
-		throw(std::runtime_error("Sequence size (" + to_string(m_sequence->size()) + ") does not match input size (" + to_string(size) + ")"));
+	if (m_algorithm->dataSize() != size) {
+		throw(std::runtime_error("Sequence size (" + to_string(m_algorithm->dataSize()) + ") does not match input size (" + to_string(size) + ")"));
 	}
 
 	for (size_t i = 0; i < (m_algorithm->numOutputs()); i++) {
@@ -162,8 +148,8 @@ void ApplyAlgorithmFilter<TData, TAlgo>::GenerateOutputInformation() {
 template<typename TData, typename TAlgo>
 void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
 	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
-	vector<ImageRegionConstIterator<TInputImage>> dataIters(m_sequence->count());
-	for (size_t i = 0; i < m_sequence->count(); i++) {
+	vector<ImageRegionConstIterator<TInputImage>> dataIters(m_algorithm->numInputs());
+	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		dataIters[i] = ImageRegionConstIterator<TInputImage>(this->GetDataInput(i), region);
 	}
 	ImageRegionConstIterator<TImage> maskIter;
@@ -192,10 +178,10 @@ void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType &
 					constants[i] = constIters[i].Get();
 			}
 
-			typename TAlgo::TInputVector allData(m_sequence->size());
+			typename TAlgo::TInputVector allData(m_algorithm->dataSize());
 			typedef typename TAlgo::TInput TInput;
 			size_t dataIndex = 0;
-			for (size_t i = 0; i < m_sequence->count(); i++) {
+			for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 				VariableLengthVector<TData> dataVector = dataIters[i].Get();
 				Map<const Eigen::Array<TData, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
 				allData.segment(dataIndex, data.rows()) = data.template cast<TInput>();
@@ -203,19 +189,19 @@ void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType &
 			}
 			VectorXd outputs(m_algorithm->numOutputs());
 
-			ArrayXd resids(m_sequence->size());
+			ArrayXd resids(m_algorithm->dataSize());
 
-			m_algorithm->apply(m_sequence, allData, constants, outputs, resids);
+			m_algorithm->apply(allData, constants, outputs, resids);
 
 			for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 				outputIters[i].Set(static_cast<float>(outputs[i]));
 			}
 			ArrayXf residF = resids.cast<float>();
-			VariableLengthVector<float> residVector(residF.data(), m_sequence->size());
+			VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
 
 			residIter.Set(residVector);
 		}
-		for (size_t i = 0; i < m_sequence->count(); i++) {
+		for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 			++dataIters[i];
 		}
 		if (this->GetMask())

@@ -10,26 +10,26 @@
 
 template<typename DataType>
 class Algorithm {
-	public:
-		typedef DataType TInput;
-		typedef Eigen::Matrix<DataType, Eigen::Dynamic, 1> TInputVector;
-		virtual size_t numConsts() const = 0;
-		virtual size_t numOutputs() const = 0;
+public:
+	typedef DataType TInput;
+	typedef Eigen::Matrix<DataType, Eigen::Dynamic, 1> TInputVector;
+	virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
+	virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
+	virtual size_t numOutputs() const = 0; // Number of output parameters/variables
+	virtual size_t dataSize() const = 0;   // The expected size of the concatenated data vector
 
-		virtual void apply(const shared_ptr<SequenceBase> sequence,
-		                   const TInputVector &data,
-		                   const VectorXd &consts,
-		                   VectorXd &outputs,
-		                   ArrayXd &resids) const = 0;
+	virtual void apply(const TInputVector &data,
+					   const VectorXd &consts,
+					   VectorXd &outputs,
+					   ArrayXd &resids) const = 0;
 
-		virtual VectorXd defaultConsts() = 0;
+	virtual VectorXd defaultConsts() = 0;
 };
 
 namespace itk{
 
 template<typename TData, typename TAlgo>
-class ApplyAlgorithmFilter : public ImageToImageFilter<VectorImage<TData, 3>, Image<float, 3>>
-{
+class ApplyAlgorithmFilter : public ImageToImageFilter<VectorImage<TData, 3>, Image<float, 3>> {
 public:
 	/** Standard class typedefs. */
 	typedef Image<float, 3>                         TImage;
@@ -43,6 +43,7 @@ public:
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
+	void SetAlgorithm(const shared_ptr<TAlgo> &a);
 	void SetDataInput(const size_t i, const TInputImage *img);
 	void SetConstInput(const size_t i, const TImage *img);
 	void SetMask(const TImage *mask);
@@ -52,10 +53,6 @@ public:
 	TImage *GetOutput(const size_t i);
 	TResidImage *GetResidOutput();
 
-	void SetSequence(const shared_ptr<SequenceBase> &seq);
-	void SetAlgorithm(const shared_ptr<TAlgo> &a);
-	void Setup();
-
 	virtual void GenerateOutputInformation() override;
 	virtual void Update() override;
 
@@ -63,11 +60,9 @@ protected:
 	ApplyAlgorithmFilter();
 	~ApplyAlgorithmFilter(){}
 
-	virtual void ThreadedGenerateData(const RegionType & outputRegionForThread,
-	                                  ThreadIdType threadId); // Does the work
-	DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
+	virtual void ThreadedGenerateData(const RegionType & outputRegionForThread, ThreadIdType threadId);
+	DataObject::Pointer MakeOutput(unsigned int idx);
 
-	shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<TAlgo> m_algorithm;
 
 private:
