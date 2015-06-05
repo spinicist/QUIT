@@ -67,6 +67,7 @@ class SteadyState : public SequenceBase {
 		virtual size_t size() const override { return angles() * phases(); }
 		virtual size_t angles() const { return m_flip.rows(); }
 		virtual size_t phases() const { return 1; }
+		virtual ArrayXd weights(double f0) const { return ArrayXd::Ones(size()); }
 };
 
 class SPGRSimple : public SteadyState {
@@ -76,6 +77,7 @@ class SPGRSimple : public SteadyState {
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream &os) const override;
 		string name() const override { return "SPGR"; }
+		ArrayXd weights(const double f0) const override;
 };
 class SPGRFinite : public SPGRSimple {
 	public:
@@ -119,6 +121,7 @@ class SSFPSimple : public SteadyState {
 
 		bool isSymmetric() const;
 		Array2d bandwidth() const;
+		ArrayXd weights(const double f0) const override;
 };
 class SSFPFinite : public SSFPSimple {
 	public:
@@ -167,7 +170,7 @@ public:
 
 	size_t size() const override;
 	ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
-	//ArrayXcd loadSignals(vector<QUIT::MultiArray<complex<float>, 4>> &sigs, const size_t i, const size_t j, const size_t k, bool needsFlip = false) const;
+	ArrayXd weights(const double f0) const;
 	
 	void addSequence(const shared_ptr<SteadyState> &seq);
 };

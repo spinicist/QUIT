@@ -172,14 +172,14 @@ class MCDFunctor : public DenseFunctor<double> {
 		int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
 			eigen_assert(diffs.size() == values());
 			ArrayXcd s = m_sequence->signal(m_model, params);
-			diffs = s.abs() - m_data;
+			diffs = m_data - s.abs();
 			return 0;
 		}
 };
 
 class MCDAlgo : public Algorithm<double> {
 	private:
-		size_t m_samples = 5000, m_retain = 50, m_contractions = 10;
+		size_t m_samples = 5000, m_retain = 50, m_contractions = 20;
 		bool m_gauss = false;
 		ArrayXXd m_bounds;
 		shared_ptr<Model> m_model = nullptr;
@@ -215,8 +215,10 @@ class MCDAlgo : public Algorithm<double> {
 			double f0 = inputs[0];
 			double B1 = inputs[1];
 			ArrayXXd localBounds = m_bounds;
-			if (!std::isnan(f0))
+			if (!std::isnan(f0)) {
 				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
+				weights = m_sequence->weights(f0);
+			}
 			if (m_model->scaling() == Model::Scale::None) {
 				if (scaling == 0.) {
 					localBounds(0, 0) = 0.;

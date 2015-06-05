@@ -86,6 +86,11 @@ ArrayXcd SPGRSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
 	return m->SPGR(p, m_flip, m_TR);
 }
 
+ArrayXd SPGRSimple::weights(const double f0) const {
+	// Weight SPGR images higher than SSFP
+	return ArrayXd::Ones(size()) * 1.3;
+}
+
 SPGRFinite::SPGRFinite(const ArrayXd &flip, const double TR, const double Trf, const double TE) :
 	SPGRSimple(flip, TR), m_Trf(Trf), m_TE(TE)
 {}
@@ -204,6 +209,15 @@ Array2d SSFPSimple::bandwidth() const {
 			bw(0) = -bw(1);
 	}
 	return bw;
+}
+
+ArrayXd SSFPSimple::weights(const double f0) const {
+	ArrayXd phase = m_phases;
+	ArrayXd offset = phase - (M_PI * f0*m_TR);
+	ArrayXd weight = (offset / 2).sin().square();
+	ArrayXXd allWeights = weight.replicate(m_flip.size(), 1);
+	ArrayXd weights = Map<ArrayXd>(allWeights.data(), size());
+	return weights;
 }
 
 ArrayXcd SSFPSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
@@ -326,23 +340,14 @@ ArrayXcd SequenceGroup::signal(shared_ptr<Model> m, const VectorXd &p) const {
 	return result;
 }
 
-/*
-ArrayXcd SequenceGroup::loadSignals(vector<QUITK::MultiArray<complex<float>, 4>> &sigs,
-                                const size_t i, const size_t j, const size_t k,
-                                const bool flip) const {
-	ArrayXcd signal(size());
+ArrayXd SequenceGroup::weights(const double f0) const {
+	ArrayXd weights(size());
 	size_t start = 0;
-	for (size_t s = 0; s < m_sequences.size(); s++) {
-		ArrayXcd thisSig = sigs.at(s).slice<1>({i,j,k,0},{0,0,0,-1}).asArray().cast<complex<double>>();
-		if (flip) {
-			ArrayXXcd flipped = Map<ArrayXXcd>(thisSig.data(), m_sequences.at(s)->phases(), m_sequences.at(s)->angles()).transpose();
-			thisSig = Map<ArrayXcd>(flipped.data(), thisSig.rows(), 1);
-		}
-		signal.segment(start, thisSig.rows()) = thisSig;
-		start += thisSig.rows();
+	for (auto &sig : m_sequences) {
+		weights.segment(start, sig->size()) = sig->weights(f0);
 	}
-	return signal;
-}*/
+	return weights;
+}
 
 void SequenceGroup::addSequence(const shared_ptr<SteadyState> &seq) {
 	m_sequences.push_back(seq);
