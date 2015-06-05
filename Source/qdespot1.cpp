@@ -34,10 +34,15 @@ protected:
 	const shared_ptr<Model> m_model = make_shared<SCD>();
 	shared_ptr<SPGRSimple> m_sequence;
 	size_t m_iterations = 15;
+	double m_thresh = -numeric_limits<double>::infinity();
+	double m_lo = -numeric_limits<double>::infinity();
+	double m_hi = numeric_limits<double>::infinity();
 
 public:
 	void setIterations(size_t n) { m_iterations = n; }
 	void setSequence(shared_ptr<SPGRSimple> &s) { m_sequence = s; }
+	void setThreshold(double t) { m_thresh = t; }
+	void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
 	size_t numInputs() const override { return m_sequence->count(); }
 	size_t numConsts() const override { return 1; }
 	size_t numOutputs() const override { return 2; }
@@ -66,6 +71,9 @@ public:
 		outputs[0] = b[1] / (1. - b[0]);
 		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = (data.array() - theory);
+		if (outputs[0] < m_thresh)
+			outputs.setZero();
+		outputs[1] = clamp(outputs[1], m_lo, m_hi);
 	}
 };
 
@@ -91,6 +99,9 @@ public:
 		}
 		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = (data.array() - theory);
+		if (outputs[0] < m_thresh)
+			outputs.setZero();
+		outputs[1] = clamp(outputs[1], m_lo, m_hi);
 	}
 };
 
@@ -133,6 +144,9 @@ public:
 		lm.minimize(outputs);
 		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = data.array() - theory;
+		if (outputs[0] < m_thresh)
+			outputs.setZero();
+		outputs[1] = clamp(outputs[1], m_lo, m_hi);
 	}
 };
 
@@ -149,6 +163,8 @@ Options:\n\
 	--out, -o path    : Add a prefix to the output filenames\n\
 	--mask, -m file   : Mask input with specified file\n\
 	--B1, -b file     : B1 Map file (ratio)\n\
+	--thresh, -t n    : Threshold maps at PD < n\n\
+	--clamp, -c n     : Clamp T1 between 0 and n\n\
 	--algo, -a l      : LLS algorithm (default)\n\
 	           w      : WLLS algorithm\n\
 	           n      : NLLS (Levenberg-Marquardt)\n\
@@ -168,27 +184,25 @@ static struct option long_options[] =
 	{"out", required_argument, 0, 'o'},
 	{"mask", required_argument, 0, 'm'},
 	{"B1", required_argument, 0, 'b'},
+	{"thresh", required_argument, 0, 't'},
+	{"clamp", required_argument, 0, 'c'},
 	{"algo", required_argument, 0, 'a'},
 	{"its", required_argument, 0, 'i'},
 	{"resids", no_argument, 0, 'r'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnm:o:b:a:i:rT:";
+static const char *short_opts = "hvnm:o:b:t:c:a:i:rT:";
 
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	try { // To fix uncaught exceptions on Mac
-	//cout << version << endl << credit_shared << endl;
 	Eigen::initParallel();
-
 	QI::ReadImageF::Pointer mask = ITK_NULLPTR;
 	QI::ReadImageF::Pointer B1   = ITK_NULLPTR;
 
 	shared_ptr<D1Algo> algo = make_shared<D1LLS>();
-	size_t its = 15;
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -204,6 +218,13 @@ int main(int argc, char **argv) {
 						return EXIT_FAILURE;
 						break;
 				} break;
+			default: break;
+		}
+	}
+	optind = 1;
+	while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
+		switch (c) {
+			case 'v': case 'n': case 'a': break;
 			case 'm':
 				if (verbose) cout << "Opening mask file " << optarg << endl;
 				mask = QI::ReadImageF::New();
@@ -218,7 +239,9 @@ int main(int argc, char **argv) {
 				B1 = QI::ReadImageF::New();
 				B1->SetFileName(optarg);
 				break;
-			case 'i': its = (atoi(optarg)); break;
+			case 't': algo->setThreshold(atof(optarg)); break;
+			case 'c': algo->setClamp(0, atof(optarg)); break;
+			case 'i': algo->setIterations(atoi(optarg)); break;
 			case 'r': all_residuals = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
 			case 'h':
@@ -237,11 +260,9 @@ int main(int argc, char **argv) {
 	auto convert = QI::TimeseriesToVectorF::New();
 	input->SetFileName(inputFilename);
 	convert->SetInput(input->GetOutput());
-
 	shared_ptr<SPGRSimple> spgrSequence = make_shared<SPGRSimple>(prompt);
 	if (verbose) cout << *spgrSequence;
 	algo->setSequence(spgrSequence);
-	algo->setIterations(its);
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, D1Algo>::New();
 	apply->SetAlgorithm(algo);
 	apply->SetDataInput(0, convert->GetOutput());
@@ -253,15 +274,10 @@ int main(int argc, char **argv) {
 	apply->Update();
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "D1_";
-
 	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
 	QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
 	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	if (verbose) cout << "Finished." << endl;
-	} catch (exception &e) {
-		cerr << e.what() << endl;
-		return EXIT_FAILURE;
-	}
 	return EXIT_SUCCESS;
 }
