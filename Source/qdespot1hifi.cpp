@@ -99,7 +99,7 @@ class HIFIFunctor : public DenseFunctor<double> {
 
 class HIFIAlgo : public Algorithm<double> {
 	private:
-		size_t m_iterations = 4;
+		size_t m_iterations = 15; // From tests this seems to be a sensible maximum number
 	public:
 		void setIterations(size_t n) { m_iterations = n; }
 
@@ -114,17 +114,18 @@ class HIFIAlgo : public Algorithm<double> {
 
 		virtual void apply(const shared_ptr<SequenceBase> sequence,
 		                   const VectorXd &data,
-		                   const VectorXd &inputs,
+		                   const VectorXd &, //No inputs, remove name to silence compiler warning
 		                   VectorXd &outputs,
 		                   ArrayXd &resids) const override
 		{
 			HIFIFunctor f(sequence, data);
 			NumericalDiff<HIFIFunctor> nDiff(f);
 			LevenbergMarquardt<NumericalDiff<HIFIFunctor>> lm(nDiff);
+			outputs << data.array().abs().maxCoeff() * 10., 1., 1.; // Initial guess
+			// LevenbergMarquardt does not currently have a good interface, have to do things in steps
 			lm.setMaxfev(m_iterations * (sequence->size() + 1));
+			lm.minimize(outputs);
 			// PD, T1, B1
-			outputs << data.array().abs().maxCoeff() * 50., 1., 1.; // Initial guess
-			lm.lmder1(outputs);
 			VectorXd pfull(5); pfull << outputs[0], outputs[1], 0, 0, outputs[2]; // Build full parameter vector
 			auto model = make_shared<SCD>();
 			ArrayXd theory = sequence->signal(model, pfull).abs();
