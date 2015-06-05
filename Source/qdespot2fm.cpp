@@ -24,6 +24,7 @@
 #include "Sequence.h"
 #include "RegionContraction.h"
 
+
 using namespace std;
 using namespace Eigen;
 
@@ -57,7 +58,7 @@ Options:\n\
 /* --complex, -x     : Fit to complex data\n\ */
 
 static auto tesla = FieldStrength::Three;
-static size_t start_slice = 0, stop_slice = numeric_limits<size_t>::max();
+static int start_slice = 0, stop_slice = 0;
 static int verbose = false, prompt = true, all_residuals = false,
            fitFinite = false, fitComplex = false, flipData = false,
            samples = 2000, retain = 20, contract = 10,
@@ -78,12 +79,11 @@ static struct option long_opts[] = {
 	{"flip", required_argument, 0, 'F'},
 	{"threads", required_argument, 0, 'T'},
 	{"sequences", no_argument, 0, 'M'},
-	/*{"complex", no_argument, 0, 'x'},*/
 	{"contract", no_argument, 0, 'c'},
 	{"resids", no_argument, 0, 'r'},
 	{0, 0, 0, 0}
 };
-static const char* short_opts = "hvnm:o:f:b:s:p:S:FT:M:xcrd:";
+static const char* short_opts = "hvnm:o:f:b:s:p:S:FT:M:crd:";
 
 class FMFunctor : public DenseFunctor<double> {
 	public:
@@ -177,7 +177,6 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<FMAlgo> fm = make_shared<FMAlgo>();
-
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
@@ -202,8 +201,8 @@ int main(int argc, char **argv) {
 				B1 = QI::ReadImageF::New();
 				B1->SetFileName(optarg);
 				break;
-			/*case 's': start_slice = atoi(optarg); break;
-			case 'p': stop_slice = atoi(optarg); break;*/
+			case 's': start_slice = atoi(optarg); break;
+			case 'p': stop_slice = atoi(optarg); break;
 			case 'S':
 				switch (atoi(optarg)) {
 					case 0 : fm->setScaling(Model::Scale::ToMean); break;
@@ -255,35 +254,55 @@ int main(int argc, char **argv) {
 
 	if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
 	auto T1File = QI::ReadImageF::New();
+	auto T1Slice = QI::ImageROIF::New(), B1Slice = QI::ImageROIF::New(),
+	     maskSlice = QI::ImageROIF::New();
+	auto ssfpSlice = QI::VectorImageROIF::New();
+
 	T1File->SetFileName(argv[optind++]);
+	T1File->Update(); // Need to have some image dimensions to do this
+	QI::ImageF::RegionType region = T1File->GetOutput()->GetLargestPossibleRegion();
+	region.GetModifiableIndex()[2] = start_slice;
+	if (stop_slice != 0)
+		region.GetModifiableSize()[2] = stop_slice - start_slice;
+	else
+		region.GetModifiableSize()[2] = region.GetSize()[2] - start_slice;
+	T1Slice->SetRegionOfInterest(region);
+	T1Slice->SetInput(T1File->GetOutput());
 
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
 	auto ssfpFile = QI::ReadTimeseriesF::New();
 	ssfpFile->SetFileName(argv[optind++]);
 	auto ssfpData = QI::TimeseriesToVectorF::New();
 	ssfpData->SetInput(ssfpFile->GetOutput());
-	auto reorderFlip = QI::ReorderF::New();
+	ssfpSlice->SetRegionOfInterest(region);
+	ssfpSlice->SetInput(ssfpData->GetOutput());
+	auto ssfpFlip = QI::ReorderF::New();
 	if (flipData) {
-		reorderFlip->SetStride(ssfpSequence->phases());
+		ssfpFlip->SetStride(ssfpSequence->phases());
 	}
-	reorderFlip->SetInput(ssfpData->GetOutput());
+	ssfpFlip->SetInput(ssfpSlice->GetOutput());
 
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, FMAlgo>::New();
 	fm->setSequence(ssfpSequence);
 	fm->setf0Bounds(ssfpSequence->bandwidth());
 	apply->SetAlgorithm(fm);
-	apply->SetDataInput(0, reorderFlip->GetOutput());
-	apply->SetConstInput(0, T1File->GetOutput());
-	if (B1)
-		apply->SetConstInput(1, B1->GetOutput());
-	if (mask)
-		apply->SetMask(mask->GetOutput());
-
+	apply->SetDataInput(0, ssfpFlip->GetOutput());
+	apply->SetConstInput(0, T1Slice->GetOutput());
+	if (B1) {
+		B1Slice->SetRegionOfInterest(region);
+		B1Slice->SetInput(B1->GetOutput());
+		apply->SetConstInput(1, B1Slice->GetOutput());
+	}
+	if (mask) {
+		maskSlice->SetRegionOfInterest(region);
+		maskSlice->SetInput(mask->GetOutput());
+		apply->SetMask(maskSlice->GetOutput());
+	}
 	time_t startTime;
 	if (verbose) startTime = QI::printStartTime();
 	apply->Update();
 	QI::printElapsedTime(startTime);
-
+	if (verbose) cout << "Writing output files." << endl;
 	outPrefix = outPrefix + "FM_";
 	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
 	QI::writeResult(apply->GetOutput(1), outPrefix + "T2.nii");

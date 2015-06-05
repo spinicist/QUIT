@@ -16,6 +16,7 @@
 #include "itkVectorImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
+#include "itkRegionOfInterestImageFilter.h"
 
 #include "Filters/VectorToImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
@@ -34,6 +35,7 @@ typedef itk::ImageFileWriter<TimeseriesF> WriteTimeseriesF;
 typedef itk::ImageToVectorFilter<TimeseriesF> TimeseriesToVectorF;
 typedef itk::VectorToImageFilter<VectorImageF> VectorToTimeseriesF;
 typedef itk::ReorderVectorFilter<VectorImageF> ReorderF;
+typedef itk::RegionOfInterestImageFilter<ImageF, ImageF> ImageROIF;
 
 typedef itk::Image<std::complex<float>, 3> ImageXF;
 typedef itk::Image<std::complex<float>, 4> TimeseriesXF;
@@ -46,6 +48,7 @@ typedef itk::ImageFileWriter<TimeseriesXF> WriteTimeseriesXF;
 typedef itk::ImageToVectorFilter<TimeseriesXF> TimeseriesToVectorXF;
 typedef itk::VectorToImageFilter<VectorImageXF> VectorToTimeseriesXF;
 typedef itk::ReorderVectorFilter<VectorImageXF> ReorderXF;
+typedef itk::RegionOfInterestImageFilter<VectorImageF, VectorImageF> VectorImageROIF;
 
 } // End namespace QI
 
