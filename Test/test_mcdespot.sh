@@ -15,16 +15,16 @@ rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
 
-DIMS="5 5 4"
+DIMS="11 11 4"
 
 $QUITDIR/qnewimage -d "$DIMS" -f "1.0" PD.nii
 $QUITDIR/qnewimage -d "$DIMS" -f "0.465" T1_a.nii
 $QUITDIR/qnewimage -d "$DIMS" -f "0.026" T2_a.nii
 $QUITDIR/qnewimage -d "$DIMS" -f "1.070" T1_b.nii
 $QUITDIR/qnewimage -d "$DIMS" -f "0.117" T2_b.nii
-$QUITDIR/qnewimage -d "$DIMS" -f "0.18" tau_a.nii
-$QUITDIR/qnewimage -d "$DIMS" -g "0 -25. 25." f0.nii
-$QUITDIR/qnewimage -d "$DIMS" -g "1 0.75 1.25" B1.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.35" tau_a.nii
+$QUITDIR/qnewimage -d "$DIMS" -g "0 -50. 50." f0.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "1.0" B1.nii #-g "1 0.75 1.25" B1.nii
 $QUITDIR/qnewimage -d "$DIMS" -g "2 0.1 0.25" f_a.nii
 
 # Setup parameters
@@ -75,7 +75,7 @@ END" > mcd.in
 function run() {
 PREFIX="$1"
 OPTS="$2"
-run_test $PREFIX $QUITDIR/qmcdespot $OPTS -o $PREFIX < mcd.in
+run_test $PREFIX $QUITDIR/qmcdespot $OPTS -o $PREFIX -v < mcd.in
 
 echo "Tau:  " $( fslstats ${PREFIX}2C_tau_a.nii -m -s )
 echo "T1_a: " $( fslstats ${PREFIX}2C_T1_a.nii -m -s )
@@ -85,11 +85,32 @@ echo "T2_b: " $( fslstats ${PREFIX}2C_T2_b.nii -m -s )
 
 compare_test $PREFIX f_a.nii ${PREFIX}2C_f_a.nii 0.05
 
+$QUITDIR/qsignal --2 -n -o $PREFIX << END_MCSIG
+${PREFIX}2C_PD.nii
+${PREFIX}2C_T1_a.nii
+${PREFIX}2C_T2_a.nii
+${PREFIX}2C_T1_b.nii
+${PREFIX}2C_T2_b.nii
+${PREFIX}2C_tau_a.nii
+${PREFIX}2C_f_a.nii
+${PREFIX}2C_f0.nii
+${PREFIX}2C_B1.nii
+SPGR
+$SPGR_PAR
+${PREFIX}$SPGR_FILE
+SSFP
+$SSFP_PAR_180_0
+${PREFIX}180_0${SSFP_FILE}
+SSFP
+$SSFP_PAR_90_270
+${PREFIX}90_270${SSFP_FILE}
+END
+END_MCSIG
 }
 
-run "f0" "-v --2 -n -S1 -g -bB1.nii -ff0.nii "
-#run "GAUSS" "-v --2 -n -S1 -g -bB1.nii"
-#run "MEAN" "-v --2 -n -S1 -bB1.nii"
+#run "f0"    "-v --2 -n -S1 -r -bB1.nii -ff0.nii"
+run "GAUSS" "-v --2 -n -S1 -r -g -bB1.nii -ff0.nii"
+#run "MEAN" "-v --2 -n -S1 -r -bB1.nii"
 
 
 cd ..

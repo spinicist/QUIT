@@ -66,7 +66,7 @@ inline const Matrix3d Relax(const double &T1, const double &T2) {
 	Matrix3d R;
 	R << 1./T2,     0,     0,
 	         0, 1./T2,     0,
-			 0,     0, 1./T1;
+	         0,     0, 1./T1;
 	return R;
 }
 
@@ -108,8 +108,7 @@ inline const Matrix6d Exchange(const double &k_ab, const double &k_ba) {
 const void CalcExchange(const double tau_a, const double f_a, double &f_b, double &k_ab, double &k_ba) {
 	const double feps = numeric_limits<float>::epsilon(); // Because we read from float files
 	f_b = 1.0 - f_a;
-	const double tau_b = f_b * tau_a / f_a;
-	k_ab = 1./tau_a; k_ba = 1./tau_b;
+	k_ab = 1./tau_a; k_ba = k_ab*f_a/f_b;
 	if ((fabs(f_a - 1.) <= feps) || (fabs(f_b - 1.) <= feps)) {
 		// Only have 1 component, so no exchange
 		k_ab = 0.;
@@ -269,14 +268,15 @@ VectorXcd Two_SSFP(carrd &flip, const double TR, const double phase,
 	double k_ab, k_ba, f_b;
 	CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
 	Matrix6d K = Exchange(k_ab, k_ba);
-	Matrix6d L = (-TR*(R+O+K)).exp();
+	Matrix6d L2 = ((-TR/2)*(R+O+K)).exp();
+	Matrix6d L = L2*L2;
 	Vector6d M0; M0 << 0., 0., PD * f_a, 0., 0., PD * f_b;
 	const Vector6d eyemaM0 = (Matrix6d::Identity() - L) * M0;
 	Matrix6d A = Matrix6d::Zero();
 	for (int i = 0; i < flip.size(); i++) {
 		A.block(0, 0, 3, 3) = Matrix3d(AngleAxisd(flip[i] * B1, Vector3d::UnitY()) * AngleAxisd(phase, Vector3d::UnitZ()));
 		A.block(3, 3, 3, 3).noalias() = A.block(0, 0, 3, 3);
-		Vector6d MTR = (Matrix6d::Identity() - L * A).partialPivLu().solve(eyemaM0);
+		Vector6d MTR = L2 * (Matrix6d::Identity() - L * A).partialPivLu().solve(eyemaM0);
 		signal.col(i) = SumMC(MTR);
 	}
 	return SigComplex(signal);

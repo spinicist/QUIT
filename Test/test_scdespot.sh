@@ -15,7 +15,7 @@ rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
 
-DIMS="11 11 11"
+DIMS="5 5 5"
 VOXDIMS="2 2 2"
 $QUITDIR/qnewimage -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
 $QUITDIR/qnewimage -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 5" T1.nii
@@ -104,7 +104,7 @@ run_test "SSFPGS2P" $QUITDIR/qssfpbands -2 ssfp_x.nii
 run_test "SSFPGS2PMAG" $QUITDIR/qcomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_2p_mag.nii
 run_test "DESPOT2GS2P" $QUITDIR/qdespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
-run_test "DESPOT2FM" $QUITDIR/qdespot2fm D1_T1.nii $SSFP_FILE -n -S1 -bB1.nii < despot2fm.in
+run_test "DESPOT2FM" $QUITDIR/qdespot2fm D1_T1.nii $SSFP_FILE -n -S1 -bB1.nii -v < despot2fm.in
 compare_test "DESPOT2FM" T2.nii FM_T2.nii 0.01
 
 cd ..
