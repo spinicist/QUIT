@@ -8,13 +8,13 @@
 
 namespace itk {
 
-template<typename TData, typename TAlgo>
-ApplyAlgorithmFilter<TData, TAlgo>::ApplyAlgorithmFilter() {
+template<typename TVImage, typename TAlgo>
+ApplyAlgorithmFilter<TVImage, TAlgo>::ApplyAlgorithmFilter() {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 }
 
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::SetAlgorithm(const shared_ptr<TAlgo> &a) {
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetAlgorithm(const shared_ptr<TAlgo> &a) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	m_algorithm = a;
 	// +1 is for mask.
@@ -30,18 +30,18 @@ void ApplyAlgorithmFilter<TData, TAlgo>::SetAlgorithm(const shared_ptr<TAlgo> &a
 	}
 }
 
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::SetDataInput(const size_t i, const TInputImage *image) {
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetDataInput(const size_t i, const TVImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
-		this->SetNthInput(i, const_cast<TInputImage*>(image));
+		this->SetNthInput(i, const_cast<TVectorImage*>(image));
 	} else {
 		throw(runtime_error("Data input exceeds range"));
 	}
 }
 
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::SetConstInput(const size_t i, const TImage *image) {
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetConstInput(const size_t i, const TImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		this->SetNthInput(m_algorithm->numInputs() + 1 + i, const_cast<TImage*>(image));
@@ -50,24 +50,24 @@ void ApplyAlgorithmFilter<TData, TAlgo>::SetConstInput(const size_t i, const TIm
 	}
 }
 
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::SetMask(const TImage *image) {
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetMask(const TImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	this->SetNthInput(m_algorithm->numInputs(), const_cast<TImage*>(image));
 }
 
-template<typename TData, typename TAlgo>
-auto ApplyAlgorithmFilter<TData, TAlgo>::GetDataInput(const size_t i) const -> typename TInputImage::ConstPointer {
+template<typename TVImage, typename TAlgo>
+auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetDataInput(const size_t i) const -> typename TVImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
-		return static_cast<const TInputImage *> (this->ProcessObject::GetInput(i));
+		return static_cast<const TVImage *> (this->ProcessObject::GetInput(i));
 	} else {
 		throw(runtime_error("Get Data Input out of range."));
 	}
 }
 
-template<typename TData, typename TAlgo>
-auto ApplyAlgorithmFilter<TData, TAlgo>::GetConstInput(const size_t i) const -> typename TImage::ConstPointer {
+template<typename TVImage, typename TAlgo>
+auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetConstInput(const size_t i) const -> typename TImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		size_t index = m_algorithm->numInputs() + 1 + i;
@@ -77,18 +77,18 @@ auto ApplyAlgorithmFilter<TData, TAlgo>::GetConstInput(const size_t i) const -> 
 	}
 }
 
-template<typename TData, typename TAlgo>
-auto ApplyAlgorithmFilter<TData, TAlgo>::GetMask() const -> typename TImage::ConstPointer {
+template<typename TVImage, typename TAlgo>
+auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetMask() const -> typename TImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	return static_cast<const TImage *>(this->ProcessObject::GetInput(m_algorithm->numInputs()));
 }
 
-template<typename TData, typename TAlgo>
-DataObject::Pointer ApplyAlgorithmFilter<TData, TAlgo>::MakeOutput(unsigned int idx) {
+template<typename TVImage, typename TAlgo>
+DataObject::Pointer ApplyAlgorithmFilter<TVImage, TAlgo>::MakeOutput(unsigned int idx) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	DataObject::Pointer output;
 	if (idx == 0) {
-		typename TResidImage::Pointer img = TResidImage::New();
+		auto img = TVImage::New();
 		output = img;
 	} else if (idx < (m_algorithm->numOutputs() + 1)) {
 		output = (TImage::New()).GetPointer();
@@ -99,8 +99,8 @@ DataObject::Pointer ApplyAlgorithmFilter<TData, TAlgo>::MakeOutput(unsigned int 
 	return output.GetPointer();
 }
 
-template<typename TData, typename TAlgo>
-auto ApplyAlgorithmFilter<TData, TAlgo>::GetOutput(const size_t i) -> TImage *{
+template<typename TVImage, typename TAlgo>
+auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetOutput(const size_t i) -> TImage *{
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numOutputs()) {
 		return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i+1));
@@ -109,20 +109,20 @@ auto ApplyAlgorithmFilter<TData, TAlgo>::GetOutput(const size_t i) -> TImage *{
 	}
 }
 
-template<typename TData, typename TAlgo>
-auto ApplyAlgorithmFilter<TData, TAlgo>::GetResidOutput() -> TResidImage *{
-	return dynamic_cast<TResidImage *>(this->ProcessObject::GetOutput(0));
+template<typename TVImage, typename TAlgo>
+auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetResidOutput() -> TVImage *{
+	return dynamic_cast<TVImage *>(this->ProcessObject::GetOutput(0));
 }
 
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::Update() {
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::Update() {
 	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
 	Superclass::Update();
 	//std::cout << "Finished " << __PRETTY_FUNCTION__ << std::endl;
 }
 
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::GenerateOutputInformation() {
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::GenerateOutputInformation() {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	Superclass::GenerateOutputInformation();
 	size_t size = 0;
@@ -145,12 +145,12 @@ void ApplyAlgorithmFilter<TData, TAlgo>::GenerateOutputInformation() {
 	//std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
 
-template<typename TData, typename TAlgo>
-void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
 	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
-	vector<ImageRegionConstIterator<TInputImage>> dataIters(m_algorithm->numInputs());
+	vector<ImageRegionConstIterator<TVImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
-		dataIters[i] = ImageRegionConstIterator<TInputImage>(this->GetDataInput(i), region);
+		dataIters[i] = ImageRegionConstIterator<TVImage>(this->GetDataInput(i), region);
 	}
 	ImageRegionConstIterator<TImage> maskIter;
 	if (this->GetMask()) {
@@ -167,9 +167,9 @@ void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType &
 	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 		outputIters[i] = ImageRegionIterator<TImage>(this->GetOutput(i), region);
 	}
-	ImageRegionIterator<TResidImage> residIter(this->GetResidOutput(), region);
+	ImageRegionIterator<TVImage> residIter(this->GetResidOutput(), region);
 
-	VectorXd constants = m_algorithm->defaultConsts();
+	typename TAlgo::TInputVector constants = m_algorithm->defaultConsts();
 	while(!dataIters[0].IsAtEnd()) {
 		typename TImage::ConstPointer m = this->GetMask();
 		if (!m || maskIter.Get()) {
@@ -179,12 +179,11 @@ void ApplyAlgorithmFilter<TData, TAlgo>::ThreadedGenerateData(const RegionType &
 			}
 
 			typename TAlgo::TInputVector allData(m_algorithm->dataSize());
-			typedef typename TAlgo::TInput TInput;
 			size_t dataIndex = 0;
 			for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
-				VariableLengthVector<TData> dataVector = dataIters[i].Get();
-				Map<const Eigen::Array<TData, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
-				allData.segment(dataIndex, data.rows()) = data.template cast<TInput>();
+				VariableLengthVector<TPixel> dataVector = dataIters[i].Get();
+				Map<const Eigen::Array<TPixel, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
+				allData.segment(dataIndex, data.rows()) = data.template cast<typename TAlgo::TInput>();
 				dataIndex += data.rows();
 			}
 			VectorXd outputs(m_algorithm->numOutputs());

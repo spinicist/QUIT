@@ -28,30 +28,31 @@ public:
 
 namespace itk{
 
-template<typename TData, typename TAlgo>
-class ApplyAlgorithmFilter : public ImageToImageFilter<VectorImage<TData, 3>, Image<float, 3>> {
+template<typename TInImage, typename TAlgo>
+class ApplyAlgorithmFilter : public ImageToImageFilter<TInImage, TInImage> {
 public:
-	/** Standard class typedefs. */
-	typedef Image<float, 3>                         TImage;
-	typedef VectorImage<TData, 3>                   TInputImage;
-	typedef VectorImage<float, 3>                   TResidImage;
-	typedef ApplyAlgorithmFilter                    Self;
-	typedef ImageToImageFilter<TInputImage, TImage> Superclass;
-	typedef SmartPointer<Self>                      Pointer;
-	typedef typename TImage::RegionType             RegionType;
+	static const unsigned int                    ImageDimension = TInImage::ImageDimension;
+	typedef typename TInImage::InternalPixelType TPixel;
+	typedef Image<TPixel, ImageDimension>        TImage;
+	typedef TInImage                             TVectorImage;
+
+	typedef ApplyAlgorithmFilter                   Self;
+	typedef ImageToImageFilter<TInImage, TInImage> Superclass;
+	typedef SmartPointer<Self>                     Pointer;
+	typedef typename TImage::RegionType            RegionType;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
 	void SetAlgorithm(const shared_ptr<TAlgo> &a);
-	void SetDataInput(const size_t i, const TInputImage *img);
+	void SetDataInput(const size_t i, const TVectorImage *img);
 	void SetConstInput(const size_t i, const TImage *img);
 	void SetMask(const TImage *mask);
-	typename TInputImage::ConstPointer GetDataInput(const size_t i) const;
+	typename TVectorImage::ConstPointer GetDataInput(const size_t i) const;
 	typename TImage::ConstPointer GetConstInput(const size_t i) const;
 	typename TImage::ConstPointer GetMask() const;
 	TImage *GetOutput(const size_t i);
-	TResidImage *GetResidOutput();
+	TVectorImage *GetResidOutput();
 
 	virtual void GenerateOutputInformation() override;
 	virtual void Update() override;

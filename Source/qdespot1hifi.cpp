@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 	combined->addSequence(spgrSequence);
 	combined->addSequence(irSequence);
 	if (verbose) cout << *combined << endl;
-	auto apply = itk::ApplyAlgorithmFilter<float, HIFIAlgo>::New();
+	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, HIFIAlgo>::New();
 	hifi->setSequence(combined);
 	apply->SetAlgorithm(hifi);
 	apply->SetDataInput(0, spgrImg->GetOutput());

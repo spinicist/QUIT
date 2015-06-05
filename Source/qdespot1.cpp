@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
 	if (verbose) cout << *spgrSequence;
 	algo->setSequence(spgrSequence);
 	algo->setIterations(its);
-	auto apply = itk::ApplyAlgorithmFilter<float, D1Algo>::New();
+	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, D1Algo>::New();
 	apply->SetAlgorithm(algo);
 	apply->SetDataInput(0, convert->GetOutput());
 	if (mask)

@@ -356,7 +356,7 @@ int main(int argc, char **argv) {
 		boundsFile.close();
 	}
 	
-	auto apply = itk::ApplyAlgorithmFilter<float, MCDAlgo>::New();
+	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, MCDAlgo>::New();
 	mcd->setSequence(sequences);
 	apply->SetAlgorithm(mcd);
 	for (int i = 0; i < inOrder.size(); i++) {

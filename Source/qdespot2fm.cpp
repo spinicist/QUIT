@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
 	}
 	reorderFlip->SetInput(ssfpData->GetOutput());
 
-	auto apply = itk::ApplyAlgorithmFilter<float, FMAlgo>::New();
+	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, FMAlgo>::New();
 	fm->setSequence(ssfpSequence);
 	fm->setf0Bounds(ssfpSequence->bandwidth());
 	apply->SetAlgorithm(fm);
