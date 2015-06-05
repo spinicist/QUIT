@@ -101,10 +101,14 @@ class HIFIAlgo : public Algorithm<double> {
 	private:
 		shared_ptr<SequenceGroup> m_sequence;
 		size_t m_iterations = 15; // From tests this seems to be a sensible maximum number
+		double m_thresh = -numeric_limits<double>::infinity();
+		double m_lo = -numeric_limits<double>::infinity();
+		double m_hi = numeric_limits<double>::infinity();
 	public:
 		void setSequence(shared_ptr<SequenceGroup> & s) { m_sequence = s; }
 		void setIterations(size_t n) { m_iterations = n; }
-
+		void setThreshold(double t) { m_thresh = t; }
+		void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
 		size_t numInputs() const override  { return m_sequence->count(); }
 		size_t numConsts() const override  { return 0; }
 		size_t numOutputs() const override { return 3; }
@@ -132,6 +136,9 @@ class HIFIAlgo : public Algorithm<double> {
 			auto model = make_shared<SCD>();
 			ArrayXd theory = m_sequence->signal(model, pfull).abs();
 			resids = (data.array() - theory);
+			if (outputs[0] < m_thresh)
+				outputs.setZero();
+			outputs[1] = clamp(outputs[1], m_lo, m_hi);
 		}
 };
 
@@ -140,15 +147,7 @@ class HIFIAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-
-	typedef itk::Image<float, 3> FloatImage;
-	typedef itk::VectorImage<float, 3> FloatVectorImage;
-
-	typedef itk::ImageFileReader<FloatImage> Reader;
-	typedef itk::ImageFileReader<itk::Image<float, 4>> Reader4D;
-	Reader::Pointer mask = ITK_NULLPTR;
-	Reader::Pointer B1   = ITK_NULLPTR;
-
+	ReadImageF::Pointer mask = ITK_NULLPTR;
 	auto hifi = make_shared<HIFIAlgo>();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
@@ -158,21 +157,16 @@ int main(int argc, char **argv) {
 			case 'M': IR = false; break;
 			case 'm':
 				if (verbose) cout << "Opening mask file: " << optarg << endl;
-				mask = Reader::New();
+				mask = ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
 				if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
 				break;
-			case 't': thresh = atof(optarg); break;
-			case 'c':
-				clamp_lo = 0;
-				clamp_hi = atof(optarg);
-				break;
-			case 'i':
-				hifi->setIterations(atoi(optarg));
-				break;
+			case 't': hifi->setThreshold(atof(optarg)); break;
+			case 'c': hifi->setClamp(0, atof(optarg)); break;
+			case 'i': hifi->setIterations(atoi(optarg)); break;
 			case 'r': all_residuals = true; break;
 			case 'T':
 				itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg));
@@ -190,15 +184,14 @@ int main(int argc, char **argv) {
 	}
 	
 	if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
-	auto spgrFile = Reader4D::New();
-	auto spgrImg = itk::ImageToVectorFilter<QI::TimeseriesF>::New();
+	auto spgrFile = ReadTimeseriesF::New();
+	auto spgrImg = TimeseriesToVectorF::New();
 	spgrFile->SetFileName(argv[optind++]);
 	spgrImg->SetInput(spgrFile->GetOutput());
 	auto spgrSequence = make_shared<SPGRSimple>(prompt);
-
 	if (verbose) cout << "Opening IR-SPGR file: " << argv[optind] << endl;
-	auto irFile = Reader4D::New();
-	auto irImg = itk::ImageToVectorFilter<QI::TimeseriesF>::New();
+	auto irFile = ReadTimeseriesF::New();
+	auto irImg = TimeseriesToVectorF::New();
 	irFile->SetFileName(argv[optind++]);
 	irImg->SetInput(irFile->GetOutput());
 	shared_ptr<SteadyState> irSequence;
