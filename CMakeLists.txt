@@ -36,3 +36,5 @@ set(TESTS test_common.sh test_scdespot.sh test_mcdespot.sh test_relax.sh test_al
 foreach(TEST ${TESTS})
 	configure_file(Test/${TEST} Test/${TEST} COPYONLY)
 endforeach(TEST)
+
+install(TARGETS ${PROGRAMS} RUNTIME DESTINATION bin)
