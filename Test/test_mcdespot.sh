@@ -18,14 +18,14 @@ cd $DATADIR
 DIMS="11 11 4"
 
 $QUITDIR/qnewimage -d "$DIMS" -f "1.0" PD.nii
-$QUITDIR/qnewimage -d "$DIMS" -f "0.465" T1_a.nii
-$QUITDIR/qnewimage -d "$DIMS" -f "0.026" T2_a.nii
-$QUITDIR/qnewimage -d "$DIMS" -f "1.070" T1_b.nii
-$QUITDIR/qnewimage -d "$DIMS" -f "0.117" T2_b.nii
-$QUITDIR/qnewimage -d "$DIMS" -f "0.35" tau_a.nii
-$QUITDIR/qnewimage -d "$DIMS" -g "0 -50. 50." f0.nii
-$QUITDIR/qnewimage -d "$DIMS" -f "1.0" B1.nii #-g "1 0.75 1.25" B1.nii
-$QUITDIR/qnewimage -d "$DIMS" -g "2 0.1 0.25" f_a.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.465" T1_m.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.026" T2_m.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "1.070" T1_ie.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.117" T2_ie.nii
+$QUITDIR/qnewimage -d "$DIMS" -f "0.18" tau_m.nii
+$QUITDIR/qnewimage -d "$DIMS" -g "0 -5. 5." f0.nii
+$QUITDIR/qnewimage -d "$DIMS" -g "1 0.75 1.25" B1.nii
+$QUITDIR/qnewimage -d "$DIMS" -g "2 0.1 0.25" f_m.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
@@ -43,12 +43,12 @@ $SSFP_TR"
 
 run_test "CREATE_SIGNALS" $QUITDIR/qsignal --2 -n << END_MCSIG
 PD.nii
-T1_a.nii
-T2_a.nii
-T1_b.nii
-T2_b.nii
-tau_a.nii
-f_a.nii
+T1_m.nii
+T2_m.nii
+T1_ie.nii
+T2_ie.nii
+tau_m.nii
+f_m.nii
 f0.nii
 B1.nii
 SPGR
@@ -75,43 +75,25 @@ END" > mcd.in
 function run() {
 PREFIX="$1"
 OPTS="$2"
-run_test $PREFIX $QUITDIR/qmcdespot $OPTS -o $PREFIX -v < mcd.in
+run_test $PREFIX $QUITDIR/qmcdespot $OPTS -2 -n -bB1.nii -r -o $PREFIX -v < mcd.in
 
-echo "Tau:  " $( fslstats ${PREFIX}2C_tau_a.nii -m -s )
-echo "T1_a: " $( fslstats ${PREFIX}2C_T1_a.nii -m -s )
-echo "T2_a: " $( fslstats ${PREFIX}2C_T2_a.nii -m -s )
-echo "T1_b: " $( fslstats ${PREFIX}2C_T1_b.nii -m -s )
-echo "T2_b: " $( fslstats ${PREFIX}2C_T2_b.nii -m -s )
-
-compare_test $PREFIX f_a.nii ${PREFIX}2C_f_a.nii 0.05
-
-$QUITDIR/qsignal --2 -n -o $PREFIX << END_MCSIG
-${PREFIX}2C_PD.nii
-${PREFIX}2C_T1_a.nii
-${PREFIX}2C_T2_a.nii
-${PREFIX}2C_T1_b.nii
-${PREFIX}2C_T2_b.nii
-${PREFIX}2C_tau_a.nii
-${PREFIX}2C_f_a.nii
-${PREFIX}2C_f0.nii
-${PREFIX}2C_B1.nii
-SPGR
-$SPGR_PAR
-${PREFIX}$SPGR_FILE
-SSFP
-$SSFP_PAR_180_0
-${PREFIX}180_0${SSFP_FILE}
-SSFP
-$SSFP_PAR_90_270
-${PREFIX}90_270${SSFP_FILE}
-END
-END_MCSIG
+echo "       Mean     Std.     CoV"
+echo "T1_m:  " $( fslstats ${PREFIX}2C_T1_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
+echo "T2_m:  " $( fslstats ${PREFIX}2C_T2_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
+echo "T1_ie: " $( fslstats ${PREFIX}2C_T1_ie.nii -m -s | awk '{print $1, $2, $2/$1}' )
+echo "T2_ie: " $( fslstats ${PREFIX}2C_T2_ie.nii -m -s | awk '{print $1, $2, $2/$1}' )
+echo "MWF:   " $( fslstats ${PREFIX}2C_f_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
+echo "Tau:   " $( fslstats ${PREFIX}2C_tau_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
+compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
 }
 
-#run "f0"    "-v --2 -n -S1 -r -bB1.nii -ff0.nii"
-run "GAUSS" "-v --2 -n -S1 -r -g -bB1.nii -ff0.nii"
-#run "MEAN" "-v --2 -n -S1 -r -bB1.nii"
-
+run "GAUSSSCALE1f0" " -S1 -ff0.nii"
+run "SCALE1f0"      " -S1 -g0 -ff0.nii"
+run "NOSCALEf0"     " -SNONE -g0 -ff0.nii"
+run "MEANSCALEf0"   " -g0 -ff0.nii"
+run "MEANSCALE"     " -g0 "
+run "GAUSSSCALE1"   " -S1 -g0 "
+run "NOSCALE"       " -SNONE -g0 "
 
 cd ..
 SILENCE_TESTS="0"
