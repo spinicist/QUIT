@@ -111,7 +111,7 @@ VectorXcd SCD::SSFPEllipse(cvecd &p, carrd &a, cdbl TR) const {
 string MCD2::Name() const { return "2C"; }
 size_t MCD2::nParameters() const { return 9; }
 const vector<string> & MCD2::Names() const {
-	static vector<string> n{"PD", "T1_a", "T2_a", "T1_b", "T2_b", "tau_a", "f_a", "f0", "B1"};
+	static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "tau_m", "f_m", "f0", "B1"};
 	return n;
 }
 
@@ -119,8 +119,8 @@ ArrayXXd MCD2::Bounds(const FieldStrength f, cdbl TR) const {
 	size_t nP = nParameters();
 	ArrayXXd b(nP, 2);
 	switch (f) {
-		case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.65, 0.001, 0.030, 0.5, 4.5, 0.05, 0.165, 0.025, 0.60, 0.0, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
-		case FieldStrength::Seven: b << 1.0, 1.0, 0.4, 0.8, 0.001, 0.025, 0.7, 4.5, 0.05, 0.165, 0.025, 0.60, 0.0, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
+		case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.65, 0.001, 0.030, 0.5, 1.5, 0.05, 0.165, 0.025, 0.6, 0.0, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
+		case FieldStrength::Seven: b << 1.0, 1.0, 0.4, 0.8, 0.001, 0.025, 0.7, 2.5, 0.05, 0.165, 0.025, 0.6, 0.0, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
 		case FieldStrength::User:  b.setZero(); break;
 	}
 	return b;
@@ -161,7 +161,7 @@ VectorXcd MCD2::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl phi) cons
 string MCD3::Name() const { return "3C"; }
 size_t MCD3::nParameters() const { return 12; }
 const vector<string> & MCD3::Names() const {
-	static vector<string> n{"PD", "T1_a", "T2_a", "T1_b", "T2_b", "T1_c", "T2_c", "tau_a", "f_a", "f_c", "f0", "B1"};
+	static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "T1_csf", "T2_csf", "tau_m", "f_m", "f_csf", "f0", "B1"};
 	return n;
 }
 
