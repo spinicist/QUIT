@@ -52,7 +52,8 @@ Options:\n\
 	--scale, -S MEAN  : Normalise signals to mean (default)\n\
 	            NONE  : Fit a scaling factor/proton density\n\
 	            x     : Fix to x\n\
-	--gauss, -g       : Use Gaussian Region Contraction\n\
+	--gauss, -g 0     : Use Uniform distribution for Region Contraction\n\
+	            1     : Use Gaussian distribution for RC (default)\n\
 	--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
 	--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
 	            7     : Boundaries suitable for 7T \n\
@@ -80,11 +81,10 @@ static const struct option long_options[] = {
 	{"start", required_argument, 0, 's'},
 	{"stop", required_argument, 0, 'p'},
 	{"scale", required_argument, 0, 'S'},
-	{"gauss", no_argument, 0, 'g'},
+	{"gauss", required_argument, 0, 'g'},
 	{"flip", required_argument, 0, 'F'},
 	{"tesla", required_argument, 0, 't'},
 	{"sequences", no_argument, 0, 'M'},
-	/*{"complex", no_argument, 0, 'x'},*/
 	{"contract", no_argument, 0, 'c'},
 	{"resids", no_argument, 0, 'r'},
 	{"threads", required_argument, 0, 'T'},
@@ -94,7 +94,7 @@ static const struct option long_options[] = {
 	{"3", no_argument, 0, '3'},
 	{0, 0, 0, 0}
 };
-static const char* short_options = "hvm:o:f:b:s:p:S:gt:FT:M:crn123i:j:";
+static const char* short_options = "hvm:o:f:b:s:p:S:g:t:FT:M:crn123i:j:";
 
 /*
  * Read in all required files and data from cin
@@ -179,8 +179,8 @@ class MCDFunctor : public DenseFunctor<double> {
 
 class MCDAlgo : public Algorithm<double> {
 	private:
-		size_t m_samples = 5000, m_retain = 50, m_contractions = 20;
-		bool m_gauss = false;
+		size_t m_samples = 5000, m_retain = 50, m_contractions = 7;
+		bool m_gauss = true;
 		ArrayXXd m_bounds;
 		shared_ptr<Model> m_model = nullptr;
 		shared_ptr<SequenceGroup> m_sequence;
@@ -230,8 +230,10 @@ class MCDAlgo : public Algorithm<double> {
 			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
 			MCDFunctor func(m_model, m_sequence, data);
 			RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
-			                                m_samples, m_retain, m_contractions, 0., true, false);
+			                                m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
 			rc.optimise(outputs);
+			outputs(m_model->nParameters() - 1) = rc.contractions();
+			outputs(0) = static_cast<int>(rc.status());
 			resids = rc.residuals();
 		}
 };
@@ -296,7 +298,7 @@ int main(int argc, char **argv) {
 					scaling = atof(optarg);
 				}
 			} break;
-			case 'g': mcd->setGauss(true); break;
+			case 'g': mcd->setGauss(atoi(optarg)); break;
 			case 'F': flipData = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break; break;
 			case 't':
