@@ -45,13 +45,14 @@ vector<size_t> index_partial_sort(const Ref<ArrayXd> &x, ArrayXd::Index N)
 
 enum class RCStatus {
 	NotStarted = -1,
-	Converged, IterationLimit, ErrorInvalid, ErrorResidual
+	Converged, NoImprovement, IterationLimit, ErrorInvalid, ErrorResidual
 };
 
 ostream& operator<<(ostream &os, const RCStatus &s) {
 	switch (s) {
 		case RCStatus::NotStarted: os << "Not Started"; break;
 		case RCStatus::Converged: os << "Converged"; break;
+		case RCStatus::NoImprovement: os << "No Improvement to best residual"; break;
 		case RCStatus::IterationLimit: os << "Reached iteration limit"; break;
 		case RCStatus::ErrorInvalid: os << "Could not generate valid sample"; break;
 		case RCStatus::ErrorResidual: os << "Infinite residual found"; break;
@@ -112,13 +113,13 @@ class RegionContraction {
 			m_threshes = t;
 		}
 		const ArrayXd  &residuals() const { return m_residuals; }
-		const size_t   contractions() const { return m_contractions; }
+		 size_t   contractions() const { return m_contractions; }
 		RCStatus       status() const { return m_status; }
 		const ArrayXXd &currentBounds() const { return m_currentBounds; }
 		const double   SoS() const { return m_SoS; }
-		const ArrayXd  startWidth() const { return m_startBounds.col(1) - m_startBounds.col(0); }
-		const ArrayXd  width() const { return m_currentBounds.col(1) - m_currentBounds.col(0); }
-		const ArrayXd  midPoint() const { return (m_currentBounds.rowwise().sum() / 2.); }
+		ArrayXd  startWidth() const { return m_startBounds.col(1) - m_startBounds.col(0); }
+		ArrayXd  width() const { return m_currentBounds.col(1) - m_currentBounds.col(0); }
+		ArrayXd  midPoint() const { return (m_currentBounds.rowwise().sum() / 2.); }
 		
 		void optimise(Ref<ArrayXd> params) {
 			static atomic<bool> finiteWarning(false);
@@ -154,6 +155,7 @@ class RegionContraction {
 
 			if (m_debug) {
 				cout << endl;
+				cout << "START REGION CONTRACTION" << endl;
 				cout << "Start Boundaries: " << endl << m_startBounds.transpose() << endl;
 				cout << "Weights:        " << m_weights.transpose() << endl;
 			}
@@ -162,14 +164,14 @@ class RegionContraction {
 			m_status = RCStatus::IterationLimit;
 			for (m_contractions = 0; m_contractions < m_maxContractions; m_contractions++) {
 				size_t startSample = 0;
-				if (m_contractions > 0) {
+				/*if (m_contractions > 0) {
 					// Keep the retained samples to prevent boundary contracting too fast
 					for (size_t s = 0; s < m_nR; s++) {
 						samples.col(s) = retained.col(s);
 						residuals.col(s) = retainedRes.col(s);
 					}
 					startSample = m_nR;
-				}
+				}*/
 				for (size_t s = startSample; s < m_nS; s++) {
 					ArrayXd tempSample(nP);
 					size_t nTries = 0;
@@ -182,12 +184,14 @@ class RegionContraction {
 							tempSample += m_currentBounds.col(0);
 						} else {
 							for (int p = 0; p < nP; p++) {
-								normal_distribution<double> gauss(gauss_mu(p), gauss_sigma(p));
-								tempSample(p) = gauss(m_rng);
-								if (tempSample(p) < m_currentBounds(p, 0))
-									tempSample(p) = m_currentBounds(p, 0);
-								if (tempSample(p) > m_currentBounds(p, 1))
-									tempSample(p) = m_currentBounds(p, 1);
+								if (isfinite(gauss_sigma(p))) {
+									normal_distribution<double> gauss(gauss_mu(p), gauss_sigma(p));
+									do {
+										tempSample(p) = gauss(m_rng);
+									} while ((tempSample(p) < m_currentBounds(p, 0)) || (tempSample(p) > m_currentBounds(p, 1)));
+								} else {
+									tempSample(p) = gauss_mu(p);
+								}
 							}
 						}
 						nTries++;
@@ -235,38 +239,51 @@ class RegionContraction {
 				m_currentBounds.col(1) = retained.rowwise().maxCoeff();
 				if (m_gaussian) {
 					gauss_mu = retained.rowwise().mean();
-					gauss_sigma = ((retained.colwise() - gauss_mu).square().rowwise().sum() / m_f.inputs()).sqrt();
+					gauss_sigma = ((retained.colwise() - gauss_mu).square().rowwise().sum() / (m_f.inputs() - 1)).sqrt();
 				}
-				// Terminate if all the desired parameters have converged
 				if (m_debug) {
-					cout << "Best sample:    " << retained.col(0).transpose() << endl;
-					cout << "Best residual:  " << retainedRes.col(0).transpose() << endl;
-					cout << "Best SoS:       " << retainedRes.col(0).square().sum() << endl;
-					cout << "Current bounds: " << endl << m_currentBounds.transpose() << endl;
-					cout << "Current width:  " << width().transpose() << endl;
-					cout << "Current thresh: " << (m_threshes * startWidth()).transpose() << endl;
-					cout << "Width < Thresh: " << (width() <= (m_threshes * startWidth())).transpose() << endl;
-					cout << "Converged:      " << (width() <= (m_threshes * startWidth())).all() << endl;
+					cout << "CONTRACTION:    " << m_contractions << endl;
+					ArrayXd r = (retainedRes.colwise() * m_weights).square().colwise().sum();
+					cout << "Retained best: " << r.minCoeff() << " Worst: " << r.maxCoeff() << endl;
+					cout << "All best:      " << toSort.minCoeff() << " Worst: " << toSort.maxCoeff() << endl;
+					cout << "Current width%: " << (width() / startWidth()).transpose() << endl;
+					//cout << "Thresh        : " << m_threshes.transpose() << endl;
+					//cout << "Width < Thresh: " << (width() <= (m_threshes * startWidth())).transpose() << endl;
+					//cout << "Converged:      " << (width() <= (m_threshes * startWidth())).all() << endl;
 					if (m_gaussian) {
 						cout << "Gaussian mu:    " << gauss_mu.transpose() << endl;
-						cout << "Gaussian sigma: "<<  gauss_sigma.transpose() << endl;
+						cout << "Gaussian sigma%:"<<  (gauss_sigma / startWidth()).transpose() << endl;
 					}
 				}
-				if (((width() <= (m_threshes * startWidth())).all()) ||
-				    (previousBest == retained.col(0)).all()) {
+				// Terminate if all the desired parameters have converged
+				if ((width() <= (m_threshes * startWidth())).all()) {
 					m_status = RCStatus::Converged;
+					m_contractions++; // Just to give an accurate contraction count.
+					break;
+				} else if ((previousBest == retained.col(0)).all()) {
+					m_status = RCStatus::NoImprovement;
 					m_contractions++; // Just to give an accurate contraction count.
 					break;
 				}
 				
-				// Expand the boundaries back out in case we just missed a minima,
-				// but don't go past initial boundaries
-				ArrayXd tempW = width(); // Because altering .col(0) will change width
-				m_currentBounds.col(0) = (m_currentBounds.col(0) - tempW * m_expand).max(m_startBounds.col(0));
-				m_currentBounds.col(1) = (m_currentBounds.col(1) + tempW * m_expand).min(m_startBounds.col(1));
+				if (m_expand != 0) {
+					// Expand the boundaries back out in case we just missed a minima,
+					// but don't go past initial boundaries
+					ArrayXd tempW = width(); // Because altering .col(0) will change width
+					m_currentBounds.col(0) = (m_currentBounds.col(0) - tempW * m_expand).max(m_startBounds.col(0));
+					m_currentBounds.col(1) = (m_currentBounds.col(1) + tempW * m_expand).min(m_startBounds.col(1));
+					if (m_debug) {
+						cout << "Width expanded to: " << width().transpose() << endl;
+					}
+				}
 			}
-			// Return the best evaluated solution so far
-			params = retained.col(0);
+
+			if (m_gaussian) {
+				params = gauss_mu;
+			} else {
+				// Return the best evaluated solution so far
+				params = retained.col(0);
+			}
 			m_residuals = retainedRes.col(0);
 			m_SoS = m_residuals.square().sum();
 			if (m_debug) {
