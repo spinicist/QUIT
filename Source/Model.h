@@ -35,7 +35,7 @@ public:
 	string to_string(const Scale &p);
 
 protected:
-	Scale m_scaling = Scale::None;
+	Scale m_scaling = Scale::ToMean;
 	ArrayXcd scale(const ArrayXcd &signal) const;
 
 public:
