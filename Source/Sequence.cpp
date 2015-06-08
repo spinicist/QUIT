@@ -215,7 +215,7 @@ ArrayXd SSFPSimple::weights(const double f0) const {
 	ArrayXd phase = m_phases;
 	ArrayXd offset = phase - (M_PI * f0*m_TR);
 	ArrayXd weight = (offset / 2).sin().square();
-	ArrayXXd allWeights = weight.replicate(m_flip.size(), 1);
+	ArrayXXd allWeights = weight.transpose().replicate(m_flip.size(), 1);
 	ArrayXd weights = Map<ArrayXd>(allWeights.data(), size());
 	return weights;
 }
@@ -345,6 +345,7 @@ ArrayXd SequenceGroup::weights(const double f0) const {
 	size_t start = 0;
 	for (auto &sig : m_sequences) {
 		weights.segment(start, sig->size()) = sig->weights(f0);
+		start += sig->size();
 	}
 	return weights;
 }
