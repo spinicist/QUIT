@@ -188,8 +188,6 @@ class MCDAlgo : public Algorithm<double> {
 	public:
 		void setModel(shared_ptr<Model> &m) { m_model = m; }
 		void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
-		void setSamples(size_t s) { m_samples = s; }
-		void setRetain(size_t r) { m_retain = r; }
 		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
 		void setScaling(Model::Scale s) { m_model->setScaling(s); }
 		void setBounds(ArrayXXd b) { m_bounds = b; }

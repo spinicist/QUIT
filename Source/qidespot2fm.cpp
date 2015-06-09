@@ -55,14 +55,6 @@ Options:\n\
 };
 /* --complex, -x     : Fit to complex data\n\ */
 
-static auto tesla = FieldStrength::Three;
-static int start_slice = 0, stop_slice = 0;
-static int verbose = false, prompt = true, all_residuals = false,
-           fitFinite = false, fitComplex = false, flipData = false,
-           samples = 2000, retain = 20, contract = 10,
-           seed = -1;
-static double expand = 0.;
-static string outPrefix;
 static struct option long_opts[] = {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
@@ -124,9 +116,7 @@ class FMAlgo : public Algorithm<double> {
 
 	public:
 		void setSequence(shared_ptr<SteadyState> s) { m_sequence = s; }
-		void setSamples(size_t s) { m_samples = s; }
-		void setRetain(size_t r) { m_retain = r; }
-		void setContractions(size_t c) { m_contractions = c; }
+		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
 		void setScaling(Model::Scale s) { m_model->setScaling(s); }
 		void setf0Bounds(Array2d b) { m_f0Bounds = b; }
 
@@ -163,7 +153,7 @@ class FMAlgo : public Algorithm<double> {
 				//cout << bounds << endl;
 				FMFunctor func(m_model, T1, m_sequence, data, B1);
 				RegionContraction<FMFunctor> rc(func, bounds, weights, thresh,
-												m_samples, m_retain, m_contractions, expand, false, false);
+												m_samples, m_retain, m_contractions, 0.02, true, false);
 				rc.optimise(outputs);
 				resids = rc.residuals();
 			} else {
@@ -179,6 +169,12 @@ class FMAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
+
+	auto tesla = FieldStrength::Three;
+	int start_slice = 0, stop_slice = 0;
+	int verbose = false, prompt = true, all_residuals = false,
+	    fitFinite = false, flipData = false;
+	string outPrefix;
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<FMAlgo> fm = make_shared<FMAlgo>();
 	int indexptr = 0, c;
@@ -218,7 +214,6 @@ int main(int argc, char **argv) {
 				} break;
 			case 'F': flipData = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-			case 'd': seed = atoi(optarg); break;
 			case 'M':
 				switch (*optarg) {
 					case 's': fitFinite = false; cout << "Simple sequences selected." << endl; break;
@@ -229,12 +224,12 @@ int main(int argc, char **argv) {
 						break;
 				}
 				break;
-			case 'c':
-				cout << "Enter max number of contractions: " << flush; cin >> contract;
-				cout << "Enter number of samples per contraction: " << flush; cin >> samples;
-				cout << "Enter number of samples to retain: " << flush; cin >> retain;
-				cout << "Enter fraction to expand region by: " << flush; cin >> expand;
-				break;
+			case 'c': {
+				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
+				ArrayXi in = ArrayXi::Zero(3);
+				QI::ReadArray(cin, in);
+				fm->setRCPars(in[0], in[1], in[2]);
+			} break;
 			case 'r': all_residuals = true; break;
 			case '?': // getopt will print an error message
 			case 'h':
