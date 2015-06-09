@@ -228,7 +228,7 @@ Options:\n\
 static int verbose = false, prompt = true, elliptical = false, all_residuals = false;
 static string outPrefix;
 static struct option long_opts[] = {
-	{"B1", required_argument, 0, '1'},
+	{"B1", required_argument, 0, 'b'},
 	{"elliptical", no_argument, 0, 'e'},
 	{"help", no_argument, 0, 'h'},
 	{"mask", required_argument, 0, 'm'},
