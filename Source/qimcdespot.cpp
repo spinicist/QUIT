@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
-	shared_ptr<Model> model;
+	shared_ptr<Model> model = make_shared<MCD3>();
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
