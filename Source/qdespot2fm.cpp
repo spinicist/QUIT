@@ -256,7 +256,6 @@ int main(int argc, char **argv) {
 	auto T1File = QI::ReadImageF::New();
 	auto T1Slice = QI::ImageROIF::New(), B1Slice = QI::ImageROIF::New(),
 	     maskSlice = QI::ImageROIF::New();
-	auto ssfpSlice = QI::VectorImageROIF::New();
 
 	T1File->SetFileName(argv[optind++]);
 	T1File->Update(); // Need to have some image dimensions to do this
@@ -268,25 +267,26 @@ int main(int argc, char **argv) {
 		region.GetModifiableSize()[2] = region.GetSize()[2] - start_slice;
 	T1Slice->SetRegionOfInterest(region);
 	T1Slice->SetInput(T1File->GetOutput());
-
+	if (verbose) cout << "Processing region: " << endl << region << endl;
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
 	auto ssfpFile = QI::ReadTimeseriesF::New();
-	ssfpFile->SetFileName(argv[optind++]);
 	auto ssfpData = QI::TimeseriesToVectorF::New();
-	ssfpData->SetInput(ssfpFile->GetOutput());
-	ssfpSlice->SetRegionOfInterest(region);
-	ssfpSlice->SetInput(ssfpData->GetOutput());
 	auto ssfpFlip = QI::ReorderF::New();
+	auto ssfpSlice = QI::VectorImageROIF::New();
+	ssfpFile->SetFileName(argv[optind++]);
+	ssfpData->SetInput(ssfpFile->GetOutput());
+	ssfpFlip->SetInput(ssfpData->GetOutput());
 	if (flipData) {
 		ssfpFlip->SetStride(ssfpSequence->phases());
 	}
-	ssfpFlip->SetInput(ssfpSlice->GetOutput());
+	ssfpSlice->SetInput(ssfpFlip->GetOutput());
+	ssfpSlice->SetRegionOfInterest(region);
 
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, FMAlgo>::New();
 	fm->setSequence(ssfpSequence);
 	fm->setf0Bounds(ssfpSequence->bandwidth());
 	apply->SetAlgorithm(fm);
-	apply->SetDataInput(0, ssfpFlip->GetOutput());
+	apply->SetDataInput(0, ssfpSlice->GetOutput());
 	apply->SetConstInput(0, T1Slice->GetOutput());
 	if (B1) {
 		B1Slice->SetRegionOfInterest(region);
