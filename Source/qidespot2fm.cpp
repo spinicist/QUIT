@@ -40,9 +40,7 @@ Options:\n\
 	--no-prompt, -n   : Suppress input prompts\n\
 	--mask, -m file   : Mask input with specified file\n\
 	--out, -o path    : Add a prefix to the output filenames\n\
-	--f0, -f SYM      : Fit symmetric f0 map (default)\n\
-	         ASYM     : Fit asymmetric f0 map\n\
-	         file     : Use f0 Map file (in Hertz)\n\
+	--f0, -f file     : Use f0 Map file (in Hertz)\n\
 	--B1, -b file     : B1 Map file (ratio)\n\
 	--start, -s N     : Start processing from slice N\n\
 	--stop, -p  N     : Stop processing at slice N\n\
@@ -150,23 +148,29 @@ class FMAlgo : public Algorithm<double> {
 			ArrayXd weights(m_sequence->size()); weights.setOnes();
 			ArrayXXd bounds = ArrayXXd::Zero(3, 2);
 			double T1 = inputs[0];
-			double B1 = inputs[1];
-			if (m_model->scaling() == Model::Scale::None) {
-				bounds(0, 0) = 0.;
-				bounds(0, 1) = data.array().abs().maxCoeff() * 25;
+			if (isfinite(T1) && (T1 > 0.001)) {
+				double B1 = inputs[1];
+				if (m_model->scaling() == Model::Scale::None) {
+					bounds(0, 0) = 0.;
+					bounds(0, 1) = data.array().abs().maxCoeff() * 25;
+				} else {
+					bounds.row(0).setConstant(1.);
+				}
+				bounds(1,0) = 0.001;
+				bounds(1,1) = T1;
+				bounds.row(2) = m_f0Bounds;
+				//cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
+				//cout << bounds << endl;
+				FMFunctor func(m_model, T1, m_sequence, data, B1);
+				RegionContraction<FMFunctor> rc(func, bounds, weights, thresh,
+												m_samples, m_retain, m_contractions, expand, false, false);
+				rc.optimise(outputs);
+				resids = rc.residuals();
 			} else {
-				bounds.row(0).setConstant(1.);
+				// No point in processing -ve T1
+				outputs.setZero();
+				resids.setZero();
 			}
-			bounds(1,0) = 0.001;
-			bounds(1,1) = T1;
-			bounds.row(2) = m_f0Bounds;
-			//cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
-			//cout << bounds << endl;
-			FMFunctor func(m_model, T1, m_sequence, data, B1);
-			RegionContraction<FMFunctor> rc(func, bounds, weights, thresh,
-			                                m_samples, m_retain, m_contractions, expand, false, false);
-			rc.optimise(outputs);
-			resids = rc.residuals();
 		}
 };
 
@@ -265,8 +269,8 @@ int main(int argc, char **argv) {
 		region.GetModifiableSize()[2] = stop_slice - start_slice;
 	else
 		region.GetModifiableSize()[2] = region.GetSize()[2] - start_slice;
-	T1Slice->SetRegionOfInterest(region);
 	T1Slice->SetInput(T1File->GetOutput());
+	T1Slice->SetRegionOfInterest(region);
 	if (verbose) cout << "Processing region: " << endl << region << endl;
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
 	auto ssfpFile = QI::ReadTimeseriesF::New();
@@ -289,13 +293,13 @@ int main(int argc, char **argv) {
 	apply->SetDataInput(0, ssfpSlice->GetOutput());
 	apply->SetConstInput(0, T1Slice->GetOutput());
 	if (B1) {
-		B1Slice->SetRegionOfInterest(region);
 		B1Slice->SetInput(B1->GetOutput());
+		B1Slice->SetRegionOfInterest(region);
 		apply->SetConstInput(1, B1Slice->GetOutput());
 	}
 	if (mask) {
-		maskSlice->SetRegionOfInterest(region);
 		maskSlice->SetInput(mask->GetOutput());
+		maskSlice->SetRegionOfInterest(region);
 		apply->SetMask(maskSlice->GetOutput());
 	}
 	time_t startTime;
