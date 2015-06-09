@@ -32,6 +32,7 @@ private:
 public:
 	virtual void GenerateOutputInformation() override {
 		//std::cout << __PRETTY_FUNCTION__ << std::endl;
+		Superclass::GenerateOutputInformation();
 		m_fullsize = this->GetInput()->GetNumberOfComponentsPerPixel();
 
 		if (m_blocksize == 0)
@@ -44,7 +45,6 @@ public:
 			throw(std::runtime_error("Blocksize must be an integer multiple of stride."));
 		}
 		m_blocks = m_fullsize / m_blocksize;
-		Superclass::GenerateOutputInformation();
 		//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
 	}
 
