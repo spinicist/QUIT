@@ -138,7 +138,9 @@ class RegionContraction {
 			m_currentBounds = m_startBounds;
 			m_residuals.setZero();
 
-			if ((m_startBounds != m_startBounds).any() || (m_startBounds >= numeric_limits<double>::infinity()).any()) {
+			if ((m_startBounds != m_startBounds).any() ||
+			    (m_startBounds >= numeric_limits<double>::infinity()).any() ||
+			    (m_startBounds.col(1) < m_startBounds.col(0)).any()) {
 				warn_mtx.lock();
 				if (!boundsWarning) {
 					boundsWarning = true;
