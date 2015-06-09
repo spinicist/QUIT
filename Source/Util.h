@@ -65,11 +65,8 @@ void ReadArray(const std::string &s, Eigen::Array<Scalar, Eigen::Dynamic, 1> &ar
 	std::istringstream stream(s);
 	std::vector<Scalar> vals;
 
-	while (!stream.eof()) {
-		Scalar temp;
-		if (!(stream >> temp)) {
-			throw(std::runtime_error("Failed to parse input: " + s));
-		}
+	Scalar temp;
+	while (stream >> temp) {
 		vals.push_back(temp);
 	}
 
