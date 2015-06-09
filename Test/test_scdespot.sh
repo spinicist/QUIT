@@ -17,11 +17,11 @@ cd $DATADIR
 
 DIMS="5 5 5"
 VOXDIMS="2 2 2"
-$QUITDIR/qnewimage -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
-$QUITDIR/qnewimage -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 5" T1.nii
-$QUITDIR/qnewimage -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
-$QUITDIR/qnewimage -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
-$QUITDIR/qnewimage -d "$DIMS" -v "$VOXDIMS" -g "2 0.5 1.5" B1.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 5" T1.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 0.5 1.5" B1.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
@@ -66,9 +66,9 @@ $AFI_PAR
 $AFI_FILE
 END"
 echo "$MCSIG_INPUT" > signal.in
-run_test "CREATE_REAL_SIGNALS" $QUITDIR/qsignal --1 -n < signal.in
+run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -n < signal.in
 
-run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qsignal --1 -n -x <<END_IN
+run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --1 -n -x <<END_IN
 PD.nii
 T1.nii
 T2.nii
@@ -88,23 +88,23 @@ echo "$HIFI_PAR" > despot1hifi.in
 echo "$SSFP_PAR" > despot2fm.in
 echo "$D2GS_PAR" > despot2gs.in
 
-run_test "DESPOT1" $QUITDIR/qdespot1 $SPGR_FILE -n -bB1.nii < despot1.in
+run_test "DESPOT1" $QUITDIR/qidespot1 $SPGR_FILE -n -bB1.nii < despot1.in
 compare_test "DESPOT1" T1.nii D1_T1.nii 0.01
-run_test "DESPOT1LM" $QUITDIR/qdespot1 $SPGR_FILE -n -an -oN -bB1.nii < despot1.in
+run_test "DESPOT1LM" $QUITDIR/qidespot1 $SPGR_FILE -n -an -oN -bB1.nii < despot1.in
 compare_test "DESPOT1LM" T1.nii ND1_T1.nii 0.01
-run_test "DESPOT1HIFI" $QUITDIR/qdespot1hifi $SPGR_FILE $MPRAGE_FILE -M -n -T1 < despot1hifi.in
+run_test "DESPOT1HIFI" $QUITDIR/qidespot1hifi $SPGR_FILE $MPRAGE_FILE -M -n -T1 < despot1hifi.in
 compare_test "HIFI_T1" T1.nii HIFI_T1.nii 0.01
-run_test "AFI" $QUITDIR/qafi $AFI_FILE
+run_test "AFI" $QUITDIR/qiafi $AFI_FILE
 compare_test "AFI_B1" B1.nii AFI_B1.nii 0.01
-run_test "SSFPGS" $QUITDIR/qssfpbands ssfp_x.nii
-run_test "SSFPGSMAG" $QUITDIR/qcomplex -x ssfp_x_lreg.nii -om ssfp_x_lreg_mag.nii
-run_test "DESPOT2GS" $QUITDIR/qdespot2 -e D1_T1.nii ssfp_x_lreg_mag.nii -n -bB1.nii < despot2gs.in
+run_test "SSFPGS" $QUITDIR/qissfpbands ssfp_x.nii
+run_test "SSFPGSMAG" $QUITDIR/qicomplex -x ssfp_x_lreg.nii -om ssfp_x_lreg_mag.nii
+run_test "DESPOT2GS" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_mag.nii -n -bB1.nii < despot2gs.in
 compare_test "DESPOT2GS" T2.nii D2_T2.nii 0.01
-run_test "SSFPGS2P" $QUITDIR/qssfpbands -2 ssfp_x.nii
-run_test "SSFPGS2PMAG" $QUITDIR/qcomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_2p_mag.nii
-run_test "DESPOT2GS2P" $QUITDIR/qdespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
+run_test "SSFPGS2P" $QUITDIR/qissfpbands -2 ssfp_x.nii
+run_test "SSFPGS2PMAG" $QUITDIR/qicomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_2p_mag.nii
+run_test "DESPOT2GS2P" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
-run_test "DESPOT2FM" $QUITDIR/qdespot2fm D1_T1.nii $SSFP_FILE -n -S1 -bB1.nii -v < despot2fm.in
+run_test "DESPOT2FM" $QUITDIR/qidespot2fm D1_T1.nii $SSFP_FILE -n -S1 -bB1.nii -v < despot2fm.in
 compare_test "DESPOT2FM" T2.nii FM_T2.nii 0.01
 
 cd ..

@@ -16,21 +16,21 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 include_directories(Source)
 
-add_library(quit_core Source/Types.h Source/Util.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
-add_custom_target(quit_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
+add_library(qi_core Source/Types.h Source/Util.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
+add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                         Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
                                         Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
                                         Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
                                         Source/RegionContraction.h)
 
-set(PROGRAMS qnewimage qcomplex qsignal
-             qdespot1 qdespot2 qdespot1hifi qdespot2fm qmcdespot
-             qafi qssfpbands
-             qmultiecho)
+set(PROGRAMS qinewimage qicomplex qisignal
+             qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
+             qiafi qissfpbands
+             qimultiecho)
 
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-	target_link_libraries(${PROGRAM} quit_core ${ITK_LIBRARIES})
+	target_link_libraries(${PROGRAM} qi_core ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
 set(TESTS test_common.sh test_scdespot.sh test_mcdespot.sh test_relax.sh test_all.sh)
