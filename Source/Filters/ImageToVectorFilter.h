@@ -11,10 +11,6 @@ namespace itk {
 template<typename TInput>
 class ImageToVectorFilter : public ImageToImageFilter<TInput, VectorImage<typename TInput::PixelType, TInput::ImageDimension - 1>>
 {
-protected:
-	size_t m_start, m_stop, m_size = 0;
-	size_t m_stride = 1;
-
 public:
 	static const size_t InputDimension = TInput::ImageDimension;
 	static const size_t OutputDimension = TInput::ImageDimension - 1;
@@ -28,9 +24,6 @@ public:
 
 	itkNewMacro(Self);
 	itkTypeMacro(ImageToVectorFilter, ImageToImageFilter);
-
-	void SetStartStop(size_t start, size_t stop);
-	void SetStride(size_t stride);
 
 protected:
 	typedef ExtractImageFilter<TInput, TVolume>  ExtractType;

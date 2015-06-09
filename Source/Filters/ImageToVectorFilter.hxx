@@ -9,17 +9,6 @@ ImageToVectorFilter<TInput>::ImageToVectorFilter() {
 }
 
 template<typename TInput>
-void ImageToVectorFilter<TInput>::SetStartStop(size_t start, size_t stop) {
-	m_start = start;
-	m_stop = stop;
-}
-
-template<typename TInput>
-void ImageToVectorFilter<TInput>::SetStride(size_t s) {
-	m_stride = s;
-}
-
-template<typename TInput>
 void ImageToVectorFilter<TInput>::GenerateOutputInformation() {
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
@@ -47,11 +36,7 @@ void ImageToVectorFilter<TInput>::GenerateOutputInformation() {
 	outputPtr->SetSpacing(outSpacing);
 	outputPtr->SetOrigin(outOrigin);
 	outputPtr->SetDirection(outDirection);
-
-	if (m_stop == 0)
-		m_stop = inputPtr->GetLargestPossibleRegion().GetSize()[OutputDimension];
-	m_size = (m_stop - m_start) / m_stride;
-	outputPtr->SetNumberOfComponentsPerPixel(m_size);
+	outputPtr->SetNumberOfComponentsPerPixel(inputPtr->GetLargestPossibleRegion().GetSize()[OutputDimension]);
 	//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
 }
 
@@ -59,16 +44,16 @@ template<typename TInput>
 void ImageToVectorFilter<TInput>::GenerateData() {
 	auto input = this->GetInput();
 	auto region = input->GetLargestPossibleRegion();
+	int size = region.GetSize()[OutputDimension];
 	region.GetModifiableSize()[OutputDimension] = 0;
-	int outI = 0;
-	for (int i = m_start; i < m_stop; i += m_stride) {
+	for (int i = 0; i < size; i ++) {
 		region.GetModifiableIndex()[OutputDimension] = i;
 		auto volume = ExtractType::New();
 		volume->SetExtractionRegion(region);
 		volume->SetInput(input);
 		volume->SetDirectionCollapseToSubmatrix();
 		volume->Update();
-		m_compose->SetInput(outI++, volume->GetOutput());
+		m_compose->SetInput(i, volume->GetOutput());
 	}
 	m_compose->Update();
 	this->GraftOutput(m_compose->GetOutput());
