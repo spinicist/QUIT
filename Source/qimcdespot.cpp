@@ -232,8 +232,8 @@ class MCDAlgo : public Algorithm<double> {
 			RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
 			                                m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
 			rc.optimise(outputs);
-			outputs(m_model->nParameters() - 1) = rc.contractions();
-			outputs(0) = static_cast<int>(rc.status());
+			//outputs(m_model->nParameters() - 1) = rc.contractions();
+			//outputs(0) = static_cast<int>(rc.status());
 			resids = rc.residuals();
 		}
 };
