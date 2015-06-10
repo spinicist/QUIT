@@ -4,7 +4,7 @@
 #include "itkObjectFactory.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
-#include "itkNormalizedCorrelationImageFilter.hxx"
+#include "itkProgressReporter.h"
 
 namespace itk {
 
@@ -163,6 +163,8 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 	//std::cout << "Thread " << threadId << std::endl;
 	//std::cout << region << std::endl;
 
+	ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
+
 	vector<ImageRegionConstIterator<TVImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		dataIters[i] = ImageRegionConstIterator<TVImage>(this->GetDataInput(i), region);
@@ -224,6 +226,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 		VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
 		residIter.Set(residVector);
 		++residIter;
+		progress.CompletedPixel();
 	}
 	//std::cout << "Finished " << std::endl;
 }
