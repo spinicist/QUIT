@@ -15,26 +15,28 @@ rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
 
-DIMS="5 5 5"
+DIMS="16 16 5"
 VOXDIMS="2 2 2"
 $QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 5" T1.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 2" T1.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.2" T2.nii
 $QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
 $QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 0.5 1.5" B1.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
-SPGR_PAR="5 10 15
-0.01"
+SPGR_PAR="5 10 15 #Test comment
+#Test line below has trailing whitespace
+0.01 "
 SSFP_FILE="ssfp.nii"
-SSFP_FLIP="15 30 45"
-SSFP_TR="0.005"
-SSFP_PAR="$SSFP_FLIP
+SSFP_PAR="15 30 45
+0 180
+0.005"
+SSFP_X_PAR="15 30 45
 0 90 180 270
-$SSFP_TR"
-D2GS_PAR="$SSFP_FLIP
-$SSFP_TR"
+0.005"
+D2GS_PAR="15 30 45
+0.005"
 MPRAGE_FILE="mprage.nii"
 MPRAGE_PAR="5
 0.01
@@ -66,7 +68,7 @@ $AFI_PAR
 $AFI_FILE
 END"
 echo "$MCSIG_INPUT" > signal.in
-run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -n < signal.in
+run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -n -v < signal.in
 
 run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --1 -n -x <<END_IN
 PD.nii
@@ -75,7 +77,7 @@ T2.nii
 f0.nii
 B1.nii
 SSFP
-$SSFP_PAR
+$SSFP_X_PAR
 ssfp_x.nii
 SSFPEllipse
 $D2GS_PAR
@@ -98,14 +100,17 @@ run_test "AFI" $QUITDIR/qiafi $AFI_FILE
 compare_test "AFI_B1" B1.nii AFI_B1.nii 0.01
 run_test "SSFPGS" $QUITDIR/qissfpbands ssfp_x.nii
 run_test "SSFPGSMAG" $QUITDIR/qicomplex -x ssfp_x_lreg.nii -om ssfp_x_lreg_mag.nii
-run_test "DESPOT2GS" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_mag.nii -n -bB1.nii < despot2gs.in
+run_test "DESPOT2GS" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_mag.nii -n --B1 B1.nii < despot2gs.in
 compare_test "DESPOT2GS" T2.nii D2_T2.nii 0.01
 run_test "SSFPGS2P" $QUITDIR/qissfpbands -2 ssfp_x.nii
 run_test "SSFPGS2PMAG" $QUITDIR/qicomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_2p_mag.nii
 run_test "DESPOT2GS2P" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
-run_test "DESPOT2FM" $QUITDIR/qidespot2fm D1_T1.nii $SSFP_FILE -n -S1 -bB1.nii -v < despot2fm.in
-compare_test "DESPOT2FM" T2.nii FM_T2.nii 0.01
+
+run_test "DESPOT2FMLM" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -bB1.nii -v -T1 -o LM < despot2fm.in
+compare_test "DESPOT2FMLM" T2.nii LMFM_T2.nii 0.01
+run_test "DESPOT2FMSRC" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -as -bB1.nii -v -T1 -o SRC < despot2fm.in
+compare_test "DESPOT2FMSRC" T2.nii SRCFM_T2.nii 0.01
 
 cd ..
 SILENCE_TESTS="0"
