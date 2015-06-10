@@ -52,7 +52,7 @@ function compare_test {
 		# Check for nan/inf/etc. because on some platforms awk will treat these as 0
 		REGEXP='^-?[0-9]+([.][0-9]+)?$'
 		if ! [[ $ABSMEAN =~ $REGEXP ]] ; then
-			echo "Comparison test $NAME failed, mean diff is not a valid number"
+			echo "Comparison test $NAME failed, mean diff $ABSMEAN is not a valid number"
 			exit 1
 		fi
 		# Now do the tolerance test
