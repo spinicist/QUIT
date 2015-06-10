@@ -39,7 +39,7 @@ public:
 	typedef ApplyAlgorithmFilter                   Self;
 	typedef ImageToImageFilter<TInImage, TInImage> Superclass;
 	typedef SmartPointer<Self>                     Pointer;
-	typedef typename TImage::RegionType            RegionType;
+	typedef typename TImage::RegionType            TRegion;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
@@ -48,6 +48,7 @@ public:
 	void SetDataInput(const size_t i, const TVectorImage *img);
 	void SetConstInput(const size_t i, const TImage *img);
 	void SetMask(const TImage *mask);
+	void SetSlices(const int start, const int stop);
 	typename TVectorImage::ConstPointer GetDataInput(const size_t i) const;
 	typename TImage::ConstPointer GetConstInput(const size_t i) const;
 	typename TImage::ConstPointer GetMask() const;
@@ -61,10 +62,11 @@ protected:
 	ApplyAlgorithmFilter();
 	~ApplyAlgorithmFilter(){}
 
-	virtual void ThreadedGenerateData(const RegionType & outputRegionForThread, ThreadIdType threadId);
+	virtual void ThreadedGenerateData(const TRegion &outputRegionForThread, ThreadIdType threadId);
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
 	shared_ptr<TAlgo> m_algorithm;
+	int m_startSlice = 0, m_stopSlice = 0;
 
 private:
 	ApplyAlgorithmFilter(const Self &); //purposely not implemented

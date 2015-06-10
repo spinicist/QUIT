@@ -57,6 +57,12 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetMask(const TImage *image) {
 }
 
 template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetSlices(const int start, const int stop) {
+	m_startSlice = start;
+	m_stopSlice = stop;
+}
+
+template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetDataInput(const size_t i) const -> typename TVImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
@@ -133,21 +139,29 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::GenerateOutputInformation() {
 		throw(std::runtime_error("Sequence size (" + to_string(m_algorithm->dataSize()) + ") does not match input size (" + to_string(size) + ")"));
 	}
 
-	for (size_t i = 0; i < (m_algorithm->numOutputs()); i++) {
+	auto region = this->GetInput()->GetLargestPossibleRegion();
+	region.GetModifiableIndex()[ImageDimension - 1] = m_startSlice;
+	if (m_stopSlice != 0)
+		region.GetModifiableSize()[ImageDimension - 1] = m_stopSlice - m_startSlice;
+	else
+		region.GetModifiableSize()[ImageDimension - 1] = region.GetSize()[2] - m_startSlice;
+	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 		auto op = this->GetOutput(i);
-		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+		op->SetRegions(region);
 		op->Allocate();
 	}
 	auto r = this->GetResidOutput();
-	r->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+	r->SetRegions(region);
 	r->SetNumberOfComponentsPerPixel(size);
 	r->Allocate();
 	//std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
 
 template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const RegionType & region, ThreadIdType threadId) {
+void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
 	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
+	//std::cout << "Thread " << threadId << std::endl;
+	//std::cout << region << std::endl;
 	vector<ImageRegionConstIterator<TVImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		dataIters[i] = ImageRegionConstIterator<TVImage>(this->GetDataInput(i), region);
@@ -177,7 +191,6 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const RegionType
 				if (this->GetConstInput(i))
 					constants[i] = constIters[i].Get();
 			}
-
 			typename TAlgo::TInputVector allData(m_algorithm->dataSize());
 			size_t dataIndex = 0;
 			for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
@@ -187,17 +200,13 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const RegionType
 				dataIndex += data.rows();
 			}
 			VectorXd outputs(m_algorithm->numOutputs());
-
 			ArrayXd resids(m_algorithm->dataSize());
-
 			m_algorithm->apply(allData, constants, outputs, resids);
-
 			for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 				outputIters[i].Set(static_cast<float>(outputs[i]));
 			}
 			ArrayXf residF = resids.cast<float>();
 			VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
-
 			residIter.Set(residVector);
 		}
 		for (size_t i = 0; i < m_algorithm->numInputs(); i++) {

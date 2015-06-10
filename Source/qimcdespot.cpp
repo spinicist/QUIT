@@ -102,13 +102,11 @@ static const char* short_options = "hvm:o:f:b:s:p:S:g:t:FT:M:crn123i:j:";
 void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::ReadTimeseriesF::Pointer> &files,
                 vector<typename QI::TimeseriesToVectorF::Pointer> &data,
-                vector<typename QI::VectorImageROIF::Pointer> &slices,
                 vector<typename QI::ReorderF::Pointer> &order,
                 Array2d &f0Bandwidth, bool flip);
 void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::ReadTimeseriesF::Pointer> &files,
                 vector<typename QI::TimeseriesToVectorF::Pointer> &data,
-                vector<typename QI::VectorImageROIF::Pointer> &slices,
                 vector<typename QI::ReorderF::Pointer> &order,
                 Array2d &f0Bandwidth, bool flip)
 {
@@ -125,10 +123,8 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 		files.back()->SetFileName(path);
 		data.push_back(QI::TimeseriesToVectorF::New());
 		data.back()->SetInput(files.back()->GetOutput());
-		slices.push_back(QI::VectorImageROIF::New());
-		slices.back()->SetInput(data.back()->GetOutput());
 		order.push_back(QI::ReorderF::New());
-		order.back()->SetInput(slices.back()->GetOutput());
+		order.back()->SetInput(data.back()->GetOutput());
 		if (verbose) cout << "Opened: " << path << endl;
 		if ((type == "SPGR") && !fitFinite) {
 			seq->addSequence(make_shared<SPGRSimple>(prompt));
@@ -343,8 +339,7 @@ int main(int argc, char **argv) {
 	vector<QI::ReadTimeseriesF::Pointer> inFiles;
 	vector<QI::TimeseriesToVectorF::Pointer> inData;
 	vector<QI::ReorderF::Pointer> inOrder;
-	vector<QI::VectorImageROIF::Pointer> inSlices;
-	parseInput(sequences, inFiles, inData, inSlices, inOrder, f0Bandwidth, flipData);
+	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, flipData);
 
 	ArrayXXd bounds = model->Bounds(tesla, 0);
 	if (tesla == FieldStrength::User) {
@@ -366,38 +361,21 @@ int main(int argc, char **argv) {
 		}
 		boundsFile.close();
 	}
-	inData.back()->Update(); // Need to get the image size
-	QI::ImageF::RegionType slices = inData.back()->GetOutput()->GetLargestPossibleRegion();
-	slices.GetModifiableIndex()[2] = start_slice;
-	if (stop_slice != 0)
-		slices.GetModifiableSize()[2] = stop_slice - start_slice;
-	else
-		slices.GetModifiableSize()[2] = slices.GetSize()[2] - start_slice;
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, MCDAlgo>::New();
 	mcd->setSequence(sequences);
 	apply->SetAlgorithm(mcd);
-	QI::ImageROIF::Pointer f0Slices, B1Slices, maskSlices = ITK_NULLPTR;
+	apply->SetSlices(start_slice, stop_slice);
 	for (int i = 0; i < inOrder.size(); i++) {
-		inSlices.at(i)->SetRegionOfInterest(slices); // Slice comes before order in pipeline
 		apply->SetDataInput(i, inOrder.at(i)->GetOutput());
 	}
 	if (f0) {
-		f0Slices = QI::ImageROIF::New();
-		f0Slices->SetRegionOfInterest(slices);
-		f0Slices->SetInput(f0->GetOutput());
-		apply->SetConstInput(0, f0Slices->GetOutput());
+		apply->SetConstInput(0, f0->GetOutput());
 	}
 	if (B1) {
-		B1Slices = QI::ImageROIF::New();
-		B1Slices->SetRegionOfInterest(slices);
-		B1Slices->SetInput(B1->GetOutput());
-		apply->SetConstInput(1, B1Slices->GetOutput());
+		apply->SetConstInput(1, B1->GetOutput());
 	}
 	if (mask) {
-		maskSlices = QI::ImageROIF::New();
-		maskSlices->SetRegionOfInterest(slices);
-		maskSlices->SetInput(mask->GetOutput());
-		apply->SetMask(maskSlices->GetOutput());
+		apply->SetMask(mask->GetOutput());
 	}
 
 	time_t startTime;

@@ -252,50 +252,30 @@ int main(int argc, char **argv) {
 	if (verbose) cout << *ssfpSequence << endl;
 
 	if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-	auto T1File = QI::ReadImageF::New();
-	auto T1Slice = QI::ImageROIF::New(), B1Slice = QI::ImageROIF::New(),
-	     maskSlice = QI::ImageROIF::New();
-
-	T1File->SetFileName(argv[optind++]);
-	T1File->Update(); // Need to have some image dimensions to do this
-	QI::ImageF::RegionType region = T1File->GetOutput()->GetLargestPossibleRegion();
-	region.GetModifiableIndex()[2] = start_slice;
-	if (stop_slice != 0)
-		region.GetModifiableSize()[2] = stop_slice - start_slice;
-	else
-		region.GetModifiableSize()[2] = region.GetSize()[2] - start_slice;
-	T1Slice->SetInput(T1File->GetOutput());
-	T1Slice->SetRegionOfInterest(region);
-	if (verbose) cout << "Processing region: " << endl << region << endl;
+	auto T1 = QI::ReadImageF::New();
+	T1->SetFileName(argv[optind++]);
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
 	auto ssfpFile = QI::ReadTimeseriesF::New();
 	auto ssfpData = QI::TimeseriesToVectorF::New();
 	auto ssfpFlip = QI::ReorderF::New();
-	auto ssfpSlice = QI::VectorImageROIF::New();
 	ssfpFile->SetFileName(argv[optind++]);
 	ssfpData->SetInput(ssfpFile->GetOutput());
 	ssfpFlip->SetInput(ssfpData->GetOutput());
 	if (flipData) {
 		ssfpFlip->SetStride(ssfpSequence->phases());
 	}
-	ssfpSlice->SetInput(ssfpFlip->GetOutput());
-	ssfpSlice->SetRegionOfInterest(region);
-
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, FMAlgo>::New();
 	fm->setSequence(ssfpSequence);
 	fm->setf0Bounds(ssfpSequence->bandwidth());
 	apply->SetAlgorithm(fm);
-	apply->SetDataInput(0, ssfpSlice->GetOutput());
-	apply->SetConstInput(0, T1Slice->GetOutput());
+	apply->SetDataInput(0, ssfpFlip->GetOutput());
+	apply->SetConstInput(0, T1->GetOutput());
+	apply->SetSlices(start_slice, stop_slice);
 	if (B1) {
-		B1Slice->SetInput(B1->GetOutput());
-		B1Slice->SetRegionOfInterest(region);
-		apply->SetConstInput(1, B1Slice->GetOutput());
+		apply->SetConstInput(1, B1->GetOutput());
 	}
 	if (mask) {
-		maskSlice->SetInput(mask->GetOutput());
-		maskSlice->SetRegionOfInterest(region);
-		apply->SetMask(maskSlice->GetOutput());
+		apply->SetMask(mask->GetOutput());
 	}
 	time_t startTime;
 	if (verbose) startTime = QI::printStartTime();
