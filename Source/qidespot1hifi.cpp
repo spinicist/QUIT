@@ -114,23 +114,24 @@ class HIFIAlgo : public Algorithm<double> {
 		size_t numOutputs() const override { return 3; }
 		size_t dataSize() const override   { return m_sequence->size(); }
 
-		virtual VectorXd defaultConsts() {
+		virtual TArray defaultConsts() {
 			// No constants for HIFI
-			VectorXd def = VectorXd::Zero(0);
+			TArray def = TArray::Zero(0);
 			return def;
 		}
 
-		virtual void apply(const VectorXd &data,
-		                   const VectorXd &, //No inputs, remove name to silence compiler warning
-		                   VectorXd &outputs, ArrayXd &resids) const override
+		virtual void apply(const TInput &data,
+		                   const TArray &, //No inputs, remove name to silence compiler warning
+		                   TArray &outputs, TArray &resids) const override
 		{
 			HIFIFunctor f(m_sequence, data);
 			NumericalDiff<HIFIFunctor> nDiff(f);
 			LevenbergMarquardt<NumericalDiff<HIFIFunctor>> lm(nDiff);
-			outputs << data.array().abs().maxCoeff() * 10., 1., 1.; // Initial guess
 			// LevenbergMarquardt does not currently have a good interface, have to do things in steps
 			lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
-			lm.minimize(outputs);
+			VectorXd op(3); op << data.array().abs().maxCoeff() * 10., 1., 1.; // Initial guess
+			lm.minimize(op);
+			outputs = op;
 			// PD, T1, B1
 			VectorXd pfull(5); pfull << outputs[0], outputs[1], 0, 0, outputs[2]; // Build full parameter vector
 			auto model = make_shared<SCD>();

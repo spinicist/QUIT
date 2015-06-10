@@ -48,23 +48,23 @@ public:
 	size_t numOutputs() const override { return 2; }
 	size_t dataSize() const override { return m_sequence->size(); }
 
-	virtual VectorXd defaultConsts() {
+	virtual TArray defaultConsts() {
 		// B1
-		VectorXd def = VectorXd::Ones(1);
+		TArray def = TArray::Ones(1);
 		return def;
 	}
 };
 
 class D1LLS : public D1Algo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &inputs,
-	                   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &inputs,
+	                   TArray &outputs, TArray &resids) const override
 	{
 		double B1 = inputs[0];
 		ArrayXd flip = m_sequence->flip() * B1;
-		VectorXd Y = data.array() / flip.sin();
+		VectorXd Y = data / flip.sin();
 		MatrixXd X(Y.rows(), 2);
-		X.col(0) = data.array() / flip.tan();
+		X.col(0) = data / flip.tan();
 		X.col(1).setOnes();
 		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
 		outputs[1] = -m_sequence->TR() / log(b[0]);
@@ -79,14 +79,14 @@ public:
 
 class D1WLLS : public D1Algo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &inputs,
-	                   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &inputs,
+	                   TArray &outputs, TArray &resids) const override
 	{
 		double B1 = inputs[0];
 		ArrayXd flip = m_sequence->flip() * B1;
-		VectorXd Y = data.array() / flip.sin();
+		VectorXd Y = data / flip.sin();
 		MatrixXd X(Y.rows(), 2);
-		X.col(0) = data.array() / flip.tan();
+		X.col(0) = data / flip.tan();
 		X.col(1).setOnes();
 		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
 		outputs[1] = -m_sequence->TR() / log(b[0]);
@@ -131,17 +131,18 @@ class T1Functor : public DenseFunctor<double> {
 
 class D1NLLS : public D1Algo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &inputs,
-	                   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &inputs,
+	                   TArray &outputs, TArray &resids) const override
 	{
 		double B1 = inputs[0];
 		T1Functor f(m_sequence, data, B1);
 		NumericalDiff<T1Functor> nDiff(f);
 		LevenbergMarquardt<NumericalDiff<T1Functor>> lm(nDiff);
-		// PD & T1 - Initial guess of 1s
-		outputs << data.array().abs().maxCoeff() * 10., 1.;
 		lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
-		lm.minimize(outputs);
+		// PD & T1 - Initial guess of 1s
+		VectorXd p(2); p << data.maxCoeff() * 10., 1.;
+		lm.minimize(p);
+		outputs = p;
 		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = data.array() - theory;
 		if (outputs[0] < m_thresh)

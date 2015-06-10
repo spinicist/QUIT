@@ -4,7 +4,6 @@
 #include "itkObjectFactory.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
-#include "itkImageRegionConstIteratorWithIndex.h"
 #include "itkNormalizedCorrelationImageFilter.hxx"
 
 namespace itk {
@@ -164,45 +163,46 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 	//std::cout << "Thread " << threadId << std::endl;
 	//std::cout << region << std::endl;
 
-	vector<ImageRegionConstIteratorWithIndex<TVImage>> dataIters(m_algorithm->numInputs());
+	vector<ImageRegionConstIterator<TVImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
-		dataIters[i] = ImageRegionConstIteratorWithIndex<TVImage>(this->GetDataInput(i), region);
+		dataIters[i] = ImageRegionConstIterator<TVImage>(this->GetDataInput(i), region);
 	}
-	ImageRegionConstIteratorWithIndex<TImage> maskIter;
+	ImageRegionConstIterator<TImage> maskIter;
 
 	const auto mask = this->GetMask();
 	if (mask) {
-		maskIter = ImageRegionConstIteratorWithIndex<TImage>(mask, region);
+		maskIter = ImageRegionConstIterator<TImage>(mask, region);
 	}
-	vector<ImageRegionConstIteratorWithIndex<TImage>> constIters(m_algorithm->numConsts());
+	vector<ImageRegionConstIterator<TImage>> constIters(m_algorithm->numConsts());
 	for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
 		typename TImage::ConstPointer c = this->GetConstInput(i);
 		if (c) {
-			constIters[i] = ImageRegionConstIteratorWithIndex<TImage>(c, region);
+			constIters[i] = ImageRegionConstIterator<TImage>(c, region);
 		}
 	}
-	vector<ImageRegionIteratorWithIndex<TImage>> outputIters(m_algorithm->numOutputs());
+	vector<ImageRegionIterator<TImage>> outputIters(m_algorithm->numOutputs());
 	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-		outputIters[i] = ImageRegionIteratorWithIndex<TImage>(this->GetOutput(i), region);
+		outputIters[i] = ImageRegionIterator<TImage>(this->GetOutput(i), region);
 	}
-	ImageRegionIteratorWithIndex<TVImage> residIter(this->GetResidOutput(), region);
+	ImageRegionIterator<TVImage> residIter(this->GetResidOutput(), region);
 
+	typedef typename TAlgo::TArray TArray;
 	while(!dataIters[0].IsAtEnd()) {
-		VectorXd outputs = VectorXd::Zero(m_algorithm->numOutputs());
-		ArrayXd resids = ArrayXd::Zero(m_algorithm->dataSize());
+		TArray outputs = TArray::Zero(m_algorithm->numOutputs());
+		TArray resids =  TArray::Zero(m_algorithm->dataSize());
 		if (!mask || maskIter.Get()) {
-			typename TAlgo::TConstVector constants = m_algorithm->defaultConsts();
+			TArray constants = m_algorithm->defaultConsts();
 			for (size_t i = 0; i < constIters.size(); i++) {
 				if (this->GetConstInput(i)) {
 					constants[i] = constIters[i].Get();
 				}
 			}
-			typename TAlgo::TInputVector allData(m_algorithm->dataSize());
+			typename TAlgo::TInput allData(m_algorithm->dataSize());
 			size_t dataIndex = 0;
 			for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 				VariableLengthVector<TPixel> dataVector = dataIters[i].Get();
 				Map<const Eigen::Array<TPixel, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
-				allData.segment(dataIndex, data.rows()) = data.template cast<typename TAlgo::TInput>();
+				allData.segment(dataIndex, data.rows()) = data.template cast<typename TAlgo::TScalar>();
 				dataIndex += data.rows();
 			}
 			m_algorithm->apply(allData, constants, outputs, resids);
@@ -220,7 +220,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 			outputIters[i].Set(static_cast<float>(outputs[i]));
 			++outputIters[i];
 		}
-		ArrayXf residF = resids.cast<float>();
+		ArrayXf residF = resids.template cast<float>();
 		VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
 		residIter.Set(residVector);
 		++residIter;

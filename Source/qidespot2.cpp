@@ -49,17 +49,17 @@ public:
 	size_t numOutputs() const override { return 2; } // PD, T2
 	size_t dataSize() const override { return m_sequence->size(); }
 
-	virtual VectorXd defaultConsts() {
+	virtual TArray defaultConsts() {
 		// T1, B1
-		VectorXd def = VectorXd::Ones(2);
+		TArray def = TArray::Ones(2);
 		return def;
 	}
 };
 
 class D2LLS : public D2Algo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &constants,
-					   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &constants,
+					   TArray &outputs, TArray &resids) const override
 	{
 		const double TR = m_sequence->TR();
 		const double T1 = constants[0];
@@ -68,9 +68,9 @@ public:
 		double PD, T2, E2;
 		const ArrayXd angles = (m_sequence->flip() * B1);
 
-		VectorXd Y = data.array() / angles.sin();
+		VectorXd Y = data / angles.sin();
 		MatrixXd X(Y.rows(), 2);
-		X.col(0) = data.array() / angles.tan();
+		X.col(0) = data / angles.tan();
 		X.col(1).setOnes();
 		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
 		if (m_elliptical) {
@@ -95,8 +95,8 @@ public:
 
 class D2WLLS : public D2Algo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &constants,
-					   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &constants,
+					   TArray &outputs, TArray &resids) const override
 	{
 		const double TR = m_sequence->TR();
 		const double T1 = constants[0];
@@ -105,9 +105,9 @@ public:
 		double PD, T2, E2;
 		const ArrayXd angles = (m_sequence->flip() * B1);
 
-		VectorXd Y = data.array() / angles.sin();
+		VectorXd Y = data / angles.sin();
 		MatrixXd X(Y.rows(), 2);
-		X.col(0) = data.array() / angles.tan();
+		X.col(0) = data / angles.tan();
 		X.col(1).setOnes();
 		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
 		if (m_elliptical) {
@@ -178,8 +178,8 @@ class D2Functor : public DenseFunctor<double> {
 
 class D2NLLS : public D2Algo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &inputs,
-	                   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &inputs,
+	                   TArray &outputs, TArray &resids) const override
 	{
 		double T1 = inputs[0];
 		double B1 = inputs[1];
@@ -187,8 +187,9 @@ public:
 		NumericalDiff<D2Functor> nDiff(f);
 		LevenbergMarquardt<NumericalDiff<D2Functor>> lm(nDiff);
 		lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
-		outputs << data.array().maxCoeff() * 5., 0.1;
-		lm.minimize(outputs);
+		VectorXd p(2); p << data.array().maxCoeff() * 5., 0.1;
+		lm.minimize(p);
+		outputs = p;
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
 		outputs[1] = clamp(outputs[1], m_lo, m_hi);

@@ -123,14 +123,14 @@ class FMAlgo : public Algorithm<double> {
 		size_t numOutputs() const override { return 3; }
 		size_t dataSize() const override   { return m_sequence->size(); }
 
-		virtual VectorXd defaultConsts() {
+		virtual TArray defaultConsts() {
 			// T1 & B1
 			VectorXd def = VectorXd::Ones(2);
 			return def;
 		}
 
-		virtual void apply(const VectorXd &data, const VectorXd &inputs,
-		                   VectorXd &outputs, ArrayXd &resids) const override
+		virtual void apply(const TInput &data, const TArray &inputs,
+		                   TArray &outputs, TArray &resids) const override
 		{
 			ArrayXd thresh(3); thresh.setConstant(0.05);
 			ArrayXd weights(m_sequence->size()); weights.setOnes();

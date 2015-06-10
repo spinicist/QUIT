@@ -88,17 +88,17 @@ public:
 	size_t numOutputs() const override { return 2; }
 	size_t dataSize() const override { return m_sequence->size(); }
 
-	virtual VectorXd defaultConsts() {
+	virtual TArray defaultConsts() {
 		// B1
-		VectorXd def = VectorXd::Ones(2);
+		TArray def = TArray::Ones(2);
 		return def;
 	}
 };
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &inputs,
-	                   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &inputs,
+	                   TArray &outputs, TArray &resids) const override
 	{
 			// Set up echo times array
 		MatrixXd X(m_sequence->size(), 2);
@@ -116,8 +116,8 @@ public:
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-	virtual void apply(const VectorXd &data, const VectorXd &inputs,
-					   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &inputs,
+					   TArray &outputs, TArray &resids) const override
 	{
 		double si2sum = 0, sidisum = 0;
 		for (int i = 0; i < m_sequence->size() - 2; i++) {
@@ -167,8 +167,8 @@ private:
 public:
 	void setIterations(size_t n) { m_iterations = n; }
 
-	virtual void apply(const VectorXd &data, const VectorXd &inputs,
-					   VectorXd &outputs, ArrayXd &resids) const override
+	virtual void apply(const TInput &data, const TArray &inputs,
+					   TArray &outputs, TArray &resids) const override
 	{
 		RelaxFunctor f(m_sequence, data);
 		NumericalDiff<RelaxFunctor> nDiff(f);
@@ -176,9 +176,9 @@ public:
 		lm.setMaxfev(nIterations * (m_sequence->size() + 1));
 		// Just PD & T2 for now
 		// Basic guess of T2=50ms
-		outputs << data(0), 0.05;
-		lm.minimize(outputs);
-
+		VectorXd p(2); p << data(0), 0.05;
+		lm.minimize(p);
+		outputs = p;
 		ArrayXcd theory = One_MultiEcho(m_sequence->m_TE, outputs[0], outputs[1]);
 		resids = data.array() - theory.abs();
 	}

@@ -194,15 +194,15 @@ class MCDAlgo : public Algorithm<double> {
 		size_t numOutputs() const override { return m_model->nParameters(); }
 		size_t dataSize() const override   { return m_sequence->size(); }
 
-		virtual VectorXd defaultConsts() {
+		virtual TArray defaultConsts() {
 			// f0, B1
-			VectorXd def = VectorXd::Ones(2);
+			TArray def = TArray::Ones(2);
 			def[0] = NAN;
 			return def;
 		}
 
-		virtual void apply(const VectorXd &data, const VectorXd &inputs,
-		                   VectorXd &outputs, ArrayXd &resids) const override
+		virtual void apply(const TInput &data, const TArray &inputs,
+		                   TArray &outputs, TArray &resids) const override
 		{
 			ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
 			ArrayXd weights = ArrayXd::Ones(m_sequence->size());
