@@ -45,8 +45,8 @@ Options:\n\
 	           s      : Use Stochastic Region Contraction\n\
 	--start, -s N     : Start processing from slice N\n\
 	--stop, -p  N     : Stop processing at slice N\n\
-	--scale, -S 0     : Normalise signals to mean (default)\n\
-	            1     : Fit a scaling factor/proton density\n\
+	--scale, -S 0     : Normalise signals to mean\n\
+	            1     : Fit a scaling factor/proton density (default)\n\
 	--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
 	--sequences, -M s : Use simple sequences (default)\n\
 	            f     : Use finite pulse length correction\n\
@@ -111,7 +111,8 @@ public:
 	const shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<SCD> m_model;
 	ArrayXd m_data;
-	const double m_T1, m_T2, m_B1;
+	const double m_T1, m_B1;
+	double m_T2;
 
 	FixT2(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const ArrayXd &d, const double T1, const double T2, const double B1) :
 		DenseFunctor<double>(2, s->size()),
@@ -121,6 +122,7 @@ public:
 		assert(static_cast<size_t>(m_data.rows()) == values());
 	}
 
+	void setT2(double T2) { m_T2 = T2; }
 	int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
 		eigen_assert(diffs.size() == values());
 
@@ -169,13 +171,22 @@ public:
 			NumericalDiff<FixT2> fixT2Diff(fixT2);
 			LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
 			fixT2LM.setMaxfev(m_iterations * (m_sequence->size() + 1));
-			VectorXd fixT2P(2); fixT2P << data.maxCoeff() * 10., 0.; // Initial guess
-			fixT2LM.minimize(fixT2P);
+			VectorXd guess1(2); guess1 << data.maxCoeff() * 2.5, 0.; // Initial guess 1
+			fixT2LM.minimize(guess1);
+			double g1 = fixT2LM.fnorm();
+			VectorXd guess2(2); guess2 << data.maxCoeff() * 2.5, 10.; // Initial guess 1
+			fixT2LM.minimize(guess2);
+			double g2 = fixT2LM.fnorm();
 
 			FMFunctor full(m_model, m_sequence, data, T1, B1);
 			NumericalDiff<FMFunctor> fullDiff(full);
 			LevenbergMarquardt<NumericalDiff<FMFunctor>> fullLM(fullDiff);
-			VectorXd fullP(3); fullP << fixT2P[0], T2, fixT2P[1]; // Now include T2
+			VectorXd fullP(3);
+			if (g1 < g2) {
+				fullP << guess1[0], T2, guess1[1]; // Now include T2
+			} else {
+				fullP << guess2[0], T2, guess2[1];
+			}
 			fullLM.minimize(fullP);
 			outputs = fullP;
 			// PD, T1, B1
@@ -351,10 +362,16 @@ int main(int argc, char **argv) {
 		apply->SetMask(mask->GetOutput());
 	}
 	time_t startTime;
-	if (verbose) startTime = QI::printStartTime();
+	if (verbose) {
+		startTime = QI::printStartTime();
+		auto progress = QI::ProgressReport::New();
+		apply->AddObserver(itk::ProgressEvent(), progress);
+	}
 	apply->Update();
-	QI::printElapsedTime(startTime);
-	if (verbose) cout << "Writing output files." << endl;
+	if (verbose) {
+		QI::printElapsedTime(startTime);
+		cout << "Writing output files." << endl;
+	}
 	outPrefix = outPrefix + "FM_";
 	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
 	QI::writeResult(apply->GetOutput(1), outPrefix + "T2.nii");
