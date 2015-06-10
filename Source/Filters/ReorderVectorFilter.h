@@ -54,19 +54,18 @@ protected:
 
 	virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
 		//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
+		//std::cout << *this << std::endl;
+		//std::cout << "Thread " << threadId << std::endl;
+		//std::cout << "Requested region: " << std::endl << region << std::endl;
 		ImageRegionConstIterator<TImage> inIt(this->GetInput(), region);
 		ImageRegionIterator<TImage>      outIt(this->GetOutput(), region);
 
-		// A stride of 1 means do nothing
-		if (m_stride == 1)
-			return;
-
+		inIt.GoToBegin();
+		outIt.GoToBegin();
 		while(!inIt.IsAtEnd()) {
 			VariableLengthVector<TPixel> in = inIt.Get();
 			VariableLengthVector<TPixel> out(in.GetNumberOfElements());
-
 			size_t outIndex = 0;
-			//std::cout << "blocksize " << m_blocksize << " blocks " << m_blocks << " fullsize " << m_fullsize << " stride " << m_stride << std::endl;
 			for (size_t b = 0; b < m_fullsize; b += m_blocksize) { // Tracks the start of each block
 				// Within each block, treat the data as matrix that needs transposing
 				for (size_t j = b; j < m_stride; j++) { // Tracks the 'column'
@@ -77,8 +76,6 @@ protected:
 					}
 				}
 			}
-
-			//std::cout << "IN:  " << in << std::endl << "OUT: " << out << std::endl;
 			outIt.Set(out);
 			++inIt;
 			++outIt;
