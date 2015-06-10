@@ -40,7 +40,6 @@ Options:\n\
 	--no-prompt, -n   : Suppress input prompts\n\
 	--mask, -m file   : Mask input with specified file\n\
 	--out, -o path    : Add a prefix to the output filenames\n\
-	--f0, -f file     : Use f0 Map file (in Hertz)\n\
 	--B1, -b file     : B1 Map file (ratio)\n\
 	--start, -s N     : Start processing from slice N\n\
 	--stop, -p  N     : Stop processing at slice N\n\
@@ -61,7 +60,6 @@ static struct option long_opts[] = {
 	{"no-prompt", no_argument, 0, 'n'},
 	{"mask", required_argument, 0, 'm'},
 	{"out", required_argument, 0, 'o'},
-	{"f0", required_argument, 0, 'f'},
 	{"B1", required_argument, 0, 'b'},
 	{"start", required_argument, 0, 's'},
 	{"stop", required_argument, 0, 'p'},
@@ -73,7 +71,7 @@ static struct option long_opts[] = {
 	{"resids", no_argument, 0, 'r'},
 	{0, 0, 0, 0}
 };
-static const char* short_opts = "hvnm:o:f:b:s:p:S:FT:M:crd:";
+static const char* short_opts = "hvnm:o:b:s:p:S:FT:M:crd:";
 
 class FMFunctor : public DenseFunctor<double> {
 	public:
@@ -170,12 +168,11 @@ class FMAlgo : public Algorithm<double> {
 int main(int argc, char **argv) {
 	Eigen::initParallel();
 
-	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
 	int verbose = false, prompt = true, all_residuals = false,
 	    fitFinite = false, flipData = false;
 	string outPrefix;
-	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 	shared_ptr<FMAlgo> fm = make_shared<FMAlgo>();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
@@ -190,11 +187,6 @@ int main(int argc, char **argv) {
 			case 'o':
 				outPrefix = optarg;
 				if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
-				break;
-			case 'f':
-				if (verbose) cout << "Reading f0 file: " << optarg << endl;
-				f0 = QI::ReadImageF::New();
-				f0->SetFileName(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
