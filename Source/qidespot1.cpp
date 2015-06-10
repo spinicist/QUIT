@@ -271,7 +271,11 @@ int main(int argc, char **argv) {
 		apply->SetMask(mask->GetOutput());
 	if (B1)
 		apply->SetConstInput(0, B1->GetOutput());
-	if (verbose) cout << "Processing" << endl;
+	if (verbose) {
+		cout << "Processing" << endl;
+		auto progress = QI::ProgressReport::New();
+		apply->AddObserver(itk::ProgressEvent(), progress);
+	}
 	apply->Update();
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "D1_";

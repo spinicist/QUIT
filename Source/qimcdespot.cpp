@@ -49,8 +49,8 @@ Options:\n\
 	--B1, -b file     : B1 Map file (ratio)\n\
 	--start, -s n     : Only start processing at slice n.\n\
 	--stop, -p n      : Finish at slice n-1\n\
-	--scale, -S MEAN  : Normalise signals to mean (default)\n\
-	            NONE  : Fit a scaling factor/proton density\n\
+	--scale, -S MEAN  : Normalise signals to mean\n\
+	            NONE  : Fit a scaling factor/proton density (default)\n\
 	            x     : Fix to x\n\
 	--gauss, -g 0     : Use Uniform distribution for Region Contraction\n\
 	            1     : Use Gaussian distribution for RC (default)\n\
@@ -379,10 +379,16 @@ int main(int argc, char **argv) {
 	}
 
 	time_t startTime;
-	if (verbose) startTime = QI::printStartTime();
+	if (verbose) {
+		startTime = QI::printStartTime();
+		auto progress = QI::ProgressReport::New();
+		apply->AddObserver(itk::ProgressEvent(), progress);
+	}
 	apply->Update();
-	QI::printElapsedTime(startTime);
-
+	if (verbose) {
+		QI::printElapsedTime(startTime);
+		cout << "Writing results files." << endl;
+	}
 	outPrefix = outPrefix + model->Name() + "_";
 	for (int i = 0; i < model->nParameters(); i++) {
 		QI::writeResult(apply->GetOutput(i), outPrefix + model->Names()[i] + QI::OutExt());

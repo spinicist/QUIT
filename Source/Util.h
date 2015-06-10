@@ -23,6 +23,7 @@
 
 #include <Eigen/Dense>
 
+#include "itkCommand.h"
 #include "itkVectorMagnitudeImageFilter.h"
 
 #include "Types.h"
@@ -39,8 +40,7 @@ std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 void writeResult(const typename ImageF::Pointer img, const std::string path);
 void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
 
-class ProgressReport : public itk::Command
-{
+class ProgressReport : public itk::Command {
 public:
 	typedef ProgressReport           Self;
 	typedef itk::Command             Superclass;

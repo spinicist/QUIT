@@ -212,7 +212,11 @@ int main(int argc, char **argv) {
 	apply->SetDataInput(1, irImg->GetOutput());
 	if (mask)
 		apply->SetMask(mask->GetOutput());
-	if (verbose) cout << "Processing..." << endl;
+	if (verbose) {
+		cout << "Processing..." << endl;
+		auto progress = QI::ProgressReport::New();
+		apply->AddObserver(itk::ProgressEvent(), progress);
+	}
 	apply->Update();
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "HIFI_";

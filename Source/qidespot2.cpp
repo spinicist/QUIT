@@ -341,6 +341,8 @@ int main(int argc, char **argv) {
 	if (verbose) {
 		cout << "DESPOT2 setup complete. Processing." << endl;
 		startTime = QI::printStartTime();
+		auto progress = QI::ProgressReport::New();
+		DESPOT2->AddObserver(itk::ProgressEvent(), progress);
 	}
 	DESPOT2->Update();
 	if (verbose) {

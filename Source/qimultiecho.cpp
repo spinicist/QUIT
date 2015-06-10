@@ -259,11 +259,16 @@ int main(int argc, char **argv) {
 		apply->SetMask(mask->GetOutput());
 
 	time_t startTime;
-	if (verbose) startTime = QI::printStartTime();
+	if (verbose) {
+		startTime = QI::printStartTime();
+		auto progress = QI::ProgressReport::New();
+		apply->AddObserver(itk::ProgressEvent(), progress);
+	}
 	apply->Update();
-	QI::printElapsedTime(startTime);
-
-	if (verbose) cout << "Writing results." << endl;
+	if (verbose) {
+		QI::printElapsedTime(startTime);
+		cout << "Writing results." << endl;
+	}
 	outPrefix = outPrefix + "ME_";
 	QI::writeResult(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
 	QI::writeResult(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
