@@ -13,17 +13,18 @@ class Algorithm {
 public:
 	typedef DataType TInput;
 	typedef Eigen::Matrix<DataType, Eigen::Dynamic, 1> TInputVector;
+	typedef Eigen::VectorXd TConstVector;
 	virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
 	virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
 	virtual size_t numOutputs() const = 0; // Number of output parameters/variables
 	virtual size_t dataSize() const = 0;   // The expected size of the concatenated data vector
 
 	virtual void apply(const TInputVector &data,
-					   const VectorXd &consts,
+					   const TConstVector &consts,
 					   VectorXd &outputs,
 					   ArrayXd &resids) const = 0;
 
-	virtual VectorXd defaultConsts() = 0;
+	virtual TConstVector defaultConsts() = 0;
 };
 
 namespace itk{
