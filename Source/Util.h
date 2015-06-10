@@ -39,6 +39,31 @@ std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 void writeResult(const typename ImageF::Pointer img, const std::string path);
 void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
 
+class ProgressReport : public itk::Command
+{
+public:
+	typedef ProgressReport           Self;
+	typedef itk::Command             Superclass;
+	typedef itk::SmartPointer<Self>  Pointer;
+	itkNewMacro( Self );
+protected:
+	ProgressReport() {};
+public:
+	void Execute(itk::Object *caller, const itk::EventObject & event)
+	{
+		Execute( (const itk::Object *)caller, event);
+	}
+	void Execute(const itk::Object * object, const itk::EventObject & event)
+	{
+    const itk::ProcessObject * filter = static_cast< const itk::ProcessObject * >( object );
+    if( ! itk::ProgressEvent().CheckEvent( &event ) )
+      {
+      return;
+      }
+    std::cout << "Progress: " << (filter->GetProgress()*100) << "% complete" << std::endl;
+	}
+};
+
 template<typename T> bool Read(const std::string &s, T &val) {
 	std::istringstream stream(s);
 	if (!(stream >> val)) {
