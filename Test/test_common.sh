@@ -50,7 +50,7 @@ function compare_test {
 		STD=$( fslstats $DIFF -s )
 		ABSMEAN=$(echo $MEAN | awk ' { print sqrt($1*$1) } ' )
 		# Check for nan/inf/etc. because on some platforms awk will treat these as 0
-		REGEXP='^-?[0-9]+([.][0-9]+)?$'
+		REGEXP='^-?[0-9]+([.][0-9]+)?(e-?[0-9]+)?$'
 		if ! [[ $ABSMEAN =~ $REGEXP ]] ; then
 			echo "Comparison test $NAME failed, mean diff $ABSMEAN is not a valid number"
 			exit 1

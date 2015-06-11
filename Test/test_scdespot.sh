@@ -15,13 +15,13 @@ rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
 
-DIMS="16 16 5"
+DIMS="16 16 25"
 VOXDIMS="2 2 2"
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f 1 PD.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 1.2 0.8" PD.nii
 $QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 2" T1.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.2" T2.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
 $QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 0.5 1.5" B1.nii
+$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 0.75 1.25" B1.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
@@ -107,9 +107,9 @@ run_test "SSFPGS2PMAG" $QUITDIR/qicomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_
 run_test "DESPOT2GS2P" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
 
-run_test "DESPOT2FMLM" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -bB1.nii -v -T1 -o LM < despot2fm.in
-compare_test "DESPOT2FMLM" T2.nii LMFM_T2.nii 0.01
-run_test "DESPOT2FMSRC" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -as -bB1.nii -v -T1 -o SRC < despot2fm.in
+run_test "DESPOT2FMLM" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -bB1.nii -v -o LM < despot2fm.in
+compare_test "DESPOT2FMLM" T2.nii LMFM_T2.nii 0.001
+run_test "DESPOT2FMSRC" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -as -bB1.nii -v -o SRC < despot2fm.in
 compare_test "DESPOT2FMSRC" T2.nii SRCFM_T2.nii 0.01
 
 cd ..
