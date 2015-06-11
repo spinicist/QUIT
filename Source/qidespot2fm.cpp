@@ -166,29 +166,33 @@ public:
 		const double T1 = inputs[0];
 		if (isfinite(T1) && (T1 > 0.001)) {
 			const double B1 = inputs[1];
-			const double T2 = 0.045 * T1; // From a Yarnykh paper
-			FixT2 fixT2(m_model, m_sequence, data, T1, T2, B1);
-			NumericalDiff<FixT2> fixT2Diff(fixT2);
-			LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
-			fixT2LM.setMaxfev(m_iterations * (m_sequence->size() + 1));
-			VectorXd guess1(2); guess1 << data.maxCoeff() * 2.5, 0.; // Initial guess 1
-			fixT2LM.minimize(guess1);
-			double g1 = fixT2LM.fnorm();
-			VectorXd guess2(2); guess2 << data.maxCoeff() * 2.5, 10.; // Initial guess 1
-			fixT2LM.minimize(guess2);
-			double g2 = fixT2LM.fnorm();
 
-			FMFunctor full(m_model, m_sequence, data, T1, B1);
-			NumericalDiff<FMFunctor> fullDiff(full);
-			LevenbergMarquardt<NumericalDiff<FMFunctor>> fullLM(fullDiff);
-			VectorXd fullP(3);
-			if (g1 < g2) {
-				fullP << guess1[0], T2, guess1[1]; // Now include T2
-			} else {
-				fullP << guess2[0], T2, guess2[1];
+			double   bestF = numeric_limits<double>::infinity();
+			for (int j = 1; j < 3; j++) {
+				const double T2 = 0.045 * T1 * j; // From a Yarnykh paper T2/T1 = 0.045 in brain at 3T. Try the longer value for CSF
+				for (int i = 0; i < 2; i++) {
+					// First fix T2 and f0 to different starting points
+					FixT2 fixT2(m_model, m_sequence, data, T1, T2, B1);
+					NumericalDiff<FixT2> fixT2Diff(fixT2);
+					LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
+					fixT2LM.setMaxfev(m_iterations * (m_sequence->size() + 1));
+					VectorXd g(2); g << data.maxCoeff() * 2.5, 10. * i;
+					fixT2LM.minimize(g);
+
+					// Now fit everything together
+					FMFunctor full(m_model, m_sequence, data, T1, B1);
+					NumericalDiff<FMFunctor> fullDiff(full);
+					LevenbergMarquardt<NumericalDiff<FMFunctor>> fullLM(fullDiff);
+					VectorXd fullP(3); fullP << g[0], T2, g[1]; // Now include T2
+					fullLM.minimize(fullP);
+
+					double F = fullLM.fnorm();
+					if (F < bestF) {
+						outputs = fullP;
+						bestF = F;
+					}
+				}
 			}
-			fullLM.minimize(fullP);
-			outputs = fullP;
 			// PD, T1, B1
 			VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
 			ArrayXd theory = m_sequence->signal(m_model, pfull).abs();
