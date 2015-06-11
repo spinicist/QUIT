@@ -63,6 +63,11 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetSlices(const int start, const int 
 }
 
 template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetScaling(const Scaling s) {
+	m_scaling = s;
+}
+
+template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetDataInput(const size_t i) const -> typename TVImage::ConstPointer {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
@@ -204,7 +209,12 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 			for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 				VariableLengthVector<TPixel> dataVector = dataIters[i].Get();
 				Map<const Eigen::Array<TPixel, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
-				allData.segment(dataIndex, data.rows()) = data.template cast<typename TAlgo::TScalar>();
+				Eigen::Array<TPixel, Eigen::Dynamic, 1> scaled = data;
+				switch (m_scaling) {
+					case (Scaling::None): break;
+					case (Scaling::ToMean): scaled /= scaled.mean(); break;
+				}
+				allData.segment(dataIndex, data.rows()) = scaled.template cast<typename TAlgo::TScalar>();
 				dataIndex += data.rows();
 			}
 			m_algorithm->apply(allData, constants, outputs, resids);

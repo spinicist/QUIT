@@ -240,6 +240,8 @@ int main(int argc, char **argv) {
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
 	shared_ptr<Model> model = make_shared<MCD3>();
+	typedef itk::ApplyAlgorithmFilter<QI::VectorImageF, MCDAlgo> TApply;
+	auto apply = TApply::New();
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -283,12 +285,15 @@ int main(int argc, char **argv) {
 				if (mode == "MEAN") {
 					if (verbose) cout << "Mean scaling selected." << endl;
 					model->setScaling(Model::Scale::ToMean);
+					apply->SetScaling(TApply::Scaling::ToMean);
 				} else if (mode == "FIT") {
 					if (verbose) cout << "Fit PD/M0 selected." << endl;
 					model->setScaling(Model::Scale::None);
+					apply->SetScaling(TApply::Scaling::None);
 				} else {
 					if (verbose) cout << "Scale factor = " << atof(optarg) << endl;
 					model->setScaling(Model::Scale::None);
+					apply->SetScaling(TApply::Scaling::None);
 					scaling = atof(optarg);
 				}
 			} break;
@@ -361,7 +366,6 @@ int main(int argc, char **argv) {
 		}
 		boundsFile.close();
 	}
-	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, MCDAlgo>::New();
 	mcd->setSequence(sequences);
 	apply->SetAlgorithm(mcd);
 	apply->SetSlices(start_slice, stop_slice);
