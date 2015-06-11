@@ -193,7 +193,9 @@ public:
 					}
 				}
 			}
-			// PD, T1, B1
+			// PD sometimes go -ve, which is perfectly valid from the maths
+			if (outputs[0] < 0)
+				outputs[0] = -outputs[0];
 			VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
 			ArrayXd theory = m_sequence->signal(m_model, pfull).abs();
 			resids = (data - theory);
