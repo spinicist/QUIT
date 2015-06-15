@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
 		apply->SetMask(mask->GetOutput());
 	if (verbose) {
 		cout << "Processing..." << endl;
-		auto progress = QI::ProgressReport::New();
+		auto progress = QI::EventMonitor::New();
 		apply->AddObserver(itk::ProgressEvent(), progress);
 	}
 	apply->Update();

@@ -370,7 +370,7 @@ int main(int argc, char **argv) {
 	time_t startTime;
 	if (verbose) {
 		startTime = QI::printStartTime();
-		auto progress = QI::ProgressReport::New();
+		auto progress = QI::EventMonitor::New();
 		apply->AddObserver(itk::ProgressEvent(), progress);
 	}
 	apply->Update();

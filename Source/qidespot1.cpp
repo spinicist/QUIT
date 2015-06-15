@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
 		apply->SetConstInput(0, B1->GetOutput());
 	if (verbose) {
 		cout << "Processing" << endl;
-		auto progress = QI::ProgressReport::New();
+		auto progress = QI::EventMonitor::New();
 		apply->AddObserver(itk::ProgressEvent(), progress);
 	}
 	apply->Update();
