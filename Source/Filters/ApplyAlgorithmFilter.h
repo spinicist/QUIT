@@ -36,6 +36,7 @@ public:
 	typedef typename TInImage::InternalPixelType TPixel;
 	typedef Image<TPixel, ImageDimension>        TImage;
 	typedef TInImage                             TVectorImage;
+	typedef TAlgo                                TAlgorithm;
 
 	typedef ApplyAlgorithmFilter                   Self;
 	typedef ImageToImageFilter<TInImage, TInImage> Superclass;
@@ -47,6 +48,8 @@ public:
 	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
 	void SetAlgorithm(const shared_ptr<TAlgo> &a);
+	shared_ptr<const TAlgo> GetAlgorithm() const;
+
 	void SetDataInput(const size_t i, const TVectorImage *img);
 	void SetConstInput(const size_t i, const TImage *img);
 	void SetMask(const TImage *mask);
@@ -59,13 +62,12 @@ public:
 	TVectorImage *GetResidOutput();
 
 	virtual void GenerateOutputInformation() override;
-	virtual void Update() override;
 
 protected:
 	ApplyAlgorithmFilter();
 	~ApplyAlgorithmFilter(){}
 
-	virtual void ThreadedGenerateData(const TRegion &outputRegionForThread, ThreadIdType threadId);
+	virtual void ThreadedGenerateData(const TRegion &outputRegionForThread, ThreadIdType threadId) override;
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
 	shared_ptr<TAlgo> m_algorithm;

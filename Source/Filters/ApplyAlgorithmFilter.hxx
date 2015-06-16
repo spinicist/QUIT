@@ -19,15 +19,18 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetAlgorithm(const shared_ptr<TAlgo> 
 	m_algorithm = a;
 	// +1 is for mask.
 	// Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
-	size_t totalInputs = m_algorithm->numInputs() + m_algorithm->numConsts() + 1;
 	this->SetNumberOfRequiredInputs(a->numInputs());
 	// +1 is for residuals vector
 	size_t totalOutputs = m_algorithm->numOutputs() + 1;
 	this->SetNumberOfRequiredOutputs(totalOutputs);
-
 	for (size_t i = 0; i < totalOutputs; i++) {
 		this->SetNthOutput(i, this->MakeOutput(i));
 	}
+}
+
+template<typename TVImage, typename TAlgo>
+shared_ptr<const TAlgo> ApplyAlgorithmFilter<TVImage, TAlgo>::GetAlgorithm() const {
+	return m_algorithm;
 }
 
 template<typename TVImage, typename TAlgo>
@@ -69,7 +72,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetScaling(const Scaling s) {
 
 template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetDataInput(const size_t i) const -> typename TVImage::ConstPointer {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
 		return static_cast<const TVImage *> (this->ProcessObject::GetInput(i));
 	} else {
@@ -79,7 +82,7 @@ auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetDataInput(const size_t i) const ->
 
 template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetConstInput(const size_t i) const -> typename TImage::ConstPointer {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		size_t index = m_algorithm->numInputs() + 1 + i;
 		return static_cast<const TImage *> (this->ProcessObject::GetInput(index));
@@ -90,7 +93,7 @@ auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetConstInput(const size_t i) const -
 
 template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetMask() const -> typename TImage::ConstPointer {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	return static_cast<const TImage *>(this->ProcessObject::GetInput(m_algorithm->numInputs()));
 }
 
@@ -112,7 +115,7 @@ DataObject::Pointer ApplyAlgorithmFilter<TVImage, TAlgo>::MakeOutput(unsigned in
 
 template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetOutput(const size_t i) -> TImage *{
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
+	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numOutputs()) {
 		return dynamic_cast<TImage *>(this->ProcessObject::GetOutput(i+1));
 	} else {
@@ -123,13 +126,6 @@ auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetOutput(const size_t i) -> TImage *
 template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetResidOutput() -> TVImage *{
 	return dynamic_cast<TVImage *>(this->ProcessObject::GetOutput(0));
-}
-
-template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmFilter<TVImage, TAlgo>::Update() {
-	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
-	Superclass::Update();
-	//std::cout << "Finished " << __PRETTY_FUNCTION__ << std::endl;
 }
 
 template<typename TVImage, typename TAlgo>
@@ -145,19 +141,25 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::GenerateOutputInformation() {
 	}
 
 	auto region = this->GetInput()->GetLargestPossibleRegion();
-	region.GetModifiableIndex()[ImageDimension - 1] = m_startSlice;
+	const int LastDim = ImageDimension - 1;
+	region.GetModifiableIndex()[LastDim] = m_startSlice;
 	if (m_stopSlice != 0)
-		region.GetModifiableSize()[ImageDimension - 1] = m_stopSlice - m_startSlice;
+		region.GetModifiableSize()[LastDim] = m_stopSlice - m_startSlice;
 	else
-		region.GetModifiableSize()[ImageDimension - 1] = region.GetSize()[2] - m_startSlice;
+		region.GetModifiableSize()[LastDim] = region.GetSize()[LastDim] - m_startSlice;
 	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 		auto op = this->GetOutput(i);
 		op->SetRegions(region);
+		//std::cout << "ALLOCATING OUTPUT " << i << std::endl;
+		//std::cout << region << std::endl;
 		op->Allocate();
 	}
 	auto r = this->GetResidOutput();
 	r->SetRegions(region);
 	r->SetNumberOfComponentsPerPixel(size);
+	//std::cout << "ALLOCATING RESID" << std::endl;
+	//std::cout << region << std::endl;
+	//std::cout << size << std::endl;
 	r->Allocate();
 	//std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
@@ -174,8 +176,8 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		dataIters[i] = ImageRegionConstIterator<TVImage>(this->GetDataInput(i), region);
 	}
-	ImageRegionConstIterator<TImage> maskIter;
 
+	ImageRegionConstIterator<TImage> maskIter;
 	const auto mask = this->GetMask();
 	if (mask) {
 		maskIter = ImageRegionConstIterator<TImage>(mask, region);
