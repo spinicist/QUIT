@@ -18,10 +18,11 @@ include_directories(Source)
 
 add_library(qi_core Source/Types.h Source/Util.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
-                                        Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
-                                        Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
-                                        Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
-                                        Source/RegionContraction.h)
+                                      Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
+                                      Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
+                                      Source/Filters/ApplyAlgorithmSliceBySliceFilter.h Source/Filters/ApplyAlgorithmSliceBySliceFilter.hxx
+                                      Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
+                                      Source/RegionContraction.h)
 
 set(PROGRAMS qinewimage qicomplex qisignal
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
