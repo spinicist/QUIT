@@ -48,12 +48,14 @@ public:
 
 	void SetAlgorithm(const shared_ptr<TAlgo> &a);
 	shared_ptr<const TAlgo> GetAlgorithm() const;
+	void SetScaleToMean(const bool s);
+	bool GetScaleToMean() const;
 
 	void SetDataInput(const size_t i, const TVectorImage *img);
 	void SetConstInput(const size_t i, const TImage *img);
 	void SetMask(const TImage *mask);
 	void SetSlices(const int start, const int stop);
-	void SetScaleToMean(const bool s);
+
 	typename TVectorImage::ConstPointer GetDataInput(const size_t i) const;
 	typename TImage::ConstPointer GetConstInput(const size_t i) const;
 	typename TImage::ConstPointer GetMask() const;

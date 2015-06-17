@@ -162,7 +162,8 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 		//std::cout << "Creating filter" << std::endl;
 		typename TSliceFilter::Pointer sliceFilter = TSliceFilter::New();
 		sliceFilter->SetAlgorithm(this->m_algorithm);
-
+		sliceFilter->SetScaleToMean(this->m_scale_to_mean);
+		
 		// reallocate the internal input at each slice, so the slice by slice filter can work
 		// even if the pipeline is run in place
 		//std::cout << "Setting input regions" << std::endl;

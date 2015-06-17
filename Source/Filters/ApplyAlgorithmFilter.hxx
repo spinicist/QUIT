@@ -29,9 +29,13 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetAlgorithm(const shared_ptr<TAlgo> 
 }
 
 template<typename TVImage, typename TAlgo>
-shared_ptr<const TAlgo> ApplyAlgorithmFilter<TVImage, TAlgo>::GetAlgorithm() const {
-	return m_algorithm;
-}
+shared_ptr<const TAlgo> ApplyAlgorithmFilter<TVImage, TAlgo>::GetAlgorithm() const { return m_algorithm; }
+
+template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetScaleToMean(const bool s) { m_scale_to_mean = s; }
+
+template<typename TVImage, typename TAlgo>
+bool ApplyAlgorithmFilter<TVImage, TAlgo>::GetScaleToMean() const { return m_scale_to_mean; }
 
 template<typename TVImage, typename TAlgo>
 void ApplyAlgorithmFilter<TVImage, TAlgo>::SetDataInput(const size_t i, const TVImage *image) {
@@ -63,11 +67,6 @@ template<typename TVImage, typename TAlgo>
 void ApplyAlgorithmFilter<TVImage, TAlgo>::SetSlices(const int start, const int stop) {
 	m_startSlice = start;
 	m_stopSlice = stop;
-}
-
-template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmFilter<TVImage, TAlgo>::SetScaleToMean(const bool s) {
-	m_scale_to_mean = s;
 }
 
 template<typename TVImage, typename TAlgo>
