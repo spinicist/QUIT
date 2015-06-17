@@ -305,14 +305,14 @@ int main(int argc, char **argv) {
 				}
 				break;
 			case 'r': all_residuals = true; break;
-			case '?': // getopt will print an error message
-				return EXIT_FAILURE;
-				break;
 			case 'h':
-			default:
 				cout << usage << endl;
 				return EXIT_SUCCESS;
-				break;
+			case '?': // getopt will print an error message
+				return EXIT_FAILURE;
+			default:
+				cout << "Unhandled option " << string(1, c) << endl;
+				return EXIT_FAILURE;
 		}
 	}
 	if ((argc - optind) != 2) {

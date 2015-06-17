@@ -259,6 +259,7 @@ int main(int argc, char **argv) {
 	optind = 1;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
+			case 'v': case 'n': case '1': case '2': case '3': break; // Already handled
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
 				mask = QI::ReadImageF::New();
@@ -329,8 +330,12 @@ int main(int argc, char **argv) {
 			} break;
 			case 'r': all_residuals = true; break;
 			case 'h':
-			case '?': // getopt will print an error message
 				cout << usage << endl;
+				return EXIT_SUCCESS;
+			case '?': // getopt will print an error message
+				return EXIT_FAILURE;
+			default:
+				cout << "Unhandled option " << string(1, c) << endl;
 				return EXIT_FAILURE;
 		}
 	}

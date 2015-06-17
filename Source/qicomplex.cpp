@@ -169,9 +169,13 @@ int main(int argc, char **argv) {
 			} break;
 		case 'f': fixge = true; break;
 		case 'h':
-		case '?': // getopt will print an error message
 			cout << usage << endl;
 			return EXIT_SUCCESS;
+		case '?': // getopt will print an error message
+			return EXIT_FAILURE;
+		default:
+			cout << "Unhandled option " << string(1, c) << endl;
+			return EXIT_FAILURE;
 		}
 	}
 

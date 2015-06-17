@@ -240,7 +240,12 @@ int main(int argc, char **argv) {
 				break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
 			case 'h':
+				cout << usage << endl;
+				return EXIT_SUCCESS;
 			case '?': // getopt will print an error message
+				return EXIT_FAILURE;
+			default:
+				cout << "Unhandled option " << string(1, c) << endl;
 				return EXIT_FAILURE;
 		}
 	}
