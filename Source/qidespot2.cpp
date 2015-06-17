@@ -334,10 +334,10 @@ int main(int argc, char **argv) {
 	algo->setSequence(ssfp);
 	algo->setElliptical(elliptical);
 	DESPOT2->SetAlgorithm(algo);
-	DESPOT2->SetDataInput(0, ssfp3D->GetOutput());
-	DESPOT2->SetConstInput(0, T1File->GetOutput());
+	DESPOT2->SetInput(0, ssfp3D->GetOutput());
+	DESPOT2->SetConst(0, T1File->GetOutput());
 	if (B1)
-		DESPOT2->SetConstInput(1, B1->GetOutput());
+		DESPOT2->SetConst(1, B1->GetOutput());
 	if (mask)
 		DESPOT2->SetMask(mask->GetOutput());
 

@@ -259,7 +259,7 @@ int main(int argc, char **argv) {
 	algo->setSequence(multiecho);
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, RelaxAlgo>::New();
 	apply->SetAlgorithm(algo);
-	apply->SetDataInput(0, inputData->GetOutput());
+	apply->SetInput(0, inputData->GetOutput());
 	if (mask)
 		apply->SetMask(mask->GetOutput());
 

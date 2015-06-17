@@ -19,7 +19,7 @@
 #include <unsupported/Eigen/NumericalDiff>
 
 #include "Util.h"
-#include "Filters/ApplyAlgorithmFilter.h"
+#include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
 #include "Model.h"
 #include "Sequence.h"
 #include "RegionContraction.h"
@@ -192,6 +192,7 @@ public:
 			// PD sometimes go -ve, which is perfectly valid from the maths
 			if (outputs[0] < 0)
 				outputs[0] = -outputs[0];
+			outputs[1] = clamp(outputs[1], 0.001, T1);
 			VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
 			ArrayXd theory = m_sequence->signal(m_model, pfull).abs();
 			resids = (data - theory);
@@ -340,14 +341,14 @@ int main(int argc, char **argv) {
 	if (flipData) {
 		ssfpFlip->SetStride(ssfpSequence->phases());
 	}
-	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, FMAlgo>::New();
+	auto apply = itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, FMAlgo>::New();
 	fm->setSequence(ssfpSequence);
 	apply->SetAlgorithm(fm);
-	apply->SetDataInput(0, ssfpFlip->GetOutput());
-	apply->SetConstInput(0, T1->GetOutput());
+	apply->SetInput(0, ssfpFlip->GetOutput());
+	apply->SetConst(0, T1->GetOutput());
 	apply->SetSlices(start_slice, stop_slice);
 	if (B1) {
-		apply->SetConstInput(1, B1->GetOutput());
+		apply->SetConst(1, B1->GetOutput());
 	}
 	if (mask) {
 		apply->SetMask(mask->GetOutput());

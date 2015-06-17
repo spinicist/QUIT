@@ -271,11 +271,11 @@ int main(int argc, char **argv) {
 	algo->setSequence(spgrSequence);
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, D1Algo>::New();
 	apply->SetAlgorithm(algo);
-	apply->SetDataInput(0, convert->GetOutput());
+	apply->SetInput(0, convert->GetOutput());
 	if (mask)
 		apply->SetMask(mask->GetOutput());
 	if (B1)
-		apply->SetConstInput(0, B1->GetOutput());
+		apply->SetConst(0, B1->GetOutput());
 	if (verbose) {
 		cout << "Processing" << endl;
 		auto progress = QI::EventMonitor::New();

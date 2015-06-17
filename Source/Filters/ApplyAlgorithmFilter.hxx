@@ -38,7 +38,7 @@ template<typename TVImage, typename TAlgo>
 bool ApplyAlgorithmFilter<TVImage, TAlgo>::GetScaleToMean() const { return m_scale_to_mean; }
 
 template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmFilter<TVImage, TAlgo>::SetDataInput(const size_t i, const TVImage *image) {
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetInput(const size_t i, const TVImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
 		this->SetNthInput(i, const_cast<TVectorImage*>(image));
@@ -48,7 +48,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetDataInput(const size_t i, const TV
 }
 
 template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmFilter<TVImage, TAlgo>::SetConstInput(const size_t i, const TImage *image) {
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetConst(const size_t i, const TImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		this->SetNthInput(m_algorithm->numInputs() + 1 + i, const_cast<TImage*>(image));
@@ -70,17 +70,19 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetSlices(const int start, const int 
 }
 
 template<typename TVImage, typename TAlgo>
-auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetDataInput(const size_t i) const -> typename TVImage::ConstPointer {
+auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetInput(const size_t i) const -> typename TVImage::ConstPointer {
 	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
 		return static_cast<const TVImage *> (this->ProcessObject::GetInput(i));
 	} else {
-		throw(runtime_error("Get Data Input out of range."));
+		throw(runtime_error(__PRETTY_FUNCTION__ +
+		                    string("Input ") + to_string(i) +
+		                    " out of range (" + to_string(m_algorithm->numInputs()) + ")"));
 	}
 }
 
 template<typename TVImage, typename TAlgo>
-auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetConstInput(const size_t i) const -> typename TImage::ConstPointer {
+auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetConst(const size_t i) const -> typename TImage::ConstPointer {
 	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		size_t index = m_algorithm->numInputs() + 1 + i;
@@ -133,13 +135,13 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::GenerateOutputInformation() {
 	Superclass::GenerateOutputInformation();
 	size_t size = 0;
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
-		size += this->GetDataInput(i)->GetNumberOfComponentsPerPixel();
+		size += this->GetInput(i)->GetNumberOfComponentsPerPixel();
 	}
 	if (m_algorithm->dataSize() != size) {
 		throw(std::runtime_error("Sequence size (" + to_string(m_algorithm->dataSize()) + ") does not match input size (" + to_string(size) + ")"));
 	}
 
-	auto region = this->GetInput()->GetLargestPossibleRegion();
+	auto region = this->GetInput(0)->GetLargestPossibleRegion();
 	const int LastDim = ImageDimension - 1;
 	region.GetModifiableIndex()[LastDim] = m_startSlice;
 	if (m_stopSlice != 0)
@@ -173,7 +175,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 
 	vector<ImageRegionConstIterator<TVImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
-		dataIters[i] = ImageRegionConstIterator<TVImage>(this->GetDataInput(i), region);
+		dataIters[i] = ImageRegionConstIterator<TVImage>(this->GetInput(i), region);
 	}
 
 	ImageRegionConstIterator<TImage> maskIter;
@@ -183,7 +185,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 	}
 	vector<ImageRegionConstIterator<TImage>> constIters(m_algorithm->numConsts());
 	for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
-		typename TImage::ConstPointer c = this->GetConstInput(i);
+		typename TImage::ConstPointer c = this->GetConst(i);
 		if (c) {
 			constIters[i] = ImageRegionConstIterator<TImage>(c, region);
 		}
@@ -201,7 +203,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 		if (!mask || maskIter.Get()) {
 			TArray constants = m_algorithm->defaultConsts();
 			for (size_t i = 0; i < constIters.size(); i++) {
-				if (this->GetConstInput(i)) {
+				if (this->GetConst(i)) {
 					constants[i] = constIters[i].Get();
 				}
 			}
@@ -225,7 +227,7 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 			++dataIters[i];
 		}
 		for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
-			if (this->GetConstInput(i))
+			if (this->GetConst(i))
 				++constIters[i];
 		}
 		for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {

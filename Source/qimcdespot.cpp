@@ -379,15 +379,15 @@ int main(int argc, char **argv) {
 	applySlices->SetAlgorithm(mcd);
 	applySlices->SetSlices(start_slice, stop_slice);
 	for (int i = 0; i < inOrder.size(); i++) {
-		applySlices->SetDataInput(i, inOrder.at(i)->GetOutput());
+		applySlices->SetInput(i, inOrder.at(i)->GetOutput());
 	}
 	if (f0) {
 		f0->Update();
-		applySlices->SetConstInput(0, f0->GetOutput());
+		applySlices->SetConst(0, f0->GetOutput());
 	}
 	if (B1) {
 		B1->Update();
-		applySlices->SetConstInput(1, B1->GetOutput());
+		applySlices->SetConst(1, B1->GetOutput());
 	}
 	if (mask) {
 		mask->Update();

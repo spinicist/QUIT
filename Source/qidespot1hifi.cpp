@@ -212,8 +212,8 @@ int main(int argc, char **argv) {
 	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, HIFIAlgo>::New();
 	hifi->setSequence(combined);
 	apply->SetAlgorithm(hifi);
-	apply->SetDataInput(0, spgrImg->GetOutput());
-	apply->SetDataInput(1, irImg->GetOutput());
+	apply->SetInput(0, spgrImg->GetOutput());
+	apply->SetInput(1, irImg->GetOutput());
 	if (mask)
 		apply->SetMask(mask->GetOutput());
 	if (verbose) {
