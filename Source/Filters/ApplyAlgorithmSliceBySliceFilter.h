@@ -13,7 +13,7 @@ template<typename TVImage, typename TAlgo>
 class ApplyAlgorithmSliceBySliceFilter : public ApplyAlgorithmFilter<TVImage, TAlgo> {
 public:
 	typedef ApplyAlgorithmSliceBySliceFilter       Self;
-	typedef ApplyAlgorithmFilter<TVImage, TVImage> Superclass;
+	typedef ApplyAlgorithmFilter<TVImage, TAlgo>   Superclass;
 	typedef SmartPointer<Self>                     Pointer;
 
 	static const unsigned int                   ImageDimension = Superclass::ImageDimension;
