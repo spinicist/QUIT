@@ -59,7 +59,7 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 	//std::cout << "Setting storage for inputs" << std::endl;
 	std::vector<typename TVectorSlice::Pointer> inputSlices(numInputs);
 	for (unsigned int i = 0; i < numInputs; i++) {
-		auto ip = this->GetDataInput(i);
+		const auto ip = this->GetInput(i);
 		const typename TVectorImage::IndexType originIndex = ip->GetRequestedRegion().GetIndex();
 		typename TVectorImage::PointType inputOrigin;
 		ip->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
@@ -83,10 +83,11 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 	//std::cout << "Setting storage for consts" << std::endl;
 	std::vector<typename TSlice::Pointer> constSlices(numConsts);
 	for (unsigned int i = 0; i < numConsts; i++) {
-		if (this->GetConstInput(i)) {
-			const typename TImage::IndexType originIndex = this->GetConstInput(i)->GetRequestedRegion().GetIndex();
+		const auto cp = this->GetConst(i);
+		if (cp) {
+			const typename TImage::IndexType originIndex = cp->GetRequestedRegion().GetIndex();
 			typename TImage::PointType inputOrigin;
-			this->GetDataInput(i)->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
+			cp->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
 
 			typename TSlice::SpacingType sliceSpacing;
 			typename TSlice::PointType sliceOrigin;
@@ -95,7 +96,7 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 				if (dim == SliceDimension) {
 					++dim;
 				}
-				sliceSpacing[s] = this->GetConstInput(i)->GetSpacing()[dim];
+				sliceSpacing[s] = this->GetConst(i)->GetSpacing()[dim];
 				sliceOrigin[s] = inputOrigin[dim];
 			}
 			constSlices[i] = TSlice::New();
@@ -109,23 +110,24 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 	//std::cout << "Setting storage for mask" << std::endl;
 	typename TSlice::Pointer maskSlice = ITK_NULLPTR;
 	if (this->GetMask()) {
-			const typename TImage::IndexType originIndex = this->GetMask()->GetRequestedRegion().GetIndex();
-			typename TImage::PointType inputOrigin;
-			this->GetMask()->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
+		const auto mp = this->GetMask();
+		const typename TImage::IndexType originIndex = mp->GetRequestedRegion().GetIndex();
+		typename TImage::PointType inputOrigin;
+		mp->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
 
-			typename TSlice::SpacingType sliceSpacing;
-			typename TSlice::PointType sliceOrigin;
-			unsigned int s = 0;
-			for (unsigned int dim = 0; s < SliceDimension; ++dim, ++s) {
-				if (dim == SliceDimension) {
-					++dim;
-				}
-				sliceSpacing[s] = this->GetMask()->GetSpacing()[dim];
-				sliceOrigin[s] = inputOrigin[dim];
+		typename TSlice::SpacingType sliceSpacing;
+		typename TSlice::PointType sliceOrigin;
+		unsigned int s = 0;
+		for (unsigned int dim = 0; s < SliceDimension; ++dim, ++s) {
+			if (dim == SliceDimension) {
+				++dim;
 			}
-			maskSlice = TSlice::New();
-			maskSlice->SetSpacing(sliceSpacing);
-			maskSlice->SetOrigin(sliceOrigin);
+			sliceSpacing[s] = this->GetMask()->GetSpacing()[dim];
+			sliceOrigin[s] = inputOrigin[dim];
+		}
+		maskSlice = TSlice::New();
+		maskSlice->SetSpacing(sliceSpacing);
+		maskSlice->SetOrigin(sliceOrigin);
 	}
 
 	//std::cout << "Starting" << std::endl;
@@ -170,16 +172,16 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 		for (int i = 0; i < numInputs; i++) {
 			inputSlices[i]->SetRegions(vectorSliceInputRegion);
 			inputSlices[i]->Allocate();
-			sliceFilter->SetDataInput(i, inputSlices[i]);
-			ImageAlgorithm::Copy(this->GetDataInput(i).GetPointer(), inputSlices[i].GetPointer(), vectorInputRegion, vectorSliceInputRegion);
+			sliceFilter->SetInput(i, inputSlices[i]);
+			ImageAlgorithm::Copy(this->GetInput(i).GetPointer(), inputSlices[i].GetPointer(), vectorInputRegion, vectorSliceInputRegion);
 		}
 		//std::cout << "Setting Const regions" << std::endl;
 		for (int i = 0; i < numConsts; i++) {
-			if (this->GetConstInput(i)) {
+			if (this->GetConst(i)) {
 				constSlices[i]->SetRegions(sliceInputRegion);
 				constSlices[i]->Allocate();
-				sliceFilter->SetConstInput(i, constSlices[i]);
-				ImageAlgorithm::Copy(this->GetConstInput(i).GetPointer(), constSlices[i].GetPointer(), inputRegion, sliceInputRegion);
+				sliceFilter->SetConst(i, constSlices[i]);
+				ImageAlgorithm::Copy(this->GetConst(i).GetPointer(), constSlices[i].GetPointer(), inputRegion, sliceInputRegion);
 			}
 		}
 		//std::cout << "Setting mask region" << std::endl;
