@@ -19,34 +19,8 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::VerifyInputInformation() 
 	}
 }
 
-/*
 template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateInputRequestedRegion() {
-	// call the superclass's implementation of this method, which
-	// propagates the output requested region to all inputs
-	Superclass::GenerateInputRequestedRegion();
-
-	const TRegion &requestedInputRegion = this->GetDataInput(0)->GetRequestedRegion();
-	// The requested region is the largest in all but the slice
-	// dimension. In that dimension we can stream the requested
-	// slices.
-	TRegion inputRegion = this->GetDataInput(0)->GetLargestPossibleRegion();
-	inputRegion.SetIndex(SliceDimension, requestedInputRegion.GetIndex(SliceDimension));
-	inputRegion.SetSize(SliceDimension, requestedInputRegion.GetSize(SliceDimension));
-
-	// Use the same requested region for each input, if an input image
-	// is a different size and can't fulfill the request,
-	// DataObject::PropagateRequestedRegion with throw
-	for (int i = 0; i < this->m_algorithm->numInputs(); i++) {
-		(this->GetDataInput(i))->SetRequestedRegion(inputRegion);
-	}
-	for (int i = 0; i < this->m_algorithm->numConsts(); i++) {
-		if (this->GetConstInput(i))
-			this->GetConstInput(i)->SetRequestedRegion(inputRegion);
-	}
-	if (this->GetMask())
-		this->GetMask()->SetRequestedRegion(inputRegion);
-}*/
+int ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GetSliceIndex() const { return m_sliceIndex; }
 
 template<typename TVImage, typename TAlgo>
 void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
@@ -157,10 +131,6 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 	//std::cout << "Starting" << std::endl;
 	const int sliceRangeMax = (requestedSize[SliceDimension] + requestedIndex[SliceDimension]);
 	for (m_sliceIndex = requestedIndex[SliceDimension]; m_sliceIndex < sliceRangeMax; ++m_sliceIndex ) {
-		// say to the user that we are begining a new slice
-		//std::cout << "Processing slice " << m_sliceIndex << std::endl;
-		this->InvokeEvent(IterationEvent());
-
 		typename TVectorImage::RegionType vectorInputRegion = this->GetInput(0)->GetRequestedRegion();
 		typename TImage::RegionType inputRegion;
 		vectorInputRegion.SetIndex(SliceDimension, m_sliceIndex);

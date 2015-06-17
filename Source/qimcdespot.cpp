@@ -394,7 +394,6 @@ int main(int argc, char **argv) {
 		startTime = QI::printStartTime();
 		auto monitor = QI::EventMonitor::New();
 		applySlices->AddObserver(itk::ProgressEvent(), monitor);
-		applySlices->AddObserver(itk::EndEvent(), monitor);
 	}
 	applySlices->Update();
 	if (verbose) {

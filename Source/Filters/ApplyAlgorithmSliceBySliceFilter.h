@@ -30,6 +30,7 @@ public:
 	itkTypeMacro(ApplyAlgorithmSliceBySliceFilter, ApplyAlgorithmFilter);
 
 	virtual void PrintSelf(std::ostream & os, Indent indent) const;
+	int GetSliceIndex() const;
 
 protected:
 	ApplyAlgorithmSliceBySliceFilter();
