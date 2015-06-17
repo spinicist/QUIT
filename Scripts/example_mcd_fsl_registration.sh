@@ -5,7 +5,7 @@
 # By Tobias Wood, with help from Anna Coombes and Sam Hurley
 #
 
-if [ $# -neq 0 ]; then
+if [ $# -eq 0 ]; then
 echo << END_USAGE
 Usage: $0 file1.nii file2.nii [file3.nii ...]
 
