@@ -52,14 +52,20 @@ cannot locate Eigen. After configuring and generating, run 'make -j'.
 
 # Usage #
 
+There are some example scripts for processing pipelines in the /Scripts
+directory. These print usage instructions if you call them with no arguments.
+They take a set of filenames as input, and you will need to modify the scripts
+with your particular flip-angles and TRs.
+
 Each product has some basic usage instructions that will be printed with either
 the -h or --help options, e.g. “qimcdespot -h". The programs will then prompt you
 to enter flip-angles, TRs, etc. as they require based on your input options.
 
 Once you are used to the input format, I recommend writing down the input in a
-plain text file, and then using the redirect operator (“<“) to pass the input
-to your program. If you do this, you can suppress the prompts to enter input
-with the “-n” option. So to run DESPOT1-HIFI you would type:
+plain text file, and then using either the redirect operator (“<“) or a HEREDOC
+(“<<“)to pass the input to your program. If you do this, you can suppress the
+prompts to enter input with the “-n” option. So to run DESPOT1-HIFI you would
+type:
 
 	qidespot1hifi -m mask_file.nii -n spgr_file.nii irspgr_file.nii < in.txt
 
@@ -72,6 +78,5 @@ where “in.txt” is a file containing:
 	0.0083 # IR-SPGR readout TR
 	92     # IR-SPGR echo train length
 	0.45   # IR-SPGR TI in SECONDS
-
 
 
