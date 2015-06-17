@@ -97,12 +97,12 @@ void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::ReadTimeseriesF::Pointer> &files,
                 vector<typename QI::TimeseriesToVectorF::Pointer> &data,
                 vector<typename QI::ReorderF::Pointer> &order,
-                Array2d &f0Bandwidth, bool finite, bool flip, bool prompt);
+                Array2d &f0Bandwidth, bool finite, bool flip, bool verbose, bool prompt);
 void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::ReadTimeseriesF::Pointer> &files,
                 vector<typename QI::TimeseriesToVectorF::Pointer> &data,
                 vector<typename QI::ReorderF::Pointer> &order,
-                Array2d &f0Bandwidth, bool finite, bool flip, bool prompt)
+                Array2d &f0Bandwidth, bool finite, bool flip, bool verbose, bool prompt)
 {
 	string type, path;
 	if (prompt) cout << "Specify next image type (SPGR/SSFP): " << flush;
@@ -136,6 +136,8 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 			if (flip)
 				order.back()->SetStride(s->phases());
 		}
+		if (verbose) cout << "Reading file: " << path << endl;
+		order.back()->Update();
 		// Print message ready for next loop
 		if (prompt) cout << "Specify next image type (SPGR/SSFP, END to finish input): " << flush;
 	}
@@ -286,7 +288,7 @@ int main(int argc, char **argv) {
 				if (mode == "MEAN") {
 					if (verbose) cout << "Mean scaling selected." << endl;
 					model->setScaleToMean(true);
-					mcd->setPDScale(atof(optarg));
+					mcd->setPDScale(1.);
 					applySlices->SetScaleToMean(true);
 				} else if (atoi(optarg) == 0) {
 					if (verbose) cout << "Fit PD/M0 selected." << endl;
@@ -351,7 +353,7 @@ int main(int argc, char **argv) {
 	vector<QI::ReadTimeseriesF::Pointer> inFiles;
 	vector<QI::TimeseriesToVectorF::Pointer> inData;
 	vector<QI::ReorderF::Pointer> inOrder;
-	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, prompt);
+	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, verbose, prompt);
 
 	ArrayXXd bounds = model->Bounds(tesla, 0);
 	if (tesla == FieldStrength::User) {
@@ -380,12 +382,15 @@ int main(int argc, char **argv) {
 		applySlices->SetDataInput(i, inOrder.at(i)->GetOutput());
 	}
 	if (f0) {
+		f0->Update();
 		applySlices->SetConstInput(0, f0->GetOutput());
 	}
 	if (B1) {
+		B1->Update();
 		applySlices->SetConstInput(1, B1->GetOutput());
 	}
 	if (mask) {
+		mask->Update();
 		applySlices->SetMask(mask->GetOutput());
 	}
 
