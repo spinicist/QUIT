@@ -34,9 +34,16 @@ foreach(PROGRAM ${PROGRAMS})
 	target_link_libraries(${PROGRAM} qi_core ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
+set(TESTS_DIR Test)
 set(TESTS test_common.sh test_scdespot.sh test_mcdespot.sh test_relax.sh test_all.sh)
 foreach(TEST ${TESTS})
-	configure_file(Test/${TEST} Test/${TEST} COPYONLY)
+	configure_file(${TESTS_DIR}/${TEST} ${TESTS_DIR}/${TEST} COPYONLY)
 endforeach(TEST)
+
+set(SCRIPTS_DIR Scripts)
+set(SCRIPTS example_mcd_hifi.sh example_mcd_b1.sh example_mcd_fsl_registration.sh)
+foreach(SCRIPT ${SCRIPTS})
+	configure_file(${SCRIPTS_DIR}/${SCRIPT} ${SCRIPTS_DIR}/${SCRIPT} COPYONLY)
+endforeach(SCRIPT)
 
 install(TARGETS ${PROGRAMS} RUNTIME DESTINATION bin)
