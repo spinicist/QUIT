@@ -5,8 +5,8 @@
 # By Tobias Wood, with help from Anna Coombes
 #
 
-if [ $# -neq 4 ]; then
-echo << END_USAGE
+if [ $# -ne 4 ]; then
+cat << END_USAGE
 Usage: $0 spgr_file.nii irspgr_file.nii ssfp_file.nii mask.nii
 
 This script will produce T1, T2 and MWF maps from DESPOT data using

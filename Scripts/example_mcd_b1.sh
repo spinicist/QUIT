@@ -5,8 +5,8 @@
 # By Tobias Wood, with help from Anna Coombes
 #
 
-if [ $# -neq 4 ]; then
-echo << END_USAGE
+if [ $# -ne 4 ]; then
+cat << END_USAGE
 Usage: $0 spgr_file.nii ssfp_file.nii b1_file.nii mask.nii
 
 This script will produce T1, T2 and MWF maps from DESPOT data using
@@ -75,7 +75,7 @@ END_FM
 # Now divide the SPGR and SSFP by their respective PD values to remove a parameter for the mcdespot fitting
 
 fslmaths $SPGR -div D1_PD ${SPGR%%.nii*}_pd
-fslmaths $SSFP -div D2_PD ${SSFP%%.nii*}_pd
+fslmaths $SSFP -div FM_PD ${SSFP%%.nii*}_pd
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 # Note the -S1 option which specifies scaled data
