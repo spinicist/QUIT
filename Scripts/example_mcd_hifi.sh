@@ -63,7 +63,7 @@ SSFP_PHASE="0 180"
 #
 
 echo "Processing HIFI."
-qidespot1hifi -n -v -m $MASK $SPGR $IRSPGR <<END_HIFI
+qidespot1hifi -n -v --clamp 5.0 -m $MASK $SPGR $IRSPGR <<END_HIFI
 $SPGR_FLIP
 $SPGR_TR
 $IR_SPGR_FLIP
@@ -73,6 +73,7 @@ $IR_SPGR_TI
 END_HIFI
 
 # Process DESPOT2-FM to get a T2, second PD and f0 map
+# FM is automatically clamped between 0.001 and T1 seconds
 
 echo "Processing FM"
 qidespot2fm -n -v -m $MASK -b HIFI_B1.nii HIFI_T1.nii $SSFP <<END_FM
@@ -83,8 +84,8 @@ END_FM
 
 # Now divide the SPGR and SSFP by their respective PD values to remove a parameter for the mcdespot fitting
 
-fslmaths $SPGR -div D1_PD ${SPGR%%.nii*}_pd
-fslmaths $SSFP -div D2_PD ${SSFP%%.nii*}_pd
+fslmaths $SPGR -div HIFI_PD ${SPGR%%.nii*}_pd
+fslmaths $SSFP -div FM_PD ${SSFP%%.nii*}_pd
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 # Note the -S1 option which specifies scaled data
