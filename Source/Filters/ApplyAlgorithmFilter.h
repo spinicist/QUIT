@@ -42,7 +42,6 @@ public:
 	typedef ImageToImageFilter<TInImage, TInImage> Superclass;
 	typedef SmartPointer<Self>                     Pointer;
 	typedef typename TImage::RegionType            TRegion;
-	enum class Scaling { None, ToMean };
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
@@ -54,7 +53,7 @@ public:
 	void SetConstInput(const size_t i, const TImage *img);
 	void SetMask(const TImage *mask);
 	void SetSlices(const int start, const int stop);
-	void SetScaling(const Scaling s);
+	void SetScaleToMean(const bool s);
 	typename TVectorImage::ConstPointer GetDataInput(const size_t i) const;
 	typename TImage::ConstPointer GetConstInput(const size_t i) const;
 	typename TImage::ConstPointer GetMask() const;
@@ -72,7 +71,7 @@ protected:
 
 	shared_ptr<TAlgo> m_algorithm;
 	int m_startSlice = 0, m_stopSlice = 0;
-	Scaling m_scaling = Scaling::None;
+	bool m_scale_to_mean = false;
 
 private:
 	ApplyAlgorithmFilter(const Self &); //purposely not implemented

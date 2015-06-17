@@ -15,22 +15,13 @@ const string to_string(const FieldStrength& f) {
 /*****************************************************************************/
 /* Base Class                                                                */
 /*****************************************************************************/
-
-string Model::to_string(const Scale &p) {
-	static const string sn{"None"}, snm{"Normalised to Mean"};
-	switch (p) {
-		case Scale::None: return sn;
-		case Scale::ToMean: return snm;
-	}
-}
-
 ArrayXcd Model::scale(const ArrayXcd &s) const {
-	ArrayXcd scaled(s.size());
-	switch (m_scaling) {
-		case Scale::None:   scaled = s; break;
-		case Scale::ToMean: scaled = s / s.abs().mean(); break;
+	if (m_scale_to_mean) {
+		ArrayXcd scaled = s / s.abs().mean();
+		return scaled;
+	} else {
+		return s;
 	}
-	return s;
 }
 
 VectorXcd Model::MultiEcho(cvecd &, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }

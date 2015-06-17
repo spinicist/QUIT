@@ -45,8 +45,6 @@ Options:\n\
 	           s      : Use Stochastic Region Contraction\n\
 	--start, -s N     : Start processing from slice N\n\
 	--stop, -p  N     : Stop processing at slice N\n\
-	--scale, -S 0     : Normalise signals to mean\n\
-	            1     : Fit a scaling factor/proton density (default)\n\
 	--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
 	--sequences, -M s : Use simple sequences (default)\n\
 	            f     : Use finite pulse length correction\n\
@@ -65,14 +63,13 @@ static struct option long_opts[] = {
 	{"algo", required_argument, 0, 'a'},
 	{"start", required_argument, 0, 's'},
 	{"stop", required_argument, 0, 'p'},
-	{"scale", required_argument, 0, 'S'},
 	{"flip", required_argument, 0, 'F'},
 	{"threads", required_argument, 0, 'T'},
 	{"sequences", no_argument, 0, 'M'},
 	{"resids", no_argument, 0, 'r'},
 	{0, 0, 0, 0}
 };
-static const char* short_opts = "hvnm:o:b:a:s:p:S:FT:M:rd:";
+static const char* short_opts = "hvnm:o:b:a:s:p:FT:M:rd:";
 
 class FMFunctor : public DenseFunctor<double> {
 public:
@@ -141,7 +138,6 @@ protected:
 
 public:
 	void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
-	void setScaling(Model::Scale s) { m_model->setScaling(s); }
 
 	size_t numInputs() const override  { return m_sequence->count(); }
 	size_t numConsts() const override  { return 2; }
@@ -226,12 +222,8 @@ public:
 		double T1 = inputs[0];
 		if (isfinite(T1) && (T1 > 0.001)) {
 			double B1 = inputs[1];
-			if (m_model->scaling() == Model::Scale::None) {
-				bounds(0, 0) = 0.;
-				bounds(0, 1) = data.array().abs().maxCoeff() * 25;
-			} else {
-				bounds.row(0).setConstant(1.);
-			}
+			bounds(0, 0) = 0.;
+			bounds(0, 1) = data.array().abs().maxCoeff() * 25;
 			bounds(1,0) = 0.001;
 			bounds(1,1) = T1;
 			bounds.row(2) = m_sequence->bandwidth();
@@ -300,15 +292,6 @@ int main(int argc, char **argv) {
 				break;
 			case 's': start_slice = atoi(optarg); break;
 			case 'p': stop_slice = atoi(optarg); break;
-			case 'S':
-				switch (atoi(optarg)) {
-					case 0 : fm->setScaling(Model::Scale::ToMean); break;
-					case 1 : fm->setScaling(Model::Scale::None); break;
-					default:
-						cout << "Invalid scaling mode: " + to_string(atoi(optarg)) << endl;
-						return EXIT_FAILURE;
-						break;
-				} break;
 			case 'F': flipData = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
 			case 'M':
@@ -323,6 +306,8 @@ int main(int argc, char **argv) {
 				break;
 			case 'r': all_residuals = true; break;
 			case '?': // getopt will print an error message
+				return EXIT_FAILURE;
+				break;
 			case 'h':
 			default:
 				cout << usage << endl;

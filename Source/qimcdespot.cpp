@@ -19,7 +19,7 @@
 #include <unsupported/Eigen/NumericalDiff>
 
 #include "Util.h"
-#include "Filters/ApplyAlgorithmFilter.h"
+#include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
 #include "Filters/ReorderVectorFilter.h"
 #include "Model.h"
 #include "Sequence.h"
@@ -49,9 +49,9 @@ Options:\n\
 	--B1, -b file     : B1 Map file (ratio)\n\
 	--start, -s n     : Only start processing at slice n.\n\
 	--stop, -p n      : Finish at slice n-1\n\
-	--scale, -S MEAN  : Normalise signals to mean\n\
-	            NONE  : Fit a scaling factor/proton density (default)\n\
-	            x     : Fix to x\n\
+	--scale, -S MEAN  : Normalise signals to mean (default)\n\
+	            0     : Fit a scaling factor/proton density\n\
+	            val   : Fix PD to val\n\
 	--gauss, -g 0     : Use Uniform distribution for Region Contraction\n\
 	            1     : Use Gaussian distribution for RC (default)\n\
 	--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
@@ -65,12 +65,6 @@ Options:\n\
 	--threads, -T N   : Use N threads (default=hardware limit)\n"
 };
 
-static auto tesla = FieldStrength::Three;
-static size_t start_slice = 0, stop_slice = 0;
-static int verbose = false, prompt = true, all_residuals = false,
-           fitFinite = false, flipData = false;
-static double expand = 0., scaling = 0.;
-static string outPrefix;
 static const struct option long_options[] = {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
@@ -103,12 +97,12 @@ void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::ReadTimeseriesF::Pointer> &files,
                 vector<typename QI::TimeseriesToVectorF::Pointer> &data,
                 vector<typename QI::ReorderF::Pointer> &order,
-                Array2d &f0Bandwidth, bool flip);
+                Array2d &f0Bandwidth, bool finite, bool flip, bool prompt);
 void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::ReadTimeseriesF::Pointer> &files,
                 vector<typename QI::TimeseriesToVectorF::Pointer> &data,
                 vector<typename QI::ReorderF::Pointer> &order,
-                Array2d &f0Bandwidth, bool flip)
+                Array2d &f0Bandwidth, bool finite, bool flip, bool prompt)
 {
 	string type, path;
 	if (prompt) cout << "Specify next image type (SPGR/SSFP): " << flush;
@@ -125,18 +119,17 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 		data.back()->SetInput(files.back()->GetOutput());
 		order.push_back(QI::ReorderF::New());
 		order.back()->SetInput(data.back()->GetOutput());
-		if (verbose) cout << "Opened: " << path << endl;
-		if ((type == "SPGR") && !fitFinite) {
+		if ((type == "SPGR") && !finite) {
 			seq->addSequence(make_shared<SPGRSimple>(prompt));
-		} else if ((type == "SPGR" && fitFinite)) {
+		} else if ((type == "SPGR" && finite)) {
 			seq->addSequence(make_shared<SPGRFinite>(prompt));
-		} else if ((type == "SSFP" && !fitFinite)) {
+		} else if ((type == "SSFP" && !finite)) {
 			auto s = make_shared<SSFPSimple>(prompt);
 			f0Bandwidth = s->bandwidth();
 			seq->addSequence(s);
 			if (flip)
 				order.back()->SetStride(s->phases());
-		} else if ((type == "SSFP" && fitFinite)) {
+		} else if ((type == "SSFP" && finite)) {
 			auto s = make_shared<SSFPFinite>(prompt);
 			f0Bandwidth = s->bandwidth();
 			seq->addSequence(s);
@@ -177,6 +170,7 @@ class MCDAlgo : public Algorithm<double> {
 	private:
 		size_t m_samples = 5000, m_retain = 50, m_contractions = 7;
 		bool m_gauss = true;
+		double m_PDscale = 0.;
 		ArrayXXd m_bounds;
 		shared_ptr<Model> m_model = nullptr;
 		shared_ptr<SequenceGroup> m_sequence;
@@ -185,7 +179,7 @@ class MCDAlgo : public Algorithm<double> {
 		void setModel(shared_ptr<Model> &m) { m_model = m; }
 		void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
 		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
-		void setScaling(Model::Scale s) { m_model->setScaling(s); }
+		void setPDScale(double s) { m_PDscale = s; }
 		void setBounds(ArrayXXd b) { m_bounds = b; }
 		void setGauss(bool g) { m_gauss = g; }
 
@@ -213,13 +207,11 @@ class MCDAlgo : public Algorithm<double> {
 				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
 				weights = m_sequence->weights(f0);
 			}
-			if (m_model->scaling() == Model::Scale::None) {
-				if (scaling == 0.) {
-					localBounds(0, 0) = 0.;
-					localBounds(0, 1) = data.array().maxCoeff() * 25;
-				} else {
-					localBounds.row(0).setConstant(scaling);
-				}
+			if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
+				localBounds(0, 0) = 0.;
+				localBounds(0, 1) = data.array().maxCoeff() * 25;
+			} else {
+				localBounds.row(0).setConstant(m_PDscale);
 			}
 			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
 			MCDFunctor func(m_model, m_sequence, data);
@@ -237,11 +229,19 @@ class MCDAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
+
+	auto tesla = FieldStrength::Three;
+	int start_slice = 0, stop_slice = 0;
+	int verbose = false, prompt = true, all_residuals = false,
+	    fitFinite = false, flipData = false;
+	string outPrefix;
+
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
 	shared_ptr<Model> model = make_shared<MCD3>();
-	typedef itk::ApplyAlgorithmFilter<QI::VectorImageF, MCDAlgo> TApply;
-	auto apply = TApply::New();
+	typedef itk::VectorImage<float, 2> VectorSliceF;
+	typedef itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, MCDAlgo> TApply;
+	auto applySlices = TApply::New();
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -284,17 +284,19 @@ int main(int argc, char **argv) {
 				string mode(optarg);
 				if (mode == "MEAN") {
 					if (verbose) cout << "Mean scaling selected." << endl;
-					model->setScaling(Model::Scale::ToMean);
-					apply->SetScaling(TApply::Scaling::ToMean);
-				} else if (mode == "FIT") {
+					model->setScaleToMean(true);
+					mcd->setPDScale(atof(optarg));
+					applySlices->SetScaleToMean(true);
+				} else if (atoi(optarg) == 0) {
 					if (verbose) cout << "Fit PD/M0 selected." << endl;
-					model->setScaling(Model::Scale::None);
-					apply->SetScaling(TApply::Scaling::None);
+					model->setScaleToMean(false);
+					mcd->setPDScale(atof(optarg));
+					applySlices->SetScaleToMean(false);
 				} else {
-					if (verbose) cout << "Scale factor = " << atof(optarg) << endl;
-					model->setScaling(Model::Scale::None);
-					apply->SetScaling(TApply::Scaling::None);
-					scaling = atof(optarg);
+					if (verbose) cout << "Fix PD value to " << atof(optarg) << endl;
+					model->setScaleToMean(false);
+					mcd->setPDScale(atof(optarg));
+					applySlices->SetScaleToMean(false);
 				}
 			} break;
 			case 'g': mcd->setGauss(atoi(optarg)); break;
@@ -344,7 +346,7 @@ int main(int argc, char **argv) {
 	vector<QI::ReadTimeseriesF::Pointer> inFiles;
 	vector<QI::TimeseriesToVectorF::Pointer> inData;
 	vector<QI::ReorderF::Pointer> inOrder;
-	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, flipData);
+	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, prompt);
 
 	ArrayXXd bounds = model->Bounds(tesla, 0);
 	if (tesla == FieldStrength::User) {
@@ -367,38 +369,38 @@ int main(int argc, char **argv) {
 		boundsFile.close();
 	}
 	mcd->setSequence(sequences);
-	apply->SetAlgorithm(mcd);
-	apply->SetSlices(start_slice, stop_slice);
+	applySlices->SetAlgorithm(mcd);
+	applySlices->SetSlices(start_slice, stop_slice);
 	for (int i = 0; i < inOrder.size(); i++) {
-		apply->SetDataInput(i, inOrder.at(i)->GetOutput());
+		applySlices->SetDataInput(i, inOrder.at(i)->GetOutput());
 	}
 	if (f0) {
-		apply->SetConstInput(0, f0->GetOutput());
+		applySlices->SetConstInput(0, f0->GetOutput());
 	}
 	if (B1) {
-		apply->SetConstInput(1, B1->GetOutput());
+		applySlices->SetConstInput(1, B1->GetOutput());
 	}
 	if (mask) {
-		apply->SetMask(mask->GetOutput());
+		applySlices->SetMask(mask->GetOutput());
 	}
 
 	time_t startTime;
 	if (verbose) {
 		startTime = QI::printStartTime();
 		auto monitor = QI::EventMonitor::New();
-		apply->AddObserver(itk::ProgressEvent(), monitor);
-		apply->AddObserver(itk::EndEvent(), monitor);
+		applySlices->AddObserver(itk::ProgressEvent(), monitor);
+		applySlices->AddObserver(itk::EndEvent(), monitor);
 	}
-	apply->Update();
+	applySlices->Update();
 	if (verbose) {
 		QI::printElapsedTime(startTime);
 		cout << "Writing results files." << endl;
 	}
 	outPrefix = outPrefix + model->Name() + "_";
 	for (int i = 0; i < model->nParameters(); i++) {
-		QI::writeResult(apply->GetOutput(i), outPrefix + model->Names()[i] + QI::OutExt());
+		QI::writeResult(applySlices->GetOutput(i), outPrefix + model->Names()[i] + QI::OutExt());
 	}
-	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	QI::writeResiduals(applySlices->GetResidOutput(), outPrefix, all_residuals);
 	return EXIT_SUCCESS;
 }
 

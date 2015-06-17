@@ -31,11 +31,9 @@ static const string to_string(const FieldStrength& f);
 
 class Model {
 public:
-	enum class Scale { None, ToMean };
-	string to_string(const Scale &p);
 
 protected:
-	Scale m_scaling = Scale::None;
+	bool m_scale_to_mean = false;
 	ArrayXcd scale(const ArrayXcd &signal) const;
 
 public:
@@ -45,8 +43,7 @@ public:
 	virtual const vector<string> &Names() const = 0;
 	virtual ArrayXXd Bounds(const FieldStrength f, cdbl TR) const = 0;
 
-	void setScaling(Scale s) { m_scaling = s; }
-	Scale scaling() const { return m_scaling; }
+	void setScaleToMean(bool s) { m_scale_to_mean = s; }
 
 	virtual VectorXcd MultiEcho(cvecd &params, carrd &TE) const;
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;

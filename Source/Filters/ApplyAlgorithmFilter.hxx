@@ -66,8 +66,8 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetSlices(const int start, const int 
 }
 
 template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmFilter<TVImage, TAlgo>::SetScaling(const Scaling s) {
-	m_scaling = s;
+void ApplyAlgorithmFilter<TVImage, TAlgo>::SetScaleToMean(const bool s) {
+	m_scale_to_mean = s;
 }
 
 template<typename TVImage, typename TAlgo>
@@ -212,9 +212,8 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::ThreadedGenerateData(const TRegion &r
 				VariableLengthVector<TPixel> dataVector = dataIters[i].Get();
 				Map<const Eigen::Array<TPixel, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
 				Eigen::Array<TPixel, Eigen::Dynamic, 1> scaled = data;
-				switch (m_scaling) {
-					case (Scaling::None): break;
-					case (Scaling::ToMean): scaled /= scaled.mean(); break;
+				if (m_scale_to_mean) {
+					scaled /= scaled.mean();
 				}
 				allData.segment(dataIndex, data.rows()) = scaled.template cast<typename TAlgo::TScalar>();
 				dataIndex += data.rows();
