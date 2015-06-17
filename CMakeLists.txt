@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 
-find_package(ITK 4.7 REQUIRED)
+find_package(ITK 4.7.2 REQUIRED)
 include(${ITK_USE_FILE})
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
