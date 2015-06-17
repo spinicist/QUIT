@@ -160,7 +160,7 @@ ArrayXXd MCD3::Bounds(const FieldStrength f, cdbl TR) const {
 	size_t nP = nParameters();
 	ArrayXXd b(nP, 2);
 	switch (f) {
-		case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.65, 0.001, 0.030, 0.5, 1.5, 0.05, 0.165, 3.0, 4.5, 0.5, 1.5, 0.025, 0.60, 0.0, 0.35, 0.0, 1.0, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
+		case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.65, 0.005, 0.030, 0.5, 1.5, 0.05, 0.125, 3.5, 5.0, 1.0, 5.0, 0.025, 0.60, 0.0, 0.35, 0.0, 1.0, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
 		case FieldStrength::Seven: b << 1.0, 1.0, 0.4, 0.90, 0.001, 0.025, 0.8, 2.0, 0.04, 0.140, 3.0, 4.5, 0.5, 1.5, 0.025, 0.60, 0.0, 0.35, 0.0, 1.0, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
 		case FieldStrength::User:  b.setZero(); break;
 	}
