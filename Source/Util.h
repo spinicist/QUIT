@@ -57,8 +57,6 @@ public:
 		const itk::ProcessObject *filter = static_cast<const itk::ProcessObject *>(object);
 		if (typeid(event) == typeid(itk::ProgressEvent)) {
 			std::cout << "Progress: " << (filter->GetProgress()*100) << "% complete" << std::endl;
-		} else if (typeid(event) == typeid(itk::EndEvent)) {
-			std::cout << "Received EndEvent" << std::endl;
 		} else {
 			std::cout << "Received event: " << typeid(event).name() << std::endl;
 		}
