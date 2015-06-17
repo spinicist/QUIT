@@ -107,9 +107,9 @@ run_test "SSFPGS2PMAG" $QUITDIR/qicomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_
 run_test "DESPOT2GS2P" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
 
-run_test "DESPOT2FMLM" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -bB1.nii -v -o LM < despot2fm.in
+run_test "DESPOT2FMLM" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -bB1.nii -v -o LM < despot2fm.in
 compare_test "DESPOT2FMLM" T2.nii LMFM_T2.nii 0.001
-run_test "DESPOT2FMSRC" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -S1 -as -bB1.nii -v -o SRC < despot2fm.in
+run_test "DESPOT2FMSRC" $QUITDIR/qidespot2fm T1.nii $SSFP_FILE -n -as -bB1.nii -v -o SRC < despot2fm.in
 compare_test "DESPOT2FMSRC" T2.nii SRCFM_T2.nii 0.01
 
 cd ..
