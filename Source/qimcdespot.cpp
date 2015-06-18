@@ -366,6 +366,8 @@ int main(int argc, char **argv) {
 	bounds.row(model->nParameters() - 2) = f0Bandwidth;
 	mcd->setModel(model);
 	mcd->setBounds(bounds);
+	// Need this here so the bounds.txt file will have the correct prefix
+	outPrefix = outPrefix + model->Name() + "_";
 	if (verbose) {
 		cout << *sequences;
 		cout << "Bounds:" << endl <<  bounds.transpose() << endl;
@@ -405,7 +407,6 @@ int main(int argc, char **argv) {
 		QI::printElapsedTime(startTime);
 		cout << "Writing results files." << endl;
 	}
-	outPrefix = outPrefix + model->Name() + "_";
 	for (int i = 0; i < model->nParameters(); i++) {
 		QI::writeResult(applySlices->GetOutput(i), outPrefix + model->Names()[i] + QI::OutExt());
 	}
