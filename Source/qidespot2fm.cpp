@@ -265,8 +265,8 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'a':
 			switch (*optarg) {
-				case 'l': fm = make_shared<FMLMAlgo>();   if (verbose) cout << "LLS algorithm selected." << endl; break;
-				case 's': fm = make_shared<FMSRCAlgo>();  if (verbose) cout << "WLLS algorithm selected." << endl; break;
+				case 'l': fm = make_shared<FMLMAlgo>();  if (verbose) cout << "LM algorithm selected." << endl; break;
+				case 's': fm = make_shared<FMSRCAlgo>(); if (verbose) cout << "SRC algorithm selected." << endl; break;
 				default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
 			} break;
 			default: break;
