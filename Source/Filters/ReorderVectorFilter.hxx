@@ -25,9 +25,6 @@ void ReorderVectorFilter<TImage>::GenerateOutputInformation() {
 template<typename TImage>
 void ReorderVectorFilter<TImage>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
 	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
-	//std::cout << *this << std::endl;
-	//std::cout << "Thread " << threadId << std::endl;
-	//std::cout << "Requested region: " << std::endl << region << std::endl;
 	ImageRegionConstIterator<TImage> inIt(this->GetInput(), region);
 	ImageRegionIterator<TImage>      outIt(this->GetOutput(), region);
 
@@ -39,9 +36,8 @@ void ReorderVectorFilter<TImage>::ThreadedGenerateData(const TRegion &region, Th
 		size_t outIndex = 0;
 		for (size_t b = 0; b < m_fullsize; b += m_blocksize) { // Tracks the start of each block
 			// Within each block, treat the data as matrix that needs transposing
-			for (size_t j = b; j < m_stride; j++) { // Tracks the 'column'
-				for (size_t i = j; i < m_blocksize; i += m_stride) { // Tracks the elements in 'rows'
-					//std::cout << "b " << b << " j " << j << " i " << i << " out " << outIndex << std::endl;
+			for (size_t j = b; j < (b + m_stride); j++) { // Tracks the 'column'
+				for (size_t i = j; i < (b + m_blocksize); i += m_stride) { // Tracks the elements in 'rows'
 					out[outIndex] = in[i];
 					outIndex++;
 				}
@@ -51,7 +47,7 @@ void ReorderVectorFilter<TImage>::ThreadedGenerateData(const TRegion &region, Th
 		++inIt;
 		++outIt;
 	}
-	//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+	// std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
 }
 
 } // End namespace itk
