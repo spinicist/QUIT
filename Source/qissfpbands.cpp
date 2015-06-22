@@ -452,10 +452,14 @@ int main(int argc, char **argv) {
 	inFile->SetFileName(fname);
 	inData->SetInput(inFile->GetOutput());
 	reorderFlips->SetInput(inData->GetOutput());       // Does nothing unless stride set
+	inData->Update(); // We need to know the vector length to get the number of flips from the number of phases
+	size_t nFlips = inData->GetOutput()->GetNumberOfComponentsPerPixel() / nPhases;
 	if (!phaseflip) {
-		inData->Update(); // We need to know the vector length to get the number of flips from the number of phases
-		size_t nFlips = inData->GetOutput()->GetNumberOfComponentsPerPixel() / nPhases;
 		reorderFlips->SetStride(nFlips);
+	}
+	if (verbose) {
+		cout << "Number of phase-cycling patterns is " << nPhases << endl;
+		cout << "Number of volumes to process is " << nFlips << endl;
 	}
 	reorderPhase->SetInput(reorderFlips->GetOutput()); // Does nothing unless stride set
 	if (alternate) {
