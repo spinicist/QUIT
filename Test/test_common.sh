@@ -9,7 +9,7 @@ if [ -n "$(which fslmaths)" ]; then
 	echo "FSL detected."
 	export FSLOUTPUTTYPE=NIFTI
 else
-	HAVE_FSL=""
+	HAVE_FSL="0"
 	echo "FSL not detected. Cannot run comparison tests."
 fi
 
