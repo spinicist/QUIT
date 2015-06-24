@@ -64,12 +64,6 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::SetMask(const TImage *image) {
 }
 
 template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmFilter<TVImage, TAlgo>::SetSlices(const int start, const int stop) {
-	m_startSlice = start;
-	m_stopSlice = stop;
-}
-
-template<typename TVImage, typename TAlgo>
 auto ApplyAlgorithmFilter<TVImage, TAlgo>::GetInput(const size_t i) const -> typename TVImage::ConstPointer {
 	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
@@ -142,25 +136,14 @@ void ApplyAlgorithmFilter<TVImage, TAlgo>::GenerateOutputInformation() {
 	}
 
 	auto region = this->GetInput(0)->GetLargestPossibleRegion();
-	const int LastDim = ImageDimension - 1;
-	region.GetModifiableIndex()[LastDim] = m_startSlice;
-	if (m_stopSlice != 0)
-		region.GetModifiableSize()[LastDim] = m_stopSlice - m_startSlice;
-	else
-		region.GetModifiableSize()[LastDim] = region.GetSize()[LastDim] - m_startSlice;
 	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 		auto op = this->GetOutput(i);
 		op->SetRegions(region);
-		//std::cout << "ALLOCATING OUTPUT " << i << std::endl;
-		//std::cout << region << std::endl;
 		op->Allocate();
 	}
 	auto r = this->GetResidOutput();
 	r->SetRegions(region);
 	r->SetNumberOfComponentsPerPixel(size);
-	//std::cout << "ALLOCATING RESID" << std::endl;
-	//std::cout << region << std::endl;
-	//std::cout << size << std::endl;
 	r->Allocate();
 	//std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }

@@ -20,6 +20,12 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::VerifyInputInformation() 
 }
 
 template<typename TVImage, typename TAlgo>
+void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::SetSlices(const int start, const int stop) {
+	m_startSlice = start;
+	m_stopSlice = stop;
+}
+
+template<typename TVImage, typename TAlgo>
 int ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GetSliceIndex() const { return m_sliceIndex; }
 
 template<typename TVImage, typename TAlgo>
@@ -132,14 +138,17 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 
 	//std::cout << "Starting" << std::endl;
 	const int sliceRangeMax = (requestedSize[SliceDimension] + requestedIndex[SliceDimension]);
-	for (m_sliceIndex = requestedIndex[SliceDimension]; m_sliceIndex < sliceRangeMax; ++m_sliceIndex ) {
-		typename TVectorImage::RegionType vectorInputRegion = this->GetInput(0)->GetRequestedRegion();
-		typename TImage::RegionType inputRegion;
-		vectorInputRegion.SetIndex(SliceDimension, m_sliceIndex);
-		vectorInputRegion.SetSize(SliceDimension, 1);
-		inputRegion.SetIndex(vectorInputRegion.GetIndex());
-		inputRegion.SetSize(vectorInputRegion.GetSize());
+	if (m_stopSlice == 0)
+		m_stopSlice = sliceRangeMax;
 
+
+	for (int i = 0; i < numOutputs; i++) {
+		this->GetOutput(i)->FillBuffer(0);
+	}
+	TVector zero(this->GetResidOutput()->GetNumberOfComponentsPerPixel());
+	zero.Fill(0);
+	this->GetResidOutput()->FillBuffer(zero);
+	for (m_sliceIndex = requestedIndex[SliceDimension]; m_sliceIndex < sliceRangeMax; ++m_sliceIndex ) {
 		// this region is the current output region we are iterating on
 		typename TVectorImage::RegionType vectorOutputRegion = this->GetOutput(0)->GetRequestedRegion();
 		typename TImage::RegionType outputRegion;
@@ -148,66 +157,56 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 		outputRegion.SetIndex(vectorOutputRegion.GetIndex());
 		outputRegion.SetSize(vectorOutputRegion.GetSize());
 
-		//std::cout << "vectorInputRegion: " << vectorInputRegion << std::endl;
-		//std::cout << "vectorSliceInputRegion: " << vectorSliceInputRegion << std::endl;
-		//std::cout << "inputRegion: " << inputRegion << std::endl;
-		//std::cout << "inputSliceRegion: " << sliceInputRegion << std::endl;
+		if ((m_sliceIndex >= m_startSlice) && (m_sliceIndex < m_stopSlice)) {
+			typename TVectorImage::RegionType vectorInputRegion = this->GetInput(0)->GetRequestedRegion();
+			typename TImage::RegionType inputRegion;
+			vectorInputRegion.SetIndex(SliceDimension, m_sliceIndex);
+			vectorInputRegion.SetSize(SliceDimension, 1);
+			inputRegion.SetIndex(vectorInputRegion.GetIndex());
+			inputRegion.SetSize(vectorInputRegion.GetSize());
 
-		//std::cout << "vectorOutputRegion: " << vectorOutputRegion << std::endl;
-		//std::cout << "vectorSliceOutputRegion: " << vectorSliceOutputRegion << std::endl;
-		//std::cout << "outputRegion: " << outputRegion << std::endl;
-		//std::cout << "outputSliceRegion: " << sliceOutputRegion << std::endl;
+			itkAssertOrThrowMacro(vectorInputRegion.GetNumberOfPixels() == vectorSliceInputRegion.GetNumberOfPixels(), "inputRegion.GetNumberOfPixels() == internalInputRegion.GetNumberOfPixel()");
+			itkAssertOrThrowMacro(vectorOutputRegion.GetNumberOfPixels() == vectorSliceOutputRegion.GetNumberOfPixels(), "outputRegion.GetNumberOfPixels() == internalOutputRegion.GetNumberOfPixel()");
 
-		itkAssertOrThrowMacro( vectorInputRegion.GetNumberOfPixels() == vectorSliceInputRegion.GetNumberOfPixels(), "inputRegion.GetNumberOfPixels() == internalInputRegion.GetNumberOfPixel()" );
-		itkAssertOrThrowMacro( vectorOutputRegion.GetNumberOfPixels() == vectorSliceOutputRegion.GetNumberOfPixels(), "outputRegion.GetNumberOfPixels() == internalOutputRegion.GetNumberOfPixel()" );
+			//std::cout << "Creating filter" << std::endl;
+			typename TSliceFilter::Pointer sliceFilter = TSliceFilter::New();
+			sliceFilter->SetAlgorithm(this->m_algorithm);
+			sliceFilter->SetScaleToMean(this->m_scale_to_mean);
 
-		//std::cout << "Creating filter" << std::endl;
-		typename TSliceFilter::Pointer sliceFilter = TSliceFilter::New();
-		sliceFilter->SetAlgorithm(this->m_algorithm);
-		sliceFilter->SetScaleToMean(this->m_scale_to_mean);
-		
-		// reallocate the internal input at each slice, so the slice by slice filter can work
-		// even if the pipeline is run in place
-		//std::cout << "Setting input regions" << std::endl;
-		for (int i = 0; i < numInputs; i++) {
-			inputSlices[i]->SetRegions(vectorSliceInputRegion);
-			inputSlices[i]->Allocate();
-			sliceFilter->SetInput(i, inputSlices[i]);
-			ImageAlgorithm::Copy(this->GetInput(i).GetPointer(), inputSlices[i].GetPointer(), vectorInputRegion, vectorSliceInputRegion);
-		}
-		//std::cout << "Setting Const regions" << std::endl;
-		for (int i = 0; i < numConsts; i++) {
-			if (this->GetConst(i)) {
-				constSlices[i]->SetRegions(sliceInputRegion);
-				constSlices[i]->Allocate();
-				sliceFilter->SetConst(i, constSlices[i]);
-				ImageAlgorithm::Copy(this->GetConst(i).GetPointer(), constSlices[i].GetPointer(), inputRegion, sliceInputRegion);
+			// reallocate the internal input at each slice, so the slice by slice filter can work
+			// even if the pipeline is run in place
+			//std::cout << "Setting input regions" << std::endl;
+			for (int i = 0; i < numInputs; i++) {
+				inputSlices[i]->SetRegions(vectorSliceInputRegion);
+				inputSlices[i]->Allocate();
+				sliceFilter->SetInput(i, inputSlices[i]);
+				ImageAlgorithm::Copy(this->GetInput(i).GetPointer(), inputSlices[i].GetPointer(), vectorInputRegion, vectorSliceInputRegion);
 			}
-		}
-		//std::cout << "Setting mask region" << std::endl;
-		if (this->GetMask()) {
-			maskSlice->SetRegions(sliceInputRegion);
-			maskSlice->Allocate();
-			sliceFilter->SetMask(maskSlice);
-			ImageAlgorithm::Copy(this->GetMask().GetPointer(), maskSlice.GetPointer(), inputRegion, sliceInputRegion);
-		}
+			//std::cout << "Setting Const regions" << std::endl;
+			for (int i = 0; i < numConsts; i++) {
+				if (this->GetConst(i)) {
+					constSlices[i]->SetRegions(sliceInputRegion);
+					constSlices[i]->Allocate();
+					sliceFilter->SetConst(i, constSlices[i]);
+					ImageAlgorithm::Copy(this->GetConst(i).GetPointer(), constSlices[i].GetPointer(), inputRegion, sliceInputRegion);
+				}
+			}
+			//std::cout << "Setting mask region" << std::endl;
+			if (this->GetMask()) {
+				maskSlice->SetRegions(sliceInputRegion);
+				maskSlice->Allocate();
+				sliceFilter->SetMask(maskSlice);
+				ImageAlgorithm::Copy(this->GetMask().GetPointer(), maskSlice.GetPointer(), inputRegion, sliceInputRegion);
+			}
 
-		/*for (int i = 0; i < numOutputs; i++) {
-			sliceFilter->GetOutput(i)->SetRequestedRegion(vectorSliceOutputRegion);
-		}
-		sliceFilter->GetResidOutput()->SetRequestedRegion(vectorSliceOutputRegion);*/
+			sliceFilter->Update();
 
-		//std::cout << "Updating" << std::endl;
-		sliceFilter->Update();
-		//std::cout << "Finished updating" << std::endl;
-		// and copy the output slice to the output image
-		for (int i = 0; i < numOutputs; i++) {
-			//std::cout << "Copying output " << i << std::endl;
-			ImageAlgorithm::Copy(sliceFilter->GetOutput(i), this->GetOutput(i), vectorSliceOutputRegion, vectorOutputRegion);
+			// and copy the output slice to the output image
+			for (int i = 0; i < numOutputs; i++) {
+				ImageAlgorithm::Copy(sliceFilter->GetOutput(i), this->GetOutput(i), sliceOutputRegion, outputRegion);
+			}
+			ImageAlgorithm::Copy(sliceFilter->GetResidOutput(), this->GetResidOutput(), vectorSliceOutputRegion, vectorOutputRegion);
 		}
-		//std::cout << "Copying resid" << std::endl;
-		ImageAlgorithm::Copy(sliceFilter->GetResidOutput(), this->GetResidOutput(), vectorSliceOutputRegion, vectorOutputRegion);
-		//std::cout << "Completing pixel" << std::endl;
 		progress.CompletedPixel();
 		//std::cout << "Finised loop" << std::endl;
 	}

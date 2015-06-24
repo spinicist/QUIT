@@ -18,6 +18,7 @@ public:
 
 	static const unsigned int                   ImageDimension = Superclass::ImageDimension;
 	typedef typename Superclass::TPixel         TPixel;
+	typedef typename Superclass::TVector        TVector;
 	typedef typename Superclass::TImage         TImage;
 	typedef typename Superclass::TVectorImage   TVectorImage;
 
@@ -30,13 +31,14 @@ public:
 	itkTypeMacro(ApplyAlgorithmSliceBySliceFilter, ApplyAlgorithmFilter);
 
 	virtual void PrintSelf(std::ostream & os, Indent indent) const;
+	void SetSlices(const int start, const int stop);
 	int GetSliceIndex() const;
 
 protected:
 	ApplyAlgorithmSliceBySliceFilter();
 	~ApplyAlgorithmSliceBySliceFilter(){}
 
-	int m_sliceIndex = 0;
+	int m_sliceIndex = 0, m_startSlice = 0, m_stopSlice = 0;
 
 	void VerifyInputInformation() override;
 	//void GenerateInputRequestedRegion() override;

@@ -34,6 +34,7 @@ class ApplyAlgorithmFilter : public ImageToImageFilter<TInImage, TInImage> {
 public:
 	static const unsigned int                    ImageDimension = TInImage::ImageDimension;
 	typedef typename TInImage::InternalPixelType TPixel;
+	typedef typename TInImage::PixelType         TVector;
 	typedef Image<TPixel, ImageDimension>        TImage;
 	typedef TInImage                             TVectorImage;
 	typedef TAlgo                                TAlgorithm;
@@ -50,7 +51,6 @@ public:
 	shared_ptr<const TAlgo> GetAlgorithm() const;
 	void SetScaleToMean(const bool s);
 	bool GetScaleToMean() const;
-	void SetSlices(const int start, const int stop);
 
 	void SetInput(const size_t i, const TVectorImage *img);
 	typename TVectorImage::ConstPointer GetInput(const size_t i) const;
@@ -72,7 +72,6 @@ protected:
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
 	shared_ptr<TAlgo> m_algorithm;
-	int m_startSlice = 0, m_stopSlice = 0;
 	bool m_scale_to_mean = false;
 
 private:
