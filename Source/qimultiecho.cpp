@@ -266,8 +266,8 @@ int main(int argc, char **argv) {
 	time_t startTime;
 	if (verbose) {
 		startTime = QI::printStartTime();
-		auto progress = QI::EventMonitor::New();
-		apply->AddObserver(itk::ProgressEvent(), progress);
+		auto monitor = QI::GenericMonitor::New();
+		apply->AddObserver(itk::ProgressEvent(), monitor);
 	}
 	apply->Update();
 	if (verbose) {

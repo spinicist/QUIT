@@ -59,8 +59,6 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 	sliceOutputRegion.SetSize(vectorSliceOutputRegion.GetSize());
 	sliceOutputRegion.SetIndex(vectorSliceOutputRegion.GetIndex());
 
-	ProgressReporter progress(this, 0, requestedSize[SliceDimension]);
-
 	// Allocate storage for slices
 	//std::cout << "Setting storage for inputs" << std::endl;
 	std::vector<typename TVectorSlice::Pointer> inputSlices(numInputs);
@@ -136,18 +134,18 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 		maskSlice->SetOrigin(sliceOrigin);
 	}
 
-	//std::cout << "Starting" << std::endl;
-	const int sliceRangeMax = (requestedSize[SliceDimension] + requestedIndex[SliceDimension]);
-	if (m_stopSlice == 0)
-		m_stopSlice = sliceRangeMax;
-
-
 	for (int i = 0; i < numOutputs; i++) {
 		this->GetOutput(i)->FillBuffer(0);
 	}
 	TVector zero(this->GetResidOutput()->GetNumberOfComponentsPerPixel());
 	zero.Fill(0);
 	this->GetResidOutput()->FillBuffer(zero);
+
+	//std::cout << "Starting" << std::endl;
+	const int sliceRangeMax = (requestedSize[SliceDimension] + requestedIndex[SliceDimension]);
+	if (m_stopSlice == 0)
+		m_stopSlice = sliceRangeMax;
+	ProgressReporter progress(this, 0, sliceRangeMax);
 	for (m_sliceIndex = requestedIndex[SliceDimension]; m_sliceIndex < sliceRangeMax; ++m_sliceIndex ) {
 		// this region is the current output region we are iterating on
 		typename TVectorImage::RegionType vectorOutputRegion = this->GetOutput(0)->GetRequestedRegion();
@@ -158,6 +156,7 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 		outputRegion.SetSize(vectorOutputRegion.GetSize());
 
 		if ((m_sliceIndex >= m_startSlice) && (m_sliceIndex < m_stopSlice)) {
+			this->InvokeEvent(IterationEvent());
 			typename TVectorImage::RegionType vectorInputRegion = this->GetInput(0)->GetRequestedRegion();
 			typename TImage::RegionType inputRegion;
 			vectorInputRegion.SetIndex(SliceDimension, m_sliceIndex);
@@ -206,8 +205,8 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 				ImageAlgorithm::Copy(sliceFilter->GetOutput(i), this->GetOutput(i), sliceOutputRegion, outputRegion);
 			}
 			ImageAlgorithm::Copy(sliceFilter->GetResidOutput(), this->GetResidOutput(), vectorSliceOutputRegion, vectorOutputRegion);
+			progress.CompletedPixel(); // Put this here so skipped slices don't get a message
 		}
-		progress.CompletedPixel();
 		//std::cout << "Finised loop" << std::endl;
 	}
 }

@@ -8,6 +8,9 @@
 #include "../Sequence.h"
 #include "../Model.h"
 
+#include "itkImageToImageFilter.h"
+#include "itkSliceBySliceImageFilter.h"
+
 template<typename DataType>
 class Algorithm {
 public:

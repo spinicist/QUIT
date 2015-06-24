@@ -218,8 +218,8 @@ int main(int argc, char **argv) {
 		apply->SetMask(mask->GetOutput());
 	if (verbose) {
 		cout << "Processing..." << endl;
-		auto progress = QI::EventMonitor::New();
-		apply->AddObserver(itk::ProgressEvent(), progress);
+		auto monitor = QI::GenericMonitor::New();
+		apply->AddObserver(itk::ProgressEvent(), monitor);
 	}
 	apply->Update();
 	if (verbose) cout << "Writing results." << endl;

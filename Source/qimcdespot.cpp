@@ -242,8 +242,8 @@ int main(int argc, char **argv) {
 	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
 	shared_ptr<Model> model = make_shared<MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
-	typedef itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, MCDAlgo> TApply;
-	auto applySlices = TApply::New();
+	typedef itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, MCDAlgo> TMCDFilter;
+	auto applySlices = TMCDFilter::New();
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -399,8 +399,8 @@ int main(int argc, char **argv) {
 	time_t startTime;
 	if (verbose) {
 		startTime = QI::printStartTime();
-		auto monitor = QI::EventMonitor::New();
-		applySlices->AddObserver(itk::ProgressEvent(), monitor);
+		auto monitor = QI::SliceMonitor<TMCDFilter>::New();
+		applySlices->AddObserver(itk::IterationEvent(), monitor);
 	}
 	applySlices->Update();
 	if (verbose) {

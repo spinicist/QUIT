@@ -40,15 +40,15 @@ std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 void writeResult(const typename ImageF::Pointer img, const std::string path);
 void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
 
-class EventMonitor : public itk::Command {
+class GenericMonitor : public itk::Command {
 public:
-	typedef EventMonitor            Self;
+	typedef GenericMonitor            Self;
 	typedef itk::Command            Superclass;
 	typedef itk::SmartPointer<Self> Pointer;
-	itkTypeMacro(EventMonitor, Superclass);
+	itkTypeMacro(GenericMonitor, Superclass);
 	itkNewMacro(Self);
 protected:
-	EventMonitor() {};
+	GenericMonitor() {}
 public:
 	void Execute(itk::Object *caller, const itk::EventObject &event) {
 		Execute((const itk::Object *)caller, event);
@@ -62,6 +62,33 @@ public:
 		}
 	}
 };
+
+template <typename TFilter>
+class SliceMonitor : public itk::Command {
+public:
+	typedef SliceMonitor            Self;
+	typedef itk::Command            Superclass;
+	typedef itk::SmartPointer<Self> Pointer;
+	itkTypeMacro(SliceMonitor, Superclass);
+	itkNewMacro(Self);
+protected:
+	SliceMonitor() {}
+public:
+	void Execute(itk::Object *caller, const itk::EventObject &event) {
+		Execute((const itk::Object *)caller, event);
+	}
+	void Execute(const itk::Object *object, const itk::EventObject & event) {
+		const TFilter *filter = static_cast<const TFilter *>(object);
+		if (typeid(event) == typeid(itk::ProgressEvent)) {
+			std::cout << "Completed slice " << filter->GetSliceIndex() << std::endl;
+		} else if (typeid(event) == typeid(itk::IterationEvent)) {
+			std::cout << "Starting slice " << filter->GetSliceIndex() << std::endl;
+		} else {
+			std::cout << "Received event: " << typeid(event).name() << std::endl;
+		}
+	}
+};
+
 
 template<typename T> bool Read(const std::string &s, T &val) {
 	std::istringstream stream(s);

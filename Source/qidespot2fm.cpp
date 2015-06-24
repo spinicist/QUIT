@@ -341,7 +341,8 @@ int main(int argc, char **argv) {
 	if (flipData) {
 		ssfpFlip->SetStride(ssfpSequence->phases());
 	}
-	auto apply = itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, FMAlgo>::New();
+	typedef itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, FMAlgo> TFMFilter;
+	auto apply = TFMFilter::New();
 	fm->setSequence(ssfpSequence);
 	apply->SetAlgorithm(fm);
 	apply->SetInput(0, ssfpFlip->GetOutput());
@@ -356,8 +357,8 @@ int main(int argc, char **argv) {
 	time_t startTime;
 	if (verbose) {
 		startTime = QI::printStartTime();
-		auto progress = QI::EventMonitor::New();
-		apply->AddObserver(itk::ProgressEvent(), progress);
+		auto monitor = QI::SliceMonitor<TFMFilter>::New();
+		apply->AddObserver(itk::IterationEvent(), monitor);
 	}
 	apply->Update();
 	if (verbose) {
