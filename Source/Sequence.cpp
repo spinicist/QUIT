@@ -213,7 +213,7 @@ Array2d SSFPSimple::bandwidth() const {
 
 ArrayXd SSFPSimple::weights(const double f0) const {
 	ArrayXd phase = m_phases;
-	ArrayXd offset = phase - (M_PI * f0*m_TR);
+	ArrayXd offset = phase + (M_PI * f0*m_TR);
 	ArrayXd weight = (offset / 2).sin().square();
 	ArrayXXd allWeights = weight.transpose().replicate(m_flip.size(), 1);
 	ArrayXd weights = Map<ArrayXd>(allWeights.data(), size());
