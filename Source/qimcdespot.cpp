@@ -28,68 +28,6 @@
 using namespace std;
 using namespace Eigen;
 
-//******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: mcdespot [options]\n\
-\n\
-The program will prompt for input (unless --no-prompt specified)\n\
-\n\
-All times (TR) are in SECONDS. All angles are in degrees.\n\
-\n\
-Options:\n\
-	--help, -h        : Print this message\n\
-	--verbose, -v     : Print more information\n\
-	--no-prompt, -n   : Don't print prompts for input\n\
-	--mask, -m file   : Mask input with specified file\n\
-	--out, -o path    : Add a prefix to the output filenames\n\
-	--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3)\n\
-	--f0, -f file     : Use f0 Map file (in Hertz)\n\
-	--B1, -b file     : B1 Map file (ratio)\n\
-	--start, -s n     : Only start processing at slice n.\n\
-	--stop, -p n      : Finish at slice n-1\n\
-	--scale, -S MEAN  : Normalise signals to mean (default)\n\
-	            0     : Fit a scaling factor/proton density\n\
-	            val   : Fix PD to val\n\
-	--gauss, -g 0     : Use Uniform distribution for Region Contraction\n\
-	            1     : Use Gaussian distribution for RC (default)\n\
-	--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
-	--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
-	            7     : Boundaries suitable for 7T \n\
-	            u     : User specified boundaries from stdin\n\
-	--sequences, -M s : Use simple sequences (default)\n\
-	            f     : Use Finite Pulse Length correction\n\
-	--contract, -c n  : Read contraction settings from stdin (Will prompt)\n\
-	--resids, -r      : Write out per flip-angle residuals\n\
-	--threads, -T N   : Use N threads (default=hardware limit)\n"
-};
-
-static const struct option long_options[] = {
-	{"help", no_argument, 0, 'h'},
-	{"verbose", no_argument, 0, 'v'},
-	{"mask", required_argument, 0, 'm'},
-	{"out", required_argument, 0, 'o'},
-	{"f0", required_argument, 0, 'f'},
-	{"B1", required_argument, 0, 'b'},
-	{"start", required_argument, 0, 's'},
-	{"stop", required_argument, 0, 'p'},
-	{"scale", required_argument, 0, 'S'},
-	{"gauss", required_argument, 0, 'g'},
-	{"flip", required_argument, 0, 'F'},
-	{"tesla", required_argument, 0, 't'},
-	{"sequences", no_argument, 0, 'M'},
-	{"contract", no_argument, 0, 'c'},
-	{"resids", no_argument, 0, 'r'},
-	{"threads", required_argument, 0, 'T'},
-	{"no-prompt", no_argument, 0, 'n'},
-	{"1", no_argument, 0, '1'},
-	{"2", no_argument, 0, '2'},
-	{"3", no_argument, 0, '3'},
-	{0, 0, 0, 0}
-};
-static const char* short_options = "hvm:o:f:b:s:p:S:g:t:FT:M:crn123i:j:";
-
 /*
  * Read in all required files and data from cin
  */
@@ -105,6 +43,7 @@ void parseInput(shared_ptr<SequenceGroup> seq,
                 Array2d &f0Bandwidth, bool finite, bool flip, bool verbose, bool prompt)
 {
 	string type, path;
+	if (verbose && finite) cout << "Using finite pulse-width sequences." << endl;
 	if (prompt) cout << "Specify next image type (SPGR/SSFP): " << flush;
 	f0Bandwidth = Array2d::Zero();
 	while (QI::Read(cin, type) && (type != "END") && (type != "")) {
@@ -119,18 +58,19 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 		data.back()->SetInput(files.back()->GetOutput());
 		order.push_back(QI::ReorderF::New());
 		order.back()->SetInput(data.back()->GetOutput());
-		if ((type == "SPGR") && !finite) {
-			seq->addSequence(make_shared<SPGRSimple>(prompt));
-		} else if ((type == "SPGR" && finite)) {
-			seq->addSequence(make_shared<SPGRFinite>(prompt));
-		} else if ((type == "SSFP" && !finite)) {
-			auto s = make_shared<SSFPSimple>(prompt);
-			f0Bandwidth = s->bandwidth();
-			seq->addSequence(s);
-			if (flip)
-				order.back()->SetStride(s->phases());
-		} else if ((type == "SSFP" && finite)) {
-			auto s = make_shared<SSFPFinite>(prompt);
+		if (type == "SPGR") {
+			if (finite) {
+				seq->addSequence(make_shared<SPGRFinite>(prompt));
+			} else {
+				seq->addSequence(make_shared<SPGRSimple>(prompt));
+			}
+		} else if (type == "SSFP") {
+			shared_ptr<SSFPSimple> s;
+			if (finite) {
+				s = make_shared<SSFPFinite>(prompt);
+			} else {
+				s = make_shared<SSFPSimple>(prompt);
+			}
 			f0Bandwidth = s->bandwidth();
 			seq->addSequence(s);
 			if (flip)
@@ -244,6 +184,65 @@ int main(int argc, char **argv) {
 	typedef itk::VectorImage<float, 2> VectorSliceF;
 	typedef itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, MCDAlgo> TMCDFilter;
 	auto applySlices = TMCDFilter::New();
+
+	const string usage {
+	"Usage is: mcdespot [options]\n\
+	\n\
+	The program will prompt for input (unless --no-prompt specified)\n\
+	\n\
+	All times (TR) are in SECONDS. All angles are in degrees.\n\
+	\n\
+	Options:\n\
+		--help, -h        : Print this message\n\
+		--verbose, -v     : Print more information\n\
+		--no-prompt, -n   : Don't print prompts for input\n\
+		--mask, -m file   : Mask input with specified file\n\
+		--out, -o path    : Add a prefix to the output filenames\n\
+		--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3)\n\
+		--f0, -f file     : Use f0 Map file (in Hertz)\n\
+		--B1, -b file     : B1 Map file (ratio)\n\
+		--start, -s n     : Only start processing at slice n.\n\
+		--stop, -p n      : Finish at slice n-1\n\
+		--scale, -S MEAN  : Normalise signals to mean (default)\n\
+					0     : Fit a scaling factor/proton density\n\
+					val   : Fix PD to val\n\
+		--gauss, -g 0     : Use Uniform distribution for Region Contraction\n\
+					1     : Use Gaussian distribution for RC (default)\n\
+		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
+		--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
+					7     : Boundaries suitable for 7T \n\
+					u     : User specified boundaries from stdin\n\
+		--finite          : Use Finite Pulse Length correction\n\
+		--contract, -c n  : Read contraction settings from stdin (Will prompt)\n\
+		--resids, -r      : Write out per flip-angle residuals\n\
+		--threads, -T N   : Use N threads (default=hardware limit)\n"
+	};
+
+	const struct option long_options[] = {
+		{"help", no_argument, 0, 'h'},
+		{"verbose", no_argument, 0, 'v'},
+		{"mask", required_argument, 0, 'm'},
+		{"out", required_argument, 0, 'o'},
+		{"f0", required_argument, 0, 'f'},
+		{"B1", required_argument, 0, 'b'},
+		{"start", required_argument, 0, 's'},
+		{"stop", required_argument, 0, 'p'},
+		{"scale", required_argument, 0, 'S'},
+		{"gauss", required_argument, 0, 'g'},
+		{"flip", required_argument, 0, 'F'},
+		{"tesla", required_argument, 0, 't'},
+		{"finite", no_argument, &fitFinite, 1},
+		{"contract", no_argument, 0, 'c'},
+		{"resids", no_argument, 0, 'r'},
+		{"threads", required_argument, 0, 'T'},
+		{"no-prompt", no_argument, 0, 'n'},
+		{"1", no_argument, 0, '1'},
+		{"2", no_argument, 0, '2'},
+		{"3", no_argument, 0, '3'},
+		{0, 0, 0, 0}
+	};
+	const char* short_options = "hvm:o:f:b:s:p:S:g:t:FT:crn123i:j:";
+
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -315,15 +314,6 @@ int main(int argc, char **argv) {
 						return EXIT_FAILURE;
 						break;
 			} break;
-			case 'M':
-				switch (*optarg) {
-					case 's': fitFinite = false; if (verbose) cout << "Simple sequences selected." << endl; break;
-					case 'f': fitFinite = true;  if (verbose) cout << "Finite pulse correction selected." << endl; break;
-					default:
-						cout << "Unknown sequences type " << *optarg << endl;
-						return EXIT_FAILURE;
-						break;
-			} break;
 			case 'c': {
 				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
 				ArrayXi in = ArrayXi::Zero(3);
@@ -336,6 +326,7 @@ int main(int argc, char **argv) {
 				return EXIT_SUCCESS;
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
+			case 0: break; // Just a flag
 			default:
 				cout << "Unhandled option " << string(1, c) << endl;
 				return EXIT_FAILURE;

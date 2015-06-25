@@ -8,7 +8,7 @@
 # First, create input data
 
 source ./test_common.sh
-SILENCE_TESTS="1"
+SILENCE_TESTS="0"
 
 DATADIR="mcdespot"
 rm -rf $DATADIR
@@ -29,19 +29,14 @@ $QUITDIR/qinewimage -d "$DIMS" -g "2 0.1 0.25" f_m.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
-SPGR_PAR="3 4 5 6 7 9 13 18
-0.0065"
+SPGR_FLIP="3 4 5 6 7 9 13 18"
+SPGR_TR="0.0065"
 SSFP_FILE="ssfp.nii"
 SSFP_FLIP="12 16 21 27 33 40 51 68 "
+SSFP_PC="180 0"
 SSFP_TR="0.005"
-SSFP_PAR_180_0="$SSFP_FLIP
-180 0
-$SSFP_TR"
-SSFP_PAR_90_270="$SSFP_FLIP
-90 270
-$SSFP_TR"
 
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --2 -n << END_MCSIG
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --2 -n -v << END_MCSIG
 PD.nii
 T1_m.nii
 T2_m.nii
@@ -52,42 +47,44 @@ f_m.nii
 f0.nii
 B1.nii
 SPGR
-$SPGR_PAR
+$SPGR_FLIP
+$SPGR_TR
 $SPGR_FILE
 SSFP
-$SSFP_PAR_180_0
-180_0${SSFP_FILE}
-SSFP
-$SSFP_PAR_90_270
-90_270${SSFP_FILE}
+$SSFP_FLIP
+$SSFP_PC
+$SSFP_TR
+$SSFP_FILE
 END
 END_MCSIG
-
-echo "SPGR #Signal type
-# Test comment line
-$SPGR_FILE # Filename
-$SPGR_PAR
-SSFP
-180_0${SSFP_FILE}
-$SSFP_PAR_180_0
-END" > mcd.in
 
 function run() {
 PREFIX="$1"
 OPTS="$2"
-run_test $PREFIX $QUITDIR/qimcdespot $OPTS -2 -n -bB1.nii -r -o $PREFIX -v < mcd.in
+run_test $PREFIX $QUITDIR/qimcdespot $OPTS -2 -bB1.nii -r -o $PREFIX -v << END_INPUT
+SPGR
+$SPGR_FILE
+$SPGR_FLIP
+$SPGR_TR
+SSFP
+$SSFP_FILE
+$SSFP_FLIP
+$SSFP_PC
+$SSFP_TR
+END
+END_INPUT
 
 echo "       Mean     Std.     CoV"
-echo "T1_m:  " $( fslstats ${PREFIX}2C_T1_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
-echo "T2_m:  " $( fslstats ${PREFIX}2C_T2_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
+echo "T1_m:  " $( fslstats ${PREFIX}2C_T1_m.nii  -m -s | awk '{print $1, $2, $2/$1}' )
+echo "T2_m:  " $( fslstats ${PREFIX}2C_T2_m.nii  -m -s | awk '{print $1, $2, $2/$1}' )
 echo "T1_ie: " $( fslstats ${PREFIX}2C_T1_ie.nii -m -s | awk '{print $1, $2, $2/$1}' )
 echo "T2_ie: " $( fslstats ${PREFIX}2C_T2_ie.nii -m -s | awk '{print $1, $2, $2/$1}' )
-echo "MWF:   " $( fslstats ${PREFIX}2C_f_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
+echo "MWF:   " $( fslstats ${PREFIX}2C_f_m.nii   -m -s | awk '{print $1, $2, $2/$1}' )
 echo "Tau:   " $( fslstats ${PREFIX}2C_tau_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
 compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
 }
 
-run "GAUSSSCALE1f0" " -S1 -ff0.nii"
+run "GAUSSSCALE1f0"  " -S1 -ff0.nii"
 #run "SCALE1f0"      " -S1 -g0 -ff0.nii"
 #run "NOSCALEf0"     " -SNONE -g0 -ff0.nii"
 #run "MEANSCALEf0"   " -g0 -ff0.nii"

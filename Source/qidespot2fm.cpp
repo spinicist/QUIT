@@ -28,49 +28,6 @@
 using namespace std;
 using namespace Eigen;
 
-//******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: despot2-fm [options] T1_map ssfp_file\n\
-\
-Options:\n\
-	--help, -h        : Print this message\n\
-	--verbose, -v     : Print slice processing times\n\
-	--no-prompt, -n   : Suppress input prompts\n\
-	--mask, -m file   : Mask input with specified file\n\
-	--out, -o path    : Add a prefix to the output filenames\n\
-	--B1, -b file     : B1 Map file (ratio)\n\
-	--algo, -a l      : Use 2-step LM algorithm (default)\n\
-	           s      : Use Stochastic Region Contraction\n\
-	--start, -s N     : Start processing from slice N\n\
-	--stop, -p  N     : Stop processing at slice N\n\
-	--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
-	--sequences, -M s : Use simple sequences (default)\n\
-	            f     : Use finite pulse length correction\n\
-	--resids, -r      : Write out per flip-angle residuals\n\
-	--threads, -T N   : Use N threads (default=hardware limit)\n"
-};
-/* --complex, -x     : Fit to complex data\n\ */
-
-static struct option long_opts[] = {
-	{"help", no_argument, 0, 'h'},
-	{"verbose", no_argument, 0, 'v'},
-	{"no-prompt", no_argument, 0, 'n'},
-	{"mask", required_argument, 0, 'm'},
-	{"out", required_argument, 0, 'o'},
-	{"B1", required_argument, 0, 'b'},
-	{"algo", required_argument, 0, 'a'},
-	{"start", required_argument, 0, 's'},
-	{"stop", required_argument, 0, 'p'},
-	{"flip", required_argument, 0, 'F'},
-	{"threads", required_argument, 0, 'T'},
-	{"sequences", no_argument, 0, 'M'},
-	{"resids", no_argument, 0, 'r'},
-	{0, 0, 0, 0}
-};
-static const char* short_opts = "hvnm:o:b:a:s:p:FT:M:rd:";
-
 class FMFunctor : public DenseFunctor<double> {
 public:
 	const shared_ptr<SequenceBase> m_sequence;
@@ -256,6 +213,45 @@ int main(int argc, char **argv) {
 	QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 	shared_ptr<FMAlgo> fm = make_shared<FMLMAlgo>();
 
+	const string usage {
+	"Usage is: despot2-fm [options] T1_map ssfp_file\n\
+	\
+	Options:\n\
+		--help, -h        : Print this message\n\
+		--verbose, -v     : Print slice processing times\n\
+		--no-prompt, -n   : Suppress input prompts\n\
+		--mask, -m file   : Mask input with specified file\n\
+		--out, -o path    : Add a prefix to the output filenames\n\
+		--B1, -b file     : B1 Map file (ratio)\n\
+		--algo, -a l      : Use 2-step LM algorithm (default)\n\
+				   s      : Use Stochastic Region Contraction\n\
+		--start, -s N     : Start processing from slice N\n\
+		--stop, -p  N     : Stop processing at slice N\n\
+		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
+		--finite          : Use finite pulse length correction\n\
+		--resids, -r      : Write out per flip-angle residuals\n\
+		--threads, -T N   : Use N threads (default=hardware limit)\n"
+	};
+	/* --complex, -x     : Fit to complex data\n\ */
+
+	struct option long_opts[] = {
+		{"help", no_argument, 0, 'h'},
+		{"verbose", no_argument, 0, 'v'},
+		{"no-prompt", no_argument, 0, 'n'},
+		{"mask", required_argument, 0, 'm'},
+		{"out", required_argument, 0, 'o'},
+		{"B1", required_argument, 0, 'b'},
+		{"algo", required_argument, 0, 'a'},
+		{"start", required_argument, 0, 's'},
+		{"stop", required_argument, 0, 'p'},
+		{"flip", required_argument, 0, 'F'},
+		{"threads", required_argument, 0, 'T'},
+		{"finite", no_argument, &fitFinite, 1},
+		{"resids", no_argument, 0, 'r'},
+		{0, 0, 0, 0}
+	};
+	const char* short_opts = "hvnm:o:b:a:s:p:FT:rd:";
+
 	// Do first pass to get the algorithm type, then do everything else
 	int indexptr = 0;
 	char c;
@@ -311,6 +307,7 @@ int main(int argc, char **argv) {
 				return EXIT_SUCCESS;
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
+			case 0: break; // Just a flag
 			default:
 				cout << "Unhandled option " << string(1, c) << endl;
 				return EXIT_FAILURE;
