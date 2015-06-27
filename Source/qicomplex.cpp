@@ -47,7 +47,6 @@ following can be specified:\n\
 \n\
 Other options:\n\
 	--double : Use double precision instead of float\n\
-	--fixge  : Fix alternate slice problem with GE data.\n\
 \n\
 Example:\n\
 	qicomplex -m mag.nii -p phase.nii -R real.nii -I imag.nii\n"
