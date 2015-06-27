@@ -335,6 +335,9 @@ int main(int argc, char **argv) {
 	if ((argc - optind) != 0) {
 		cerr << usage << endl << "Incorrect number of arguments." << endl;
 		return EXIT_FAILURE;
+	} else if (prompt) {
+		cout << "Starting qimcdespot" << endl;
+		cout << "Run with -h switch to see usage" << endl;
 	}
 
 	shared_ptr<SequenceGroup> sequences = make_shared<SequenceGroup>();

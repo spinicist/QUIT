@@ -179,8 +179,13 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if ((argc - optind) != output.size()) {
-		throw(runtime_error("Output type specifier does not match number of output filenames."));
+	if ((argc - optind) == 0) {
+		cout << usage << endl;
+		return EXIT_FAILURE;
+	} else if ((argc - optind) != output.size()) {
+		cout << usage << endl;
+		cout << "Output type specifier does not match number of output filenames." << endl;
+		return EXIT_FAILURE;
 	}
 	vector<string> onames;
 	while (optind < argc) {

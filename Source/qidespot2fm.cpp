@@ -314,6 +314,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	if ((argc - optind) != 2) {
+		cout << usage << endl;
 		cout << "Wrong number of arguments. Need a T1 map and one SSFP file." << endl;
 		return EXIT_FAILURE;
 	}

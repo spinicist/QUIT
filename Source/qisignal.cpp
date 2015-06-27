@@ -297,9 +297,12 @@ int main(int argc, char **argv)
 	if ((argc - optind) != 0) {
 		cerr << usage << endl << "Incorrect number of arguments." << endl;
 		return EXIT_FAILURE;
+	}  else if (prompt) {
+		cout << "Starting qisignal" << endl;
+		cout << "Run with -h switch to see usage" << endl;
 	}
-	//if (verbose) cout << version << endl << credit_me << endl;
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
+
 	/***************************************************************************
 	 * Read in parameter files
 	 **************************************************************************/
