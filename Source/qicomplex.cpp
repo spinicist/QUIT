@@ -24,190 +24,197 @@
 #include "itkMagnitudeAndPhaseToComplexImageFilter.h"
 
 #include "Util.h"
+#include "Types.h"
 
 using namespace std;
 
-enum class InputType { RealImag, MagPhase, Complex, Invalid };
-template<typename TPixel> void Run(const InputType input,
-                                   const string &r_name, const string &i_name,
-                                   const string &m_name, const string &p_name,
-                                   const string &x_name,
-                                   const string &output, const vector<string> &o_names) {
-	typedef itk::Image<TPixel, 4> TImage;
-	typedef itk::Image<complex<TPixel>, 4> TXImage;
-
-	typename TXImage::Pointer cImage = ITK_NULLPTR;
-	switch (input) {
-		case InputType::Complex: {
-			auto read = itk::ImageFileReader<TXImage>::New();
-			read->SetFileName(x_name);
-			read->Update();
-			cImage = read->GetOutput();
-		} break;
-		case InputType::RealImag: {
-			auto read1 = itk::ImageFileReader<TImage>::New();
-			read1->SetFileName(r_name);
-			auto read2 = itk::ImageFileReader<TImage>::New();
-			read2->SetFileName(i_name);
-			auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
-			compose->SetInput(0, read1->GetOutput());
-			compose->SetInput(1, read2->GetOutput());
-			compose->Update();
-			cImage = compose->GetOutput();
-		} break;
-		case InputType::MagPhase: {
-			auto read1 = itk::ImageFileReader<TImage>::New();
-			auto read2 = itk::ImageFileReader<TImage>::New();
-			read1->SetFileName(m_name);
-			read2->SetFileName(p_name);
-			auto compose = itk::MagnitudeAndPhaseToComplexImageFilter<TImage, TImage, TXImage>::New();
-			compose->SetInput(0, read1->GetOutput());
-			compose->SetInput(1, read2->GetOutput());
-			compose->Update();
-			cImage = compose->GetOutput();
-		} break;
-		case InputType::Invalid: throw(runtime_error("Should not happen.")); break;
-	}
-
-	auto scalarWriter = itk::ImageFileWriter<TImage>::New();
-	for (size_t oi = 0; oi < output.size(); oi++) {
-		char type = output.at(oi);
-		scalarWriter->SetFileName(o_names.at(oi));
-		switch (type) {
-			case 'm': {
-				auto o = itk::ComplexToModulusImageFilter<TXImage, TImage>::New();
-				o->SetInput(cImage);
-				scalarWriter->SetInput(o->GetOutput());
-				scalarWriter->Update();
-			} break;
-			case 'p': {
-				auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
-				o->SetInput(cImage);
-				scalarWriter->SetInput(o->GetOutput());
-				scalarWriter->Update();
-			} break;
-			case 'r': {
-				auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
-				scalarWriter->SetInput(o->GetOutput());
-				scalarWriter->Update();
-			} break;
-			case 'i': {
-				auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
-				scalarWriter->SetInput(o->GetOutput());
-				scalarWriter->Update();
-			} break;
-			case 'x': {
-				auto complexWriter = itk::ImageFileWriter<TXImage>::New();
-				complexWriter->SetFileName(o_names.at(oi));
-				complexWriter->SetInput(cImage);
-				complexWriter->Update();
-			} break;
-			default:
-				throw(runtime_error("Unknown ouput type specifier: " + to_string(type)));
-				break;
-		}
-	}
-}
-
-
 const string usage {
-"Usage is: qcomplex [options] [input] -o [output] output_files \n\
+"Usage is: qcomplex [input options] [output options] [other options] \n\
 \n\
-Input must be specified as one of:\n\
-	-r real_image -i imaginary_image\n\
+Input is specified with lower case letters. One of the following\n\
+combinations must be specified:\n\
 	-m mag_image -p phase_image\n\
+	-r real_image -i imaginary_image\n\
 	-x complex_image\n\
-Output can contain any/all of the letters 'mpric'. If you have more than one\n\
-letter you must specify more than one output filename:\n\
-	-o m : Output a magnitude image\n\
-	   p : Output a phase image\n\
-	   r : Output a real image\n\
-	   i : Output an imaginary image\n\
-	   x : Output a complex image\n\
+\n\
+Output is specified with upper case letters. One or more of the\n\
+following can be specified:\n\
+	-M : Output a magnitude image\n\
+	-P : Output a phase image\n\
+	-R : Output a real image\n\
+	-I : Output an imaginary image\n\
+	-X : Output a complex image\n\
+\n\
 Other options:\n\
-	--dtype, -t f    : Datatype is float\n\
-	           d     : Datatype is double\n\
-	--fixge, -f      : Fix alternate slice, opposing phase issue on GE.\n\
+	--double : Use double precision instead of float\n\
+	--fixge  : Fix alternate slice problem with GE data.\n\
+\n\
 Example:\n\
-	qcomplex -m mag.nii -p phase.nii -o rix real.nii imag.nii complex.nii\n"
+	qicomplex -m mag.nii -p phase.nii -R real.nii -I imag.nii\n"
 };
-
-enum class PixelType { Float, Double };
+int verbose = false, use_double = false, fixge = false;
 const struct option long_options[] =
 {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
-	{"dtype", required_argument, 0, 't'},
-	{"fixge", no_argument, 0, 'f'},
+	{"double", no_argument, &use_double, 1},
+	{"fixge", no_argument, &fixge, 1},
 	{0, 0, 0, 0}
 };
-const char* short_options = "hvr:i:m:p:x:o:t:f";
+const char* short_options = "hvm:M:p:P:r:R:i:I:x:X:";
+int c, index_ptr = 0;
+
+template<typename TPixel> void Run(int argc, char **argv) {
+	typedef itk::Image<TPixel, 4>          TImage;
+	typedef itk::Image<complex<TPixel>, 4> TXImage;
+	typedef itk::ImageFileReader<TImage>   TReader;
+	typedef itk::ImageFileReader<TXImage>  TXReader;
+	typedef itk::ImageFileWriter<TImage>   TWriter;
+	typedef itk::ImageFileWriter<TXImage>  TXWriter;
+
+	typename TImage::Pointer img1 = ITK_NULLPTR, img2 = ITK_NULLPTR;
+	typename TXImage::Pointer imgX = ITK_NULLPTR;
+
+	if (verbose) cout << "Reading input files" << endl;
+	bool ri = false, x = false;
+	optind = 1;
+	while ((c = getopt(argc, argv, short_options)) != -1) {
+		switch (c) {
+			case 'r':
+				ri = true;
+			case 'm': {
+				auto read = TReader::New();
+				read->SetFileName(optarg);
+				read->Update();
+				img1 = read->GetOutput();
+			} break;
+			case 'i':
+				ri = true;
+			case 'p': {
+				auto read = TReader::New();
+				read->SetFileName(optarg);
+				read->Update();
+				img2 = read->GetOutput();
+			} break;
+			case 'x': {
+				x = true;
+				typename TXReader::Pointer readX = TXReader::New();
+				readX->SetFileName(optarg);
+				readX->Update();
+				imgX = readX->GetOutput();
+			} break;
+			default: break;
+		}
+	}
+
+	if (x) {
+		// Nothing to see here
+	} else if (ri) {
+		if (!(img1 && img2)) {
+			throw(runtime_error("Must set real and imaginary inputs"));
+		}
+		if (verbose) cout << "Combining real and imaginary input" << endl;
+		auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
+		compose->SetInput(0, img1);
+		compose->SetInput(1, img2);
+		compose->Update();
+		imgX = compose->GetOutput();
+	} else {
+		if (!(img1 && img2)) {
+			throw(runtime_error("Must set magnitude and phase inputs"));
+		}
+		if (verbose) cout << "Combining magnitude and phase input" << endl;
+		auto compose = itk::MagnitudeAndPhaseToComplexImageFilter<TImage, TImage, TXImage>::New();
+		compose->SetInput(0, img1);
+		compose->SetInput(1, img2);
+		compose->Update();
+		imgX = compose->GetOutput();
+	}
+
+	if (verbose) cout << "Writing output files" << endl;
+	typename TWriter::Pointer write = TWriter::New();
+	optind = 1;
+	while ((c = getopt(argc, argv, short_options)) != -1) {
+		switch (c) {
+			case 'M': {
+				auto o = itk::ComplexToModulusImageFilter<TXImage, TImage>::New();
+				o->SetInput(imgX);
+				write->SetFileName(optarg);
+				write->SetInput(o->GetOutput());
+				write->Update();
+				if (verbose) cout << "Wrote magnitude image " + string(optarg) << endl;
+			} break;
+			case 'P': {
+				auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
+				o->SetInput(imgX);
+				write->SetFileName(optarg);
+				write->SetInput(o->GetOutput());
+				write->Update();
+				if (verbose) cout << "Wrote phase image " + string(optarg) << endl;
+			} break;
+			case 'R': {
+				auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
+				o->SetInput(imgX);
+				write->SetFileName(optarg);
+				write->SetInput(o->GetOutput());
+				write->Update();
+				if (verbose) cout << "Wrote real image " + string(optarg) << endl;
+			} break;
+			case 'I': {
+				auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
+				o->SetInput(imgX);
+				write->SetFileName(optarg);
+				write->SetInput(o->GetOutput());
+				write->Update();
+				if (verbose) cout << "Wrote imaginary image " + string(optarg) << endl;
+			} break;
+			case 'X': {
+				auto writeX = TXWriter::New();
+				writeX->SetFileName(optarg);
+				writeX->SetInput(imgX);
+				writeX->Update();
+				if (verbose) cout << "Wrote complex image " + string(optarg) << endl;
+			} break;
+			default: break;
+		}
+	}
+}
 
 int main(int argc, char **argv) {
-	bool verbose = false, forceDType = false, fixge = false;
-	InputType inputType = InputType::Invalid;
-	string output{""}, r_name, i_name, m_name, p_name, x_name;
-	PixelType precision = PixelType::Float;
-	InputType input = InputType::Invalid;
-	int indexptr = 0, c;
-	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+	// Do one pass for the general options
+	bool have_some_options = false;
+	while ((c = getopt_long(argc, argv, short_options, long_options, &index_ptr)) != -1) {
 		switch (c) {
-		case 'v': verbose = true; break;
-		case 'r': r_name = string(optarg); break;
-		case 'i': i_name = string(optarg); break;
-		case 'm': m_name = string(optarg); break;
-		case 'p': p_name = string(optarg); break;
-		case 'x': x_name = string(optarg); break;
-		case 'o': output = string(optarg); break;
-		case 't':
-			switch (*optarg) {
-				case 'f': precision = PixelType::Float; break;
-				case 'd': precision = PixelType::Double; break;
-				default:
-					cerr << "Unknown precision type " << optarg << endl;
-					return EXIT_FAILURE;
-			} break;
-		case 'f': fixge = true; break;
-		case 'h':
-			cout << usage << endl;
-			return EXIT_SUCCESS;
-		case '?': // getopt will print an error message
-			return EXIT_FAILURE;
-		default:
+			case 'v': verbose = true; break;
+			case 'h':
+				cout << usage << endl;
+				return EXIT_SUCCESS;
+			case 0: break; // A flag
+			case 'm': case 'M': case 'p': case 'P':
+			case 'r': case 'R': case 'i': case 'I':
+			case 'x': case 'X':
+				have_some_options = true;
+				break;
+			case '?': // getopt will print an error message
+				return EXIT_FAILURE;
+			default:
 			cout << "Unhandled option " << string(1, c) << endl;
 			return EXIT_FAILURE;
 		}
 	}
 
-	if ((argc - optind) == 0) {
+	if (!have_some_options) {
 		cout << usage << endl;
 		return EXIT_FAILURE;
-	} else if ((argc - optind) != output.size()) {
-		cout << usage << endl;
-		cout << "Output type specifier does not match number of output filenames." << endl;
-		return EXIT_FAILURE;
-	}
-	vector<string> onames;
-	while (optind < argc) {
-		onames.push_back(string(argv[optind]));
-		optind++;
 	}
 
-	if ((r_name.size() != 0) && (i_name.size() != 0)) {
-		input = InputType::RealImag;
-	} else if ((m_name.size() != 0) && (p_name.size() != 0)) {
-		input = InputType::MagPhase;
-	} else if (x_name.size() != 0) {
-		input = InputType::Complex;
+	if (use_double) {
+		if (verbose) cout << "Using double precision" << endl;
+		Run<double>(argc, argv);
 	} else {
-		throw(runtime_error("Invalid combination of input specifiers."));
-	}
-
-	switch (precision) {
-		case PixelType::Float: Run<float>(input, r_name, i_name, m_name, p_name, x_name, output, onames); break;
-		case PixelType::Double: Run<double>(input, r_name, i_name, m_name, p_name, x_name, output, onames); break;
+		if (verbose) cout << "Using float precision" << endl;
+		Run<float>(argc, argv);
 	}
 
 	return EXIT_SUCCESS;
 }
-
