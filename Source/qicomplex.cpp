@@ -1,7 +1,6 @@
 /*
- *  niicomplex.cpp
+ *  qicomplex.cpp
  *
- *  Created by Tobias Wood on 03/06/2015.
  *  Copyright (c) 2015 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
@@ -12,19 +11,16 @@
 
 #include <getopt.h>
 #include <iostream>
-#include <random>
-#include <functional>
 
 #include "itkImage.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
 #include "itkComplexToPhaseImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkComplexToRealImageFilter.h"
 #include "itkComplexToImaginaryImageFilter.h"
 #include "itkComposeImageFilter.h"
 #include "itkMagnitudeAndPhaseToComplexImageFilter.h"
-
-#include "Util.h"
-#include "Types.h"
 
 using namespace std;
 
