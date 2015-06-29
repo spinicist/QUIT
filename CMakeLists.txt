@@ -24,7 +24,7 @@ add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Sourc
                                       Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
                                       Source/RegionContraction.h)
 
-set(PROGRAMS qinewimage qicomplex qisignal
+set(PROGRAMS qinewimage qicomplex qisignal qiaffine
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
              qiafi qissfpbands qiunwrap
              qimultiecho)
@@ -35,7 +35,7 @@ foreach(PROGRAM ${PROGRAMS})
 endforeach(PROGRAM)
 
 set(TESTS_DIR Test)
-set(TESTS test_common.sh test_scdespot.sh test_fm.sh test_mcdespot.sh test_relax.sh test_all.sh)
+set(TESTS test_common.sh test_scdespot.sh test_fm.sh test_3C.sh test_relax.sh test_all.sh)
 foreach(TEST ${TESTS})
 	configure_file(${TESTS_DIR}/${TEST} ${TESTS_DIR}/${TEST} COPYONLY)
 endforeach(TEST)
