@@ -8,9 +8,9 @@
 # First, create input data
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
-DATADIR="mcdespot"
+DATADIR="2C"
 rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR

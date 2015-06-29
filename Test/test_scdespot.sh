@@ -99,11 +99,11 @@ compare_test "HIFI_T1" T1.nii HIFI_T1.nii 0.01
 run_test "AFI" $QUITDIR/qiafi $AFI_FILE
 compare_test "AFI_B1" B1.nii AFI_B1.nii 0.01
 run_test "SSFPGS" $QUITDIR/qissfpbands ssfp_x.nii
-run_test "SSFPGSMAG" $QUITDIR/qicomplex -x ssfp_x_lreg.nii -om ssfp_x_lreg_mag.nii
+run_test "SSFPGSMAG" $QUITDIR/qicomplex -x ssfp_x_lreg.nii -M ssfp_x_lreg_mag.nii
 run_test "DESPOT2GS" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_mag.nii -n --B1 B1.nii < despot2gs.in
 compare_test "DESPOT2GS" T2.nii D2_T2.nii 0.01
 run_test "SSFPGS2P" $QUITDIR/qissfpbands -2 ssfp_x.nii
-run_test "SSFPGS2PMAG" $QUITDIR/qicomplex -x ssfp_x_lreg_2p.nii -om ssfp_x_lreg_2p_mag.nii
+run_test "SSFPGS2PMAG" $QUITDIR/qicomplex -x ssfp_x_lreg_2p.nii -M ssfp_x_lreg_2p_mag.nii
 run_test "DESPOT2GS2P" $QUITDIR/qidespot2 -e D1_T1.nii ssfp_x_lreg_2p_mag.nii -n -bB1.nii -o 2p < despot2gs.in
 compare_test "DESPOT2GS2P" T2.nii 2pD2_T2.nii 0.05
 

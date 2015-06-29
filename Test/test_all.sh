@@ -5,8 +5,10 @@
 
 source ./test_common.sh
 
-run_test "SCDESPOT" ./test_scdespot.sh
-run_test "MCDESPOT" ./test_mcdespot.sh
+run_test "SC"    ./test_scdespot.sh
 run_test "RELAX" ./test_relax.sh
+run_test "FM"    ./test_fm.sh
+run_test "2C"    ./test_2C.sh
+run_test "3C"    ./test_3C.sh
 
 echo "Finished tests."

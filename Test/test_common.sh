@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Tobias Wood 2015
 # Common functions for QUITK Tests
@@ -70,6 +70,6 @@ function compare_test {
 }
 
 # Setup environment
-QUITDIR=$PWD/../
+QUITDIR=$PWD/..
 export QUIT_EXT=NIFTI
 #QUITVER=$(cat ../src/version | sed -e 's/^"//'  -e 's/"$//')
