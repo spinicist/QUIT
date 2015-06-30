@@ -88,7 +88,7 @@ ArrayXcd SPGRSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
 
 ArrayXd SPGRSimple::weights(const double f0) const {
 	// Weight SPGR images higher than SSFP
-	return ArrayXd::Ones(size()) * 1.3;
+	return ArrayXd::Ones(size());
 }
 
 SPGRFinite::SPGRFinite(const ArrayXd &flip, const double TR, const double Trf, const double TE) :
@@ -214,7 +214,7 @@ Array2d SSFPSimple::bandwidth() const {
 ArrayXd SSFPSimple::weights(const double f0) const {
 	ArrayXd phase = m_phases;
 	ArrayXd offset = phase + (M_PI * f0*m_TR);
-	ArrayXd weight = (offset / 2).sin().square();
+	ArrayXd weight = 0.75 * (offset / 2).sin().square();
 	ArrayXXd allWeights = weight.transpose().replicate(m_flip.size(), 1);
 	ArrayXd weights = Map<ArrayXd>(allWeights.data(), size());
 	return weights;
