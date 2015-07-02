@@ -40,9 +40,10 @@ typedef itk::VectorImage<float, 3> TVImage;
 typedef itk::VectorImage<complex<float>, 3> TCVImage;
 
 class SignalsFilter : public itk::ImageToImageFilter<TImage, TCVImage> {
-private:
+protected:
 	shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<Model> m_model;
+	double m_sigma = 0.0;
 
 public:
 	/** Standard class typedefs. */
@@ -95,6 +96,7 @@ public:
 		m_model = m;
 		this->SetNumberOfRequiredInputs(m_model->nParameters());
 	}
+	void SetSigma(const double s) { m_sigma = s; }
 
 	virtual void GenerateOutputInformation() override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
@@ -132,8 +134,18 @@ protected:
 				for (size_t i = 0; i < inIters.size(); i++) {
 					parameters[i] = inIters[i].Get();
 				}
-				VectorXcf allData = m_sequence->signal(m_model, parameters).cast<complex<float>>();
-				itk::VariableLengthVector<complex<float>> dataVector(allData.data(), m_sequence->size());
+				VectorXcd allData = m_sequence->signal(m_model, parameters);
+				if (m_sigma != 0.0) {
+					VectorXcd noise(m_sequence->size());
+					// Simple Box Muller transform
+					ArrayXd U = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
+					ArrayXd V = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
+					noise.real() = (m_sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
+					noise.imag() = (m_sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
+					allData += noise;
+				}
+				VectorXcf floatData = allData.cast<complex<float>>();
+				itk::VariableLengthVector<complex<float>> dataVector(floatData.data(), m_sequence->size());
 				outputIter.Set(dataVector);
 			}
 			if (this->GetMask())
@@ -308,6 +320,7 @@ int main(int argc, char **argv)
 	 **************************************************************************/
 	SignalsFilter::Pointer calcSignal = SignalsFilter::New();
 	calcSignal->SetModel(model);
+	calcSignal->SetSigma(sigma);
 	vector<QI::ReadImageF::Pointer> pFiles(model->nParameters());
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
