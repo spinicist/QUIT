@@ -88,12 +88,15 @@ public:
 	}
 };
 
-class FMAlgo : public Algorithm<double> {
+template<typename T>
+class FMAlgo : public Algorithm<T> {
 protected:
 	const shared_ptr<SCD> m_model = make_shared<SCD>();
 	shared_ptr<SSFPSimple> m_sequence;
 
 public:
+	typedef typename Algorithm<T>::TArray TArray;
+
 	void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
 
 	size_t numInputs() const override  { return m_sequence->count(); }
@@ -103,12 +106,12 @@ public:
 
 	virtual TArray defaultConsts() {
 		// T1 & B1
-		VectorXd def = VectorXd::Ones(2);
+		TArray def = TArray::Ones(2);
 		return def;
 	}
 };
 
-class FMLMAlgo : public FMAlgo {
+class FMLMAlgo : public FMAlgo<double> {
 protected:
 	static const int m_iterations = 15;
 
@@ -161,8 +164,74 @@ public:
 	}
 };
 
+class XFMFunctor : public DenseFunctor<double> {
+public:
+	const shared_ptr<SequenceBase> m_sequence;
+	shared_ptr<SCD> m_model;
+	ArrayXcd m_data;
+	const double m_T1, m_B1;
 
-class FMSRCAlgo : public FMAlgo {
+	XFMFunctor(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const ArrayXcd &d, const double T1, const double B1) :
+		DenseFunctor<double>(3, s->size()),
+		m_model(m), m_sequence(s), m_data(d),
+		m_T1(T1), m_B1(B1)
+	{
+		assert(static_cast<size_t>(m_data.rows()) == values());
+	}
+
+	const bool constraint(const VectorXd &params) const {
+		Array4d fullparams;
+		fullparams << params(0), m_T1, params(1), params(2);
+		return m_model->ValidParameters(fullparams);
+	}
+
+	int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+		eigen_assert(diffs.size() == values());
+
+		ArrayXd fullparams(5);
+		fullparams << params(0), m_T1, params(1), params(2), m_B1;
+		ArrayXcd s = m_sequence->signal(m_model, fullparams);
+		diffs = (s - m_data).abs();
+		return 0;
+	}
+};
+
+class XFMLMAlgo : public FMAlgo<complex<double>> {
+protected:
+	static const int m_iterations = 15;
+
+public:
+	virtual void apply(const TInput &data, const TArray &inputs,
+					   TArray &op, TArray &resids) const override
+	{
+		const double T1 = inputs[0];
+		const double B1 = inputs[1];
+		if (isfinite(T1) && (T1 > 0.001)) {
+			complex<double> avg = data.mean();
+			XFMFunctor full(m_model, m_sequence, data, T1, B1);
+			NumericalDiff<XFMFunctor> fullDiff(full);
+			LevenbergMarquardt<NumericalDiff<XFMFunctor>> fullLM(fullDiff);
+			VectorXd P(3); P << abs(avg) * 2.5, 0.045 * T1, arg(avg);
+			fullLM.minimize(P);
+			// PD sometimes go -ve, which is perfectly valid from the maths
+			if (P[0] < 0) {
+				P[0] = -P[0];
+				P[2] = -P[2];
+			}
+			P[1] = clamp(P[1], 0.001, T1);
+			VectorXd pfull(5); pfull << P[0], T1, P[1], P[2], B1; // Now include EVERYTHING to get a residual
+			ArrayXcd theory = m_sequence->signal(m_model, pfull);
+			resids = (data - theory).abs();
+			op = P;
+		} else {
+			// No point in processing -ve T1
+			op.setZero();
+			resids.setZero();
+		}
+	}
+};
+
+class FMSRCAlgo : public FMAlgo<double> {
 private:
 	size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
 	Array2d m_f0Bounds = Array2d::Zero();
@@ -208,10 +277,9 @@ int main(int argc, char **argv) {
 
 	int start_slice = 0, stop_slice = 0;
 	int verbose = false, prompt = true, all_residuals = false,
-	    fitFinite = false, flipData = false;
+	    fitFinite = false, flipData = false, use_complex = false, use_src = false;
 	string outPrefix;
 	QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
-	shared_ptr<FMAlgo> fm = make_shared<FMLMAlgo>();
 
 	const string usage {
 	"Usage is: despot2-fm [options] T1_map ssfp_file\n\
@@ -225,6 +293,7 @@ int main(int argc, char **argv) {
 		--B1, -b file     : B1 Map file (ratio)\n\
 		--algo, -a l      : Use 2-step LM algorithm (default)\n\
 				   s      : Use Stochastic Region Contraction\n\
+				   x      : Fit to complex data\n\
 		--start, -s N     : Start processing from slice N\n\
 		--stop, -p  N     : Stop processing at slice N\n\
 		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
@@ -261,8 +330,12 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'a':
 			switch (*optarg) {
-				case 'l': fm = make_shared<FMLMAlgo>();  if (verbose) cout << "LM algorithm selected." << endl; break;
-				case 's': fm = make_shared<FMSRCAlgo>(); if (verbose) cout << "SRC algorithm selected." << endl; break;
+				case 'l': if (verbose) cout << "LM algorithm selected." << endl; break;
+				case 's': use_src = true; if (verbose) cout << "SRC algorithm selected." << endl; break;
+				case 'x':
+					use_complex = true;
+					if (verbose) cout << "XFM algorithm selected." << endl;
+					break;
 				default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
 			} break;
 			default: break;
@@ -329,44 +402,93 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
 	auto T1 = QI::ReadImageF::New();
 	T1->SetFileName(argv[optind++]);
-	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-	auto ssfpFile = QI::ReadTimeseriesF::New();
-	auto ssfpData = QI::TimeseriesToVectorF::New();
-	auto ssfpFlip = QI::ReorderF::New();
-	ssfpFile->SetFileName(argv[optind++]);
-	ssfpData->SetInput(ssfpFile->GetOutput());
-	ssfpFlip->SetInput(ssfpData->GetOutput());
-	if (flipData) {
-		ssfpFlip->SetStride(ssfpSequence->phases());
+
+	if (use_complex) {
+		if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
+		auto ssfpFile = QI::ReadTimeseriesXF::New();
+		auto ssfpData = QI::TimeseriesToVectorXF::New();
+		auto ssfpFlip = QI::ReorderXF::New();
+		ssfpFile->SetFileName(argv[optind++]);
+		ssfpData->SetInput(ssfpFile->GetOutput());
+		ssfpFlip->SetInput(ssfpData->GetOutput());
+		if (flipData) {
+			ssfpFlip->SetStride(ssfpSequence->phases());
+		}
+		typedef itk::ApplyAlgorithmSliceBySliceFilter<XFMLMAlgo, complex<float>, float, 3> TFMFilter;
+		auto apply = TFMFilter::New();
+		shared_ptr<XFMLMAlgo> fm = make_shared<XFMLMAlgo>();
+		fm->setSequence(ssfpSequence);
+		apply->SetAlgorithm(fm);
+		apply->SetInput(0, ssfpFlip->GetOutput());
+		apply->SetConst(0, T1->GetOutput());
+		apply->SetSlices(start_slice, stop_slice);
+		if (B1) {
+			apply->SetConst(1, B1->GetOutput());
+		}
+		if (mask) {
+			apply->SetMask(mask->GetOutput());
+		}
+		time_t startTime;
+		if (verbose) {
+			startTime = QI::printStartTime();
+			auto monitor = QI::SliceMonitor<TFMFilter>::New();
+			apply->AddObserver(itk::IterationEvent(), monitor);
+		}
+		apply->Update();
+		if (verbose) {
+			QI::printElapsedTime(startTime);
+			cout << "Writing output files." << endl;
+		}
+		outPrefix = outPrefix + "FM_";
+		QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+		QI::writeResult(apply->GetOutput(1), outPrefix + "T2.nii");
+		QI::writeResult(apply->GetOutput(2), outPrefix + "f0.nii");
+		QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	} else {
+		if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
+		auto ssfpFile = QI::ReadTimeseriesF::New();
+		auto ssfpData = QI::TimeseriesToVectorF::New();
+		auto ssfpFlip = QI::ReorderF::New();
+		ssfpFile->SetFileName(argv[optind++]);
+		ssfpData->SetInput(ssfpFile->GetOutput());
+		ssfpFlip->SetInput(ssfpData->GetOutput());
+		if (flipData) {
+			ssfpFlip->SetStride(ssfpSequence->phases());
+		}
+		typedef itk::ApplyAlgorithmSliceBySliceFilter<FMAlgo<double>, float, float, 3> TFMFilter;
+		auto apply = TFMFilter::New();
+		shared_ptr<FMAlgo<double>> fm;
+		if (use_src)
+			fm = make_shared<FMSRCAlgo>();
+		else
+			fm = make_shared<FMLMAlgo>();
+		fm->setSequence(ssfpSequence);
+		apply->SetAlgorithm(fm);
+		apply->SetInput(0, ssfpFlip->GetOutput());
+		apply->SetConst(0, T1->GetOutput());
+		apply->SetSlices(start_slice, stop_slice);
+		if (B1) {
+			apply->SetConst(1, B1->GetOutput());
+		}
+		if (mask) {
+			apply->SetMask(mask->GetOutput());
+		}
+		time_t startTime;
+		if (verbose) {
+			startTime = QI::printStartTime();
+			auto monitor = QI::SliceMonitor<TFMFilter>::New();
+			apply->AddObserver(itk::IterationEvent(), monitor);
+		}
+		apply->Update();
+		if (verbose) {
+			QI::printElapsedTime(startTime);
+			cout << "Writing output files." << endl;
+		}
+		outPrefix = outPrefix + "FM_";
+		QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+		QI::writeResult(apply->GetOutput(1), outPrefix + "T2.nii");
+		QI::writeResult(apply->GetOutput(2), outPrefix + "f0.nii");
+		QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 	}
-	typedef itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, FMAlgo> TFMFilter;
-	auto apply = TFMFilter::New();
-	fm->setSequence(ssfpSequence);
-	apply->SetAlgorithm(fm);
-	apply->SetInput(0, ssfpFlip->GetOutput());
-	apply->SetConst(0, T1->GetOutput());
-	apply->SetSlices(start_slice, stop_slice);
-	if (B1) {
-		apply->SetConst(1, B1->GetOutput());
-	}
-	if (mask) {
-		apply->SetMask(mask->GetOutput());
-	}
-	time_t startTime;
-	if (verbose) {
-		startTime = QI::printStartTime();
-		auto monitor = QI::SliceMonitor<TFMFilter>::New();
-		apply->AddObserver(itk::IterationEvent(), monitor);
-	}
-	apply->Update();
-	if (verbose) {
-		QI::printElapsedTime(startTime);
-		cout << "Writing output files." << endl;
-	}
-	outPrefix = outPrefix + "FM_";
-	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-	QI::writeResult(apply->GetOutput(1), outPrefix + "T2.nii");
-	QI::writeResult(apply->GetOutput(2), outPrefix + "f0.nii");
-	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 	return EXIT_SUCCESS;
 }
