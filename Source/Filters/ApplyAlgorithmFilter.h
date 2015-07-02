@@ -32,38 +32,37 @@ public:
 
 namespace itk{
 
-template<typename TInImage, typename TAlgo>
-class ApplyAlgorithmFilter : public ImageToImageFilter<TInImage, TInImage> {
+template<typename TAlgorithm , typename TData, typename TScalar, unsigned int ImageDim>
+class ApplyAlgorithmFilter :
+	public ImageToImageFilter<VectorImage<TData, ImageDim>, VectorImage<TScalar, ImageDim>>
+{
 public:
-	static const unsigned int                    ImageDimension = TInImage::ImageDimension;
-	typedef typename TInImage::InternalPixelType TPixel;
-	typedef typename TInImage::PixelType         TVector;
-	typedef Image<TPixel, ImageDimension>        TImage;
-	typedef TInImage                             TVectorImage;
-	typedef TAlgo                                TAlgorithm;
+	typedef VectorImage<TData, ImageDim>   TDataVectorImage;
+	typedef VectorImage<TScalar, ImageDim> TScalarVectorImage;
+	typedef Image<TScalar, ImageDim>       TScalarImage;
 
-	typedef ApplyAlgorithmFilter                   Self;
-	typedef ImageToImageFilter<TInImage, TInImage> Superclass;
-	typedef SmartPointer<Self>                     Pointer;
-	typedef typename TImage::RegionType            TRegion;
+	typedef ApplyAlgorithmFilter                                     Self;
+	typedef ImageToImageFilter<TDataVectorImage, TScalarVectorImage> Superclass;
+	typedef SmartPointer<Self>                                       Pointer;
+	typedef typename TScalarImage::RegionType                        TRegion;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
-	void SetAlgorithm(const shared_ptr<TAlgo> &a);
-	shared_ptr<const TAlgo> GetAlgorithm() const;
+	void SetAlgorithm(const shared_ptr<TAlgorithm> &a);
+	shared_ptr<const TAlgorithm> GetAlgorithm() const;
 	void SetScaleToMean(const bool s);
 	bool GetScaleToMean() const;
 
-	void SetInput(const size_t i, const TVectorImage *img);
-	typename TVectorImage::ConstPointer GetInput(const size_t i) const;
-	void SetConst(const size_t i, const TImage *img);
-	typename TImage::ConstPointer GetConst(const size_t i) const;
-	void SetMask(const TImage *mask);
-	typename TImage::ConstPointer GetMask() const;
+	void SetInput(const size_t i, const TDataVectorImage *img);
+	typename TDataVectorImage::ConstPointer GetInput(const size_t i) const;
+	void SetConst(const size_t i, const TScalarImage *img);
+	typename TScalarImage::ConstPointer GetConst(const size_t i) const;
+	void SetMask(const TScalarImage *mask);
+	typename TScalarImage::ConstPointer GetMask() const;
 
-	TImage *GetOutput(const size_t i);
-	TVectorImage *GetResidOutput();
+	TScalarImage *GetOutput(const size_t i);
+	TScalarVectorImage *GetResidOutput();
 
 	virtual void GenerateOutputInformation() override;
 
@@ -74,7 +73,7 @@ protected:
 	virtual void ThreadedGenerateData(const TRegion &outputRegionForThread, ThreadIdType threadId) override;
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
-	shared_ptr<TAlgo> m_algorithm;
+	shared_ptr<TAlgorithm> m_algorithm;
 	bool m_scale_to_mean = false;
 
 private:

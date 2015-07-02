@@ -9,23 +9,24 @@
 
 namespace itk{
 
-template<typename TVImage, typename TAlgo>
-class ApplyAlgorithmSliceBySliceFilter : public ApplyAlgorithmFilter<TVImage, TAlgo> {
+template<typename TAlgorithm , typename TData, typename TScalar, unsigned int ImageDim>
+class ApplyAlgorithmSliceBySliceFilter :
+	public ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim> {
 public:
-	typedef ApplyAlgorithmSliceBySliceFilter       Self;
-	typedef ApplyAlgorithmFilter<TVImage, TAlgo>   Superclass;
-	typedef SmartPointer<Self>                     Pointer;
+	typedef ApplyAlgorithmSliceBySliceFilter                           Self;
+	typedef ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim> Superclass;
+	typedef SmartPointer<Self>                                         Pointer;
 
-	static const unsigned int                   ImageDimension = Superclass::ImageDimension;
-	typedef typename Superclass::TPixel         TPixel;
-	typedef typename Superclass::TVector        TVector;
-	typedef typename Superclass::TImage         TImage;
-	typedef typename Superclass::TVectorImage   TVectorImage;
+	typedef typename Superclass::TDataVectorImage   TDataVectorImage;
+	typedef typename Superclass::TScalarVectorImage TScalarVectorImage;
+	typedef typename Superclass::TScalarImage       TScalarImage;
 
-	static const unsigned int                   SliceDimension = Superclass::ImageDimension - 1;
-	typedef Image<TPixel, SliceDimension>       TSlice;
-	typedef VectorImage<TPixel, SliceDimension> TVectorSlice;
-	typedef ApplyAlgorithmFilter<TVectorSlice, TAlgo> TSliceFilter;
+	static const unsigned int SliceDim =   ImageDim - 1;
+	typedef VectorImage<TData, SliceDim>   TDataVectorSlice;
+	typedef VectorImage<TScalar, SliceDim> TScalarVectorSlice;
+	typedef Image<TScalar, SliceDim>       TScalarSlice;
+
+	typedef ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, SliceDim> TSliceFilter;
 
 	itkNewMacro(Self);
 	itkTypeMacro(ApplyAlgorithmSliceBySliceFilter, ApplyAlgorithmFilter);

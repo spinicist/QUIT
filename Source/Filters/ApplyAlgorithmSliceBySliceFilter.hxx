@@ -3,14 +3,14 @@
 
 namespace itk {
 
-template<typename TVImage, typename TAlgo>
-ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::ApplyAlgorithmSliceBySliceFilter() :
-	ApplyAlgorithmFilter<TVImage, TAlgo>() {
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::ApplyAlgorithmSliceBySliceFilter() :
+	ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>() {
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 }
 
-template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::VerifyInputInformation() {
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::VerifyInputInformation() {
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	Superclass::VerifyInputInformation();
 
@@ -19,17 +19,17 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::VerifyInputInformation() 
 	}
 }
 
-template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::SetSlices(const int start, const int stop) {
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::SetSlices(const int start, const int stop) {
 	m_startSlice = start;
 	m_stopSlice = stop;
 }
 
-template<typename TVImage, typename TAlgo>
-int ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GetSliceIndex() const { return m_sliceIndex; }
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+int ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::GetSliceIndex() const { return m_sliceIndex; }
 
-template<typename TVImage, typename TAlgo>
-void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() {
 	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	const int numInputs = this->m_algorithm->numInputs();
 	const int numConsts = this->m_algorithm->numConsts();
@@ -37,16 +37,16 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 
 	//this->AllocateOutputs();
 
-	const typename TVectorImage::RegionType requestedRegion = this->GetOutput( 0 )->GetRequestedRegion();
-	const typename TVectorImage::RegionType::IndexType requestedIndex = requestedRegion.GetIndex();
-	const typename TVectorImage::RegionType::SizeType requestedSize = requestedRegion.GetSize();
+	const typename TDataVectorImage::RegionType requestedRegion = this->GetOutput( 0 )->GetRequestedRegion();
+	const typename TDataVectorImage::RegionType::IndexType requestedIndex = requestedRegion.GetIndex();
+	const typename TDataVectorImage::RegionType::SizeType requestedSize = requestedRegion.GetSize();
 
-	typename TVectorSlice::RegionType vectorSliceInputRegion, vectorSliceOutputRegion;
-	typename TSlice::RegionType sliceInputRegion, sliceOutputRegion;
+	typename TDataVectorSlice::RegionType vectorSliceInputRegion, vectorSliceOutputRegion;
+	typename TScalarSlice::RegionType sliceInputRegion, sliceOutputRegion;
 	// copy the requested region to the internal slice region in dimension order
 	unsigned int slice_i = 0;
-	for (unsigned int i = 0; slice_i < SliceDimension; ++i, ++slice_i) {
-		if (i == SliceDimension ) {
+	for (unsigned int i = 0; slice_i < SliceDim; ++i, ++slice_i) {
+		if (i == SliceDim ) {
 			++i;
 		}
 		vectorSliceOutputRegion.SetSize(slice_i, requestedSize[i]);
@@ -61,49 +61,49 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 
 	// Allocate storage for slices
 	//std::cout << "Setting storage for inputs" << std::endl;
-	std::vector<typename TVectorSlice::Pointer> inputSlices(numInputs);
+	std::vector<typename TDataVectorSlice::Pointer> inputSlices(numInputs);
 	for (unsigned int i = 0; i < numInputs; i++) {
 		const auto ip = this->GetInput(i);
-		const typename TVectorImage::IndexType originIndex = ip->GetRequestedRegion().GetIndex();
-		typename TVectorImage::PointType inputOrigin;
+		const typename TDataVectorImage::IndexType originIndex = ip->GetRequestedRegion().GetIndex();
+		typename TDataVectorImage::PointType inputOrigin;
 		ip->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
 
-		typename TVectorSlice::SpacingType sliceSpacing;
-		typename TVectorSlice::PointType sliceOrigin;
+		typename TDataVectorSlice::SpacingType sliceSpacing;
+		typename TDataVectorSlice::PointType sliceOrigin;
 		unsigned int s = 0;
-		for (unsigned int dim = 0; s < SliceDimension; ++dim, ++s) {
-			if (dim == SliceDimension) {
+		for (unsigned int dim = 0; s < SliceDim; ++dim, ++s) {
+			if (dim == SliceDim) {
 				++dim;
 			}
 			sliceSpacing[s] = ip->GetSpacing()[dim];
 			sliceOrigin[s] = inputOrigin[dim];
 		}
-		inputSlices[i] = TVectorSlice::New();
+		inputSlices[i] = TDataVectorSlice::New();
 		inputSlices[i]->SetSpacing(sliceSpacing);
 		inputSlices[i]->SetOrigin(sliceOrigin);
 		inputSlices[i]->SetNumberOfComponentsPerPixel(ip->GetNumberOfComponentsPerPixel());
 	}
 
 	//std::cout << "Setting storage for consts" << std::endl;
-	std::vector<typename TSlice::Pointer> constSlices(numConsts);
+	std::vector<typename TScalarSlice::Pointer> constSlices(numConsts);
 	for (unsigned int i = 0; i < numConsts; i++) {
 		const auto cp = this->GetConst(i);
 		if (cp) {
-			const typename TImage::IndexType originIndex = cp->GetRequestedRegion().GetIndex();
-			typename TImage::PointType inputOrigin;
+			const typename TScalarImage::IndexType originIndex = cp->GetRequestedRegion().GetIndex();
+			typename TScalarImage::PointType inputOrigin;
 			cp->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
 
-			typename TSlice::SpacingType sliceSpacing;
-			typename TSlice::PointType sliceOrigin;
+			typename TScalarSlice::SpacingType sliceSpacing;
+			typename TScalarSlice::PointType sliceOrigin;
 			unsigned int s = 0;
-			for (unsigned int dim = 0; s < SliceDimension; ++dim, ++s) {
-				if (dim == SliceDimension) {
+			for (unsigned int dim = 0; s < SliceDim; ++dim, ++s) {
+				if (dim == SliceDim) {
 					++dim;
 				}
 				sliceSpacing[s] = this->GetConst(i)->GetSpacing()[dim];
 				sliceOrigin[s] = inputOrigin[dim];
 			}
-			constSlices[i] = TSlice::New();
+			constSlices[i] = TScalarSlice::New();
 			constSlices[i]->SetSpacing(sliceSpacing);
 			constSlices[i]->SetOrigin(sliceOrigin);
 		} else {
@@ -112,24 +112,24 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 	}
 
 	//std::cout << "Setting storage for mask" << std::endl;
-	typename TSlice::Pointer maskSlice = ITK_NULLPTR;
+	typename TScalarSlice::Pointer maskSlice = ITK_NULLPTR;
 	if (this->GetMask()) {
 		const auto mp = this->GetMask();
-		const typename TImage::IndexType originIndex = mp->GetRequestedRegion().GetIndex();
-		typename TImage::PointType inputOrigin;
+		const typename TScalarImage::IndexType originIndex = mp->GetRequestedRegion().GetIndex();
+		typename TScalarImage::PointType inputOrigin;
 		mp->TransformIndexToPhysicalPoint(originIndex, inputOrigin);
 
-		typename TSlice::SpacingType sliceSpacing;
-		typename TSlice::PointType sliceOrigin;
+		typename TScalarSlice::SpacingType sliceSpacing;
+		typename TScalarSlice::PointType sliceOrigin;
 		unsigned int s = 0;
-		for (unsigned int dim = 0; s < SliceDimension; ++dim, ++s) {
-			if (dim == SliceDimension) {
+		for (unsigned int dim = 0; s < SliceDim; ++dim, ++s) {
+			if (dim == SliceDim) {
 				++dim;
 			}
 			sliceSpacing[s] = this->GetMask()->GetSpacing()[dim];
 			sliceOrigin[s] = inputOrigin[dim];
 		}
-		maskSlice = TSlice::New();
+		maskSlice = TScalarSlice::New();
 		maskSlice->SetSpacing(sliceSpacing);
 		maskSlice->SetOrigin(sliceOrigin);
 	}
@@ -137,30 +137,30 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 	for (int i = 0; i < numOutputs; i++) {
 		this->GetOutput(i)->FillBuffer(0);
 	}
-	TVector zero(this->GetResidOutput()->GetNumberOfComponentsPerPixel());
+	VariableLengthVector<TScalar> zero(this->GetResidOutput()->GetNumberOfComponentsPerPixel());
 	zero.Fill(0);
 	this->GetResidOutput()->FillBuffer(zero);
 
 	//std::cout << "Starting" << std::endl;
-	const int sliceRangeMax = (requestedSize[SliceDimension] + requestedIndex[SliceDimension]);
+	const int sliceRangeMax = (requestedSize[SliceDim] + requestedIndex[SliceDim]);
 	if (m_stopSlice == 0)
 		m_stopSlice = sliceRangeMax;
 	ProgressReporter progress(this, 0, sliceRangeMax);
-	for (m_sliceIndex = requestedIndex[SliceDimension]; m_sliceIndex < sliceRangeMax; ++m_sliceIndex ) {
+	for (m_sliceIndex = requestedIndex[SliceDim]; m_sliceIndex < sliceRangeMax; ++m_sliceIndex ) {
 		// this region is the current output region we are iterating on
-		typename TVectorImage::RegionType vectorOutputRegion = this->GetOutput(0)->GetRequestedRegion();
-		typename TImage::RegionType outputRegion;
-		vectorOutputRegion.SetIndex(SliceDimension, m_sliceIndex);
-		vectorOutputRegion.SetSize(SliceDimension, 1);
+		typename TScalarVectorImage::RegionType vectorOutputRegion = this->GetOutput(0)->GetRequestedRegion();
+		typename TScalarImage::RegionType outputRegion;
+		vectorOutputRegion.SetIndex(SliceDim, m_sliceIndex);
+		vectorOutputRegion.SetSize(SliceDim, 1);
 		outputRegion.SetIndex(vectorOutputRegion.GetIndex());
 		outputRegion.SetSize(vectorOutputRegion.GetSize());
 
 		if ((m_sliceIndex >= m_startSlice) && (m_sliceIndex < m_stopSlice)) {
 			this->InvokeEvent(IterationEvent());
-			typename TVectorImage::RegionType vectorInputRegion = this->GetInput(0)->GetRequestedRegion();
-			typename TImage::RegionType inputRegion;
-			vectorInputRegion.SetIndex(SliceDimension, m_sliceIndex);
-			vectorInputRegion.SetSize(SliceDimension, 1);
+			typename TDataVectorImage::RegionType vectorInputRegion = this->GetInput(0)->GetRequestedRegion();
+			typename TScalarImage::RegionType inputRegion;
+			vectorInputRegion.SetIndex(SliceDim, m_sliceIndex);
+			vectorInputRegion.SetSize(SliceDim, 1);
 			inputRegion.SetIndex(vectorInputRegion.GetIndex());
 			inputRegion.SetSize(vectorInputRegion.GetSize());
 
@@ -209,13 +209,14 @@ void ApplyAlgorithmSliceBySliceFilter<TVImage, TAlgo>::GenerateData() {
 		}
 		//std::cout << "Finised loop" << std::endl;
 	}
+	//std::cout << "Finished" << std::endl;
 }
 
-template< typename TImage, typename TAlgo>
-void ApplyAlgorithmSliceBySliceFilter<TImage, TAlgo>::PrintSelf(std::ostream & os, Indent indent) const {
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::PrintSelf(std::ostream & os, Indent indent) const {
 	Superclass::PrintSelf(os, indent);
 
-	os << indent << "Dimension: " << SliceDimension << std::endl;
+	os << indent << "Dimension: " << SliceDim << std::endl;
 	os << indent << "SliceIndex: " << m_sliceIndex << std::endl;
 }
 
