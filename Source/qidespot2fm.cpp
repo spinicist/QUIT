@@ -123,16 +123,18 @@ public:
 		if (isfinite(T1) && (T1 > 0.001)) {
 			const double B1 = inputs[1];
 
-			double   bestF = numeric_limits<double>::infinity();
+            double bestF = numeric_limits<double>::infinity();
 			for (int j = 1; j < 3; j++) {
 				const double T2 = 0.045 * T1 * j; // From a Yarnykh paper T2/T1 = 0.045 in brain at 3T. Try the longer value for CSF
-				for (int i = 0; i < 2; i++) {
+                Array2d b = m_sequence->bandwidth();
+                double bw = b[1] - b[0];
+                for (float f0guess = b[0] / 10.; f0guess < b[1] / 10.; f0guess += bw / 20.) {
 					// First fix T2 and f0 to different starting points
 					FixT2 fixT2(m_model, m_sequence, data, T1, T2, B1);
 					NumericalDiff<FixT2> fixT2Diff(fixT2);
 					LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
 					fixT2LM.setMaxfev(m_iterations * (m_sequence->size() + 1));
-					VectorXd g(2); g << data.maxCoeff() * 2.5, 10. * i;
+                    VectorXd g(2); g << data.maxCoeff() * 2.5, f0guess;
 					fixT2LM.minimize(g);
 
 					// Now fit everything together
@@ -142,7 +144,7 @@ public:
 					VectorXd fullP(3); fullP << g[0], T2, g[1]; // Now include T2
 					fullLM.minimize(fullP);
 
-					double F = fullLM.fnorm();
+                    double F = fullLM.fnorm();
 					if (F < bestF) {
 						outputs = fullP;
 						bestF = F;
@@ -179,12 +181,6 @@ public:
 		assert(static_cast<size_t>(m_data.rows()) == values());
 	}
 
-	const bool constraint(const VectorXd &params) const {
-		Array4d fullparams;
-		fullparams << params(0), m_T1, params(1), params(2);
-		return m_model->ValidParameters(fullparams);
-	}
-
 	int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
 		eigen_assert(diffs.size() == values());
 
@@ -210,19 +206,24 @@ public:
 			complex<double> avg = data.mean();
 			XFMFunctor full(m_model, m_sequence, data, T1, B1);
 			NumericalDiff<XFMFunctor> fullDiff(full);
-			LevenbergMarquardt<NumericalDiff<XFMFunctor>> fullLM(fullDiff);
-			VectorXd P(3); P << abs(avg) * 2.5, 0.045 * T1, arg(avg);
-			fullLM.minimize(P);
-			// PD sometimes go -ve, which is perfectly valid from the maths
-			if (P[0] < 0) {
-				P[0] = -P[0];
-				P[2] = -P[2];
-			}
-			P[1] = clamp(P[1], 0.001, T1);
-			VectorXd pfull(5); pfull << P[0], T1, P[1], P[2], B1; // Now include EVERYTHING to get a residual
+            LevenbergMarquardt<NumericalDiff<XFMFunctor>> fullLM(fullDiff);
+            double bestF = numeric_limits<double>::infinity();
+            VectorXd bestP;
+            double bw = (2. / m_sequence->TR());
+            for (int f = -1; f < 2; f++) {
+                double f0guess = arg(avg) / (2. * M_PI * m_sequence->TR()) + f * bw;
+                VectorXd P3(3); P3 << abs(avg) * 5.0, 0.045 * T1, f0guess;
+                fullLM.minimize(P3);
+                if (fullLM.fnorm() < bestF) {
+                    bestP = P3;
+                    bestF = fullLM.fnorm();
+                }
+            }
+            //P[1] = clamp(P[1], 0.001, T1);
+            VectorXd pfull(5); pfull << bestP[0], T1, bestP[1], bestP[2], B1; // Now include EVERYTHING to get a residual
 			ArrayXcd theory = m_sequence->signal(m_model, pfull);
 			resids = (data - theory).abs();
-			op = P;
+            op = bestP;
 		} else {
 			// No point in processing -ve T1
 			op.setZero();
@@ -404,7 +405,10 @@ int main(int argc, char **argv) {
 	T1->SetFileName(argv[optind++]);
 
 	if (use_complex) {
-		if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
+        if (verbose) {
+            cout << "Running complex pipelin." << endl;
+            cout << "Opening SSFP file: " << argv[optind] << endl;
+        }
 		auto ssfpFile = QI::ReadTimeseriesXF::New();
 		auto ssfpData = QI::TimeseriesToVectorXF::New();
 		auto ssfpFlip = QI::ReorderXF::New();
@@ -437,7 +441,7 @@ int main(int argc, char **argv) {
 		apply->Update();
 		if (verbose) {
 			QI::printElapsedTime(startTime);
-			cout << "Writing output files." << endl;
+            cout << "Writing output files. Prefix is " << outPrefix << endl;
 		}
 		outPrefix = outPrefix + "FM_";
 		QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
@@ -482,7 +486,7 @@ int main(int argc, char **argv) {
 		apply->Update();
 		if (verbose) {
 			QI::printElapsedTime(startTime);
-			cout << "Writing output files." << endl;
+            cout << "Writing output files. Prefix is " << outPrefix << endl;
 		}
 		outPrefix = outPrefix + "FM_";
 		QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
