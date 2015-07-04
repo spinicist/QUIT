@@ -28,7 +28,7 @@ function run_test {
 	local STATUS=$?
 	if [ $STATUS -ne 0 ]; then
 		printf "Failed.\n" >&2
-		exit $STATUS
+                return $STATUS
 	else
 		printf "Passed.\n" >&1
 	fi
@@ -53,7 +53,6 @@ function compare_test {
 		REGEXP='^-?[0-9]+([.][0-9]+)?(e-?[0-9]+)?$'
 		if ! [[ $ABSMEAN =~ $REGEXP ]] ; then
 			echo "Comparison test $NAME failed, mean diff $ABSMEAN is not a valid number"
-			exit 1
 		fi
 		# Now do the tolerance test
 		TEST=$(echo "$ABSMEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
@@ -61,7 +60,6 @@ function compare_test {
 			echo "Comparison test $NAME passed, mean diff was $ABSMEAN tolerance $TOL (std was $STD)"
 		else
 			echo "Comparison test $NAME failed, mean diff was $ABSMEAN tolerance $TOL (std was $STD)"
-			exit 1
 		fi
 	else
 		echo "FSL not present, skipping test $NAME"
