@@ -104,6 +104,9 @@ class MCDFunctor : public DenseFunctor<double> {
 			eigen_assert(diffs.size() == values());
 			ArrayXcd s = m_sequence->signal(m_model, params);
 			diffs = m_data - s.abs();
+			//cout << __PRETTY_FUNCTION__ << std::endl;
+			//cout << "d " << m_data.transpose() << endl;
+			//cout << "s " << s.abs().transpose() << endl;
 			return 0;
 		}
 };
@@ -182,7 +185,7 @@ int main(int argc, char **argv) {
 	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
 	shared_ptr<Model> model = make_shared<MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
-	typedef itk::ApplyAlgorithmSliceBySliceFilter<QI::VectorImageF, MCDAlgo> TMCDFilter;
+    typedef itk::ApplyAlgorithmSliceBySliceFilter<MCDAlgo> TMCDFilter;
 	auto applySlices = TMCDFilter::New();
 
 	const string usage {

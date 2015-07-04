@@ -330,7 +330,7 @@ int main(int argc, char **argv) {
 	}
 	if (verbose) cout << *ssfp << endl;
 
-	auto DESPOT2 = itk::ApplyAlgorithmFilter<QI::VectorImageF, D2Algo>::New();
+    auto DESPOT2 = itk::ApplyAlgorithmFilter<D2Algo>::New();
 	algo->setSequence(ssfp);
 	algo->setElliptical(elliptical);
 	DESPOT2->SetAlgorithm(algo);

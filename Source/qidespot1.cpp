@@ -269,7 +269,7 @@ int main(int argc, char **argv) {
 	shared_ptr<SPGRSimple> spgrSequence = make_shared<SPGRSimple>(prompt);
 	if (verbose) cout << *spgrSequence;
 	algo->setSequence(spgrSequence);
-	auto apply = itk::ApplyAlgorithmFilter<QI::VectorImageF, D1Algo>::New();
+    auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();
 	apply->SetAlgorithm(algo);
 	apply->SetInput(0, convert->GetOutput());
 	if (mask)
