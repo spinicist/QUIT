@@ -9,7 +9,7 @@
 
 namespace itk{
 
-template<typename TAlgorithm , typename TData, typename TScalar, unsigned int ImageDim>
+template<typename TAlgorithm , typename TData = float, typename TScalar = float, unsigned int ImageDim = 3>
 class ApplyAlgorithmSliceBySliceFilter :
 	public ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim> {
 public:
