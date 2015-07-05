@@ -207,12 +207,13 @@ public:
 			XFMFunctor full(m_model, m_sequence, data, T1, B1);
 			NumericalDiff<XFMFunctor> fullDiff(full);
             LevenbergMarquardt<NumericalDiff<XFMFunctor>> fullLM(fullDiff);
+            fullLM.setMaxfev(50 * (m_sequence->size() + 1));
             double bestF = numeric_limits<double>::infinity();
             VectorXd bestP;
             double bw = (2. / m_sequence->TR());
             for (int f = -1; f < 2; f++) {
-                double f0guess = arg(avg) / (2. * M_PI * m_sequence->TR()) + f * bw;
-                VectorXd P3(3); P3 << abs(avg) * 5.0, 0.045 * T1, f0guess;
+                double f0guess = arg(avg) / (M_PI * m_sequence->TR()) + f * bw;
+                VectorXd P3(3); P3 << data.abs().maxCoeff() * 10.0, 0.045 * T1, f0guess;
                 fullLM.minimize(P3);
                 if (fullLM.fnorm() < bestF) {
                     bestP = P3;
@@ -221,8 +222,8 @@ public:
             }
             //P[1] = clamp(P[1], 0.001, T1);
             VectorXd pfull(5); pfull << bestP[0], T1, bestP[1], bestP[2], B1; // Now include EVERYTHING to get a residual
-			ArrayXcd theory = m_sequence->signal(m_model, pfull);
-			resids = (data - theory).abs();
+            ArrayXcd theory = m_sequence->signal(m_model, pfull);
+            resids = (data - theory).abs();
             op = bestP;
 		} else {
 			// No point in processing -ve T1
@@ -405,10 +406,7 @@ int main(int argc, char **argv) {
 	T1->SetFileName(argv[optind++]);
 
 	if (use_complex) {
-        if (verbose) {
-            cout << "Running complex pipelin." << endl;
-            cout << "Opening SSFP file: " << argv[optind] << endl;
-        }
+        if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
 		auto ssfpFile = QI::ReadTimeseriesXF::New();
 		auto ssfpData = QI::TimeseriesToVectorXF::New();
 		auto ssfpFlip = QI::ReorderXF::New();

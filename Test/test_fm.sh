@@ -31,7 +31,7 @@ SPGR_TR="0.01 "
 SPGR_Trf="0.002"
 SPGR_TE="0.004"
 SSFP_FILE="ssfp.nii"
-SSFP_FLIP="15 45 70"
+SSFP_FLIP="15 60"
 SSFP_TR="0.005"
 SSFP_Trf="0.0025"
 
@@ -39,7 +39,7 @@ function run_tests() {
 PREFIX="$1"
 SSFP_PC="$2"
 
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v -x --noise 0.005 << END_SIG
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v -x --noise 0.002 << END_SIG
 PD.nii
 T1.nii
 T2.nii
@@ -90,12 +90,12 @@ run_test "FM_F"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}F${SSFP_FIL
 run_test "SRC_F" $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}F${SSFP_FILE} -as --finite -o${PREFIX}sF   < ${PREFIX}fm_f_in.txt
 run_test "XFM_F" $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}xF${SSFP_FILE} --finite -ax -o${PREFIX}xF < ${PREFIX}fm_f_in.txt
 
-compare_test "FM"    T2.nii ${PREFIX}FM_T2.nii   0.05
-compare_test "SRC"   T2.nii ${PREFIX}sFM_T2.nii  0.05
-compare_test "XFM"   T2.nii ${PREFIX}xFM_T2.nii  0.05
-compare_test "FM_F"  T2.nii ${PREFIX}FFM_T2.nii  0.05
-compare_test "SRC_F" T2.nii ${PREFIX}sFFM_T2.nii 0.05
-compare_test "XFM_F" T2.nii ${PREFIX}xFFM_T2.nii 0.05
+compare_test "FM"    T2.nii ${PREFIX}FM_T2.nii   0.01
+compare_test "SRC"   T2.nii ${PREFIX}sFM_T2.nii  0.01
+compare_test "XFM"   T2.nii ${PREFIX}xFM_T2.nii  0.015
+compare_test "FM_F"  T2.nii ${PREFIX}FFM_T2.nii  0.01
+compare_test "SRC_F" T2.nii ${PREFIX}sFFM_T2.nii 0.01
+compare_test "XFM_F" T2.nii ${PREFIX}xFFM_T2.nii 0.015
 }
 
 run_tests "2" "0 180"
