@@ -40,10 +40,10 @@ void VectorToImageFilter<TPixel>::GenerateOutputInformation() {
 	outSpacing.Fill(1);
 	outOrigin.Fill(1);
 	outDirection.SetIdentity();
-	for (int i = 0; i < (OutputDimension); i++) {
+	for (int i = 0; i < (InputDimension); i++) {
 		outSpacing[i] = spacing[i];
 		outOrigin[i] =  origin[i];
-		for (int j = 0; j < (OutputDimension); j++) {
+		for (int j = 0; j < (InputDimension); j++) {
 			outDirection[i][j] = direction[i][j];
 		}
 	}
