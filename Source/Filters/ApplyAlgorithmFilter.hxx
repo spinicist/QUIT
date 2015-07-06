@@ -135,17 +135,27 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
 		throw(std::runtime_error("Sequence size (" + to_string(m_algorithm->dataSize()) + ") does not match input size (" + to_string(size) + ")"));
 	}
 
-	auto region = this->GetInput(0)->GetLargestPossibleRegion();
-	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-		auto op = this->GetOutput(i);
-		op->SetRegions(region);
-		op->Allocate();
-	}
-	auto r = this->GetResidOutput();
-	r->SetRegions(region);
-	r->SetNumberOfComponentsPerPixel(size);
-	r->Allocate();
-	//std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
+    auto input =     this->GetInput(0);
+    auto region =    input->GetLargestPossibleRegion();
+    auto spacing =   input->GetSpacing();
+    auto origin =    input->GetOrigin();
+    auto direction = input->GetDirection();
+    for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
+        auto op = this->GetOutput(i);
+        op->SetRegions(region);
+        op->SetSpacing(spacing);
+        op->SetOrigin(origin);
+        op->SetDirection(direction);
+        op->Allocate();
+    }
+    auto r = this->GetResidOutput();
+    r->SetRegions(region);
+    r->SetSpacing(spacing);
+    r->SetOrigin(origin);
+    r->SetDirection(direction);
+    r->SetNumberOfComponentsPerPixel(size);
+    r->Allocate();
+    //std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
