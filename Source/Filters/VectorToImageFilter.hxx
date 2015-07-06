@@ -31,6 +31,25 @@ void VectorToImageFilter<TPixel>::GenerateOutputInformation() {
 	}
 	m_tiler->UpdateLargestPossibleRegion();
 	this->GraftOutput(m_tiler->GetOutput());
+	auto spacing    = in->GetSpacing();
+	auto origin     = in->GetOrigin();
+	auto direction  = in->GetDirection();
+	auto outSpacing   = out->GetSpacing();
+	auto outOrigin    = out->GetOrigin();
+	auto outDirection = out->GetDirection();
+	outSpacing.Fill(1);
+	outOrigin.Fill(1);
+	outDirection.SetIdentity();
+	for (int i = 0; i < (OutputDimension); i++) {
+		outSpacing[i] = spacing[i];
+		outOrigin[i] =  origin[i];
+		for (int j = 0; j < (OutputDimension); j++) {
+			outDirection[i][j] = direction[i][j];
+		}
+	}
+	out->SetSpacing(outSpacing);
+	out->SetOrigin(outOrigin);
+	out->SetDirection(outDirection);
 }
 
 template<typename TPixel>
