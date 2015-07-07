@@ -28,14 +28,17 @@
 using namespace std;
 using namespace Eigen;
 
+template<typename TScalar>
 class FMFunctor : public DenseFunctor<double> {
 public:
+    typedef Array<TScalar, Eigen::Dynamic, 1> TArray;
+
 	const shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<SCD> m_model;
-	ArrayXd m_data;
+    TArray m_data;
 	const double m_T1, m_B1;
 
-	FMFunctor(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const ArrayXd &d, const double T1, const double B1) :
+    FMFunctor(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const TArray &d, const double T1, const double B1) :
 		DenseFunctor<double>(3, s->size()),
 		m_model(m), m_sequence(s), m_data(d),
 		m_T1(T1), m_B1(B1)
@@ -49,16 +52,28 @@ public:
 		return m_model->ValidParameters(fullparams);
 	}
 
-	int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-		eigen_assert(diffs.size() == values());
-
-		ArrayXd fullparams(5);
-		fullparams << params(0), m_T1, params(1), params(2), m_B1;
-		ArrayXcd s = m_sequence->signal(m_model, fullparams);
-		diffs = s.abs() - m_data;
-		return 0;
-	}
+    int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const;
 };
+
+template<>
+int FMFunctor<double>::operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+    eigen_assert(diffs.size() == values());
+    ArrayXd fullparams(5);
+    fullparams << params(0), m_T1, params(1), params(2), m_B1;
+    ArrayXcd s = m_sequence->signal(m_model, fullparams);
+    diffs = s.abs() - m_data;
+    return 0;
+}
+
+template<>
+int FMFunctor<complex<double>>::operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+    eigen_assert(diffs.size() == values());
+    ArrayXd fullparams(5);
+    fullparams << params(0), m_T1, params(1), params(2), m_B1;
+    ArrayXcd s = m_sequence->signal(m_model, fullparams);
+    diffs = (s - m_data).abs();
+    return 0;
+}
 
 class FixT2 : public DenseFunctor<double> {
 public:
@@ -95,9 +110,10 @@ protected:
 	shared_ptr<SSFPSimple> m_sequence;
 
 public:
-	typedef typename Algorithm<T>::TArray TArray;
+    typedef typename Algorithm<T>::TArray TArray;
+    typedef typename Algorithm<T>::TInput TInput;
 
-	void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
+    void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
 
 	size_t numInputs() const override  { return m_sequence->count(); }
 	size_t numConsts() const override  { return 2; }
@@ -111,127 +127,100 @@ public:
 	}
 };
 
-class FMLMAlgo : public FMAlgo<double> {
+template<typename T>
+class LMAlgo : public FMAlgo<T> {
 protected:
 	static const int m_iterations = 15;
-
 public:
-	virtual void apply(const TInput &data, const TArray &inputs,
-					   TArray &outputs, TArray &resids) const override
-	{
-		const double T1 = inputs[0];
-		if (isfinite(T1) && (T1 > 0.001)) {
-			const double B1 = inputs[1];
-
-            double bestF = numeric_limits<double>::infinity();
-			for (int j = 1; j < 3; j++) {
-				const double T2 = 0.045 * T1 * j; // From a Yarnykh paper T2/T1 = 0.045 in brain at 3T. Try the longer value for CSF
-                Array2d b = m_sequence->bandwidth();
-                double bw = b[1] - b[0];
-                for (float f0guess = b[0] / 10.; f0guess < b[1] / 10.; f0guess += bw / 20.) {
-					// First fix T2 and f0 to different starting points
-					FixT2 fixT2(m_model, m_sequence, data, T1, T2, B1);
-					NumericalDiff<FixT2> fixT2Diff(fixT2);
-					LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
-					fixT2LM.setMaxfev(m_iterations * (m_sequence->size() + 1));
-                    VectorXd g(2); g << data.maxCoeff() * 2.5, f0guess;
-					fixT2LM.minimize(g);
-
-					// Now fit everything together
-					FMFunctor full(m_model, m_sequence, data, T1, B1);
-					NumericalDiff<FMFunctor> fullDiff(full);
-					LevenbergMarquardt<NumericalDiff<FMFunctor>> fullLM(fullDiff);
-					VectorXd fullP(3); fullP << g[0], T2, g[1]; // Now include T2
-					fullLM.minimize(fullP);
-
-                    double F = fullLM.fnorm();
-					if (F < bestF) {
-						outputs = fullP;
-						bestF = F;
-					}
-				}
-			}
-			// PD sometimes go -ve, which is perfectly valid from the maths
-			if (outputs[0] < 0)
-				outputs[0] = -outputs[0];
-			outputs[1] = clamp(outputs[1], 0.001, T1);
-			VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
-			ArrayXd theory = m_sequence->signal(m_model, pfull).abs();
-			resids = (data - theory);
-		} else {
-			// No point in processing -ve T1
-			outputs.setZero();
-			resids.setZero();
-		}
-	}
+    typedef typename FMAlgo<T>::TArray TArray;
+    typedef typename FMAlgo<T>::TInput TInput;
+    virtual void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const override;
 };
 
-class XFMFunctor : public DenseFunctor<double> {
-public:
-	const shared_ptr<SequenceBase> m_sequence;
-	shared_ptr<SCD> m_model;
-	ArrayXcd m_data;
-	const double m_T1, m_B1;
+template<>
+void LMAlgo<double>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const
+{
+    const double T1 = inputs[0];
+    if (isfinite(T1) && (T1 > 0.001)) {
+        const double B1 = inputs[1];
 
-	XFMFunctor(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const ArrayXcd &d, const double T1, const double B1) :
-		DenseFunctor<double>(3, s->size()),
-		m_model(m), m_sequence(s), m_data(d),
-		m_T1(T1), m_B1(B1)
-	{
-		assert(static_cast<size_t>(m_data.rows()) == values());
-	}
+        double bestF = numeric_limits<double>::infinity();
+        for (int j = 1; j < 3; j++) {
+            const double T2 = 0.045 * T1 * j; // From a Yarnykh paper T2/T1 = 0.045 in brain at 3T. Try the longer value for CSF
+            Array2d b = m_sequence->bandwidth();
+            double bw = b[1] - b[0];
+            for (float f0guess = b[0] / 2.; f0guess < b[1] / 2.; f0guess += bw / 20.) {
+                // First fix T2 and f0 to different starting points
+                FixT2 fixT2(m_model, m_sequence, data, T1, T2, B1);
+                NumericalDiff<FixT2> fixT2Diff(fixT2);
+                LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
+                fixT2LM.setMaxfev(m_iterations * (m_sequence->size() + 1));
+                VectorXd g(2); g << data.maxCoeff() * 10.0, f0guess;
+                fixT2LM.minimize(g);
 
-	int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-		eigen_assert(diffs.size() == values());
+                // Now fit everything together
+                FMFunctor<double> full(m_model, m_sequence, data, T1, B1);
+                NumericalDiff<FMFunctor<double>> fullDiff(full);
+                LevenbergMarquardt<NumericalDiff<FMFunctor<double>>> fullLM(fullDiff);
+                VectorXd fullP(3); fullP << g[0], T2, g[1]; // Now include T2
+                fullLM.minimize(fullP);
 
-		ArrayXd fullparams(5);
-		fullparams << params(0), m_T1, params(1), params(2), m_B1;
-		ArrayXcd s = m_sequence->signal(m_model, fullparams);
-		diffs = (s - m_data).abs();
-		return 0;
-	}
-};
-
-class XFMLMAlgo : public FMAlgo<complex<double>> {
-protected:
-	static const int m_iterations = 15;
-
-public:
-	virtual void apply(const TInput &data, const TArray &inputs,
-					   TArray &op, TArray &resids) const override
-	{
-		const double T1 = inputs[0];
-		const double B1 = inputs[1];
-		if (isfinite(T1) && (T1 > 0.001)) {
-			complex<double> avg = data.mean();
-			XFMFunctor full(m_model, m_sequence, data, T1, B1);
-			NumericalDiff<XFMFunctor> fullDiff(full);
-            LevenbergMarquardt<NumericalDiff<XFMFunctor>> fullLM(fullDiff);
-            fullLM.setMaxfev(50 * (m_sequence->size() + 1));
-            double bestF = numeric_limits<double>::infinity();
-            VectorXd bestP;
-            double bw = (2. / m_sequence->TR());
-            for (int f = -1; f < 2; f++) {
-                double f0guess = arg(avg) / (M_PI * m_sequence->TR()) + f * bw;
-                VectorXd P3(3); P3 << data.abs().maxCoeff() * 10.0, 0.045 * T1, f0guess;
-                fullLM.minimize(P3);
-                if (fullLM.fnorm() < bestF) {
-                    bestP = P3;
-                    bestF = fullLM.fnorm();
+                double F = fullLM.fnorm();
+                if (F < bestF) {
+                    outputs = fullP;
+                    bestF = F;
                 }
             }
-            //P[1] = clamp(P[1], 0.001, T1);
-            VectorXd pfull(5); pfull << bestP[0], T1, bestP[1], bestP[2], B1; // Now include EVERYTHING to get a residual
-            ArrayXcd theory = m_sequence->signal(m_model, pfull);
-            resids = (data - theory).abs();
-            op = bestP;
-		} else {
-			// No point in processing -ve T1
-			op.setZero();
-			resids.setZero();
-		}
-	}
-};
+        }
+        // PD sometimes go -ve, which is perfectly valid from the maths
+        if (outputs[0] < 0)
+            outputs[0] = -outputs[0];
+        outputs[1] = clamp(outputs[1], 0.001, T1);
+        VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
+        ArrayXd theory = m_sequence->signal(m_model, pfull).abs();
+        resids = (data - theory);
+    } else {
+        // No point in processing -ve T1
+        outputs.setZero();
+        resids.setZero();
+    }
+}
+
+template<>
+void LMAlgo<complex<double>>::apply(const TInput &data, const TArray &inputs,
+                       TArray &op, TArray &resids) const
+{
+    const double T1 = inputs[0];
+    const double B1 = inputs[1];
+    if (isfinite(T1) && (T1 > 0.001)) {
+        complex<double> avg = data.mean();
+        FMFunctor<complex<double>> full(m_model, m_sequence, data, T1, B1);
+        NumericalDiff<FMFunctor<complex<double>>> fullDiff(full);
+        LevenbergMarquardt<NumericalDiff<FMFunctor<complex<double>>>> fullLM(fullDiff);
+        fullLM.setMaxfev(50 * (m_sequence->size() + 1));
+        double bestF = numeric_limits<double>::infinity();
+        VectorXd bestP;
+        double bw = (2. / m_sequence->TR());
+        for (int f = 0; f < 1; f++) {
+            double f0guess = arg(avg) / (M_PI * m_sequence->TR()) + f * bw;
+            VectorXd P3(3); P3 << data.abs().maxCoeff() * 10.0, 0.045 * T1, f0guess;
+            fullLM.minimize(P3);
+            if (fullLM.fnorm() < bestF) {
+                bestP = P3;
+                bestF = fullLM.fnorm();
+            }
+        }
+        //P[1] = clamp(P[1], 0.001, T1);
+        VectorXd pfull(5); pfull << bestP[0], T1, bestP[1], bestP[2], B1; // Now include EVERYTHING to get a residual
+        ArrayXcd theory = m_sequence->signal(m_model, pfull);
+        resids = (data - theory).abs();
+        op = bestP;
+    } else {
+        // No point in processing -ve T1
+        op.setZero();
+        resids.setZero();
+    }
+}
 
 class FMSRCAlgo : public FMAlgo<double> {
 private:
@@ -258,8 +247,8 @@ public:
 			bounds.row(2) = m_sequence->bandwidth();
 			//cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
 			//cout << bounds << endl;
-			FMFunctor func(m_model, m_sequence, data, T1, B1);
-			RegionContraction<FMFunctor> rc(func, bounds, weights, thresh,
+            FMFunctor<double> func(m_model, m_sequence, data, T1, B1);
+            RegionContraction<FMFunctor<double>> rc(func, bounds, weights, thresh,
 											m_samples, m_retain, m_contractions, 0.02, true, false);
 			rc.optimise(outputs);
 			resids = rc.residuals();
@@ -416,9 +405,9 @@ int main(int argc, char **argv) {
 		if (flipData) {
 			ssfpFlip->SetStride(ssfpSequence->phases());
 		}
-		typedef itk::ApplyAlgorithmSliceBySliceFilter<XFMLMAlgo, complex<float>, float, 3> TFMFilter;
+        typedef itk::ApplyAlgorithmSliceBySliceFilter<LMAlgo<complex<double>>, complex<float>, float, 3> TFMFilter;
 		auto apply = TFMFilter::New();
-		shared_ptr<XFMLMAlgo> fm = make_shared<XFMLMAlgo>();
+        auto fm = make_shared<LMAlgo<complex<double>>>();
 		fm->setSequence(ssfpSequence);
 		apply->SetAlgorithm(fm);
 		apply->SetInput(0, ssfpFlip->GetOutput());
@@ -463,7 +452,7 @@ int main(int argc, char **argv) {
 		if (use_src)
 			fm = make_shared<FMSRCAlgo>();
 		else
-			fm = make_shared<FMLMAlgo>();
+            fm = make_shared<LMAlgo<double>>();
 		fm->setSequence(ssfpSequence);
 		apply->SetAlgorithm(fm);
 		apply->SetInput(0, ssfpFlip->GetOutput());
