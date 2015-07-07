@@ -68,7 +68,7 @@ $SSFP_Trf" > ${PREFIX}fm_f_in.txt
 
 run_test "FM"    $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}$SSFP_FILE    -o ${PREFIX}       < ${PREFIX}fm_in.txt
 run_test "SRC"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}$SSFP_FILE    -as -o${PREFIX}s   < ${PREFIX}fm_in.txt
-run_test "XFM"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}xF$SSFP_FILE   -ax -o${PREFIX}x   < ${PREFIX}fm_in.txt
+run_test "XFM"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}x$SSFP_FILE   -ax -o${PREFIX}x  < ${PREFIX}fm_in.txt
 run_test "FM_F"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}F${SSFP_FILE} --finite -o${PREFIX}F       < ${PREFIX}fm_f_in.txt
 run_test "SRC_F" $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}F${SSFP_FILE} -as --finite -o${PREFIX}sF   < ${PREFIX}fm_f_in.txt
 run_test "XFM_F" $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}xF${SSFP_FILE} --finite -ax -o${PREFIX}xF < ${PREFIX}fm_f_in.txt
