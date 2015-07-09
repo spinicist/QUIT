@@ -194,22 +194,7 @@ bool SSFPSimple::isSymmetric() const {
 	}
 	return sym;
 }
-
-Array2d SSFPSimple::bandwidth() const {
-	// For now, assume that if people have 4 phase-cycles they are sensible enough
-	// to space them over 2*pi instead of pi.
-
-	Array2d bw = Array2d::Zero();
-	bw(1) = 0.5/m_TR;
-	if (m_phases.rows() <= 2) {
-		if (!isSymmetric())
-			bw -= bw(1) / 2;
-	} else {
-		if (!isSymmetric())
-			bw(0) = -bw(1);
-	}
-	return bw;
-}
+double SSFPSimple::bwMult() const { return 1.; }
 
 ArrayXd SSFPSimple::weights(const double f0) const {
 	ArrayXd phase = m_phases;
@@ -255,6 +240,7 @@ ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
 	}
 	return s;
 }
+double SSFPFinite::bwMult() const { return 2.; }
 
 SSFPEllipse::SSFPEllipse(const bool prompt) :
 	SteadyState()

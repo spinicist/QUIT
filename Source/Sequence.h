@@ -120,9 +120,10 @@ class SSFPSimple : public SteadyState {
 		string name() const override { return "SSFP"; }
 
 		bool isSymmetric() const;
-		Array2d bandwidth() const;
+        virtual double bwMult() const;
 		ArrayXd weights(const double f0) const override;
 };
+
 class SSFPFinite : public SSFPSimple {
 	public:
 		double m_Trf;
@@ -131,7 +132,10 @@ class SSFPFinite : public SSFPSimple {
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream& os) const override;
 		string name() const override { return "SSFP_Finite"; }
+
+        virtual double bwMult() const override;
 };
+
 class SSFPEllipse : public SteadyState {
 	public:
 		SSFPEllipse(const bool prompt);

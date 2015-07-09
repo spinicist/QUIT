@@ -138,18 +138,6 @@ public:
 };
 
 template<typename T>
-class SRCAlgo : public FMAlgo<T> {
-private:
-    size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
-    Array2d m_f0Bounds = Array2d::Zero();
-
-public:
-    typedef typename FMAlgo<T>::TArray TArray;
-    typedef typename FMAlgo<T>::TInput TInput;
-    virtual void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const override;
-};
-
-template<typename T>
 void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const
 {
     const double T1 = inputs[0];
@@ -158,10 +146,13 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
         double bestF = numeric_limits<double>::infinity();
         for (int j = 1; j < 3; j++) {
             const double T2 = 0.045 * T1 * j; // From a Yarnykh paper T2/T1 = 0.045 in brain at 3T. Try the longer value for CSF
-            Array2d b = this->m_sequence->bandwidth();
-            double bw = b[1] - b[0];
-            for (float f0guess = b[0] / 2.; f0guess < b[1] / 2.; f0guess += bw / 20.) {
-                // First fix T2 and f0 to different starting points
+            double bw = this->m_sequence->bwMult() / (2. * this->m_sequence->TR());
+            double lof0 = -bw;
+            if (this->m_sequence->isSymmetric()) {
+                lof0 = 0.;
+            }
+            for (float f0guess = lof0; f0guess < bw; f0guess += bw / 5.) {
+                // First fix T2 and fit
                 FixT2 fixT2(this->m_model, this->m_sequence, data, T1, T2, B1);
                 NumericalDiff<FixT2> fixT2Diff(fixT2);
                 LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
@@ -210,9 +201,9 @@ void LMAlgo<complex<double>>::apply(const TInput &data, const TArray &inputs, TA
         fullLM.setMaxfev(50 * (m_sequence->size() + 1));
         double bestF = numeric_limits<double>::infinity();
         VectorXd bestP;
-        double bw = (2. / m_sequence->TR());
+        double bw = this->m_sequence->bwMult() / this->m_sequence->TR();
         for (int f = 0; f < 1; f++) {
-            double f0guess = arg(avg) / (M_PI * m_sequence->TR()) + f * bw;
+            double f0guess = arg(avg) / (M_PI * m_sequence->TR()) + f * 2. * bw;
             VectorXd P3(3); P3 << data.abs().maxCoeff() * 10.0, 0.045 * T1, f0guess;
             fullLM.minimize(P3);
             if (fullLM.fnorm() < bestF) {
@@ -233,30 +224,62 @@ void LMAlgo<complex<double>>::apply(const TInput &data, const TArray &inputs, TA
 }
 
 template<typename T>
-void SRCAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const
-{
-    ArrayXd thresh(3); thresh.setConstant(0.05);
-    ArrayXd weights(this->m_sequence->size()); weights.setOnes();
-    ArrayXXd bounds = ArrayXXd::Zero(3, 2);
-    double T1 = inputs[0];
-    if (isfinite(T1) && (T1 > 0.001)) {
-        double B1 = inputs[1];
+class SRCAlgo : public FMAlgo<T> {
+private:
+    size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
+    Array2d m_f0Bounds = Array2d::Zero();
+
+public:
+    typedef typename FMAlgo<T>::TArray TArray;
+    typedef typename FMAlgo<T>::TInput TInput;
+    ArrayXXd setupBounds(const TInput &data, const double T1) const {
+        ArrayXXd bounds = ArrayXXd::Zero(3, 2);
         bounds(0, 0) = 0.;
-        bounds(0, 1) = data.array().abs().maxCoeff() * 25;
-        bounds(1,0) = 0.001;
-        bounds(1,1) = T1;
-        bounds.row(2) = this->m_sequence->bandwidth();
-        //cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
-        //cout << bounds << endl;
-        FMFunctor<T> func(this->m_model, this->m_sequence, data, T1, B1);
-        RegionContraction<FMFunctor<T>> rc(func, bounds, weights, thresh, this->m_samples, this->m_retain, this->m_contractions, 0.02, true, false);
-        rc.optimise(outputs);
-        resids = rc.residuals();
-    } else {
-        // No point in processing -ve T1
-        outputs.setZero();
-        resids.setZero();
+        bounds(0, 1) = data.abs().maxCoeff() * 25.0;
+        bounds(1, 0) = 0.001;
+        bounds(1, 1) = T1;
+        bounds(2, 1) = this->m_sequence->bwMult() / (2. * this->m_sequence->TR());
+        if (this->m_sequence->isSymmetric()) {
+            bounds(2, 0) = 0.;
+        } else {
+            bounds(2, 0) = -bounds(2, 1);
+        }
+
+        return bounds;
     }
+
+    virtual void apply(const TInput &data, const TArray &consts, TArray &outputs, TArray &resids) const override
+    {
+        double T1 = consts[0];
+        if (isfinite(T1) && (T1 > 0.001)) {
+            double B1 = consts[1];
+            ArrayXd thresh(3); thresh.setConstant(0.05);
+            ArrayXd weights(this->m_sequence->size()); weights.setOnes();
+            ArrayXXd bounds = this->setupBounds(data, T1);
+            //cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
+            //cout << bounds << endl;
+            FMFunctor<T> func(this->m_model, this->m_sequence, data, T1, B1);
+            RegionContraction<FMFunctor<T>> rc(func, bounds, weights, thresh, this->m_samples, this->m_retain, this->m_contractions, 0.02, true, false);
+            rc.optimise(outputs);
+            resids = rc.residuals();
+        } else {
+            // No point in processing -ve T1
+            outputs.setZero();
+            resids.setZero();
+        }
+    }
+};
+
+template<>
+ArrayXXd SRCAlgo<complex<double>>::setupBounds(const TInput &data, const double T1) const {
+    ArrayXXd bounds = ArrayXXd::Zero(3, 2);
+    bounds(0, 0) = 0.;
+    bounds(0, 1) = data.abs().maxCoeff() * 25.0;
+    bounds(1, 0) = 0.001;
+    bounds(1, 1) = T1;
+    bounds(2, 0) = -this->m_sequence->bwMult() / this->m_sequence->TR();
+    bounds(2, 1) = this->m_sequence->bwMult() / this->m_sequence->TR();
+    return bounds;
 }
 
 const string usage {
@@ -363,6 +386,7 @@ int run_main(int argc, char **argv) {
 
     shared_ptr<SSFPSimple> ssfpSequence;
     if (fitFinite) {
+        cout << "Using finite pulse model." << endl;
         ssfpSequence = make_shared<SSFPFinite>(prompt);
     } else {
         ssfpSequence = make_shared<SSFPSimple>(prompt);
