@@ -71,7 +71,12 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 			} else {
 				s = make_shared<SSFPSimple>(prompt);
 			}
-			f0Bandwidth = s->bandwidth();
+            f0Bandwidth(1) = 0.5 / s->TR();
+            if (s->isSymmetric()) {
+                f0Bandwidth(0) = 0.;
+            } else {
+                f0Bandwidth(0) = -f0Bandwidth(1);
+            }
 			seq->addSequence(s);
 			if (flip)
 				order.back()->SetStride(s->phases());
