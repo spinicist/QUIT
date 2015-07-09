@@ -7,7 +7,7 @@
 # Tests whether programs run successfully on toy data
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
 DATADIR="fm"
 rm -rf $DATADIR
@@ -20,7 +20,7 @@ VOXDIMS="2 2 2"
 $QUITDIR/qinewimage PD.nii -d "$DIMS" -v "$VOXDIMS" -f 1.0
 $QUITDIR/qinewimage T1.nii -d "$DIMS" -v "$VOXDIMS" -f 1.25
 $QUITDIR/qinewimage T2.nii -d "$DIMS" -v "$VOXDIMS" -g "1 0.0125 0.125"
-$QUITDIR/qinewimage f0.nii -d "$DIMS" -v "$VOXDIMS" -g "2 -250.0 250.0"
+$QUITDIR/qinewimage f0.nii -d "$DIMS" -v "$VOXDIMS" -g "2 -300.0 300.0"
 $QUITDIR/qinewimage B1.nii -d "$DIMS" -v "$VOXDIMS" -f 1.0
 
 # Setup parameters
@@ -65,12 +65,12 @@ $SSFP_PC
 $SSFP_TR
 $SSFP_Trf" > ${PREFIX}fm_f_in.txt
 
-run_test "LM"    $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o ${PREFIX}    < ${PREFIX}fm_in.txt
-run_test "XLM"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}x${SSFP_FILE} -x -o${PREFIX}x < ${PREFIX}fm_in.txt
+run_test "LM"    $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o ${PREFIX}         < ${PREFIX}fm_in.txt
+run_test "XLM"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}x${SSFP_FILE} -x -o${PREFIX}x      < ${PREFIX}fm_in.txt
 run_test "SRC"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -as -o${PREFIX}s     < ${PREFIX}fm_in.txt
 run_test "XSRC"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}x${SSFP_FILE} -x -as -o${PREFIX}sx < ${PREFIX}fm_in.txt
-run_test "LMF"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}f${SSFP_FILE}  --finite -o${PREFIX}F     < ${PREFIX}fm_f_in.txt
-run_test "XLMF"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}xf${SSFP_FILE} --finite -x -o${PREFIX}xf < ${PREFIX}fm_f_in.txt
+run_test "LMF"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}f${SSFP_FILE}  --finite -o${PREFIX}f          < ${PREFIX}fm_f_in.txt
+run_test "XLMF"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}xf${SSFP_FILE} --finite -x -o${PREFIX}xf      < ${PREFIX}fm_f_in.txt
 run_test "SRCF"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}f${SSFP_FILE}  --finite -as -o${PREFIX}sf     < ${PREFIX}fm_f_in.txt
 run_test "XSRCF" $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}xf${SSFP_FILE} --finite -x -as -o${PREFIX}sxf < ${PREFIX}fm_f_in.txt
 
@@ -85,7 +85,7 @@ compare_test "XSRCF" T2.nii ${PREFIX}sxfFM_T2.nii 0.01
 }
 
 run_tests "2" "0 180"
-run_tests "4" "0 90 180 270"
+#run_tests "4" "0 90 180 270"
 
 cd ..
 SILENCE_TESTS="0"
