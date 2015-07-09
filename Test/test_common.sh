@@ -45,7 +45,7 @@ function compare_test {
 	TOL=$4
 	DIFF=${REF%.nii}_${TEST%.nii}
 	if [ "$HAVE_FSL" -eq "1" ]; then
-		fslmaths $REF -sub $TEST $DIFF
+        fslmaths $REF -sub $TEST -abs $DIFF
 		MEAN=$( fslstats $DIFF -M )
 		STD=$( fslstats $DIFF -s )
 		ABSMEAN=$(echo $MEAN | awk ' { print sqrt($1*$1) } ' )
