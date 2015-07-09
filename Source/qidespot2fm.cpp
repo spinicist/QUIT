@@ -227,7 +227,6 @@ template<typename T>
 class SRCAlgo : public FMAlgo<T> {
 private:
     size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
-    Array2d m_f0Bounds = Array2d::Zero();
 
 public:
     typedef typename FMAlgo<T>::TArray TArray;
