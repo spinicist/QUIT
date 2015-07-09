@@ -28,10 +28,32 @@
 using namespace std;
 using namespace Eigen;
 
-template<typename TScalar>
+/* The code below is really quite hairy. It relies on template specialisations
+ * to ensure the correct behaviour when fitting to complex or magnitude data.
+ * The central issue is the DifferenceVector functions, because we have to take
+ * the .abs() in a different place with complex or magnitude data.
+ *
+ * Everything else then becomes tedious C++ to ensure the right version of
+ * these functions is called.
+ */
+
+template<typename T> ArrayXd DifferenceVector(Ref<const ArrayXcd> a1, Ref<const ArrayXcd> a2, T dummy);
+template<typename T>
+ArrayXd DifferenceVector(Ref<const ArrayXcd> a1, const Array<T, Dynamic, 1> &a2) {
+    //cout << __PRETTY_FUNCTION__ << endl;
+    return a1.abs() - a2.abs();
+}
+
+template<typename T>
+ArrayXd DifferenceVector(Ref<const ArrayXcd> a1, const Array<complex<T>, Dynamic, 1> &a2) {
+    //cout << __PRETTY_FUNCTION__ << endl;
+    return (a1 - a2).abs();
+}
+
+template<typename T>
 class FMFunctor : public DenseFunctor<double> {
 public:
-    typedef Array<TScalar, Eigen::Dynamic, 1> TArray;
+    typedef Array<T, Eigen::Dynamic, 1> TArray;
 
 	const shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<SCD> m_model;
@@ -52,38 +74,29 @@ public:
 		return m_model->ValidParameters(fullparams);
 	}
 
-    int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const;
+    int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+        //cout << __PRETTY_FUNCTION__ << endl;
+        eigen_assert(diffs.size() == values());
+        ArrayXd fullparams(5);
+        fullparams << params(0), m_T1, params(1), params(2), m_B1;
+        ArrayXcd s = m_sequence->signal(m_model, fullparams);
+        diffs = DifferenceVector(s, m_data);
+        return 0;
+    }
 };
 
-template<>
-int FMFunctor<double>::operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-    eigen_assert(diffs.size() == values());
-    ArrayXd fullparams(5);
-    fullparams << params(0), m_T1, params(1), params(2), m_B1;
-    ArrayXcd s = m_sequence->signal(m_model, fullparams);
-    diffs = s.abs() - m_data;
-    return 0;
-}
-
-template<>
-int FMFunctor<complex<double>>::operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-    eigen_assert(diffs.size() == values());
-    ArrayXd fullparams(5);
-    fullparams << params(0), m_T1, params(1), params(2), m_B1;
-    ArrayXcd s = m_sequence->signal(m_model, fullparams);
-    diffs = (s - m_data).abs();
-    return 0;
-}
-
+template<typename T>
 class FixT2 : public DenseFunctor<double> {
 public:
+    typedef Array<T, Eigen::Dynamic, 1> TArray;
+
 	const shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<SCD> m_model;
-	ArrayXd m_data;
+    TArray m_data;
 	const double m_T1, m_B1;
 	double m_T2;
 
-	FixT2(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const ArrayXd &d, const double T1, const double T2, const double B1) :
+    FixT2(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const TArray &d, const double T1, const double T2, const double B1) :
 		DenseFunctor<double>(2, s->size()),
 		m_model(m), m_sequence(s), m_data(d),
 		m_T1(T1), m_T2(T2), m_B1(B1)
@@ -93,12 +106,13 @@ public:
 
 	void setT2(double T2) { m_T2 = T2; }
 	int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+        //cout << __PRETTY_FUNCTION__ << endl;
 		eigen_assert(diffs.size() == values());
 
 		ArrayXd fullparams(5);
 		fullparams << params(0), m_T1, m_T2, params(1), m_B1;
 		ArrayXcd s = m_sequence->signal(m_model, fullparams);
-		diffs = s.abs() - m_data;
+        diffs = DifferenceVector(s, m_data);
 		return 0;
 	}
 };
@@ -130,95 +144,83 @@ public:
 template<typename T>
 class LMAlgo : public FMAlgo<T> {
 protected:
-	static const int m_iterations = 15;
+    static const int m_iterations = 100;
 public:
     typedef typename FMAlgo<T>::TArray TArray;
     typedef typename FMAlgo<T>::TInput TInput;
+    void f0guess(double &lo, double &hi, double &step, const TInput &data) const;
     virtual void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const override;
 };
 
 template<typename T>
+void LMAlgo<T>::f0guess(double &lo, double &hi, double &step, const TInput &data) const {
+    double bw = this->m_sequence->bwMult() / (2. * this->m_sequence->TR());
+    lo = - 3. * bw / 2.;
+    if (this->m_sequence->isSymmetric()) {
+        lo = 0.;
+    }
+    hi = 3.* bw / 2. + 1.;
+    step = bw / 4.;
+    //cout << __PRETTY_FUNCTION__ << endl;
+    //cout << lo << "/" << hi << "/" << step << endl;
+}
+
+template<>
+void LMAlgo<complex<double>>::f0guess(double &lo, double &hi, double &step, const TInput &data) const {
+    double a = arg(data.mean()) / (M_PI * m_sequence->TR());
+    step = 2. / m_sequence->TR();
+    lo = a - (this->m_sequence->bwMult() - 1) * step;
+    hi = a + (this->m_sequence->bwMult() - 1) * step + 1; // 1 to ensure loop triggers at least once
+    //cout << endl << __PRETTY_FUNCTION__ << endl;
+    //cout << lo << "/" << a << "/" << hi << "/" << step << endl;
+}
+
+template<typename T>
 void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const
 {
+    //cout << __PRETTY_FUNCTION__ << endl;
     const double T1 = inputs[0];
     if (isfinite(T1) && (T1 > 0.001)) {
         const double B1 = inputs[1];
         double bestF = numeric_limits<double>::infinity();
-        for (int j = 1; j < 3; j++) {
-            const double T2 = 0.045 * T1 * j; // From a Yarnykh paper T2/T1 = 0.045 in brain at 3T. Try the longer value for CSF
-            double bw = this->m_sequence->bwMult() / (2. * this->m_sequence->TR());
-            double lof0 = -bw;
-            if (this->m_sequence->isSymmetric()) {
-                lof0 = 0.;
-            }
-            for (float f0guess = lof0; f0guess < bw; f0guess += bw / 5.) {
+        for (int j = 0; j < 2; j++) {
+            const double T2guess = (0.05 + j * 0.2) * T1; // From a Yarnykh paper T2/T1 = 0.045 in brain at 3T. Try the longer value for CSF
+            double lo, hi, step;
+            this->f0guess(lo, hi, step, data);
+            //cout << lo << "/" << hi << "/" << step << endl;
+            for (float f0guess = lo; f0guess < hi; f0guess += step) {
                 // First fix T2 and fit
-                FixT2 fixT2(this->m_model, this->m_sequence, data, T1, T2, B1);
-                NumericalDiff<FixT2> fixT2Diff(fixT2);
-                LevenbergMarquardt<NumericalDiff<FixT2>> fixT2LM(fixT2Diff);
+                FixT2<T> fixT2(this->m_model, this->m_sequence, data, T1, T2guess, B1);
+                NumericalDiff<FixT2<T>> fixT2Diff(fixT2);
+                LevenbergMarquardt<NumericalDiff<FixT2<T>>> fixT2LM(fixT2Diff);
                 fixT2LM.setMaxfev(this->m_iterations * (this->m_sequence->size() + 1));
-                VectorXd g(2); g << data.maxCoeff() * 10.0, f0guess;
+                VectorXd g(2); g << data.abs().maxCoeff() * 10.0, f0guess;
+                //cout << "T1 " << T1 << " T2 " << T2guess << " g " << g.transpose() << endl;
                 fixT2LM.minimize(g);
 
                 // Now fit everything together
-                FMFunctor<double> full(this->m_model, this->m_sequence, data, T1, B1);
-                NumericalDiff<FMFunctor<double>> fullDiff(full);
-                LevenbergMarquardt<NumericalDiff<FMFunctor<double>>> fullLM(fullDiff);
-                VectorXd fullP(3); fullP << g[0], T2, g[1]; // Now include T2
+                FMFunctor<T> full(this->m_model, this->m_sequence, data, T1, B1);
+                NumericalDiff<FMFunctor<T>> fullDiff(full);
+                LevenbergMarquardt<NumericalDiff<FMFunctor<T>>> fullLM(fullDiff);
+                VectorXd fullP(3); fullP << g[0], T2guess, g[1]; // Now include T2
+                //cout << "Before " << fullP.transpose() << endl;
                 fullLM.minimize(fullP);
 
                 double F = fullLM.fnorm();
+                //cout << "After  " << fullP.transpose() << " F " << F << endl;
                 if (F < bestF) {
                     outputs = fullP;
                     bestF = F;
                 }
             }
         }
-        // PD sometimes go -ve, which is perfectly valid from the maths
-        if (outputs[0] < 0)
-            outputs[0] = -outputs[0];
         outputs[1] = clamp(outputs[1], 0.001, T1);
         VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
-        ArrayXd theory = this->m_sequence->signal(this->m_model, pfull).abs();
-        resids = (data - theory);
+        ArrayXcd theory = this->m_sequence->signal(this->m_model, pfull);
+        resids = DifferenceVector(theory, data);
     } else {
         // No point in processing -ve T1
         outputs.setZero();
-        resids.setZero();
-    }
-}
-
-template<>
-void LMAlgo<complex<double>>::apply(const TInput &data, const TArray &inputs, TArray &op, TArray &resids) const
-{
-    const double T1 = inputs[0];
-    const double B1 = inputs[1];
-    if (isfinite(T1) && (T1 > 0.001)) {
-        complex<double> avg = data.mean();
-        FMFunctor<complex<double>> full(m_model, m_sequence, data, T1, B1);
-        NumericalDiff<FMFunctor<complex<double>>> fullDiff(full);
-        LevenbergMarquardt<NumericalDiff<FMFunctor<complex<double>>>> fullLM(fullDiff);
-        fullLM.setMaxfev(50 * (m_sequence->size() + 1));
-        double bestF = numeric_limits<double>::infinity();
-        VectorXd bestP;
-        double bw = this->m_sequence->bwMult() / this->m_sequence->TR();
-        for (int f = 0; f < 1; f++) {
-            double f0guess = arg(avg) / (M_PI * m_sequence->TR()) + f * 2. * bw;
-            VectorXd P3(3); P3 << data.abs().maxCoeff() * 10.0, 0.045 * T1, f0guess;
-            fullLM.minimize(P3);
-            if (fullLM.fnorm() < bestF) {
-                bestP = P3;
-                bestF = fullLM.fnorm();
-            }
-        }
-        //P[1] = clamp(P[1], 0.001, T1);
-        VectorXd pfull(5); pfull << bestP[0], T1, bestP[1], bestP[2], B1; // Now include EVERYTHING to get a residual
-        ArrayXcd theory = m_sequence->signal(m_model, pfull);
-        resids = (data - theory).abs();
-        op = bestP;
-    } else {
-        // No point in processing -ve T1
-        op.setZero();
         resids.setZero();
     }
 }
