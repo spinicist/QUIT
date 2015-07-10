@@ -24,6 +24,7 @@
 #include "Sequence.h"
 #include "RegionContraction.h"
 
+#include "itkAmoebaOptimizer.h"
 
 using namespace std;
 using namespace Eigen;
@@ -283,6 +284,94 @@ ArrayXXd SRCAlgo<complex<double>>::setupBounds(const TInput &data, const double 
     return bounds;
 }
 
+namespace itk {
+template<typename T>
+class FMCostFunction : public SingleValuedCostFunction
+{
+public:
+    /** Standard class typedefs. */
+    typedef FMCostFunction            Self;
+    typedef SingleValuedCostFunction  Superclass;
+    typedef SmartPointer<Self>        Pointer;
+    typedef SmartPointer<const Self>  ConstPointer;
+
+    typedef Eigen::Array<T, Dynamic, 1> TArray;
+
+    /** Method for creation through the object factory. */
+    itkNewMacro(Self);
+
+    /** Run-time type information (and related methods). */
+    itkTypeMacro(CostFunction, SingleValuedCostfunction);
+
+    TArray m_data;
+    double m_T1, m_B1;
+    shared_ptr<SequenceBase> m_sequence;
+    shared_ptr<SCD> m_model;
+
+    unsigned int GetNumberOfParameters(void) const { return 3; } // itk::CostFunction
+    MeasureType GetValue(const ParametersType &p) const {
+        ArrayXd fullparams(5);
+        fullparams << p(0), m_T1, p(1), p(2), m_B1;
+        ArrayXcd s = m_sequence->signal(m_model, fullparams);
+        return DifferenceVector(s, m_data).square().sum();
+    }
+
+    void GetDerivative(const ParametersType &parameters, DerivativeType & derivative) const {
+    throw itk::ExceptionObject( __FILE__, __LINE__, "No derivative is available for this cost function.");
+    }
+
+    protected:
+    FMCostFunction(){};
+    ~FMCostFunction(){};
+
+    private:
+    FMCostFunction(const Self &); //purposely not implemented
+    void operator = (const Self &); //purposely not implemented
+};
+}
+
+template<typename T>
+class SimplexAlgo : public FMAlgo<T> {
+public:
+    typedef typename FMAlgo<T>::TArray TArray;
+    typedef typename FMAlgo<T>::TInput TInput;
+    typedef typename itk::AmoebaOptimizer TOptimizer;
+
+    virtual void apply(const TInput &data, const TArray &consts, TArray &outputs, TArray &resids) const override {
+        double T1 = consts[0];
+        double B1 = consts[1];
+        TOptimizer::Pointer optimizer = TOptimizer::New();
+        // Set properties pertinent to convergence
+        optimizer->SetMaximumNumberOfIterations(200);
+        optimizer->SetParametersConvergenceTolerance(0.01);
+        optimizer->SetFunctionConvergenceTolerance(0.01);
+        // Instantiate the cost function
+        auto cost = itk::FMCostFunction<T>::New();
+        cost->m_data = data;
+        cost->m_T1 = T1;
+        cost->m_B1 = B1;
+        cost->m_sequence = this->m_sequence;
+        cost->m_model = this->m_model;
+        // Assign the cost function to the optimizer
+        optimizer->SetCostFunction( cost.GetPointer() );
+        // Set the initial parameters of the cost function
+        TOptimizer::ParametersType p(3);
+        p[0] = data.abs().maxCoeff() * 10.;
+        p[1] = 0.05 * T1;
+        p[2] = arg(data.mean()) / (M_PI * this->m_sequence->TR());
+        optimizer->SetInitialPosition(p);
+        optimizer->StartOptimization();
+        p = optimizer->GetCurrentPosition();
+        outputs[0] = p[0];
+        outputs[1] = p[1];
+        outputs[2] = p[2];
+        VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
+        ArrayXcd theory = this->m_sequence->signal(this->m_model, pfull);
+        resids = DifferenceVector(theory, data);
+    }
+};
+
+
 const string usage {
 "Usage is: despot2-fm [options] T1_map ssfp_file\n\
 \
@@ -295,7 +384,8 @@ Options:\n\
     --B1, -b file     : B1 Map file (ratio)\n\
     --algo, -a l      : Use 2-step LM algorithm (default)\n\
                s      : Use Stochastic Region Contraction\n\
-               x      : Fit to complex data\n\
+               a      : Use Amoeba optimizer\n\
+    --complex, -x     : Fit to complex data\n\
     --start, -s N     : Start processing from slice N\n\
     --stop, -p  N     : Stop processing at slice N\n\
     --flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
@@ -337,7 +427,7 @@ int run_main(int argc, char **argv) {
 
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false,
-        fitFinite = false, flipData = false, use_src = false;
+        fitFinite = false, flipData = false, use_amoeba = false, use_src = false;
     string outPrefix;
     QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
@@ -351,6 +441,7 @@ int run_main(int argc, char **argv) {
         switch (*optarg) {
             case 'l': if (verbose) cout << "LM algorithm selected." << endl; break;
             case 's': use_src = true; if (verbose) cout << "SRC algorithm selected." << endl; break;
+            case 'a': use_amoeba = true; if (verbose) cout << "Amoeba algorithm selected." << endl; break;
             default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
         } break;
         case 'm':
@@ -411,6 +502,8 @@ int run_main(int argc, char **argv) {
     shared_ptr<FMAlgo<T>> algo;
     if (use_src) {
         algo = make_shared<SRCAlgo<T>>();
+    } else if (use_amoeba) {
+        algo = make_shared<SimplexAlgo<T>>();
     } else {
         algo = make_shared<LMAlgo<T>>();
     }
