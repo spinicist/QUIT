@@ -79,4 +79,25 @@ where “in.txt” is a file containing:
 	92     # IR-SPGR echo train length
 	0.45   # IR-SPGR TI in SECONDS
 
+Because QUIT is based on ITK, in theory it supports multiple image formats.
+However I have only tested it with NIFTI.
 
+# Description of Tools and Citations #
+
+In alphabetical order:
+
+1. qiaffine - Applies simple affine transformations (currently rotations only) directly to NIFTI headers. It was written specifically for fixing pre-clinical data where orientations differ in definition to clinical.
+2. qiafi - Calculates a B1+ map from Actual Flip-angle Imaging data. See Yarnykh, MRM 2007 & Yarnykh, MRM 2010.
+3. qicomplex - Converts between magnitude/phase/real/imaginary/complex data. Exists because of a bug in fslcomplex.
+4. qidespot1 - Calculates a T1 map using the DESPOT1/VFA method. Includes weighted least-squares (see Chang MRM 2008) and non-linear least-squares fitting as well as the classic least-squares algorithm (there are multiple references for this, e.g. Gupta JMR 1977)
+5. qidespot1hifi - Calculates a T1 and B1+ map simultaneously. See Deoni JMRI 2007. Thanks to Michael Thrippleton for corrected equations.
+6. qidespot2 - Calculates a T2 map. Only useful for band-free data, i.e. 1.5T or below.
+7. qidespot2fm - Calculates a T2 and f0 (off-resonance) map simultaneously. See Deoni JMRI 2009.
+8. qimcdespot - Calculates myelin water fraction maps. See Deoni MRM 2012.
+9. qimultiecho - Calculates T2 or T2* maps from multi-echo data. See Pei MRM 2015.
+10. qinewimage - Creates images. Used for tests.
+11. qisignal - Calculates synthetic images using different signal equations. Used for tests.
+12. qissfpbands - Removes band artefacts from bSSFP images. See Xiang, MRM 2014.
+13. qiunwrap - Laplacian Phase Unwrapping. Experimental. See Schweser MRM 2013.
+
+There will be more in future.
