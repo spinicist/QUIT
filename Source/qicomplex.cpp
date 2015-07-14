@@ -15,6 +15,8 @@
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
+#include "itkImageSliceConstIteratorWithIndex.h"
+#include "itkImageSliceIteratorWithIndex.h"
 #include "itkComplexToPhaseImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkComplexToRealImageFilter.h"
@@ -23,6 +25,61 @@
 #include "itkMagnitudeAndPhaseToComplexImageFilter.h"
 
 using namespace std;
+
+namespace itk {
+template<typename TImage>
+class FixGEFilter : public InPlaceImageFilter<TImage> {
+public:
+    typedef FixGEFilter                 Self;
+    typedef InPlaceImageFilter<TImage>  Superclass;
+    typedef SmartPointer<Self>          Pointer;
+    typedef typename TImage::RegionType        TRegion;
+    typedef typename TImage::InternalPixelType TPixel;
+
+    itkNewMacro(Self);
+    itkTypeMacro(FixGEFilter, InPlaceImageFilter);
+
+private:
+    FixGEFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
+
+protected:
+    FixGEFilter() {}
+    ~FixGEFilter() {}
+
+public:
+    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) override {
+        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
+        typedef typename TImage::PixelType PixelType;
+        ImageSliceConstIteratorWithIndex<TImage> inIt(this->GetInput(), region);
+        ImageSliceIteratorWithIndex<TImage>      outIt(this->GetOutput(), region);
+
+        inIt.SetFirstDirection(0);
+        inIt.SetSecondDirection(1);
+        outIt.SetFirstDirection(0);
+        outIt.SetSecondDirection(1);
+        inIt.GoToBegin();
+        outIt.GoToBegin();
+        PixelType mult(1); // This works because the complex constructor has default arguments of 0 for real/imaginary parts
+        while(!inIt.IsAtEnd()) {
+            while (!inIt.IsAtEndOfSlice()) {
+                while (!inIt.IsAtEndOfLine()) {
+                    outIt.Set(mult * inIt.Get());
+                    ++inIt;
+                    ++outIt;
+                }
+                inIt.NextLine();
+                outIt.NextLine();
+            }
+            mult = mult * PixelType(-1);
+            inIt.NextSlice();
+            outIt.NextSlice();
+        }
+        // std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+    }
+};
+
+} // End namespace itk
 
 const string usage {
 "Usage is: qcomplex [input options] [output options] [other options] \n\
@@ -74,7 +131,7 @@ template<typename TPixel> void Run(int argc, char **argv) {
 	if (verbose) cout << "Reading input files" << endl;
 	bool ri = false, x = false;
 	optind = 1;
-	while ((c = getopt(argc, argv, short_options)) != -1) {
+    while ((c = getopt_long(argc, argv, short_options,  long_options, &index_ptr)) != -1) {
 		switch (c) {
 			case 'r':
 				ri = true;
@@ -127,10 +184,18 @@ template<typename TPixel> void Run(int argc, char **argv) {
 		imgX = compose->GetOutput();
 	}
 
+    if (fixge) {
+        if (verbose) cout << "Fixing GE phase bug" << endl;
+        auto fix = itk::FixGEFilter<TXImage>::New();
+        fix->SetInput(imgX);
+        fix->Update();
+        imgX = fix->GetOutput();
+    }
+
 	if (verbose) cout << "Writing output files" << endl;
 	typename TWriter::Pointer write = TWriter::New();
 	optind = 1;
-	while ((c = getopt(argc, argv, short_options)) != -1) {
+    while ((c = getopt_long(argc, argv, short_options, long_options, &index_ptr)) != -1) {
 		switch (c) {
 			case 'M': {
 				auto o = itk::ComplexToModulusImageFilter<TXImage, TImage>::New();
