@@ -81,9 +81,28 @@ private:
 	const shared_ptr<SCD> m_model = make_shared<SCD>();
 protected:
 	shared_ptr<MultiEcho> m_sequence;
+    double m_clampLo = -numeric_limits<double>::infinity();
+    double m_clampHi = numeric_limits<double>::infinity();
+    double m_thresh = -numeric_limits<double>::infinity();
+
+    void clamp_and_treshold(const TInput &data, TArray &outputs, TArray &resids,
+                            const double PD, const double T2) const {
+        if (PD > m_thresh) {
+            outputs[0] = PD;
+            outputs[1] = clamp(T2, m_clampLo, m_clampHi); // T2
+            ArrayXcd theory = One_MultiEcho(m_sequence->m_TE, PD, T2);
+            resids = data.array() - theory.abs();
+        } else {
+            outputs.setZero();
+            resids.setZero();
+        }
+    }
+
 public:
 	void setSequence(shared_ptr<MultiEcho> &s) { m_sequence = s; }
-	size_t numInputs() const override { return m_sequence->count(); }
+    void setClamp(double lo, double hi) { m_clampLo = lo; m_clampHi = hi; }
+    void setThresh(double t) { m_thresh = t; }
+    size_t numInputs() const override { return m_sequence->count(); }
 	size_t numConsts() const override { return 1; }
 	size_t numOutputs() const override { return 2; }
 	size_t dataSize() const override { return m_sequence->size(); }
@@ -106,11 +125,9 @@ public:
 		X.col(1).setOnes();
 		VectorXd Y = data.array().log();
 		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-		outputs[1] = -1 / b[0]; // T2
-		outputs[0] = exp(b[1]); // PD
-
-		ArrayXcd theory = One_MultiEcho(m_sequence->m_TE, outputs[0], outputs[1]);
-		resids = data.array() - theory.abs();
+        double PD = exp(b[1]);
+        double T2 = -1 / b[0];
+        clamp_and_treshold(data, outputs, resids, PD, T2);
 	}
 };
 
@@ -129,11 +146,9 @@ public:
 		MatrixXd X(m_sequence->size(), 2);
 		X.col(0) = m_sequence->m_TE;
 		X.col(1).setOnes();
-		outputs[1] = (si2sum + (m_sequence->m_ESP/3)*sidisum) / ((m_sequence->m_ESP/3)*si2sum + sidisum);
-		outputs[0] = (data.array() / (-X.col(0).array() / outputs[1]).exp()).mean();
-
-		ArrayXcd theory = One_MultiEcho(X.col(0), outputs[0], outputs[1]);
-		resids = data.array() - theory.abs();
+        double T2 = (si2sum + (m_sequence->m_ESP/3)*sidisum) / ((m_sequence->m_ESP/3)*si2sum + sidisum);
+        double PD = (data.array() / (-X.col(0).array() / outputs[1]).exp()).mean();
+        clamp_and_treshold(data, outputs, resids, PD, T2);
 	}
 };
 
@@ -178,9 +193,7 @@ public:
 		// Basic guess of T2=50ms
 		VectorXd p(2); p << data(0), 0.05;
 		lm.minimize(p);
-		outputs = p;
-		ArrayXcd theory = One_MultiEcho(m_sequence->m_TE, outputs[0], outputs[1]);
-		resids = data.array() - theory.abs();
+        clamp_and_treshold(data, outputs, resids, p[0], p[1]);
 	}
 };
 
@@ -275,8 +288,8 @@ int main(int argc, char **argv) {
 		cout << "Writing results." << endl;
 	}
 	outPrefix = outPrefix + "ME_";
-	QI::writeResult(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
-	QI::writeResult(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
+    QI::writeResult(apply->GetOutput(0), outPrefix + "PD" + suffix + QI::OutExt());
+    QI::writeResult(apply->GetOutput(1), outPrefix + "T2" + suffix + QI::OutExt());
 	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 /*	if (weightedSum) {
