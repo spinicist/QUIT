@@ -36,8 +36,6 @@ Options:\n\
 	--out, -o path    : Add a prefix to the output filenames\n\
 	--mask, -m file   : Mask input with specified file\n\
 	--star, -S        : Data is T2*, not T2\n\
-	--sum, -s         : Output sum images\n\
-	--weighted, -w ?t : Output weighted sum (can fix T2, default average)\n\
 	--thresh, -t n    : Threshold maps at PD < n\n\
 	--clamp, -c n     : Clamp T2 between 0 and n\n\
 	--algo, -a l      : LLS algorithm (default)\n\
@@ -49,9 +47,8 @@ Options:\n\
 };
 
 static int NE = 0, nIterations = 10;
-static bool verbose = false, prompt = true, all_residuals = false, sum = false, weightedSum = false;
+static bool verbose = false, prompt = true, all_residuals = false, weightedSum = false;
 static string outPrefix, suffix;
-static double weightT2 = 0;
 static double thresh = -numeric_limits<double>::infinity();
 static double clamp_lo = -numeric_limits<double>::infinity(), clamp_hi = numeric_limits<double>::infinity();
 static struct option long_options[] =
@@ -62,8 +59,6 @@ static struct option long_options[] =
 	{"out", required_argument, 0, 'o'},
 	{"mask", required_argument, 0, 'm'},
 	{"star", no_argument, 0, 'S'},
-	{"sum", no_argument, 0, 's'},
-	{"weighted", optional_argument, 0, 'w'},
 	{"thresh", required_argument, 0, 't'},
 	{"clamp", required_argument, 0, 'c'},
 	{"algo", required_argument, 0, 'a'},
@@ -71,7 +66,7 @@ static struct option long_options[] =
 	{"resids", no_argument, 0, 'r'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnm:Ssw::e:o:b:t:c:a:T:r";
+static const char *short_opts = "hvnm:Se:o:b:t:c:a:T:r";
 
 /*
  * Base class for the 3 different algorithms
@@ -219,12 +214,6 @@ int main(int argc, char **argv) {
 				cout << "Output prefix will be: " << outPrefix << endl;
 				break;
 			case 'S': suffix = "star"; break;
-			case 's': sum = true; break;
-			case 'w':
-				weightedSum = true;
-				if (optarg)
-					weightT2 = atof(optarg);
-				break;
 			case 't': thresh = atof(optarg); break;
 			case 'c':
 				clamp_lo = 0;
@@ -290,19 +279,7 @@ int main(int argc, char **argv) {
 	outPrefix = outPrefix + "ME_";
     QI::writeResult(apply->GetOutput(0), outPrefix + "PD" + suffix + QI::OutExt());
     QI::writeResult(apply->GetOutput(1), outPrefix + "T2" + suffix + QI::OutExt());
-	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
-
-/*	if (weightedSum) {
-		double avT2 = weightT2;
-		if (weightT2 == 0)
-		avT2 = T2Vol.slice<1>({i,j,k,0},{0,0,0,NVols}).asArray().mean();
-		auto weights = (multiecho.m_TE / avT2) * (-multiecho.m_TE / avT2).exp();
-		for (size_t outVol = 0; outVol < NVols; outVol++) {
-			ArrayXd signal = inputVols.slice<1>({i,j,k,outVol*NE},{0,0,0,NE}).asArray().abs().cast<double>();
-			auto sum = (signal * weights).sum();
-			weightedVol[{i,j,k,outVol}] = sum;
-		}
-	}*/
+    QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	return EXIT_SUCCESS;
 }
