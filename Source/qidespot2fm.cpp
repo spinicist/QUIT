@@ -155,23 +155,26 @@ public:
 
 template<typename T>
 void LMAlgo<T>::f0guess(double &lo, double &hi, double &step, const TInput &data) const {
-    double bw = this->m_sequence->bwMult() / (2. * this->m_sequence->TR());
-    lo = - 3. * bw / 2.;
+    double bw = 1. / (4. * this->m_sequence->TR());
+    lo = -bw + 1.;
+    hi = bw + 2.;
+    step = bw;
     if (this->m_sequence->isSymmetric()) {
-        lo = 0.;
+        lo = 1.;
     }
-    hi = 3.* bw / 2. + 1.;
-    step = bw / 4.;
     //cout << __PRETTY_FUNCTION__ << endl;
     //cout << lo << "/" << hi << "/" << step << endl;
 }
 
 template<>
 void LMAlgo<complex<double>>::f0guess(double &lo, double &hi, double &step, const TInput &data) const {
-    double a = arg(data.mean()) / (M_PI * m_sequence->TR());
-    step = 2. / m_sequence->TR();
-    lo = a - (this->m_sequence->bwMult() - 1) * step;
-    hi = a + (this->m_sequence->bwMult() - 1) * step + 1; // 1 to ensure loop triggers at least once
+    double bw = 1. / (4. * this->m_sequence->TR());
+    lo = -bw + 1.;
+    hi = bw + 2.;
+    step = bw;
+    if (this->m_sequence->isSymmetric()) {
+        lo = 1.;
+    }
     //cout << endl << __PRETTY_FUNCTION__ << endl;
     //cout << lo << "/" << a << "/" << hi << "/" << step << endl;
 }
