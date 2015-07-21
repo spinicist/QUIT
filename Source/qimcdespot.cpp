@@ -18,6 +18,9 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
+#include "itkParticleSwarmOptimizer.h"
+#include "itkLBFGSBOptimizer.h"
+
 #include "Util.h"
 #include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
 #include "Filters/ReorderVectorFilter.h"
@@ -94,7 +97,7 @@ class MCDFunctor : public DenseFunctor<double> {
 		const ArrayXd m_data;
 		const shared_ptr<Model> m_model;
 
-		MCDFunctor(shared_ptr<Model> m,shared_ptr<SequenceBase> s, const ArrayXd &d) :
+        MCDFunctor(shared_ptr<Model> m,shared_ptr<SequenceBase> s, const ArrayXd &d) :
 			DenseFunctor<double>(m->nParameters(), s->size()),
 			m_sequence(s), m_data(d), m_model(m)
 		{
@@ -116,10 +119,95 @@ class MCDFunctor : public DenseFunctor<double> {
 		}
 };
 
+namespace itk {
+class MCDCostFunction : public SingleValuedCostFunction
+{
+public:
+    /** Standard class typedefs. */
+    typedef MCDCostFunction           Self;
+    typedef SingleValuedCostFunction  Superclass;
+    typedef SmartPointer<Self>        Pointer;
+    typedef SmartPointer<const Self>  ConstPointer;
+
+    /** Method for creation through the object factory. */
+    itkNewMacro(Self);
+
+    /** Run-time type information (and related methods). */
+    itkTypeMacro(CostFunction, SingleValuedCostfunction);
+
+    shared_ptr<SequenceBase> m_sequence;
+    ArrayXd m_data;
+    shared_ptr<Model> m_model;
+    double m_PD, m_B1, m_f0;
+
+    unsigned int GetNumberOfParameters(void) const { return m_model->nParameters() - 3; } // itk::CostFunction
+    MeasureType GetValue(const ParametersType &p1) const {
+        int N = m_model->nParameters();
+        ArrayXd p2(N);
+        p2[0] = m_PD;
+        for (int i = 1; i < N - 2; i++)
+            p2[i] = p1[i-1];
+        p2[N-2] = m_f0;
+        p2[N-1] = m_B1;
+        ArrayXcd s = m_sequence->signal(m_model, p2);
+        double v = (s.abs() - m_data).square().sum();
+        //cout << "p1 " << p1 << " v " << v << endl;
+        return v;
+    }
+
+    void GetDerivative(const ParametersType &p, DerivativeType &df) const {
+        using std::sqrt;
+        using std::abs;
+
+        int N = m_model->nParameters();
+        double eps = sqrt(numeric_limits<double>::epsilon());
+        double val1, val2;
+
+        ArrayXd x(N);
+        x[0] = m_PD;
+        for (int i = 1; i < N - 2; ++i) {
+            x[i] = p[i-1];
+        }
+        x[N-2] = m_f0;
+        x[N-1] = m_B1;
+
+        df.SetSize(N-3);
+        for (int i = 1; i < N - 2; ++i) {
+            double h = eps * abs(x[i]);
+            if (h == 0.) {
+                h = eps;
+            }
+            double _x = x[i];
+            x[i] += h;
+            ArrayXcd s2 = m_sequence->signal(m_model, x);
+            double v2 = (s2.abs() - m_data).square().sum();
+            x[i] -= 2*h;
+            ArrayXcd s1 = m_sequence->signal(m_model, x);
+            double v1 = (s1.abs() - m_data).square().sum();
+            df[i - 1] = (v2 - v1)/(2*h);
+            x[i] = _x;
+        }
+        //cout << "p " << p << endl;
+        //cout << "x " << x.transpose() << endl;
+        //cout << "df " << df << endl;
+        //exit(0);
+    }
+
+    protected:
+    MCDCostFunction(){};
+    ~MCDCostFunction(){};
+
+    private:
+    MCDCostFunction(const Self &); //purposely not implemented
+    void operator = (const Self &); //purposely not implemented
+};
+}
+
 class MCDAlgo : public Algorithm<double> {
 	private:
 		size_t m_samples = 5000, m_retain = 50, m_contractions = 7;
 		bool m_gauss = true;
+        bool m_particle = false, m_LBFGS = false;
 		double m_PDscale = 0.;
 		ArrayXXd m_bounds;
 		shared_ptr<Model> m_model = nullptr;
@@ -132,6 +220,8 @@ class MCDAlgo : public Algorithm<double> {
 		void setPDScale(double s) { m_PDscale = s; }
 		void setBounds(ArrayXXd b) { m_bounds = b; }
 		void setGauss(bool g) { m_gauss = g; }
+        void setParticle(bool p) { m_particle = p; }
+        void setLBFGS(bool l) { m_LBFGS = l; }
 
 		size_t numInputs() const override  { return m_sequence->count(); }
 		size_t numConsts() const override  { return 2; }
@@ -164,13 +254,88 @@ class MCDAlgo : public Algorithm<double> {
 				localBounds.row(0).setConstant(m_PDscale);
 			}
 			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
-			MCDFunctor func(m_model, m_sequence, data);
-			RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
-			                                m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
-			rc.optimise(outputs);
-			//outputs(m_model->nParameters() - 1) = rc.contractions();
-			//outputs(0) = static_cast<int>(rc.status());
-			resids = rc.residuals();
+            if (m_LBFGS) {
+                    typedef itk::LBFGSBOptimizer TOpt;
+                    int N = m_model->nParameters() - 3;
+                    TOpt::ParametersType initP(N);
+                    TOpt::BoundSelectionType select(N);
+                    TOpt::BoundValueType lower(N), upper(N);
+                    for (int i = 0; i < N; i++) {
+                        lower[i] = localBounds(i+1, 0);
+                        upper[i] = localBounds(i+1, 1);
+                        select[i] = 2; // Upper and lower bounds
+                        initP[i] = (localBounds(i+1, 0) + localBounds(i+1, 1)) / 2;
+                    }
+                    initP[N-1] = 0.25;
+                    TOpt::Pointer optimizer = TOpt::New();
+                    optimizer->SetCostFunctionConvergenceFactor(1.e7);
+                    optimizer->SetProjectedGradientTolerance(1e-35);
+                    optimizer->SetMaximumNumberOfIterations(200);
+                    optimizer->SetMaximumNumberOfEvaluations(500);
+                    optimizer->SetMaximumNumberOfCorrections(7);
+
+                    auto cost = itk::MCDCostFunction::New();
+                    cost->m_data = data;
+                    cost->m_sequence = m_sequence;
+                    cost->m_model = m_model;
+                    cost->m_PD = 1.;
+                    cost->m_f0 = f0;
+                    cost->m_B1 = B1;
+                    //optimizer->DebugOn();
+                    optimizer->SetCostFunction(cost);
+                    optimizer->SetBoundSelection(select);
+                    optimizer->SetLowerBound(lower);
+                    optimizer->SetUpperBound(upper);
+                    optimizer->SetInitialPosition(initP);
+                    optimizer->DebugOff();
+                    optimizer->SetGlobalWarningDisplay(false);
+                    optimizer->StartOptimization();
+                    TOpt::ParametersType finalP = optimizer->GetCurrentPosition();
+                    for (int i = 1; i < m_model->nParameters()-2; i++) {
+                        outputs[i] = finalP[i-1];
+                    }
+                    //cout << "initP " << initP << endl << "finalP " << finalP << endl << *optimizer << endl;
+            } else if (m_particle) {
+                std::vector<std::pair<double, double>> pBounds;
+                typedef itk::ParticleSwarmOptimizer TOpt;
+                TOpt::ParametersType initP(m_model->nParameters());
+                TOpt::ParametersType convergence(m_model->nParameters());
+                for (int i = 0; i < m_model->nParameters(); i++) {
+                    pBounds.push_back(std::pair<double, double>(localBounds(i, 0), localBounds(i, 1)));
+                    initP[i] = (localBounds(i, 0) + localBounds(i, 1)) / 2;
+                    convergence[i] = abs(initP[i] / 10.);
+                }
+                //cout << "CONVERGENCE" << endl << convergence << endl;
+                TOpt::Pointer opt = TOpt::New();
+                auto cost = itk::MCDCostFunction::New();
+                cost->m_data = data;
+                cost->m_sequence = m_sequence;
+                cost->m_model = m_model;
+                opt->SetCostFunction(cost);
+                opt->SetParameterBounds(pBounds);
+                opt->SetInitialPosition(initP);
+                opt->SetParametersConvergenceTolerance(convergence);
+                opt->SetNumberOfParticles(1000);
+                opt->SetMaximalNumberOfIterations(30);
+                opt->InitializeNormalDistributionOn();
+                opt->DebugOn();
+                opt->StartOptimization();
+                //cout << "START" << endl << initP << endl;
+                TOpt::ParametersType finalP = opt->GetCurrentPosition();
+                //cout << "FINISHED" << endl << finalP << endl << opt->GetPercentageParticlesConverged() << "% converged" << endl << opt->GetStopConditionDescription() << endl;
+                for (int i = 0; i < m_model->nParameters(); i++) {
+                    outputs[i] = finalP[i];
+                }
+
+            } else {
+                MCDFunctor func(m_model, m_sequence, data);
+                RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
+                                                m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
+                rc.optimise(outputs);
+                //outputs(m_model->nParameters() - 1) = rc.contractions();
+                //outputs(0) = static_cast<int>(rc.status());
+                resids = rc.residuals();
+            }
 		}
 };
 
@@ -216,6 +381,8 @@ int main(int argc, char **argv) {
 					val   : Fix PD to val\n\
 		--gauss, -g 0     : Use Uniform distribution for Region Contraction\n\
 					1     : Use Gaussian distribution for RC (default)\n\
+        --particle, -P    : Use particle swarm optimisation\n\
+        --LBFGS, -L       : Use LBFGS algorithm\n\
 		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
 		--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
 					7     : Boundaries suitable for 7T \n\
@@ -237,6 +404,8 @@ int main(int argc, char **argv) {
 		{"stop", required_argument, 0, 'p'},
 		{"scale", required_argument, 0, 'S'},
 		{"gauss", required_argument, 0, 'g'},
+        {"particle", no_argument, 0, 'P'},
+        {"LBFGS", no_argument, 0, 'L'},
 		{"flip", required_argument, 0, 'F'},
 		{"tesla", required_argument, 0, 't'},
 		{"finite", no_argument, &fitFinite, 1},
@@ -249,7 +418,7 @@ int main(int argc, char **argv) {
 		{"3", no_argument, 0, '3'},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvm:o:f:b:s:p:S:g:t:FT:crn123i:j:";
+    const char* short_options = "hvm:o:f:b:s:p:S:g:PLt:FT:crn123i:j:";
 
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
@@ -310,6 +479,8 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case 'g': mcd->setGauss(atoi(optarg)); break;
+            case 'P': if (verbose) cout << "Particle Swarm selected." << endl; mcd->setParticle(true); break;
+            case 'L': if (verbose) cout << "LBFGS selected." << endl; mcd->setLBFGS(true); break;
 			case 'F': flipData = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break; break;
 			case 't':
