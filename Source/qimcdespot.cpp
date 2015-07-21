@@ -298,16 +298,19 @@ class MCDAlgo : public Algorithm<double> {
             } else if (m_particle) {
                 std::vector<std::pair<double, double>> pBounds;
                 typedef itk::ParticleSwarmOptimizer TOpt;
-                TOpt::ParametersType initP(m_model->nParameters());
-                TOpt::ParametersType convergence(m_model->nParameters());
-                for (int i = 0; i < m_model->nParameters(); i++) {
+                TOpt::ParametersType initP(m_model->nParameters() - 3);
+                TOpt::ParametersType convergence(m_model->nParameters() - 3);
+                for (int i = 1; i < m_model->nParameters() - 2; i++) {
                     pBounds.push_back(std::pair<double, double>(localBounds(i, 0), localBounds(i, 1)));
-                    initP[i] = (localBounds(i, 0) + localBounds(i, 1)) / 2;
-                    convergence[i] = abs(initP[i] / 10.);
+                    initP[i-1] = (localBounds(i, 0) + localBounds(i, 1)) / 2;
+                    convergence[i-1] = abs(initP[i] / 10.);
                 }
                 //cout << "CONVERGENCE" << endl << convergence << endl;
                 TOpt::Pointer opt = TOpt::New();
                 auto cost = itk::MCDCostFunction::New();
+                cost->m_B1 = B1;
+                cost->m_PD = 1.;
+                cost->m_f0 = f0;
                 cost->m_data = data;
                 cost->m_sequence = m_sequence;
                 cost->m_model = m_model;
@@ -316,9 +319,8 @@ class MCDAlgo : public Algorithm<double> {
                 opt->SetInitialPosition(initP);
                 opt->SetParametersConvergenceTolerance(convergence);
                 opt->SetNumberOfParticles(1000);
-                opt->SetMaximalNumberOfIterations(30);
+                opt->SetMaximalNumberOfIterations(10);
                 opt->InitializeNormalDistributionOn();
-                opt->DebugOn();
                 opt->StartOptimization();
                 //cout << "START" << endl << initP << endl;
                 TOpt::ParametersType finalP = opt->GetCurrentPosition();
@@ -379,10 +381,10 @@ int main(int argc, char **argv) {
 		--scale, -S MEAN  : Normalise signals to mean (default)\n\
 					0     : Fit a scaling factor/proton density\n\
 					val   : Fix PD to val\n\
-		--gauss, -g 0     : Use Uniform distribution for Region Contraction\n\
-					1     : Use Gaussian distribution for RC (default)\n\
-        --particle, -P    : Use particle swarm optimisation\n\
-        --LBFGS, -L       : Use LBFGS algorithm\n\
+        --algo, -a S      : Use Uniform distribution for Region Contraction\n\
+                   G      : Use Gaussian distribution for RC (default)\n\
+                   P      : Use particle swarm optimisation\n\
+                   L      : Use LBFGS algorithm\n\
 		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
 		--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
 					7     : Boundaries suitable for 7T \n\
@@ -403,9 +405,7 @@ int main(int argc, char **argv) {
 		{"start", required_argument, 0, 's'},
 		{"stop", required_argument, 0, 'p'},
 		{"scale", required_argument, 0, 'S'},
-		{"gauss", required_argument, 0, 'g'},
-        {"particle", no_argument, 0, 'P'},
-        {"LBFGS", no_argument, 0, 'L'},
+        {"algo", required_argument, 0, 'a'},
 		{"flip", required_argument, 0, 'F'},
 		{"tesla", required_argument, 0, 't'},
 		{"finite", no_argument, &fitFinite, 1},
@@ -418,7 +418,7 @@ int main(int argc, char **argv) {
 		{"3", no_argument, 0, '3'},
 		{0, 0, 0, 0}
 	};
-    const char* short_options = "hvm:o:f:b:s:p:S:g:PLt:FT:crn123i:j:";
+    const char* short_options = "hvm:o:f:b:s:p:S:a:t:FT:crn123i:j:";
 
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
@@ -478,9 +478,20 @@ int main(int argc, char **argv) {
 					applySlices->SetScaleToMean(false);
 				}
 			} break;
-			case 'g': mcd->setGauss(atoi(optarg)); break;
-            case 'P': if (verbose) cout << "Particle Swarm selected." << endl; mcd->setParticle(true); break;
-            case 'L': if (verbose) cout << "LBFGS selected." << endl; mcd->setLBFGS(true); break;
+            case 'a':
+                switch (*optarg) {
+                case 'S': break;
+                case 'G': mcd->setGauss(true); break;
+                case 'P': mcd->setParticle(true); break;
+                case 'L':
+                    mcd->setLBFGS(true);
+                    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
+                    break;
+                default:
+                    cerr << "Unknown algorithm type " << *optarg << endl;
+                    return EXIT_FAILURE;
+                    break;
+                } break;
 			case 'F': flipData = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break; break;
 			case 't':
@@ -492,7 +503,7 @@ int main(int argc, char **argv) {
 						cerr << "Unknown boundaries type " << *optarg << endl;
 						return EXIT_FAILURE;
 						break;
-			} break;
+                } break;
 			case 'c': {
 				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
 				ArrayXi in = ArrayXi::Zero(3);
