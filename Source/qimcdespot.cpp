@@ -142,6 +142,10 @@ public:
 
     unsigned int GetNumberOfParameters(void) const { return m_model->nParameters() - 3; } // itk::CostFunction
     MeasureType GetValue(const ParametersType &p1) const {
+        return residuals(p1).square().sum();
+    }
+
+    ArrayXd residuals(const ParametersType &p1) const {
         int N = m_model->nParameters();
         ArrayXd p2(N);
         p2[0] = m_PD;
@@ -150,9 +154,7 @@ public:
         p2[N-2] = m_f0;
         p2[N-1] = m_B1;
         ArrayXcd s = m_sequence->signal(m_model, p2);
-        double v = (s.abs() - m_data).square().sum();
-        //cout << "p1 " << p1 << " v " << v << endl;
-        return v;
+        return (s.abs() - m_data);
     }
 
     void GetDerivative(const ParametersType &p, DerivativeType &df) const {
@@ -189,6 +191,7 @@ public:
         }
         //cout << "p " << p << endl;
         //cout << "x " << x.transpose() << endl;
+        //cout << "e " << (eps * x).transpose() << endl;
         //cout << "df " << df << endl;
         //exit(0);
     }
@@ -205,7 +208,7 @@ public:
 
 class MCDAlgo : public Algorithm<double> {
 	private:
-		size_t m_samples = 5000, m_retain = 50, m_contractions = 7;
+        size_t m_samples = 5000, m_retain = 50, m_contractions = 21;
 		bool m_gauss = true;
         bool m_particle = false, m_LBFGS = false;
 		double m_PDscale = 0.;
@@ -231,7 +234,7 @@ class MCDAlgo : public Algorithm<double> {
 		virtual TArray defaultConsts() {
 			// f0, B1
 			TArray def = TArray::Ones(2);
-			def[0] = NAN;
+            def[0] = NAN;
 			return def;
 		}
 
@@ -266,19 +269,17 @@ class MCDAlgo : public Algorithm<double> {
                         select[i] = 2; // Upper and lower bounds
                         initP[i] = (localBounds(i+1, 0) + localBounds(i+1, 1)) / 2;
                     }
-                    initP[N-1] = 0.25;
                     TOpt::Pointer optimizer = TOpt::New();
                     optimizer->SetCostFunctionConvergenceFactor(1.e7);
-                    optimizer->SetProjectedGradientTolerance(1e-35);
-                    optimizer->SetMaximumNumberOfIterations(200);
-                    optimizer->SetMaximumNumberOfEvaluations(500);
-                    optimizer->SetMaximumNumberOfCorrections(7);
-
+                    optimizer->SetProjectedGradientTolerance(1e-10);
+                    optimizer->SetMaximumNumberOfIterations(50);
+                    optimizer->SetMaximumNumberOfEvaluations(99999);
+                    optimizer->SetMaximumNumberOfCorrections(10);
                     auto cost = itk::MCDCostFunction::New();
                     cost->m_data = data;
                     cost->m_sequence = m_sequence;
                     cost->m_model = m_model;
-                    cost->m_PD = 1.;
+                    cost->m_PD = m_PDscale;
                     cost->m_f0 = f0;
                     cost->m_B1 = B1;
                     //optimizer->DebugOn();
@@ -291,9 +292,13 @@ class MCDAlgo : public Algorithm<double> {
                     optimizer->SetGlobalWarningDisplay(false);
                     optimizer->StartOptimization();
                     TOpt::ParametersType finalP = optimizer->GetCurrentPosition();
+                    outputs[0] = m_PDscale;
                     for (int i = 1; i < m_model->nParameters()-2; i++) {
                         outputs[i] = finalP[i-1];
                     }
+                    outputs[m_model->nParameters()-2] = f0;
+                    outputs[m_model->nParameters()-1] = B1;
+                    resids = cost->residuals(finalP);
                     //cout << "initP " << initP << endl << "finalP " << finalP << endl << *optimizer << endl;
             } else if (m_particle) {
                 std::vector<std::pair<double, double>> pBounds;
@@ -318,17 +323,16 @@ class MCDAlgo : public Algorithm<double> {
                 opt->SetParameterBounds(pBounds);
                 opt->SetInitialPosition(initP);
                 opt->SetParametersConvergenceTolerance(convergence);
-                opt->SetNumberOfParticles(1000);
-                opt->SetMaximalNumberOfIterations(10);
-                opt->InitializeNormalDistributionOn();
+                opt->SetNumberOfParticles(250);
+                opt->SetMaximalNumberOfIterations(5000);
                 opt->StartOptimization();
                 //cout << "START" << endl << initP << endl;
                 TOpt::ParametersType finalP = opt->GetCurrentPosition();
                 //cout << "FINISHED" << endl << finalP << endl << opt->GetPercentageParticlesConverged() << "% converged" << endl << opt->GetStopConditionDescription() << endl;
-                for (int i = 0; i < m_model->nParameters(); i++) {
-                    outputs[i] = finalP[i];
+                for (int i = 1; i < m_model->nParameters() - 2; i++) {
+                    outputs[i] = finalP[i-1];
                 }
-
+                resids = cost->residuals(finalP);
             } else {
                 MCDFunctor func(m_model, m_sequence, data);
                 RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
