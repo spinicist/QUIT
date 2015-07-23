@@ -384,40 +384,37 @@ public:
             cost->m_B1 = B1;
             cost->m_sequence = this->m_sequence;
             cost->m_model = this->m_model;
-            // Assign the cost function to the optimizer
-            optimizer->SetCostFunction( cost.GetPointer() );
-            // Set the initial parameters of the cost function
-            TOptimizer::ParametersType p(3);
-            p[0] = 10.;
-            p[1] = 0.05 * T1;
+            optimizer->SetCostFunction(cost.GetPointer());
 
-            TOptimizer::BoundSelectionType select(3);
+            TOptimizer::BoundSelectionType select(3); select.Fill(1);
             TOptimizer::BoundValueType lower(3);
-            lower[0] = 0.001;
-            lower[1] = this->m_sequence->TR() * 2.0;
-            lower[2] = 0.001;
-            select.Fill(1);
-            if (!this->m_sequence->isSymmetric())
-                select[2] = 0;
+            lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = 0.001;
 
+            double lo = -(0.4 / this->m_sequence->TR());
+            double step = -(2. * lo / 3.);
+            double hi = lo + 3. * step + 1.;
+            if (this->m_sequence->isSymmetric()) {
+                lo = 1.;
+            } else {
+                select[2] = 0;
+            }
             optimizer->SetLowerBound(lower);
             optimizer->SetUpperBound(lower);
             optimizer->SetBoundSelection(select);
-            optimizer->SetDebug(true);
+
             double best = numeric_limits<double>::infinity();
             TOptimizer::ParametersType bestP;
-            for (double f0 = -60.; f0 < 61.; f0 += 40.) {
-                p[2] = f0; //arg(data.mean()) / (M_PI * this->m_sequence->TR());
+            for (double f0 = lo; f0 < hi; f0 += step) {
+                TOptimizer::ParametersType p(3);
+                p[0] = 10.; p[1] = 0.05 * T1; p[2] = f0; //arg(data.mean()) / (M_PI * this->m_sequence->TR());
                 optimizer->SetInitialPosition(p);
                 optimizer->StartOptimization();
                 p = optimizer->GetCurrentPosition();
                 double r = cost->GetValue(p);
-                //cout << "p " << p << " r " << r << " T1 " << T1 << endl;
                 if (r < best) {
                     best = r;
                     bestP = p;
                 }
-                //exit(0);
             }
             outputs[0] = bestP[0] * indata.abs().maxCoeff();
             outputs[1] = bestP[1];
