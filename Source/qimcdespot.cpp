@@ -135,15 +135,12 @@ public:
     /** Run-time type information (and related methods). */
     itkTypeMacro(CostFunction, SingleValuedCostfunction);
 
-    shared_ptr<SequenceBase> m_sequence;
+    shared_ptr<SequenceGroup> m_sequence;
     ArrayXd m_data;
     shared_ptr<Model> m_model;
     double m_PD, m_B1, m_f0;
 
     unsigned int GetNumberOfParameters(void) const { return m_model->nParameters() - 3; } // itk::CostFunction
-    MeasureType GetValue(const ParametersType &p1) const {
-        return residuals(p1).square().sum();
-    }
 
     ArrayXd residuals(const ParametersType &p1) const {
         int N = m_model->nParameters();
@@ -157,36 +154,27 @@ public:
         return (s.abs() - m_data);
     }
 
+    MeasureType GetValue(const ParametersType &p1) const {
+        return (residuals(p1) * m_sequence->weights(m_f0)).square().sum();
+    }
+
     void GetDerivative(const ParametersType &p, DerivativeType &df) const {
         using std::sqrt;
         using std::abs;
-
-        int N = m_model->nParameters();
         double eps = sqrt(numeric_limits<double>::epsilon());
-        double val1, val2;
-
-        ArrayXd x(N);
-        x[0] = m_PD;
-        for (int i = 1; i < N - 2; ++i) {
-            x[i] = p[i-1];
-        }
-        x[N-2] = m_f0;
-        x[N-1] = m_B1;
-
-        df.SetSize(N-3);
-        for (int i = 1; i < N - 2; ++i) {
+        df.SetSize(p.Size());
+        ParametersType x = p;
+        for (int i = 0; i < p.Size(); ++i) {
             double h = eps * abs(x[i]);
             if (h == 0.) {
                 h = eps;
             }
             double _x = x[i];
             x[i] += h;
-            ArrayXcd s2 = m_sequence->signal(m_model, x);
-            double v2 = (s2.abs() - m_data).square().sum();
+            double v2 = GetValue(x);
             x[i] -= 2*h;
-            ArrayXcd s1 = m_sequence->signal(m_model, x);
-            double v1 = (s1.abs() - m_data).square().sum();
-            df[i - 1] = (v2 - v1)/(2*h);
+            double v1 = GetValue(x);
+            df[i] = (v2 - v1)/(2*h);
             x[i] = _x;
         }
         //cout << "p " << p << endl;
@@ -212,7 +200,7 @@ class MCDAlgo : public Algorithm<double> {
 		bool m_gauss = true;
         bool m_particle = false, m_LBFGS = false;
 		double m_PDscale = 0.;
-		ArrayXXd m_bounds;
+        ArrayXXd m_bounds;
 		shared_ptr<Model> m_model = nullptr;
 		shared_ptr<SequenceGroup> m_sequence;
 
@@ -221,7 +209,7 @@ class MCDAlgo : public Algorithm<double> {
 		void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
 		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
 		void setPDScale(double s) { m_PDscale = s; }
-		void setBounds(ArrayXXd b) { m_bounds = b; }
+        void setBounds(ArrayXXd b) { m_bounds = b; }
 		void setGauss(bool g) { m_gauss = g; }
         void setParticle(bool p) { m_particle = p; }
         void setLBFGS(bool l) { m_LBFGS = l; }
@@ -245,7 +233,7 @@ class MCDAlgo : public Algorithm<double> {
 			ArrayXd weights = ArrayXd::Ones(m_sequence->size());
 			double f0 = inputs[0];
 			double B1 = inputs[1];
-			ArrayXXd localBounds = m_bounds;
+            ArrayXXd localBounds = m_bounds;
 			if (!std::isnan(f0)) {
 				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
 				weights = m_sequence->weights(f0);
@@ -269,12 +257,14 @@ class MCDAlgo : public Algorithm<double> {
                         select[i] = 2; // Upper and lower bounds
                         initP[i] = (localBounds(i+1, 0) + localBounds(i+1, 1)) / 2;
                     }
+                    //initP[0] = upper[0];
+                    //initP[2] = lower[2];
                     TOpt::Pointer optimizer = TOpt::New();
                     optimizer->SetCostFunctionConvergenceFactor(1.e7);
                     optimizer->SetProjectedGradientTolerance(1e-10);
-                    optimizer->SetMaximumNumberOfIterations(50);
-                    optimizer->SetMaximumNumberOfEvaluations(99999);
-                    optimizer->SetMaximumNumberOfCorrections(10);
+                    optimizer->SetMaximumNumberOfIterations(75);
+                    optimizer->SetMaximumNumberOfEvaluations(999999);
+                    optimizer->SetMaximumNumberOfCorrections(20);
                     auto cost = itk::MCDCostFunction::New();
                     cost->m_data = data;
                     cost->m_sequence = m_sequence;
@@ -287,18 +277,18 @@ class MCDAlgo : public Algorithm<double> {
                     optimizer->SetBoundSelection(select);
                     optimizer->SetLowerBound(lower);
                     optimizer->SetUpperBound(upper);
-                    optimizer->SetInitialPosition(initP);
                     optimizer->DebugOff();
                     optimizer->SetGlobalWarningDisplay(false);
+                    optimizer->SetInitialPosition(initP);
                     optimizer->StartOptimization();
-                    TOpt::ParametersType finalP = optimizer->GetCurrentPosition();
+                    initP = optimizer->GetCurrentPosition();
                     outputs[0] = m_PDscale;
                     for (int i = 1; i < m_model->nParameters()-2; i++) {
-                        outputs[i] = finalP[i-1];
+                        outputs[i] = initP[i-1];
                     }
                     outputs[m_model->nParameters()-2] = f0;
-                    outputs[m_model->nParameters()-1] = B1;
-                    resids = cost->residuals(finalP);
+                    outputs[m_model->nParameters()-1] = optimizer->GetCurrentIteration();
+                    resids = cost->residuals(initP);
                     //cout << "initP " << initP << endl << "finalP " << finalP << endl << *optimizer << endl;
             } else if (m_particle) {
                 std::vector<std::pair<double, double>> pBounds;
@@ -543,17 +533,17 @@ int main(int argc, char **argv) {
 	vector<QI::ReorderF::Pointer> inOrder;
 	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, verbose, prompt);
 
-	ArrayXXd bounds = model->Bounds(tesla, 0);
+    ArrayXXd bounds = model->Bounds(tesla, 0);
 	if (tesla == FieldStrength::User) {
-		if (prompt) cout << "Enter parameter pairs (low then high)" << endl;
+        if (prompt) cout << "Enter parameter pairs (low then high)" << endl;
 		for (size_t i = 0; i < model->nParameters() - 1; i++) {
 			if (prompt) cout << model->Names()[i] << ": " << flush;
 			cin >> bounds(i, 0) >> bounds(i, 1);
-		}
+        }
 	}
 	bounds.row(model->nParameters() - 2) = f0Bandwidth;
 	mcd->setModel(model);
-	mcd->setBounds(bounds);
+    mcd->setBounds(bounds);
 	// Need this here so the bounds.txt file will have the correct prefix
 	outPrefix = outPrefix + model->Name() + "_";
 	if (verbose) {
