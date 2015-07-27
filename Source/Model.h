@@ -42,7 +42,7 @@ public:
 	virtual bool ValidParameters(cvecd &params) const = 0;
 	virtual const vector<string> &Names() const = 0;
 	virtual ArrayXXd Bounds(const FieldStrength f, cdbl TR) const = 0;
-    virtual ArrayXd Start(const FieldStrength f) const = 0;
+    virtual ArrayXd Start(const FieldStrength f, cdbl T1, cdbl T2) const = 0;
 
 	void setScaleToMean(bool s) { m_scale_to_mean = s; }
 
@@ -63,7 +63,7 @@ public:\
 	bool ValidParameters(cvecd &p) const override;\
 	const vector<string> &Names() const override;\
 	ArrayXXd Bounds(const FieldStrength f, cdbl TR) const override;\
-    ArrayXd Start(const FieldStrength f) const override;\
+    ArrayXd Start(const FieldStrength f, cdbl T1, cdbl T2) const override;\
 
 class SCD : public Model {
 	DECLARE_INTERFACE()

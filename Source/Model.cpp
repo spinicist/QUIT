@@ -55,7 +55,7 @@ ArrayXXd SCD::Bounds(const FieldStrength f, cdbl TR) const {
 	return b;
 }
 
-ArrayXd SCD::Start(const FieldStrength f) const {
+ArrayXd SCD::Start(const FieldStrength f, const double T1, const double T2) const {
     ArrayXd p(5);
     p << 1.0, 1.0, 0.05, 0, 1.0;
     return p;
@@ -123,11 +123,13 @@ ArrayXXd MCD2::Bounds(const FieldStrength f, cdbl TR) const {
 	return b;
 }
 
-ArrayXd MCD2::Start(const FieldStrength f) const {
+ArrayXd MCD2::Start(const FieldStrength f, const double T1, const double T2) const {
     ArrayXd p(nParameters());
+    const double T2_T1 = T2/T1;
+    const double f_m = std::max(0., std::min(0.25, (80. - T2)/240.));
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 0.18, 0.1, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.1, 0.075, 0.18, 0.1, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 0.18, f_m, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.1, 0.075, 0.18, f_m, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
@@ -183,11 +185,13 @@ ArrayXXd MCD2_NoEx::Bounds(const FieldStrength f, cdbl TR) const {
     return b;
 }
 
-ArrayXd MCD2_NoEx::Start(const FieldStrength f) const {
+ArrayXd MCD2_NoEx::Start(const FieldStrength f, const double T1, const double T2) const {
     ArrayXd p(nParameters());
+    const double T2_T1 = T2/T1;
+    const double f_m = std::max(0., std::min(0.25, (80. - T2)/240.));
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 0.1, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.7, 0.02, 1.2, 0.075, 0.1, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, f_m, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.7, 0.02, 1.2, 0.075, f_m, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
@@ -230,18 +234,27 @@ ArrayXXd MCD3::Bounds(const FieldStrength f, cdbl TR) const {
 	size_t nP = nParameters();
 	ArrayXXd b(nP, 2);
 	switch (f) {
-        case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.65, 0.005, 0.030, 0.5, 1.5, 0.05, 0.165, 2.0, 5.0, 1.0, 5.0, 0.025, 0.60, 0.0, 0.35, 0.0, 1.0, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
-        case FieldStrength::Seven: b << 1.0, 1.0, 0.4, 0.90, 0.001, 0.025, 0.8, 2.0, 0.04, 0.140, 3.0, 4.5, 0.5, 1.5, 0.025, 0.60, 0.0, 0.35, 0.0, 1.0, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
-		case FieldStrength::User:  b.setZero(); break;
+    case FieldStrength::Three: {
+        b.col(0) << 1.0, 0.300, 0.010, 0.5, 0.050, 3.5, 1.0, 0.025, 0.001, 0.001, -0.5/TR, 1.0;
+        b.col(1) << 1.0, 0.650, 0.040, 1.5, 0.150, 5.0, 3.5, 0.600, 0.35,  0.999, 0.5/TR, 1.0;
+    } break;
+    case FieldStrength::Seven: {
+        b.col(0) << 1.0, 0.400, 0.010, 0.800, 0.040, 3.0, 0.5, 0.025, 0.001, 0.001, -0.5/TR, 1.0;
+        b.col(1) << 1.0, 0.650, 0.040, 2.000, 0.140, 4.5, 1.5, 0.600, 0.35,  0.999, 0.5/TR, 1.0;
+    } break;
+    case FieldStrength::User:  b.setZero(); break;
 	}
 	return b;
 }
 
-ArrayXd MCD3::Start(const FieldStrength f) const {
+ArrayXd MCD3::Start(const FieldStrength f, const double T1, const double T2) const {
     ArrayXd p(nParameters());
+    const double T2_T1 = T2/T1;
+    const double f_csf = std::max(0., std::min(0.999, ((T2/T1) - 0.05) / 0.5));
+    const double f_m = std::max(0., std::min(1. - f_csf, std::min(0.25, (80. - T2)/240.)));
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 4.0, 2.0, 0.18, 0.1, 0.1, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.1, 0.075, 4.0, 2.0, 0.18, 0.1, 0.1, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 4.0, 2.0, 0.18, f_m, f_csf, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.1, 0.075, 4.0, 2.0, 0.18, f_m, f_csf, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
@@ -298,11 +311,14 @@ ArrayXXd MCD3_NoEx::Bounds(const FieldStrength f, cdbl TR) const {
     return b;
 }
 
-ArrayXd MCD3_NoEx::Start(const FieldStrength f) const {
+ArrayXd MCD3_NoEx::Start(const FieldStrength f, cdbl T1, cdbl T2) const {
     ArrayXd p(nParameters());
+    const double T2_T1 = T2/T1;
+    const double f_csf = std::max(0., std::min(0.999, ((T2/T1) - 0.05) / 0.5));
+    const double f_m = std::max(0., std::min(1. - f_csf, std::min(0.25, (80. - T2)/240.)));
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 4.0, 2.0, 0.1, 0.1, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.1, 0.075, 4.0, 2.0, 0.1, 0.1, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 4.0, 2.0, f_m, f_csf, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.1, 0.075, 4.0, 2.0, f_m, f_csf, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;

@@ -195,32 +195,108 @@ public:
 }
 
 class MCDAlgo : public Algorithm<double> {
+protected:
+    ArrayXXd m_bounds;
+    shared_ptr<Model> m_model = nullptr;
+    shared_ptr<SequenceGroup> m_sequence = nullptr;
+    double m_PDscale = 0.;
+
+public:
+    size_t numInputs() const override  { return m_sequence->count(); }
+    size_t numOutputs() const override { return m_model->nParameters(); }
+    size_t dataSize() const override   { return m_sequence->size(); }
+
+    void setModel(shared_ptr<Model> &m) { m_model = m; }
+    void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
+    void setBounds(ArrayXXd &b) { m_bounds = b; }
+    void setPDScale(double s) { m_PDscale = s; }
+};
+
+class LBFGSBAlgo : public MCDAlgo {
+private:
+    ArrayXd m_start;
+
+public:
+    void setStart(ArrayXd &s) { m_start = s; }
+
+    size_t numConsts() const override  { return 5; }
+    virtual TArray defaultConsts() {
+        // f0, B1 T1, T2
+        TArray def(4);
+        def << 0., 1., 1., 1.;
+        return def;
+    }
+
+    virtual void apply(const TInput &data, const TArray &inputs,
+                       TArray &outputs, TArray &resids) const override
+    {
+        double f0 = inputs[0];
+        double B1 = inputs[1];
+        double T1 = inputs[2];
+        double T2 = inputs[3];
+        ArrayXXd localBounds = m_bounds;
+        ArrayXd localStart = m_start;
+        localBounds.row(0).setConstant(1.);
+        localBounds.row(m_model->nParameters() - 2).setConstant(f0);
+        localBounds.row(m_model->nParameters() - 1).setConstant(B1);
+
+        typedef itk::LBFGSBOptimizer TOpt;
+        int N = m_model->nParameters() - 3;
+        TOpt::ParametersType start(N);
+        TOpt::BoundSelectionType select(N);
+        TOpt::BoundValueType lower(N), upper(N);
+        for (int i = 0; i < N; i++) {
+            lower[i] = localBounds(i+1, 0);
+            upper[i] = localBounds(i+1, 1);
+            select[i] = 2; // Upper and lower bounds
+            start[i] = m_start[i+1];
+        }
+        //initP[0] = upper[0];
+        //initP[2] = lower[2];
+        TOpt::Pointer optimizer = TOpt::New();
+        optimizer->SetCostFunctionConvergenceFactor(1.e7);
+        optimizer->SetProjectedGradientTolerance(1e-10);
+        optimizer->SetMaximumNumberOfIterations(75);
+        optimizer->SetMaximumNumberOfEvaluations(999999);
+        optimizer->SetMaximumNumberOfCorrections(20);
+        auto cost = itk::MCDCostFunction::New();
+        cost->m_data = data;
+        cost->m_sequence = m_sequence;
+        cost->m_model = m_model;
+        cost->m_PD = 1.0;
+        cost->m_f0 = f0;
+        cost->m_B1 = B1;
+        //optimizer->DebugOn();
+        optimizer->SetCostFunction(cost);
+        optimizer->SetBoundSelection(select);
+        optimizer->SetLowerBound(lower);
+        optimizer->SetUpperBound(upper);
+        optimizer->DebugOff();
+        optimizer->SetGlobalWarningDisplay(false);
+        optimizer->SetInitialPosition(start);
+        optimizer->StartOptimization();
+        TOpt::ParametersType final = optimizer->GetCurrentPosition();
+        outputs[0] = m_PDscale;
+        for (int i = 1; i < m_model->nParameters()-2; i++) {
+            outputs[i] = final[i-1];
+        }
+        outputs[m_model->nParameters()-2] = f0;
+        outputs[m_model->nParameters()-1] = B1;
+        resids = cost->residuals(final);
+        //cout << "initP " << initP << endl << "finalP " << finalP << endl << *optimizer << endl;
+    }
+};
+
+class SRCAlgo : public MCDAlgo {
 	private:
         size_t m_samples = 5000, m_retain = 50, m_contractions = 21;
-		bool m_gauss = true;
-        bool m_particle = false, m_LBFGS = false;
-		double m_PDscale = 0.;
-        ArrayXXd m_bounds;
-        ArrayXd m_start;
-		shared_ptr<Model> m_model = nullptr;
-		shared_ptr<SequenceGroup> m_sequence;
+        bool m_gauss = true;
 
 	public:
-		void setModel(shared_ptr<Model> &m) { m_model = m; }
-		void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
 		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
-		void setPDScale(double s) { m_PDscale = s; }
-        void setBounds(ArrayXXd b) { m_bounds = b; }
-        void setStart(ArrayXd &s) { m_start = s; }
 		void setGauss(bool g) { m_gauss = g; }
-        void setParticle(bool p) { m_particle = p; }
-        void setLBFGS(bool l) { m_LBFGS = l; }
 
-		size_t numInputs() const override  { return m_sequence->count(); }
 		size_t numConsts() const override  { return 2; }
-		size_t numOutputs() const override { return m_model->nParameters(); }
-		size_t dataSize() const override   { return m_sequence->size(); }
-
 		virtual TArray defaultConsts() {
 			// f0, B1
 			TArray def = TArray::Ones(2);
@@ -236,7 +312,6 @@ class MCDAlgo : public Algorithm<double> {
 			double f0 = inputs[0];
 			double B1 = inputs[1];
             ArrayXXd localBounds = m_bounds;
-            ArrayXd localStart = m_start;
 			if (!std::isnan(f0)) {
 				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
 				weights = m_sequence->weights(f0);
@@ -248,93 +323,13 @@ class MCDAlgo : public Algorithm<double> {
 				localBounds.row(0).setConstant(m_PDscale);
 			}
 			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
-            if (m_LBFGS) {
-                    typedef itk::LBFGSBOptimizer TOpt;
-                    int N = m_model->nParameters() - 3;
-                    TOpt::ParametersType start(N);
-                    TOpt::BoundSelectionType select(N);
-                    TOpt::BoundValueType lower(N), upper(N);
-                    for (int i = 0; i < N; i++) {
-                        lower[i] = localBounds(i+1, 0);
-                        upper[i] = localBounds(i+1, 1);
-                        select[i] = 2; // Upper and lower bounds
-                        start[i] = m_start[i+1];
-                    }
-                    //initP[0] = upper[0];
-                    //initP[2] = lower[2];
-                    TOpt::Pointer optimizer = TOpt::New();
-                    optimizer->SetCostFunctionConvergenceFactor(1.e7);
-                    optimizer->SetProjectedGradientTolerance(1e-10);
-                    optimizer->SetMaximumNumberOfIterations(75);
-                    optimizer->SetMaximumNumberOfEvaluations(999999);
-                    optimizer->SetMaximumNumberOfCorrections(20);
-                    auto cost = itk::MCDCostFunction::New();
-                    cost->m_data = data;
-                    cost->m_sequence = m_sequence;
-                    cost->m_model = m_model;
-                    cost->m_PD = m_PDscale;
-                    cost->m_f0 = f0;
-                    cost->m_B1 = B1;
-                    //optimizer->DebugOn();
-                    optimizer->SetCostFunction(cost);
-                    optimizer->SetBoundSelection(select);
-                    optimizer->SetLowerBound(lower);
-                    optimizer->SetUpperBound(upper);
-                    optimizer->DebugOff();
-                    optimizer->SetGlobalWarningDisplay(false);
-                    optimizer->SetInitialPosition(start);
-                    optimizer->StartOptimization();
-                    TOpt::ParametersType final = optimizer->GetCurrentPosition();
-                    outputs[0] = m_PDscale;
-                    for (int i = 1; i < m_model->nParameters()-2; i++) {
-                        outputs[i] = final[i-1];
-                    }
-                    outputs[m_model->nParameters()-2] = f0;
-                    outputs[m_model->nParameters()-1] = B1;
-                    resids = cost->residuals(final);
-                    //cout << "initP " << initP << endl << "finalP " << finalP << endl << *optimizer << endl;
-            } else if (m_particle) {
-                std::vector<std::pair<double, double>> pBounds;
-                typedef itk::ParticleSwarmOptimizer TOpt;
-                TOpt::ParametersType initP(m_model->nParameters() - 3);
-                TOpt::ParametersType convergence(m_model->nParameters() - 3);
-                for (int i = 1; i < m_model->nParameters() - 2; i++) {
-                    pBounds.push_back(std::pair<double, double>(localBounds(i, 0), localBounds(i, 1)));
-                    initP[i-1] = (localBounds(i, 0) + localBounds(i, 1)) / 2;
-                    convergence[i-1] = abs(initP[i] / 10.);
-                }
-                //cout << "CONVERGENCE" << endl << convergence << endl;
-                TOpt::Pointer opt = TOpt::New();
-                auto cost = itk::MCDCostFunction::New();
-                cost->m_B1 = B1;
-                cost->m_PD = 1.;
-                cost->m_f0 = f0;
-                cost->m_data = data;
-                cost->m_sequence = m_sequence;
-                cost->m_model = m_model;
-                opt->SetCostFunction(cost);
-                opt->SetParameterBounds(pBounds);
-                opt->SetInitialPosition(initP);
-                opt->SetParametersConvergenceTolerance(convergence);
-                opt->SetNumberOfParticles(250);
-                opt->SetMaximalNumberOfIterations(5000);
-                opt->StartOptimization();
-                //cout << "START" << endl << initP << endl;
-                TOpt::ParametersType finalP = opt->GetCurrentPosition();
-                //cout << "FINISHED" << endl << finalP << endl << opt->GetPercentageParticlesConverged() << "% converged" << endl << opt->GetStopConditionDescription() << endl;
-                for (int i = 1; i < m_model->nParameters() - 2; i++) {
-                    outputs[i] = finalP[i-1];
-                }
-                resids = cost->residuals(finalP);
-            } else {
-                MCDFunctor func(m_model, m_sequence, data);
-                RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
-                                                m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
-                rc.optimise(outputs);
-                //outputs(m_model->nParameters() - 1) = rc.contractions();
-                //outputs(0) = static_cast<int>(rc.status());
-                resids = rc.residuals();
-            }
+            MCDFunctor func(m_model, m_sequence, data);
+            RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
+                                            m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
+            rc.optimise(outputs);
+            //outputs(m_model->nParameters() - 1) = rc.contractions();
+            //outputs(0) = static_cast<int>(rc.status());
+            resids = rc.residuals();
 		}
 };
 
@@ -346,12 +341,15 @@ int main(int argc, char **argv) {
 
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
+    int nargs = 0;
 	int verbose = false, prompt = true, all_residuals = false,
-        fitFinite = false, flipData = false, useLBFGS = false;
+        fitFinite = false, flipData = false;
 	string outPrefix;
+    double PDScale = 1.;
+    enum class Algos { SRC, GRC, LBFGSB };
+    Algos algo = Algos::SRC;
 
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
-	shared_ptr<MCDAlgo> mcd = make_shared<MCDAlgo>();
 	shared_ptr<Model> model = make_shared<MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
     typedef itk::ApplyAlgorithmSliceBySliceFilter<MCDAlgo> TMCDFilter;
@@ -384,7 +382,6 @@ int main(int argc, char **argv) {
 					val   : Fix PD to val\n\
         --algo, -a S      : Use Uniform distribution for Region Contraction\n\
                    G      : Use Gaussian distribution for RC (default)\n\
-                   P      : Use particle swarm optimisation\n\
                    L      : Use LBFGS algorithm\n\
 		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
 		--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
@@ -468,30 +465,25 @@ int main(int argc, char **argv) {
 				if (mode == "MEAN") {
 					if (verbose) cout << "Mean scaling selected." << endl;
 					model->setScaleToMean(true);
-					mcd->setPDScale(1.);
+                    PDScale = 1.;
 					applySlices->SetScaleToMean(true);
 				} else if (atoi(optarg) == 0) {
 					if (verbose) cout << "Fit PD/M0 selected." << endl;
-					model->setScaleToMean(false);
-					mcd->setPDScale(atof(optarg));
+                    model->setScaleToMean(false);
+                    PDScale = atof(optarg);
 					applySlices->SetScaleToMean(false);
 				} else {
 					if (verbose) cout << "Fix PD value to " << atof(optarg) << endl;
 					model->setScaleToMean(false);
-					mcd->setPDScale(atof(optarg));
+                    PDScale = atof(optarg);
 					applySlices->SetScaleToMean(false);
 				}
 			} break;
             case 'a':
                 switch (*optarg) {
-                case 'S': break;
-                case 'G': mcd->setGauss(true); break;
-                case 'P': mcd->setParticle(true); break;
-                case 'L':
-                    mcd->setLBFGS(true);
-                    useLBFGS = true;
-                    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
-                    break;
+                case 'S': algo = Algos::SRC; break;
+                case 'G': algo = Algos::GRC; break;
+                case 'L': algo = Algos::LBFGSB; nargs = 2; break;
                 default:
                     cerr << "Unknown algorithm type " << *optarg << endl;
                     return EXIT_FAILURE;
@@ -513,7 +505,7 @@ int main(int argc, char **argv) {
 				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
 				ArrayXi in = ArrayXi::Zero(3);
 				QI::ReadArray(cin, in);
-				mcd->setRCPars(in[0], in[1], in[2]);
+                //mcd->setRCPars(in[0], in[1], in[2]);
 			} break;
 			case 'r': all_residuals = true; break;
 			case 'h':
@@ -527,16 +519,16 @@ int main(int argc, char **argv) {
 				return EXIT_FAILURE;
 		}
 	}
-	if ((argc - optind) != 0) {
+    if ((argc - optind) != nargs) {
 		cerr << usage << endl << "Incorrect number of arguments." << endl;
 		return EXIT_FAILURE;
 	} else if (prompt) {
 		cout << "Starting qimcdespot" << endl;
 		cout << "Run with -h switch to see usage" << endl;
 	}
+    Array2d f0Bandwidth;
 
 	shared_ptr<SequenceGroup> sequences = make_shared<SequenceGroup>();
-	Array2d f0Bandwidth;
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
 	vector<QI::ReadTimeseriesF::Pointer> inFiles;
@@ -545,8 +537,8 @@ int main(int argc, char **argv) {
 	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, verbose, prompt);
 
     ArrayXXd bounds = model->Bounds(tesla, 0);
-    ArrayXd start = model->Start(tesla);
-	if (tesla == FieldStrength::User) {
+    ArrayXd start = model->Start(tesla, 1., 1.);
+    if (tesla == FieldStrength::User) {
         ArrayXd temp;
         if (prompt) cout << "Enter lower bounds" << endl;
         QI::ReadArray(cin, temp);
@@ -554,34 +546,51 @@ int main(int argc, char **argv) {
         if (prompt) cout << "Enter upper bounds" << endl;
         QI::ReadArray(cin, temp);
         bounds.col(1) = temp;
-        if (useLBFGS) {
+        if (algo == Algos::LBFGSB) {
             if (prompt) cout << "Enter start point" << endl;
             QI::ReadArray(cin, start);
         }
-	}
-	bounds.row(model->nParameters() - 2) = f0Bandwidth;
-	mcd->setModel(model);
-    mcd->setBounds(bounds);
-    mcd->setStart(start);
-    // Need this here so the bounds.txt file will have the correct prefix
-	outPrefix = outPrefix + model->Name() + "_";
-	if (verbose) {
-        cout << *sequences;
-		cout << "Bounds:" << endl <<  bounds.transpose() << endl;
-        if (useLBFGS)
-            cout << "Start: " << endl << start.transpose() << endl;
-        ofstream boundsFile(outPrefix + "bounds.txt");
-        boundsFile << "Names: ";
-        for (size_t p = 0; p < model->nParameters(); p++) {
-            boundsFile << model->Names()[p] << "\t";
-        }
-        boundsFile << endl << "Bounds: " << endl << bounds.transpose() << endl;
-        if (useLBFGS)
-            boundsFile << "Start: " << endl << start.transpose() << endl;
-		boundsFile.close();
-	}
-	mcd->setSequence(sequences);
-	applySlices->SetAlgorithm(mcd);
+    }
+    bounds.row(model->nParameters() - 2) = f0Bandwidth;
+    shared_ptr<MCDAlgo> mcd;
+    switch (algo) {
+    case Algos::SRC:
+        mcd = make_shared<SRCAlgo>();
+        mcd->setModel(model);
+        mcd->setBounds(bounds);
+        mcd->setSequence(sequences);
+        applySlices->SetAlgorithm(mcd);
+        break;
+    case Algos::GRC: {
+        shared_ptr<SRCAlgo> temp = make_shared<SRCAlgo>();
+        temp->setGauss(true);
+        mcd = temp;
+        mcd->setModel(model);
+        mcd->setBounds(bounds);
+        mcd->setSequence(sequences);
+        applySlices->SetAlgorithm(mcd);
+    } break;
+    case Algos::LBFGSB: {
+        shared_ptr<LBFGSBAlgo> temp = make_shared<LBFGSBAlgo>();
+        temp->setStart(start);
+        QI::ReadImageF::Pointer T1 = QI::ReadImageF::New();
+        QI::ReadImageF::Pointer T2 = QI::ReadImageF::New();
+        T1->SetFileName(argv[optind++]);
+        T2->SetFileName(argv[optind++]);
+        T1->Update();
+        T2->Update();
+        mcd = temp;
+        mcd->setModel(model);
+        mcd->setBounds(bounds);
+        mcd->setSequence(sequences);
+        applySlices->SetAlgorithm(mcd);
+        cout << "Setting T1" << endl << T1->GetOutput()->GetDirection() << endl;
+        applySlices->SetConst(2, T1->GetOutput());
+        cout << "Setting T2" << endl << T2->GetOutput()->GetDirection() << endl;
+        applySlices->SetConst(3, T2->GetOutput());
+    } break;
+    }
+    mcd->setPDScale(PDScale);
 	applySlices->SetSlices(start_slice, stop_slice);
 	for (int i = 0; i < inOrder.size(); i++) {
 		applySlices->SetInput(i, inOrder.at(i)->GetOutput());
@@ -598,6 +607,24 @@ int main(int argc, char **argv) {
 		mask->Update();
 		applySlices->SetMask(mask->GetOutput());
 	}
+
+    // Need this here so the bounds.txt file will have the correct prefix
+    outPrefix = outPrefix + model->Name() + "_";
+    if (verbose) {
+        cout << *sequences;
+        cout << "Bounds:" << endl <<  bounds.transpose() << endl;
+        if (algo == Algos::LBFGSB)
+            cout << "Start: " << endl << start.transpose() << endl;
+        ofstream boundsFile(outPrefix + "bounds.txt");
+        boundsFile << "Names: ";
+        for (size_t p = 0; p < model->nParameters(); p++) {
+            boundsFile << model->Names()[p] << "\t";
+        }
+        boundsFile << endl << "Bounds: " << endl << bounds.transpose() << endl;
+        if (algo == Algos::LBFGSB)
+            boundsFile << "Start: " << endl << start.transpose() << endl;
+        boundsFile.close();
+    }
 
 	time_t startTime;
 	if (verbose) {
