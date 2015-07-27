@@ -201,6 +201,7 @@ class MCDAlgo : public Algorithm<double> {
         bool m_particle = false, m_LBFGS = false;
 		double m_PDscale = 0.;
         ArrayXXd m_bounds;
+        ArrayXd m_start;
 		shared_ptr<Model> m_model = nullptr;
 		shared_ptr<SequenceGroup> m_sequence;
 
@@ -210,6 +211,7 @@ class MCDAlgo : public Algorithm<double> {
 		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
 		void setPDScale(double s) { m_PDscale = s; }
         void setBounds(ArrayXXd b) { m_bounds = b; }
+        void setStart(ArrayXd &s) { m_start = s; }
 		void setGauss(bool g) { m_gauss = g; }
         void setParticle(bool p) { m_particle = p; }
         void setLBFGS(bool l) { m_LBFGS = l; }
@@ -234,6 +236,7 @@ class MCDAlgo : public Algorithm<double> {
 			double f0 = inputs[0];
 			double B1 = inputs[1];
             ArrayXXd localBounds = m_bounds;
+            ArrayXd localStart = m_start;
 			if (!std::isnan(f0)) {
 				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
 				weights = m_sequence->weights(f0);
@@ -248,14 +251,14 @@ class MCDAlgo : public Algorithm<double> {
             if (m_LBFGS) {
                     typedef itk::LBFGSBOptimizer TOpt;
                     int N = m_model->nParameters() - 3;
-                    TOpt::ParametersType initP(N);
+                    TOpt::ParametersType start(N);
                     TOpt::BoundSelectionType select(N);
                     TOpt::BoundValueType lower(N), upper(N);
                     for (int i = 0; i < N; i++) {
                         lower[i] = localBounds(i+1, 0);
                         upper[i] = localBounds(i+1, 1);
                         select[i] = 2; // Upper and lower bounds
-                        initP[i] = (localBounds(i+1, 0) + localBounds(i+1, 1)) / 2;
+                        start[i] = m_start[i+1];
                     }
                     //initP[0] = upper[0];
                     //initP[2] = lower[2];
@@ -279,16 +282,16 @@ class MCDAlgo : public Algorithm<double> {
                     optimizer->SetUpperBound(upper);
                     optimizer->DebugOff();
                     optimizer->SetGlobalWarningDisplay(false);
-                    optimizer->SetInitialPosition(initP);
+                    optimizer->SetInitialPosition(start);
                     optimizer->StartOptimization();
-                    initP = optimizer->GetCurrentPosition();
+                    TOpt::ParametersType final = optimizer->GetCurrentPosition();
                     outputs[0] = m_PDscale;
                     for (int i = 1; i < m_model->nParameters()-2; i++) {
-                        outputs[i] = initP[i-1];
+                        outputs[i] = final[i-1];
                     }
                     outputs[m_model->nParameters()-2] = f0;
-                    outputs[m_model->nParameters()-1] = optimizer->GetCurrentIteration();
-                    resids = cost->residuals(initP);
+                    outputs[m_model->nParameters()-1] = B1;
+                    resids = cost->residuals(final);
                     //cout << "initP " << initP << endl << "finalP " << finalP << endl << *optimizer << endl;
             } else if (m_particle) {
                 std::vector<std::pair<double, double>> pBounds;
@@ -344,7 +347,7 @@ int main(int argc, char **argv) {
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
 	int verbose = false, prompt = true, all_residuals = false,
-	    fitFinite = false, flipData = false;
+        fitFinite = false, flipData = false, useLBFGS = false;
 	string outPrefix;
 
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
@@ -367,7 +370,11 @@ int main(int argc, char **argv) {
 		--no-prompt, -n   : Don't print prompts for input\n\
 		--mask, -m file   : Mask input with specified file\n\
 		--out, -o path    : Add a prefix to the output filenames\n\
-		--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3)\n\
+        --model, -M 1     : Use 1 component model\n\
+                    2     : Use 2 component model\n\
+                    2nex  : Use 2 component, no exchange model\n\
+                    3     : Use 3 component model (default)\n\
+                    3nex  : Use 3 component, no exchange model\n\
 		--f0, -f file     : Use f0 Map file (in Hertz)\n\
 		--B1, -b file     : B1 Map file (ratio)\n\
 		--start, -s n     : Only start processing at slice n.\n\
@@ -407,12 +414,10 @@ int main(int argc, char **argv) {
 		{"resids", no_argument, 0, 'r'},
 		{"threads", required_argument, 0, 'T'},
 		{"no-prompt", no_argument, 0, 'n'},
-		{"1", no_argument, 0, '1'},
-		{"2", no_argument, 0, '2'},
-		{"3", no_argument, 0, '3'},
+        {"model", required_argument, 0, 'M'},
 		{0, 0, 0, 0}
 	};
-    const char* short_options = "hvm:o:f:b:s:p:S:a:t:FT:crn123i:j:";
+    const char* short_options = "hvm:o:f:b:s:p:S:a:t:FT:crnM:i:j:";
 
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
@@ -420,9 +425,14 @@ int main(int argc, char **argv) {
 		switch (c) {
 			case 'v': verbose = true; break;
 			case 'n': prompt = false; break;
-			case '1': model = make_shared<SCD>(); break;
-			case '2': model = make_shared<MCD2>(); break;
-			case '3': model = make_shared<MCD3>(); break;
+            case 'M': {
+                string choose_model(optarg);
+                if (choose_model == "1") { model = make_shared<SCD>(); }
+                else if (choose_model == "2") { model = make_shared<MCD2>(); }
+                else if (choose_model == "2nex") { model = make_shared<MCD2_NoEx>(); }
+                else if (choose_model == "3") { model = make_shared<MCD3>(); }
+                else if (choose_model == "3nex") { model = make_shared<MCD3_NoEx>(); }
+            } break;
 			default:
 				break;
 		}
@@ -431,7 +441,7 @@ int main(int argc, char **argv) {
 	optind = 1;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
-			case 'v': case 'n': case '1': case '2': case '3': break; // Already handled
+            case 'v': case 'n': case 'M': break; // Already handled
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
 				mask = QI::ReadImageF::New();
@@ -479,6 +489,7 @@ int main(int argc, char **argv) {
                 case 'P': mcd->setParticle(true); break;
                 case 'L':
                     mcd->setLBFGS(true);
+                    useLBFGS = true;
                     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
                     break;
                 default:
@@ -534,25 +545,39 @@ int main(int argc, char **argv) {
 	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, verbose, prompt);
 
     ArrayXXd bounds = model->Bounds(tesla, 0);
+    ArrayXd start = model->Start(tesla);
 	if (tesla == FieldStrength::User) {
-        if (prompt) cout << "Enter parameter pairs (low then high)" << endl;
-		for (size_t i = 0; i < model->nParameters() - 1; i++) {
-			if (prompt) cout << model->Names()[i] << ": " << flush;
-			cin >> bounds(i, 0) >> bounds(i, 1);
+        ArrayXd temp;
+        if (prompt) cout << "Enter lower bounds" << endl;
+        QI::ReadArray(cin, temp);
+        bounds.col(0) = temp;
+        if (prompt) cout << "Enter upper bounds" << endl;
+        QI::ReadArray(cin, temp);
+        bounds.col(1) = temp;
+        if (useLBFGS) {
+            if (prompt) cout << "Enter start point" << endl;
+            QI::ReadArray(cin, start);
         }
 	}
 	bounds.row(model->nParameters() - 2) = f0Bandwidth;
 	mcd->setModel(model);
     mcd->setBounds(bounds);
-	// Need this here so the bounds.txt file will have the correct prefix
+    mcd->setStart(start);
+    // Need this here so the bounds.txt file will have the correct prefix
 	outPrefix = outPrefix + model->Name() + "_";
 	if (verbose) {
-		cout << *sequences;
+        cout << *sequences;
 		cout << "Bounds:" << endl <<  bounds.transpose() << endl;
-		ofstream boundsFile(outPrefix + "bounds.txt");
-		for (size_t p = 0; p < model->nParameters(); p++) {
-			boundsFile << model->Names()[p] << "\t" << bounds.row(p) << endl;
-		}
+        if (useLBFGS)
+            cout << "Start: " << endl << start.transpose() << endl;
+        ofstream boundsFile(outPrefix + "bounds.txt");
+        boundsFile << "Names: ";
+        for (size_t p = 0; p < model->nParameters(); p++) {
+            boundsFile << model->Names()[p] << "\t";
+        }
+        boundsFile << endl << "Bounds: " << endl << bounds.transpose() << endl;
+        if (useLBFGS)
+            boundsFile << "Start: " << endl << start.transpose() << endl;
 		boundsFile.close();
 	}
 	mcd->setSequence(sequences);

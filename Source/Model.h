@@ -42,6 +42,7 @@ public:
 	virtual bool ValidParameters(cvecd &params) const = 0;
 	virtual const vector<string> &Names() const = 0;
 	virtual ArrayXXd Bounds(const FieldStrength f, cdbl TR) const = 0;
+    virtual ArrayXd Start(const FieldStrength f) const = 0;
 
 	void setScaleToMean(bool s) { m_scale_to_mean = s; }
 
@@ -62,7 +63,7 @@ public:\
 	bool ValidParameters(cvecd &p) const override;\
 	const vector<string> &Names() const override;\
 	ArrayXXd Bounds(const FieldStrength f, cdbl TR) const override;\
-
+    ArrayXd Start(const FieldStrength f) const override;\
 
 class SCD : public Model {
 	DECLARE_INTERFACE()
@@ -86,6 +87,13 @@ class MCD2 : public Model {
 	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const override;
 };
 
+class MCD2_NoEx : public Model {
+    DECLARE_INTERFACE()
+
+    virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const override;
+};
+
 class MCD3 : public Model {
 	DECLARE_INTERFACE()
 
@@ -93,6 +101,13 @@ class MCD3 : public Model {
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
 	virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const override;
 	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const override;
+};
+
+class MCD3_NoEx : public Model {
+    DECLARE_INTERFACE()
+
+    virtual VectorXcd SPGR(cvecd &p, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SSFP(cvecd &p, carrd &a, cdbl TR, cdbl phi) const override;
 };
 
 /*class MCD3_2OM : public Model {
