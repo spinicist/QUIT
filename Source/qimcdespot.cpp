@@ -199,6 +199,7 @@ protected:
     ArrayXXd m_bounds;
     shared_ptr<Model> m_model = nullptr;
     shared_ptr<SequenceGroup> m_sequence = nullptr;
+    FieldStrength m_tesla = FieldStrength::Three;
     double m_PDscale = 0.;
 
 public:
@@ -210,6 +211,7 @@ public:
     void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
     void setBounds(ArrayXXd &b) { m_bounds = b; }
     void setPDScale(double s) { m_PDscale = s; }
+    void setTesla(FieldStrength t) { m_tesla = t; }
 };
 
 class LBFGSBAlgo : public MCDAlgo {
@@ -235,7 +237,7 @@ public:
         double T1 = inputs[2];
         double T2 = inputs[3];
         ArrayXXd localBounds = m_bounds;
-        ArrayXd localStart = m_start;
+        ArrayXd localStart = m_model->Start(m_tesla, T1, T2);
         localBounds.row(0).setConstant(1.);
         localBounds.row(m_model->nParameters() - 2).setConstant(f0);
         localBounds.row(m_model->nParameters() - 1).setConstant(B1);
@@ -249,7 +251,7 @@ public:
             lower[i] = localBounds(i+1, 0);
             upper[i] = localBounds(i+1, 1);
             select[i] = 2; // Upper and lower bounds
-            start[i] = m_start[i+1];
+            start[i] = localStart[i+1];
         }
         //initP[0] = upper[0];
         //initP[2] = lower[2];
@@ -283,7 +285,6 @@ public:
         outputs[m_model->nParameters()-2] = f0;
         outputs[m_model->nParameters()-1] = B1;
         resids = cost->residuals(final);
-        //cout << "initP " << initP << endl << "finalP " << finalP << endl << *optimizer << endl;
     }
 };
 
@@ -571,6 +572,7 @@ int main(int argc, char **argv) {
         applySlices->SetAlgorithm(mcd);
     } break;
     case Algos::LBFGSB: {
+        itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
         shared_ptr<LBFGSBAlgo> temp = make_shared<LBFGSBAlgo>();
         temp->setStart(start);
         QI::ReadImageF::Pointer T1 = QI::ReadImageF::New();
@@ -583,10 +585,9 @@ int main(int argc, char **argv) {
         mcd->setModel(model);
         mcd->setBounds(bounds);
         mcd->setSequence(sequences);
+        mcd->setTesla(tesla);
         applySlices->SetAlgorithm(mcd);
-        cout << "Setting T1" << endl << T1->GetOutput()->GetDirection() << endl;
         applySlices->SetConst(2, T1->GetOutput());
-        cout << "Setting T2" << endl << T2->GetOutput()->GetDirection() << endl;
         applySlices->SetConst(3, T2->GetOutput());
     } break;
     }
