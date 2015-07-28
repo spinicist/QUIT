@@ -128,6 +128,7 @@ protected:
 public:
     typedef typename Algorithm<T>::TArray TArray;
     typedef typename Algorithm<T>::TInput TInput;
+    typedef typename Algorithm<T>::TIterations TIterations;
 
     void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
 
@@ -150,8 +151,10 @@ protected:
 public:
     typedef typename FMAlgo<T>::TArray TArray;
     typedef typename FMAlgo<T>::TInput TInput;
+    typedef typename FMAlgo<T>::TIterations TIterations;
+
     void f0guess(double &lo, double &hi, double &step, const TInput &data) const;
-    virtual void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const override;
+    virtual void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids, TIterations &its) const override;
 };
 
 template<typename T>
@@ -181,7 +184,7 @@ void LMAlgo<complex<double>>::f0guess(double &lo, double &hi, double &step, cons
 }
 
 template<typename T>
-void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const
+void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids, TIterations &its) const
 {
     //cout << __PRETTY_FUNCTION__ << endl;
     const double T1 = inputs[0];
@@ -193,6 +196,7 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
             double lo, hi, step;
             this->f0guess(lo, hi, step, data);
             //cout << lo << "/" << hi << "/" << step << endl;
+            its = 0;
             for (float f0guess = lo; f0guess < hi; f0guess += step) {
                 // First fix T2 and fit
                 FixT2<T> fixT2(this->m_model, this->m_sequence, data, T1, T2guess, B1);
@@ -217,6 +221,7 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
                     outputs = fullP;
                     bestF = F;
                 }
+                its += fixT2LM.iterations() + fullLM.iterations();
             }
         }
         outputs[1] = clamp(outputs[1], 0.001, T1);
@@ -227,6 +232,7 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
         // No point in processing -ve T1
         outputs.setZero();
         resids.setZero();
+        its = 0;
     }
 }
 
@@ -236,8 +242,10 @@ private:
     size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
 
 public:
-    typedef typename FMAlgo<T>::TArray TArray;
-    typedef typename FMAlgo<T>::TInput TInput;
+    using typename FMAlgo<T>::TArray;
+    using typename FMAlgo<T>::TInput;
+    using typename FMAlgo<T>::TIterations;
+
     ArrayXXd setupBounds(const TInput &data, const double T1) const {
         ArrayXXd bounds = ArrayXXd::Zero(3, 2);
         bounds(0, 0) = 0.;
@@ -254,7 +262,7 @@ public:
         return bounds;
     }
 
-    virtual void apply(const TInput &data, const TArray &consts, TArray &outputs, TArray &resids) const override
+    virtual void apply(const TInput &data, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override
     {
         double T1 = consts[0];
         if (isfinite(T1) && (T1 > 0.001)) {
@@ -268,10 +276,12 @@ public:
             RegionContraction<FMFunctor<T>> rc(func, bounds, weights, thresh, this->m_samples, this->m_retain, this->m_contractions, 0.02, true, false);
             rc.optimise(outputs);
             resids = rc.residuals();
+            its = rc.contractions();
         } else {
             // No point in processing -ve T1
             outputs.setZero();
             resids.setZero();
+            its = 0;
         }
     }
 };
@@ -361,11 +371,12 @@ public:
 template<typename T>
 class LBFGSBAlgo : public FMAlgo<T> {
 public:
-    typedef typename FMAlgo<T>::TArray TArray;
-    typedef typename FMAlgo<T>::TInput TInput;
+    using typename FMAlgo<T>::TArray;
+    using typename FMAlgo<T>::TInput;
+    using typename FMAlgo<T>::TIterations;
     typedef typename itk::LBFGSBOptimizer TOptimizer;
 
-    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids) const override {
+    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
         double T1 = consts[0];
         double B1 = consts[1];
         if (isfinite(T1) && (T1 > 0.001)) {
@@ -404,6 +415,7 @@ public:
 
             double best = numeric_limits<double>::infinity();
             TOptimizer::ParametersType bestP;
+            its = 0;
             for (double f0 = lo; f0 < hi; f0 += step) {
                 TOptimizer::ParametersType p(3);
                 p[0] = 10.; p[1] = 0.05 * T1; p[2] = f0; //arg(data.mean()) / (M_PI * this->m_sequence->TR());
@@ -415,6 +427,7 @@ public:
                     best = r;
                     bestP = p;
                 }
+                its += optimizer->GetCurrentIteration();
             }
             outputs[0] = bestP[0] * indata.abs().maxCoeff();
             outputs[1] = bestP[1];
@@ -423,6 +436,7 @@ public:
         } else {
             outputs.setZero();
             resids.setZero();
+            its = 0;
         }
     }
 };

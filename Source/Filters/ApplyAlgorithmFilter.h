@@ -15,19 +15,19 @@ template<typename DataType>
 class Algorithm {
 public:
 	typedef DataType TScalar;
+    typedef int      TIterations;
 	typedef Eigen::Array<TScalar, Eigen::Dynamic, 1> TInput;
 	typedef Eigen::ArrayXd TArray;
 	virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
 	virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
 	virtual size_t numOutputs() const = 0; // Number of output parameters/variables
 	virtual size_t dataSize() const = 0;   // The expected size of the concatenated data vector
-
+    virtual TArray defaultConsts() = 0;    // Give some default constants for when the user does not supply them
 	virtual void apply(const TInput &data,
 					   const TArray &consts,
 					   TArray &outputs,
-					   TArray &resids) const = 0;
-
-	virtual TArray defaultConsts() = 0;
+                       TArray &resids,
+                       TIterations &iterations) const = 0; // Apply the algorithm to the data from one voxel
 };
 
 namespace itk{
@@ -40,6 +40,7 @@ public:
 	typedef VectorImage<TData, ImageDim>   TDataVectorImage;
 	typedef VectorImage<TScalar, ImageDim> TScalarVectorImage;
 	typedef Image<TScalar, ImageDim>       TScalarImage;
+    typedef Image<typename TAlgorithm::TIterations, ImageDim> TIterationsImage;
 
 	typedef ApplyAlgorithmFilter                                     Self;
 	typedef ImageToImageFilter<TDataVectorImage, TScalarVectorImage> Superclass;
@@ -61,8 +62,9 @@ public:
 	void SetMask(const TScalarImage *mask);
 	typename TScalarImage::ConstPointer GetMask() const;
 
-	TScalarImage *GetOutput(const size_t i);
-	TScalarVectorImage *GetResidOutput();
+    TScalarImage       *GetOutput(const size_t i);
+    TScalarVectorImage *GetResidOutput();
+    TIterationsImage   *GetIterationsOutput();
 
 	virtual void GenerateOutputInformation() override;
 
@@ -79,6 +81,10 @@ protected:
 private:
 	ApplyAlgorithmFilter(const Self &); //purposely not implemented
 	void operator=(const Self &);  //purposely not implemented
+
+    static const int ResidualsOutput = 0;
+    static const int IterationsOutput = 1;
+    static const int StartOutputs = 2;
 };
 }
 

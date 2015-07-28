@@ -17,11 +17,11 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetAlgorithm(const shared_ptr<TAlgorithm> &a) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	m_algorithm = a;
-	// +1 is for mask.
 	// Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
-	this->SetNumberOfRequiredInputs(a->numInputs());
-	// +1 is for residuals vector
-	size_t totalOutputs = m_algorithm->numOutputs() + 1;
+    // Only the data inputs are required, the others are optional
+    this->SetNumberOfRequiredInputs(a->numInputs());
+    // Outputs go: Residuals, Iterations, Parameter 0, Parameter 1, ...
+    size_t totalOutputs = StartOutputs + m_algorithm->numOutputs();
 	this->SetNumberOfRequiredOutputs(totalOutputs);
 	for (size_t i = 0; i < totalOutputs; i++) {
 		this->SetNthOutput(i, this->MakeOutput(i));
@@ -96,14 +96,16 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 DataObject::Pointer ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::MakeOutput(unsigned int idx) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	DataObject::Pointer output;
-	if (idx == 0) {
+    if (idx == ResidualsOutput) {
 		auto img = TScalarVectorImage::New();
 		output = img;
-	} else if (idx < (m_algorithm->numOutputs() + 1)) {
+    } else if (idx == IterationsOutput) {
+        auto img = TIterationsImage::New();
+        output = img;
+    } else if (idx < (m_algorithm->numOutputs() + StartOutputs)) {
 		output = (TScalarImage::New()).GetPointer();
 	} else {
-		std::cerr << "No output " << idx << std::endl;
-		output = NULL;
+        itkExceptionMacro("Attempted to create output " << idx << ", this algorithm only has " << m_algorithm->numOutputs() << "+" << StartOutputs << " outputs.");
 	}
 	return output.GetPointer();
 }
@@ -112,15 +114,20 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetOutput(const size_t i) -> TScalarImage *{
 	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numOutputs()) {
-		return dynamic_cast<TScalarImage *>(this->ProcessObject::GetOutput(i+1));
+        return dynamic_cast<TScalarImage *>(this->ProcessObject::GetOutput(i+StartOutputs));
 	} else {
-		throw(runtime_error("Requested output " + to_string(i) + " is past maximum (" + to_string(m_algorithm->numOutputs()) + ")"));
+        itkExceptionMacro("Requested output " << to_string(i) << " is past maximum (" << to_string(m_algorithm->numOutputs()) << ")");
 	}
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetResidOutput() -> TScalarVectorImage *{
-	return dynamic_cast<TScalarVectorImage *>(this->ProcessObject::GetOutput(0));
+    return dynamic_cast<TScalarVectorImage *>(this->ProcessObject::GetOutput(ResidualsOutput));
+}
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetIterationsOutput() -> TIterationsImage *{
+    return dynamic_cast<TIterationsImage *>(this->ProcessObject::GetOutput(IterationsOutput));
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
@@ -155,6 +162,12 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
     r->SetDirection(direction);
     r->SetNumberOfComponentsPerPixel(size);
     r->Allocate();
+    auto i = this->GetIterationsOutput();
+    i->SetRegions(region);
+    i->SetSpacing(spacing);
+    i->SetOrigin(origin);
+    i->SetDirection(direction);
+    i->Allocate();
     //std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
 
@@ -188,11 +201,12 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
 		outputIters[i] = ImageRegionIterator<TScalarImage>(this->GetOutput(i), region);
 	}
 	ImageRegionIterator<TScalarVectorImage> residIter(this->GetResidOutput(), region);
-
+    ImageRegionIterator<TIterationsImage> iterationsIter(this->GetIterationsOutput(), region);
 	typedef typename TAlgorithm::TArray TArray;
 	while(!dataIters[0].IsAtEnd()) {
 		TArray outputs = TArray::Zero(m_algorithm->numOutputs());
 		TArray resids =  TArray::Zero(m_algorithm->dataSize());
+        typename TAlgorithm::TIterations iterations{0};
 		if (!mask || maskIter.Get()) {
 			TArray constants = m_algorithm->defaultConsts();
 			for (size_t i = 0; i < constIters.size(); i++) {
@@ -212,7 +226,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
 				allData.segment(dataIndex, data.rows()) = scaled.template cast<typename TAlgorithm::TScalar>();
 				dataIndex += data.rows();
 			}
-			m_algorithm->apply(allData, constants, outputs, resids);
+            m_algorithm->apply(allData, constants, outputs, resids, iterations);
 		}
 		if (this->GetMask())
 			++maskIter;
@@ -231,6 +245,8 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
 		VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
 		residIter.Set(residVector);
 		++residIter;
+        iterationsIter.Set(iterations);
+        ++iterationsIter;
 		progress.CompletedPixel();
 	}
 	//std::cout << "Finished " << std::endl;

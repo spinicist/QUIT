@@ -58,7 +58,7 @@ public:
 class D1LLS : public D1Algo {
 public:
 	virtual void apply(const TInput &data, const TArray &inputs,
-	                   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		double B1 = inputs[0];
 		ArrayXd flip = m_sequence->flip() * B1;
@@ -74,13 +74,14 @@ public:
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
 		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+        its = 1;
 	}
 };
 
 class D1WLLS : public D1Algo {
 public:
 	virtual void apply(const TInput &data, const TArray &inputs,
-	                   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		double B1 = inputs[0];
 		ArrayXd flip = m_sequence->flip() * B1;
@@ -102,6 +103,7 @@ public:
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
 		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+        its = m_iterations;
 	}
 };
 
@@ -132,7 +134,7 @@ class T1Functor : public DenseFunctor<double> {
 class D1NLLS : public D1Algo {
 public:
 	virtual void apply(const TInput &data, const TArray &inputs,
-	                   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		double B1 = inputs[0];
 		T1Functor f(m_sequence, data, B1);
@@ -148,6 +150,7 @@ public:
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
 		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+        its = lm.iterations();
 	}
 };
 
@@ -284,8 +287,8 @@ int main(int argc, char **argv) {
 	apply->Update();
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "D1_";
-	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-	QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
+    QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+    QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
 	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	if (verbose) cout << "Finished." << endl;

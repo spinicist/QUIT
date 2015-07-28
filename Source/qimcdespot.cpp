@@ -230,7 +230,7 @@ public:
     }
 
     virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
     {
         double f0 = inputs[0];
         double B1 = inputs[1];
@@ -285,6 +285,7 @@ public:
         outputs[m_model->nParameters()-2] = f0;
         outputs[m_model->nParameters()-1] = B1;
         resids = cost->residuals(final);
+        its = optimizer->GetCurrentIteration();
     }
 };
 
@@ -306,7 +307,7 @@ class SRCAlgo : public MCDAlgo {
 		}
 
 		virtual void apply(const TInput &data, const TArray &inputs,
-		                   TArray &outputs, TArray &resids) const override
+                           TArray &outputs, TArray &resids, TIterations &its) const override
 		{
 			ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
 			ArrayXd weights = ArrayXd::Ones(m_sequence->size());
@@ -331,6 +332,7 @@ class SRCAlgo : public MCDAlgo {
             //outputs(m_model->nParameters() - 1) = rc.contractions();
             //outputs(0) = static_cast<int>(rc.status());
             resids = rc.residuals();
+            its = rc.contractions();
 		}
 };
 
@@ -642,6 +644,7 @@ int main(int argc, char **argv) {
 		QI::writeResult(applySlices->GetOutput(i), outPrefix + model->Names()[i] + QI::OutExt());
 	}
 	QI::writeResiduals(applySlices->GetResidOutput(), outPrefix, all_residuals);
+    QI::writeResult<itk::Image<int, 3>>(applySlices->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
 	return EXIT_SUCCESS;
 }
 

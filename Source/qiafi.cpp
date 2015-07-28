@@ -132,8 +132,8 @@ int main(int argc, char **argv) {
 	B1->SetInput1(afi->GetOutput());
 	B1->SetConstant2(nomFlip);
 	B1->Update();
-	QI::writeResult(afi->GetOutput(), outPrefix + "angle" + QI::OutExt());
-	QI::writeResult(B1->GetOutput(),  outPrefix + "B1" + QI::OutExt());
+    QI::writeResult(afi->GetOutput(), outPrefix + "angle" + QI::OutExt());
+    QI::writeResult(B1->GetOutput(),  outPrefix + "B1" + QI::OutExt());
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;
 }
