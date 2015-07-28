@@ -37,8 +37,16 @@ void printElapsedClock(const clock_t &clockStart, const int voxCount);
 void printLoopTime(const clock_t &loopStart, const int voxCount);
 std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 
-void writeResult(const typename ImageF::Pointer img, const std::string path);
 void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
+
+template<typename TImg = QI::ImageF>
+void writeResult(const typename TImg::Pointer img, const std::string path) {
+    typedef itk::ImageFileWriter<TImg> TWriter;
+    auto file = TWriter::New();
+    file->SetFileName(path);
+    file->SetInput(img);
+    file->Update();
+}
 
 class GenericMonitor : public itk::Command {
 public:

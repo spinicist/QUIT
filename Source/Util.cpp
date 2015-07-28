@@ -87,13 +87,13 @@ mt19937_64::result_type RandomSeed() {
 	return r;
 }
 
-void writeResult(const ImageF::Pointer img,
+/*void writeResult(const ImageF::Pointer img,
                  const string path) {
 	auto file = WriteImageF::New();
 	file->SetFileName(path);
 	file->SetInput(img);
 	file->Update();
-}
+}*/
 
 void writeResiduals(const VectorImageF::Pointer img,
                     const string prefix,
