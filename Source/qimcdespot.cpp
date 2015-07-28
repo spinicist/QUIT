@@ -256,9 +256,9 @@ public:
         //initP[0] = upper[0];
         //initP[2] = lower[2];
         TOpt::Pointer optimizer = TOpt::New();
-        optimizer->SetCostFunctionConvergenceFactor(1.e7);
+        optimizer->SetCostFunctionConvergenceFactor(1.e3);
         optimizer->SetProjectedGradientTolerance(1e-10);
-        optimizer->SetMaximumNumberOfIterations(75);
+        optimizer->SetMaximumNumberOfIterations(150);
         optimizer->SetMaximumNumberOfEvaluations(999999);
         optimizer->SetMaximumNumberOfCorrections(20);
         auto cost = itk::MCDCostFunction::New();
@@ -277,6 +277,7 @@ public:
         optimizer->SetGlobalWarningDisplay(false);
         optimizer->SetInitialPosition(start);
         optimizer->StartOptimization();
+        //cout << "Stop: " << optimizer->GetStopConditionDescription() << endl;
         TOpt::ParametersType final = optimizer->GetCurrentPosition();
         outputs[0] = m_PDscale;
         for (int i = 1; i < m_model->nParameters()-2; i++) {
