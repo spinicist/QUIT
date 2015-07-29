@@ -322,9 +322,9 @@ public:
             const auto data = indata / indata.abs().maxCoeff();
             TOptimizer::Pointer optimizer = TOptimizer::New();
             // Set properties pertinent to convergence
-            optimizer->SetCostFunctionConvergenceFactor(1.e7);
+            optimizer->SetCostFunctionConvergenceFactor(1.e3);
             optimizer->SetProjectedGradientTolerance(1e-10);
-            optimizer->SetMaximumNumberOfIterations(50);
+            optimizer->SetMaximumNumberOfIterations(100);
             optimizer->SetMaximumNumberOfEvaluations(9999);
             optimizer->SetMaximumNumberOfCorrections(10);
             // Instantiate the cost function
@@ -336,28 +336,33 @@ public:
             cost->m_model = this->m_model;
             optimizer->SetCostFunction(cost.GetPointer());
 
-            TOptimizer::BoundSelectionType select(3); select.Fill(1);
-            TOptimizer::BoundValueType lower(3);
-            lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = 0.001;
-
-            double lo = -(0.4 / this->m_sequence->TR());
-            double step = -(2. * lo / 3.);
-            double hi = lo + 3. * step + 1.;
+            TOptimizer::BoundSelectionType select(3);
+            TOptimizer::BoundValueType lower(3), upper(3);
+            double f0_lo, f0_hi, f0_step;
             if (this->m_sequence->isSymmetric()) {
-                lo = 1.;
+                select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
+                lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = 0.001;
+                upper[0] = 0; upper[1] = T1; upper[2] = 0.6/this->m_sequence->TR(); // Allow for a bit of fuzz on upper boundary
+                f0_lo = 1.0;
+                f0_step = 0.4 / this->m_sequence->TR();
+                f0_hi = f0_lo + 1. + f0_step;
             } else {
-                select[2] = 0;
+                select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
+                lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = -0.5/this->m_sequence->TR();
+                upper[0] = 0; upper[1] = T1; upper[2] = 0.5/this->m_sequence->TR();
+                f0_lo = -(0.4 / this->m_sequence->TR());
+                f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
+                f0_step = 4./15. / this->m_sequence->TR(); // 2/3 * 0.4
             }
             optimizer->SetLowerBound(lower);
-            optimizer->SetUpperBound(lower);
+            optimizer->SetUpperBound(upper);
             optimizer->SetBoundSelection(select);
-
             double best = numeric_limits<double>::infinity();
             TOptimizer::ParametersType bestP;
             its = 0;
-            for (double f0 = lo; f0 < hi; f0 += step) {
+            for (double f0 = f0_lo; f0 < f0_hi; f0 += f0_step) {
                 TOptimizer::ParametersType p(3);
-                p[0] = 10.; p[1] = 0.05 * T1; p[2] = f0; //arg(data.mean()) / (M_PI * this->m_sequence->TR());
+                p[0] = 10.; p[1] = 0.1 * T1; p[2] = f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 optimizer->SetInitialPosition(p);
                 optimizer->StartOptimization();
                 p = optimizer->GetCurrentPosition();
