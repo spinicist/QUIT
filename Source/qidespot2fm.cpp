@@ -396,8 +396,8 @@ Options:\n\
     --mask, -m file   : Mask input with specified file\n\
     --out, -o path    : Add a prefix to the output filenames\n\
     --B1, -b file     : B1 Map file (ratio)\n\
-    --algo, -a l      : Use 2-step LM algorithm (default)\n\
-               b      : Use LBFGSB algorithm\n\
+    --algo, -a l      : Use 2-step LM algorithm\n\
+               b      : Use LBFGSB algorithm (default)\n\
     --complex, -x     : Fit to complex data\n\
     --start, -s N     : Start processing from slice N\n\
     --stop, -p  N     : Stop processing at slice N\n\
@@ -440,7 +440,7 @@ int run_main(int argc, char **argv) {
 
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false,
-        fitFinite = false, flipData = false, use_LBFGSB = false, use_src = false;
+        fitFinite = false, flipData = false, use_LBFGSB = true;
     string outPrefix;
     QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
@@ -452,7 +452,7 @@ int run_main(int argc, char **argv) {
         case 'n': prompt = false; break;
         case 'a':
         switch (*optarg) {
-            case 'l': if (verbose) cout << "LM algorithm selected." << endl; break;
+            case 'l': use_LBFGSB = false; if (verbose) cout << "LM algorithm selected." << endl; break;
             case 'b': use_LBFGSB = true; if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
             default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
         } break;
