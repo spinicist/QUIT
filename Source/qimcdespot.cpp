@@ -91,34 +91,6 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 	}
 }
 
-class MCDFunctor : public DenseFunctor<double> {
-	public:
-		const shared_ptr<SequenceBase> m_sequence;
-		const ArrayXd m_data;
-		const shared_ptr<Model> m_model;
-
-        MCDFunctor(shared_ptr<Model> m,shared_ptr<SequenceBase> s, const ArrayXd &d) :
-			DenseFunctor<double>(m->nParameters(), s->size()),
-			m_sequence(s), m_data(d), m_model(m)
-		{
-			assert(static_cast<size_t>(m_data.rows()) == values());
-		}
-
-		const bool constraint(const VectorXd &params) const {
-			return m_model->ValidParameters(params);
-		}
-
-		int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-			eigen_assert(diffs.size() == values());
-			ArrayXcd s = m_sequence->signal(m_model, params);
-			diffs = m_data - s.abs();
-			//cout << __PRETTY_FUNCTION__ << std::endl;
-			//cout << "d " << m_data.transpose() << endl;
-			//cout << "s " << s.abs().transpose() << endl;
-			return 0;
-		}
-};
-
 namespace itk {
 class MCDCostFunction : public SingleValuedCostFunction
 {
@@ -277,7 +249,6 @@ public:
         optimizer->SetGlobalWarningDisplay(false);
         optimizer->SetInitialPosition(start);
         optimizer->StartOptimization();
-        //cout << "Stop: " << optimizer->GetStopConditionDescription() << endl;
         TOpt::ParametersType final = optimizer->GetCurrentPosition();
         outputs[0] = m_PDscale;
         for (int i = 1; i < m_model->nParameters()-2; i++) {
@@ -288,6 +259,35 @@ public:
         resids = cost->residuals(final);
         its = optimizer->GetCurrentIteration();
     }
+};
+
+class MCDSRCFunctor {
+    public:
+        const shared_ptr<SequenceGroup> m_sequence;
+        const ArrayXd m_data;
+        const shared_ptr<Model> m_model;
+        const double m_f0;
+
+        MCDSRCFunctor(shared_ptr<Model> m,shared_ptr<SequenceGroup> s, const ArrayXd &d, const double f0 = 0.) :
+            m_sequence(s), m_data(d), m_model(m), m_f0(f0)
+        {
+            assert(static_cast<size_t>(m_data.rows()) == m_sequence->size());
+        }
+
+        int inputs() const { return m_model->nParameters(); }
+        int values() const { return m_sequence->size(); }
+
+        const bool constraint(const VectorXd &params) const {
+            return m_model->ValidParameters(params);
+        }
+
+        ArrayXd residuals(const Ref<VectorXd> &params) const {
+            return m_data - m_sequence->signal(m_model, params).abs();
+        }
+        double operator()(const Ref<VectorXd> &params) const {
+            eigen_assert(diffs.size() == values());
+            return (residuals(params) * m_sequence->weights(m_f0)).square().sum();
+        }
 };
 
 class SRCAlgo : public MCDAlgo {
@@ -311,13 +311,11 @@ class SRCAlgo : public MCDAlgo {
                            TArray &outputs, TArray &resids, TIterations &its) const override
 		{
 			ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
-			ArrayXd weights = ArrayXd::Ones(m_sequence->size());
 			double f0 = inputs[0];
 			double B1 = inputs[1];
             ArrayXXd localBounds = m_bounds;
 			if (!std::isnan(f0)) {
 				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
-				weights = m_sequence->weights(f0);
 			}
 			if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
 				localBounds(0, 0) = 0.;
@@ -326,13 +324,13 @@ class SRCAlgo : public MCDAlgo {
 				localBounds.row(0).setConstant(m_PDscale);
 			}
 			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
-            MCDFunctor func(m_model, m_sequence, data);
-            RegionContraction<MCDFunctor> rc(func, localBounds, weights, thresh,
+            MCDSRCFunctor func(m_model, m_sequence, data, f0);
+            RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh,
                                             m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
             rc.optimise(outputs);
             //outputs(m_model->nParameters() - 1) = rc.contractions();
             //outputs(0) = static_cast<int>(rc.status());
-            resids = rc.residuals();
+            resids = func.residuals(outputs);
             its = rc.contractions();
 		}
 };

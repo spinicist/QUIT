@@ -22,7 +22,6 @@
 #include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
 #include "Model.h"
 #include "Sequence.h"
-#include "RegionContraction.h"
 
 #include "itkAmoebaOptimizer.h"
 #include "itkLBFGSBOptimizer.h"
@@ -236,68 +235,6 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
     }
 }
 
-template<typename T>
-class SRCAlgo : public FMAlgo<T> {
-private:
-    size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
-
-public:
-    using typename FMAlgo<T>::TArray;
-    using typename FMAlgo<T>::TInput;
-    using typename FMAlgo<T>::TIterations;
-
-    ArrayXXd setupBounds(const TInput &data, const double T1) const {
-        ArrayXXd bounds = ArrayXXd::Zero(3, 2);
-        bounds(0, 0) = 0.;
-        bounds(0, 1) = data.abs().maxCoeff() * 25.0;
-        bounds(1, 0) = 0.001;
-        bounds(1, 1) = T1;
-        bounds(2, 1) = this->m_sequence->bwMult() / (2. * this->m_sequence->TR());
-        if (this->m_sequence->isSymmetric()) {
-            bounds(2, 0) = 0.;
-        } else {
-            bounds(2, 0) = -bounds(2, 1);
-        }
-
-        return bounds;
-    }
-
-    virtual void apply(const TInput &data, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override
-    {
-        double T1 = consts[0];
-        if (isfinite(T1) && (T1 > 0.001)) {
-            double B1 = consts[1];
-            ArrayXd thresh(3); thresh.setConstant(0.05);
-            ArrayXd weights(this->m_sequence->size()); weights.setOnes();
-            ArrayXXd bounds = this->setupBounds(data, T1);
-            //cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
-            //cout << bounds << endl;
-            FMFunctor<T> func(this->m_model, this->m_sequence, data, T1, B1);
-            RegionContraction<FMFunctor<T>> rc(func, bounds, weights, thresh, this->m_samples, this->m_retain, this->m_contractions, 0.02, true, false);
-            rc.optimise(outputs);
-            resids = rc.residuals();
-            its = rc.contractions();
-        } else {
-            // No point in processing -ve T1
-            outputs.setZero();
-            resids.setZero();
-            its = 0;
-        }
-    }
-};
-
-template<>
-ArrayXXd SRCAlgo<complex<double>>::setupBounds(const TInput &data, const double T1) const {
-    ArrayXXd bounds = ArrayXXd::Zero(3, 2);
-    bounds(0, 0) = 0.;
-    bounds(0, 1) = data.abs().maxCoeff() * 25.0;
-    bounds(1, 0) = 0.001;
-    bounds(1, 1) = T1;
-    bounds(2, 0) = -this->m_sequence->bwMult() / this->m_sequence->TR();
-    bounds(2, 1) = this->m_sequence->bwMult() / this->m_sequence->TR();
-    return bounds;
-}
-
 namespace itk {
 template<typename T>
 class FMCostFunction : public SingleValuedCostFunction
@@ -380,6 +317,8 @@ public:
         double T1 = consts[0];
         double B1 = consts[1];
         if (isfinite(T1) && (T1 > 0.001)) {
+            // Improve scaling by dividing the PD down to something sensible.
+            // This gets scaled back up at the end.
             const auto data = indata / indata.abs().maxCoeff();
             TOptimizer::Pointer optimizer = TOptimizer::New();
             // Set properties pertinent to convergence
@@ -453,8 +392,7 @@ Options:\n\
     --out, -o path    : Add a prefix to the output filenames\n\
     --B1, -b file     : B1 Map file (ratio)\n\
     --algo, -a l      : Use 2-step LM algorithm (default)\n\
-               s      : Use Stochastic Region Contraction\n\
-               L      : Use LBFGSB algorithm\n\
+               b      : Use LBFGSB algorithm\n\
     --complex, -x     : Fit to complex data\n\
     --start, -s N     : Start processing from slice N\n\
     --stop, -p  N     : Stop processing at slice N\n\
@@ -510,8 +448,7 @@ int run_main(int argc, char **argv) {
         case 'a':
         switch (*optarg) {
             case 'l': if (verbose) cout << "LM algorithm selected." << endl; break;
-            case 's': use_src = true; if (verbose) cout << "SRC algorithm selected." << endl; break;
-            case 'L': use_LBFGSB = true; if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
+            case 'b': use_LBFGSB = true; if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
             default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
         } break;
         case 'm':
@@ -570,9 +507,7 @@ int run_main(int argc, char **argv) {
     }
     auto apply = TApply::New();
     shared_ptr<FMAlgo<T>> algo;
-    if (use_src) {
-        algo = make_shared<SRCAlgo<T>>();
-    } else if (use_LBFGSB) {
+    if (use_LBFGSB) {
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
         algo = make_shared<LBFGSBAlgo<T>>();
     } else {
