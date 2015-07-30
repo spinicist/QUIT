@@ -50,9 +50,6 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 	if (prompt) cout << "Specify next image type (SPGR/SSFP): " << flush;
 	f0Bandwidth = Array2d::Zero();
 	while (QI::Read(cin, type) && (type != "END") && (type != "")) {
-		if (type != "SPGR" && type != "SSFP") {
-			throw(std::runtime_error("Unknown signal type: " + type));
-		}
 		if (prompt) cout << "Enter image path: " << flush;
 		QI::Read(cin, path);
 		files.push_back(QI::ReadTimeseriesF::New());
@@ -67,7 +64,11 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 			} else {
 				seq->addSequence(make_shared<SPGRSimple>(prompt));
 			}
-		} else if (type == "SSFP") {
+        } else if (type == "SPGR_ECHO") {
+            seq->addSequence(make_shared<SPGREcho>(prompt));
+        } else if (type == "SSFP_ECHO") {
+            seq->addSequence(make_shared<SSFPEcho>(prompt));
+        } else if (type == "SSFP") {
 			shared_ptr<SSFPSimple> s;
 			if (finite) {
 				s = make_shared<SSFPFinite>(prompt);
@@ -83,7 +84,9 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 			seq->addSequence(s);
 			if (flip)
 				order.back()->SetStride(s->phases());
-		}
+        } else {
+            throw(std::runtime_error("Unknown signal type: " + type));
+        }
 		if (verbose) cout << "Reading file: " << path << endl;
 		order.back()->Update();
 		// Print message ready for next loop

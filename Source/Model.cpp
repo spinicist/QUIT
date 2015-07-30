@@ -26,12 +26,14 @@ ArrayXcd Model::scale(const ArrayXcd &s) const {
 
 VectorXcd Model::MultiEcho(cvecd &, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::SPGR(cvecd &params, carrd &a, cdbl TR) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 VectorXcd Model::SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 
 /*****************************************************************************/
 /* Single Component DESPOT                                                   */
@@ -89,12 +91,24 @@ VectorXcd SCD::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const {
 	return scale(One_AFI(a, TR1, TR2, p[0], p[1], p[4]));
 }
 
-VectorXcd SCD::SSFP(cvecd &p, carrd &a, cdbl TR, cdbl phi) const {
-	return scale(One_SSFP(a, TR, phi, p[0], p[1], p[2], p[3], p[4]));
+VectorXcd SCD::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = One_SSFP(a, TR, phi[i], p[0], p[1], p[2], p[3], p[4]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
-VectorXcd SCD::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl phi) const {
-	return scale(One_SSFP_Finite(a, false, TR, Trf, 0., phi, p[0], p[1], p[2], p[3], p[4]));
+VectorXcd SCD::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = One_SSFP_Finite(a, false, TR, Trf, 0., phi[i], p[0], p[1], p[2], p[3], p[4]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
 VectorXcd SCD::SSFPEllipse(cvecd &p, carrd &a, cdbl TR) const {
@@ -151,16 +165,42 @@ VectorXcd MCD2::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 	return scale(Two_SPGR(a, TR, p[0], p[1], p[3], p[5], p[6], p[8]));
 }
 
+VectorXcd MCD2::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
+    return scale(Two_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[8]));
+}
+
 VectorXcd MCD2::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
 	return scale(Two_SSFP_Finite(a, true, TR, Trf, TE, 0, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
 }
 
-VectorXcd MCD2::SSFP(cvecd &p, carrd &a, cdbl TR, cdbl phi) const {
-	return scale(Two_SSFP(a, TR, phi, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
+VectorXcd MCD2::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = Two_SSFP(a, TR, phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
-VectorXcd MCD2::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl phi) const {
-	return scale(Two_SSFP_Finite(a, false, TR, Trf, 0., phi, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
+VectorXcd MCD2::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = Two_SSFP_Echo(a, TR, phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]);
+        start += a.rows();
+    }
+    return scale(s);
+}
+
+VectorXcd MCD2::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = Two_SSFP_Finite(a, false, TR, Trf, 0., phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
 /*****************************************************************************/
@@ -214,9 +254,15 @@ VectorXcd MCD2_NoEx::SPGR(cvecd &p, carrd &a, cdbl TR) const {
                  One_SPGR(a, TR, p[0]*(1-p[5]), p[3], p[7]));
 }
 
-VectorXcd MCD2_NoEx::SSFP(cvecd &p, carrd &a, cdbl TR, cdbl phi) const {
-    return scale(One_SSFP(a, TR, phi, p[0]*p[5], p[1], p[2], p[6], p[7]) +
-                 One_SSFP(a, TR, phi, p[0]*(1-p[5]), p[3], p[4], p[6], p[7]));
+VectorXcd MCD2_NoEx::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = One_SSFP(a, TR, phi[i], p[0]*p[5], p[1], p[2], p[6], p[7]) +
+                                     One_SSFP(a, TR, phi[i], p[0]*(1-p[5]), p[3], p[4], p[6], p[7]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
 /*****************************************************************************/
@@ -278,16 +324,46 @@ VectorXcd MCD3::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 	return scale(Three_SPGR(a, TR, p[0], p[1], p[3], p[5], p[7], p[8], p[9], p[11]));
 }
 
+VectorXcd MCD3::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
+    double f_ab = 1. - p[9];
+    VectorXcd m_ab = Two_SPGR_Echo(a, TR, TE, p[0] * f_ab, p[1], p[2], p[3], p[4], p[7], p[8] / f_ab, p[11]);
+    VectorXcd m_c  = One_SPGR_Echo(a, TR, TE, p[0] * p[9], p[5], p[6], p[11]);
+    VectorXcd r = m_ab + m_c;
+    return scale(r);
+}
+
 VectorXcd MCD3::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
 	return scale(Three_SSFP_Finite(a, true, TR, Trf, TE, 0, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]));
 }
 
-VectorXcd MCD3::SSFP(cvecd &p, carrd &a, cdbl TR, cdbl phi) const {
-	return scale(Three_SSFP(a, TR, phi, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]));
+VectorXcd MCD3::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = Three_SSFP(a, TR, phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
-VectorXcd MCD3::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl phi) const {
-	return scale(Three_SSFP_Finite(a, false, TR, Trf, 0., phi, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]));
+VectorXcd MCD3::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = Three_SSFP_Echo(a, TR, phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]);
+        start += a.rows();
+    }
+    return scale(s);
+}
+
+VectorXcd MCD3::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = Three_SSFP_Finite(a, false, TR, Trf, 0., phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
 /*****************************************************************************/
@@ -306,8 +382,8 @@ ArrayXXd MCD3_NoEx::Bounds(const FieldStrength f, cdbl TR) const {
     ArrayXXd b(nP, 2);
     switch (f) {
     case FieldStrength::Three: {
-        b.col(0) << 1.0, 0.300, 0.010, 0.5, 0.040, 3.5, 1.0, 0.025, 0.001, 0.001, -0.5/TR, 1.0;
-        b.col(1) << 1.0, 1.500, 0.030, 1.5, 0.150, 5.0, 3.5, 0.600, 0.35,  0.999, 0.5/TR, 1.0;
+        b.col(0) << 1.0, 0.200, 0.005, 0.700, 0.050, 3.5, 1.0, 0.001, 0.001, -0.5/TR, 1.0;
+        b.col(1) << 1.0, 0.700, 0.040, 2.000, 0.200, 5.0, 3.5, 0.500,  0.999, 0.5/TR, 1.0;
     } break;
     case FieldStrength::Seven: {
         b.col(0) << 1.0, 0.400, 0.010, 0.800, 0.040, 3.0, 0.5, 0.025, 0.001, 0.001, -0.5/TR, 1.0;
@@ -320,13 +396,13 @@ ArrayXXd MCD3_NoEx::Bounds(const FieldStrength f, cdbl TR) const {
 
 ArrayXd MCD3_NoEx::Start(const FieldStrength f, const double T1, const double T2) const {
     ArrayXd p(nParameters());
-    const double f_csf = std::max(0.001, std::min(0.999, ((T2/T1) - 0.05) / 0.2));
-    const double f_m = std::max(0.001, std::min(1. - f_csf, std::min(0.25, (0.08 - T2)/0.24)));
-    const double T2_ie = std::min(T2, 0.15);
-    const double T1_ie = std::min(T1, 1.5);
+    const double f_csf = std::max(0.001, std::min(0.5, ((T2/T1) - 0.05) / 0.4));
+    const double f_m = 0.15;
+    const double T2_ie = std::min(T2 * 1.2, 0.15);
+    const double T1_ie = std::min(T1 * 1.2, 1.5);
     switch (f) {
-    case FieldStrength::Three: p << 1.0, T1_ie, 0.02, T1_ie, T2_ie, 4.0, 2.0, 0.15, f_m, f_csf, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, T1_ie, T2_ie, 4.0, 2.0, 0.15, f_m, f_csf, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.45, 0.015, T1_ie, T2_ie, 4.0, 3.0, f_m, f_csf, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.45, 0.015, T1_ie, T2_ie, 4.0, 3.0, f_m, f_csf, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
@@ -351,9 +427,34 @@ VectorXcd MCD3_NoEx::SPGR(cvecd &p, carrd &a, cdbl TR) const {
                  One_SPGR(a, TR, p[0]*p[8], p[5], p[10]));
 }
 
-VectorXcd MCD3_NoEx::SSFP(cvecd &p, carrd &a, cdbl TR, cdbl phi) const {
-    return scale(One_SSFP(a, TR, phi, p[0]*p[7], p[1], p[2], p[9], p[10]) +
-                 One_SSFP(a, TR, phi, p[0]*(1-p[7]-p[8]), p[3], p[4], p[9], p[10]) +
-                 One_SSFP(a, TR, phi, p[0]*p[8], p[5], p[6], p[9], p[10]));
+VectorXcd MCD3_NoEx::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
+    return scale(One_SPGR_Echo(a, TR, TE, p[0]*p[7], p[1], p[2], p[10]) +
+                 One_SPGR_Echo(a, TR, TE, p[0]*(1-p[7]-p[8]), p[3], p[4], p[10]) +
+                 One_SPGR_Echo(a, TR, TE, p[0]*p[8], p[5], p[6], p[10]));
+}
+
+
+VectorXcd MCD3_NoEx::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = One_SSFP(a, TR, phi[i], p[0]*p[7], p[1], p[2], p[9], p[10]) +
+                                     One_SSFP(a, TR, phi[i], p[0]*(1-p[7]-p[8]), p[3], p[4], p[9], p[10]) +
+                                     One_SSFP(a, TR, phi[i], p[0]*p[8], p[5], p[6], p[9], p[10]);
+        start += a.rows();
+    }
+    return scale(s);
+}
+
+VectorXcd MCD3_NoEx::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = One_SSFP_Echo(a, TR, phi[i], p[0]*p[7], p[1], p[2], p[9], p[10]) +
+                                     One_SSFP_Echo(a, TR, phi[i], p[0]*(1-p[7]-p[8]), p[3], p[4], p[9], p[10]) +
+                                     One_SSFP_Echo(a, TR, phi[i], p[0]*p[8], p[5], p[6], p[9], p[10]);
+        start += a.rows();
+    }
+    return scale(s);
 }
 
