@@ -8,14 +8,14 @@
 # First, create input data
 
 source ./test_common.sh
-SILENCE_TESTS="1"
+SILENCE_TESTS="0"
 
 DATADIR="2C"
-rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
+rm *
 
-DIMS="11 11 4"
+DIMS="7 7 3"
 
 $QUITDIR/qinewimage -d "$DIMS" -f "1.0" PD.nii
 $QUITDIR/qinewimage -d "$DIMS" -f "0.465" T1_m.nii
@@ -25,7 +25,7 @@ $QUITDIR/qinewimage -d "$DIMS" -f "0.117" T2_ie.nii
 $QUITDIR/qinewimage -d "$DIMS" -f "0.18" tau_m.nii
 $QUITDIR/qinewimage -d "$DIMS" -g "0 -5. 5." f0.nii
 $QUITDIR/qinewimage -d "$DIMS" -g "1 0.75 1.25" B1.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "2 0.1 0.25" f_m.nii
+$QUITDIR/qinewimage -d "$DIMS" -g "2 0.1 0.2" f_m.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
@@ -36,7 +36,7 @@ SSFP_FLIP="12 16 21 27 33 40 51 68 "
 SSFP_PC="180 0"
 SSFP_TR="0.005"
 
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --2 -n -v << END_MCSIG
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --2 -n -v -N 0.002 << END_MCSIG
 PD.nii
 T1_m.nii
 T2_m.nii
@@ -61,7 +61,7 @@ END_MCSIG
 function run() {
 PREFIX="$1"
 OPTS="$2"
-run_test $PREFIX $QUITDIR/qimcdespot $OPTS -2 -bB1.nii -r -o $PREFIX -v << END_INPUT
+run_test $PREFIX $QUITDIR/qimcdespot $OPTS -M2 -bB1.nii -r -o $PREFIX -v -n << END_INPUT
 SPGR
 $SPGR_FILE
 $SPGR_FLIP
@@ -84,13 +84,9 @@ echo "Tau:   " $( fslstats ${PREFIX}2C_tau_m.nii -m -s | awk '{print $1, $2, $2/
 compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
 }
 
-run "GAUSSSCALE1f0"  " -S1 -ff0.nii"
-#run "SCALE1f0"      " -S1 -g0 -ff0.nii"
-#run "NOSCALEf0"     " -SNONE -g0 -ff0.nii"
-#run "MEANSCALEf0"   " -g0 -ff0.nii"
-#run "MEANSCALE"     " -g0 "
-#run "GAUSSSCALE1"   " -S1 -g0 "
-#run "NOSCALE"       " -SNONE -g0 "
+run "BFGS" " -S1 -ff0.nii -ab T1_ie.nii T2_ie.nii"
+run "GRC" " -S1 -ff0.nii -aG"
+run "SRC" " -S1 -ff0.nii -aS"
 
 cd ..
 SILENCE_TESTS="0"

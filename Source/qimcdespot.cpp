@@ -176,6 +176,7 @@ protected:
     shared_ptr<SequenceGroup> m_sequence = nullptr;
     FieldStrength m_tesla = FieldStrength::Three;
     double m_PDscale = 0.;
+    int m_iterations = 0;
 
 public:
     size_t numInputs() const override  { return m_sequence->count(); }
@@ -187,6 +188,7 @@ public:
     void setBounds(ArrayXXd &b) { m_bounds = b; }
     void setPDScale(double s) { m_PDscale = s; }
     void setTesla(FieldStrength t) { m_tesla = t; }
+    void setIterations(const int i) { m_iterations = i; }
 };
 
 class LBFGSBAlgo : public MCDAlgo {
@@ -194,6 +196,10 @@ private:
     ArrayXd m_start;
 
 public:
+    LBFGSBAlgo() {
+        m_iterations = 150;
+    }
+
     void setStart(ArrayXd &s) { m_start = s; }
 
     size_t numConsts() const override  { return 5; }
@@ -233,7 +239,7 @@ public:
         TOpt::Pointer optimizer = TOpt::New();
         optimizer->SetCostFunctionConvergenceFactor(1.e3);
         optimizer->SetProjectedGradientTolerance(1e-10);
-        optimizer->SetMaximumNumberOfIterations(150);
+        optimizer->SetMaximumNumberOfIterations(m_iterations);
         optimizer->SetMaximumNumberOfEvaluations(999999);
         optimizer->SetMaximumNumberOfCorrections(20);
         auto cost = itk::MCDCostFunction::New();
@@ -295,11 +301,14 @@ class MCDSRCFunctor {
 
 class SRCAlgo : public MCDAlgo {
 	private:
-        size_t m_samples = 5000, m_retain = 50, m_contractions = 21;
+        size_t m_samples = 5000, m_retain = 50;
         bool m_gauss = true;
 
 	public:
-		void setRCPars(size_t c, size_t s, size_t r) { m_contractions = c; m_samples = s; m_retain = r; }
+        SRCAlgo() {
+            m_iterations = 7;
+        }
+
 		void setGauss(bool g) { m_gauss = g; }
 
 		size_t numConsts() const override  { return 2; }
@@ -329,7 +338,7 @@ class SRCAlgo : public MCDAlgo {
 			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
             MCDSRCFunctor func(m_model, m_sequence, data, f0);
             RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh,
-                                            m_samples, m_retain, m_contractions, 0.02, m_gauss, false);
+                                            m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
             rc.optimise(outputs);
             //outputs(m_model->nParameters() - 1) = rc.contractions();
             //outputs(0) = static_cast<int>(rc.status());
@@ -346,13 +355,13 @@ int main(int argc, char **argv) {
 
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
-    int nargs = 0;
+    int nargs = 0, max_its = 0;
 	int verbose = false, prompt = true, all_residuals = false,
         fitFinite = false, flipData = false;
 	string outPrefix;
     double PDScale = 1.;
     enum class Algos { SRC, GRC, LBFGSB };
-    Algos algo = Algos::SRC;
+    Algos algo = Algos::GRC;
 
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<Model> model = make_shared<MCD3>();
@@ -387,13 +396,13 @@ int main(int argc, char **argv) {
 					val   : Fix PD to val\n\
         --algo, -a S      : Use Uniform distribution for Region Contraction\n\
                    G      : Use Gaussian distribution for RC (default)\n\
-                   L      : Use LBFGS algorithm\n\
+                   b      : Use BFGS algorithm\n\
+        --iters, -i N     : Specify maximum number of iterations\n\
 		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
 		--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
 					7     : Boundaries suitable for 7T \n\
 					u     : User specified boundaries from stdin\n\
 		--finite          : Use Finite Pulse Length correction\n\
-		--contract, -c n  : Read contraction settings from stdin (Will prompt)\n\
 		--resids, -r      : Write out per flip-angle residuals\n\
 		--threads, -T N   : Use N threads (default=hardware limit)\n"
 	};
@@ -409,17 +418,17 @@ int main(int argc, char **argv) {
 		{"stop", required_argument, 0, 'p'},
 		{"scale", required_argument, 0, 'S'},
         {"algo", required_argument, 0, 'a'},
+        {"iterations", required_argument, 0, 'i'},
 		{"flip", required_argument, 0, 'F'},
 		{"tesla", required_argument, 0, 't'},
 		{"finite", no_argument, &fitFinite, 1},
-		{"contract", no_argument, 0, 'c'},
 		{"resids", no_argument, 0, 'r'},
 		{"threads", required_argument, 0, 'T'},
 		{"no-prompt", no_argument, 0, 'n'},
         {"model", required_argument, 0, 'M'},
 		{0, 0, 0, 0}
 	};
-    const char* short_options = "hvm:o:f:b:s:p:S:a:t:FT:crnM:i:j:";
+    const char* short_options = "hvm:o:f:b:s:p:S:a:t:FT:rnM:i:j:";
 
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
@@ -488,7 +497,7 @@ int main(int argc, char **argv) {
                 switch (*optarg) {
                 case 'S': algo = Algos::SRC; break;
                 case 'G': algo = Algos::GRC; break;
-                case 'L': algo = Algos::LBFGSB; nargs = 2; break;
+                case 'b': algo = Algos::LBFGSB; nargs = 2; break;
                 default:
                     cerr << "Unknown algorithm type " << *optarg << endl;
                     return EXIT_FAILURE;
@@ -506,12 +515,7 @@ int main(int argc, char **argv) {
 						return EXIT_FAILURE;
 						break;
                 } break;
-			case 'c': {
-				if (prompt) cout << "Enter max contractions/samples per contraction/retained samples/expand fraction: " << flush;
-				ArrayXi in = ArrayXi::Zero(3);
-				QI::ReadArray(cin, in);
-                //mcd->setRCPars(in[0], in[1], in[2]);
-			} break;
+            case 'i': max_its = atoi(optarg); break;
 			case 'r': all_residuals = true; break;
 			case 'h':
 				cout << usage << endl;
@@ -559,14 +563,18 @@ int main(int argc, char **argv) {
     bounds.row(model->nParameters() - 2) = f0Bandwidth;
     shared_ptr<MCDAlgo> mcd;
     switch (algo) {
-    case Algos::SRC:
-        mcd = make_shared<SRCAlgo>();
+    case Algos::SRC: {
+        if (verbose) cout << "Using SRC algorithm" << endl;
+        shared_ptr<SRCAlgo> temp = make_shared<SRCAlgo>();
+        temp->setGauss(false);
+        mcd = temp;
         mcd->setModel(model);
         mcd->setBounds(bounds);
         mcd->setSequence(sequences);
         applySlices->SetAlgorithm(mcd);
-        break;
+    } break;
     case Algos::GRC: {
+        if (verbose) cout << "Using GRC algorithm" << endl;
         shared_ptr<SRCAlgo> temp = make_shared<SRCAlgo>();
         temp->setGauss(true);
         mcd = temp;
@@ -576,6 +584,7 @@ int main(int argc, char **argv) {
         applySlices->SetAlgorithm(mcd);
     } break;
     case Algos::LBFGSB: {
+        if (verbose) cout << "Using BFGS algorithm" << endl;
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
         shared_ptr<LBFGSBAlgo> temp = make_shared<LBFGSBAlgo>();
         temp->setStart(start);
@@ -596,6 +605,9 @@ int main(int argc, char **argv) {
     } break;
     }
     mcd->setPDScale(PDScale);
+    if (max_its > 0) {
+        mcd->setIterations(max_its);
+    }
 	applySlices->SetSlices(start_slice, stop_slice);
 	for (int i = 0; i < inOrder.size(); i++) {
 		applySlices->SetInput(i, inOrder.at(i)->GetOutput());
