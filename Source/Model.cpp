@@ -249,8 +249,8 @@ ArrayXXd MCD3::Bounds(const FieldStrength f, cdbl TR) const {
 
 ArrayXd MCD3::Start(const FieldStrength f, const double T1, const double T2) const {
     ArrayXd p(nParameters());
-    const double f_csf = std::max(0.001, std::min(0.999, ((T2/T1) - 0.05) / 0.2));
-    const double f_m = std::min(1. - f_csf, 0.15);
+    const double f_csf = std::max(0.001, std::min(0.5, ((T2/T1) - 0.05) / 0.4));
+    const double f_m = 0.15;
     const double T2_ie = std::min(T2 * 1.2, 0.15);
     const double T1_ie = std::min(T1 * 1.2, 1.5);
     switch (f) {
