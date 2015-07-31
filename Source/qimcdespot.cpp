@@ -219,9 +219,9 @@ public:
         double T2 = inputs[3];
         ArrayXXd localBounds = m_bounds;
         ArrayXd localStart = m_model->Start(m_tesla);
-        localBounds.row(0).setConstant(1.);
-        localBounds.row(m_model->nParameters() - 2).setConstant(f0);
-        localBounds.row(m_model->nParameters() - 1).setConstant(B1);
+        localBounds.row(m_model->ParameterIndex("PD")).setConstant(1.);
+        localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
+        localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
         typedef itk::LBFGSBOptimizer TOpt;
         int N = m_model->nParameters() - 3;
         TOpt::ParametersType start(N);
@@ -262,8 +262,8 @@ public:
         for (int i = 1; i < m_model->nParameters()-2; i++) {
             outputs[i] = final[i-1];
         }
-        outputs[m_model->nParameters()-2] = f0;
-        outputs[m_model->nParameters()-1] = B1;
+        outputs[m_model->ParameterIndex("f0")] = f0;
+        outputs[m_model->ParameterIndex("B1")] = B1;
         resids = cost->residuals(final);
         its = optimizer->GetCurrentIteration();
     }
@@ -634,7 +634,7 @@ int main(int argc, char **argv) {
         ofstream boundsFile(outPrefix + "bounds.txt");
         boundsFile << "Names: ";
         for (size_t p = 0; p < model->nParameters(); p++) {
-            boundsFile << model->Names()[p] << "\t";
+            boundsFile << model->ParameterNames()[p] << "\t";
         }
         boundsFile << endl << "Bounds: " << endl << bounds.transpose() << endl;
         if (algo == Algos::LBFGSB)
@@ -654,7 +654,7 @@ int main(int argc, char **argv) {
 		cout << "Writing results files." << endl;
 	}
 	for (int i = 0; i < model->nParameters(); i++) {
-		QI::writeResult(applySlices->GetOutput(i), outPrefix + model->Names()[i] + QI::OutExt());
+        QI::writeResult(applySlices->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
 	}
 	QI::writeResiduals(applySlices->GetResidOutput(), outPrefix, all_residuals);
     QI::writeResult<itk::Image<int, 3>>(applySlices->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());

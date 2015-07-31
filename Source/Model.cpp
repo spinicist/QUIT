@@ -15,6 +15,15 @@ const string to_string(const FieldStrength& f) {
 /*****************************************************************************/
 /* Base Class                                                                */
 /*****************************************************************************/
+ptrdiff_t Model::ParameterIndex(const string &p) const {
+    auto it = find(ParameterNames().begin(), ParameterNames().end(), p);
+    if (it != ParameterNames().end()) {
+        return distance(ParameterNames().begin(), it);
+    } else {
+        throw(runtime_error("Parameter " + p + " does not exist in model " + Name()));
+    }
+}
+
 ArrayXcd Model::scale(const ArrayXcd &s) const {
 	if (m_scale_to_mean) {
 		ArrayXcd scaled = s / s.abs().mean();
@@ -41,7 +50,7 @@ VectorXcd Model::SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &
 
 string SCD::Name() const { return "1C"; }
 size_t SCD::nParameters() const { return 5; }
-const vector<string> &SCD::Names() const {
+const vector<string> &SCD::ParameterNames() const {
 	static vector<string> n{"PD", "T1", "T2", "f0", "B1"};
 	return n;
 }
@@ -121,7 +130,7 @@ VectorXcd SCD::SSFPEllipse(cvecd &p, carrd &a, cdbl TR) const {
 
 string MCD2::Name() const { return "2C"; }
 size_t MCD2::nParameters() const { return 9; }
-const vector<string> & MCD2::Names() const {
+const vector<string> & MCD2::ParameterNames() const {
 	static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "tau_m", "f_m", "f0", "B1"};
 	return n;
 }
@@ -213,7 +222,7 @@ VectorXcd MCD2::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) co
 
 string MCD2_NoEx::Name() const { return "2C_NoEx"; }
 size_t MCD2_NoEx::nParameters() const { return 8; }
-const vector<string> & MCD2_NoEx::Names() const {
+const vector<string> & MCD2_NoEx::ParameterNames() const {
     static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "f_m", "f0", "B1"};
     return n;
 }
@@ -273,7 +282,7 @@ VectorXcd MCD2_NoEx::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
 
 string MCD3::Name() const { return "3C"; }
 size_t MCD3::nParameters() const { return 12; }
-const vector<string> & MCD3::Names() const {
+const vector<string> & MCD3::ParameterNames() const {
 	static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "T1_csf", "T2_csf", "tau_m", "f_m", "f_csf", "f0", "B1"};
 	return n;
 }
@@ -370,7 +379,7 @@ VectorXcd MCD3::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) co
 
 string MCD3_NoEx::Name() const { return "3C_NoEx"; }
 size_t MCD3_NoEx::nParameters() const { return 11; }
-const vector<string> & MCD3_NoEx::Names() const {
+const vector<string> & MCD3_NoEx::ParameterNames() const {
     static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "T1_csf", "T2_csf", "f_m", "f_csf", "f0", "B1"};
     return n;
 }

@@ -40,7 +40,8 @@ public:
 	virtual string Name() const = 0;
 	virtual size_t nParameters() const = 0;
 	virtual bool ValidParameters(cvecd &params) const = 0;
-	virtual const vector<string> &Names() const = 0;
+    virtual const vector<string> &ParameterNames() const = 0;
+    ptrdiff_t ParameterIndex(const string &parameter) const;
     virtual ArrayXXd Bounds(const FieldStrength f) const = 0;
     virtual ArrayXd Start(const FieldStrength f) const = 0;
 
@@ -63,7 +64,7 @@ public:\
 	string Name() const override;\
 	size_t nParameters() const override;\
 	bool ValidParameters(cvecd &p) const override;\
-	const vector<string> &Names() const override;\
+    const vector<string> &ParameterNames() const override;\
     ArrayXXd Bounds(const FieldStrength f) const override;\
     ArrayXd Start(const FieldStrength f) const override;\
 
