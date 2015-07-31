@@ -218,11 +218,10 @@ public:
         double T1 = inputs[2];
         double T2 = inputs[3];
         ArrayXXd localBounds = m_bounds;
-        ArrayXd localStart = m_model->Start(m_tesla, T1, T2);
+        ArrayXd localStart = m_model->Start(m_tesla);
         localBounds.row(0).setConstant(1.);
         localBounds.row(m_model->nParameters() - 2).setConstant(f0);
         localBounds.row(m_model->nParameters() - 1).setConstant(B1);
-
         typedef itk::LBFGSBOptimizer TOpt;
         int N = m_model->nParameters() - 3;
         TOpt::ParametersType start(N);
@@ -545,8 +544,8 @@ int main(int argc, char **argv) {
 	vector<QI::ReorderF::Pointer> inOrder;
 	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, verbose, prompt);
 
-    ArrayXXd bounds = model->Bounds(tesla, 0);
-    ArrayXd start = model->Start(tesla, 1., 1.);
+    ArrayXXd bounds = model->Bounds(tesla);
+    ArrayXd start = model->Start(tesla);
     if (tesla == FieldStrength::User) {
         ArrayXd temp;
         if (prompt) cout << "Enter lower bounds" << endl;

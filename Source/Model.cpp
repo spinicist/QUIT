@@ -46,18 +46,18 @@ const vector<string> &SCD::Names() const {
 	return n;
 }
 
-ArrayXXd SCD::Bounds(const FieldStrength f, cdbl TR) const {
+ArrayXXd SCD::Bounds(const FieldStrength f) const {
 	size_t nP = nParameters();
 	ArrayXXd b(nP, 2);
 	switch (f) {
-		case FieldStrength::Three: b << 1.0, 1.0, 0.1, 4.5, 0.010, 2.500, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
-		case FieldStrength::Seven: b << 1.0, 1.0, 0.1, 4.5, 0.010, 2.500, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
+        case FieldStrength::Three: b << 1.0, 1.0, 0.1, 4.5, 0.010, 2.500, 0.0, 0.0, 1.0, 1.0; break;
+        case FieldStrength::Seven: b << 1.0, 1.0, 0.1, 4.5, 0.010, 2.500, 0.0, 0.0, 1.0, 1.0; break;
 		case FieldStrength::User:  b.setZero(); break;
 	}
 	return b;
 }
 
-ArrayXd SCD::Start(const FieldStrength f, const double T1, const double T2) const {
+ArrayXd SCD::Start(const FieldStrength f) const {
     ArrayXd p(5);
     p << 1.0, 1.0, 0.05, 0, 1.0;
     return p;
@@ -126,24 +126,28 @@ const vector<string> & MCD2::Names() const {
 	return n;
 }
 
-ArrayXXd MCD2::Bounds(const FieldStrength f, cdbl TR) const {
+ArrayXXd MCD2::Bounds(const FieldStrength f) const {
 	size_t nP = nParameters();
 	ArrayXXd b(nP, 2);
 	switch (f) {
-        case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.65, 0.001, 0.030, 0.5, 1.5, 0.05, 0.165, 0.025, 0.6, 0.001, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
-        case FieldStrength::Seven: b << 1.0, 1.0, 0.4, 0.8, 0.001, 0.040, 0.7, 2.5, 0.05, 0.165, 0.025, 0.6, 0.001, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
-		case FieldStrength::User:  b.setZero(); break;
+    case FieldStrength::Three: {
+        b.col(0) << 1.0, 0.300, 0.010, 0.9, 0.040, 0.025, 0.001, 0.0, 1.0;
+        b.col(1) << 1.0, 0.800, 0.030, 1.5, 0.150, 0.600, 0.35,  0.0, 1.0;
+    } break;
+    case FieldStrength::Seven: {
+        b.col(0) << 1.0, 0.400, 0.010, 0.800, 0.040, 0.025, 0.001, 0.0, 1.0;
+        b.col(1) << 1.0, 0.650, 0.040, 2.000, 0.140, 0.600, 0.35,  0.0, 1.0;
+    } break;
+    case FieldStrength::User:  b.setZero(); break;
 	}
 	return b;
 }
 
-ArrayXd MCD2::Start(const FieldStrength f, const double T1, const double T2) const {
+ArrayXd MCD2::Start(const FieldStrength f) const {
     ArrayXd p(nParameters());
-    const double T2_T1 = T2/T1;
-    const double f_m = std::max(0., std::min(0.25, (80. - T2)/240.));
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, 0.18, f_m, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.1, 0.075, 0.18, f_m, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.4,  0.02, 1.0, 0.08, 0.18, 0.1, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.45, 0.02, 1.2, 0.08, 0.18, 0.1, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
@@ -214,24 +218,22 @@ const vector<string> & MCD2_NoEx::Names() const {
     return n;
 }
 
-ArrayXXd MCD2_NoEx::Bounds(const FieldStrength f, cdbl TR) const {
+ArrayXXd MCD2_NoEx::Bounds(const FieldStrength f) const {
     size_t nP = nParameters();
     ArrayXXd b(nP, 2);
     switch (f) {
-        case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.65, 0.010, 0.030, 0.5, 1.5, 0.05, 0.165, 0.001, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
-        case FieldStrength::Seven: b << 1.0, 1.0, 0.4, 0.8, 0.010, 0.040, 0.7, 2.5, 0.05, 0.165, 0.001, 0.35, -0.5/TR, 0.5/TR, 1.0, 1.0; break;
+        case FieldStrength::Three: b << 1.0, 1.0, 0.3, 0.650, 0.010, 0.030, 0.5, 1.5, 0.05, 0.165, 0.001, 0.35, 0.0, 0.0, 1.0, 1.0; break;
+        case FieldStrength::Seven: b << 1.0, 1.0, 0.4, 0.800, 0.010, 0.040, 0.7, 2.5, 0.05, 0.165, 0.001, 0.35, 0.0, 0.0, 1.0, 1.0; break;
         case FieldStrength::User:  b.setZero(); break;
     }
     return b;
 }
 
-ArrayXd MCD2_NoEx::Start(const FieldStrength f, const double T1, const double T2) const {
+ArrayXd MCD2_NoEx::Start(const FieldStrength f) const {
     ArrayXd p(nParameters());
-    const double T2_T1 = T2/T1;
-    const double f_m = std::max(0., std::min(0.25, (80. - T2)/240.));
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.08, f_m, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.7, 0.02, 1.2, 0.075, f_m, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.080, 0.1, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.7, 0.02, 1.2, 0.075, 0.1, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
@@ -276,32 +278,28 @@ const vector<string> & MCD3::Names() const {
 	return n;
 }
 
-ArrayXXd MCD3::Bounds(const FieldStrength f, cdbl TR) const {
+ArrayXXd MCD3::Bounds(const FieldStrength f) const {
 	size_t nP = nParameters();
 	ArrayXXd b(nP, 2);
 	switch (f) {
     case FieldStrength::Three: {
-        b.col(0) << 1.0, 0.300, 0.010, 0.9, 0.040, 3.5, 1.0, 0.025, 0.001, 0.001, -0.5/TR, 1.0;
-        b.col(1) << 1.0, 0.800, 0.030, 1.5, 0.150, 5.0, 3.5, 0.600, 0.35,  0.999, 0.5/TR, 1.0;
+        b.col(0) << 1.0, 0.300, 0.010, 0.9, 0.040, 3.5, 1.0, 0.025, 0.001, 0.001, 0.0, 1.0;
+        b.col(1) << 1.0, 0.800, 0.030, 1.5, 0.150, 5.0, 3.5, 0.600, 0.35,  0.999, 0.0, 1.0;
     } break;
     case FieldStrength::Seven: {
-        b.col(0) << 1.0, 0.400, 0.010, 0.800, 0.040, 3.0, 0.5, 0.025, 0.001, 0.001, -0.5/TR, 1.0;
-        b.col(1) << 1.0, 0.650, 0.040, 2.000, 0.140, 4.5, 1.5, 0.600, 0.35,  0.999, 0.5/TR, 1.0;
+        b.col(0) << 1.0, 0.400, 0.010, 0.800, 0.040, 3.0, 0.5, 0.025, 0.001, 0.001, 0.0, 1.0;
+        b.col(1) << 1.0, 0.650, 0.040, 2.000, 0.140, 4.5, 1.5, 0.600, 0.35,  0.999, 0.0, 1.0;
     } break;
     case FieldStrength::User:  b.setZero(); break;
 	}
 	return b;
 }
 
-ArrayXd MCD3::Start(const FieldStrength f, const double T1, const double T2) const {
+ArrayXd MCD3::Start(const FieldStrength f) const {
     ArrayXd p(nParameters());
-    const double f_csf = std::max(0.001, std::min(0.5, ((T2/T1) - 0.05) / 0.4));
-    const double f_m = 0.15;
-    const double T2_ie = std::min(T2 * 1.2, 0.15);
-    const double T1_ie = std::min(T1 * 1.2, 1.5);
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.40, 0.015, T1_ie, T2_ie, 4.0, 3.0, 0.25, f_m, f_csf, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.45, 0.015, T1_ie, T2_ie, 4.0, 3.0, 0.25, f_m, f_csf, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.40, 0.015, 1.0, 0.08, 4.0, 3.0, 0.25, 0.1, 0.1, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.45, 0.015, 1.2, 0.08, 4.0, 3.0, 0.25, 0.1, 0.1, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
@@ -377,32 +375,28 @@ const vector<string> & MCD3_NoEx::Names() const {
     return n;
 }
 
-ArrayXXd MCD3_NoEx::Bounds(const FieldStrength f, cdbl TR) const {
+ArrayXXd MCD3_NoEx::Bounds(const FieldStrength f) const {
     size_t nP = nParameters();
     ArrayXXd b(nP, 2);
     switch (f) {
     case FieldStrength::Three: {
-        b.col(0) << 1.0, 0.200, 0.005, 0.700, 0.050, 3.5, 1.0, 0.001, 0.001, -0.5/TR, 1.0;
-        b.col(1) << 1.0, 0.700, 0.040, 2.000, 0.200, 5.0, 3.5, 0.500,  0.999, 0.5/TR, 1.0;
+        b.col(0) << 1.0, 0.200, 0.005, 0.700, 0.050, 3.5, 1.0, 0.001, 0.001, 0.0, 1.0;
+        b.col(1) << 1.0, 0.700, 0.040, 2.000, 0.200, 5.0, 3.5, 0.500, 0.999, 0.0, 1.0;
     } break;
     case FieldStrength::Seven: {
-        b.col(0) << 1.0, 0.400, 0.010, 0.800, 0.040, 3.0, 0.5, 0.025, 0.001, 0.001, -0.5/TR, 1.0;
-        b.col(1) << 1.0, 0.650, 0.040, 2.000, 0.140, 4.5, 1.5, 0.600, 0.35,  0.999, 0.5/TR, 1.0;
+        b.col(0) << 1.0, 0.400, 0.010, 0.800, 0.040, 3.0, 0.5, 0.025, 0.001, 0.001, 0.0, 1.0;
+        b.col(1) << 1.0, 0.650, 0.040, 2.000, 0.140, 4.5, 1.5, 0.600, 0.35,  0.999, 0.0, 1.0;
     } break;
     case FieldStrength::User:  b.setZero(); break;
     }
     return b;
 }
 
-ArrayXd MCD3_NoEx::Start(const FieldStrength f, const double T1, const double T2) const {
+ArrayXd MCD3_NoEx::Start(const FieldStrength f) const {
     ArrayXd p(nParameters());
-    const double f_csf = std::max(0.001, std::min(0.5, ((T2/T1) - 0.05) / 0.4));
-    const double f_m = 0.15;
-    const double T2_ie = std::min(T2 * 1.2, 0.15);
-    const double T1_ie = std::min(T1 * 1.2, 1.5);
     switch (f) {
-    case FieldStrength::Three: p << 1.0, 0.45, 0.015, T1_ie, T2_ie, 4.0, 3.0, f_m, f_csf, 0., 1.0; break;
-    case FieldStrength::Seven: p << 1.0, 0.45, 0.015, T1_ie, T2_ie, 4.0, 3.0, f_m, f_csf, 0., 1.0; break;
+    case FieldStrength::Three: p << 1.0, 0.45, 0.015, 1.0, 0.08, 4.0, 3.0, 0.1, 0.1, 0., 1.0; break;
+    case FieldStrength::Seven: p << 1.0, 0.45, 0.015, 1.2, 0.08, 4.0, 3.0, 0.1, 0.1, 0., 1.0; break;
     case FieldStrength::User:  p.setZero(); break;
     }
     return p;
