@@ -111,26 +111,22 @@ public:
     itkTypeMacro(CostFunction, SingleValuedCostfunction);
 
     shared_ptr<SequenceGroup> m_sequence;
-    ArrayXd m_data;
+    ArrayXd m_data, m_weights;
     shared_ptr<Model> m_model;
-    double m_PD, m_B1, m_f0;
 
-    unsigned int GetNumberOfParameters(void) const { return m_model->nParameters() - 3; } // itk::CostFunction
+    unsigned int GetNumberOfParameters(void) const { return m_model->nParameters(); } // itk::CostFunction
 
     ArrayXd residuals(const ParametersType &p1) const {
         int N = m_model->nParameters();
         ArrayXd p2(N);
-        p2[0] = m_PD;
-        for (int i = 1; i < N - 2; i++)
-            p2[i] = p1[i-1];
-        p2[N-2] = m_f0;
-        p2[N-1] = m_B1;
+        for (int i = 0; i < N; i++)
+            p2[i] = p1[i];
         ArrayXcd s = m_sequence->signal(m_model, p2);
         return (s.abs() - m_data);
     }
 
     MeasureType GetValue(const ParametersType &p1) const {
-        return (residuals(p1) * m_sequence->weights(m_f0)).square().sum();
+        return (residuals(p1) * m_weights).square().sum();
     }
 
     void GetDerivative(const ParametersType &p, DerivativeType &df) const {
@@ -202,68 +198,65 @@ public:
 
     void setStart(ArrayXd &s) { m_start = s; }
 
-    size_t numConsts() const override  { return 5; }
+    size_t numConsts() const override  { return 2; }
     virtual TArray defaultConsts() {
-        // f0, B1 T1, T2
+        // f0, B1
         TArray def(4);
-        def << 0., 1., 1., 1.;
+        def << NAN, 1.;
         return def;
     }
 
     virtual void apply(const TInput &data, const TArray &inputs,
                        TArray &outputs, TArray &resids, TIterations &its) const override
     {
+        typedef itk::LBFGSBOptimizer TOpt;
+        TOpt::Pointer optimizer = TOpt::New();
+        auto cost = itk::MCDCostFunction::New();
         double f0 = inputs[0];
         double B1 = inputs[1];
-        double T1 = inputs[2];
-        double T2 = inputs[3];
         ArrayXXd localBounds = m_bounds;
         ArrayXd localStart = m_model->Start(m_tesla);
-        localBounds.row(m_model->ParameterIndex("PD")).setConstant(1.);
-        localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
+        localBounds.row(m_model->ParameterIndex("PD")).setConstant(m_PDscale);
+        if (isfinite(f0)) {
+            localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
+            cost->m_weights = m_sequence->weights(f0);
+        } else {
+            cost->m_weights = ArrayXd::Ones(m_sequence->size());
+        }
         localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
-        typedef itk::LBFGSBOptimizer TOpt;
-        int N = m_model->nParameters() - 3;
+        int N = m_model->nParameters();
         TOpt::ParametersType start(N);
         TOpt::BoundSelectionType select(N);
         TOpt::BoundValueType lower(N), upper(N);
         for (int i = 0; i < N; i++) {
-            lower[i] = localBounds(i+1, 0);
-            upper[i] = localBounds(i+1, 1);
+            lower[i] = localBounds(i, 0);
+            upper[i] = localBounds(i, 1);
             select[i] = 2; // Upper and lower bounds
-            start[i] = localStart[i+1];
+            start[i] = localStart[i];
         }
-        //initP[0] = upper[0];
-        //initP[2] = lower[2];
-        TOpt::Pointer optimizer = TOpt::New();
-        optimizer->SetCostFunctionConvergenceFactor(1.e3);
-        optimizer->SetProjectedGradientTolerance(1e-10);
-        optimizer->SetMaximumNumberOfIterations(m_iterations);
-        optimizer->SetMaximumNumberOfEvaluations(999999);
-        optimizer->SetMaximumNumberOfCorrections(20);
-        auto cost = itk::MCDCostFunction::New();
         cost->m_data = data;
         cost->m_sequence = m_sequence;
         cost->m_model = m_model;
-        cost->m_PD = 1.0;
-        cost->m_f0 = f0;
-        cost->m_B1 = B1;
         //optimizer->DebugOn();
         optimizer->SetCostFunction(cost);
         optimizer->SetBoundSelection(select);
         optimizer->SetLowerBound(lower);
         optimizer->SetUpperBound(upper);
-        optimizer->DebugOff();
-        optimizer->SetGlobalWarningDisplay(false);
+        optimizer->SetCostFunctionConvergenceFactor(1.e3);
+        optimizer->SetProjectedGradientTolerance(1e-10);
+        optimizer->SetMaximumNumberOfIterations(m_iterations);
+        optimizer->SetMaximumNumberOfEvaluations(999999);
+        optimizer->SetMaximumNumberOfCorrections(20);
         optimizer->SetInitialPosition(start);
+        //optimizer->SetTrace(true);
         optimizer->StartOptimization();
         TOpt::ParametersType final = optimizer->GetCurrentPosition();
-        outputs[0] = m_PDscale;
-        for (int i = 1; i < m_model->nParameters()-2; i++) {
-            outputs[i] = final[i-1];
+        //outputs[0] = m_PDscale;
+        for (int i = 0; i < m_model->nParameters(); i++) {
+            outputs[i] = final[i];
         }
-        outputs[m_model->ParameterIndex("f0")] = f0;
-        outputs[m_model->ParameterIndex("B1")] = B1;
+        //outputs[m_model->ParameterIndex("f0")] = f0;
+        //outputs[m_model->ParameterIndex("B1")] = B1;
         resids = cost->residuals(final);
         its = optimizer->GetCurrentIteration();
     }
@@ -272,12 +265,11 @@ public:
 class MCDSRCFunctor {
     public:
         const shared_ptr<SequenceGroup> m_sequence;
-        const ArrayXd m_data;
+        const ArrayXd m_data, m_weights;
         const shared_ptr<Model> m_model;
-        const double m_f0;
 
-        MCDSRCFunctor(shared_ptr<Model> m,shared_ptr<SequenceGroup> s, const ArrayXd &d, const double f0 = 0.) :
-            m_sequence(s), m_data(d), m_model(m), m_f0(f0)
+        MCDSRCFunctor(shared_ptr<Model> m,shared_ptr<SequenceGroup> s, const ArrayXd &d, const ArrayXd &w) :
+            m_sequence(s), m_data(d), m_model(m), m_weights(w)
         {
             assert(static_cast<size_t>(m_data.rows()) == m_sequence->size());
         }
@@ -290,11 +282,12 @@ class MCDSRCFunctor {
         }
 
         ArrayXd residuals(const Ref<VectorXd> &params) const {
-            return m_data - m_sequence->signal(m_model, params).abs();
+            const auto s = m_sequence->signal(m_model, params).abs();
+            return m_data - s;
         }
         double operator()(const Ref<VectorXd> &params) const {
             eigen_assert(diffs.size() == values());
-            return (residuals(params) * m_sequence->weights(m_f0)).square().sum();
+            return (residuals(params) * m_weights).square().sum();
         }
 };
 
@@ -325,8 +318,10 @@ class SRCAlgo : public MCDAlgo {
 			double f0 = inputs[0];
 			double B1 = inputs[1];
             ArrayXXd localBounds = m_bounds;
-			if (!std::isnan(f0)) {
-				localBounds.row(m_model->nParameters() - 2).setConstant(f0);
+            ArrayXd weights = ArrayXd::Ones(m_sequence->size());
+            if (std::isfinite(f0)) {
+                localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
+                weights = m_sequence->weights(f0);
 			}
 			if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
 				localBounds(0, 0) = 0.;
@@ -334,10 +329,9 @@ class SRCAlgo : public MCDAlgo {
 			} else {
 				localBounds.row(0).setConstant(m_PDscale);
 			}
-			localBounds.row(m_model->nParameters() - 1).setConstant(B1);
-            MCDSRCFunctor func(m_model, m_sequence, data, f0);
-            RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh,
-                                            m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
+            localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
+            MCDSRCFunctor func(m_model, m_sequence, data, weights);
+            RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
             rc.optimise(outputs);
             //outputs(m_model->nParameters() - 1) = rc.contractions();
             //outputs(0) = static_cast<int>(rc.status());
@@ -354,7 +348,7 @@ int main(int argc, char **argv) {
 
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
-    int nargs = 0, max_its = 0;
+    int max_its = 0;
 	int verbose = false, prompt = true, all_residuals = false,
         fitFinite = false, flipData = false;
 	string outPrefix;
@@ -496,7 +490,7 @@ int main(int argc, char **argv) {
                 switch (*optarg) {
                 case 'S': algo = Algos::SRC; break;
                 case 'G': algo = Algos::GRC; break;
-                case 'b': algo = Algos::LBFGSB; nargs = 2; break;
+                case 'b': algo = Algos::LBFGSB; break;
                 default:
                     cerr << "Unknown algorithm type " << *optarg << endl;
                     return EXIT_FAILURE;
@@ -527,7 +521,7 @@ int main(int argc, char **argv) {
 				return EXIT_FAILURE;
 		}
 	}
-    if ((argc - optind) != nargs) {
+    if ((argc - optind) != 0) {
 		cerr << usage << endl << "Incorrect number of arguments." << endl;
 		return EXIT_FAILURE;
 	} else if (prompt) {
@@ -587,20 +581,12 @@ int main(int argc, char **argv) {
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
         shared_ptr<LBFGSBAlgo> temp = make_shared<LBFGSBAlgo>();
         temp->setStart(start);
-        QI::ReadImageF::Pointer T1 = QI::ReadImageF::New();
-        QI::ReadImageF::Pointer T2 = QI::ReadImageF::New();
-        T1->SetFileName(argv[optind++]);
-        T2->SetFileName(argv[optind++]);
-        T1->Update();
-        T2->Update();
         mcd = temp;
         mcd->setModel(model);
         mcd->setBounds(bounds);
         mcd->setSequence(sequences);
         mcd->setTesla(tesla);
         applySlices->SetAlgorithm(mcd);
-        applySlices->SetConst(2, T1->GetOutput());
-        applySlices->SetConst(3, T2->GetOutput());
     } break;
     }
     mcd->setPDScale(PDScale);
