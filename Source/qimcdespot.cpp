@@ -282,7 +282,7 @@ class MCDSRCFunctor {
         }
 
         ArrayXd residuals(const Ref<VectorXd> &params) const {
-            const auto s = m_sequence->signal(m_model, params).abs();
+            const ArrayXd s = (m_sequence->signal(m_model, params)).abs();
             return m_data - s;
         }
         double operator()(const Ref<VectorXd> &params) const {
