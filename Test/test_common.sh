@@ -27,8 +27,7 @@ function run_test {
 	fi
 	local STATUS=$?
 	if [ $STATUS -ne 0 ]; then
-		printf "Failed.\n" >&2
-                return $STATUS
+        printf "Failed.\n" >&2
 	else
 		printf "Passed.\n" >&1
 	fi
@@ -45,7 +44,7 @@ function compare_test {
 	TOL=$4
 	DIFF=${REF%.nii}_${TEST%.nii}
 	if [ "$HAVE_FSL" -eq "1" ]; then
-        fslmaths $REF -sub $TEST -abs $DIFF
+        fslmaths $REF -sub $TEST $DIFF
 		MEAN=$( fslstats $DIFF -M )
 		STD=$( fslstats $DIFF -s )
 		ABSMEAN=$(echo $MEAN | awk ' { print sqrt($1*$1) } ' )
@@ -55,11 +54,11 @@ function compare_test {
 			echo "Comparison test $NAME failed, mean diff $ABSMEAN is not a valid number"
 		fi
 		# Now do the tolerance test
-		TEST=$(echo "$ABSMEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
+        TEST=$(echo "$ABSMEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
 		if [ "$TEST" -eq "1" ]; then
-			echo "Comparison test $NAME passed, mean diff was $ABSMEAN tolerance $TOL (std was $STD)"
+            echo "Comparison test $NAME passed, accuracy $ABSMEAN, precision $STD (tolerance on accuracy was $TOL)"
 		else
-			echo "Comparison test $NAME failed, mean diff was $ABSMEAN tolerance $TOL (std was $STD)"
+            echo "Comparison test $NAME failed, accuracy $ABSMEAN, precision $STD (tolerance on accuracy was $TOL)"
 		fi
 	else
 		echo "FSL not present, skipping test $NAME"

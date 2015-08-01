@@ -65,15 +65,15 @@ $SSFP_PC
 $SSFP_TR
 $SSFP_Trf" > ${PREFIX}fm_f_in.txt
 
-run_test "LM"       $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}           < ${PREFIX}fm_in.txt
-run_test "LM_F"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}f --finite < ${PREFIX}fm_f_in.txt
-run_test "LBFGSB"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}b  -ab          < ${PREFIX}fm_in.txt
-run_test "LBFGSB_F" $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}bf -ab --finite < ${PREFIX}fm_f_in.txt
+run_test "LM"       $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}   -al          < ${PREFIX}fm_in.txt
+run_test "LM_F"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}f  -al --finite < ${PREFIX}fm_f_in.txt
+run_test "BFGS"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}b  -ab          < ${PREFIX}fm_in.txt
+run_test "BFGS_F"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}bf -ab --finite < ${PREFIX}fm_f_in.txt
 
-compare_test "LM"       T2.nii ${PREFIX}FM_T2.nii  0.01
-compare_test "LM_F"     T2.nii ${PREFIX}fFM_T2.nii 0.01
-compare_test "LBFGSB"   T2.nii ${PREFIX}bFM_T2.nii  0.01
-compare_test "LBFGSB_F" T2.nii ${PREFIX}bfFM_T2.nii 0.01
+compare_test "LM"     T2.nii ${PREFIX}FM_T2.nii  0.01
+compare_test "LM_F"   T2.nii ${PREFIX}fFM_T2.nii 0.01
+compare_test "BFGS"   T2.nii ${PREFIX}bFM_T2.nii  0.01
+compare_test "BFGS_F" T2.nii ${PREFIX}bfFM_T2.nii 0.01
 }
 
 run_tests "2" "0 180"
