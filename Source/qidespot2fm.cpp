@@ -306,7 +306,7 @@ public:
 }
 
 template<typename T>
-class LBFGSBAlgo : public FMAlgo<T> {
+class BFGSAlgo : public FMAlgo<T> {
 public:
     using typename FMAlgo<T>::TArray;
     using typename FMAlgo<T>::TInput;
@@ -397,7 +397,7 @@ Options:\n\
     --out, -o path    : Add a prefix to the output filenames\n\
     --B1, -b file     : B1 Map file (ratio)\n\
     --algo, -a l      : Use 2-step LM algorithm\n\
-               b      : Use LBFGSB algorithm (default)\n\
+               b      : Use BFGS algorithm (default)\n\
     --complex, -x     : Fit to complex data\n\
     --start, -s N     : Start processing from slice N\n\
     --stop, -p  N     : Stop processing at slice N\n\
@@ -440,7 +440,7 @@ int run_main(int argc, char **argv) {
 
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false,
-        fitFinite = false, flipData = false, use_LBFGSB = true;
+        fitFinite = false, flipData = false, use_BFGS = true;
     string outPrefix;
     QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
@@ -452,8 +452,8 @@ int run_main(int argc, char **argv) {
         case 'n': prompt = false; break;
         case 'a':
         switch (*optarg) {
-            case 'l': use_LBFGSB = false; if (verbose) cout << "LM algorithm selected." << endl; break;
-            case 'b': use_LBFGSB = true; if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
+            case 'l': use_BFGS = false; if (verbose) cout << "LM algorithm selected." << endl; break;
+            case 'b': use_BFGS = true; if (verbose) cout << "BFGS algorithm selected." << endl; break;
             default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
         } break;
         case 'm':
@@ -512,9 +512,9 @@ int run_main(int argc, char **argv) {
     }
     auto apply = TApply::New();
     shared_ptr<FMAlgo<T>> algo;
-    if (use_LBFGSB) {
+    if (use_BFGS) {
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
-        algo = make_shared<LBFGSBAlgo<T>>();
+        algo = make_shared<BFGSAlgo<T>>();
     } else {
         algo = make_shared<LMAlgo<T>>();
     }

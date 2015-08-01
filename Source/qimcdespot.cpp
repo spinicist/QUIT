@@ -187,12 +187,12 @@ public:
     void setIterations(const int i) { m_iterations = i; }
 };
 
-class LBFGSBAlgo : public MCDAlgo {
+class BFGSAlgo : public MCDAlgo {
 private:
     ArrayXd m_start;
 
 public:
-    LBFGSBAlgo() {
+    BFGSAlgo() {
         m_iterations = 150;
     }
 
@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
         fitFinite = false, flipData = false;
 	string outPrefix;
     double PDScale = 1.;
-    enum class Algos { SRC, GRC, LBFGSB };
+    enum class Algos { SRC, GRC, BFGS };
     Algos algo = Algos::GRC;
 
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
@@ -490,7 +490,7 @@ int main(int argc, char **argv) {
                 switch (*optarg) {
                 case 'S': algo = Algos::SRC; break;
                 case 'G': algo = Algos::GRC; break;
-                case 'b': algo = Algos::LBFGSB; break;
+                case 'b': algo = Algos::BFGS; break;
                 default:
                     cerr << "Unknown algorithm type " << *optarg << endl;
                     return EXIT_FAILURE;
@@ -548,7 +548,7 @@ int main(int argc, char **argv) {
         if (prompt) cout << "Enter upper bounds" << endl;
         QI::ReadArray(cin, temp);
         bounds.col(1) = temp;
-        if (algo == Algos::LBFGSB) {
+        if (algo == Algos::BFGS) {
             if (prompt) cout << "Enter start point" << endl;
             QI::ReadArray(cin, start);
         }
@@ -576,10 +576,10 @@ int main(int argc, char **argv) {
         mcd->setSequence(sequences);
         applySlices->SetAlgorithm(mcd);
     } break;
-    case Algos::LBFGSB: {
+    case Algos::BFGS: {
         if (verbose) cout << "Using BFGS algorithm" << endl;
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
-        shared_ptr<LBFGSBAlgo> temp = make_shared<LBFGSBAlgo>();
+        shared_ptr<BFGSAlgo> temp = make_shared<BFGSAlgo>();
         temp->setStart(start);
         mcd = temp;
         mcd->setModel(model);
@@ -615,7 +615,7 @@ int main(int argc, char **argv) {
     if (verbose) {
         cout << *sequences;
         cout << "Bounds:" << endl <<  bounds.transpose() << endl;
-        if (algo == Algos::LBFGSB)
+        if (algo == Algos::BFGS)
             cout << "Start: " << endl << start.transpose() << endl;
         ofstream boundsFile(outPrefix + "bounds.txt");
         boundsFile << "Names: ";
@@ -623,7 +623,7 @@ int main(int argc, char **argv) {
             boundsFile << model->ParameterNames()[p] << "\t";
         }
         boundsFile << endl << "Bounds: " << endl << bounds.transpose() << endl;
-        if (algo == Algos::LBFGSB)
+        if (algo == Algos::BFGS)
             boundsFile << "Start: " << endl << start.transpose() << endl;
         boundsFile.close();
     }
