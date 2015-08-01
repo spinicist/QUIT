@@ -91,6 +91,25 @@ ArrayXd SPGRSimple::weights(const double f0) const {
 	return ArrayXd::Ones(size());
 }
 
+SPGREcho::SPGREcho(const ArrayXd &flip, const double TR, const double TE) :
+    SPGRSimple(flip, TR), m_TE(TE)
+{}
+
+SPGREcho::SPGREcho(const bool prompt) : SPGRSimple(prompt) {
+    if (prompt) cout << "Enter TE (seconds): " << flush;
+    QI::Read(cin, m_TE);
+}
+
+void SPGREcho::write(ostream &os) const {
+    os << "SPGR Echo" << endl;
+    os << "TR: " << m_TR << "\tTE: " << m_TE << endl;
+    os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
+}
+
+ArrayXcd SPGREcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
+    return m->SPGREcho(p, m_flip, m_TR, m_TE);
+}
+
 SPGRFinite::SPGRFinite(const ArrayXd &flip, const double TR, const double Trf, const double TE) :
 	SPGRSimple(flip, TR), m_Trf(Trf), m_TE(TE)
 {}
@@ -177,7 +196,7 @@ SSFPSimple::SSFPSimple(const bool prompt) :
 }
 
 void SSFPSimple::write(ostream &os) const {
-	os << "SSFP Simple" << endl;
+    os << name() << endl;
 	os << "TR: " << m_TR << "\tPhases: " << (m_phases * 180. / M_PI).transpose() << endl;
 	os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
 }
@@ -206,15 +225,11 @@ ArrayXd SSFPSimple::weights(const double f0) const {
 }
 
 ArrayXcd SSFPSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
-	ArrayXcd s(size());
-	ArrayXcd::Index start = 0;
-	for (ArrayXcd::Index i = 0; i < m_phases.rows(); i++) {
-		s.segment(start, m_flip.rows()) = m->SSFP(p, m_flip, m_TR, m_phases(i));
-		start += m_flip.rows();
-	}
-	return s;
+    return m->SSFP(p, m_flip, m_TR, m_phases);
 }
-
+ArrayXcd SSFPEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
+    return m->SSFPEcho(p, m_flip, m_TR, m_phases);
+}
 SSFPFinite::SSFPFinite(const ArrayXd &flip, const double TR, const double Trf, const ArrayXd &phases) :
 	SSFPSimple(flip, TR, phases), m_Trf(Trf)
 {}
@@ -232,13 +247,7 @@ void SSFPFinite::write(ostream &os) const {
 }
 
 ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
-	ArrayXcd s(size());
-	ArrayXcd::Index start = 0;
-	for (ArrayXcd::Index i = 0; i < m_phases.rows(); i++) {
-		s.segment(start, m_flip.rows()) = m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phases(i));
-		start += m_flip.rows();
-	}
-	return s;
+    return m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phases);
 }
 double SSFPFinite::bwMult() const { return 2.; }
 

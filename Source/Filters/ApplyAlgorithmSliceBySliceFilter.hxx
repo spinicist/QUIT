@@ -205,6 +205,7 @@ void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::Gen
 				ImageAlgorithm::Copy(sliceFilter->GetOutput(i), this->GetOutput(i), sliceOutputRegion, outputRegion);
 			}
 			ImageAlgorithm::Copy(sliceFilter->GetResidOutput(), this->GetResidOutput(), vectorSliceOutputRegion, vectorOutputRegion);
+            ImageAlgorithm::Copy(sliceFilter->GetIterationsOutput(), this->GetIterationsOutput(), sliceOutputRegion, outputRegion);
 			progress.CompletedPixel(); // Put this here so skipped slices don't get a message
 		}
 		//std::cout << "Finised loop" << std::endl;

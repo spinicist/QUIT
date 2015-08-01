@@ -40,19 +40,23 @@ public:
 	virtual string Name() const = 0;
 	virtual size_t nParameters() const = 0;
 	virtual bool ValidParameters(cvecd &params) const = 0;
-	virtual const vector<string> &Names() const = 0;
-	virtual ArrayXXd Bounds(const FieldStrength f, cdbl TR) const = 0;
+    virtual const vector<string> &ParameterNames() const = 0;
+    ptrdiff_t ParameterIndex(const string &parameter) const;
+    virtual ArrayXXd Bounds(const FieldStrength f) const = 0;
+    virtual ArrayXd Start(const FieldStrength f) const = 0;
 
 	void setScaleToMean(bool s) { m_scale_to_mean = s; }
 
 	virtual VectorXcd MultiEcho(cvecd &params, carrd &TE) const;
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
+    virtual VectorXcd SPGREcho(cvecd &p, carrd& a, cdbl TR, cdbl TE) const;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const;
 	virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const;
-	virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const;
+    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
+    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
 	virtual VectorXcd SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const;
-	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const;
+    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const;
 };
 
 #define DECLARE_INTERFACE( )\
@@ -60,20 +64,20 @@ public:\
 	string Name() const override;\
 	size_t nParameters() const override;\
 	bool ValidParameters(cvecd &p) const override;\
-	const vector<string> &Names() const override;\
-	ArrayXXd Bounds(const FieldStrength f, cdbl TR) const override;\
-
+    const vector<string> &ParameterNames() const override;\
+    ArrayXXd Bounds(const FieldStrength f) const override;\
+    ArrayXd Start(const FieldStrength f) const override;\
 
 class SCD : public Model {
 	DECLARE_INTERFACE()
 
 	virtual VectorXcd MultiEcho(cvecd &params, carrd &TE) const override;
-	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
 	virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const override;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
-	virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const override;
-	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const override;
+    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
 	virtual VectorXcd SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const;
 };
 
@@ -81,18 +85,38 @@ class MCD2 : public Model {
 	DECLARE_INTERFACE()
 
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-	virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const override;
-	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const override;
+    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
+};
+
+class MCD2_NoEx : public Model {
+    DECLARE_INTERFACE()
+
+    virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
 };
 
 class MCD3 : public Model {
 	DECLARE_INTERFACE()
 
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-	virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, cdbl phi) const override;
-	virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl phi) const override;
+    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
+};
+
+class MCD3_NoEx : public Model {
+    DECLARE_INTERFACE()
+
+    virtual VectorXcd SPGR(cvecd &p, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
+    virtual VectorXcd SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
 };
 
 /*class MCD3_2OM : public Model {

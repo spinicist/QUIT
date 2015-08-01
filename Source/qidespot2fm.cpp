@@ -22,9 +22,9 @@
 #include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
 #include "Model.h"
 #include "Sequence.h"
-#include "RegionContraction.h"
 
 #include "itkAmoebaOptimizer.h"
+#include "itkLBFGSBOptimizer.h"
 
 using namespace std;
 using namespace Eigen;
@@ -127,6 +127,7 @@ protected:
 public:
     typedef typename Algorithm<T>::TArray TArray;
     typedef typename Algorithm<T>::TInput TInput;
+    typedef typename Algorithm<T>::TIterations TIterations;
 
     void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
 
@@ -149,8 +150,10 @@ protected:
 public:
     typedef typename FMAlgo<T>::TArray TArray;
     typedef typename FMAlgo<T>::TInput TInput;
+    typedef typename FMAlgo<T>::TIterations TIterations;
+
     void f0guess(double &lo, double &hi, double &step, const TInput &data) const;
-    virtual void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const override;
+    virtual void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids, TIterations &its) const override;
 };
 
 template<typename T>
@@ -180,7 +183,7 @@ void LMAlgo<complex<double>>::f0guess(double &lo, double &hi, double &step, cons
 }
 
 template<typename T>
-void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids) const
+void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids, TIterations &its) const
 {
     //cout << __PRETTY_FUNCTION__ << endl;
     const double T1 = inputs[0];
@@ -192,6 +195,7 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
             double lo, hi, step;
             this->f0guess(lo, hi, step, data);
             //cout << lo << "/" << hi << "/" << step << endl;
+            its = 0;
             for (float f0guess = lo; f0guess < hi; f0guess += step) {
                 // First fix T2 and fit
                 FixT2<T> fixT2(this->m_model, this->m_sequence, data, T1, T2guess, B1);
@@ -216,6 +220,7 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
                     outputs = fullP;
                     bestF = F;
                 }
+                its += fixT2LM.iterations() + fullLM.iterations();
             }
         }
         outputs[1] = clamp(outputs[1], 0.001, T1);
@@ -226,65 +231,8 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
         // No point in processing -ve T1
         outputs.setZero();
         resids.setZero();
+        its = 0;
     }
-}
-
-template<typename T>
-class SRCAlgo : public FMAlgo<T> {
-private:
-    size_t m_samples = 2000, m_retain = 20, m_contractions = 10;
-
-public:
-    typedef typename FMAlgo<T>::TArray TArray;
-    typedef typename FMAlgo<T>::TInput TInput;
-    ArrayXXd setupBounds(const TInput &data, const double T1) const {
-        ArrayXXd bounds = ArrayXXd::Zero(3, 2);
-        bounds(0, 0) = 0.;
-        bounds(0, 1) = data.abs().maxCoeff() * 25.0;
-        bounds(1, 0) = 0.001;
-        bounds(1, 1) = T1;
-        bounds(2, 1) = this->m_sequence->bwMult() / (2. * this->m_sequence->TR());
-        if (this->m_sequence->isSymmetric()) {
-            bounds(2, 0) = 0.;
-        } else {
-            bounds(2, 0) = -bounds(2, 1);
-        }
-
-        return bounds;
-    }
-
-    virtual void apply(const TInput &data, const TArray &consts, TArray &outputs, TArray &resids) const override
-    {
-        double T1 = consts[0];
-        if (isfinite(T1) && (T1 > 0.001)) {
-            double B1 = consts[1];
-            ArrayXd thresh(3); thresh.setConstant(0.05);
-            ArrayXd weights(this->m_sequence->size()); weights.setOnes();
-            ArrayXXd bounds = this->setupBounds(data, T1);
-            //cout << "T1 " << T1 << " B1 " << B1 << " inputs " << inputs.transpose() << endl;
-            //cout << bounds << endl;
-            FMFunctor<T> func(this->m_model, this->m_sequence, data, T1, B1);
-            RegionContraction<FMFunctor<T>> rc(func, bounds, weights, thresh, this->m_samples, this->m_retain, this->m_contractions, 0.02, true, false);
-            rc.optimise(outputs);
-            resids = rc.residuals();
-        } else {
-            // No point in processing -ve T1
-            outputs.setZero();
-            resids.setZero();
-        }
-    }
-};
-
-template<>
-ArrayXXd SRCAlgo<complex<double>>::setupBounds(const TInput &data, const double T1) const {
-    ArrayXXd bounds = ArrayXXd::Zero(3, 2);
-    bounds(0, 0) = 0.;
-    bounds(0, 1) = data.abs().maxCoeff() * 25.0;
-    bounds(1, 0) = 0.001;
-    bounds(1, 1) = T1;
-    bounds(2, 0) = -this->m_sequence->bwMult() / this->m_sequence->TR();
-    bounds(2, 1) = this->m_sequence->bwMult() / this->m_sequence->TR();
-    return bounds;
 }
 
 namespace itk {
@@ -312,15 +260,39 @@ public:
     shared_ptr<SCD> m_model;
 
     unsigned int GetNumberOfParameters(void) const { return 3; } // itk::CostFunction
-    MeasureType GetValue(const ParametersType &p) const {
+    ArrayXd residuals(const ParametersType &p) const {
         ArrayXd fullparams(5);
         fullparams << p(0), m_T1, p(1), p(2), m_B1;
         ArrayXcd s = m_sequence->signal(m_model, fullparams);
-        return DifferenceVector(s, m_data).square().sum();
+        //cout << "fullp " << fullparams.transpose() << endl;
+        return DifferenceVector(s, m_data);
     }
-
-    void GetDerivative(const ParametersType &parameters, DerivativeType & derivative) const {
-    throw itk::ExceptionObject( __FILE__, __LINE__, "No derivative is available for this cost function.");
+    MeasureType GetValue(const ParametersType &p1) const {
+        double r = residuals(p1).square().sum();
+        //cout << "r " << r << endl;
+        return r;
+    }
+    void GetDerivative(const ParametersType &p, DerivativeType &df) const {
+        using std::sqrt;
+        using std::abs;
+        double eps = sqrt(numeric_limits<double>::epsilon());
+        df.SetSize(p.Size());
+        ParametersType x = p;
+        for (int i = 0; i < p.Size(); ++i) {
+            double h = eps * abs(x[i]);
+            if (h == 0.) {
+                h = eps;
+            }
+            double _x = x[i];
+            x[i] += h;
+            double v2 = GetValue(x);
+            x[i] -= 2*h;
+            double v1 = GetValue(x);
+            df[i] = (v2 - v1)/(2*h);
+            //cout << "h " << h << " x " << x << " v1 " << v1 << " v2 " << v2 << endl;
+            x[i] = _x;
+        }
+        //cout << "df " << df << endl;
     }
 
     protected:
@@ -334,43 +306,82 @@ public:
 }
 
 template<typename T>
-class SimplexAlgo : public FMAlgo<T> {
+class BFGSAlgo : public FMAlgo<T> {
 public:
-    typedef typename FMAlgo<T>::TArray TArray;
-    typedef typename FMAlgo<T>::TInput TInput;
-    typedef typename itk::AmoebaOptimizer TOptimizer;
+    using typename FMAlgo<T>::TArray;
+    using typename FMAlgo<T>::TInput;
+    using typename FMAlgo<T>::TIterations;
+    typedef typename itk::LBFGSBOptimizer TOptimizer;
 
-    virtual void apply(const TInput &data, const TArray &consts, TArray &outputs, TArray &resids) const override {
+    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
         double T1 = consts[0];
         double B1 = consts[1];
-        TOptimizer::Pointer optimizer = TOptimizer::New();
-        // Set properties pertinent to convergence
-        optimizer->SetMaximumNumberOfIterations(200);
-        optimizer->SetParametersConvergenceTolerance(0.01);
-        optimizer->SetFunctionConvergenceTolerance(0.01);
-        // Instantiate the cost function
-        auto cost = itk::FMCostFunction<T>::New();
-        cost->m_data = data;
-        cost->m_T1 = T1;
-        cost->m_B1 = B1;
-        cost->m_sequence = this->m_sequence;
-        cost->m_model = this->m_model;
-        // Assign the cost function to the optimizer
-        optimizer->SetCostFunction( cost.GetPointer() );
-        // Set the initial parameters of the cost function
-        TOptimizer::ParametersType p(3);
-        p[0] = data.abs().maxCoeff() * 10.;
-        p[1] = 0.05 * T1;
-        p[2] = arg(data.mean()) / (M_PI * this->m_sequence->TR());
-        optimizer->SetInitialPosition(p);
-        optimizer->StartOptimization();
-        p = optimizer->GetCurrentPosition();
-        outputs[0] = p[0];
-        outputs[1] = p[1];
-        outputs[2] = p[2];
-        VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
-        ArrayXcd theory = this->m_sequence->signal(this->m_model, pfull);
-        resids = DifferenceVector(theory, data);
+        if (isfinite(T1) && (T1 > 0.001)) {
+            // Improve scaling by dividing the PD down to something sensible.
+            // This gets scaled back up at the end.
+            const auto data = indata / indata.abs().maxCoeff();
+            TOptimizer::Pointer optimizer = TOptimizer::New();
+            // Set properties pertinent to convergence
+            optimizer->SetCostFunctionConvergenceFactor(1.e3);
+            optimizer->SetProjectedGradientTolerance(1e-10);
+            optimizer->SetMaximumNumberOfIterations(100);
+            optimizer->SetMaximumNumberOfEvaluations(9999);
+            optimizer->SetMaximumNumberOfCorrections(10);
+            // Instantiate the cost function
+            auto cost = itk::FMCostFunction<T>::New();
+            cost->m_data = data;
+            cost->m_T1 = T1;
+            cost->m_B1 = B1;
+            cost->m_sequence = this->m_sequence;
+            cost->m_model = this->m_model;
+            optimizer->SetCostFunction(cost.GetPointer());
+
+            TOptimizer::BoundSelectionType select(3);
+            TOptimizer::BoundValueType lower(3), upper(3);
+            double f0_lo, f0_hi, f0_step;
+            if (this->m_sequence->isSymmetric()) {
+                select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
+                lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = 0.001;
+                upper[0] = 0; upper[1] = T1; upper[2] = 0.6/this->m_sequence->TR(); // Allow for a bit of fuzz on upper boundary
+                f0_lo = 1.0;
+                f0_step = 0.4 / this->m_sequence->TR();
+                f0_hi = f0_lo + 1. + f0_step;
+            } else {
+                select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
+                lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = -0.5/this->m_sequence->TR();
+                upper[0] = 0; upper[1] = T1; upper[2] = 0.5/this->m_sequence->TR();
+                f0_lo = -(0.4 / this->m_sequence->TR());
+                f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
+                f0_step = 4./15. / this->m_sequence->TR(); // 2/3 * 0.4
+            }
+            optimizer->SetLowerBound(lower);
+            optimizer->SetUpperBound(upper);
+            optimizer->SetBoundSelection(select);
+            double best = numeric_limits<double>::infinity();
+            TOptimizer::ParametersType bestP;
+            its = 0;
+            for (double f0 = f0_lo; f0 < f0_hi; f0 += f0_step) {
+                TOptimizer::ParametersType p(3);
+                p[0] = 10.; p[1] = 0.1 * T1; p[2] = f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                optimizer->SetInitialPosition(p);
+                optimizer->StartOptimization();
+                p = optimizer->GetCurrentPosition();
+                double r = cost->GetValue(p);
+                if (r < best) {
+                    best = r;
+                    bestP = p;
+                }
+                its += optimizer->GetCurrentIteration();
+            }
+            outputs[0] = bestP[0] * indata.abs().maxCoeff();
+            outputs[1] = bestP[1];
+            outputs[2] = bestP[2];
+            resids = cost->residuals(bestP) * indata.abs().maxCoeff();
+        } else {
+            outputs.setZero();
+            resids.setZero();
+            its = 0;
+        }
     }
 };
 
@@ -385,9 +396,8 @@ Options:\n\
     --mask, -m file   : Mask input with specified file\n\
     --out, -o path    : Add a prefix to the output filenames\n\
     --B1, -b file     : B1 Map file (ratio)\n\
-    --algo, -a l      : Use 2-step LM algorithm (default)\n\
-               s      : Use Stochastic Region Contraction\n\
-               a      : Use Amoeba optimizer\n\
+    --algo, -a l      : Use 2-step LM algorithm\n\
+               b      : Use BFGS algorithm (default)\n\
     --complex, -x     : Fit to complex data\n\
     --start, -s N     : Start processing from slice N\n\
     --stop, -p  N     : Stop processing at slice N\n\
@@ -430,7 +440,7 @@ int run_main(int argc, char **argv) {
 
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false,
-        fitFinite = false, flipData = false, use_amoeba = false, use_src = false;
+        fitFinite = false, flipData = false, use_BFGS = true;
     string outPrefix;
     QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
@@ -442,9 +452,8 @@ int run_main(int argc, char **argv) {
         case 'n': prompt = false; break;
         case 'a':
         switch (*optarg) {
-            case 'l': if (verbose) cout << "LM algorithm selected." << endl; break;
-            case 's': use_src = true; if (verbose) cout << "SRC algorithm selected." << endl; break;
-            case 'a': use_amoeba = true; if (verbose) cout << "Amoeba algorithm selected." << endl; break;
+            case 'l': use_BFGS = false; if (verbose) cout << "LM algorithm selected." << endl; break;
+            case 'b': use_BFGS = true; if (verbose) cout << "BFGS algorithm selected." << endl; break;
             default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
         } break;
         case 'm':
@@ -503,10 +512,9 @@ int run_main(int argc, char **argv) {
     }
     auto apply = TApply::New();
     shared_ptr<FMAlgo<T>> algo;
-    if (use_src) {
-        algo = make_shared<SRCAlgo<T>>();
-    } else if (use_amoeba) {
-        algo = make_shared<SimplexAlgo<T>>();
+    if (use_BFGS) {
+        itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
+        algo = make_shared<BFGSAlgo<T>>();
     } else {
         algo = make_shared<LMAlgo<T>>();
     }

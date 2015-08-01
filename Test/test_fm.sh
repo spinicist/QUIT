@@ -65,23 +65,15 @@ $SSFP_PC
 $SSFP_TR
 $SSFP_Trf" > ${PREFIX}fm_f_in.txt
 
-run_test "AM"    $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}x${SSFP_FILE} -x -aa -o${PREFIX}x  < ${PREFIX}fm_in.txt
-run_test "LM"    $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o ${PREFIX}         < ${PREFIX}fm_in.txt
-run_test "SRC"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -as -o${PREFIX}s     < ${PREFIX}fm_in.txt
-run_test "XSRC"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}x${SSFP_FILE} -x -as -o${PREFIX}sx < ${PREFIX}fm_in.txt
-run_test "LMF"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE}  --finite -o${PREFIX}f          < ${PREFIX}fm_f_in.txt
-run_test "LMXF"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}xf${SSFP_FILE} --finite -x -o${PREFIX}xf  < ${PREFIX}fm_f_in.txt
-run_test "SRCF"  $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE}  --finite -as -o${PREFIX}sf     < ${PREFIX}fm_f_in.txt
-run_test "XSRCF" $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}xf${SSFP_FILE} --finite -x -as -o${PREFIX}sxf < ${PREFIX}fm_f_in.txt
+run_test "LM"       $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}   -al          < ${PREFIX}fm_in.txt
+run_test "LM_F"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}f  -al --finite < ${PREFIX}fm_f_in.txt
+run_test "BFGS"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}b  -ab          < ${PREFIX}fm_in.txt
+run_test "BFGS_F"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}bf -ab --finite < ${PREFIX}fm_f_in.txt
 
-compare_test "LM"    T2.nii ${PREFIX}FM_T2.nii   0.01
-compare_test "AM"    T2.nii ${PREFIX}xFM_T2.nii  0.01
-compare_test "SRC"   T2.nii ${PREFIX}sFM_T2.nii  0.01
-compare_test "XSRC"  T2.nii ${PREFIX}sxFM_T2.nii 0.01
-compare_test "LMF"   T2.nii ${PREFIX}fFM_T2.nii   0.01
-compare_test "LMXF"   T2.nii ${PREFIX}xfFM_T2.nii  0.01
-compare_test "SRCF"  T2.nii ${PREFIX}sfFM_T2.nii  0.01
-compare_test "XSRCF" T2.nii ${PREFIX}sxfFM_T2.nii 0.01
+compare_test "LM"     T2.nii ${PREFIX}FM_T2.nii  0.01
+compare_test "LM_F"   T2.nii ${PREFIX}fFM_T2.nii 0.01
+compare_test "BFGS"   T2.nii ${PREFIX}bFM_T2.nii  0.01
+compare_test "BFGS_F" T2.nii ${PREFIX}bfFM_T2.nii 0.01
 }
 
 run_tests "2" "0 180"

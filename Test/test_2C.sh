@@ -11,11 +11,11 @@ source ./test_common.sh
 SILENCE_TESTS="1"
 
 DATADIR="2C"
-rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
+rm *
 
-DIMS="11 11 4"
+DIMS="5 5 3"
 
 $QUITDIR/qinewimage -d "$DIMS" -f "1.0" PD.nii
 $QUITDIR/qinewimage -d "$DIMS" -f "0.465" T1_m.nii
@@ -23,9 +23,9 @@ $QUITDIR/qinewimage -d "$DIMS" -f "0.026" T2_m.nii
 $QUITDIR/qinewimage -d "$DIMS" -f "1.070" T1_ie.nii
 $QUITDIR/qinewimage -d "$DIMS" -f "0.117" T2_ie.nii
 $QUITDIR/qinewimage -d "$DIMS" -f "0.18" tau_m.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "0 -5. 5." f0.nii
+$QUITDIR/qinewimage -d "$DIMS" -g "0 -15. 15." f0.nii
 $QUITDIR/qinewimage -d "$DIMS" -g "1 0.75 1.25" B1.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "2 0.1 0.25" f_m.nii
+$QUITDIR/qinewimage -d "$DIMS" -g "2 0.05 0.25" f_m.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
@@ -61,7 +61,7 @@ END_MCSIG
 function run() {
 PREFIX="$1"
 OPTS="$2"
-run_test $PREFIX $QUITDIR/qimcdespot $OPTS -2 -bB1.nii -r -o $PREFIX -v << END_INPUT
+run_test $PREFIX $QUITDIR/qimcdespot $OPTS -M2 -bB1.nii -r -o $PREFIX -v -n << END_INPUT
 SPGR
 $SPGR_FILE
 $SPGR_FLIP
@@ -74,23 +74,20 @@ $SSFP_TR
 END
 END_INPUT
 
-echo "       Mean     Std.     CoV"
-echo "T1_m:  " $( fslstats ${PREFIX}2C_T1_m.nii  -m -s | awk '{print $1, $2, $2/$1}' )
-echo "T2_m:  " $( fslstats ${PREFIX}2C_T2_m.nii  -m -s | awk '{print $1, $2, $2/$1}' )
-echo "T1_ie: " $( fslstats ${PREFIX}2C_T1_ie.nii -m -s | awk '{print $1, $2, $2/$1}' )
-echo "T2_ie: " $( fslstats ${PREFIX}2C_T2_ie.nii -m -s | awk '{print $1, $2, $2/$1}' )
-echo "MWF:   " $( fslstats ${PREFIX}2C_f_m.nii   -m -s | awk '{print $1, $2, $2/$1}' )
-echo "Tau:   " $( fslstats ${PREFIX}2C_tau_m.nii -m -s | awk '{print $1, $2, $2/$1}' )
 compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
+
+#echo "       Mean     Std.     CoV"
+#echo "T1_m:  " $( fslstats ${PREFIX}2C_T1_m.nii  -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
+#echo "T2_m:  " $( fslstats ${PREFIX}2C_T2_m.nii  -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
+#echo "T1_ie: " $( fslstats ${PREFIX}2C_T1_ie.nii -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
+#echo "T2_ie: " $( fslstats ${PREFIX}2C_T2_ie.nii -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
+#echo "MWF:   " $( fslstats ${PREFIX}2C_f_m.nii   -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
+#echo "Tau:   " $( fslstats ${PREFIX}2C_tau_m.nii -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
 }
 
-run "GAUSSSCALE1f0"  " -S1 -ff0.nii"
-#run "SCALE1f0"      " -S1 -g0 -ff0.nii"
-#run "NOSCALEf0"     " -SNONE -g0 -ff0.nii"
-#run "MEANSCALEf0"   " -g0 -ff0.nii"
-#run "MEANSCALE"     " -g0 "
-#run "GAUSSSCALE1"   " -S1 -g0 "
-#run "NOSCALE"       " -SNONE -g0 "
-
+run "BFGS" " -S1 -ff0.nii -ab"
+run "GRC"  " -S1 -ff0.nii -aG"
+run "SRC"  " -S1 -ff0.nii -aS"
+run "SRC2" " -S1 -aS "
 cd ..
 SILENCE_TESTS="0"

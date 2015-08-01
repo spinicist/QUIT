@@ -79,6 +79,15 @@ class SPGRSimple : public SteadyState {
 		string name() const override { return "SPGR"; }
 		ArrayXd weights(const double f0) const override;
 };
+class SPGREcho : public SPGRSimple {
+public:
+    double m_TE;
+    SPGREcho(const ArrayXd &flip, const double TR, const double TE);
+    SPGREcho(const bool prompt);
+    ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
+    void write(ostream &os) const override;
+    string name() const override { return "SPGR_Echo"; }
+};
 class SPGRFinite : public SPGRSimple {
 	public:
 		double m_Trf, m_TE;
@@ -123,7 +132,13 @@ class SSFPSimple : public SteadyState {
         virtual double bwMult() const;
 		ArrayXd weights(const double f0) const override;
 };
+class SSFPEcho : public SSFPSimple {
+public:
+    SSFPEcho(const bool prompt) : SSFPSimple(prompt) {}
 
+    ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
+    string name() const override { return "SSFPEcho"; }
+};
 class SSFPFinite : public SSFPSimple {
 	public:
 		double m_Trf;

@@ -324,7 +324,7 @@ int main(int argc, char **argv)
 	vector<QI::ReadImageF::Pointer> pFiles(model->nParameters());
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
-		if (prompt) cout << "Enter path to " << model->Names()[i] << " file: " << flush;
+		if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file: " << flush;
 		string filename;
 		getline(cin, filename);
 		if (verbose) cout << "Opening " << filename << endl;

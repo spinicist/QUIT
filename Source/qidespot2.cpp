@@ -59,7 +59,7 @@ public:
 class D2LLS : public D2Algo {
 public:
 	virtual void apply(const TInput &data, const TArray &constants,
-					   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		const double TR = m_sequence->TR();
 		const double T1 = constants[0];
@@ -90,13 +90,14 @@ public:
 		T2 = clamp(T2, m_lo, m_hi);
 		outputs[0] = PD;
 		outputs[1] = T2;
+        its = 1;
 	}
 };
 
 class D2WLLS : public D2Algo {
 public:
 	virtual void apply(const TInput &data, const TArray &constants,
-					   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		const double TR = m_sequence->TR();
 		const double T1 = constants[0];
@@ -145,6 +146,7 @@ public:
 		T2 = clamp(T2, m_lo, m_hi);
 		outputs[0] = PD;
 		outputs[1] = T2;
+        its = m_iterations;
 	}
 };
 
@@ -179,7 +181,7 @@ class D2Functor : public DenseFunctor<double> {
 class D2NLLS : public D2Algo {
 public:
 	virtual void apply(const TInput &data, const TArray &inputs,
-	                   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		double T1 = inputs[0];
 		double B1 = inputs[1];
@@ -199,6 +201,7 @@ public:
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
 		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+        its = lm.iterations();
 	}
 };
 
@@ -354,7 +357,7 @@ int main(int argc, char **argv) {
 		cout << "Writing results." << endl;
 	}
 	outPrefix = outPrefix + "D2_";
-	writeResult(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
+    writeResult(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
 	writeResult(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
 	writeResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals);
 

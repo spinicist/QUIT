@@ -112,7 +112,7 @@ public:
 class LogLinAlgo: public RelaxAlgo {
 public:
 	virtual void apply(const TInput &data, const TArray &inputs,
-	                   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 			// Set up echo times array
 		MatrixXd X(m_sequence->size(), 2);
@@ -123,13 +123,14 @@ public:
         double PD = exp(b[1]);
         double T2 = -1 / b[0];
         clamp_and_treshold(data, outputs, resids, PD, T2);
+        its = 1;
 	}
 };
 
 class ARLOAlgo : public RelaxAlgo {
 public:
 	virtual void apply(const TInput &data, const TArray &inputs,
-					   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		double si2sum = 0, sidisum = 0;
 		for (int i = 0; i < m_sequence->size() - 2; i++) {
@@ -144,6 +145,7 @@ public:
         double T2 = (si2sum + (m_sequence->m_ESP/3)*sidisum) / ((m_sequence->m_ESP/3)*si2sum + sidisum);
         double PD = (data.array() / (-X.col(0).array() / outputs[1]).exp()).mean();
         clamp_and_treshold(data, outputs, resids, PD, T2);
+        its = 1;
 	}
 };
 
@@ -178,7 +180,7 @@ public:
 	void setIterations(size_t n) { m_iterations = n; }
 
 	virtual void apply(const TInput &data, const TArray &inputs,
-					   TArray &outputs, TArray &resids) const override
+                       TArray &outputs, TArray &resids, TIterations &its) const override
 	{
 		RelaxFunctor f(m_sequence, data);
 		NumericalDiff<RelaxFunctor> nDiff(f);
@@ -189,6 +191,7 @@ public:
 		VectorXd p(2); p << data(0), 0.05;
 		lm.minimize(p);
         clamp_and_treshold(data, outputs, resids, p[0], p[1]);
+        its = lm.iterations();
 	}
 };
 

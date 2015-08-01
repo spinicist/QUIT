@@ -122,7 +122,7 @@ class HIFIAlgo : public Algorithm<double> {
 
 		virtual void apply(const TInput &data,
 		                   const TArray &, //No inputs, remove name to silence compiler warning
-		                   TArray &outputs, TArray &resids) const override
+                           TArray &outputs, TArray &resids, TIterations &its) const override
 		{
 			HIFIFunctor f(m_sequence, data);
 			NumericalDiff<HIFIFunctor> nDiff(f);
@@ -140,6 +140,7 @@ class HIFIAlgo : public Algorithm<double> {
 			if (outputs[0] < m_thresh)
 				outputs.setZero();
 			outputs[1] = clamp(outputs[1], m_lo, m_hi);
+            its = lm.iterations();
 		}
 };
 
@@ -225,9 +226,9 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "HIFI_";
 
-	QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-	QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
-	QI::writeResult(apply->GetOutput(2), outPrefix + "B1.nii");
+    QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
+    QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
+    QI::writeResult(apply->GetOutput(2), outPrefix + "B1.nii");
 	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	if (verbose) cout << "Finished." << endl;
