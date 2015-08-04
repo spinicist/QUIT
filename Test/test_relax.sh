@@ -24,7 +24,7 @@ $QUITDIR/qinewimage -d "$DIMS" -f 1 B1.nii
 SPIN_FILE="multispinecho.nii"
 SPIN_PAR="0.005
 0.005
-3"
+16"
 
 # Create input for Single Component
 MCSIG_INPUT="PD.nii
@@ -42,7 +42,7 @@ run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 < qisignal.in
 echo "$SPIN_PAR" > multiecho_spin.in
 
 run_test "SPINECHO_LOGLIN" $QUITDIR/qimultiecho $SPIN_FILE -n -al -oL -v < multiecho_spin.in
-run_test "SPINECHO_ARLO" $QUITDIR/qimultiecho $SPIN_FILE -n -aa -oA -v < multiecho_spin.in
+run_test "SPINECHO_ARLO"   $QUITDIR/qimultiecho $SPIN_FILE -n -aa -oA -v -T1 < multiecho_spin.in
 run_test "SPINECHO_NONLIN" $QUITDIR/qimultiecho $SPIN_FILE -n -an -oN -v < multiecho_spin.in
 compare_test "LOGLIN" T2.nii LME_T2.nii 0.01
 compare_test "ARLO" T2.nii AME_T2.nii 0.01

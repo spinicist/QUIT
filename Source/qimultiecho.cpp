@@ -84,7 +84,7 @@ protected:
                             const double PD, const double T2) const {
         if (PD > m_thresh) {
             outputs[0] = PD;
-            outputs[1] = clamp(T2, m_clampLo, m_clampHi); // T2
+            outputs[1] = clamp(T2, m_clampLo, m_clampHi);
             ArrayXcd theory = One_MultiEcho(m_sequence->m_TE, PD, T2);
             resids = data.array() - theory.abs();
         } else {
@@ -129,24 +129,22 @@ public:
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-	virtual void apply(const TInput &data, const TArray &inputs,
+    virtual void apply(const TInput &data, const TArray &inputs,
                        TArray &outputs, TArray &resids, TIterations &its) const override
-	{
-		double si2sum = 0, sidisum = 0;
-		for (int i = 0; i < m_sequence->size() - 2; i++) {
-			double si = (m_sequence->m_ESP / 3) * (data(i) + 4*data(i+1) + data(i+2));
-			double di = data(i) - data(i+2);
-			si2sum += si*si;
-			sidisum = si*di;
-		}
-		MatrixXd X(m_sequence->size(), 2);
-		X.col(0) = m_sequence->m_TE;
-		X.col(1).setOnes();
-        double T2 = (si2sum + (m_sequence->m_ESP/3)*sidisum) / ((m_sequence->m_ESP/3)*si2sum + sidisum);
-        double PD = (data.array() / (-X.col(0).array() / outputs[1]).exp()).mean();
+    {
+        const double dTE_3 = (m_sequence->m_ESP / 3);
+        double si2sum = 0, sidisum = 0;
+        for (int i = 0; i < m_sequence->size() - 2; i++) {
+            const double si = dTE_3 * (data(i) + 4*data(i+1) + data(i+2));
+            const double di = data(i) - data(i+2);
+            si2sum += si*si;
+            sidisum += si*di;
+        }
+        double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum);
+        double PD = (data.array() / exp(-m_sequence->m_TE / T2)).mean();
         clamp_and_treshold(data, outputs, resids, PD, T2);
         its = 1;
-	}
+    }
 };
 
 class RelaxFunctor : public DenseFunctor<double> {
