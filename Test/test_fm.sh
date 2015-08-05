@@ -10,9 +10,9 @@ source ./test_common.sh
 SILENCE_TESTS="1"
 
 DATADIR="fm"
-rm -rf $DATADIR
 mkdir -p $DATADIR
 cd $DATADIR
+rm *
 
 # First, create input data
 DIMS="5 10 31"

@@ -343,7 +343,7 @@ public:
                 select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
                 lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = 0.001;
                 upper[0] = 0; upper[1] = T1; upper[2] = 0.6/this->m_sequence->TR(); // Allow for a bit of fuzz on upper boundary
-                f0_lo = 1.0;
+                f0_lo = (2./15.) / this->m_sequence->TR();
                 f0_step = 0.4 / this->m_sequence->TR();
                 f0_hi = f0_lo + 1. + f0_step;
             } else {
@@ -352,13 +352,13 @@ public:
                 upper[0] = 0; upper[1] = T1; upper[2] = 0.5/this->m_sequence->TR();
                 f0_lo = -(0.4 / this->m_sequence->TR());
                 f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
-                f0_step = 4./15. / this->m_sequence->TR(); // 2/3 * 0.4
+                f0_step = (4./15.) / this->m_sequence->TR(); // 2/3 * 0.4
             }
             optimizer->SetLowerBound(lower);
             optimizer->SetUpperBound(upper);
             optimizer->SetBoundSelection(select);
             double best = numeric_limits<double>::infinity();
-            TOptimizer::ParametersType bestP;
+            TOptimizer::ParametersType bestP(3);
             its = 0;
             for (double f0 = f0_lo; f0 < f0_hi; f0 += f0_step) {
                 TOptimizer::ParametersType p(3);
