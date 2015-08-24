@@ -12,7 +12,7 @@
 
 #include <iostream>
 #include <string>
-#include <time.h>
+#include <complex>
 #include <getopt.h>
 
 #include "Types.h"
@@ -42,17 +42,19 @@ static struct option long_options[] = {
 };
 static const char *short_options = "vm:o:T:h";
 
-template<class TPixel> class MP2RAGE {
+template<class T> class MP2RAGE {
 public:
     MP2RAGE() {}
     ~MP2RAGE() {}
     bool operator!=(const MP2RAGE &) const { return false; }
     bool operator==(const MP2RAGE &other) const { return !(*this != other); }
 
-    inline TPixel operator()(const TPixel &r,
-                             const TPixel &n) const
+    inline T operator()(const complex<T> &ti1,
+                              const complex<T> &ti2) const
     {
-        return (r * n) / (r*r + n*n);
+        const T a1 = abs(ti1);
+        const T a2 = abs(ti2);
+        return real((conj(ti1)*ti2)/(a1*a1 + a2*a2));
     }
 };
 
@@ -106,18 +108,18 @@ int main(int argc, char **argv) {
     volume2->SetInput(inFile->GetOutput());
     volume2->SetDirectionCollapseToSubmatrix();
 
-    auto mp2rage_filter = itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageXF, MP2RAGE<complex<float>>>::New();
+    auto mp2rage_filter = itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MP2RAGE<float>>::New();
     mp2rage_filter->SetInput1(volume1->GetOutput());
     mp2rage_filter->SetInput2(volume2->GetOutput());
-    auto mask_filter = itk::MaskImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
+    auto mask_filter = itk::MaskImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
     if (maskFile) {
         mask_filter->SetInput1(mp2rage_filter->GetOutput());
         mask_filter->SetMaskImage(maskFile->GetOutput());
         mask_filter->Update();
-        QI::writeResult<QI::ImageXF>(mask_filter->GetOutput(), outPrefix + "MP2RAGE" + QI::OutExt());
+        QI::writeResult<QI::ImageF>(mask_filter->GetOutput(), outPrefix + "MP2RAGE" + QI::OutExt());
     } else {
         mp2rage_filter->Update();
-        QI::writeResult<QI::ImageXF>(mp2rage_filter->GetOutput(), outPrefix + "MP2RAGE" + QI::OutExt());
+        QI::writeResult<QI::ImageF>(mp2rage_filter->GetOutput(), outPrefix + "MP2RAGE" + QI::OutExt());
     }
 
     if (verbose) cout << "Finished." << endl;
