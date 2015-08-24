@@ -27,7 +27,7 @@ add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Sourc
 set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
              qiafi qissfpbands qiunwrap
-             qimultiecho)
+             qimultiecho qimp2rage )
 
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
