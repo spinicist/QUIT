@@ -91,37 +91,44 @@ int main(int argc, char **argv) {
         cout << usage << endl;
         return EXIT_FAILURE;
     }
-    if (verbose) cout << "Opening input file " << argv[optind] << endl;
+    string fname(argv[optind]);
+    if (verbose) cout << "Opening input file " << fname << endl;
+    if (outPrefix == "")
+        outPrefix = fname.substr(0, fname.find(".nii"));
     auto inFile = QI::ReadTimeseriesXF::New();
-    inFile->SetFileName(argv[optind]);
+    inFile->SetFileName(fname);
     inFile->Update();
-    auto volume1 = itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::New();
-    auto volume2 = itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::New();
+    vector<itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::Pointer> vols(3);
+
     auto region = inFile->GetOutput()->GetLargestPossibleRegion();
     region.GetModifiableSize()[3] = 0;
-    region.GetModifiableIndex()[3] = 0;
-    volume1->SetExtractionRegion(region);
-    volume1->SetInput(inFile->GetOutput());
-    volume1->SetDirectionCollapseToSubmatrix();
-    region.GetModifiableIndex()[3] = 1;
-    volume2->SetExtractionRegion(region);
-    volume2->SetInput(inFile->GetOutput());
-    volume2->SetDirectionCollapseToSubmatrix();
 
-    auto mp2rage_filter = itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MP2RAGE<float>>::New();
-    mp2rage_filter->SetInput1(volume1->GetOutput());
-    mp2rage_filter->SetInput2(volume2->GetOutput());
-    auto mask_filter = itk::MaskImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
-    if (maskFile) {
-        mask_filter->SetInput1(mp2rage_filter->GetOutput());
-        mask_filter->SetMaskImage(maskFile->GetOutput());
-        mask_filter->Update();
-        QI::writeResult<QI::ImageF>(mask_filter->GetOutput(), outPrefix + "MP2RAGE" + QI::OutExt());
-    } else {
-        mp2rage_filter->Update();
-        QI::writeResult<QI::ImageF>(mp2rage_filter->GetOutput(), outPrefix + "MP2RAGE" + QI::OutExt());
+    for (int i = 0; i < 3; i++) {
+        region.GetModifiableIndex()[3] = i;
+        vols[i] = itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::New();
+        vols[i]->SetExtractionRegion(region);
+        vols[i]->SetInput(inFile->GetOutput());
+        vols[i]->SetDirectionCollapseToSubmatrix();
     }
 
+    for (int i1 = 0; i1 < 3; i1++) {
+        for (int i2 = (i1 + 1); i2 < 3; i2++) {
+            auto mp2rage_filter = itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MP2RAGE<float>>::New();
+            mp2rage_filter->SetInput1(vols[i1]->GetOutput());
+            mp2rage_filter->SetInput2(vols[i2]->GetOutput());
+
+            auto mask_filter = itk::MaskImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
+            if (maskFile) {
+                mask_filter->SetInput1(mp2rage_filter->GetOutput());
+                mask_filter->SetMaskImage(maskFile->GetOutput());
+                mask_filter->Update();
+                QI::writeResult<QI::ImageF>(mask_filter->GetOutput(), outPrefix + "_C" + to_string(i1) + to_string(i2) + QI::OutExt());
+            } else {
+                mp2rage_filter->Update();
+                QI::writeResult<QI::ImageF>(mp2rage_filter->GetOutput(), outPrefix + "_C" + to_string(i1) + to_string(i2) + QI::OutExt());
+            }
+        }
+    }
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
