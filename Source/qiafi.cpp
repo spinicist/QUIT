@@ -1,5 +1,5 @@
 /*
- *  qafi.cpp
+ *  qiafi.cpp
  *
  *  Created by Tobias Wood on 2015/06/04.
  *  Copyright (c) 2015 Tobias Wood.
@@ -25,7 +25,7 @@
 using namespace std;
 
 const string usage{
-"Usage is: afi [options] input \n\
+"Usage is: qiafi [options] input \n\
 \
 Options:\n\
 	--verbose, -v   : Print more messages\n\
