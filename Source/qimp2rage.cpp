@@ -19,6 +19,9 @@
 #include "Util.h"
 
 #include "itkBinaryFunctorImageFilter.h"
+#include "itkImageToHistogramFilter.h"
+#include "itkComplexToModulusImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
 #include "itkMaskImageFilter.h"
 
 using namespace std;
@@ -63,15 +66,18 @@ int main(int argc, char **argv) {
     int indexptr = 0, c;
     string outPrefix = "";
     bool verbose = false;
-    QI::ReadImageF::Pointer maskFile = ITK_NULLPTR;
+    QI::ImageF::Pointer mask = ITK_NULLPTR;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
             case 'v': verbose = true; break;
-            case 'm':
+            case 'm': {
                 cout << "Reading mask." << endl;
-                maskFile = QI::ReadImageF::New();
+                auto maskFile = QI::ReadImageF::New();
                 maskFile->SetFileName(optarg);
-                break;
+                maskFile->Update();
+                mask = maskFile->GetOutput();
+                mask->DisconnectPipeline();
+            } break;
             case 'o':
                 outPrefix = optarg;
                 cout << "Output prefix will be: " << outPrefix << endl;
@@ -111,6 +117,27 @@ int main(int argc, char **argv) {
         vols[i]->SetDirectionCollapseToSubmatrix();
     }
 
+    if (!mask) {
+        // Threshold the last volume to automatically generate a mask
+        auto magFilter = itk::ComplexToModulusImageFilter<QI::ImageXF, QI::ImageF>::New();
+        auto histFilter = itk::Statistics::ImageToHistogramFilter<QI::ImageF>::New();
+        auto threshFilter = itk::BinaryThresholdImageFilter<QI::ImageF, QI::ImageF>::New();
+        magFilter->SetInput(vols[2]->GetOutput());
+        histFilter->SetInput(magFilter->GetOutput());
+        itk::Statistics::ImageToHistogramFilter<QI::ImageF>::HistogramSizeType size(1); size.Fill(100);
+        histFilter->SetHistogramSize(size);
+        histFilter->SetAutoMinimumMaximum(true);
+        histFilter->Update();
+        float threshold = histFilter->GetOutput()->Quantile(0, 0.9);
+        threshFilter->SetInput(magFilter->GetOutput());
+        threshFilter->SetLowerThreshold(threshold);
+        threshFilter->SetInsideValue(1);
+        threshFilter->SetOutsideValue(0);
+        threshFilter->Update();
+        mask = threshFilter->GetOutput();
+        mask->DisconnectPipeline();
+    }
+
     for (int i1 = 0; i1 < 3; i1++) {
         for (int i2 = (i1 + 1); i2 < 3; i2++) {
             auto mp2rage_filter = itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MP2RAGE<float>>::New();
@@ -118,15 +145,10 @@ int main(int argc, char **argv) {
             mp2rage_filter->SetInput2(vols[i2]->GetOutput());
 
             auto mask_filter = itk::MaskImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
-            if (maskFile) {
-                mask_filter->SetInput1(mp2rage_filter->GetOutput());
-                mask_filter->SetMaskImage(maskFile->GetOutput());
-                mask_filter->Update();
-                QI::writeResult<QI::ImageF>(mask_filter->GetOutput(), outPrefix + "_C" + to_string(i1) + to_string(i2) + QI::OutExt());
-            } else {
-                mp2rage_filter->Update();
-                QI::writeResult<QI::ImageF>(mp2rage_filter->GetOutput(), outPrefix + "_C" + to_string(i1) + to_string(i2) + QI::OutExt());
-            }
+            mask_filter->SetInput1(mp2rage_filter->GetOutput());
+            mask_filter->SetMaskImage(mask);
+            mask_filter->Update();
+            QI::writeResult<QI::ImageF>(mask_filter->GetOutput(), outPrefix + "_C" + to_string(i1) + to_string(i2) + QI::OutExt());
         }
     }
     if (verbose) cout << "Finished." << endl;
