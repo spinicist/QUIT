@@ -62,6 +62,7 @@ VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl
                           cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 VectorXcd MP_RAGE(cdbl flip, cdbl TR, const int N, carrd &TI, cdbl TD, cdbl PD, cdbl T1, cdbl B1);
+Array3cd  MP3_RAGE(const Array3d &alpha, cdbl TR, const int N, const Array4d &TD, cdbl M0, cdbl T1, cdbl B1, cdbl eta);
 VectorXcd One_AFI(cdbl flip, cdbl TR1, cdbl TR2, cdbl PD, cdbl T1, cdbl B1);
 
 VectorXcd Two_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1_a, cdbl T1_b, cdbl tau_a, cdbl f_a, cdbl B1);

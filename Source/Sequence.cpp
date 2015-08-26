@@ -179,6 +179,48 @@ void MPRAGE::write(ostream &os) const {
 	os << "TS: " << (m_TI + m_N*m_TR + m_TD).transpose() << endl;
 }
 
+MP3RAGE::MP3RAGE(const Array4d &TD, const double TR, const int N, const double flip) :
+    SteadyState(), m_TD(TD), m_N(N) {
+    m_TR = TR;
+    m_flip.resize(1); m_flip[0] = flip;
+}
+
+MP3RAGE::MP3RAGE(const bool prompt) : SteadyState() {
+    if (prompt) cout << "Enter read-out flip-angle (degrees): " << flush;
+    double inFlip;
+    QI::Read(cin, inFlip);
+    m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
+    if (prompt) cout << "Enter read-out TR (seconds): " << flush;
+    QI::Read(cin, m_TR);
+    if (prompt) cout << "Enter segment size: " << flush;
+    QI::Read(cin, m_N);
+    if (prompt) cout << "Enter inversion times (seconds): " << flush;
+    ArrayXd m_TI;
+    QI::ReadArray(cin, m_TI);
+    if (m_TI.size() != 3) {
+        throw(runtime_error("Must specify 3 TI times for MP3RAGE"));
+    }
+    // Assume centric for now
+    m_TD[0] = m_TI[0];
+    m_TD[1] = m_TI[1] - m_TD[0] - m_N*m_TR;
+    m_TD[2] = m_TI[2] - m_TD[1] - m_N*m_TR;
+    if (prompt) cout << "Enter overall TR (seconds): " << flush;
+    float TRseg;
+    QI::Read(cin, TRseg);
+    m_TD[3] = TRseg - m_TD[2] - m_N*m_TR;
+}
+
+ArrayXcd MP3RAGE::signal(const double M0, const double T1, const double B1, const double eta) const {
+    const Array3d alpha = Array3d::Ones() * m_flip[0];
+    return MP3_RAGE(alpha, m_TR, m_N, m_TD, M0, T1, B1, eta);
+}
+
+void MP3RAGE::write(ostream &os) const {
+    os << name() << endl;
+    os << "TR: " << m_TR << "\tN: " << m_N << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
+    os << "TD: " << m_TD.transpose() << "\tTS: " << (m_TD.sum() + 3*m_N*m_TR) << endl;
+}
+
 SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phases) :
 	SteadyState(flip, TR), m_phases(phases)
 {}
