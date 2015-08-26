@@ -137,10 +137,13 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
 	size_t size = 0;
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		size += this->GetInput(i)->GetNumberOfComponentsPerPixel();
-	}
+    }
 	if (m_algorithm->dataSize() != size) {
-		throw(std::runtime_error("Sequence size (" + to_string(m_algorithm->dataSize()) + ") does not match input size (" + to_string(size) + ")"));
+        throw(std::runtime_error(string(__PRETTY_FUNCTION__) + "Sequence size (" + to_string(m_algorithm->dataSize()) + ") does not match input size (" + to_string(size) + ")"));
 	}
+    if (size == 0) {
+        throw(std::runtime_error(string(__PRETTY_FUNCTION__) + "Total input size cannot be 0"));
+    }
 
     auto input =     this->GetInput(0);
     auto region =    input->GetLargestPossibleRegion();
