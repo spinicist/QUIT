@@ -115,7 +115,7 @@ class MP3RAGE : public SteadyState {
         Array4d m_TD;
         int m_N;
         MP3RAGE() : SteadyState() {}
-        MP3RAGE(const Array4d &TD, const double TR, const int N, const double flip);
+        MP3RAGE(const Array4d &TD, const double TR, const int N, const Array3d flip);
         MP3RAGE(const bool prompt);
         size_t size() const override { return 3; }
         ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override { throw(runtime_error(string(__PRETTY_FUNCTION__) + " unimplemented")); }

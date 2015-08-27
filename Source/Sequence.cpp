@@ -179,17 +179,19 @@ void MPRAGE::write(ostream &os) const {
 	os << "TS: " << (m_TI + m_N*m_TR + m_TD).transpose() << endl;
 }
 
-MP3RAGE::MP3RAGE(const Array4d &TD, const double TR, const int N, const double flip) :
+MP3RAGE::MP3RAGE(const Array4d &TD, const double TR, const int N, const Array3d flip) :
     SteadyState(), m_TD(TD), m_N(N) {
     m_TR = TR;
-    m_flip.resize(1); m_flip[0] = flip;
+    m_flip = flip;
 }
 
 MP3RAGE::MP3RAGE(const bool prompt) : SteadyState() {
-    if (prompt) cout << "Enter read-out flip-angle (degrees): " << flush;
-    double inFlip;
-    QI::Read(cin, inFlip);
-    m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
+    if (prompt) cout << "Enter read-out flip-angles (degrees): " << flush;
+    QI::ReadArray(cin, m_flip);
+    if (m_flip.size() != 3) {
+        throw(runtime_error("Must have 3 flip-angles for MP3RAGE"));
+    }
+    m_flip *= M_PI / 180.;
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
     QI::Read(cin, m_TR);
     if (prompt) cout << "Enter segment size: " << flush;
@@ -211,8 +213,7 @@ MP3RAGE::MP3RAGE(const bool prompt) : SteadyState() {
 }
 
 ArrayXcd MP3RAGE::signal(const double M0, const double T1, const double B1, const double eta) const {
-    const Array3d alpha = Array3d::Ones() * m_flip[0];
-    return MP3_RAGE(alpha, m_TR, m_N, m_TD, M0, T1, B1, eta);
+    return MP3_RAGE(m_flip, m_TR, m_N, m_TD, M0, T1, B1, eta);
 }
 
 void MP3RAGE::write(ostream &os) const {
