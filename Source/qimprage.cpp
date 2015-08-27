@@ -70,14 +70,14 @@ public:
     }
 };
 
-class MP3LookupAlgo : public Algorithm<double> {
+class MP3LookupAlgo : public Algorithm<complex<double>> {
 protected:
     std::vector<Array3d> m_pars, m_cons;
 
 public:
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return 3; }
+    size_t numOutputs() const override { return 6; }
     size_t dataSize() const override { return 3; }
 
     virtual TArray defaultConsts() {
@@ -92,9 +92,9 @@ public:
         MP2Contrast<double> con;
         m_pars.clear();
         m_cons.clear();
-        for (float T1 = 0.5; T1 < 4.3; T1 += 0.005) {
-            for (float B1 = 0.75; B1 < 1.25; B1 += 0.01) {
-                for (float eta = 1.0; eta < 1.25; eta += 1.0) {
+        for (float T1 = 0.5; T1 < 2.5; T1 += 0.005) {
+            for (float B1 = 1.0; B1 < 1.25; B1 += 1.0) {
+                for (float eta = 0.25; eta < 1.25; eta += 0.05) {
                     Array3d tp; tp << T1, B1, eta;
                     m_pars.push_back(tp);
                     Array3cd sig = sequence.signal(1., T1, B1, eta);
@@ -115,14 +115,22 @@ public:
         double best_distance = numeric_limits<double>::max();
         int best_index = 0;
 
+        MP2Contrast<double> con;
+        Array3d in_cons;
+        in_cons[0] = con(data_inputs[0], data_inputs[1]).real();
+        in_cons[1] = con(data_inputs[0], data_inputs[2]).real();
+        in_cons[2] = con(data_inputs[1], data_inputs[2]).real();
+
         for (int i = 0; i < m_pars.size(); i++) {
-            double distance = (m_cons[i] - data_inputs).matrix().norm();
+            double distance = (m_cons[i] - in_cons).matrix().norm();
             if (distance < best_distance) {
                 best_distance = distance;
                 best_index = i;
             }
         }
-        outputs = m_pars[best_index];
+        outputs.head(3) = in_cons;
+        outputs.tail(3) = m_pars[best_index];
+        resids = in_cons - m_cons[best_index];
         //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose() << endl;
         its = 1;
     }
@@ -168,30 +176,22 @@ int main(int argc, char **argv) {
     }
     string fname(argv[optind]);
     if (verbose) cout << "Opening input file " << fname << endl;
-    if (outPrefix == "")
-        outPrefix = fname.substr(0, fname.find(".nii"));
     auto inFile = QI::ReadTimeseriesXF::New();
     inFile->SetFileName(fname);
     inFile->Update();
-    vector<itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::Pointer> vols(3);
-
-    auto region = inFile->GetOutput()->GetLargestPossibleRegion();
-    region.GetModifiableSize()[3] = 0;
-
-    for (int i = 0; i < 3; i++) {
-        region.GetModifiableIndex()[3] = i;
-        vols[i] = itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::New();
-        vols[i]->SetExtractionRegion(region);
-        vols[i]->SetInput(inFile->GetOutput());
-        vols[i]->SetDirectionCollapseToSubmatrix();
-    }
-
     if (!mask) {
         // Threshold the last volume to automatically generate a mask
         auto magFilter = itk::ComplexToModulusImageFilter<QI::ImageXF, QI::ImageF>::New();
         auto histFilter = itk::Statistics::ImageToHistogramFilter<QI::ImageF>::New();
         auto threshFilter = itk::BinaryThresholdImageFilter<QI::ImageF, QI::ImageF>::New();
-        magFilter->SetInput(vols[2]->GetOutput());
+        auto vol = itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::New();
+        auto region = inFile->GetOutput()->GetLargestPossibleRegion();
+        region.GetModifiableSize()[3] = 0;
+        region.GetModifiableIndex()[3] = 2;
+        vol->SetExtractionRegion(region);
+        vol->SetInput(inFile->GetOutput());
+        vol->SetDirectionCollapseToSubmatrix();
+        magFilter->SetInput(vol->GetOutput());
         histFilter->SetInput(magFilter->GetOutput());
         itk::Statistics::ImageToHistogramFilter<QI::ImageF>::HistogramSizeType size(1); size.Fill(100);
         histFilter->SetHistogramSize(size);
@@ -207,50 +207,23 @@ int main(int argc, char **argv) {
         mask->DisconnectPipeline();
     }
 
-    cout << "Generating contrast images" << endl;
-    vector<QI::ImageF::Pointer> conImages(3, ITK_NULLPTR);
-    int ind = 0;
-    for (int i1 = 0; i1 < 3; i1++) {
-        for (int i2 = (i1 + 1); i2 < 3; i2++) {
-            auto mp2rage_filter = itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageXF, MP2Contrast<float>>::New();
-            mp2rage_filter->SetInput1(vols[i1]->GetOutput());
-            mp2rage_filter->SetInput2(vols[i2]->GetOutput());
-
-            auto mask_filter = itk::MaskImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
-            mask_filter->SetInput1(mp2rage_filter->GetOutput());
-            mask_filter->SetMaskImage(mask);
-            mask_filter->Update();
-            string outName = outPrefix + "MP3_C" + to_string(i1) + to_string(i2) + QI::OutExt();
-            auto realFilter = itk::ComplexToRealImageFilter<QI::ImageXF, QI::ImageF>::New();
-            realFilter->SetInput(mask_filter->GetOutput());
-            realFilter->Update();
-            conImages[ind] = realFilter->GetOutput();
-            conImages[ind]->DisconnectPipeline();
-            if (complex_output) {
-                QI::writeResult<QI::ImageXF>(mask_filter->GetOutput(), outName);
-            } else {
-                QI::writeResult<QI::ImageF>(realFilter->GetOutput(), outName);
-            }
-            ind++;
-        }
-    }
-
     cout << "Attempting quantitative bit" << endl;
-    auto apply = itk::ApplyAlgorithmFilter<MP3LookupAlgo>::New();
+    auto apply = itk::ApplyAlgorithmFilter<MP3LookupAlgo, complex<float>>::New();
     auto lookup = make_shared<MP3LookupAlgo>();
     apply->SetAlgorithm(lookup);
 
-    typedef itk::ComposeImageFilter<QI::ImageF, QI::VectorImageF> ComposeType;
-    auto composer = ComposeType::New();
-    composer->SetInput(0, conImages[0]);
-    composer->SetInput(1, conImages[1]);
-    composer->SetInput(2, conImages[2]);
-    apply->SetInput(0, composer->GetOutput());
+    auto vectorFilter = QI::TimeseriesToVectorXF::New();
+    vectorFilter->SetInput(inFile->GetOutput());
+    apply->SetInput(0, vectorFilter->GetOutput());
     apply->SetMask(mask);
     apply->Update();
-    QI::writeResult(apply->GetOutput(0), outPrefix + "MP3_T1" + QI::OutExt());
-    QI::writeResult(apply->GetOutput(1), outPrefix + "MP3_B1" + QI::OutExt());
-    QI::writeResult(apply->GetOutput(2), outPrefix + "MP3_eta" + QI::OutExt());
+    QI::writeResult(apply->GetOutput(0), outPrefix + "MP3_C12" + QI::OutExt());
+    QI::writeResult(apply->GetOutput(1), outPrefix + "MP3_C13" + QI::OutExt());
+    QI::writeResult(apply->GetOutput(2), outPrefix + "MP3_C23" + QI::OutExt());
+    QI::writeResult(apply->GetOutput(3), outPrefix + "MP3_T1" + QI::OutExt());
+    QI::writeResult(apply->GetOutput(4), outPrefix + "MP3_B1" + QI::OutExt());
+    QI::writeResult(apply->GetOutput(5), outPrefix + "MP3_eta" + QI::OutExt());
+    QI::writeResiduals(apply->GetResidOutput(), outPrefix + "MP3_", true);
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
