@@ -80,7 +80,7 @@ public:
     size_t numOutputs() const override { return 6; }
     size_t dataSize() const override { return 3; }
 
-    virtual TArray defaultConsts() {
+    virtual TArray defaultConsts() override {
         // B1
         TArray def = TArray::Ones(0);
         return def;

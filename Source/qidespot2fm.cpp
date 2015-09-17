@@ -136,7 +136,7 @@ public:
 	size_t numOutputs() const override { return 3; }
 	size_t dataSize() const override   { return m_sequence->size(); }
 
-	virtual TArray defaultConsts() {
+    virtual TArray defaultConsts() override {
 		// T1 & B1
 		TArray def = TArray::Ones(2);
 		return def;
@@ -259,7 +259,7 @@ public:
     shared_ptr<SequenceBase> m_sequence;
     shared_ptr<SCD> m_model;
 
-    unsigned int GetNumberOfParameters(void) const { return 3; } // itk::CostFunction
+    unsigned int GetNumberOfParameters(void) const override { return 3; } // itk::CostFunction
     ArrayXd residuals(const ParametersType &p) const {
         ArrayXd fullparams(5);
         fullparams << p(0), m_T1, p(1), p(2), m_B1;
@@ -267,12 +267,12 @@ public:
         //cout << "fullp " << fullparams.transpose() << endl;
         return DifferenceVector(s, m_data);
     }
-    MeasureType GetValue(const ParametersType &p1) const {
+    MeasureType GetValue(const ParametersType &p1) const override {
         double r = residuals(p1).square().sum();
         //cout << "r " << r << endl;
         return r;
     }
-    void GetDerivative(const ParametersType &p, DerivativeType &df) const {
+    void GetDerivative(const ParametersType &p, DerivativeType &df) const override {
         using std::sqrt;
         using std::abs;
         double eps = sqrt(numeric_limits<double>::epsilon());

@@ -33,8 +33,8 @@ protected:
 	ImageToVectorFilter();
 	~ImageToVectorFilter(){}
 
-	virtual void GenerateOutputInformation(); // Because output will be different dimension to input
-	virtual void GenerateData(); // Does the work
+    virtual void GenerateOutputInformation() override; // Because output will be different dimension to input
+    virtual void GenerateData() override; // Does the work
 	//DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
 
 private:

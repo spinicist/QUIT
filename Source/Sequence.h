@@ -178,8 +178,8 @@ protected:
 		AFI(const bool prompt);
 
 		virtual size_t size() const override { return 2; }
-		virtual size_t angles() const { return m_flip.rows(); }
-		virtual size_t phases() const { return 1; }
+        virtual size_t angles() const override { return m_flip.rows(); }
+        virtual size_t phases() const override { return 1; }
 
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream& os) const override;

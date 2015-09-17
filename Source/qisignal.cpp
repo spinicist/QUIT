@@ -116,7 +116,7 @@ protected:
 	SignalsFilter() {}
 	~SignalsFilter(){}
 
-	virtual void ThreadedGenerateData(const RegionType &region, itk::ThreadIdType threadId) {
+    virtual void ThreadedGenerateData(const RegionType &region, itk::ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
 		for (size_t i = 0; i < m_model->nParameters(); i++) {

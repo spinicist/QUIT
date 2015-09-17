@@ -114,7 +114,7 @@ public:
     ArrayXd m_data, m_weights;
     shared_ptr<Model> m_model;
 
-    unsigned int GetNumberOfParameters(void) const { return m_model->nParameters(); } // itk::CostFunction
+    unsigned int GetNumberOfParameters(void) const override { return m_model->nParameters(); } // itk::CostFunction
 
     ArrayXd residuals(const ParametersType &p1) const {
         int N = m_model->nParameters();
@@ -125,11 +125,11 @@ public:
         return (s.abs() - m_data);
     }
 
-    MeasureType GetValue(const ParametersType &p1) const {
+    MeasureType GetValue(const ParametersType &p1) const override {
         return (residuals(p1) * m_weights).square().sum();
     }
 
-    void GetDerivative(const ParametersType &p, DerivativeType &df) const {
+    void GetDerivative(const ParametersType &p, DerivativeType &df) const override {
         using std::sqrt;
         using std::abs;
         double eps = sqrt(numeric_limits<double>::epsilon());
@@ -199,7 +199,7 @@ public:
     void setStart(ArrayXd &s) { m_start = s; }
 
     size_t numConsts() const override  { return 2; }
-    virtual TArray defaultConsts() {
+    virtual TArray defaultConsts() override {
         // f0, B1
         TArray def(4);
         def << NAN, 1.;
@@ -304,7 +304,7 @@ class SRCAlgo : public MCDAlgo {
 		void setGauss(bool g) { m_gauss = g; }
 
 		size_t numConsts() const override  { return 2; }
-		virtual TArray defaultConsts() {
+        virtual TArray defaultConsts() override {
 			// f0, B1
 			TArray def = TArray::Ones(2);
             def[0] = NAN;

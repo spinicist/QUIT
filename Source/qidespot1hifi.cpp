@@ -114,7 +114,7 @@ class HIFIAlgo : public Algorithm<double> {
 		size_t numOutputs() const override { return 3; }
 		size_t dataSize() const override   { return m_sequence->size(); }
 
-		virtual TArray defaultConsts() {
+        virtual TArray defaultConsts() override {
 			// No constants for HIFI
 			TArray def = TArray::Zero(0);
 			return def;

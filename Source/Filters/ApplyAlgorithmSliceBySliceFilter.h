@@ -31,7 +31,7 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(ApplyAlgorithmSliceBySliceFilter, ApplyAlgorithmFilter);
 
-	virtual void PrintSelf(std::ostream & os, Indent indent) const;
+    virtual void PrintSelf(std::ostream & os, Indent indent) const override;
 	void SetSlices(const int start, const int stop);
 	int GetSliceIndex() const;
 

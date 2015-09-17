@@ -48,7 +48,7 @@ public:
 	size_t numOutputs() const override { return 2; }
 	size_t dataSize() const override { return m_sequence->size(); }
 
-	virtual TArray defaultConsts() {
+    virtual TArray defaultConsts() override {
 		// B1
 		TArray def = TArray::Ones(1);
 		return def;

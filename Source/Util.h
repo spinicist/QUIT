@@ -58,10 +58,10 @@ public:
 protected:
 	GenericMonitor() {}
 public:
-	void Execute(itk::Object *caller, const itk::EventObject &event) {
-		Execute((const itk::Object *)caller, event);
-	}
-	void Execute(const itk::Object *object, const itk::EventObject & event) {
+    void Execute(itk::Object *caller, const itk::EventObject &event) override {
+        Execute((const itk::Object *)caller, event);
+    }
+    void Execute(const itk::Object *object, const itk::EventObject &event) override {
 		const itk::ProcessObject *filter = static_cast<const itk::ProcessObject *>(object);
 		if (typeid(event) == typeid(itk::ProgressEvent)) {
 			std::cout << "Progress: " << (filter->GetProgress()*100) << "% complete" << std::endl;
@@ -82,10 +82,10 @@ public:
 protected:
 	SliceMonitor() {}
 public:
-	void Execute(itk::Object *caller, const itk::EventObject &event) {
+    void Execute(itk::Object *caller, const itk::EventObject &event) override {
 		Execute((const itk::Object *)caller, event);
 	}
-	void Execute(const itk::Object *object, const itk::EventObject & event) {
+    void Execute(const itk::Object *object, const itk::EventObject & event) override {
 		const TFilter *filter = static_cast<const TFilter *>(object);
 		if (typeid(event) == typeid(itk::ProgressEvent)) {
 			std::cout << "Completed slice " << filter->GetSliceIndex() << std::endl;

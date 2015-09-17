@@ -35,9 +35,9 @@ protected:
 	VectorToImageFilter();
 	~VectorToImageFilter(){}
 
-	virtual void GenerateOutputInformation(); // Because output will be different dimension to input
-	virtual void GenerateData() {} // Don't need a GenerateData, just call m_tiler->Update()
-	virtual void Update();
+    virtual void GenerateOutputInformation() override; // Because output will be different dimension to input
+    virtual void GenerateData() override {} // Don't need a GenerateData, just call m_tiler->Update()
+    virtual void Update() override;
 	//DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
 
 private:

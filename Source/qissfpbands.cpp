@@ -115,7 +115,7 @@ public:
 		m_lines = m_phases / 2;
 		m_crossings = choose(m_lines, 2);
 	}
-	void SetInput(const TImage *img) {
+    void SetInput(const TImage *img) override {
 		this->SetNthInput(0, const_cast<TImage*>(img));
 	}
 	void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
@@ -154,7 +154,7 @@ protected:
 		}
 	}
 
-	virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) {
+    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
 		auto m = this->GetMask();
@@ -274,7 +274,7 @@ public:
 		m_phases = p;
 		m_lines = m_phases / 2;
 	}
-	void SetInput(const TImage *img) { this->SetNthInput(0, const_cast<TImage*>(img)); }
+    void SetInput(const TImage *img) override { this->SetNthInput(0, const_cast<TImage*>(img)); }
 	void SetPass1(const TImage *img) { this->SetNthInput(1, const_cast<TImage*>(img)); }
 	void SetMask(const TMask *mask) { this->SetNthInput(2, const_cast<TMask*>(mask)); }
 	typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
@@ -316,7 +316,7 @@ protected:
 		}
 	}
 
-	virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) {
+    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		ConstNeighborhoodIterator<TImage>::RadiusType radius;
 		radius.Fill(1);

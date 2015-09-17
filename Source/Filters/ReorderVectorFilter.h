@@ -36,7 +36,7 @@ protected:
 	ReorderVectorFilter() {}
 	~ReorderVectorFilter() {}
 
-	virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId);
+    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) override;
 };
 
 } // End namespace itk
