@@ -22,6 +22,7 @@
 #include "itkMultiplyImageFilter.h"
 #include "itkForwardFFTImageFilter.h"
 #include "itkInverseFFTImageFilter.h"
+#include "itkFFTPadImageFilter.h"
 #include "Types.h"
 #include "Util.h"
 
@@ -45,8 +46,8 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(DiscreteLaplacePhaseFilter, DiscreteLaplacePhaseFilter);
 
-	void SetInput(const TImage *img)               { this->SetNthInput(0, const_cast<TImage*>(img)); }
-	void SetMask(const TImage *img)                { this->SetNthInput(1, const_cast<TImage*>(img)); }
+    void SetInput(const TImage *img) override      { this->SetNthInput(0, const_cast<TImage*>(img)); }
+    void SetMask(const TImage *img)                { this->SetNthInput(1, const_cast<TImage*>(img)); }
 	typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
 	typename TImage::ConstPointer GetMask() const  { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
 
@@ -76,7 +77,7 @@ protected:
 		}
 	}
 
-	virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) {
+    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		ConstNeighborhoodIterator<TImage>::RadiusType radius;
 		radius.Fill(1);
@@ -150,7 +151,7 @@ protected:
 
 	DiscreteInverseLaplace(){}
 	~DiscreteInverseLaplace(){}
-	virtual void GenerateData() {
+    virtual void GenerateData() override {
 		typename TImage::Pointer output = this->GetOutput();
 		typename TImage::RegionType region;
 		typename TImage::IndexType start;
@@ -268,10 +269,15 @@ int main(int argc, char **argv) {
 	calcLaplace->SetInput(inFile->GetOutput());
 	if (mask)
 		calcLaplace->SetMask(mask->GetOutput());
+    if (verbose) cout << "Padding image to valid FFT size." << endl;
+    typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
+    auto padFFT = PadFFTType::New();
+    padFFT->SetInput(calcLaplace->GetOutput());
+    padFFT->Update();
 	if (verbose) cout << "Calculating Forward FFT." << endl;
 	typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
 	auto forwardFFT = FFFTType::New();
-	forwardFFT->SetInput(calcLaplace->GetOutput());
+    forwardFFT->SetInput(padFFT->GetOutput());
 	forwardFFT->Update();
 	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
 	auto inverseLaplace = itk::DiscreteInverseLaplace::New();
