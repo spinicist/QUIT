@@ -136,15 +136,15 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(DiscreteInverseLaplace, ImageSource);
 
-	void SetImageProperties(const TImage *img) {
-		m_size = img->GetLargestPossibleRegion().GetSize();
+    void SetImageProperties(const TImage *img) {
+        m_region = img->GetLargestPossibleRegion();
 		m_spacing = img->GetSpacing();
 		m_direction = img->GetDirection();
 		m_origin = img->GetOrigin();
 	}
 
 protected:
-	typename TImage::SizeType      m_size;
+    typename TImage::RegionType    m_region;
 	typename TImage::SpacingType   m_spacing;
 	typename TImage::DirectionType m_direction;
 	typename TImage::PointType     m_origin;
@@ -153,12 +153,7 @@ protected:
 	~DiscreteInverseLaplace(){}
     virtual void GenerateData() override {
 		typename TImage::Pointer output = this->GetOutput();
-		typename TImage::RegionType region;
-		typename TImage::IndexType start;
-		start.Fill(0);
-		region.SetSize(m_size);
-		region.SetIndex(start);
-		output->SetRegions(region);
+        output->SetRegions(m_region);
 		output->Allocate();
 		output->SetSpacing(m_spacing);
 		output->SetDirection(m_direction);
@@ -171,7 +166,7 @@ protected:
 			auto index = imageIt.GetIndex();
 			double val = 0;
 			for (int i = 0; i < 3; i++) {
-				val += 2. - 2. * cos(index[i] * 2. * M_PI / m_size[i]);
+                val += 2. - 2. * cos(index[i] * 2. * M_PI / m_region.GetSize()[i]);
 			}
 			val /= 7.;
 			imageIt.Set(1./val);
@@ -262,7 +257,6 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Output filename: " << outname << endl;
 
 	auto inFile = QI::ReadImageF::New();
-	auto outFile = QI::WriteImageF::New();
 	auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();
 	inFile->SetFileName(fname);
 	inFile->Update(); // Need the size info
@@ -278,21 +272,22 @@ int main(int argc, char **argv) {
 	typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
 	auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
-	forwardFFT->Update();
+    forwardFFT->Update();
 	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
 	auto inverseLaplace = itk::DiscreteInverseLaplace::New();
-	inverseLaplace->SetImageProperties(inFile->GetOutput());
-	inverseLaplace->Update();
+    inverseLaplace->SetImageProperties(padFFT->GetOutput());
+    inverseLaplace->Update();
 	if (verbose) cout << "Multiplying." << endl;
 	auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
 	mult->SetInput1(forwardFFT->GetOutput());
 	mult->SetInput2(inverseLaplace->GetOutput());
-	mult->Update();
+
 	if (verbose) cout << "Inverse FFT." << endl;
-	auto inverseFFT = itk::InverseFFTImageFilter<FFFTType::OutputImageType, QI::ImageF>::New();
+    auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
 	inverseFFT->SetInput(mult->GetOutput());
-	inverseFFT->Update();
-	outFile->SetInput(inverseFFT->GetOutput());
+
+    auto outFile = QI::WriteImageF::New();
+    outFile->SetInput(inverseFFT->GetOutput());
 	outFile->SetFileName(outname);
 	if (verbose) cout << "Writing output." << endl;
 	outFile->Update();
