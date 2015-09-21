@@ -19,7 +19,7 @@
 #include "itkImageToHistogramFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkComplexToRealImageFilter.h"
-#include "itkBinaryThresholdImageFilter.h"
+#include "itkOtsuThresholdImageFilter.h"
 #include "itkMaskImageFilter.h"
 
 #include "Filters/ApplyAlgorithmFilter.h"
@@ -93,8 +93,8 @@ public:
         m_pars.clear();
         m_cons.clear();
         for (float T1 = 0.5; T1 < 2.5; T1 += 0.005) {
-            for (float B1 = 1.0; B1 < 1.25; B1 += 1.0) {
-                for (float eta = 0.25; eta < 1.25; eta += 0.05) {
+            for (float B1 = 0.75; B1 < 1.25; B1 += 0.01) {
+                for (float eta = 0.5; eta < 1.5; eta += 0.05) {
                     Array3d tp; tp << T1, B1, eta;
                     m_pars.push_back(tp);
                     Array3cd sig = sequence.signal(1., T1, B1, eta);
@@ -180,10 +180,10 @@ int main(int argc, char **argv) {
     inFile->SetFileName(fname);
     inFile->Update();
     if (!mask) {
-        // Threshold the last volume to automatically generate a mask
+        // Use an Otsu Threshold filter to generate the mask
+        if (verbose) cout << "Generating Otsu mask" << endl;
         auto magFilter = itk::ComplexToModulusImageFilter<QI::ImageXF, QI::ImageF>::New();
-        auto histFilter = itk::Statistics::ImageToHistogramFilter<QI::ImageF>::New();
-        auto threshFilter = itk::BinaryThresholdImageFilter<QI::ImageF, QI::ImageF>::New();
+        auto otsuFilter = itk::OtsuThresholdImageFilter<QI::ImageF, QI::ImageF>::New();
         auto vol = itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::New();
         auto region = inFile->GetOutput()->GetLargestPossibleRegion();
         region.GetModifiableSize()[3] = 0;
@@ -192,19 +192,14 @@ int main(int argc, char **argv) {
         vol->SetInput(inFile->GetOutput());
         vol->SetDirectionCollapseToSubmatrix();
         magFilter->SetInput(vol->GetOutput());
-        histFilter->SetInput(magFilter->GetOutput());
-        itk::Statistics::ImageToHistogramFilter<QI::ImageF>::HistogramSizeType size(1); size.Fill(100);
-        histFilter->SetHistogramSize(size);
-        histFilter->SetAutoMinimumMaximum(true);
-        histFilter->Update();
-        float threshold = histFilter->GetOutput()->Quantile(0, thresh_quantile);
-        threshFilter->SetInput(magFilter->GetOutput());
-        threshFilter->SetLowerThreshold(threshold);
-        threshFilter->SetInsideValue(1);
-        threshFilter->SetOutsideValue(0);
-        threshFilter->Update();
-        mask = threshFilter->GetOutput();
+        otsuFilter->SetInput(magFilter->GetOutput());
+        otsuFilter->SetOutsideValue(1);
+        otsuFilter->SetInsideValue(0);
+        otsuFilter->Update();
+        mask = otsuFilter->GetOutput();
         mask->DisconnectPipeline();
+        cout << "Saving Otsu mask" << endl;
+        QI::writeResult(mask, outPrefix + "MP3_mask" + QI::OutExt());
     }
 
     cout << "Attempting quantitative bit" << endl;
