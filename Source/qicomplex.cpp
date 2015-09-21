@@ -60,7 +60,7 @@ public:
         outIt.SetSecondDirection(1);
         inIt.GoToBegin();
         outIt.GoToBegin();
-        PixelType mult(1); // This works because the complex constructor has default arguments of 0 for real/imaginary parts
+        PixelType mult(1, 0);
         while(!inIt.IsAtEnd()) {
             while (!inIt.IsAtEndOfSlice()) {
                 while (!inIt.IsAtEndOfLine()) {
@@ -71,7 +71,7 @@ public:
                 inIt.NextLine();
                 outIt.NextLine();
             }
-            mult = mult * PixelType(-1);
+            mult = mult * PixelType(-1, 0);
             inIt.NextSlice();
             outIt.NextSlice();
         }
