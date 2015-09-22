@@ -16,11 +16,6 @@
 #include <getopt.h>
 
 #include "itkBinaryFunctorImageFilter.h"
-#include "itkImageToHistogramFilter.h"
-#include "itkComplexToModulusImageFilter.h"
-#include "itkComplexToRealImageFilter.h"
-#include "itkOtsuThresholdImageFilter.h"
-#include "itkMaskImageFilter.h"
 
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Types.h"
@@ -39,7 +34,6 @@ Options:\n\
     --verbose, -v     : Print more messages.\n\
     --mask, -m file   : Mask input with specified file.\n\
     --out, -o path    : Add a prefix to the output filenames.\n\
-    --threshold, -t N : Threshold at Nth quantile.\n\
     --complex, -x     : Output complex contast images.\n\
     --threads, -T N   : Use a maximum of N threads.\n"
 };
@@ -47,13 +41,12 @@ Options:\n\
 static struct option long_options[] = {
     {"verbose", required_argument, 0, 'v'},
     {"mask",    required_argument, 0, 'm'},
-    {"threshold", required_argument, 0, 't'},
     {"out",     required_argument, 0, 'o'},
     {"complex", no_argument, 0, 'x'},
     {"threads", required_argument, 0, 'T'},
     {0, 0, 0, 0}
 };
-static const char *short_options = "vm:o:t:xT:h";
+static const char *short_options = "vm:o:xT:h";
 
 template<class T> class MP2Contrast {
 public:
@@ -140,7 +133,6 @@ int main(int argc, char **argv) {
     int indexptr = 0, c;
     string outPrefix = "";
     bool verbose = false, complex_output = false;
-    float thresh_quantile = 0.0;
     QI::ImageF::Pointer mask = ITK_NULLPTR;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
@@ -157,7 +149,6 @@ int main(int argc, char **argv) {
                 outPrefix = optarg;
                 cout << "Output prefix will be: " << outPrefix << endl;
                 break;
-            case 't': thresh_quantile = atof(optarg); break;
             case 'x': complex_output = true; break;
             case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
             case 'h':
@@ -179,29 +170,6 @@ int main(int argc, char **argv) {
     auto inFile = QI::ReadTimeseriesXF::New();
     inFile->SetFileName(fname);
     inFile->Update();
-    if (!mask) {
-        // Use an Otsu Threshold filter to generate the mask
-        if (verbose) cout << "Generating Otsu mask" << endl;
-        auto magFilter = itk::ComplexToModulusImageFilter<QI::ImageXF, QI::ImageF>::New();
-        auto otsuFilter = itk::OtsuThresholdImageFilter<QI::ImageF, QI::ImageF>::New();
-        auto vol = itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF>::New();
-        auto region = inFile->GetOutput()->GetLargestPossibleRegion();
-        region.GetModifiableSize()[3] = 0;
-        region.GetModifiableIndex()[3] = 2;
-        vol->SetExtractionRegion(region);
-        vol->SetInput(inFile->GetOutput());
-        vol->SetDirectionCollapseToSubmatrix();
-        magFilter->SetInput(vol->GetOutput());
-        otsuFilter->SetInput(magFilter->GetOutput());
-        otsuFilter->SetOutsideValue(1);
-        otsuFilter->SetInsideValue(0);
-        otsuFilter->Update();
-        mask = otsuFilter->GetOutput();
-        mask->DisconnectPipeline();
-        cout << "Saving Otsu mask" << endl;
-        QI::writeResult(mask, outPrefix + "MP3_mask" + QI::OutExt());
-    }
-
     cout << "Attempting quantitative bit" << endl;
     auto apply = itk::ApplyAlgorithmFilter<MP3LookupAlgo, complex<float>>::New();
     auto lookup = make_shared<MP3LookupAlgo>();
