@@ -24,7 +24,7 @@ add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Sourc
                                       Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
                                       Source/RegionContraction.h)
 
-set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine
+set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
              qiafi qissfpbands qiunwrap
              qimultiecho qimprage )
