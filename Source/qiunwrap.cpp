@@ -262,22 +262,26 @@ int main(int argc, char **argv) {
 	inFile->Update(); // Need the size info
 	calcLaplace->SetInput(inFile->GetOutput());
 	if (mask)
-		calcLaplace->SetMask(mask->GetOutput());
+        calcLaplace->SetMask(mask->GetOutput());
+
     if (verbose) cout << "Padding image to valid FFT size." << endl;
     typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
     auto padFFT = PadFFTType::New();
     padFFT->SetInput(calcLaplace->GetOutput());
     padFFT->Update();
+
 	if (verbose) cout << "Calculating Forward FFT." << endl;
 	typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
 	auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
+
 	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
 	auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
-	if (verbose) cout << "Multiplying." << endl;
+
+    if (verbose) cout << "Multiplying." << endl;
 	auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
 	mult->SetInput1(forwardFFT->GetOutput());
 	mult->SetInput2(inverseLaplace->GetOutput());
@@ -286,10 +290,17 @@ int main(int argc, char **argv) {
     auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
 	inverseFFT->SetInput(mult->GetOutput());
 
+    if (verbose) cout << "Extracting original size image" << endl;
+    auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
+    extract->SetInput(inverseFFT->GetOutput());
+    extract->SetDirectionCollapseToSubmatrix();
+    extract->SetExtractionRegion(calcLaplace->GetOutput()->GetLargestPossibleRegion());
+    extract->Update();
+
     auto outFile = QI::WriteImageF::New();
-    outFile->SetInput(inverseFFT->GetOutput());
+    outFile->SetInput(extract->GetOutput());
 	outFile->SetFileName(outname);
-	if (verbose) cout << "Writing output." << endl;
+    if (verbose) cout << "Writing output." << endl;
 	outFile->Update();
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;
