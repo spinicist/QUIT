@@ -10,6 +10,7 @@
 
 #include "itkImageToImageFilter.h"
 #include "itkSliceBySliceImageFilter.h"
+#include "itkVariableLengthVector.h"
 
 template<typename DataType>
 class Algorithm {
