@@ -36,7 +36,7 @@ protected:
 
 public:
 	/** Standard class typedefs. */
-	typedef QI::ImageF     TImage;
+    typedef QI::ImageF     TImage;
 
 	typedef DiscreteLaplacePhaseFilter         Self;
 	typedef ImageToImageFilter<TImage, TImage> Superclass;
@@ -128,7 +128,7 @@ private:
 
 class DiscreteInverseLaplace : public ImageSource<QI::ImageF> {
 public:
-	typedef QI::ImageF             TImage;
+    typedef QI::ImageF             TImage;
 	typedef DiscreteInverseLaplace Self;
 	typedef ImageSource<TImage>    Superclass;
 	typedef SmartPointer<Self>     Pointer;
@@ -163,7 +163,7 @@ protected:
 		imageIt.Set(0.); // There is a pole here
 		++imageIt;
 		while(!imageIt.IsAtEnd()) {
-			auto index = imageIt.GetIndex();
+            auto index = imageIt.GetIndex() - m_region.GetIndex(); // Might be padded to a negative start
 			double val = 0;
 			for (int i = 0; i < 3; i++) {
                 val += 2. - 2. * cos(index[i] * 2. * M_PI / m_region.GetSize()[i]);
@@ -218,14 +218,14 @@ int main(int argc, char **argv) {
 
 	bool verbose = false;
 	string prefix;
-	itk::ImageFileReader<itk::Image<float, 3>>::Pointer mask = ITK_NULLPTR;
+    QI::ReadImageF::Pointer mask = ITK_NULLPTR;
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = itk::ImageFileReader<itk::Image<float, 3>>::New();
+                mask = QI::ReadImageF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
 	string outname = prefix + "_unwrap" + QI::OutExt();
 	if (verbose) cout << "Output filename: " << outname << endl;
 
-	auto inFile = QI::ReadImageF::New();
+    auto inFile = QI::ReadImageF::New();
 	auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();
 	inFile->SetFileName(fname);
 	inFile->Update(); // Need the size info
@@ -270,8 +270,11 @@ int main(int argc, char **argv) {
     padFFT->SetInput(calcLaplace->GetOutput());
     padFFT->Update();
 
-	if (verbose) cout << "Calculating Forward FFT." << endl;
-	typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
+    if (verbose) {
+        cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
+        cout << "Calculating Forward FFT." << endl;
+    }
+    typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
 	auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
@@ -282,13 +285,14 @@ int main(int argc, char **argv) {
     inverseLaplace->Update();
 
     if (verbose) cout << "Multiplying." << endl;
-	auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
+    auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
 	mult->SetInput1(forwardFFT->GetOutput());
 	mult->SetInput2(inverseLaplace->GetOutput());
 
 	if (verbose) cout << "Inverse FFT." << endl;
     auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
 	inverseFFT->SetInput(mult->GetOutput());
+    inverseFFT->Update();
 
     if (verbose) cout << "Extracting original size image" << endl;
     auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
