@@ -23,6 +23,7 @@
 #include "itkForwardFFTImageFilter.h"
 #include "itkInverseFFTImageFilter.h"
 #include "itkFFTPadImageFilter.h"
+#include "itkMaskImageFilter.h"
 #include "Types.h"
 #include "Util.h"
 
@@ -302,7 +303,16 @@ int main(int argc, char **argv) {
     extract->Update();
 
     auto outFile = QI::WriteImageF::New();
-    outFile->SetInput(extract->GetOutput());
+    if (mask) {
+        if (verbose) cout << "Re-applying mask" << endl;
+        auto masker = itk::MaskImageFilter<QI::ImageF, QI::ImageF>::New();
+        masker->SetMaskImage(mask->GetOutput());
+        masker->SetInput(extract->GetOutput());
+        masker->Update();
+        outFile->SetInput(masker->GetOutput());
+    } else {
+        outFile->SetInput(extract->GetOutput());
+    }
 	outFile->SetFileName(outname);
     if (verbose) cout << "Writing output." << endl;
 	outFile->Update();
