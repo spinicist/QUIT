@@ -111,10 +111,10 @@ protected:
 					double fphase = inputIter.GetPixel(fwrd[i]);
 					complex<double> b = std::polar(1., bphase);
 					complex<double> f = std::polar(1., fphase);
-					sum += std::arg((f*b)/(c*c)) / s_sqr[i];
+                    sum += std::arg((f*b)/(c*c)) / s_sqr[i];
 				}
 			}
-			outputIter.Set(sum / 7.);
+            outputIter.Set(sum / 7.);
 			++inputIter;
 			++outputIter;
 			if (mask)
@@ -168,8 +168,8 @@ protected:
 			double val = 0;
 			for (int i = 0; i < 3; i++) {
                 val += 2. - 2. * cos(index[i] * 2. * M_PI / m_region.GetSize()[i]);
-			}
-			val /= 7.;
+            }
+            val /= 7.;
 			imageIt.Set(1./val);
 			++imageIt;
 		}
@@ -195,9 +195,8 @@ Options:\n\
 	--verbose, -v     : Print more information.\n\
 	--out, -o path    : Specify an output filename (default image base).\n\
 	--mask, -m file   : Mask input with specified file.\n\
-	--threads, -T N   : Use N threads (default=hardware limit).\n\
-	--lop, -l C       : Use Continuous Laplacian operators.\n\
-	          D         Use Discrete Laplacian operators (default).\n"
+    --savelap, -l     : Save the Laplace filtered phase.\n\
+    --threads, -T N   : Use N threads (default=hardware limit).\n"
 };
 
 const struct option long_options[] = {
@@ -205,11 +204,11 @@ const struct option long_options[] = {
 	{"verbose", no_argument, 0, 'v'},
 	{"out", required_argument, 0, 'o'},
 	{"mask", required_argument, 0, 'm'},
+    {"savelap", no_argument, 0, 'l'},
 	{"threads", required_argument, 0, 'T'},
-	{"lop", required_argument, 0, 'l'},
 	{0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:T:l:";
+const char *short_options = "hvo:m:lT:";
 
 //******************************************************************************
 // Main
@@ -217,7 +216,7 @@ const char *short_options = "hvo:m:T:l:";
 int main(int argc, char **argv) {
 	Eigen::initParallel();
 
-	bool verbose = false;
+    bool verbose = false, savelap = false;
 	string prefix;
     QI::ReadImageF::Pointer mask = ITK_NULLPTR;
 	int indexptr = 0, c;
@@ -233,8 +232,7 @@ int main(int argc, char **argv) {
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
 				break;
-			case 'l':
-				break;
+            case 'l': savelap = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
 			case 'h':
 				cout << usage << endl;
@@ -264,6 +262,14 @@ int main(int argc, char **argv) {
 	calcLaplace->SetInput(inFile->GetOutput());
 	if (mask)
         calcLaplace->SetMask(mask->GetOutput());
+    calcLaplace->Update();
+
+    if (savelap) {
+        auto outLap = QI::WriteImageF::New();
+        outLap->SetInput(calcLaplace->GetOutput());
+        outLap->SetFileName(prefix + "_laplace" + QI::OutExt());
+        outLap->Update();
+    }
 
     if (verbose) cout << "Padding image to valid FFT size." << endl;
     typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
