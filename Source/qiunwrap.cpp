@@ -269,7 +269,7 @@ Options:\n\
 	--verbose, -v     : Print more information.\n\
 	--out, -o path    : Specify an output filename (default image base).\n\
 	--mask, -m file   : Mask input with specified file.\n\
-    --erode, -e N     : Erode mask by N voxels (Default 1).\n\
+    --erode, -e N     : Erode mask by N mm (Default 1 mm).\n\
     --debug, -d       : Save all pipeline steps.\n\
     --threads, -T N   : Use N threads (default=hardware limit).\n"
 };
@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 
     bool verbose = false, debug = false;
-    int erodeRadius = 1;
+    float erodeRadius = 1;
 	string prefix;
     QI::MaskImage::Pointer mask = ITK_NULLPTR;
 	int indexptr = 0, c;
@@ -312,7 +312,7 @@ int main(int argc, char **argv) {
                 mask = maskThresh->GetOutput();
                 mask->DisconnectPipeline();
             } break;
-            case 'e': erodeRadius = atoi(optarg); break;
+            case 'e': erodeRadius = atof(optarg); break;
 			case 'o':
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
@@ -354,13 +354,17 @@ int main(int argc, char **argv) {
         masker->SetInput(calcLaplace->GetOutput());
         masker->SetMaskImage(mask);
         if (erodeRadius > 0) {
-            if (verbose) cout << "Eroding mask by " << erodeRadius << " voxels" << endl;
-            typedef itk::BinaryBallStructuringElement<QI::MaskImage::PixelType, 3> StructuringElementType;
-            StructuringElementType structuringElement;
-            structuringElement.SetRadius(erodeRadius);
+            typedef itk::BinaryBallStructuringElement<QI::MaskImage::PixelType, 3> ElementType;
+            ElementType structuringElement;
+            ElementType::SizeType radii;
+            auto spacing = mask->GetSpacing();
+            radii[0] = ceil(erodeRadius / spacing[0]);
+            radii[1] = ceil(erodeRadius / spacing[1]);
+            radii[2] = ceil(erodeRadius / spacing[2]);
+            structuringElement.SetRadius(radii);
             structuringElement.CreateStructuringElement();
-
-            typedef itk::BinaryErodeImageFilter <QI::MaskImage, QI::MaskImage, StructuringElementType> BinaryErodeImageFilterType;
+            if (verbose) cout << "Eroding mask by " << erodeRadius << " mm (" << radii << " voxels)" << endl;
+            typedef itk::BinaryErodeImageFilter <QI::MaskImage, QI::MaskImage, ElementType> BinaryErodeImageFilterType;
             BinaryErodeImageFilterType::Pointer erodeFilter = BinaryErodeImageFilterType::New();
             erodeFilter->SetInput(mask);
             erodeFilter->SetErodeValue(1);
