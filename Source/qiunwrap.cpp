@@ -187,6 +187,7 @@ Options:\n\
 	--verbose, -v     : Print more information.\n\
 	--out, -o path    : Specify an output filename (default image base).\n\
 	--mask, -m file   : Mask input with specified file.\n\
+    --erode, -e N     : Erode mask by N voxels (Default 1).\n\
     --savelap, -l     : Save the Laplace filtered phase.\n\
     --threads, -T N   : Use N threads (default=hardware limit).\n"
 };
@@ -196,11 +197,12 @@ const struct option long_options[] = {
 	{"verbose", no_argument, 0, 'v'},
 	{"out", required_argument, 0, 'o'},
 	{"mask", required_argument, 0, 'm'},
+    {"erode", required_argument, 0, 'e'},
     {"savelap", no_argument, 0, 'l'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:lT:";
+const char *short_options = "hvo:m:e:lT:";
 
 //******************************************************************************
 // Main
@@ -209,6 +211,7 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 
     bool verbose = false, savelap = false;
+    int erodeRadius = 1;
 	string prefix;
     QI::MaskImage::Pointer mask = ITK_NULLPTR;
 	int indexptr = 0, c;
@@ -227,6 +230,7 @@ int main(int argc, char **argv) {
                 mask = maskThresh->GetOutput();
                 mask->DisconnectPipeline();
             } break;
+            case 'e': erodeRadius = atoi(optarg); break;
 			case 'o':
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
@@ -269,26 +273,29 @@ int main(int argc, char **argv) {
 
     QI::ImageF::Pointer lap = calcLaplace->GetOutput();
     if (mask) {
-        if (verbose) cout << "Eroding mask" << endl;
-        typedef itk::BinaryBallStructuringElement<QI::MaskImage::PixelType, 3> StructuringElementType;
-        StructuringElementType structuringElement;
-        structuringElement.SetRadius(8);
-        structuringElement.CreateStructuringElement();
-
-        typedef itk::BinaryErodeImageFilter <QI::MaskImage, QI::MaskImage, StructuringElementType> BinaryErodeImageFilterType;
-        BinaryErodeImageFilterType::Pointer erodeFilter = BinaryErodeImageFilterType::New();
-        erodeFilter->SetInput(mask);
-        erodeFilter->SetErodeValue(1);
-        erodeFilter->SetKernel(structuringElement);
-        erodeFilter->Update();
-        auto checkMask = itk::ImageFileWriter<QI::MaskImage>::New();
-        checkMask->SetInput(erodeFilter->GetOutput());
-        checkMask->SetFileName(prefix + "_ero_mask" + QI::OutExt());
-        checkMask->Update();
-        if (verbose) cout << "Applying mask" << endl;
         auto masker = itk::MaskImageFilter<QI::ImageF, QI::MaskImage>::New();
-        masker->SetMaskImage(erodeFilter->GetOutput());
         masker->SetInput(calcLaplace->GetOutput());
+        masker->SetMaskImage(mask);
+        if (erodeRadius > 0) {
+            if (verbose) cout << "Eroding mask by " << erodeRadius << " voxels" << endl;
+            typedef itk::BinaryBallStructuringElement<QI::MaskImage::PixelType, 3> StructuringElementType;
+            StructuringElementType structuringElement;
+            structuringElement.SetRadius(erodeRadius);
+            structuringElement.CreateStructuringElement();
+
+            typedef itk::BinaryErodeImageFilter <QI::MaskImage, QI::MaskImage, StructuringElementType> BinaryErodeImageFilterType;
+            BinaryErodeImageFilterType::Pointer erodeFilter = BinaryErodeImageFilterType::New();
+            erodeFilter->SetInput(mask);
+            erodeFilter->SetErodeValue(1);
+            erodeFilter->SetKernel(structuringElement);
+            erodeFilter->Update();
+            auto checkMask = itk::ImageFileWriter<QI::MaskImage>::New();
+            checkMask->SetInput(erodeFilter->GetOutput());
+            checkMask->SetFileName(prefix + "_ero_mask" + QI::OutExt());
+            checkMask->Update();
+            masker->SetMaskImage(erodeFilter->GetOutput());
+        }
+        if (verbose) cout << "Applying mask" << endl;
         masker->Update();
         lap = masker->GetOutput();
         lap->DisconnectPipeline();
