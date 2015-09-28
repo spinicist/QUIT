@@ -24,6 +24,10 @@
 #include "itkInverseFFTImageFilter.h"
 #include "itkFFTPadImageFilter.h"
 #include "itkMaskImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
+#include "itkBinaryCrossStructuringElement.h"
+#include "itkBinaryBallStructuringElement.h"
+#include "itkBinaryErodeImageFilter.h"
 #include "Types.h"
 #include "Util.h"
 
@@ -48,9 +52,7 @@ public:
 	itkTypeMacro(DiscreteLaplacePhaseFilter, DiscreteLaplacePhaseFilter);
 
     void SetInput(const TImage *img) override      { this->SetNthInput(0, const_cast<TImage*>(img)); }
-    void SetMask(const TImage *img)                { this->SetNthInput(1, const_cast<TImage*>(img)); }
 	typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
-	typename TImage::ConstPointer GetMask() const  { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
 
 	virtual void GenerateOutputInformation() override {
 		Superclass::GenerateOutputInformation();
@@ -85,12 +87,6 @@ protected:
 		ConstNeighborhoodIterator<TImage> inputIter(radius, this->GetInput(), region);
 		ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
 
-		ImageRegionConstIterator<TImage> maskIter;
-		const auto mask = this->GetMask();
-		if (mask) {
-			maskIter = ImageRegionConstIterator<TImage>(mask, region);
-		}
-
 		vector<ConstNeighborhoodIterator<TImage>::OffsetType> back, fwrd;
 		back.push_back({{-1, 0, 0}});
 		fwrd.push_back({{ 1, 0, 0}});
@@ -103,22 +99,18 @@ protected:
 		TImage::SpacingType s_sqr = spacing * spacing;
 		while(!inputIter.IsAtEnd()) {
 			double sum = 0;
-			if (!mask || maskIter.Get()) {
-				double cphase = inputIter.GetCenterPixel();
-				complex<double> c = std::polar(1., cphase);
-				for (int i = 0; i < fwrd.size(); ++i) {
-					double bphase = inputIter.GetPixel(back[i]);
-					double fphase = inputIter.GetPixel(fwrd[i]);
-					complex<double> b = std::polar(1., bphase);
-					complex<double> f = std::polar(1., fphase);
-                    sum += std::arg((f*b)/(c*c)) / s_sqr[i];
-				}
-			}
+            double cphase = inputIter.GetCenterPixel();
+            complex<double> c = std::polar(1., cphase);
+            for (int i = 0; i < fwrd.size(); ++i) {
+                double bphase = inputIter.GetPixel(back[i]);
+                double fphase = inputIter.GetPixel(fwrd[i]);
+                complex<double> b = std::polar(1., bphase);
+                complex<double> f = std::polar(1., fphase);
+                sum += std::arg((f*b)/(c*c)) / s_sqr[i];
+            }
             outputIter.Set(sum / 7.);
 			++inputIter;
 			++outputIter;
-			if (mask)
-				++maskIter;
 		}
 	}
 
@@ -218,16 +210,23 @@ int main(int argc, char **argv) {
 
     bool verbose = false, savelap = false;
 	string prefix;
-    QI::ReadImageF::Pointer mask = ITK_NULLPTR;
+    QI::MaskImage::Pointer mask = ITK_NULLPTR;
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
-			case 'm':
-				if (verbose) cout << "Reading mask file " << optarg << endl;
-                mask = QI::ReadImageF::New();
-				mask->SetFileName(optarg);
-				break;
+            case 'm': {
+                if (verbose) cout << "Reading mask file " << optarg << endl;
+                auto maskFile = QI::ReadImageF::New();
+                auto maskThresh = itk::BinaryThresholdImageFilter<QI::ImageF, QI::MaskImage>::New();
+                maskFile->SetFileName(optarg);
+                maskThresh->SetInput(maskFile->GetOutput());
+                maskThresh->SetLowerThreshold(1.0);
+                maskThresh->SetInsideValue(1);
+                maskThresh->Update();
+                mask = maskThresh->GetOutput();
+                mask->DisconnectPipeline();
+            } break;
 			case 'o':
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
@@ -260,10 +259,7 @@ int main(int argc, char **argv) {
 	inFile->SetFileName(fname);
 	inFile->Update(); // Need the size info
 	calcLaplace->SetInput(inFile->GetOutput());
-	if (mask)
-        calcLaplace->SetMask(mask->GetOutput());
     calcLaplace->Update();
-
     if (savelap) {
         auto outLap = QI::WriteImageF::New();
         outLap->SetInput(calcLaplace->GetOutput());
@@ -271,10 +267,37 @@ int main(int argc, char **argv) {
         outLap->Update();
     }
 
+    QI::ImageF::Pointer lap = calcLaplace->GetOutput();
+    if (mask) {
+        if (verbose) cout << "Eroding mask" << endl;
+        typedef itk::BinaryBallStructuringElement<QI::MaskImage::PixelType, 3> StructuringElementType;
+        StructuringElementType structuringElement;
+        structuringElement.SetRadius(8);
+        structuringElement.CreateStructuringElement();
+
+        typedef itk::BinaryErodeImageFilter <QI::MaskImage, QI::MaskImage, StructuringElementType> BinaryErodeImageFilterType;
+        BinaryErodeImageFilterType::Pointer erodeFilter = BinaryErodeImageFilterType::New();
+        erodeFilter->SetInput(mask);
+        erodeFilter->SetErodeValue(1);
+        erodeFilter->SetKernel(structuringElement);
+        erodeFilter->Update();
+        auto checkMask = itk::ImageFileWriter<QI::MaskImage>::New();
+        checkMask->SetInput(erodeFilter->GetOutput());
+        checkMask->SetFileName(prefix + "_ero_mask" + QI::OutExt());
+        checkMask->Update();
+        if (verbose) cout << "Applying mask" << endl;
+        auto masker = itk::MaskImageFilter<QI::ImageF, QI::MaskImage>::New();
+        masker->SetMaskImage(erodeFilter->GetOutput());
+        masker->SetInput(calcLaplace->GetOutput());
+        masker->Update();
+        lap = masker->GetOutput();
+        lap->DisconnectPipeline();
+    }
+
     if (verbose) cout << "Padding image to valid FFT size." << endl;
     typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
     auto padFFT = PadFFTType::New();
-    padFFT->SetInput(calcLaplace->GetOutput());
+    padFFT->SetInput(lap);
     padFFT->Update();
 
     if (verbose) {
@@ -311,8 +334,8 @@ int main(int argc, char **argv) {
     auto outFile = QI::WriteImageF::New();
     if (mask) {
         if (verbose) cout << "Re-applying mask" << endl;
-        auto masker = itk::MaskImageFilter<QI::ImageF, QI::ImageF>::New();
-        masker->SetMaskImage(mask->GetOutput());
+        auto masker = itk::MaskImageFilter<QI::ImageF, QI::MaskImage>::New();
+        masker->SetMaskImage(mask);
         masker->SetInput(extract->GetOutput());
         masker->Update();
         outFile->SetInput(masker->GetOutput());
