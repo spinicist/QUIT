@@ -188,7 +188,7 @@ Options:\n\
 	--out, -o path    : Specify an output filename (default image base).\n\
 	--mask, -m file   : Mask input with specified file.\n\
     --erode, -e N     : Erode mask by N voxels (Default 1).\n\
-    --savelap, -l     : Save the Laplace filtered phase.\n\
+    --debug, -d       : Save all pipeline steps.\n\
     --threads, -T N   : Use N threads (default=hardware limit).\n"
 };
 
@@ -198,11 +198,11 @@ const struct option long_options[] = {
 	{"out", required_argument, 0, 'o'},
 	{"mask", required_argument, 0, 'm'},
     {"erode", required_argument, 0, 'e'},
-    {"savelap", no_argument, 0, 'l'},
+    {"debug", no_argument, 0, 'd'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:e:lT:";
+const char *short_options = "hvo:m:e:dT:";
 
 //******************************************************************************
 // Main
@@ -210,7 +210,7 @@ const char *short_options = "hvo:m:e:lT:";
 int main(int argc, char **argv) {
 	Eigen::initParallel();
 
-    bool verbose = false, savelap = false;
+    bool verbose = false, debug = false;
     int erodeRadius = 1;
 	string prefix;
     QI::MaskImage::Pointer mask = ITK_NULLPTR;
@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
 				break;
-            case 'l': savelap = true; break;
+            case 'd': debug = true; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
 			case 'h':
 				cout << usage << endl;
@@ -264,12 +264,7 @@ int main(int argc, char **argv) {
 	inFile->Update(); // Need the size info
 	calcLaplace->SetInput(inFile->GetOutput());
     calcLaplace->Update();
-    if (savelap) {
-        auto outLap = QI::WriteImageF::New();
-        outLap->SetInput(calcLaplace->GetOutput());
-        outLap->SetFileName(prefix + "_laplace" + QI::OutExt());
-        outLap->Update();
-    }
+    if (debug) QI::writeResult(calcLaplace->GetOutput(), prefix + "_step1_laplace" + QI::OutExt());
 
     QI::ImageF::Pointer lap = calcLaplace->GetOutput();
     if (mask) {
@@ -289,16 +284,14 @@ int main(int argc, char **argv) {
             erodeFilter->SetErodeValue(1);
             erodeFilter->SetKernel(structuringElement);
             erodeFilter->Update();
-            auto checkMask = itk::ImageFileWriter<QI::MaskImage>::New();
-            checkMask->SetInput(erodeFilter->GetOutput());
-            checkMask->SetFileName(prefix + "_ero_mask" + QI::OutExt());
-            checkMask->Update();
             masker->SetMaskImage(erodeFilter->GetOutput());
+            if (debug) QI::writeResult<QI::MaskImage>(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
         }
         if (verbose) cout << "Applying mask" << endl;
         masker->Update();
         lap = masker->GetOutput();
         lap->DisconnectPipeline();
+        if (debug) QI::writeResult(lap, prefix + "_step1_laplace_masked" + QI::OutExt());
     }
 
     if (verbose) cout << "Padding image to valid FFT size." << endl;
@@ -306,7 +299,7 @@ int main(int argc, char **argv) {
     auto padFFT = PadFFTType::New();
     padFFT->SetInput(lap);
     padFFT->Update();
-
+    if (debug) QI::writeResult(padFFT->GetOutput(), prefix + "_step2_padFFT" + QI::OutExt());
     if (verbose) {
         cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
         cout << "Calculating Forward FFT." << endl;
@@ -315,29 +308,29 @@ int main(int argc, char **argv) {
 	auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
-
+    if (debug) QI::writeResult<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
 	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
 	auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
-
+    if (debug) QI::writeResult(inverseLaplace->GetOutput(), prefix + "_inverse_laplace_filter" + QI::OutExt());
     if (verbose) cout << "Multiplying." << endl;
     auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
 	mult->SetInput1(forwardFFT->GetOutput());
 	mult->SetInput2(inverseLaplace->GetOutput());
-
+    if (debug) QI::writeResult<QI::ImageXF>(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
 	if (verbose) cout << "Inverse FFT." << endl;
     auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
 	inverseFFT->SetInput(mult->GetOutput());
     inverseFFT->Update();
-
+    if (debug) QI::writeResult(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
     if (verbose) cout << "Extracting original size image" << endl;
     auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
     extract->SetInput(inverseFFT->GetOutput());
     extract->SetDirectionCollapseToSubmatrix();
     extract->SetExtractionRegion(calcLaplace->GetOutput()->GetLargestPossibleRegion());
     extract->Update();
-
+    if (debug) QI::writeResult(extract->GetOutput(), prefix + "_step5_extract" + QI::OutExt());
     auto outFile = QI::WriteImageF::New();
     if (mask) {
         if (verbose) cout << "Re-applying mask" << endl;
