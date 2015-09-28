@@ -20,10 +20,14 @@
 #include "itkConstNeighborhoodIterator.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkMultiplyImageFilter.h"
+#include "itkDivideImageFilter.h"
 #include "itkForwardFFTImageFilter.h"
 #include "itkInverseFFTImageFilter.h"
+#include "itkFFTShiftImageFilter.h"
+#include "itkComplexToModulusImageFilter.h"
 #include "itkFFTPadImageFilter.h"
 #include "itkMaskImageFilter.h"
+#include "itkThresholdImageFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkBinaryCrossStructuringElement.h"
 #include "itkBinaryBallStructuringElement.h"
@@ -172,6 +176,84 @@ private:
 	void operator=(const Self &);
 };
 
+/*
+ * Do it the hard way!
+ */
+class DiscreteInverseLaplace2 : public ImageSource<QI::ImageF> {
+public:
+    typedef QI::ImageF              TImage;
+    typedef DiscreteInverseLaplace2 Self;
+    typedef ImageSource<TImage>     Superclass;
+    typedef SmartPointer<Self>      Pointer;
+
+    itkNewMacro(Self);
+    itkTypeMacro(DiscreteInverseLaplace2, ImageSource);
+
+    void SetImageProperties(const TImage *img) {
+        m_region = img->GetLargestPossibleRegion();
+        m_spacing = img->GetSpacing();
+        m_direction = img->GetDirection();
+        m_origin = img->GetOrigin();
+    }
+
+protected:
+    typename TImage::RegionType    m_region;
+    typename TImage::SpacingType   m_spacing;
+    typename TImage::DirectionType m_direction;
+    typename TImage::PointType     m_origin;
+
+    DiscreteInverseLaplace2(){}
+    ~DiscreteInverseLaplace2(){}
+    virtual void GenerateData() override {
+        typename TImage::Pointer output = this->GetOutput();
+        output->SetRegions(m_region);
+        output->Allocate();
+        output->SetSpacing(m_spacing);
+        output->SetDirection(m_direction);
+        output->SetOrigin(m_origin);
+
+        QI::ImageF::Pointer filt = QI::ImageF::New();
+        filt->SetRegions(m_region);
+        filt->SetSpacing(m_spacing);
+        filt->SetDirection(m_direction);
+        filt->SetOrigin(m_origin);
+        filt->Allocate();
+        QI::ImageF::IndexType index = m_region.GetIndex();
+        index[0] += m_region.GetSize()[0] / 2;
+        index[1] += m_region.GetSize()[1] / 2;
+        index[2] += m_region.GetSize()[2] / 2;
+        filt->SetPixel(index, -6);
+        index[0] -= 1; filt->SetPixel(index, 1);
+        index[0] += 2; filt->SetPixel(index, 1); index[0] -= 1;
+        index[1] -= 1; filt->SetPixel(index, 1);
+        index[1] += 2; filt->SetPixel(index, 1); index[1] -= 1;
+        index[2] -= 1; filt->SetPixel(index, 1);
+        index[2] += 2; filt->SetPixel(index, 1); index[2] -= 1;
+        auto shift = itk::FFTShiftImageFilter<QI::ImageF, QI::ImageF>::New();
+        shift->SetInput(filt);
+        typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
+        auto forwardFFT = FFFTType::New();
+        forwardFFT->SetInput(shift->GetOutput());
+        auto magFilt = itk::ComplexToModulusImageFilter<QI::ImageXF, QI::ImageF>::New();
+        magFilt->SetInput(forwardFFT->GetOutput());
+        magFilt->Update();
+        auto divFilt = itk::DivideImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
+        divFilt->SetConstant1(1.);
+        divFilt->SetInput2(magFilt->GetOutput());
+        divFilt->Update();
+        QI::ImageF::Pointer filt2 = divFilt->GetOutput();
+        filt2->DisconnectPipeline();
+        index = m_region.GetIndex();
+        filt2->SetPixel(index,0);
+        this->GraftOutput(filt2);
+    }
+
+private:
+    DiscreteInverseLaplace2(const Self &);
+    void operator=(const Self &);
+};
+
+
 } // End namespace itk
 
 //******************************************************************************
@@ -310,7 +392,7 @@ int main(int argc, char **argv) {
     forwardFFT->Update();
     if (debug) QI::writeResult<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
 	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
-	auto inverseLaplace = itk::DiscreteInverseLaplace::New();
+    auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
     if (debug) QI::writeResult(inverseLaplace->GetOutput(), prefix + "_inverse_laplace_filter" + QI::OutExt());
