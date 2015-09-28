@@ -24,9 +24,21 @@
 
 namespace QI {
 
+typedef itk::Image<unsigned char, 3> MaskImage;
+
 typedef itk::Image<float, 3> ImageF;
 typedef itk::Image<float, 4> TimeseriesF;
 typedef itk::VectorImage<float, 3> VectorImageF;
+typedef itk::Image<std::complex<float>, 3> ImageXF;
+typedef itk::Image<std::complex<float>, 4> TimeseriesXF;
+typedef itk::VectorImage<std::complex<float>, 3> VectorImageXF;
+
+typedef itk::Image<double, 3> ImageD;
+typedef itk::Image<double, 4> TimeseriesD;
+typedef itk::VectorImage<double, 3> VectorImageD;
+typedef itk::Image<std::complex<double>, 3> ImageXD;
+typedef itk::Image<std::complex<double>, 4> TimeseriesXD;
+typedef itk::VectorImage<std::complex<double>, 3> VectorImageXD;
 
 typedef itk::ImageFileReader<ImageF> ReadImageF;
 typedef itk::ImageFileWriter<ImageF> WriteImageF;
@@ -37,9 +49,8 @@ typedef itk::VectorToImageFilter<VectorImageF> VectorToTimeseriesF;
 typedef itk::ReorderVectorFilter<VectorImageF> ReorderF;
 typedef itk::RegionOfInterestImageFilter<ImageF, ImageF> ImageROIF;
 
-typedef itk::Image<std::complex<float>, 3> ImageXF;
-typedef itk::Image<std::complex<float>, 4> TimeseriesXF;
-typedef itk::VectorImage<std::complex<float>, 3> VectorImageXF;
+typedef itk::ImageFileReader<ImageD> ReadImageD;
+typedef itk::ImageFileWriter<ImageD> WriteImageD;
 
 typedef itk::ImageFileReader<ImageXF> ReadImageXF;
 typedef itk::ImageFileWriter<ImageXF> WriteImageXF;
