@@ -175,6 +175,12 @@ protected:
     int m_iterations = 0;
 
 public:
+    MCDAlgo(shared_ptr<Model>&m, ArrayXXd &b,
+            shared_ptr<SequenceGroup> s,
+            double p, int mi) :
+        m_model(m), m_bounds(b), m_sequence(s), m_PDscale(p), m_iterations(mi)
+    {}
+
     size_t numInputs() const override  { return m_sequence->count(); }
     size_t numOutputs() const override { return m_model->nParameters(); }
     size_t dataSize() const override   { return m_sequence->size(); }
@@ -183,19 +189,16 @@ public:
     void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
     void setBounds(ArrayXXd &b) { m_bounds = b; }
     void setPDScale(double s) { m_PDscale = s; }
-    void setTesla(FieldStrength t) { m_tesla = t; }
     void setIterations(const int i) { m_iterations = i; }
 };
 
 class BFGSAlgo : public MCDAlgo {
+    using MCDAlgo::MCDAlgo;
+
 private:
     ArrayXd m_start;
 
 public:
-    BFGSAlgo() {
-        m_iterations = 150;
-    }
-
     void setStart(ArrayXd &s) { m_start = s; }
 
     size_t numConsts() const override  { return 2; }
@@ -215,8 +218,12 @@ public:
         double f0 = inputs[0];
         double B1 = inputs[1];
         ArrayXXd localBounds = m_bounds;
-        ArrayXd localStart = m_model->Start(m_tesla);
-        localBounds.row(m_model->ParameterIndex("PD")).setConstant(m_PDscale);
+        if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
+            localBounds(0, 0) = 0.;
+            localBounds(0, 1) = data.array().maxCoeff() * 25;
+        } else {
+            localBounds.row(0).setConstant(m_PDscale);
+        }
         if (isfinite(f0)) {
             localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
             cost->m_weights = m_sequence->weights(f0);
@@ -232,7 +239,7 @@ public:
             lower[i] = localBounds(i, 0);
             upper[i] = localBounds(i, 1);
             select[i] = 2; // Upper and lower bounds
-            start[i] = localStart[i];
+            start[i] = m_start[i];
         }
         cost->m_data = data;
         cost->m_sequence = m_sequence;
@@ -292,18 +299,16 @@ class MCDSRCFunctor {
 };
 
 class SRCAlgo : public MCDAlgo {
-	private:
+    using MCDAlgo::MCDAlgo;
+
+    private:
         size_t m_samples = 5000, m_retain = 50;
         bool m_gauss = true;
 
-	public:
-        SRCAlgo() {
-            m_iterations = 7;
-        }
+    public:
+        void setGauss(bool g) { m_gauss = g; }
 
-		void setGauss(bool g) { m_gauss = g; }
-
-		size_t numConsts() const override  { return 2; }
+        size_t numConsts() const override  { return 2; }
         virtual TArray defaultConsts() override {
 			// f0, B1
 			TArray def = TArray::Ones(2);
@@ -322,13 +327,13 @@ class SRCAlgo : public MCDAlgo {
             if (std::isfinite(f0)) {
                 localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
                 weights = m_sequence->weights(f0);
-			}
-			if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
-				localBounds(0, 0) = 0.;
-				localBounds(0, 1) = data.array().maxCoeff() * 25;
-			} else {
-				localBounds.row(0).setConstant(m_PDscale);
-			}
+            }
+            if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
+                localBounds(0, 0) = 0.;
+                localBounds(0, 1) = data.array().maxCoeff() * 25;
+            } else {
+                localBounds.row(0).setConstant(m_PDscale);
+            }
             localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
             MCDSRCFunctor func(m_model, m_sequence, data, weights);
             RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
@@ -348,13 +353,13 @@ int main(int argc, char **argv) {
 
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
-    int max_its = 0;
+    int max_its = 7;
 	int verbose = false, prompt = true, all_residuals = false,
         fitFinite = false, flipData = false;
 	string outPrefix;
     double PDScale = 1.;
     enum class Algos { SRC, GRC, BFGS };
-    Algos algo = Algos::GRC;
+    Algos which_algo = Algos::GRC;
 
 	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<Model> model = make_shared<MCD3>();
@@ -362,42 +367,46 @@ int main(int argc, char **argv) {
     typedef itk::ApplyAlgorithmSliceBySliceFilter<MCDAlgo> TMCDFilter;
 	auto applySlices = TMCDFilter::New();
 
+    // Make sure the scale to mean default is actually set
+    model->setScaleToMean(true);
+    applySlices->SetScaleToMean(true);
+
 	const string usage {
-	"Usage is: mcdespot [options]\n\
-	\n\
-	The program will prompt for input (unless --no-prompt specified)\n\
-	\n\
-	All times (TR) are in SECONDS. All angles are in degrees.\n\
-	\n\
-	Options:\n\
-		--help, -h        : Print this message\n\
-		--verbose, -v     : Print more information\n\
-		--no-prompt, -n   : Don't print prompts for input\n\
-		--mask, -m file   : Mask input with specified file\n\
-		--out, -o path    : Add a prefix to the output filenames\n\
-        --model, -M 1     : Use 1 component model\n\
-                    2     : Use 2 component model\n\
-                    2nex  : Use 2 component, no exchange model\n\
-                    3     : Use 3 component model (default)\n\
-                    3nex  : Use 3 component, no exchange model\n\
-		--f0, -f file     : Use f0 Map file (in Hertz)\n\
-		--B1, -b file     : B1 Map file (ratio)\n\
-		--start, -s n     : Only start processing at slice n.\n\
-		--stop, -p n      : Finish at slice n-1\n\
-		--scale, -S MEAN  : Normalise signals to mean (default)\n\
-					0     : Fit a scaling factor/proton density\n\
-					val   : Fix PD to val\n\
-        --algo, -a S      : Use Uniform distribution for Region Contraction\n\
-                   G      : Use Gaussian distribution for RC (default)\n\
-                   b      : Use BFGS algorithm\n\
-        --iters, -i N     : Specify maximum number of iterations\n\
-		--flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
-		--tesla, -t 3     : Boundaries suitable for 3T (default)\n\
-					7     : Boundaries suitable for 7T \n\
-					u     : User specified boundaries from stdin\n\
-		--finite          : Use Finite Pulse Length correction\n\
-		--resids, -r      : Write out per flip-angle residuals\n\
-		--threads, -T N   : Use N threads (default=hardware limit)\n"
+"Usage is: mcdespot [options]\n\
+\n\
+The program will prompt for input (unless --no-prompt specified)\n\
+\n\
+All times (TR) are in SECONDS. All angles are in degrees.\n\
+\n\
+Options:\n\
+    --help, -h        : Print this message\n\
+    --verbose, -v     : Print more information\n\
+    --no-prompt, -n   : Don't print prompts for input\n\
+    --mask, -m file   : Mask input with specified file\n\
+    --out, -o path    : Add a prefix to the output filenames\n\
+    --model, -M 1     : Use 1 component model\n\
+                2     : Use 2 component model\n\
+                2nex  : Use 2 component, no exchange model\n\
+                3     : Use 3 component model (default)\n\
+                3nex  : Use 3 component, no exchange model\n\
+    --f0, -f file     : Use f0 Map file (in Hertz)\n\
+    --B1, -b file     : B1 Map file (ratio)\n\
+    --start, -s n     : Only start processing at slice n.\n\
+    --stop, -p n      : Finish at slice n-1\n\
+    --scale, -S MEAN  : Normalise signals to mean (default)\n\
+              0       : Fit a scaling factor/proton density\n\
+              val     : Fix PD to val\n\
+    --algo, -a S      : Use Uniform distribution for Region Contraction\n\
+               G      : Use Gaussian distribution for RC (default)\n\
+               b      : Use BFGS algorithm\n\
+    --iters, -i N     : Specify maximum number of iterations\n\
+    --flip, -F        : Data order is phase then flip-angle (default opposite)\n\
+    --tesla, -t 3     : Boundaries suitable for 3T (default)\n\
+                7     : Boundaries suitable for 7T \n\
+                u     : User specified boundaries from stdin\n\
+    --finite          : Use Finite Pulse Length correction\n\
+    --resids, -r      : Write out per flip-angle residuals\n\
+    --threads, -T N   : Use N threads (default=hardware limit)\n"
 	};
 
 	const struct option long_options[] = {
@@ -477,7 +486,7 @@ int main(int argc, char **argv) {
 				} else if (atoi(optarg) == 0) {
 					if (verbose) cout << "Fit PD/M0 selected." << endl;
                     model->setScaleToMean(false);
-                    PDScale = atof(optarg);
+                    PDScale = 0;
 					applySlices->SetScaleToMean(false);
 				} else {
 					if (verbose) cout << "Fix PD value to " << atof(optarg) << endl;
@@ -488,9 +497,9 @@ int main(int argc, char **argv) {
 			} break;
             case 'a':
                 switch (*optarg) {
-                case 'S': algo = Algos::SRC; break;
-                case 'G': algo = Algos::GRC; break;
-                case 'b': algo = Algos::BFGS; break;
+                case 'S': which_algo = Algos::SRC; break;
+                case 'G': which_algo = Algos::GRC; break;
+                case 'b': which_algo = Algos::BFGS; break;
                 default:
                     cerr << "Unknown algorithm type " << *optarg << endl;
                     return EXIT_FAILURE;
@@ -548,50 +557,32 @@ int main(int argc, char **argv) {
         if (prompt) cout << "Enter upper bounds" << endl;
         QI::ReadArray(cin, temp);
         bounds.col(1) = temp;
-        if (algo == Algos::BFGS) {
+        if (which_algo == Algos::BFGS) {
             if (prompt) cout << "Enter start point" << endl;
             QI::ReadArray(cin, start);
         }
     }
-    bounds.row(model->nParameters() - 2) = f0Bandwidth;
-    shared_ptr<MCDAlgo> mcd;
-    switch (algo) {
+    bounds.row(model->ParameterIndex("f0")) = f0Bandwidth;
+    switch (which_algo) {
     case Algos::SRC: {
         if (verbose) cout << "Using SRC algorithm" << endl;
-        shared_ptr<SRCAlgo> temp = make_shared<SRCAlgo>();
-        temp->setGauss(false);
-        mcd = temp;
-        mcd->setModel(model);
-        mcd->setBounds(bounds);
-        mcd->setSequence(sequences);
-        applySlices->SetAlgorithm(mcd);
+        shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, PDScale, max_its);
+        algo->setGauss(false);
+        applySlices->SetAlgorithm(algo);
     } break;
     case Algos::GRC: {
         if (verbose) cout << "Using GRC algorithm" << endl;
-        shared_ptr<SRCAlgo> temp = make_shared<SRCAlgo>();
-        temp->setGauss(true);
-        mcd = temp;
-        mcd->setModel(model);
-        mcd->setBounds(bounds);
-        mcd->setSequence(sequences);
-        applySlices->SetAlgorithm(mcd);
+        shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, PDScale, max_its);
+        algo->setGauss(true);
+        applySlices->SetAlgorithm(algo);
     } break;
     case Algos::BFGS: {
         if (verbose) cout << "Using BFGS algorithm" << endl;
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
-        shared_ptr<BFGSAlgo> temp = make_shared<BFGSAlgo>();
-        temp->setStart(start);
-        mcd = temp;
-        mcd->setModel(model);
-        mcd->setBounds(bounds);
-        mcd->setSequence(sequences);
-        mcd->setTesla(tesla);
-        applySlices->SetAlgorithm(mcd);
+        shared_ptr<BFGSAlgo> algo = make_shared<BFGSAlgo>(model, bounds, sequences, PDScale, max_its);
+        algo->setStart(start);
+        applySlices->SetAlgorithm(algo);
     } break;
-    }
-    mcd->setPDScale(PDScale);
-    if (max_its > 0) {
-        mcd->setIterations(max_its);
     }
 	applySlices->SetSlices(start_slice, stop_slice);
 	for (int i = 0; i < inOrder.size(); i++) {
@@ -615,7 +606,7 @@ int main(int argc, char **argv) {
     if (verbose) {
         cout << *sequences;
         cout << "Bounds:" << endl <<  bounds.transpose() << endl;
-        if (algo == Algos::BFGS)
+        if (which_algo == Algos::BFGS)
             cout << "Start: " << endl << start.transpose() << endl;
         ofstream boundsFile(outPrefix + "bounds.txt");
         boundsFile << "Names: ";
@@ -623,7 +614,7 @@ int main(int argc, char **argv) {
             boundsFile << model->ParameterNames()[p] << "\t";
         }
         boundsFile << endl << "Bounds: " << endl << bounds.transpose() << endl;
-        if (algo == Algos::BFGS)
+        if (which_algo == Algos::BFGS)
             boundsFile << "Start: " << endl << start.transpose() << endl;
         boundsFile.close();
     }
