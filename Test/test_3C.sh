@@ -86,7 +86,7 @@ END_INPUT
 compare_test $PREFIX f_m.nii ${PREFIX}3C_f_m.nii 0.05
 }
 
-run "GRC" "-S1 -ff0.nii -ab"
+run "GRC" "-ff0.nii -ab"
 
 #echo "       Mean     Std.     CoV"
 #echo "T1_m:  " $( fslstats ${PREFIX}${COMP}C_T1_m.nii  -m -s | awk '{print $1, $2, $2/$1}' )

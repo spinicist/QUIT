@@ -171,14 +171,12 @@ protected:
     shared_ptr<Model> m_model = nullptr;
     shared_ptr<SequenceGroup> m_sequence = nullptr;
     FieldStrength m_tesla = FieldStrength::Three;
-    double m_PDscale = 0.;
     int m_iterations = 0;
 
 public:
     MCDAlgo(shared_ptr<Model>&m, ArrayXXd &b,
-            shared_ptr<SequenceGroup> s,
-            double p, int mi) :
-        m_model(m), m_bounds(b), m_sequence(s), m_PDscale(p), m_iterations(mi)
+            shared_ptr<SequenceGroup> s, int mi) :
+        m_model(m), m_bounds(b), m_sequence(s), m_iterations(mi)
     {}
 
     size_t numInputs() const override  { return m_sequence->count(); }
@@ -188,7 +186,6 @@ public:
     void setModel(shared_ptr<Model> &m) { m_model = m; }
     void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
     void setBounds(ArrayXXd &b) { m_bounds = b; }
-    void setPDScale(double s) { m_PDscale = s; }
     void setIterations(const int i) { m_iterations = i; }
 };
 
@@ -218,12 +215,6 @@ public:
         double f0 = inputs[0];
         double B1 = inputs[1];
         ArrayXXd localBounds = m_bounds;
-        if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
-            localBounds(0, 0) = 0.;
-            localBounds(0, 1) = data.array().maxCoeff() * 25;
-        } else {
-            localBounds.row(0).setConstant(m_PDscale);
-        }
         if (isfinite(f0)) {
             localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
             cost->m_weights = m_sequence->weights(f0);
@@ -328,12 +319,6 @@ class SRCAlgo : public MCDAlgo {
                 localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
                 weights = m_sequence->weights(f0);
             }
-            if (m_PDscale == 0.) { // Then we need a reasonable fitting range for PD
-                localBounds(0, 0) = 0.;
-                localBounds(0, 1) = data.array().maxCoeff() * 25;
-            } else {
-                localBounds.row(0).setConstant(m_PDscale);
-            }
             localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
             MCDSRCFunctor func(m_model, m_sequence, data, weights);
             RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
@@ -356,8 +341,7 @@ int main(int argc, char **argv) {
     int max_its = 7;
 	int verbose = false, prompt = true, all_residuals = false,
         fitFinite = false, flipData = false;
-	string outPrefix;
-    double PDScale = 1.;
+    string outPrefix;
     enum class Algos { SRC, GRC, BFGS };
     Algos which_algo = Algos::GRC;
 
@@ -366,12 +350,7 @@ int main(int argc, char **argv) {
 	typedef itk::VectorImage<float, 2> VectorSliceF;
     typedef itk::ApplyAlgorithmSliceBySliceFilter<MCDAlgo> TMCDFilter;
 	auto applySlices = TMCDFilter::New();
-
-    // Make sure the scale to mean default is actually set
-    model->setScaleToMean(true);
-    applySlices->SetScaleToMean(true);
-
-	const string usage {
+    const string usage {
 "Usage is: mcdespot [options]\n\
 \n\
 The program will prompt for input (unless --no-prompt specified)\n\
@@ -393,9 +372,7 @@ Options:\n\
     --B1, -b file     : B1 Map file (ratio)\n\
     --start, -s n     : Only start processing at slice n.\n\
     --stop, -p n      : Finish at slice n-1\n\
-    --scale, -S MEAN  : Normalise signals to mean (default)\n\
-              0       : Fit a scaling factor/proton density\n\
-              val     : Fix PD to val\n\
+    --scale, -S       : Normalise signals to mean\n\
     --algo, -a S      : Use Uniform distribution for Region Contraction\n\
                G      : Use Gaussian distribution for RC (default)\n\
                b      : Use BFGS algorithm\n\
@@ -418,7 +395,7 @@ Options:\n\
 		{"B1", required_argument, 0, 'b'},
 		{"start", required_argument, 0, 's'},
 		{"stop", required_argument, 0, 'p'},
-		{"scale", required_argument, 0, 'S'},
+        {"scale", no_argument, 0, 'S'},
         {"algo", required_argument, 0, 'a'},
         {"iterations", required_argument, 0, 'i'},
 		{"flip", required_argument, 0, 'F'},
@@ -430,7 +407,7 @@ Options:\n\
         {"model", required_argument, 0, 'M'},
 		{0, 0, 0, 0}
 	};
-    const char* short_options = "hvm:o:f:b:s:p:S:a:t:FT:rnM:i:j:";
+    const char* short_options = "hvm:o:f:b:s:p:Sa:t:FT:rnM:i:j:";
 
 	// Deal with these options in first pass to ensure the correct model is selected
 	int indexptr = 0, c;
@@ -476,25 +453,11 @@ Options:\n\
 				break;
 			case 's': start_slice = atoi(optarg); break;
 			case 'p': stop_slice = atoi(optarg); break;
-			case 'S': {
-				string mode(optarg);
-				if (mode == "MEAN") {
-					if (verbose) cout << "Mean scaling selected." << endl;
-					model->setScaleToMean(true);
-                    PDScale = 1.;
-					applySlices->SetScaleToMean(true);
-				} else if (atoi(optarg) == 0) {
-					if (verbose) cout << "Fit PD/M0 selected." << endl;
-                    model->setScaleToMean(false);
-                    PDScale = 0;
-					applySlices->SetScaleToMean(false);
-				} else {
-					if (verbose) cout << "Fix PD value to " << atof(optarg) << endl;
-					model->setScaleToMean(false);
-                    PDScale = atof(optarg);
-					applySlices->SetScaleToMean(false);
-				}
-			} break;
+            case 'S':
+                if (verbose) cout << "Mean scaling selected." << endl;
+                model->setScaleToMean(true);
+                applySlices->SetScaleToMean(true);
+                break;
             case 'a':
                 switch (*optarg) {
                 case 'S': which_algo = Algos::SRC; break;
@@ -566,20 +529,20 @@ Options:\n\
     switch (which_algo) {
     case Algos::SRC: {
         if (verbose) cout << "Using SRC algorithm" << endl;
-        shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, PDScale, max_its);
+        shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, max_its);
         algo->setGauss(false);
         applySlices->SetAlgorithm(algo);
     } break;
     case Algos::GRC: {
         if (verbose) cout << "Using GRC algorithm" << endl;
-        shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, PDScale, max_its);
+        shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, max_its);
         algo->setGauss(true);
         applySlices->SetAlgorithm(algo);
     } break;
     case Algos::BFGS: {
         if (verbose) cout << "Using BFGS algorithm" << endl;
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
-        shared_ptr<BFGSAlgo> algo = make_shared<BFGSAlgo>(model, bounds, sequences, PDScale, max_its);
+        shared_ptr<BFGSAlgo> algo = make_shared<BFGSAlgo>(model, bounds, sequences, max_its);
         algo->setStart(start);
         applySlices->SetAlgorithm(algo);
     } break;

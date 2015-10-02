@@ -8,7 +8,7 @@
 # First, create input data
 
 source ./test_common.sh
-SILENCE_TESTS="1"
+SILENCE_TESTS="0"
 
 DATADIR="2C"
 mkdir -p $DATADIR
@@ -58,11 +58,10 @@ $SSFP_FILE
 END
 END_MCSIG
 
-function run() {
-PREFIX="$1"
-OPTS="$2"
-run_test $PREFIX $QUITDIR/qimcdespot $OPTS -M2 -bB1.nii -r -o $PREFIX -v -n << END_INPUT
-SPGR
+# Save these for mcd input to make debugging easy.
+# Currently the sequence type/filename are the opposite to qisignal due to history/idiocy
+# This needs to be changed for a later release
+ALL_PARS="SPGR
 $SPGR_FILE
 $SPGR_FLIP
 $SPGR_TR
@@ -71,8 +70,14 @@ $SSFP_FILE
 $SSFP_FLIP
 $SSFP_PC
 $SSFP_TR
-END
-END_INPUT
+END"
+
+echo "$ALL_PARS" > mcd_input.txt
+
+function run() {
+PREFIX="$1"
+OPTS="$2"
+run_test $PREFIX $QUITDIR/qimcdespot $OPTS -M2 -bB1.nii -r -o $PREFIX -v -n < mcd_input.txt
 
 compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
 
@@ -85,9 +90,9 @@ compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
 #echo "Tau:   " $( fslstats ${PREFIX}2C_tau_m.nii -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
 }
 
-run "BFGS" " -S1 -ff0.nii -ab"
-run "GRC"  " -S1 -ff0.nii -aG"
-run "SRC"  " -S1 -ff0.nii -aS"
-run "SRC2" " -S1 -aS "
+run "BFGS" " -ff0.nii -ab"
+run "GRC"  " -ff0.nii -aG"
+run "SRC"  " -ff0.nii -aS"
+run "SRC2" " -aS "
 cd ..
 SILENCE_TESTS="0"
