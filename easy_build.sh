@@ -27,13 +27,12 @@ mkdir -p $EIGEN_DIR
 tar --extract --file=${EIGEN_DIR}.tar.gz --strip-components=1 --directory=${EIGEN_DIR}
 
 # ITK
-ITK_MAJOR="4.7"
-ITK_MINOR="2"
+ITK_MAJOR="4.8"
+ITK_MINOR="1"
 ITK_VER="${ITK_MAJOR}.${ITK_MINOR}"
 ITK_SRC_DIR="ITK-${ITK_VER}"
 ITK_BLD_DIR="ITK-${ITK_VER}-Build"
-ITK_URL="http://downloads.sourceforge.net/project/itk/itk/4.7/InsightToolkit-${ITK_VER}.tar.gz?r=&ts=1433761469&use_mirror=kent"
-ITK_URL="http://downloads.sourceforge.net/project/itk/itk/4.7/InsightToolkit-${ITK_VER}.tar.gz"
+ITK_URL="http://downloads.sourceforge.net/project/itk/itk/${ITK_MAJOR}/InsightToolkit-${ITK_VER}.tar.gz"
 ITK_OPTS="-DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_FLAGS=-fpermissive"
 curl --location ${ITK_URL} > ${ITK_DIR}.tar.gz
 mkdir -p $ITK_SRC_DIR
