@@ -57,7 +57,7 @@ void parseInput(shared_ptr<SequenceGroup> seq,
         order.push_back(QI::ReorderF::New());
         order.back()->SetInput(data.back()->GetOutput());
         if (verbose) cout << "Reading file: " << path << endl;
-        order.back()->Update();
+        files.back()->Update();
         if (prompt) cout << "Enter sequence type (SPGR/SSFP): " << flush;
         QI::Read(cin, type);
         if (type == "SPGR") {
@@ -83,12 +83,14 @@ void parseInput(shared_ptr<SequenceGroup> seq,
             } else {
                 f0Bandwidth(0) = -f0Bandwidth(1);
             }
-			seq->addSequence(s);
-			if (flip)
-				order.back()->SetStride(s->phases());
+            if (flip)
+                order.back()->SetStride(s->phases());
+            seq->addSequence(s);
         } else {
             throw(std::runtime_error("Unknown sequence type: " + type));
         }
+        // Now re-order the data
+        order.back()->Update();
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;
 	}
 }
@@ -397,7 +399,7 @@ Options:\n\
         {"scale", no_argument, 0, 'S'},
         {"algo", required_argument, 0, 'a'},
         {"iterations", required_argument, 0, 'i'},
-		{"flip", required_argument, 0, 'F'},
+        {"flip", no_argument, 0, 'F'},
 		{"tesla", required_argument, 0, 't'},
 		{"finite", no_argument, &fitFinite, 1},
 		{"resids", no_argument, 0, 'r'},
@@ -467,7 +469,7 @@ Options:\n\
                     return EXIT_FAILURE;
                     break;
                 } break;
-            case 'F': flipData = true; if (verbose) cout << "Data order if phase, then flip-angle" << endl; break;
+            case 'F': flipData = true; if (verbose) cout << "Data order is phase, then flip-angle" << endl; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break; break;
 			case 't':
 				switch (*optarg) {
