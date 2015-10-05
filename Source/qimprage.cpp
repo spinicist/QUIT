@@ -25,7 +25,7 @@
 using namespace std;
 
 const string usage{
-"A tool to process MP3-RAGE images\n\
+"A tool to process MP-2/3-RAGE images\n\
 Usage is: qimp2rage [options] input \n\
 \
 Input must contain three volumes and be complex-valued\n\
@@ -50,18 +50,18 @@ static struct option long_options[] = {
 };
 static const char *short_options = "vm:o:xqT:h";
 
-template<class T> class MP2Contrast {
+template<class T> class MPRageContrast {
 public:
-    MP2Contrast() {}
-    ~MP2Contrast() {}
-    bool operator!=(const MP2Contrast &) const { return false; }
-    bool operator==(const MP2Contrast &other) const { return !(*this != other); }
+    MPRageContrast() {}
+    ~MPRageContrast() {}
+    bool operator!=(const MPRageContrast &) const { return false; }
+    bool operator==(const MPRageContrast &other) const { return !(*this != other); }
 
-    inline complex<T> operator()(const complex<T> &ti1, const complex<T> &ti2) const
+    inline T operator()(const complex<T> &ti1, const complex<T> &ti2) const
     {
         const T a1 = abs(ti1);
         const T a2 = abs(ti2);
-        return (conj(ti1)*ti2)/(a1*a1 + a2*a2);
+        return real((conj(ti1)*ti2)/(a1*a1 + a2*a2));
     }
 };
 
@@ -79,7 +79,7 @@ public:
         m_do_lookup = l;
         if (m_do_lookup) {
             MP3RAGE sequence(true);
-            MP2Contrast<double> con;
+            MPRageContrast<double> con;
             m_pars.clear();
             m_cons.clear();
             for (float T1 = 0.5; T1 < 2.5; T1 += 0.01) {
@@ -89,9 +89,9 @@ public:
                         m_pars.push_back(tp);
                         Array3cd sig = sequence.signal(1., T1, B1, eta);
                         Array3d tc;
-                        tc[0] = con(sig[0], sig[1]).real();
-                        tc[1] = con(sig[0], sig[2]).real();
-                        tc[2] = con(sig[1], sig[2]).real();
+                        tc[0] = con(sig[0], sig[1]);
+                        tc[1] = con(sig[0], sig[2]);
+                        tc[2] = con(sig[1], sig[2]);
                         m_cons.push_back(tc);
                         //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose() << endl;
                     }
@@ -115,11 +115,11 @@ public:
         double best_distance = numeric_limits<double>::max();
         int best_index = 0;
 
-        MP2Contrast<double> con;
+        MPRageContrast<double> con;
         Array3d in_cons;
-        in_cons[0] = con(data_inputs[0], data_inputs[1]).real();
-        in_cons[1] = con(data_inputs[0], data_inputs[2]).real();
-        in_cons[2] = con(data_inputs[1], data_inputs[2]).real();
+        in_cons[0] = con(data_inputs[0], data_inputs[1]);
+        in_cons[1] = con(data_inputs[0], data_inputs[2]);
+        in_cons[2] = con(data_inputs[1], data_inputs[2]);
         outputs.head(3) = in_cons;
 
         if (m_do_lookup) {
@@ -184,20 +184,50 @@ int main(int argc, char **argv) {
     inFile->SetFileName(fname);
     inFile->Update();
     if (verbose) cout << "Processing" << endl;
-    auto apply = itk::ApplyAlgorithmFilter<MPRAGEAlgo, complex<float>>::New();
-    auto process = make_shared<MPRAGEAlgo>();
-    process->setDoLookup(do_lookup);
-    apply->SetAlgorithm(process);
 
-    auto vectorFilter = QI::TimeseriesToVectorXF::New();
-    vectorFilter->SetInput(inFile->GetOutput());
-    apply->SetInput(0, vectorFilter->GetOutput());
-    apply->SetMask(mask);
-    apply->Update();
-    QI::writeResult(apply->GetOutput(0), outPrefix + "MP3_C12" + QI::OutExt());
-    QI::writeResult(apply->GetOutput(1), outPrefix + "MP3_C13" + QI::OutExt());
-    QI::writeResult(apply->GetOutput(2), outPrefix + "MP3_C23" + QI::OutExt());
+    typedef itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MPRageContrast<float>> MPRageContrastFilterType;
+    int nti = inFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3];
+
+    auto MPContrastFilter = MPRageContrastFilterType::New();
+    typedef itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF> ExtractType;
+    auto vol_i = ExtractType::New();
+    auto vol_j = ExtractType::New();
+    vol_i->SetDirectionCollapseToSubmatrix();
+    vol_j->SetDirectionCollapseToSubmatrix();
+    QI::TimeseriesXF::RegionType region_i = inFile->GetOutput()->GetLargestPossibleRegion();
+    region_i.GetModifiableSize()[3] = 0;
+    QI::TimeseriesXF::RegionType region_j = region_i;
+    for (int i = 0; i < nti - 1; i++) {
+        region_i.GetModifiableIndex()[3] = i;
+        vol_i->SetInput(inFile->GetOutput());
+        vol_i->SetExtractionRegion(region_i);
+        vol_i->Update();
+        MPContrastFilter->SetInput1(vol_i->GetOutput());
+        for (int j = (i + 1); j < nti; j++) {
+            region_j.GetModifiableIndex()[3] = j;
+            vol_j->SetInput(inFile->GetOutput());
+            vol_j->SetExtractionRegion(region_j);
+            vol_j->Update();
+            MPContrastFilter->SetInput2(vol_j->GetOutput());
+            MPContrastFilter->Update();
+            QI::writeResult(MPContrastFilter->GetOutput(), outPrefix + "MP3_C" + to_string(i) + to_string(j) + QI::OutExt());
+        }
+    }
+
     if (do_lookup) {
+        auto apply = itk::ApplyAlgorithmFilter<MPRAGEAlgo, complex<float>>::New();
+        auto process = make_shared<MPRAGEAlgo>();
+        if (do_lookup && verbose) cout << "Generating lookup table" << endl;
+        process->setDoLookup(do_lookup);
+        apply->SetAlgorithm(process);
+        auto vectorFilter = QI::TimeseriesToVectorXF::New();
+        vectorFilter->SetInput(inFile->GetOutput());
+        apply->SetInput(0, vectorFilter->GetOutput());
+        apply->SetMask(mask);
+        apply->Update();
+        QI::writeResult(apply->GetOutput(0), outPrefix + "MP3_C12" + QI::OutExt());
+        QI::writeResult(apply->GetOutput(1), outPrefix + "MP3_C13" + QI::OutExt());
+        QI::writeResult(apply->GetOutput(2), outPrefix + "MP3_C23" + QI::OutExt());
         QI::writeResult(apply->GetOutput(3), outPrefix + "MP3_T1" + QI::OutExt());
         QI::writeResult(apply->GetOutput(4), outPrefix + "MP3_B1" + QI::OutExt());
         QI::writeResult(apply->GetOutput(5), outPrefix + "MP3_eta" + QI::OutExt());
