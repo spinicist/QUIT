@@ -35,64 +35,72 @@ using namespace Eigen;
  * Read in all required files and data from cin
  */
 void parseInput(shared_ptr<SequenceGroup> seq,
-                vector<typename QI::ReadTimeseriesF::Pointer> &files,
-                vector<typename QI::TimeseriesToVectorF::Pointer> &data,
-                vector<typename QI::ReorderF::Pointer> &order,
+                vector<typename QI::VectorImageF::Pointer> &images,
                 Array2d &f0Bandwidth, bool finite, bool flip, bool verbose, bool prompt);
 void parseInput(shared_ptr<SequenceGroup> seq,
-                vector<typename QI::ReadTimeseriesF::Pointer> &files,
-                vector<typename QI::TimeseriesToVectorF::Pointer> &data,
-                vector<typename QI::ReorderF::Pointer> &order,
+                vector<typename QI::VectorImageF::Pointer> &images,
                 Array2d &f0Bandwidth, bool finite, bool flip, bool verbose, bool prompt)
 {
-	string type, path;
-	if (verbose && finite) cout << "Using finite pulse-width sequences." << endl;
+    string type, path;
+    if (verbose && finite) cout << "Using finite pulse-width sequences." << endl;
     if (prompt) cout << "Enter input filename: " << flush;
-	f0Bandwidth = Array2d::Zero();
+    f0Bandwidth.setZero();
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
-        files.push_back(QI::ReadTimeseriesF::New());
-        files.back()->SetFileName(path);
-        data.push_back(QI::TimeseriesToVectorF::New());
-        data.back()->SetInput(files.back()->GetOutput());
-        order.push_back(QI::ReorderF::New());
-        order.back()->SetInput(data.back()->GetOutput());
+        auto file = QI::ReadTimeseriesF::New();
+        auto data = QI::TimeseriesToVectorF::New();
+        auto reorder = QI::ReorderF::New();
+        QI::VectorImageF::Pointer image;
         if (verbose) cout << "Reading file: " << path << endl;
-        files.back()->Update();
+        file->SetFileName(path);
+        data->SetInput(file->GetOutput());
+        data->Update();
+        image = data->GetOutput();
         if (prompt) cout << "Enter sequence type (SPGR/SSFP): " << flush;
         QI::Read(cin, type);
         if (type == "SPGR") {
-			if (finite) {
-				seq->addSequence(make_shared<SPGRFinite>(prompt));
-			} else {
-				seq->addSequence(make_shared<SPGRSimple>(prompt));
-			}
+            if (finite) {
+                seq->addSequence(make_shared<SPGRFinite>(prompt));
+            } else {
+                seq->addSequence(make_shared<SPGRSimple>(prompt));
+            }
         } else if (type == "SPGR_ECHO") {
             seq->addSequence(make_shared<SPGREcho>(prompt));
         } else if (type == "SSFP_ECHO") {
-            seq->addSequence(make_shared<SSFPEcho>(prompt));
+            auto s = make_shared<SSFPEcho>(prompt);
+            if (flip) {
+                reorder->SetInput(data->GetOutput());
+                reorder->SetStride(s->phases());
+                reorder->Update();
+                image = reorder->GetOutput();
+            }
+            seq->addSequence(s);
         } else if (type == "SSFP") {
-			shared_ptr<SSFPSimple> s;
-			if (finite) {
-				s = make_shared<SSFPFinite>(prompt);
-			} else {
-				s = make_shared<SSFPSimple>(prompt);
-			}
+            shared_ptr<SSFPSimple> s;
+            if (finite) {
+                s = make_shared<SSFPFinite>(prompt);
+            } else {
+                s = make_shared<SSFPSimple>(prompt);
+            }
             f0Bandwidth(1) = 0.5 / s->TR();
             if (s->isSymmetric()) {
                 f0Bandwidth(0) = 0.;
             } else {
                 f0Bandwidth(0) = -f0Bandwidth(1);
             }
-            if (flip)
-                order.back()->SetStride(s->phases());
+            if (flip) {
+                reorder->SetInput(data->GetOutput());
+                reorder->SetStride(s->phases());
+                reorder->Update();
+                image = reorder->GetOutput();
+            }
             seq->addSequence(s);
         } else {
             throw(std::runtime_error("Unknown sequence type: " + type));
         }
-        // Now re-order the data
-        order.back()->Update();
+        image->DisconnectPipeline(); // This step is really important.
+        images.push_back(image);
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;
-	}
+    }
 }
 
 namespace itk {
@@ -506,10 +514,8 @@ Options:\n\
 	shared_ptr<SequenceGroup> sequences = make_shared<SequenceGroup>();
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
-	vector<QI::ReadTimeseriesF::Pointer> inFiles;
-	vector<QI::TimeseriesToVectorF::Pointer> inData;
-	vector<QI::ReorderF::Pointer> inOrder;
-	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, verbose, prompt);
+    vector<QI::VectorImageF::Pointer> images;
+    parseInput(sequences, images, f0Bandwidth, fitFinite, flipData, verbose, prompt);
 
     ArrayXXd bounds = model->Bounds(tesla);
     ArrayXd start = model->Default(tesla);
@@ -549,9 +555,9 @@ Options:\n\
     } break;
     }
 	applySlices->SetSlices(start_slice, stop_slice);
-	for (int i = 0; i < inOrder.size(); i++) {
-		applySlices->SetInput(i, inOrder.at(i)->GetOutput());
-	}
+    for (int i = 0; i < images.size(); i++) {
+        applySlices->SetInput(i, images[i]);
+    }
 	if (f0) {
 		f0->Update();
 		applySlices->SetConst(0, f0->GetOutput());
