@@ -467,7 +467,7 @@ Options:\n\
                     return EXIT_FAILURE;
                     break;
                 } break;
-			case 'F': flipData = true; break;
+            case 'F': flipData = true; if (verbose) cout << "Data order if phase, then flip-angle" << endl; break;
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break; break;
 			case 't':
 				switch (*optarg) {
