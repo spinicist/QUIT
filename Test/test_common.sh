@@ -44,21 +44,19 @@ function compare_test {
 	TOL=$4
 	DIFF=${REF%.nii}_${TEST%.nii}
 	if [ "$HAVE_FSL" -eq "1" ]; then
-        fslmaths $REF -sub $TEST $DIFF
-		MEAN=$( fslstats $DIFF -M )
-		STD=$( fslstats $DIFF -s )
-		ABSMEAN=$(echo $MEAN | awk ' { print sqrt($1*$1) } ' )
+        fslmaths $REF -sub $TEST -sqr $DIFF
+        MEAN=$( fslstats $DIFF -M | awk ' { print sqrt($1) } ' )
 		# Check for nan/inf/etc. because on some platforms awk will treat these as 0
 		REGEXP='^-?[0-9]+([.][0-9]+)?(e-?[0-9]+)?$'
-		if ! [[ $ABSMEAN =~ $REGEXP ]] ; then
-			echo "Comparison test $NAME failed, mean diff $ABSMEAN is not a valid number"
+        if ! [[ $MEAN =~ $REGEXP ]] ; then
+            echo "Comparison test $NAME failed, mean diff $MEAN is not a valid number"
 		fi
 		# Now do the tolerance test
-        TEST=$(echo "$ABSMEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
+        TEST=$(echo "$MEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
 		if [ "$TEST" -eq "1" ]; then
-            echo "Comparison test $NAME passed, accuracy $ABSMEAN, precision $STD (tolerance on accuracy was $TOL)"
+            echo "Comparison test $NAME passed, accuracy $MEAN (tolerance was $TOL)"
 		else
-            echo "Comparison test $NAME failed, accuracy $ABSMEAN, precision $STD (tolerance on accuracy was $TOL)"
+            echo "Comparison test $NAME failed, accuracy $MEAN (tolerance was $TOL)"
 		fi
 	else
 		echo "FSL not present, skipping test $NAME"
