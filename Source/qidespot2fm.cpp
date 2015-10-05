@@ -472,8 +472,8 @@ int run_main(int argc, char **argv) {
             break;
         case 's': start_slice = atoi(optarg); break;
         case 'p': stop_slice = atoi(optarg); break;
-        case 'F': flipData = true; break;
-        case 'f': fitFinite = true; break;
+        case 'F': flipData = true; if (verbose) cout << "Data order is phase, then flip-angle" << endl; break;
+        case 'f': fitFinite = true; if (verbose) cout << "Finite pulse model selected" << endl; break;
         case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
         case 'r': all_residuals = true; break;
         case 0: break; // Just a flag

@@ -1,11 +1,7 @@
 #!/bin/bash -e
 
 # Tobias Wood 2015
-# Simple test script for multiecho and similar programs
-
-# Tests whether programs run successfully on toy data
-
-# First, create input data
+# Test script for multiecho and similar programs
 
 source ./test_common.sh
 SILENCE_TESTS="1"
@@ -13,6 +9,9 @@ SILENCE_TESTS="1"
 DATADIR="relax"
 mkdir -p $DATADIR
 cd $DATADIR
+if [ "$(ls -A ./)" ]; then
+    rm *
+fi
 
 DIMS="11 11 11"
 $QUITDIR/qinewimage -d "$DIMS" -f 1 PD.nii
@@ -32,9 +31,9 @@ T1.nii
 T2.nii
 f0.nii
 B1.nii
+$SPIN_FILE
 SPINECHO
 $SPIN_PAR
-$SPIN_FILE
 END"
 echo "$MCSIG_INPUT" > qisignal.in
 run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 < qisignal.in

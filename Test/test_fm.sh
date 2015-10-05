@@ -4,15 +4,15 @@
 # Simple test script for FM, it runs slowly so test
 # separately to other single-component programs.
 
-# Tests whether programs run successfully on toy data
-
 source ./test_common.sh
 SILENCE_TESTS="1"
 
 DATADIR="fm"
 mkdir -p $DATADIR
 cd $DATADIR
-rm *
+if [ "$(ls -A ./)" ]; then
+    rm *
+fi
 
 # First, create input data
 DIMS="5 10 31"
@@ -39,17 +39,17 @@ T1.nii
 T2.nii
 f0.nii
 B1.nii
+${PREFIX}x$SSFP_FILE
 SSFP
 $SSFP_FLIP
 $SSFP_PC
 $SSFP_TR
-${PREFIX}x$SSFP_FILE
+${PREFIX}xf${SSFP_FILE}
 SSFPFinite
 $SSFP_FLIP
 $SSFP_PC
 $SSFP_TR
 $SSFP_Trf
-${PREFIX}xf${SSFP_FILE}
 END
 END_SIG
 

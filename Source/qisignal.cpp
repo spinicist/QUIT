@@ -227,10 +227,13 @@ static const char *short_opts = "hvnN:m:o:123xM:T:";
 //******************************************************************************
 void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names);
 void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
-	string type;
-	if (prompt) cout << "Specify next signal type (SPGR/SSFP): " << flush;
-	while (Read(cin, type) && (type != "END") && (type != "")) {
-		if (type == "SPGR") {
+    string type, path;
+    if (prompt) cout << "Enter output filename: " << flush;
+    while (Read(cin, path) && (path != "END") && (path != "")) {
+        names.push_back(path);
+        if (prompt) cout << "Enter sequence type: " << flush;
+        Read(cin, type);
+        if (type == "SPGR") {
 			cs.push_back(make_shared<SPGRSimple>(prompt));
 		} else if (type == "SPGRFinite") {
 			cs.push_back(make_shared<SPGRFinite>(prompt));
@@ -249,14 +252,9 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 		} else if (type == "SPINECHO") {
 			cs.push_back(make_shared<MultiEcho>(prompt));
 		} else {
-			throw(std::runtime_error("Unknown signal type: " + type));
+            throw(std::runtime_error("Unknown sequence type: " + type));
 		}
-		string filename;
-		if (prompt) cout << "Enter output filename: " << flush;
-		Read(cin, filename);
-		names.push_back(filename);
-		// Print message ready for next loop
-		if (prompt) cout << "Specify next image type (SPGR/SSFP, END to finish input): " << flush;
+        if (prompt) cout << "Enter next filename (END to finish input): " << flush;
 	}
 }
 //******************************************************************************
@@ -340,10 +338,9 @@ int main(int argc, char **argv)
 	vector<string> filenames;
 	parseInput(sequences, filenames);
 	for (size_t i = 0; i < sequences.size(); i++) {
-		if (verbose) {
-			cout << "Calculating sequence: " << endl << *(sequences[i]);
-		}
+        if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
 		calcSignal->SetSequence(sequences[i]);
+        if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
 		auto VecTo4D = QI::VectorToTimeseriesXF::New();
 		VecTo4D->SetInput(calcSignal->GetOutput());
 		if (outputComplex) {

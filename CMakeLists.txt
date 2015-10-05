@@ -35,7 +35,7 @@ foreach(PROGRAM ${PROGRAMS})
 endforeach(PROGRAM)
 
 set(TESTS_DIR Test)
-set(TESTS test_common.sh test_scdespot.sh test_fm.sh test_2C.sh test_3C.sh test_relax.sh test_all.sh)
+set(TESTS test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_relax.sh test_ssfp.sh test_all.sh)
 foreach(TEST ${TESTS})
 	configure_file(${TESTS_DIR}/${TEST} ${TESTS_DIR}/${TEST} COPYONLY)
 endforeach(TEST)

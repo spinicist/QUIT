@@ -1,11 +1,7 @@
 #!/bin/bash -e
 
 # Tobias Wood 2015
-# Simple test script for DESPOT programs
-
-# Tests whether programs run successfully on toy data
-
-# First, create input data
+# Simple test scripts for QUIT programs
 
 source ./test_common.sh
 SILENCE_TESTS="1"
@@ -13,7 +9,9 @@ SILENCE_TESTS="1"
 DATADIR="3C"
 mkdir -p $DATADIR
 cd $DATADIR
-rm *
+if [ "$(ls -A ./)" ]; then
+    rm *
+fi
 
 DIMS="5 5 3"
 
@@ -42,6 +40,20 @@ SSFP_PC="180 0"
 SSFP_TR="0.005"
 #SSFP_Trf="0.0025"
 
+INPUT="$SPGR_FILE
+SPGR
+$SPGR_FLIP
+$SPGR_TR
+$SSFP_FILE
+SSFP
+$SSFP_FLIP
+$SSFP_PC
+$SSFP_TR
+END
+"
+
+echo "$INPUT" > mcd_input.txt
+
 run_test "CREATE_SIGNALS" $QUITDIR/qisignal --3 -n -v << END_MCSIG
 PD.nii
 T1_m.nii
@@ -55,34 +67,13 @@ f_m.nii
 f_csf.nii
 f0.nii
 B1.nii
-SPGR
-$SPGR_FLIP
-$SPGR_TR
-$SPGR_FILE
-SSFP
-$SSFP_FLIP
-$SSFP_PC
-$SSFP_TR
-$SSFP_FILE
-END
+$INPUT
 END_MCSIG
 
 function run() {
 PREFIX="$1"
 OPTS="$2"
-run_test $PREFIX $QUITDIR/qimcdespot $OPTS -n -v -M3 -bB1.nii -r -o $PREFIX << END_INPUT
-SPGR
-$SPGR_FILE
-$SPGR_FLIP
-$SPGR_TR
-SSFP
-$SSFP_FILE
-$SSFP_FLIP
-$SSFP_PC
-$SSFP_TR
-END
-END_INPUT
-
+run_test $PREFIX $QUITDIR/qimcdespot $OPTS -n -v -M3 -bB1.nii -r -o $PREFIX < mcd_input.txt
 compare_test $PREFIX f_m.nii ${PREFIX}3C_f_m.nii 0.05
 }
 

@@ -47,18 +47,20 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 {
 	string type, path;
 	if (verbose && finite) cout << "Using finite pulse-width sequences." << endl;
-	if (prompt) cout << "Specify next image type (SPGR/SSFP): " << flush;
+    if (prompt) cout << "Enter input filename: " << flush;
 	f0Bandwidth = Array2d::Zero();
-	while (QI::Read(cin, type) && (type != "END") && (type != "")) {
-		if (prompt) cout << "Enter image path: " << flush;
-		QI::Read(cin, path);
-		files.push_back(QI::ReadTimeseriesF::New());
-		files.back()->SetFileName(path);
-		data.push_back(QI::TimeseriesToVectorF::New());
-		data.back()->SetInput(files.back()->GetOutput());
-		order.push_back(QI::ReorderF::New());
-		order.back()->SetInput(data.back()->GetOutput());
-		if (type == "SPGR") {
+    while (QI::Read(cin, path) && (path != "END") && (path != "")) {
+        files.push_back(QI::ReadTimeseriesF::New());
+        files.back()->SetFileName(path);
+        data.push_back(QI::TimeseriesToVectorF::New());
+        data.back()->SetInput(files.back()->GetOutput());
+        order.push_back(QI::ReorderF::New());
+        order.back()->SetInput(data.back()->GetOutput());
+        if (verbose) cout << "Reading file: " << path << endl;
+        order.back()->Update();
+        if (prompt) cout << "Enter sequence type (SPGR/SSFP): " << flush;
+        QI::Read(cin, type);
+        if (type == "SPGR") {
 			if (finite) {
 				seq->addSequence(make_shared<SPGRFinite>(prompt));
 			} else {
@@ -85,12 +87,9 @@ void parseInput(shared_ptr<SequenceGroup> seq,
 			if (flip)
 				order.back()->SetStride(s->phases());
         } else {
-            throw(std::runtime_error("Unknown signal type: " + type));
+            throw(std::runtime_error("Unknown sequence type: " + type));
         }
-		if (verbose) cout << "Reading file: " << path << endl;
-		order.back()->Update();
-		// Print message ready for next loop
-		if (prompt) cout << "Specify next image type (SPGR/SSFP, END to finish input): " << flush;
+        if (prompt) cout << "Enter next filename (END to finish input): " << flush;
 	}
 }
 
