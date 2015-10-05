@@ -119,9 +119,9 @@ const void CalcExchange(const double tau_a, const double f_a, double &f_b, doubl
 /******************************************************************************
  * One Component Signals
  *****************************************************************************/
-VectorXcd One_MultiEcho(carrd &TE, cdbl PD, cdbl T2) {
+VectorXcd One_MultiEcho(carrd &TE, cdbl TR, cdbl PD, cdbl T1, cdbl T2) {
 	VectorXcd M = VectorXcd::Zero(TE.rows());
-	M.real() = PD * (-TE / T2).exp();
+    M.real() = PD * (1 - exp(-TR / T1)) * (-TE / T2).exp();
 	return M;
 }
 
@@ -224,17 +224,19 @@ VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl
     return result;
 }
 
-VectorXcd MP_RAGE(cdbl flip, cdbl TR, const int N, carrd &TI, cdbl TD,
+VectorXcd MP_RAGE(cdbl flip, cdbl TR, const int N, carrd &TI, carrd &TRseg,
                   cdbl PD, cdbl T1, cdbl B1) {
 	const double M0 = PD;
 	const double T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
 	const double M0s = M0 * (1. - exp(-TR/T1)) / (1 - exp(-TR/T1s));
 
 	const double A_1 = M0s*(1 - exp(-(N*TR)/T1s));
-	const double A_2 = M0*(1 - exp(-TD/T1));
+
+    carrd TD = TRseg - (TI + N*TR);
+    carrd A_2 = M0*(1 - exp(-TD/T1));
 	carrd A_3 = M0*(1 - exp(-TI/T1));
 	const double B_1 = exp(-(N*TR)/T1s);
-	const double B_2 = exp(-TD/T1);
+    carrd B_2 = exp(-TD/T1);
 	carrd B_3 = -exp(-TI/T1);
 
 	carrd A = A_3 + A_2*B_3 + A_1*B_2*B_3;

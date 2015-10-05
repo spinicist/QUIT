@@ -32,6 +32,8 @@ MultiEcho::MultiEcho(const ArrayXd &te) :
 MultiEcho::MultiEcho(const bool prompt) : SequenceBase() {
 	double TE1;
 	int NE;
+    if (prompt) cout << "Enter TR: " << flush;
+    QI::Read(cin, m_TR);
 	if (prompt) cout << "Enter first echo-time: " << flush;
 	QI::Read(cin, TE1);
 	if (prompt) cout << "Enter echo spacing: " << flush;
@@ -46,7 +48,7 @@ MultiEcho::MultiEcho(const bool prompt) : SequenceBase() {
 }
 
 ArrayXcd MultiEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
-	return m->MultiEcho(p, m_TE);
+    return m->MultiEcho(p, m_TE, m_TR);
 }
 
 void MultiEcho::write(ostream &os) const {
@@ -130,15 +132,16 @@ ArrayXcd SPGRFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
 	return m->SPGRFinite(p, m_flip, m_TR, m_Trf, m_TE);
 }
 
-MPRAGE::MPRAGE(const ArrayXd &TI, const double TD, const double TR, const int N, const double flip) :
-	SteadyState(), m_TI(TI), m_TD(TD), m_N(N) {
+MPRAGE::MPRAGE(const ArrayXd &TI, const double TRseg, const double TR, const int N, const double flip) :
+    SteadyState(), m_TI(TI), m_N(N) {
 	m_TR = TR;
 	m_flip.resize(1); m_flip[0] = flip;
+    m_TRseg = ArrayXd::Ones(m_TI.size()) * TRseg;
 }
 
 MPRAGE::MPRAGE(const bool prompt) : SteadyState() {
 	if (prompt) cout << "Enter read-out flip-angle (degrees): " << flush;
-	double inFlip;
+    double inFlip, TRseg;
 	QI::Read(cin, inFlip);
 	m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
 	if (prompt) cout << "Enter read-out TR (seconds): " << flush;
@@ -147,8 +150,9 @@ MPRAGE::MPRAGE(const bool prompt) : SteadyState() {
 	QI::Read(cin, m_N);
 	if (prompt) cout << "Enter inversion times (seconds): " << flush;
 	QI::ReadArray(cin, m_TI);
-	if (prompt) cout << "Enter delay time (seconds): " << flush;
-	QI::Read(cin, m_TD);
+    if (prompt) cout << "Enter segment TR time (seconds): " << flush;
+    QI::Read(cin, TRseg);
+    m_TRseg = ArrayXd::Ones(m_TI.size()) * TRseg;
 }
 
 IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
@@ -166,17 +170,19 @@ IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
 
 	if (prompt) cout << "Enter TIs (seconds): " << flush;
 	QI::ReadArray(cin, m_TI);
+
+    m_TRseg = m_TI + m_N*m_TR; // For IR-SPGR the segment TR will vary for different TIs, because this is what a GE scanner would do
 }
 
 ArrayXcd MPRAGE::signal(shared_ptr<Model> m, const VectorXd &par) const {
-	return m->MPRAGE(par, m_flip[0], m_TR, m_N, m_TI, m_TD);
+    return m->MPRAGE(par, m_flip[0], m_TR, m_N, m_TI, m_TRseg);
 }
 
 void MPRAGE::write(ostream &os) const {
 	os << name() << endl;
-	os << "TR: " << m_TR << "\tN: " << m_N << "\tAlpha: " << m_flip[0] * 180 / M_PI << "\tTD: " << m_TD << endl;
+    os << "TR: " << m_TR << "\tN: " << m_N << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
 	os << "TI: " << m_TI.transpose() << endl;
-	os << "TS: " << (m_TI + m_N*m_TR + m_TD).transpose() << endl;
+    os << "TRseg: " << m_TRseg.transpose() << endl;
 }
 
 MP3RAGE::MP3RAGE(const Array4d &TD, const double TR, const int N, const Array3d flip) :

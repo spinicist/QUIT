@@ -85,7 +85,7 @@ protected:
         if (PD > m_thresh) {
             outputs[0] = PD;
             outputs[1] = clamp(T2, m_clampLo, m_clampHi);
-            ArrayXcd theory = One_MultiEcho(m_sequence->m_TE, PD, T2);
+            ArrayXcd theory = One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2); // T1 isn't modelled, set to 0 for instant recovery
             resids = data.array() - theory.abs();
         } else {
             outputs.setZero();

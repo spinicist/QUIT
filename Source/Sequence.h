@@ -57,6 +57,9 @@ class MultiEcho : public SequenceBase {
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream &os) const override;
 		string name() const override { return "MultiEcho"; }
+
+        ArrayXd TE() const { return m_TE; }
+        void setTE(const ArrayXd &TE) { m_TE = TE; }
 };
 
 class SteadyState : public SequenceBase {
@@ -99,11 +102,10 @@ class SPGRFinite : public SPGRSimple {
 };
 class MPRAGE : public SteadyState {
 	public:
-		ArrayXd m_TI;
-		double m_TD;
+        ArrayXd m_TI, m_TRseg;
 		int m_N;
 		MPRAGE() : SteadyState() {}
-		MPRAGE(const ArrayXd &TI, const double TD, const double TR, const int N, const double flip);
+        MPRAGE(const ArrayXd &TI, const double TRseg, const double TR, const int N, const double flip);
 		MPRAGE(const bool prompt);
 		size_t size() const override { return m_TI.size(); }
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;

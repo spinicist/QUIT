@@ -33,16 +33,16 @@ ArrayXcd Model::scale(const ArrayXcd &s) const {
 	}
 }
 
-VectorXcd Model::MultiEcho(cvecd &, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SPGR(cvecd &params, carrd &a, cdbl TR) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::MultiEcho(cvecd &, carrd &, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SPGR(cvecd &, carrd &, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SPGREcho(cvecd &, carrd &, cdbl, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SPGRFinite(cvecd &, carrd &, cdbl, cdbl, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, cvecd &, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::AFI(cvecd &, cdbl, cdbl, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SSFP(cvecd &, carrd &a, cdbl, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SSFPEcho(cvecd &, carrd &, cdbl, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SSFPEllipse(cvecd &, carrd &, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::SSFPFinite(cvecd &, carrd &, cdbl, cdbl, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
 
 /*****************************************************************************/
 /* Single Component DESPOT                                                   */
@@ -80,8 +80,8 @@ bool SCD::ValidParameters(cvecd &params) const {
 		return true;
 }
 
-VectorXcd SCD::MultiEcho(cvecd &p, carrd &TE) const {
-	return scale(One_MultiEcho(TE, p[0], p[2]));
+VectorXcd SCD::MultiEcho(cvecd &p, carrd &TE, cdbl TR) const {
+    return scale(One_MultiEcho(TE, TR, p[0], p[1], p[2]));
 }
 
 VectorXcd SCD::SPGR(cvecd &p, carrd &a, cdbl TR) const {
@@ -92,8 +92,8 @@ VectorXcd SCD::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const 
 	return scale(One_SSFP_Finite(a, true, TR, Trf, TE, 0, p[0], p[1], p[2], p[3], p[4]));
 }
 
-VectorXcd SCD::MPRAGE(cvecd &p, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const {
-	return scale(MP_RAGE(a, TR, N, TI, TD, p[0], p[1], p[4]));
+VectorXcd SCD::MPRAGE(cvecd &p, cdbl a, cdbl TR, const int N, cvecd &TI, carrd &TRseg) const {
+    return scale(MP_RAGE(a, TR, N, TI, TRseg, p[0], p[1], p[4]));
 }
 
 VectorXcd SCD::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const {

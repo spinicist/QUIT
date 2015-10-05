@@ -21,7 +21,8 @@ $QUITDIR/qinewimage -d "$DIMS" -g "2 -25.0 25.0" f0.nii
 $QUITDIR/qinewimage -d "$DIMS" -f 1 B1.nii
 # Setup parameters
 SPIN_FILE="multispinecho.nii"
-SPIN_PAR="0.005
+SPIN_PAR="5.0
+0.005
 0.005
 16"
 

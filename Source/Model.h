@@ -47,11 +47,11 @@ public:
 
 	void setScaleToMean(bool s) { m_scale_to_mean = s; }
 
-	virtual VectorXcd MultiEcho(cvecd &params, carrd &TE) const;
+    virtual VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const;
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
     virtual VectorXcd SPGREcho(cvecd &p, carrd& a, cdbl TR, cdbl TE) const;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const;
-	virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const;
+    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, carrd &TRseg) const;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const;
     virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
     virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
@@ -71,10 +71,10 @@ public:\
 class SCD : public Model {
 	DECLARE_INTERFACE()
 
-	virtual VectorXcd MultiEcho(cvecd &params, carrd &TE) const override;
+    virtual VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const override;
     virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-	virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, cdbl TD) const override;
+    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, carrd &TRseg) const override;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
     virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
     virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
