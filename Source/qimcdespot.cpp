@@ -510,7 +510,7 @@ Options:\n\
 	parseInput(sequences, inFiles, inData, inOrder, f0Bandwidth, fitFinite, flipData, verbose, prompt);
 
     ArrayXXd bounds = model->Bounds(tesla);
-    ArrayXd start = model->Start(tesla);
+    ArrayXd start = model->Default(tesla);
     if (tesla == FieldStrength::User) {
         ArrayXd temp;
         if (prompt) cout << "Enter lower bounds" << endl;

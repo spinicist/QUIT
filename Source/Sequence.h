@@ -28,7 +28,7 @@ using namespace Eigen;
 class SequenceBase {
 	protected:
 		double m_TR = 0.;
-		ArrayXd m_flip = ArrayXd::Zero(1);
+        ArrayXd m_flip;
 
 	public:
 		virtual ArrayXcd signal(const shared_ptr<Model> m, const VectorXd &p) const = 0;

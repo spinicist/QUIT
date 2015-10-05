@@ -66,7 +66,7 @@ ArrayXXd SCD::Bounds(const FieldStrength f) const {
 	return b;
 }
 
-ArrayXd SCD::Start(const FieldStrength f) const {
+ArrayXd SCD::Default(const FieldStrength f) const {
     ArrayXd p(5);
     p << 1.0, 1.0, 0.05, 0, 1.0;
     return p;
@@ -152,7 +152,7 @@ ArrayXXd MCD2::Bounds(const FieldStrength f) const {
 	return b;
 }
 
-ArrayXd MCD2::Start(const FieldStrength f) const {
+ArrayXd MCD2::Default(const FieldStrength f) const {
     ArrayXd p(nParameters());
     switch (f) {
     case FieldStrength::Three: p << 1.0, 0.4,  0.02, 1.0, 0.08, 0.18, 0.1, 0., 1.0; break;
@@ -238,7 +238,7 @@ ArrayXXd MCD2_NoEx::Bounds(const FieldStrength f) const {
     return b;
 }
 
-ArrayXd MCD2_NoEx::Start(const FieldStrength f) const {
+ArrayXd MCD2_NoEx::Default(const FieldStrength f) const {
     ArrayXd p(nParameters());
     switch (f) {
     case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.080, 0.1, 0., 1.0; break;
@@ -304,7 +304,7 @@ ArrayXXd MCD3::Bounds(const FieldStrength f) const {
 	return b;
 }
 
-ArrayXd MCD3::Start(const FieldStrength f) const {
+ArrayXd MCD3::Default(const FieldStrength f) const {
     ArrayXd p(nParameters());
     switch (f) {
     case FieldStrength::Three: p << 1.0, 0.40, 0.015, 1.0, 0.08, 4.0, 3.0, 0.25, 0.1, 0.1, 0., 1.0; break;
@@ -401,7 +401,7 @@ ArrayXXd MCD3_NoEx::Bounds(const FieldStrength f) const {
     return b;
 }
 
-ArrayXd MCD3_NoEx::Start(const FieldStrength f) const {
+ArrayXd MCD3_NoEx::Default(const FieldStrength f) const {
     ArrayXd p(nParameters());
     switch (f) {
     case FieldStrength::Three: p << 1.0, 0.45, 0.015, 1.0, 0.08, 4.0, 3.0, 0.1, 0.1, 0., 1.0; break;

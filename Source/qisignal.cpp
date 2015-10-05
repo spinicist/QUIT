@@ -49,7 +49,7 @@ public:
 	/** Standard class typedefs. */
 	typedef SignalsFilter                        Self;
 	typedef ImageToImageFilter<TImage, TCVImage> Superclass;
-	typedef itk::SmartPointer<Self>                   Pointer;
+    typedef itk::SmartPointer<Self>              Pointer;
 	typedef typename TImage::RegionType          RegionType;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
@@ -94,7 +94,7 @@ public:
 	}
 	void SetModel(shared_ptr<Model> m) {
 		m_model = m;
-		this->SetNumberOfRequiredInputs(m_model->nParameters());
+        this->SetNumberOfRequiredInputs(1);
 	}
 	void SetSigma(const double s) { m_sigma = s; }
 
@@ -120,7 +120,8 @@ protected:
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
 		for (size_t i = 0; i < m_model->nParameters(); i++) {
-			inIters[i] = itk::ImageRegionConstIterator<TImage>(this->GetInput(i), region);
+            if (this->GetInput(i))
+                inIters[i] = itk::ImageRegionConstIterator<TImage>(this->GetInput(i), region);
 		}
 		itk::ImageRegionConstIterator<TImage> maskIter;
 		if (this->GetMask()) {
@@ -130,9 +131,10 @@ protected:
 		while(!inIters[0].IsAtEnd()) {
 			typename TImage::ConstPointer m = this->GetMask();
 			if (!m || maskIter.Get()) {
-				VectorXd parameters(m_model->nParameters());
+                VectorXd parameters = m_model->Default();
 				for (size_t i = 0; i < inIters.size(); i++) {
-					parameters[i] = inIters[i].Get();
+                    if (this->GetInput(i))
+                        parameters[i] = inIters[i].Get();
 				}
 				VectorXcd allData = m_sequence->signal(m_model, parameters);
 				if (m_sigma != 0.0) {
@@ -151,7 +153,8 @@ protected:
 			if (this->GetMask())
 				++maskIter;
 			for (size_t i = 0; i < m_model->nParameters(); i++) {
-					++inIters[i];
+                if (this->GetInput(i))
+                    ++inIters[i];
 			}
 			++outputIter;
 		}
@@ -322,13 +325,17 @@ int main(int argc, char **argv)
 	vector<QI::ReadImageF::Pointer> pFiles(model->nParameters());
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
-		if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file: " << flush;
+        if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << flush;
 		string filename;
 		getline(cin, filename);
-		if (verbose) cout << "Opening " << filename << endl;
-		pFiles[i] = QI::ReadImageF::New();
-		pFiles[i]->SetFileName(filename);
-		calcSignal->SetInput(i, pFiles[i]->GetOutput());
+        if (filename != "") {
+            if (verbose) cout << "Opening " << filename << endl;
+            pFiles[i] = QI::ReadImageF::New();
+            pFiles[i]->SetFileName(filename);
+            calcSignal->SetInput(i, pFiles[i]->GetOutput());
+        } else {
+            if (verbose) cout << "Using default value: " << model->Default()[i] << endl;
+        }
 	}
 
 	/***************************************************************************
