@@ -88,15 +88,16 @@ fslmaths $SPGR -div HIFI_PD ${SPGR%%.nii*}_pd
 fslmaths $SSFP -div FM_PD ${SSFP%%.nii*}_pd
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
-# Note the -S1 option which specifies scaled data
+# Note that by default the program assumes data has already been scaled to have PD=1
+# If this is not the case add "-S" to the call
 
 qimcdespot -n -v -m $MASK --3 -f FM_f0.nii -b HIFI_B1.nii -S1 <<END_MCD
-SPGR
 ${SPGR%%.nii*}_pd.nii
+SPGR
 $SPGR_FLIP
 $SPGR_TR
-SSFP
 ${SSFP%%.nii*}_pd.nii
+SSFP
 $SSFP_FLIP
 $SSFP_PHASE
 $SSFP_TR
