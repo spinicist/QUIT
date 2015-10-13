@@ -140,6 +140,7 @@ void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::Gen
 	VariableLengthVector<TScalar> zero(this->GetResidOutput()->GetNumberOfComponentsPerPixel());
 	zero.Fill(0);
 	this->GetResidOutput()->FillBuffer(zero);
+    this->GetIterationsOutput()->FillBuffer(0);
 
 	//std::cout << "Starting" << std::endl;
 	const int sliceRangeMax = (requestedSize[SliceDim] + requestedIndex[SliceDim]);
