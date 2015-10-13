@@ -164,9 +164,13 @@ IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
 	QI::Read(cin, m_TR);
 
 	int NPE2;
-	if (prompt) cout << "Enter original number of slices (PE2):";
+    if (prompt) cout << "Enter number of spatial locations (remember +4): ";
 	QI::Read(cin, NPE2);
-	m_N = (NPE2 / 2) + 2;
+    if (NPE2 >= 64) {
+        m_N = NPE2 / 2;
+    } else {
+        m_N = NPE2;
+    }
 
 	if (prompt) cout << "Enter TIs (seconds): " << flush;
 	QI::ReadArray(cin, m_TI);
