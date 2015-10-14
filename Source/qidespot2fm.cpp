@@ -350,10 +350,10 @@ public:
                 f0_hi = f0_lo + 1. + f0_step;
             } else {
                 if (this->m_sequence->phases() == 2) {
-                    lower[2] = -0.3/this->m_sequence->TR();
-                    upper[2] = 0.3/this->m_sequence->TR();
-                    f0_lo = -(2./15.) / this->m_sequence->TR();
-                    f0_step = 4./15.;
+                    lower[2] = -0.26/this->m_sequence->TR();
+                    upper[2] = 0.26/this->m_sequence->TR();
+                    f0_lo = -(1./15.) / this->m_sequence->TR();
+                    f0_step = 2./15.;
                     f0_hi =  f0_lo + f0_step + 1.;
                 } else {
                     lower[2] = -0.6/this->m_sequence->TR();
