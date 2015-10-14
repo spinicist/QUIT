@@ -337,22 +337,31 @@ public:
             optimizer->SetCostFunction(cost.GetPointer());
 
             TOptimizer::BoundSelectionType select(3);
+            select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
             TOptimizer::BoundValueType lower(3), upper(3);
+            lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0;
+            upper[0] = 0;     upper[1] = T1;
             double f0_lo, f0_hi, f0_step;
             if (this->m_sequence->isSymmetric()) {
-                select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
-                lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = 0.001;
-                upper[0] = 0; upper[1] = T1; upper[2] = 0.6/this->m_sequence->TR(); // Allow for a bit of fuzz on upper boundary
+                lower[2] = 0.001;
+                upper[2] = 0.6/this->m_sequence->TR(); // Allow for a bit of fuzz on upper boundary
                 f0_lo = (2./15.) / this->m_sequence->TR();
                 f0_step = 0.4 / this->m_sequence->TR();
                 f0_hi = f0_lo + 1. + f0_step;
             } else {
-                select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
-                lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0; lower[2] = -0.5/this->m_sequence->TR();
-                upper[0] = 0; upper[1] = T1; upper[2] = 0.5/this->m_sequence->TR();
-                f0_lo = -(0.4 / this->m_sequence->TR());
-                f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
-                f0_step = (4./15.) / this->m_sequence->TR(); // 2/3 * 0.4
+                if (this->m_sequence->phases() == 2) {
+                    lower[2] = -0.3/this->m_sequence->TR();
+                    upper[2] = 0.3/this->m_sequence->TR();
+                    f0_lo = -(2./15.) / this->m_sequence->TR();
+                    f0_step = 4./15.;
+                    f0_hi =  f0_lo + f0_step + 1.;
+                } else {
+                    lower[2] = -0.6/this->m_sequence->TR();
+                    upper[2] = 0.6/this->m_sequence->TR();
+                    f0_lo = -(0.4 / this->m_sequence->TR());
+                    f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
+                    f0_step = (4./15.) / this->m_sequence->TR(); // 2/3 * 0.4
+                }
             }
             optimizer->SetLowerBound(lower);
             optimizer->SetUpperBound(upper);
