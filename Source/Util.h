@@ -31,6 +31,7 @@
 namespace QI {
 
 const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
+std::string StripExt(const std::string &filename);
 time_t printStartTime();
 time_t printElapsedTime(const time_t &start);
 void printElapsedClock(const clock_t &clockStart, const int voxCount);

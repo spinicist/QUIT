@@ -39,6 +39,19 @@ const std::string &OutExt() {
 	return ext;
 }
 
+std::string StripExt(const std::string &filename) {
+    std::size_t dot = filename.find_last_of(".");
+    if (dot != std::string::npos) {
+        /* Deal with .nii.gz files */
+        if (filename.substr(dot) == "gz") {
+            dot = filename.find_last_of(".", dot);
+        }
+        return filename.substr(0, dot);
+    } else {
+        return filename;
+    }
+}
+
 time_t printStartTime() {
 	time_t theTime = time(NULL);
 	char timeStr[256];

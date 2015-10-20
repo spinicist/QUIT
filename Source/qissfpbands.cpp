@@ -472,7 +472,7 @@ int main(int argc, char **argv) {
 	auto outImage = QI::VectorToTimeseriesXF::New();
 	auto outFile = QI::WriteTimeseriesXF::New();
 	if (prefix == "")
-		prefix = fname.substr(0, fname.find(".nii"));
+        prefix = QI::StripExt(fname);
 	string outname = prefix;
 	switch (pass1->GetSave()) {
 		case itk::FirstPassFilter::Save::LR: outname.append("_lreg"); break;
