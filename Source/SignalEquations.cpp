@@ -263,7 +263,7 @@ Array3cd MP3_RAGE(const Array3d &alpha, cdbl TR, const int N, const Array4d &TD,
 
     Array3d Mm;
 
-    const double denominator = (1 + eta*B[0]*D[0]*B[1]*D[1]*B[2]*D[2]*D[3]);
+    const double denominator = (1 + eta*B[0]*D[0]*B[1]*D[1]*B[2]*D[2]*B[3]);
     Mm[0] = (A[0]-eta*B[0]*(A[3]+B[3]*(C[2]+D[2]*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*C[0])))))) / denominator;
     Mm[1] = (A[1]+B[1]*(C[0]+D[0]*(A[0]-eta*B[0]*(A[3]+B[3]*(C[2]+D[2]*(A[2]+B[2]*C[1])))))) / denominator;
     Mm[2] = (A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*(C[0]+D[0]*(A[0]-eta*B[0]*(A[3]+B[3]*C[2])))))) / denominator;
