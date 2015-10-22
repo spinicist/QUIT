@@ -112,6 +112,19 @@ class MPRAGE : public SteadyState {
 		void write(ostream &os) const override;
 		string name() const override { return "MPRAGE"; }
 };
+class MP2RAGE : public SteadyState {
+    public:
+        Array3d m_TD;
+        int m_N;
+        MP2RAGE() : SteadyState() {}
+        MP2RAGE(const Array3d &TD, const double TR, const int N, const Array2d flip);
+        MP2RAGE(const bool prompt);
+        size_t size() const override { return 3; }
+        ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override { throw(runtime_error(string(__PRETTY_FUNCTION__) + " unimplemented")); }
+        ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
+        void write(ostream &os) const override;
+        string name() const override { return "MP3RAGE"; }
+};
 class MP3RAGE : public SteadyState {
     public:
         Array4d m_TD;

@@ -224,7 +224,7 @@ VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl
     return result;
 }
 
-VectorXcd MP_RAGE(cdbl flip, cdbl TR, const int N, carrd &TI, carrd &TRseg,
+VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int N, carrd &TI, carrd &TRseg,
                   cdbl PD, cdbl T1, cdbl B1) {
 	const double M0 = PD;
 	const double T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
@@ -248,7 +248,36 @@ VectorXcd MP_RAGE(cdbl flip, cdbl TR, const int N, carrd &TI, carrd &TRseg,
 	return M;
 }
 
-Array3cd MP3_RAGE(const Array3d &alpha, cdbl TR, const int N, const Array4d &TD,
+Array2cd One_MP2RAGE(const Array2d &alpha, cdbl TR, const int N, const Array3d &TD,
+                  cdbl M0, cdbl T1, cdbl B1, cdbl eta) {
+    const double R1 = 1. / T1;
+    const Array2d R1s = R1 - log(cos(B1 * alpha))/TR;
+    const Array2d M0s = M0 * (1. - exp(-TR*R1)) / (1. - exp(-TR*R1s));
+    const double tau = N * TR;
+
+    const Array3d B = exp(-TD*R1);
+    const Array3d A = M0*(1. - B);
+
+    const Array2d D = exp(-tau*R1s);
+    const Array2d C = M0s*(1. - D);
+
+    Array2d Mm;
+    const double denominator = (1 + eta*B[0]*D[0]*B[1]*D[1]*B[2]);
+    Mm[0] = (A[0]-eta*B[0]*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*C[0])))) / denominator;
+    Mm[1] = (A[1]+B[1]*(C[0]+D[0]*(A[0]-eta*B[0]*(A[2]+B[2]*C[1])))) / denominator;
+    //Mss = -eta*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*(C[0]+D[0]*A[0])))) / denominator;
+
+    //cout << "denom " << denominator << " Mm " << Mm.transpose() << endl;
+
+    Array2cd Me = Array2cd::Zero();
+    Me.real() = Mm * sin(B1 * alpha);
+    /*cout << "alpha " << alpha.transpose() << " B1 " << B1 << endl;
+    cout << "sin(B1 * alpha) " << sin(B1 * alpha).transpose() << endl;
+    cout << "Me " << Me.transpose() << endl;*/
+    return Me;
+}
+
+Array3cd One_MP3RAGE(const Array3d &alpha, cdbl TR, const int N, const Array4d &TD,
                   cdbl M0, cdbl T1, cdbl B1, cdbl eta) {
     const double R1 = 1. / T1;
     const Array3d R1s = R1 - log(cos(B1 * alpha))/TR;

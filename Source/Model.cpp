@@ -93,7 +93,7 @@ VectorXcd SCD::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const 
 }
 
 VectorXcd SCD::MPRAGE(cvecd &p, cdbl a, cdbl TR, const int N, cvecd &TI, carrd &TRseg) const {
-    return scale(MP_RAGE(a, TR, N, TI, TRseg, p[0], p[1], p[4]));
+    return scale(One_MPRAGE(a, TR, N, TI, TRseg, p[0], p[1], p[4]));
 }
 
 VectorXcd SCD::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const {

@@ -189,6 +189,48 @@ void MPRAGE::write(ostream &os) const {
     os << "TRseg: " << m_TRseg.transpose() << endl;
 }
 
+MP2RAGE::MP2RAGE(const Array3d &TD, const double TR, const int N, const Array2d flip) :
+    SteadyState(), m_TD(TD), m_N(N) {
+    m_TR = TR;
+    m_flip = flip;
+}
+
+MP2RAGE::MP2RAGE(const bool prompt) : SteadyState() {
+    if (prompt) cout << "Enter read-out flip-angles (degrees): " << flush;
+    QI::ReadArray(cin, m_flip);
+    if (m_flip.size() != 2) {
+        throw(runtime_error("Must have 2 flip-angles for MP3RAGE"));
+    }
+    m_flip *= M_PI / 180.;
+    if (prompt) cout << "Enter read-out TR (seconds): " << flush;
+    QI::Read(cin, m_TR);
+    if (prompt) cout << "Enter segment size: " << flush;
+    QI::Read(cin, m_N);
+    if (prompt) cout << "Enter inversion times (seconds): " << flush;
+    ArrayXd m_TI;
+    QI::ReadArray(cin, m_TI);
+    if (m_TI.size() != 2) {
+        throw(runtime_error("Must specify 2 TI times for MP3RAGE"));
+    }
+    // Assume centric for now
+    m_TD[0] = m_TI[0];
+    m_TD[1] = m_TI[1] - m_TD[0] - m_N*m_TR;
+    if (prompt) cout << "Enter overall TR (seconds): " << flush;
+    float TRseg;
+    QI::Read(cin, TRseg);
+    m_TD[2] = TRseg - m_TD[1] - m_N*m_TR;
+}
+
+ArrayXcd MP2RAGE::signal(const double M0, const double T1, const double B1, const double eta) const {
+    return One_MP2RAGE(m_flip, m_TR, m_N, m_TD, M0, T1, B1, eta);
+}
+
+void MP2RAGE::write(ostream &os) const {
+    os << name() << endl;
+    os << "TR: " << m_TR << "\tN: " << m_N << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
+    os << "TD: " << m_TD.transpose() << "\tTS: " << (m_TD.sum() + 2*m_N*m_TR) << endl;
+}
+
 MP3RAGE::MP3RAGE(const Array4d &TD, const double TR, const int N, const Array3d flip) :
     SteadyState(), m_TD(TD), m_N(N) {
     m_TR = TR;
@@ -223,7 +265,7 @@ MP3RAGE::MP3RAGE(const bool prompt) : SteadyState() {
 }
 
 ArrayXcd MP3RAGE::signal(const double M0, const double T1, const double B1, const double eta) const {
-    return MP3_RAGE(m_flip, m_TR, m_N, m_TD, M0, T1, B1, eta);
+    return One_MP3RAGE(m_flip, m_TR, m_N, m_TD, M0, T1, B1, eta);
 }
 
 void MP3RAGE::write(ostream &os) const {

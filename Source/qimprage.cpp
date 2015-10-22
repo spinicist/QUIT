@@ -65,81 +65,91 @@ public:
     }
 };
 
-class MPRAGEAlgo : public Algorithm<complex<double>> {
+namespace itk {
+
+class MPRAGELookUpFilter : public ImageToImageFilter<QI::ImageF, QI::ImageF>
+{
+public:
+
 protected:
-    std::vector<Array3d> m_pars, m_cons;
-    bool m_do_lookup = false;
+    std::vector<float> m_T1, m_con;
 
 public:
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return 3; }
-    size_t dataSize() const override { return 3; }
-    void setDoLookup(const bool l) {
-        m_do_lookup = l;
-        if (m_do_lookup) {
-            MP3RAGE sequence(true);
-            MPRAGEFunctor<double> con;
-            m_pars.clear();
-            m_cons.clear();
-            for (float T1 = 0.5; T1 < 1.2; T1 += 0.005) {
-                for (float B1 = 0.75; B1 < 1.25; B1 += 0.05) {
-                    for (float eta = 0.95; eta < 1.05; eta += 0.01) {
-                        Array3d tp; tp << T1, B1, eta;
-                        m_pars.push_back(tp);
-                        Array3cd sig = sequence.signal(1., T1, B1, eta);
-                        Array3d tc;
-                        tc[0] = con(sig[0], sig[1]);
-                        tc[1] = con(sig[0], sig[2]);
-                        tc[2] = con(sig[1], sig[2]);
-                        m_cons.push_back(tc);
-                        //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose() << endl;
-                    }
-                }
-            }
-            cout << "Lookup table has " << m_pars.size() << " entries" << endl;
+    /** Standard class typedefs. */
+    typedef QI::ImageF                         TImage;
+    typedef MPRAGELookUpFilter                 Self;
+    typedef ImageToImageFilter<TImage, TImage> Superclass;
+    typedef SmartPointer<Self>                 Pointer;
+    typedef typename TImage::RegionType        RegionType;
+
+    itkNewMacro(Self); /** Method for creation through the object factory. */
+    itkTypeMacro(MPRAGELookUpFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
+
+    void SetInput(const TImage *img) override {
+        this->SetNthInput(0, const_cast<TImage*>(img));
+    }
+
+protected:
+    MPRAGELookUpFilter() {
+        this->SetNumberOfRequiredInputs(1);
+        this->SetNumberOfRequiredOutputs(1);
+        this->SetNthOutput(0, this->MakeOutput(0));
+        MP2RAGE sequence(true);
+        MPRAGEFunctor<double> con;
+        m_T1.clear();
+        m_con.clear();
+        for (float T1 = 0.5; T1 < 4.3; T1 += 0.001) {
+            Array3d tp; tp << T1, 1.0, 1.0; // Fix B1 and eta
+            Array2cd sig = sequence.signal(1., T1, 1.0, 1.0);
+            double c = con(sig[0], sig[1]);
+            m_T1.push_back(T1);
+            m_con.push_back(c);
+            //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose() << endl;
+        }
+        cout << "Lookup table has " << m_T1.size() << " entries" << endl;
+    }
+    ~MPRAGELookUpFilter() {}
+
+    DataObject::Pointer MakeOutput(unsigned int idx) {
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        if (idx == 0) {
+            DataObject::Pointer output = (TImage::New()).GetPointer();
+            return output.GetPointer();
+        } else {
+            std::cerr << "No output " << idx << std::endl;
+            return NULL;
         }
     }
 
-    virtual TArray defaultConsts() override {
-        // B1
-        TArray def = TArray::Ones(0);
-        return def;
-    }
+    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
+        ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
 
-    MPRAGEAlgo() {
-    }
-
-    virtual void apply(const TInput &data_inputs, const TArray &const_inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override {
-        double best_distance = numeric_limits<double>::max();
-        int best_index = 0;
-
-        MPRAGEFunctor<double> con;
-        Array3d in_cons;
-        in_cons[0] = con(data_inputs[0], data_inputs[1]);
-        in_cons[1] = con(data_inputs[0], data_inputs[2]);
-        in_cons[2] = con(data_inputs[1], data_inputs[2]);
-        outputs.head(3) = in_cons;
-
-        if (m_do_lookup) {
-            for (int i = 0; i < m_pars.size(); i++) {
-                double distance = (m_cons[i] - in_cons).matrix().norm();
+        while(!inputIter.IsAtEnd()) {
+            const double ival = inputIter.Get();
+            double best_distance = numeric_limits<double>::max();
+            int best_index = 0;
+            for (int i = 0; i < m_T1.size(); i++) {
+                double distance = fabs(m_con[i] - ival);
                 if (distance < best_distance) {
                     best_distance = distance;
                     best_index = i;
                 }
             }
-            outputs.tail(3) = m_pars[best_index];
-            resids = in_cons - m_cons[best_index];
-        } else {
-            outputs.tail(3).setConstant(0);
-            resids.setConstant(0);
+            //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose() << endl;
+            outputIter.Set(1./m_T1[best_index]);
+            ++inputIter;
+            ++outputIter;
         }
-        //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose() << endl;
-        its = 1;
     }
+
+private:
+    MPRAGELookUpFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 };
+
+} // End namespace itk
 
 int main(int argc, char **argv) {
     int indexptr = 0, c;
@@ -212,24 +222,15 @@ int main(int argc, char **argv) {
             vol_j->Update();
             MPContrastFilter->SetInput2(vol_j->GetOutput());
             MPContrastFilter->Update();
-            QI::writeResult(MPContrastFilter->GetOutput(), outName + "MPRAGE_TI" + to_string(i+1) + "_TI" + to_string(j+1) + QI::OutExt());
+            QI::writeResult(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
         }
     }
 
     if (do_lookup) {
-        auto apply = itk::ApplyAlgorithmFilter<MPRAGEAlgo, complex<float>>::New();
-        auto process = make_shared<MPRAGEAlgo>();
-        if (do_lookup && verbose) cout << "Generating lookup table" << endl;
-        apply->SetAlgorithm(process);
-        auto vectorFilter = QI::TimeseriesToVectorXF::New();
-        vectorFilter->SetInput(inFile->GetOutput());
-        apply->SetInput(0, vectorFilter->GetOutput());
-        apply->SetMask(mask);
+        auto apply = itk::MPRAGELookUpFilter::New();
+        apply->SetInput(MPContrastFilter->GetOutput());
         apply->Update();
-        QI::writeResult(apply->GetOutput(3), outName + "MPRAGE_T1" + QI::OutExt());
-        QI::writeResult(apply->GetOutput(4), outName + "MPRAGE_B1" + QI::OutExt());
-        QI::writeResult(apply->GetOutput(5), outName + "MPRAGE_eta" + QI::OutExt());
-        QI::writeResiduals(apply->GetResidOutput(), outName + "MP3_", true);
+        QI::writeResult(apply->GetOutput(0), outName + "_R1" + QI::OutExt());
     }
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
