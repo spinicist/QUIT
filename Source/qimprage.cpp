@@ -50,12 +50,12 @@ static struct option long_options[] = {
 };
 static const char *short_options = "vm:o:xqT:h";
 
-template<class T> class MPRageContrast {
+template<class T> class MPRAGEFunctor {
 public:
-    MPRageContrast() {}
-    ~MPRageContrast() {}
-    bool operator!=(const MPRageContrast &) const { return false; }
-    bool operator==(const MPRageContrast &other) const { return !(*this != other); }
+    MPRAGEFunctor() {}
+    ~MPRAGEFunctor() {}
+    bool operator!=(const MPRAGEFunctor &) const { return false; }
+    bool operator==(const MPRAGEFunctor &other) const { return !(*this != other); }
 
     inline T operator()(const complex<T> &ti1, const complex<T> &ti2) const
     {
@@ -73,18 +73,18 @@ protected:
 public:
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return 6; }
+    size_t numOutputs() const override { return 3; }
     size_t dataSize() const override { return 3; }
     void setDoLookup(const bool l) {
         m_do_lookup = l;
         if (m_do_lookup) {
             MP3RAGE sequence(true);
-            MPRageContrast<double> con;
+            MPRAGEFunctor<double> con;
             m_pars.clear();
             m_cons.clear();
-            for (float T1 = 0.5; T1 < 2.5; T1 += 0.01) {
+            for (float T1 = 0.5; T1 < 1.2; T1 += 0.005) {
                 for (float B1 = 0.75; B1 < 1.25; B1 += 0.05) {
-                    for (float eta = 0.5; eta < 1.5; eta += 0.05) {
+                    for (float eta = 0.95; eta < 1.05; eta += 0.01) {
                         Array3d tp; tp << T1, B1, eta;
                         m_pars.push_back(tp);
                         Array3cd sig = sequence.signal(1., T1, B1, eta);
@@ -115,7 +115,7 @@ public:
         double best_distance = numeric_limits<double>::max();
         int best_index = 0;
 
-        MPRageContrast<double> con;
+        MPRAGEFunctor<double> con;
         Array3d in_cons;
         in_cons[0] = con(data_inputs[0], data_inputs[1]);
         in_cons[1] = con(data_inputs[0], data_inputs[2]);
@@ -143,7 +143,7 @@ public:
 
 int main(int argc, char **argv) {
     int indexptr = 0, c;
-    string outPrefix = "";
+    string outName = "";
     bool verbose = false, complex_output = false, do_lookup = false;
     QI::ImageF::Pointer mask = ITK_NULLPTR;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -158,8 +158,8 @@ int main(int argc, char **argv) {
                 mask->DisconnectPipeline();
             } break;
             case 'o':
-                outPrefix = optarg;
-                cout << "Output prefix will be: " << outPrefix << endl;
+                outName = optarg;
+                cout << "Output prefix will be: " << outName << endl;
                 break;
             case 'x': complex_output = true; break;
             case 'q': do_lookup = true; break;
@@ -178,14 +178,16 @@ int main(int argc, char **argv) {
         cout << usage << endl;
         return EXIT_FAILURE;
     }
-    string fname(argv[optind]);
-    if (verbose) cout << "Opening input file " << fname << endl;
+    string inName(argv[optind]);
+    if (verbose) cout << "Opening input file " << inName << endl;
+    if (outName == "")
+        outName = QI::StripExt(inName) + "_";
     auto inFile = QI::ReadTimeseriesXF::New();
-    inFile->SetFileName(fname);
+    inFile->SetFileName(inName);
     inFile->Update();
     if (verbose) cout << "Processing" << endl;
 
-    typedef itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MPRageContrast<float>> MPRageContrastFilterType;
+    typedef itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MPRAGEFunctor<float>> MPRageContrastFilterType;
     int nti = inFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3];
 
     auto MPContrastFilter = MPRageContrastFilterType::New();
@@ -210,7 +212,7 @@ int main(int argc, char **argv) {
             vol_j->Update();
             MPContrastFilter->SetInput2(vol_j->GetOutput());
             MPContrastFilter->Update();
-            QI::writeResult(MPContrastFilter->GetOutput(), outPrefix + "MP3_C" + to_string(i) + to_string(j) + QI::OutExt());
+            QI::writeResult(MPContrastFilter->GetOutput(), outName + "MPRAGE_TI" + to_string(i+1) + "_TI" + to_string(j+1) + QI::OutExt());
         }
     }
 
@@ -218,20 +220,16 @@ int main(int argc, char **argv) {
         auto apply = itk::ApplyAlgorithmFilter<MPRAGEAlgo, complex<float>>::New();
         auto process = make_shared<MPRAGEAlgo>();
         if (do_lookup && verbose) cout << "Generating lookup table" << endl;
-        process->setDoLookup(do_lookup);
         apply->SetAlgorithm(process);
         auto vectorFilter = QI::TimeseriesToVectorXF::New();
         vectorFilter->SetInput(inFile->GetOutput());
         apply->SetInput(0, vectorFilter->GetOutput());
         apply->SetMask(mask);
         apply->Update();
-        QI::writeResult(apply->GetOutput(0), outPrefix + "MP3_C12" + QI::OutExt());
-        QI::writeResult(apply->GetOutput(1), outPrefix + "MP3_C13" + QI::OutExt());
-        QI::writeResult(apply->GetOutput(2), outPrefix + "MP3_C23" + QI::OutExt());
-        QI::writeResult(apply->GetOutput(3), outPrefix + "MP3_T1" + QI::OutExt());
-        QI::writeResult(apply->GetOutput(4), outPrefix + "MP3_B1" + QI::OutExt());
-        QI::writeResult(apply->GetOutput(5), outPrefix + "MP3_eta" + QI::OutExt());
-        QI::writeResiduals(apply->GetResidOutput(), outPrefix + "MP3_", true);
+        QI::writeResult(apply->GetOutput(3), outName + "MPRAGE_T1" + QI::OutExt());
+        QI::writeResult(apply->GetOutput(4), outName + "MPRAGE_B1" + QI::OutExt());
+        QI::writeResult(apply->GetOutput(5), outName + "MPRAGE_eta" + QI::OutExt());
+        QI::writeResiduals(apply->GetResidOutput(), outName + "MP3_", true);
     }
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
