@@ -98,7 +98,7 @@ protected:
         MPRAGEFunctor<double> con;
         m_T1.clear();
         m_con.clear();
-        for (float T1 = 0.5; T1 < 4.3; T1 += 0.001) {
+        for (float T1 = 0.25; T1 < 4.3; T1 += 0.001) {
             Array3d tp; tp << T1, 1.0, 1.0; // Fix B1 and eta
             Array2cd sig = sequence.signal(1., T1, 1.0, 1.0);
             double c = con(sig[0], sig[1]);
@@ -130,7 +130,7 @@ protected:
             const double ival = inputIter.Get();
             double best_distance = numeric_limits<double>::max();
             int best_index = 0;
-            for (int i = 0; i < m_T1.size(); i++) {
+            for (int i = m_T1.size(); i > 0; i--) {
                 double distance = fabs(m_con[i] - ival);
                 if (distance < best_distance) {
                     best_distance = distance;
@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
     string inName(argv[optind]);
     if (verbose) cout << "Opening input file " << inName << endl;
     if (outName == "")
-        outName = QI::StripExt(inName) + "_";
+        outName = QI::StripExt(inName);
     auto inFile = QI::ReadTimeseriesXF::New();
     inFile->SetFileName(inName);
     inFile->Update();
@@ -226,12 +226,10 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (do_lookup) {
-        auto apply = itk::MPRAGELookUpFilter::New();
-        apply->SetInput(MPContrastFilter->GetOutput());
-        apply->Update();
-        QI::writeResult(apply->GetOutput(0), outName + "_R1" + QI::OutExt());
-    }
+    auto apply = itk::MPRAGELookUpFilter::New();
+    apply->SetInput(MPContrastFilter->GetOutput());
+    apply->Update();
+    QI::writeResult(apply->GetOutput(0), outName + "_R1" + QI::OutExt());
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
