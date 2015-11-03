@@ -30,9 +30,10 @@ int main(int argc, char **argv) {
 	overwritten.\n\
 	\n\
 	Transform Options:\n\
-		--rotX N : Rotate about the X axis by N degrees\n\
-		--rotY N : Rotate about the Y axis by N degrees\n\
-		--rotZ N : Rotate about the Z axis by N degrees\n\
+        --scale S : Scale all axes by a factor of S\n\
+        --rotX N  : Rotate about the X axis by N degrees\n\
+        --rotY N  : Rotate about the Y axis by N degrees\n\
+        --rotZ N  : Rotate about the Z axis by N degrees\n\
 	\n\
 	Other Options:\n\
 		--help, -h    : Print this message\n\
@@ -44,6 +45,7 @@ int main(int argc, char **argv) {
 	{
 		{"help", no_argument, 0, 'h'},
 		{"verbose", no_argument, 0, 'v'},
+        {"scale", required_argument, 0, 'S'},
 		{"rotX", required_argument, 0, 'X'},
 		{"rotY", required_argument, 0, 'Y'},
 		{"rotZ", required_argument, 0, 'Z'},
@@ -59,7 +61,7 @@ int main(int argc, char **argv) {
 			case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
-			case 'X': case 'Y': case 'Z':
+            case 'S': case 'X': case 'Y': case 'Z':
 			case 0: break; // A flag
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
@@ -98,12 +100,18 @@ int main(int argc, char **argv) {
 			direction[i][j] = fullDir[i][j];
 		}
 		origin[i] = fullOrigin[i];
+        spacing[i] = fullSpacing[i];
 	}
 	optind = 1;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &index_ptr)) != -1) {
 		switch (c) {
 			// Already handled these
 			case 'v': case 'h': case 0: break;
+            case 'S': {
+                const double fac = atof(optarg);
+                if (verbose) cout << "Scaling by factor " << fac << endl;
+                spacing = spacing * fac;
+            } break;
 			case 'X': {
 				if (verbose) cout << "Rotating image by " << string(optarg) << " around X axis." << endl;
 				const double radians = atof(optarg) * vnl_math::pi / 180.0;
@@ -133,11 +141,14 @@ int main(int argc, char **argv) {
 			fullDir[i][j] = direction[i][j];
 		}
 		fullOrigin[i] = origin[i];
+        fullSpacing[i] = spacing[i];
 	}
 	changeInfo->SetOutputDirection(fullDir);
 	changeInfo->SetOutputOrigin(fullOrigin);
+    changeInfo->SetOutputSpacing(fullSpacing);
 	changeInfo->ChangeDirectionOn();
 	changeInfo->ChangeOriginOn();
+    changeInfo->ChangeSpacingOn();
 	changeInfo->SetInput(image);
 	writer->SetInput(changeInfo->GetOutput());
 	writer->Update();
