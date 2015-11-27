@@ -52,40 +52,6 @@ std::string StripExt(const std::string &filename) {
     }
 }
 
-time_t printStartTime() {
-	time_t theTime = time(NULL);
-	char timeStr[256];
-	strftime(timeStr, 256, "%H:%M:%S", localtime(&theTime));
-	cout << "Started at " << timeStr << endl;
-	return theTime;
-}
-
-time_t printElapsedTime(const time_t &startTime) {
-    time_t theTime = time(NULL);
-    char timeStr[256];
-    strftime(timeStr, 512, "%H:%M:%S", localtime(&theTime));
-    double elapsed = difftime(theTime, startTime);
-	cout << "Finished at " << timeStr << ". Elapsed time was " << elapsed << " s." << endl;
-	return theTime;
-}
-
-void printElapsedClock(const clock_t &startClock, const int voxCount) {
-	clock_t endClock = clock();
-	float totalMilliseconds = (endClock - startClock) * (1.e3 / CLOCKS_PER_SEC);
-	cout << "Total CPU time: " << totalMilliseconds << " ms" << endl;
-	cout << "Average voxel CPU time: " << totalMilliseconds / voxCount << " ms" << endl;
-}
-
-void printLoopTime(const clock_t &loopStart, const int voxCount) {
-	clock_t loopEnd = clock();
-	if (voxCount > 0) {
-		cout << voxCount << " unmasked voxels, CPU time per voxel was "
-		     << ((loopEnd - loopStart) / ((float)voxCount * CLOCKS_PER_SEC)) << " s" << endl;
-	} else {
-		cout << " no voxels." << endl;
-	}
-}
-
 mt19937_64::result_type RandomSeed() {
 	static random_device rd;
 	static mt19937_64 rng;

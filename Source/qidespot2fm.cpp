@@ -25,6 +25,7 @@
 
 #include "itkAmoebaOptimizer.h"
 #include "itkLBFGSBOptimizer.h"
+#include "itkTimeProbe.h"
 
 using namespace std;
 using namespace Eigen;
@@ -538,15 +539,16 @@ int run_main(int argc, char **argv) {
     if (mask) {
         apply->SetMask(mask->GetOutput());
     }
-    time_t startTime;
+    itk::TimeProbe clock;
     if (verbose) {
-        startTime = QI::printStartTime();
         auto monitor = QI::SliceMonitor<TApply>::New();
         apply->AddObserver(itk::IterationEvent(), monitor);
+        clock.Start();
     }
     apply->Update();
     if (verbose) {
-        QI::printElapsedTime(startTime);
+        clock.Stop();
+        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
         cout << "Writing output files. Prefix is " << outPrefix << endl;
     }
     outPrefix = outPrefix + "FM_";

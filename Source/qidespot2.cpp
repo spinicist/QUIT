@@ -20,6 +20,7 @@
 #include "Model.h"
 #include "Sequence.h"
 #include "Util.h"
+#include "itkTimeProbe.h"
 
 using namespace std;
 using namespace Eigen;
@@ -344,16 +345,18 @@ int main(int argc, char **argv) {
 	if (mask)
 		DESPOT2->SetMask(mask->GetOutput());
 
-	time_t startTime;
+    itk::TimeProbe clock;
 	if (verbose) {
 		cout << "DESPOT2 setup complete. Processing." << endl;
-		startTime = QI::printStartTime();
 		auto monitor = QI::GenericMonitor::New();
 		DESPOT2->AddObserver(itk::ProgressEvent(), monitor);
+        clock.Start();
 	}
 	DESPOT2->Update();
 	if (verbose) {
-		QI::printElapsedTime(startTime);
+        clock.Stop();
+        clock.Stop();
+        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
 		cout << "Writing results." << endl;
 	}
 	outPrefix = outPrefix + "D2_";

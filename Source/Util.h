@@ -19,7 +19,6 @@
 #include <random>
 #include <functional>
 #include <mutex>
-#include <time.h>
 
 #include <Eigen/Dense>
 
@@ -32,10 +31,6 @@ namespace QI {
 
 const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
 std::string StripExt(const std::string &filename);
-time_t printStartTime();
-time_t printElapsedTime(const time_t &start);
-void printElapsedClock(const clock_t &clockStart, const int voxCount);
-void printLoopTime(const clock_t &loopStart, const int voxCount);
 std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 
 void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);

@@ -20,6 +20,7 @@
 
 #include "itkParticleSwarmOptimizer.h"
 #include "itkLBFGSBOptimizer.h"
+#include "itkTimeProbe.h"
 
 #include "Util.h"
 #include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
@@ -589,15 +590,16 @@ Options:\n\
         boundsFile.close();
     }
 
-	time_t startTime;
+    itk::TimeProbe clock;
 	if (verbose) {
-		startTime = QI::printStartTime();
 		auto monitor = QI::SliceMonitor<TMCDFilter>::New();
 		applySlices->AddObserver(itk::IterationEvent(), monitor);
+        clock.Start();
 	}
 	applySlices->Update();
 	if (verbose) {
-		QI::printElapsedTime(startTime);
+        clock.Stop();
+        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
 		cout << "Writing results files." << endl;
 	}
 	for (int i = 0; i < model->nParameters(); i++) {

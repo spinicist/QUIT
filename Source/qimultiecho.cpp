@@ -22,6 +22,7 @@
 #include "Util.h"
 #include "Sequence.h"
 #include "Filters/ApplyAlgorithmFilter.h"
+#include "itkTimeProbe.h"
 
 using namespace std;
 using namespace Eigen;
@@ -266,15 +267,16 @@ int main(int argc, char **argv) {
 	if (mask)
 		apply->SetMask(mask->GetOutput());
 
-	time_t startTime;
+    itk::TimeProbe clock;
 	if (verbose) {
-		startTime = QI::printStartTime();
 		auto monitor = QI::GenericMonitor::New();
 		apply->AddObserver(itk::ProgressEvent(), monitor);
+        clock.Start();
 	}
 	apply->Update();
 	if (verbose) {
-		QI::printElapsedTime(startTime);
+        clock.Stop();
+        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
 		cout << "Writing results." << endl;
 	}
 	outPrefix = outPrefix + "ME_";

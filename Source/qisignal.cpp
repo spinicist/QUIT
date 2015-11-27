@@ -21,6 +21,7 @@
 #include "itkVectorImage.h"
 #include "itkImageToImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
+#include "itkTimeProbe.h"
 
 #include "Filters/VectorToImageFilter.h"
 
@@ -345,8 +346,14 @@ int main(int argc, char **argv)
 	vector<string> filenames;
 	parseInput(sequences, filenames);
 	for (size_t i = 0; i < sequences.size(); i++) {
+        itk::TimeProbe clock;
         if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
 		calcSignal->SetSequence(sequences[i]);
+        if (verbose) cout << "Starting at: " << clock.GetInstantValue() << endl;
+        clock.Start();
+        calcSignal->Update();
+        clock.Stop();
+        if (verbose) cout << "Time elapsed: " << clock.GetTotal() << endl;
         if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
 		auto VecTo4D = QI::VectorToTimeseriesXF::New();
 		VecTo4D->SetInput(calcSignal->GetOutput());
