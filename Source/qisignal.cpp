@@ -243,6 +243,8 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 			cs.push_back(make_shared<SPGRFinite>(prompt));
 		} else if (type == "SSFP") {
 			cs.push_back(make_shared<SSFPSimple>(prompt));
+        } else if (type == "SSFP_ECHO") {
+            cs.push_back(make_shared<SSFPSimple>(prompt));
 		} else if (type == "SSFPFinite") {
 			cs.push_back(make_shared<SSFPFinite>(prompt));
 		} else if (type == "SSFPEllipse") {
@@ -349,7 +351,6 @@ int main(int argc, char **argv)
         itk::TimeProbe clock;
         if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
 		calcSignal->SetSequence(sequences[i]);
-        if (verbose) cout << "Starting at: " << clock.GetInstantValue() << endl;
         clock.Start();
         calcSignal->Update();
         clock.Stop();

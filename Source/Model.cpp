@@ -110,6 +110,16 @@ VectorXcd SCD::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
     return scale(s);
 }
 
+VectorXcd SCD::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    ArrayXcd s(a.rows() * phi.rows());
+    ArrayXcd::Index start = 0;
+    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+        s.segment(start, a.rows()) = One_SSFP_Echo(a, TR, phi[i], p[0], p[1], p[2], p[3], p[4]);
+        start += a.rows();
+    }
+    return scale(s);
+}
+
 VectorXcd SCD::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
     ArrayXcd s(a.rows() * phi.rows());
     ArrayXcd::Index start = 0;

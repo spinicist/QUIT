@@ -503,7 +503,7 @@ int run_main(int argc, char **argv) {
         cout << "Using finite pulse model." << endl;
         ssfpSequence = make_shared<SSFPFinite>(prompt);
     } else {
-        ssfpSequence = make_shared<SSFPSimple>(prompt);
+        ssfpSequence = make_shared<SSFPEcho>(prompt);
     }
     if (verbose) cout << *ssfpSequence << endl;
 

@@ -77,6 +77,7 @@ class SCD : public Model {
     virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, carrd &TRseg) const override;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
     virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
     virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
     virtual VectorXcd SSFPEllipse(cvecd &params, carrd &a, cdbl TR) const override;
 };

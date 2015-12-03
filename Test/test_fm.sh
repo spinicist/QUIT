@@ -15,7 +15,7 @@ if [ "$(ls -A ./)" ]; then
 fi
 
 # First, create input data
-DIMS="5 10 31"
+DIMS="32 32 33"
 VOXDIMS="2 2 2"
 $QUITDIR/qinewimage PD.nii -d "$DIMS" -v "$VOXDIMS" -f 1.0
 $QUITDIR/qinewimage T1.nii -d "$DIMS" -v "$VOXDIMS" -f 1.25
@@ -40,7 +40,7 @@ T2.nii
 f0.nii
 B1.nii
 ${PREFIX}x$SSFP_FILE
-SSFP
+SSFP_ECHO
 $SSFP_FLIP
 $SSFP_PC
 $SSFP_TR
@@ -65,10 +65,10 @@ $SSFP_PC
 $SSFP_TR
 $SSFP_Trf" > ${PREFIX}fm_f_in.txt
 
-run_test "LM"       $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}   -al          < ${PREFIX}fm_in.txt
-run_test "LM_F"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}f  -al --finite < ${PREFIX}fm_f_in.txt
-run_test "BFGS"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}b  -ab          < ${PREFIX}fm_in.txt
-run_test "BFGS_F"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}bf -ab --finite < ${PREFIX}fm_f_in.txt
+run_test "${PREFIX}LM"       $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}   -al          < ${PREFIX}fm_in.txt
+run_test "${PREFIX}LM_F"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}f  -al --finite < ${PREFIX}fm_f_in.txt
+run_test "${PREFIX}BFGS"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}${SSFP_FILE}  -o${PREFIX}b  -ab          < ${PREFIX}fm_in.txt
+run_test "${PREFIX}BFGS_F"   $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii -T1 ${PREFIX}f${SSFP_FILE} -o${PREFIX}bf -ab --finite < ${PREFIX}fm_f_in.txt
 
 compare_test "LM"     T2.nii ${PREFIX}FM_T2.nii  0.01
 compare_test "LM_F"   T2.nii ${PREFIX}fFM_T2.nii 0.01
@@ -77,7 +77,7 @@ compare_test "BFGS_F" T2.nii ${PREFIX}bfFM_T2.nii 0.01
 }
 
 run_tests "2" "0 180"
-run_tests "4" "0 90 180 270"
+#run_tests "4" "0 90 180 270"
 
 cd ..
 SILENCE_TESTS="0"

@@ -144,37 +144,46 @@ VectorXcd One_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1, cdbl T2
     return M;
 }
 
-VectorXcd One_SSFP(carrd &flip, cdbl TR, cdbl phase,
-                   cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
-    const Vector3d m0(0., 0., PD);
-    const Matrix3d E = (-Relax(T1, T2)*TR).exp();
-    const Matrix3d O(AngleAxisd(f0*2.*M_PI*TR, Vector3d::UnitZ()));
-    const Matrix3d P(AngleAxisd(phase, Vector3d::UnitZ()));
-    MagVector m_e(3, flip.size());
-    for (int i = 0; i < flip.size(); i++) {
-        const Matrix3d A(AngleAxisd(flip[i] * B1, Vector3d::UnitY()));
-        const Vector3d m_minus = (Matrix3d::Identity() - P*O*E*A).partialPivLu().solve((1 - exp(-TR/T1)) * m0);
-        m_e.col(i).noalias() = A*m_minus;
-    }
-    return SigComplex(m_e);
+VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
+    // This is at the echo time
+    const double E1 = exp(-TR / T1);
+    const double E2 = exp(-TR / T2);
+
+    const double psi_over_2 = M_PI * f0 * TR;
+    const ArrayXd alpha = flip * B1;
+    const ArrayXcd G = (PD * sqrt(E2) * (1 - E1)*sin(alpha) / (1 - E1*E2*E2-(E1-E2*E2)*cos(alpha))) * polar(1., psi_over_2);
+
+    return G;
 }
 
-VectorXcd One_SSFP_Echo(carrd &flip, cdbl TR, cdbl phase,
+VectorXcd One_SSFP(carrd &flip, cdbl TR, cdbl phi,
+                   cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
+    const double E1 = exp(-TR / T1);
+    const double E2 = exp(-TR / T2);
+
+    const double psi = 2. * M_PI * f0 * TR;
+    const ArrayXd alpha = flip * B1;
+    // This is not at the echo time
+    const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
+    const ArrayXd G = PD*(1. - E1)*sin(alpha)/d;
+    const ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
+    const ArrayXcd M = G*(1. - polar(E2, -(psi + phi))) / (1 - b*cos(psi + phi));
+    return M;
+}
+
+VectorXcd One_SSFP_Echo(carrd &flip, cdbl TR, cdbl phi,
                         cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
-    double TE = TR / 2;
-    const Vector3d m0(0., 0., PD);
-    const Matrix3d E = (-Relax(T1, T2)*TR).exp();
-    const Matrix3d E_TE = (-Relax(T1, T2)*TE).exp();
-    const Matrix3d O(AngleAxisd(f0*2.*M_PI*TR, Vector3d::UnitZ()));
-    const Matrix3d O_TE(AngleAxisd(f0*M_PI*TR, Vector3d::UnitZ()));
-    const Matrix3d P(AngleAxisd(phase, Vector3d::UnitZ()));
-    MagVector m_e(3, flip.size());
-    for (int i = 0; i < flip.size(); i++) {
-        const Matrix3d A(AngleAxisd(flip[i] * B1, Vector3d::UnitY()));
-        const Vector3d m_minus = (Matrix3d::Identity() - P*O*E*A).partialPivLu().solve((1 - exp(-TR/T1)) * m0);
-        m_e.col(i).noalias() = O_TE*E_TE*A*m_minus + (1 - exp(-TE/T1)) * m0;
-    }
-    return SigComplex(m_e);
+    const double E1 = exp(-TR / T1);
+    const double E2 = exp(-TR / T2);
+
+    const double psi = 2. * M_PI * f0 * TR;
+    const ArrayXd alpha = flip * B1;
+    // This is not at the echo time
+    const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
+    const ArrayXcd G = (PD * sqrt(E2) * (1 - E1)*sin(alpha)/d) * polar(1., psi/2.);
+    const ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
+    const ArrayXcd M = G*(1. - polar(E2, -(psi + phi))) / (1 - b*cos(psi + phi));
+    return M;
 }
 
 VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl inTE, cdbl phase,
@@ -208,20 +217,6 @@ VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl
 		result.col(i) = m_e;
 	}
 	return SigComplex(result);
-}
-
-VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
-	double E1 = exp(-TR / T1);
-    double E2 = exp(-TR / T2);
-
-    double theta = M_PI * f0 * TR;
-    ArrayXd M = PD * sqrt(E2) * (1 - E1)*sin(flip * B1) / (1 - E1*E2*E2-(E1-E2*E2)*cos(flip * B1));
-
-    VectorXcd result(flip.size());
-    result.real() = M * cos(theta);
-    result.imag() = M * sin(theta);
-
-    return result;
 }
 
 VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int N, carrd &TI, carrd &TRseg,
