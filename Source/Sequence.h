@@ -67,9 +67,7 @@ class SteadyState : public SequenceBase {
 		SteadyState();
 		SteadyState(const ArrayXd &flip, const double TR);
 
-		virtual size_t size() const override { return angles() * phases(); }
-		virtual size_t angles() const { return m_flip.rows(); }
-		virtual size_t phases() const { return 1; }
+        virtual size_t size() const override { return m_flip.rows(); }
 		virtual ArrayXd weights(double f0) const { return ArrayXd::Ones(size()); }
 };
 
@@ -146,17 +144,20 @@ class IRSPGR : public MPRAGE {
 };
 
 class SSFPSimple : public SteadyState {
+    private:
+        size_t m_nphi;
+
 	public:
-		ArrayXd m_phases;
+        ArrayXd m_phi;
 		SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phases);
 		SSFPSimple(const bool prompt);
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
-		size_t phases() const override;
 		void write(ostream& os) const override;
 		string name() const override { return "SSFP"; }
 
 		bool isSymmetric() const;
         virtual double bwMult() const;
+        size_t phases() { return m_nphi; }
 		ArrayXd weights(const double f0) const override;
 };
 class SSFPEcho : public SSFPSimple {
@@ -193,9 +194,6 @@ protected:
 		AFI(const bool prompt);
 
 		virtual size_t size() const override { return 2; }
-        virtual size_t angles() const override { return m_flip.rows(); }
-        virtual size_t phases() const override { return 1; }
-
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream& os) const override;
 		string name() const override { return "AFI"; }

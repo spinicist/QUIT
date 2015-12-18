@@ -274,34 +274,52 @@ void MP3RAGE::write(ostream &os) const {
     os << "TD: " << m_TD.transpose() << "\tTS: " << (m_TD.sum() + 3*m_N*m_TR) << endl;
 }
 
-SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phases) :
-	SteadyState(flip, TR), m_phases(phases)
-{}
+SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phi) :
+    SteadyState()
+{
+    m_TR = TR;
+    m_flip = (flip * M_PI / 180.).replicate(phi.rows(), 1);
+    m_nphi = phi.size();
+    m_phi = ArrayXd::Zero(m_flip.size());
+    int start = 0;
+    for (int i = 0; i < phi.size(); i++) {
+        m_phi.segment(start, flip.size()).setConstant(phi[i] * M_PI / 180.);
+        start += flip.size();
+    }
+}
+
 SSFPSimple::SSFPSimple(const bool prompt) :
 	SteadyState()
 {
+    ArrayXd flip, phi;
 	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-	QI::ReadArray(cin, m_flip);
-	m_flip *= M_PI / 180.;
-	if (prompt) cout << "Enter phase-cycles (degrees): " << flush;
-	QI::ReadArray(cin, m_phases);
-	m_phases *= M_PI / 180.;
+    QI::ReadArray(cin, flip);
+    if (prompt) cout << "Enter phase-increments (degrees): " << flush;
+    QI::ReadArray(cin, phi);
 	if (prompt) cout << "Enter TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
+    m_flip = (flip * M_PI / 180.).replicate(phi.rows(), 1);
+    m_nphi = phi.size();
+    m_phi = ArrayXd::Zero(m_flip.size());
+    int start = 0;
+    for (int i = 0; i < phi.size(); i++) {
+        m_phi.segment(start, flip.size()).setConstant(phi[i] * M_PI / 180.);
+        start += flip.size();
+    }
 }
 
 void SSFPSimple::write(ostream &os) const {
     os << name() << endl;
-	os << "TR: " << m_TR << "\tPhases: " << (m_phases * 180. / M_PI).transpose() << endl;
-	os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
+    os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
+    os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
+    os << "TR: " << m_TR << endl;
 }
 
-size_t SSFPSimple::phases() const { return m_phases.rows(); }
 bool SSFPSimple::isSymmetric() const {
 	bool sym = true;
-	for (ArrayXcd::Index i = 0; i < m_phases.rows(); i++) {
-		if (!((abs(m_phases(i) - M_PI) <= (M_PI * numeric_limits<double>::epsilon())) ||
-		      (abs(m_phases(i) - 0.) <= numeric_limits<double>::epsilon()))) {
+    for (ArrayXcd::Index i = 0; i < m_phi.rows(); i++) {
+        if (!((abs(m_phi(i) - M_PI) <= (M_PI * numeric_limits<double>::epsilon())) ||
+              (abs(m_phi(i) - 0.) <= numeric_limits<double>::epsilon()))) {
 			sym = false;
 			break; // Don't need to bother checking other values
 		}
@@ -311,8 +329,7 @@ bool SSFPSimple::isSymmetric() const {
 double SSFPSimple::bwMult() const { return 1.; }
 
 ArrayXd SSFPSimple::weights(const double f0) const {
-	ArrayXd phase = m_phases;
-	ArrayXd offset = phase + (M_PI * f0*m_TR);
+    ArrayXd offset = m_phi + (M_PI * f0*m_TR);
 	ArrayXd weight = 0.75 * (offset / 2).sin().square();
 	ArrayXXd allWeights = weight.transpose().replicate(m_flip.size(), 1);
 	ArrayXd weights = Map<ArrayXd>(allWeights.data(), size());
@@ -320,10 +337,10 @@ ArrayXd SSFPSimple::weights(const double f0) const {
 }
 
 ArrayXcd SSFPSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFP(p, m_flip, m_TR, m_phases);
+    return m->SSFP(p, m_flip, m_TR, m_phi);
 }
 ArrayXcd SSFPEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFPEcho(p, m_flip, m_TR, m_phases);
+    return m->SSFPEcho(p, m_flip, m_TR, m_phi);
 }
 SSFPFinite::SSFPFinite(const ArrayXd &flip, const double TR, const double Trf, const ArrayXd &phases) :
 	SSFPSimple(flip, TR, phases), m_Trf(Trf)
@@ -337,12 +354,12 @@ SSFPFinite::SSFPFinite(const bool prompt) :
 
 void SSFPFinite::write(ostream &os) const {
 	os << "SSFP Finite" << endl;
-	os << "TR: " << m_TR << "\tTrf: " << m_Trf << "\tPhases: " << (m_phases * 180. / M_PI).transpose() << endl;
+    os << "TR: " << m_TR << "\tTrf: " << m_Trf << "\tPhases: " << (m_phi * 180. / M_PI).transpose() << endl;
 	os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
 }
 
 ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phases);
+    return m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phi);
 }
 double SSFPFinite::bwMult() const { return 2.; }
 

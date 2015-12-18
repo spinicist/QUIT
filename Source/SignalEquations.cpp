@@ -156,33 +156,43 @@ VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl
     return G;
 }
 
-VectorXcd One_SSFP(carrd &flip, cdbl TR, cdbl phi,
+VectorXcd One_SSFP(carrd &flip, carrd &phi, cdbl TR,
                    cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
+    eigen_assert(flip.size() == phi.size())
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
     const double psi = 2. * M_PI * f0 * TR;
     const ArrayXd alpha = flip * B1;
+    const ArrayXd theta = phi + psi;
     // This is not at the echo time
     const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
     const ArrayXd G = PD*(1. - E1)*sin(alpha)/d;
     const ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
-    const ArrayXcd M = G*(1. - polar(E2, -(psi + phi))) / (1 - b*cos(psi + phi));
+    ArrayXcd t(theta.size());
+    t.real() = E2 * cos(-theta);
+    t.imag() = E2 * sin(theta);
+    const ArrayXcd M = G*(1. - t) / (1 - b*cos(theta));
     return M;
 }
 
-VectorXcd One_SSFP_Echo(carrd &flip, cdbl TR, cdbl phi,
+VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR,
                         cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
+    eigen_assert(flip.size() = phi.size());
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
     const double psi = 2. * M_PI * f0 * TR;
     const ArrayXd alpha = flip * B1;
+    const ArrayXd theta = phi + psi;
     // This is not at the echo time
     const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
     const ArrayXcd G = (PD * sqrt(E2) * (1 - E1)*sin(alpha)/d) * polar(1., psi/2.);
     const ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
-    const ArrayXcd M = G*(1. - polar(E2, -(psi + phi))) / (1 - b*cos(psi + phi));
+    ArrayXcd t(theta.size());
+    t.real() = E2 * cos(-theta);
+    t.imag() = E2 * sin(theta);
+    const ArrayXcd M = G*(1. - t) / (1 - b*cos(theta));
     return M;
 }
 
@@ -359,9 +369,10 @@ VectorXcd Two_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE,
     return SigComplex(signal);
 }
 
-VectorXcd Two_SSFP(carrd &flip, const double TR, const double phase,
+VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
                    cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
                    cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
+    eigen_assert(flip.size() == phi.size());
 	MagVector signal(3, flip.size());
 	Matrix6d R = Matrix6d::Zero();
 	R.block(0,0,3,3) = Relax(T1_a, T2_a);
@@ -377,7 +388,7 @@ VectorXcd Two_SSFP(carrd &flip, const double TR, const double phase,
 	const Vector6d eyemaM0 = (Matrix6d::Identity() - L) * M0;
 	Matrix6d A = Matrix6d::Zero();
 	for (int i = 0; i < flip.size(); i++) {
-		A.block(0, 0, 3, 3) = Matrix3d(AngleAxisd(flip[i] * B1, Vector3d::UnitY()) * AngleAxisd(phase, Vector3d::UnitZ()));
+        A.block(0, 0, 3, 3) = Matrix3d(AngleAxisd(flip[i] * B1, Vector3d::UnitY()) * AngleAxisd(phi[i], Vector3d::UnitZ()));
 		A.block(3, 3, 3, 3).noalias() = A.block(0, 0, 3, 3);
         Vector6d MTR = (Matrix6d::Identity() - L * A).partialPivLu().solve(eyemaM0);
 		signal.col(i) = SumMC(MTR);
@@ -385,9 +396,10 @@ VectorXcd Two_SSFP(carrd &flip, const double TR, const double phase,
 	return SigComplex(signal);
 }
 
-VectorXcd Two_SSFP_Echo(carrd &flip, const double TR, const double phase,
+VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
                         cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
                         cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
+    eigen_assert(flip.size() == phi.size())
     MagVector signal(3, flip.size());
     Matrix6d R = Matrix6d::Zero();
     R.block(0,0,3,3) = Relax(T1_a, T2_a);
@@ -404,7 +416,7 @@ VectorXcd Two_SSFP_Echo(carrd &flip, const double TR, const double phase,
     const Vector6d eyemaM0 = (Matrix6d::Identity() - L) * M0;
     Matrix6d A = Matrix6d::Zero();
     for (int i = 0; i < flip.size(); i++) {
-        A.block(0, 0, 3, 3) = Matrix3d(AngleAxisd(flip[i] * B1, Vector3d::UnitY()) * AngleAxisd(phase, Vector3d::UnitZ()));
+        A.block(0, 0, 3, 3) = Matrix3d(AngleAxisd(flip[i] * B1, Vector3d::UnitY()) * AngleAxisd(phi[i], Vector3d::UnitZ()));
         A.block(3, 3, 3, 3).noalias() = A.block(0, 0, 3, 3);
         Vector6d MTR = L2 * (Matrix6d::Identity() - L * A).partialPivLu().solve(eyemaM0);
         signal.col(i) = SumMC(MTR);
@@ -478,28 +490,28 @@ VectorXcd Three_SPGR(carrd &flip, cdbl TR, cdbl PD,
 	return r;
 }
 
-VectorXcd Three_SSFP(carrd &flip, cdbl TR, cdbl phase, cdbl PD,
+VectorXcd Three_SSFP(carrd &flip, carrd &phi, cdbl TR, cdbl PD,
                      cdbl T1_a, cdbl T2_a,
 					 cdbl T1_b, cdbl T2_b,
 					 cdbl T1_c, cdbl T2_c,
 					 cdbl tau_a, cdbl f_a, cdbl f_c,
 					 cdbl f0_a, cdbl f0_b, cdbl f0_c, cdbl B1) {
 	double f_ab = 1. - f_c;
-	VectorXcd m_ab = Two_SSFP(flip, TR, phase, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, f0_a, f0_b, B1);
-	VectorXcd m_c  = One_SSFP(flip, TR, phase, PD * f_c, T1_c, T2_c, f0_c, B1);
+    VectorXcd m_ab = Two_SSFP(flip, phi, TR, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, f0_a, f0_b, B1);
+    VectorXcd m_c  = One_SSFP(flip, phi, TR, PD * f_c, T1_c, T2_c, f0_c, B1);
 	VectorXcd r = m_ab + m_c;
 	return r;
 }
 
-VectorXcd Three_SSFP_Echo(carrd &flip, cdbl TR, cdbl phase, cdbl PD,
+VectorXcd Three_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR, cdbl PD,
                           cdbl T1_a, cdbl T2_a,
                           cdbl T1_b, cdbl T2_b,
                           cdbl T1_c, cdbl T2_c,
                           cdbl tau_a, cdbl f_a, cdbl f_c,
                           cdbl f0_a, cdbl f0_b, cdbl f0_c, cdbl B1) {
     double f_ab = 1. - f_c;
-    VectorXcd m_ab = Two_SSFP_Echo(flip, TR, phase, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, f0_a, f0_b, B1);
-    VectorXcd m_c  = One_SSFP_Echo(flip, TR, phase, PD * f_c, T1_c, T2_c, f0_c, B1);
+    VectorXcd m_ab = Two_SSFP_Echo(flip, phi, TR, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, f0_a, f0_b, B1);
+    VectorXcd m_c  = One_SSFP_Echo(flip, phi, TR, PD * f_c, T1_c, T2_c, f0_c, B1);
     VectorXcd r = m_ab + m_c;
     return r;
 }
