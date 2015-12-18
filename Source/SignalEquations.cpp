@@ -369,7 +369,150 @@ VectorXcd Two_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE,
     return SigComplex(signal);
 }
 
+MatrixXd Two_SSFP_Internal(carrd &flip, carrd &phi, const double TR,
+                   cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
+                   cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
+    const double E1_a = exp(-TR/T1_a);
+    const double E1_b = exp(-TR/T1_b);
+    const double E2_a = exp(-TR/T2_a);
+    const double E2_b = exp(-TR/T2_b);
+    double f_b, k_ab, k_ba;
+    CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
+    const double E_ab = exp(-TR*k_ab/f_b);
+    const double K1 = E_ab*f_b+f_a;
+    const double K2 = E_ab*f_a+f_b;
+    const double K3 = f_a*(1-E_ab);
+    const double K4 = f_b*(1-E_ab);
+    carrd alpha = B1 * flip;
+    carrd theta_a = phi + 2.*M_PI*f0_a*TR;
+    carrd theta_b = phi + 2.*M_PI*f0_b*TR;
+    carrd x0 = sin(alpha);   //(x0, sin(alpha))
+    carrd x1 = x0.square();  //(x1, x0**2)
+    carrd x2 = cos(theta_b); //(x2, cos(theta_b))
+    const double x3 = E1_b*K3*K4; //(x3, E1_b*K3*K4)
+    carrd x4 = cos(alpha);   //(x4, cos(alpha))
+    carrd x5 = -x4;          //(x5, -x4)
+    carrd x6 = E1_a*K1 + x5;//(x6, E1_a*K1 + x5)
+    carrd x7 = E1_b*K2 + x5;//(x7, E1_b*K2 + x5)
+    carrd x8 = E1_a*x3 - x6*x7;//(x8, E1_a*x3 - x6*x7)
+    carrd x9 = E1_a*x1 + E2_a*x2*x8;//(x9, E1_a*x1 + E2_a*x2*x8)
+    carrd x10 = cos(theta_a); //(x10, cos(theta_a))
+    carrd x11 = E1_b*x1 + E2_b*x10*x8;
+    carrd x12 = K3*K4*x11;
+    const double x13 = E2_b*K2;
+    carrd x14 = x13*x2;
+    const double x15 = E2_a*K1;
+    carrd x16 = x10*x15;
+    carrd x17 = x1*x7 + x8*(-x16 + x4);
+    carrd x18 = -x12*x9 + x17*(x1*x6 + x8*(-x14 + x4));
+    carrd x19 = 1/x18;
+    carrd x20 = sin(theta_a);
+    carrd x21 = x20.square();
+    carrd x22 = -E2_b*x17 - x11*x15;
+    carrd x23 = x20*x9;
+    carrd x24 = sin(theta_b);
+    carrd x25 = x17*x24;
+    carrd x26 = K1*x23 + x25;
+    carrd x27 = E2_a*x26*x8;
+    carrd x28 = x17*x18;
+    carrd x29 = (E2_a*E2_a)*(K1*K1)*x18*x21*x8 - K3*K4*x20*x22*x27 - x16*x28 + x28;
+    carrd x30 = 1/x29;
+    carrd x31 = K2*x25 + K3*K4*x23;
+    carrd x32 = -E2_a*x12 - x13*x17;
+    carrd x33 = x24*x29*x32;
+    carrd x34 = x28*x29;
+    carrd x35 = E2_a*K1*x18*x8;
+    carrd x36 = -x2*x28 + x20*x24*x35 - x24*x26*x32*x8;
+    carrd x37 = -x10*x28 - x20*x22*x31*x8 + x21*x35;
+    carrd x38 = E2_b*K3*K4*x37;
+    carrd x39 = E2_a*E2_b*K3*K4*x18*x20*x24*x29*x8 - E2_a*x36*x38 - E2_b*x31*x33*x8 - x14*x34 + x34;
+    carrd x40 = 1/x39;
+    carrd x41 = x0*x19*x30*x40;
+    carrd x42 = 1/x17;
+    carrd x43 = E2_b*x18*x20*x29*x8;
+    carrd x44 = E2_a*K1*x18;
+    carrd x45 = x44*x7;
+    carrd x46 = x7*x9;
+    carrd x47 = E1_a*x17;
+    carrd x48 = -x46 + x47;
+    carrd x49 = K3*K4*x22*x48;
+    carrd x50 = E2_a*x20*x36;
+    carrd x51 = E2_a*x18*x24*x29;
+    carrd x52 = -x33*x48 - x50*(-x45 - x49) - x51*x7;
+    carrd x53 = x18*x29*x39;
+    carrd x54 = E2_a*K1*x18*x20*x8;
+    carrd x55 = x20*x39;
+    carrd x56 = -x38*x52 - x45*x55 - x49*x55;
+    carrd x57 = E2_b*x29*x31*x8;
+    carrd x58 = x29*x39;
+    carrd x59 = -x27*x56 - x46*x58 + x47*x58 - x52*x57;
+    carrd x60 = K3*x0*x30*x40;
+    carrd x61 = E1_b*x44;
+    carrd x62 = x3*x9;
+    carrd x63 = x17*x6;
+    carrd x64 = x62 - x63;
+    carrd x65 = x22*x64;
+    carrd x66 = -K3*K4*x50*(x61 - x65) + x3*x51 - x33*x64;
+    carrd x67 = -E2_b*x37*x66 + x55*x61 - x55*x65;
+    carrd x68 = -K3*K4*x27*x67 - x57*x66 + x58*x62 - x58*x63;
+    carrd x69 = K4*x0*x40;
+
+    MatrixXd M(4, flip.size());
+    M.row(0) = x19*x42*x60*(-E1_a*K4*f_a + f_b*(-E1_b*K2 + 1))*(E1_b*x53 + x11*x68 - x43*x66 - x54*x67) + x41*x42*(-E1_b*K3*f_b + f_a*(-E1_a*K1 + 1))*(-K3*K4*x43*x52 + x12*x59 - x53*x7 - x54*x56);
+    M.row(1) = x19*x30*x59*x69*(-E1_b*K3*f_b + f_a*(-E1_a*K1 + 1)) + x41*x68*(-E1_a*K4*f_a + f_b*(-E1_b*K2 + 1));
+    M.row(2) = x0*x30*x40*x56*(-E1_b*K3*f_b + f_a*(-E1_a*K1 + 1)) + x60*x67*(-E1_a*K4*f_a + f_b*(-E1_b*K2 + 1));
+    M.row(3) = x0*x40*x66*(-E1_a*K4*f_a + f_b*(-E1_b*K2 + 1)) + x52*x69*(-E1_b*K3*f_b + f_a*(-E1_a*K1 + 1));
+
+    return M;
+}
+
 VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
+                   cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
+                   cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
+    eigen_assert(flip.size() == phi.size())
+
+    MatrixXd M = Two_SSFP_Internal(flip, phi, TR, PD, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
+    VectorXcd mc(flip.size());
+    mc.real() = M.row(0) + M.row(1);
+    mc.imag() = M.row(2) + M.row(3);
+    return mc;
+}
+
+VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
+                        cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
+                        cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
+    eigen_assert(flip.size() == phi.size())
+
+    MatrixXd M = Two_SSFP_Internal(flip, phi, TR, PD, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
+
+    const double sE2_a = exp(-TR/(2.*T2_a));
+    const double sE2_b = exp(-TR/(2.*T2_b));
+    double f_b, k_ab, k_ba;
+    CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
+    const double sqrtE_ab = exp(-TR*k_ab/(2*f_b));
+    const double K1 = sqrtE_ab*f_b+f_a;
+    const double K2 = sqrtE_ab*f_a+f_b;
+    const double K3 = f_a*(1-sqrtE_ab);
+    const double K4 = f_b*(1-sqrtE_ab);
+    const double cpa = cos(M_PI*f0_a*TR);
+    const double spa = sin(M_PI*f0_a*TR);
+    const double cpb = cos(M_PI*f0_b*TR);
+    const double spb = sin(M_PI*f0_b*TR);
+
+    Matrix<double, 4, 4> echo;
+    echo << sE2_a*K1*cpa, sE2_b*K3*cpa, -sE2_a*K1*spa, -sE2_b*K3*spa,
+            sE2_a*K4*cpb, sE2_b*K2*cpb, -sE2_a*K4*spb, -sE2_b*K2*spb,
+            sE2_a*K1*spa, sE2_b*K3*spa,  sE2_a*K1*cpa,  sE2_b*K3*cpa,
+            sE2_a*K4*spb, sE2_b*K2*spb,  sE2_a*K4*cpb,  sE2_b*K2*cpb;
+
+    const MatrixXd Me = echo*M;
+    VectorXcd mce(flip.size());
+    mce.real() = Me.row(0) + Me.row(1);
+    mce.imag() = Me.row(2) + Me.row(3);
+    return mce;
+}
+
+/*VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
                    cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
                    cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     eigen_assert(flip.size() == phi.size());
@@ -394,9 +537,9 @@ VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
 		signal.col(i) = SumMC(MTR);
 	}
 	return SigComplex(signal);
-}
+}*/
 
-VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
+/*VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
                         cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
                         cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     eigen_assert(flip.size() == phi.size())
@@ -422,7 +565,7 @@ VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
         signal.col(i) = SumMC(MTR);
     }
     return SigComplex(signal);
-}
+}*/
 
 VectorXcd Two_SSFP_Finite(carrd &flip, const bool spoil,
                           cdbl TR, cdbl Trf, cdbl inTE, cdbl phase,
