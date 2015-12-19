@@ -44,7 +44,9 @@ class SignalsFilter : public itk::ImageToImageFilter<TImage, TCVImage> {
 protected:
 	shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<Model> m_model;
-	double m_sigma = 0.0;
+    double m_sigma = 0.0;
+    itk::RealTimeClock::TimeStampType m_meanTime = 0.0;
+    itk::SizeValueType m_evaluations = 0;
 
 public:
 	/** Standard class typedefs. */
@@ -99,6 +101,9 @@ public:
 	}
 	void SetSigma(const double s) { m_sigma = s; }
 
+    itk::RealTimeClock::TimeStampType GetMeanTime() { return m_meanTime; }
+    itk::SizeValueType GetEvaluations() { return m_evaluations; }
+
 	virtual void GenerateOutputInformation() override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		Superclass::GenerateOutputInformation();
@@ -129,6 +134,7 @@ protected:
 			maskIter = itk::ImageRegionConstIterator<TImage>(this->GetMask(), region);
 		}
 		itk::ImageRegionIterator<TCVImage> outputIter(this->GetOutput(), region);
+        itk::TimeProbe clock;
 		while(!inIters[0].IsAtEnd()) {
 			typename TImage::ConstPointer m = this->GetMask();
 			if (!m || maskIter.Get()) {
@@ -137,7 +143,11 @@ protected:
                     if (this->GetInput(i))
                         parameters[i] = inIters[i].Get();
 				}
+                if (threadId == 0)
+                    clock.Start();
 				VectorXcd allData = m_sequence->signal(m_model, parameters);
+                if (threadId == 0)
+                    clock.Stop();
 				if (m_sigma != 0.0) {
 					VectorXcd noise(m_sequence->size());
 					// Simple Box Muller transform
@@ -159,6 +169,10 @@ protected:
 			}
 			++outputIter;
 		}
+        if (threadId == 0) {
+            m_meanTime = clock.GetMean();
+            m_evaluations = clock.GetNumberOfStops();
+        }
 	}
 
 	itk::DataObject::Pointer MakeOutput(unsigned int idx) {
@@ -348,13 +362,10 @@ int main(int argc, char **argv)
 	vector<string> filenames;
 	parseInput(sequences, filenames);
 	for (size_t i = 0; i < sequences.size(); i++) {
-        itk::TimeProbe clock;
         if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
 		calcSignal->SetSequence(sequences[i]);
-        clock.Start();
         calcSignal->Update();
-        clock.Stop();
-        if (verbose) cout << "Time elapsed: " << clock.GetTotal() << endl;
+        if (verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
         if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
 		auto VecTo4D = QI::VectorToTimeseriesXF::New();
 		VecTo4D->SetInput(calcSignal->GetOutput());

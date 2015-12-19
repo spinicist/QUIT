@@ -200,7 +200,8 @@ void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::Gen
 			}
 
 			sliceFilter->Update();
-
+            this->m_evaluations += sliceFilter->GetEvaluations();
+            this->m_meanTime += sliceFilter->GetMeanEvalTime() / requestedSize[SliceDim];
 			// and copy the output slice to the output image
 			for (int i = 0; i < numOutputs; i++) {
 				ImageAlgorithm::Copy(sliceFilter->GetOutput(i), this->GetOutput(i), sliceOutputRegion, outputRegion);

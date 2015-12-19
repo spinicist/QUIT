@@ -38,6 +38,12 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 bool ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetScaleToMean() const { return m_scale_to_mean; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMeanEvalTime() const { return m_meanTime; }
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+SizeValueType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetEvaluations() const { return m_evaluations; }
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetInput(const size_t i, const TDataVectorImage *image) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
@@ -206,6 +212,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
 	ImageRegionIterator<TScalarVectorImage> residIter(this->GetResidOutput(), region);
     ImageRegionIterator<TIterationsImage> iterationsIter(this->GetIterationsOutput(), region);
 	typedef typename TAlgorithm::TArray TArray;
+    TimeProbe clock;
 	while(!dataIters[0].IsAtEnd()) {
 		TArray outputs = TArray::Zero(m_algorithm->numOutputs());
 		TArray resids =  TArray::Zero(m_algorithm->dataSize());
@@ -229,7 +236,11 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
 				allData.segment(dataIndex, data.rows()) = scaled.template cast<typename TAlgorithm::TScalar>();
 				dataIndex += data.rows();
 			}
+            if (threadId == 0)
+                clock.Start();
             m_algorithm->apply(allData, constants, outputs, resids, iterations);
+            if (threadId == 0)
+                clock.Stop();
 		}
 		if (this->GetMask())
 			++maskIter;
@@ -252,6 +263,10 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
         ++iterationsIter;
 		progress.CompletedPixel();
 	}
+    if (threadId == 0) {
+        m_meanTime = clock.GetMean();
+        m_evaluations = clock.GetNumberOfStops();
+    }
 	//std::cout << "Finished " << std::endl;
 }
 } // namespace ITK

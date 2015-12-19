@@ -11,6 +11,7 @@
 #include "itkImageToImageFilter.h"
 #include "itkSliceBySliceImageFilter.h"
 #include "itkVariableLengthVector.h"
+#include "itkTimeProbe.h"
 
 template<typename DataType>
 class Algorithm {
@@ -67,6 +68,9 @@ public:
     TScalarVectorImage *GetResidOutput();
     TIterationsImage   *GetIterationsOutput();
 
+    RealTimeClock::TimeStampType GetMeanEvalTime() const;
+    SizeValueType GetEvaluations() const;
+
 	virtual void GenerateOutputInformation() override;
 
 protected:
@@ -79,13 +83,16 @@ protected:
 	shared_ptr<TAlgorithm> m_algorithm;
 	bool m_scale_to_mean = false;
 
+    RealTimeClock::TimeStampType m_meanTime = 0.0;
+    SizeValueType m_evaluations = 0;
+    static const int ResidualsOutput = 0;
+    static const int IterationsOutput = 1;
+    static const int StartOutputs = 2;
+
 private:
 	ApplyAlgorithmFilter(const Self &); //purposely not implemented
 	void operator=(const Self &);  //purposely not implemented
 
-    static const int ResidualsOutput = 0;
-    static const int IterationsOutput = 1;
-    static const int StartOutputs = 2;
 };
 }
 
