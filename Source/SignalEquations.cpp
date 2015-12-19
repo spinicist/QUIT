@@ -413,7 +413,7 @@ MatrixXd Two_SSFP_Matrix(carrd &flip, carrd &phi, const double TR,
     return M;
 }
 
-MatrixXd Two_SSFP_Internal(carrd &flip, carrd &phi, const double TR,
+MatrixXd Two_SSFP_Analytic(carrd &flip, carrd &phi, const double TR,
                    cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
                    cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     const double E1_a = exp(-TR/T1_a);
@@ -527,7 +527,7 @@ VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
                         cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     eigen_assert(flip.size() == phi.size())
 
-    MatrixXd M = Two_SSFP_Internal(flip, phi, TR, PD, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
+    MatrixXd M = Two_SSFP_Matrix(flip, phi, TR, PD, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
 
     const double sE2_a = exp(-TR/(2.*T2_a));
     const double sE2_b = exp(-TR/(2.*T2_b));
