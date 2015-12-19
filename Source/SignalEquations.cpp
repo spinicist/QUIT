@@ -556,61 +556,6 @@ VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
     return mce;
 }
 
-/*VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
-                   cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
-                   cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
-    eigen_assert(flip.size() == phi.size());
-	MagVector signal(3, flip.size());
-	Matrix6d R = Matrix6d::Zero();
-	R.block(0,0,3,3) = Relax(T1_a, T2_a);
-	R.block(3,3,3,3) = Relax(T1_b, T2_b);
-	Matrix6d O = Matrix6d::Zero();
-	O.block(0,0,3,3) = OffResonance(f0_a);
-	O.block(3,3,3,3) = OffResonance(f0_b);
-	double k_ab, k_ba, f_b;
-	CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
-	Matrix6d K = Exchange(k_ab, k_ba);
-    Matrix6d L = (-TR*(R+O+K)).exp();
-	Vector6d M0; M0 << 0., 0., PD * f_a, 0., 0., PD * f_b;
-	const Vector6d eyemaM0 = (Matrix6d::Identity() - L) * M0;
-	Matrix6d A = Matrix6d::Zero();
-	for (int i = 0; i < flip.size(); i++) {
-        A.block(0, 0, 3, 3) = Matrix3d(AngleAxisd(flip[i] * B1, Vector3d::UnitY()) * AngleAxisd(phi[i], Vector3d::UnitZ()));
-		A.block(3, 3, 3, 3).noalias() = A.block(0, 0, 3, 3);
-        Vector6d MTR = (Matrix6d::Identity() - L * A).partialPivLu().solve(eyemaM0);
-		signal.col(i) = SumMC(MTR);
-	}
-	return SigComplex(signal);
-}*/
-
-/*VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
-                        cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
-                        cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
-    eigen_assert(flip.size() == phi.size())
-    MagVector signal(3, flip.size());
-    Matrix6d R = Matrix6d::Zero();
-    R.block(0,0,3,3) = Relax(T1_a, T2_a);
-    R.block(3,3,3,3) = Relax(T1_b, T2_b);
-    Matrix6d O = Matrix6d::Zero();
-    O.block(0,0,3,3) = OffResonance(f0_a);
-    O.block(3,3,3,3) = OffResonance(f0_b);
-    double k_ab, k_ba, f_b;
-    CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
-    Matrix6d K = Exchange(k_ab, k_ba);
-    Matrix6d L2 = ((-TR/2)*(R+O+K)).exp();
-    Matrix6d L = L2*L2;
-    Vector6d M0; M0 << 0., 0., PD * f_a, 0., 0., PD * f_b;
-    const Vector6d eyemaM0 = (Matrix6d::Identity() - L) * M0;
-    Matrix6d A = Matrix6d::Zero();
-    for (int i = 0; i < flip.size(); i++) {
-        A.block(0, 0, 3, 3) = Matrix3d(AngleAxisd(flip[i] * B1, Vector3d::UnitY()) * AngleAxisd(phi[i], Vector3d::UnitZ()));
-        A.block(3, 3, 3, 3).noalias() = A.block(0, 0, 3, 3);
-        Vector6d MTR = L2 * (Matrix6d::Identity() - L * A).partialPivLu().solve(eyemaM0);
-        signal.col(i) = SumMC(MTR);
-    }
-    return SigComplex(signal);
-}*/
-
 VectorXcd Two_SSFP_Finite(carrd &flip, const bool spoil,
                           cdbl TR, cdbl Trf, cdbl inTE, cdbl phase,
                           cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
