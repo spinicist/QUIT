@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
     auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
 	apply->SetAlgorithm(algo);
 
-    auto reorder = itk::ReorderF::New();
+    auto reorder = QI::ReorderF::New();
     inputData->Update(); // Need to know the length of the vector for re-ordering
     if (reorder) {
         reorder->SetStride(inputData->GetOutput()->GetNumberOfComponentsPerPixel() / multiecho->size());
