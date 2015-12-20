@@ -22,6 +22,7 @@
 #include "Util.h"
 #include "Sequence.h"
 #include "Filters/ApplyAlgorithmFilter.h"
+#include "Filters/ReorderVectorFilter.h"
 #include "itkTimeProbe.h"
 
 using namespace std;
@@ -39,6 +40,7 @@ Options:\n\
 	--star, -S        : Data is T2*, not T2\n\
 	--thresh, -t n    : Threshold maps at PD < n\n\
 	--clamp, -c n     : Clamp T2 between 0 and n\n\
+    --reorder, -R     : Data is ordered by timepoint, then echo\n\
 	--algo, -a l      : LLS algorithm (default)\n\
 	           a      : ARLO algorithm\n\
 	           n      : Non-linear (Levenberg-Marquardt)\n\
@@ -48,7 +50,7 @@ Options:\n\
 };
 
 static int NE = 0, nIterations = 10;
-static bool verbose = false, prompt = true, all_residuals = false, weightedSum = false;
+static bool verbose = false, prompt = true, all_residuals = false, weightedSum = false, reorder = false;
 static string outPrefix, suffix;
 static double thresh = -numeric_limits<double>::infinity();
 static double clamp_lo = -numeric_limits<double>::infinity(), clamp_hi = numeric_limits<double>::infinity();
@@ -62,12 +64,13 @@ static struct option long_options[] =
 	{"star", no_argument, 0, 'S'},
 	{"thresh", required_argument, 0, 't'},
 	{"clamp", required_argument, 0, 'c'},
+    {"reorder", no_argument, 0, 'R'},
 	{"algo", required_argument, 0, 'a'},
 	{"threads", required_argument, 0, 'T'},
 	{"resids", no_argument, 0, 'r'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnm:Se:o:b:t:c:a:T:r";
+static const char *short_opts = "hvnm:Se:o:b:t:c:Ra:T:r";
 
 /*
  * Base class for the 3 different algorithms
@@ -221,6 +224,7 @@ int main(int argc, char **argv) {
 				clamp_lo = 0;
 				clamp_hi = atof(optarg);
 				break;
+            case 'R': reorder = true; break;
 			case 'a':
 				switch (*optarg) {
 					case 'l': algo = make_shared<LogLinAlgo>(); if (verbose) cout << "LogLin algorithm selected." << endl; break;
@@ -263,7 +267,16 @@ int main(int argc, char **argv) {
 	algo->setSequence(multiecho);
     auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
 	apply->SetAlgorithm(algo);
-	apply->SetInput(0, inputData->GetOutput());
+
+    auto reorder = itk::ReorderF::New();
+    inputData->Update(); // Need to know the length of the vector for re-ordering
+    if (reorder) {
+        reorder->SetStride(inputData->GetOutput()->GetNumberOfComponentsPerPixel() / multiecho->size());
+        reorder->SetInput(inputData->GetOutput());
+        apply->SetInput(0, reorder->GetOutput());
+    } else {
+        apply->SetInput(0, inputData->GetOutput());
+    }
 	if (mask)
 		apply->SetMask(mask->GetOutput());
 
