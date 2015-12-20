@@ -32,21 +32,21 @@ const string usage {
 "Usage is: multiecho [options] input_file \n\
 \
 Options:\n\
-	--help, -h        : Print this message\n\
-	--verbose, -v     : Print more information\n\
-	--no-prompt, -n   : Suppress input prompts\n\
-	--out, -o path    : Add a prefix to the output filenames\n\
-	--mask, -m file   : Mask input with specified file\n\
-	--star, -S        : Data is T2*, not T2\n\
-	--thresh, -t n    : Threshold maps at PD < n\n\
-	--clamp, -c n     : Clamp T2 between 0 and n\n\
+    --help, -h        : Print this message\n\
+    --verbose, -v     : Print more information\n\
+    --no-prompt, -n   : Suppress input prompts\n\
+    --out, -o path    : Add a prefix to the output filenames\n\
+    --mask, -m file   : Mask input with specified file\n\
+    --star, -S        : Data is T2*, not T2\n\
+    --thresh, -t n    : Threshold maps at PD < n\n\
+    --clamp, -c n     : Clamp T2 between 0 and n\n\
     --reorder, -R     : Data is ordered by timepoint, then echo\n\
-	--algo, -a l      : LLS algorithm (default)\n\
-	           a      : ARLO algorithm\n\
-	           n      : Non-linear (Levenberg-Marquardt)\n\
-	--its, -i N       : Max iterations for non-linear (default 10)\n\
-	--resids, -r      : Write out per flip-angle residuals\n\
-	--threads, -T N   : Use N threads (default=hardware limit)\n"
+    --algo, -a l      : LLS algorithm (default)\n\
+               a      : ARLO algorithm\n\
+               n      : Non-linear (Levenberg-Marquardt)\n\
+    --its, -i N       : Max iterations for non-linear (default 10)\n\
+    --resids, -r      : Write out per flip-angle residuals\n\
+    --threads, -T N   : Use N threads (default=hardware limit)\n"
 };
 
 static int NE = 0, nIterations = 10;
