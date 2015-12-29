@@ -22,7 +22,7 @@
 #include "Util.h"
 #include "Sequence.h"
 #include "Filters/ApplyAlgorithmFilter.h"
-#include "Filters/ReorderVectorFilter.h"
+#include "Filters/ReorderImageFilter.h"
 #include "itkTimeProbe.h"
 
 using namespace std;
@@ -251,51 +251,67 @@ int main(int argc, char **argv) {
 		cout << "Incorrect number of arguments." << endl << usage << endl;
 		return EXIT_FAILURE;
 	}
-	// Gather input data
-	cout << "Opening input file: " << argv[optind] << endl;
-	auto inputFile = QI::ReadTimeseriesF::New();
-	inputFile->SetFileName(argv[optind]);
-	auto inputData = QI::TimeseriesToVectorF::New();
-	inputData->SetInput(inputFile->GetOutput());
-	auto multiecho = make_shared<MultiEcho>(prompt);
-	if (verbose) {
-		cout << "Ouput prefix will be: " << outPrefix << endl;
-		cout << "Clamp: " << clamp_lo << " " << clamp_hi << endl;
-		cout << "Thresh: " << thresh << endl;
-	}
-
-	algo->setSequence(multiecho);
-    auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
-	apply->SetAlgorithm(algo);
-
-    auto reorder = QI::ReorderF::New();
-    inputData->Update(); // Need to know the length of the vector for re-ordering
-    if (reorder) {
-        reorder->SetStride(inputData->GetOutput()->GetNumberOfComponentsPerPixel() / multiecho->size());
-        reorder->SetInput(inputData->GetOutput());
-        apply->SetInput(0, reorder->GetOutput());
-    } else {
-        apply->SetInput(0, inputData->GetOutput());
+    if (verbose) {
+        cout << "Ouput prefix will be: " << outPrefix << endl;
+        cout << "Clamp: " << clamp_lo << " " << clamp_hi << endl;
+        cout << "Thresh: " << thresh << endl;
     }
-	if (mask)
-		apply->SetMask(mask->GetOutput());
+    // Gather input data
+    auto multiecho = make_shared<MultiEcho>(prompt);
+    algo->setSequence(multiecho);
+    auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
+    if (mask)
+        apply->SetMask(mask->GetOutput());
+    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
+    auto inputFile = QI::ReadTimeseriesF::New();
+    inputFile->SetFileName(argv[optind]);
+    inputFile->Update(); // Need to know the length of the vector for re-ordering
+    size_t nVols = inputFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3] / multiecho->size();
+    auto inputData = itk::ReorderImageFilter<QI::TimeseriesF>::New();
+    inputData->SetInput(inputFile->GetOutput());
+    if (reorder)
+        inputData->SetStride(nVols);
+    inputData->Update();
 
-    itk::TimeProbe clock;
-	if (verbose) {
-		auto monitor = QI::GenericMonitor::New();
-		apply->AddObserver(itk::ProgressEvent(), monitor);
-        clock.Start();
-	}
-	apply->Update();
-	if (verbose) {
-        clock.Stop();
-        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
-		cout << "Writing results." << endl;
-	}
-	outPrefix = outPrefix + "ME_";
-    QI::writeResult(apply->GetOutput(0), outPrefix + "PD" + suffix + QI::OutExt());
-    QI::writeResult(apply->GetOutput(1), outPrefix + "T2" + suffix + QI::OutExt());
-    QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+    QI::TimeseriesF::RegionType region = inputData->GetOutput()->GetLargestPossibleRegion();
+    region.GetModifiableSize()[3] = multiecho->size();
+    auto PDoutput = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
+    auto T2output = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
+    itk::FixedArray<unsigned int, 4> layout;
+    layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
+    PDoutput->SetLayout(layout);
+    T2output->SetLayout(layout);
+    if (verbose) cout << "Processing" << endl;
+    auto input = itk::RegionOfInterestImageFilter<QI::TimeseriesF, QI::TimeseriesF>::New();
+    input->SetInput(inputData->GetOutput());
+    vector<QI::ImageF::Pointer> PDimgs(nVols), T2imgs(nVols);
+    for (size_t i = 0; i < nVols; i++) {
+        input->SetRegionOfInterest(region);
+        input->Update();
+
+        auto inputVector = QI::TimeseriesToVectorF::New();
+        inputVector->SetInput(input->GetOutput());
+        apply->SetAlgorithm(algo);
+        apply->SetInput(0, inputVector->GetOutput());
+        apply->Update();
+
+        PDimgs.at(i) = apply->GetOutput(0);
+        T2imgs.at(i) = apply->GetOutput(1);
+        PDimgs.at(i)->DisconnectPipeline();
+        T2imgs.at(i)->DisconnectPipeline();
+
+        PDoutput->SetInput(i, PDimgs.at(i));
+        T2output->SetInput(i, T2imgs.at(i));
+
+        region.GetModifiableIndex()[3] += multiecho->size();
+    }
+    if (verbose) cout << "Writing output" << endl;
+    PDoutput->UpdateLargestPossibleRegion();
+    T2output->UpdateLargestPossibleRegion();
+    outPrefix = outPrefix + "ME_";
+    QI::writeResult<QI::TimeseriesF>(PDoutput->GetOutput(), outPrefix + "PD" + suffix + QI::OutExt());
+    QI::writeResult<QI::TimeseriesF>(T2output->GetOutput(), outPrefix + "T2" + suffix + QI::OutExt());
+    //QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	return EXIT_SUCCESS;
 }
