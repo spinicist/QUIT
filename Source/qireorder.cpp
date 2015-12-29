@@ -14,6 +14,7 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include "Types.h"
+#include "Filters/ReorderImageFilter.h"
 
 using namespace std;
 //******************************************************************************
@@ -74,20 +75,16 @@ Options:\n\
     string outName(argv[optind++]);
 
     auto inFile = QI::ReadTimeseriesF::New();
-    auto inData = QI::TimeseriesToVectorF::New();
-    auto reorder = QI::ReorderF::New();
-    auto outData = QI::VectorToTimeseriesF::New();
+    auto reorder = itk::ReorderImageFilter<QI::TimeseriesF>::New();
     auto outFile = QI::WriteTimeseriesF::New();
 
     inFile->SetFileName(inName);
-    inData->SetInput(inFile->GetOutput());
-    reorder->SetInput(inData->GetOutput());       // Does nothing unless stride set
+    reorder->SetInput(inFile->GetOutput());       // Does nothing unless stride set
     if (stride > 1)
         reorder->SetStride(stride);
     if (blockSize > 0)
         reorder->SetBlockSize(blockSize);
-    outData->SetInput(reorder->GetOutput());
-    outFile->SetInput(outData->GetOutput());
+    outFile->SetInput(reorder->GetOutput());
     outFile->SetFileName(outName);
     outFile->Update();
     if (verbose)
