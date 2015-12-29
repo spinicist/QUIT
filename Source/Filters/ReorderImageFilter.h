@@ -34,7 +34,7 @@ protected:
     ReorderImageFilter() {}
     ~ReorderImageFilter() {}
 
-    virtual void GenerateData() override;
+    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) override;
 
 };
 

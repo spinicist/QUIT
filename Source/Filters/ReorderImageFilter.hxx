@@ -10,13 +10,12 @@ void ReorderImageFilter<TImage>::GenerateOutputInformation() {
 }
 
 template<typename TImage>
-void ReorderImageFilter<TImage>::GenerateData() {
-    this->AllocateOutputs(); // This has to happen first
+void ReorderImageFilter<TImage>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
     typename TImage::ConstPointer input = this->GetInput();
     typename TImage::Pointer output = this->GetOutput();
 
-    TRegion inRegion = input->GetLargestPossibleRegion();
-    TRegion outRegion = input->GetLargestPossibleRegion();
+    TRegion inRegion = region;
+    TRegion outRegion = region;
     const size_t lastDim = TImage::ImageDimension - 1;
 
     //std::cout << __PRETTY_FUNCTION__ << std::endl;
