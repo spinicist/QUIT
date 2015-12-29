@@ -43,4 +43,4 @@ protected:
 
 #include "ReorderVectorFilter.hxx"
 
-#endif // VECTORTOIMAGEFILTER_H
+#endif // REORDERVECTORFILTER_H
