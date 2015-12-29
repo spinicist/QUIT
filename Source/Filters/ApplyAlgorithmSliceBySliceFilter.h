@@ -6,6 +6,7 @@
 #include <unsupported/Eigen/NumericalDiff>
 
 #include "ApplyAlgorithmFilter.h"
+#include "itkSliceBySliceImageFilter.h"
 
 namespace itk{
 

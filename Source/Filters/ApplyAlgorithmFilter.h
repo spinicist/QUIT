@@ -9,8 +9,8 @@
 #include "../Model.h"
 
 #include "itkImageToImageFilter.h"
-#include "itkSliceBySliceImageFilter.h"
 #include "itkVariableLengthVector.h"
+#include "itkVectorImage.h"
 #include "itkTimeProbe.h"
 
 template<typename DataType>
