@@ -213,6 +213,7 @@ Options:\n\
 	--out, -o path    : Add a prefix to the output filenames\n\
 	--no-prompt, -n   : Don't print prompts for input.\n\
 	--noise, -N val   : Add complex noise with std=val.\n\
+    --seed, -S val    : Specify seed for noise.\n\
 	--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
 	--complex, -x     : Output complex-valued signal.\n\
 	--sequences, -M s : Use simple sequences (default).\n\
@@ -223,7 +224,6 @@ Options:\n\
 static shared_ptr<Model> model = make_shared<SCD>();
 static bool verbose = false, prompt = true, finitesequences = false, outputComplex = false;
 static string outPrefix = "";
-static double sigma = 0.;
 static struct option long_opts[] = {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
@@ -231,6 +231,7 @@ static struct option long_opts[] = {
 	{"out", required_argument, 0, 'o'},
 	{"no-prompt", no_argument, 0, 'n'},
 	{"noise", required_argument, 0, 'N'},
+    {"seed", required_argument, 0, 'S'},
 	{"1", no_argument, 0, '1'},
 	{"2", no_argument, 0, '2'},
 	{"3", no_argument, 0, '3'},
@@ -239,7 +240,7 @@ static struct option long_opts[] = {
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnN:m:o:123xM:T:";
+static const char *short_opts = "hvnN:S:m:o:123xM:T:";
 //******************************************************************************
 #pragma mark Read in all required files and data from cin
 //******************************************************************************
@@ -284,12 +285,15 @@ int main(int argc, char **argv)
 {
 	Eigen::initParallel();
 	QI::ReadImageF::Pointer mask = ITK_NULLPTR;
-	int indexptr = 0, c;
+    int indexptr = 0, c;
+    double sigma = 0.;
+    int seed = -1;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
 			case 'n': prompt = false; break;
-			case 'N': sigma = atof(optarg); break;
+            case 'N': sigma = stod(optarg); break;
+            case 'S': seed = stoi(optarg); break;
 			case 'm':
 				cout << "Reading mask file " << optarg << endl;
 				mask = QI::ReadImageF::New();
@@ -332,6 +336,12 @@ int main(int argc, char **argv)
 		cout << "Run with -h switch to see usage" << endl;
 	}
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
+
+    if (seed == -1) {
+        std::srand((unsigned int) time(0));
+    } else {
+        std::srand(seed);
+    }
 
 	/***************************************************************************
 	 * Read in parameter files
