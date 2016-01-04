@@ -7,18 +7,19 @@ template<typename TImage>
 void ReorderImageFilter<TImage>::GenerateOutputInformation() {
     //std::cout << __PRETTY_FUNCTION__ << std::endl;
     Superclass::GenerateOutputInformation();
+    //std::cout << "END " << __PRETTY_FUNCTION__ << std::endl;
 }
 
 template<typename TImage>
-void ReorderImageFilter<TImage>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
+void ReorderImageFilter<TImage>::GenerateData() {
+    //std::cout << __PRETTY_FUNCTION__ << std::endl;
+    this->AllocateOutputs();
     typename TImage::ConstPointer input = this->GetInput();
     typename TImage::Pointer output = this->GetOutput();
 
-    TRegion inRegion = region;
-    TRegion outRegion = region;
+    TRegion inRegion = input->GetLargestPossibleRegion();
+    TRegion outRegion = inRegion;
     const size_t lastDim = TImage::ImageDimension - 1;
-
-    //std::cout << __PRETTY_FUNCTION__ << std::endl;
     m_fullsize = inRegion.GetSize()[lastDim];
 
     if (m_blocksize == 0)
@@ -28,9 +29,10 @@ void ReorderImageFilter<TImage>::ThreadedGenerateData(const TRegion &region, Thr
         throw(std::runtime_error("Fullsize must be an integer multiple of blocksize."));
     }
     if ((m_blocksize % m_stride) != 0) {
-        throw(std::runtime_error("Blocksize must be an integer multiple of stride."));
+        throw(std::runtime_error("Blocksize (" + std::to_string(m_blocksize) + ") must be an integer multiple of stride (" + std::to_string(m_stride) + ")."));
     }
     m_blocks = m_fullsize / m_blocksize;
+
     inRegion.GetModifiableSize()[lastDim] = 1;
     outRegion.GetModifiableSize()[lastDim] = 1;
     size_t o = 0; // Tracks the output volume
