@@ -348,7 +348,7 @@ int main(int argc, char **argv) {
 
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
-    int max_its = 7;
+    int max_its = 4;
 	int verbose = false, prompt = true, all_residuals = false,
         fitFinite = false, flipData = false;
     string outPrefix;
@@ -386,7 +386,7 @@ Options:\n\
     --algo, -a S      : Use Uniform distribution for Region Contraction\n\
                G      : Use Gaussian distribution for RC (default)\n\
                b      : Use BFGS algorithm\n\
-    --iters, -i N     : Specify maximum number of iterations\n\
+    --iters, -i N     : Specify maximum number of iterations (default 4)\n\
     --flip, -F        : Data order is phase then flip-angle (default opposite)\n\
     --tesla, -t 3     : Boundaries suitable for 3T (default)\n\
                 7     : Boundaries suitable for 7T \n\
