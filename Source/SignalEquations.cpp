@@ -121,7 +121,7 @@ const void CalcExchange(const double tau_a, const double f_a, double &f_b, doubl
  *****************************************************************************/
 VectorXcd One_MultiEcho(carrd &TE, cdbl TR, cdbl PD, cdbl T1, cdbl T2) {
 	VectorXcd M = VectorXcd::Zero(TE.rows());
-    M.real() = PD * (1 - exp(-TR / T1)) * (-TE / T2).exp();
+    M.real() = PD * (1 - exp(-TR / T1)) * exp(-TE / T2);
 	return M;
 }
 
