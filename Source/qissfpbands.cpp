@@ -117,9 +117,7 @@ public:
 		m_crossings = choose(m_lines, 2);
         this->Modified();
 	}
-    void SetInput(const TIn *img) override {
-        this->SetNthInput(0, const_cast<TIn*>(img));
-	}
+    void SetInput(const TIn *img) override { this->SetNthInput(0, const_cast<TIn*>(img)); }
 	void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
     typename TIn::ConstPointer GetInput() const { return static_cast<const TIn *>(this->ProcessObject::GetInput(0)); }
 	typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(1)); }
