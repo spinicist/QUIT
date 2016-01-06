@@ -16,6 +16,7 @@
 #include <atomic>
 #include "Eigen/Dense"
 
+#include "itkUnaryFunctorImageFilter.h"
 #include "itkConstNeighborhoodIterator.h"
 
 #include "Filters/ReorderVectorFilter.h"
@@ -41,18 +42,25 @@ Options:\n\
     --mask, -m file  : Mask input with specified file.\n\
     --alt_order      : Opposing phase-cycles alternate (default is two blocks).\n\
     --threads, -T N  : Use N threads (default=hardware limit).\n\
-    --save, -sL      : Save the line regularised GS (default)\n\
-              M      : Save the magnitude regularised GS\n\
-              G      : Save the unregularised GS\n\
-              C      : Save the CS\n\
-    --secondpass, -2 : Perform a 2nd pass as per Xiang and Hoff\n\
+Output options (mutually exclusive):\n\
+    --magsum         : Output the magnitude sum of all phase increments.\n\
+    --sos            : Output the Sum-of-Squared magnitudes.\n\
+    --max            : Output the maximum intensity projection.\n\
+    --cs             : Output the Complex Sum.\n\
+    --gs             : Output the Geometric Solution (default).\n\
+Regularisation options for Geometric Solution\n\
+    --regularise, -R M : Use magnitude regularisation (from Xiang and Hoff).\n\
+                     L : Use line regularisation (default).\n\
+                     N : Don't regularise (none).\n\
+    --secondpass, -2   : Use the energy-minimisation scheme from Xiang and Hoff.\n\
 Options for multiple output volumes:\n\
     --ph_incs, -p N : Number of phase increments (default is 4).\n\
     --ph_order      : Data order is phase, then flip-angle (default opposite).\n"
 };
 
-bool verbose = false, do_pass2 = false;
-int order_phase = false, order_alternate = false;
+enum OutEnum { MagSum = 1, SoS, Max, CS, GS };
+bool verbose = false;
+int order_phase = false, order_alternate = false, output = OutEnum::GS, do_2pass;
 static size_t nPhases = 4;
 static string prefix;
 const struct option long_options[] = {
@@ -64,11 +72,16 @@ const struct option long_options[] = {
     {"ph_order", required_argument, &order_phase, true},
     {"ph_incs", required_argument, 0, 'p'},
 	{"threads", required_argument, 0, 'T'},
-	{"save", required_argument, 0, 's'},
-    {"secondpass", no_argument, 0, '2'},
+    {"magsum", no_argument, &output, OutEnum::MagSum},
+    {"sos", no_argument, &output, OutEnum::SoS},
+    {"max", no_argument, &output, OutEnum::Max},
+    {"cs", no_argument, &output, OutEnum::CS},
+    {"gs", no_argument, &output, OutEnum::GS},
+    {"regularise", required_argument, 0, 'R'},
+    {"secondpass", no_argument, &do_2pass, true},
 	{0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:s:p:T:2";
+const char *short_options = "hvo:m:s:p:T:R:2";
 // From Knuth, surprised this isn't in STL
 unsigned long long choose(unsigned long long n, unsigned long long k) {
 	if (k > n)
@@ -84,14 +97,12 @@ unsigned long long choose(unsigned long long n, unsigned long long k) {
 
 namespace itk {
 
-class GSFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
-{
+class GSFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>> {
 public:
-    enum class Save { LR, MR, GS, CS };
-
+    enum class RegEnum { None = 0, Line, Magnitude };
 protected:
 	size_t m_flips, m_lines, m_crossings, m_phases = 0;
-	Save m_mode = Save::LR;
+    RegEnum m_Regularise = RegEnum::Line;
 public:
 	/** Standard class typedefs. */
     typedef VectorImage<complex<float>, 3> TIn;
@@ -104,8 +115,9 @@ public:
 	itkNewMacro(Self); /** Method for creation through the object factory. */
     itkTypeMacro(GSFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
-	void SetSave(Save s) { m_mode = s; }
-	Save GetSave() { return m_mode; }
+    itkSetMacro(Regularise, RegEnum);
+    itkGetMacro(Regularise, RegEnum);
+
 	void SetPhases(const size_t p) {
 		if (p < 4)
 			throw(runtime_error("Must have a minimum of 4 phase-cycling patterns."));
@@ -195,11 +207,10 @@ protected:
                         if (gs.norm() < maxnorm) {
                             mag_reg = false;
                         }
-                        switch (m_mode) {
-                            case Save::LR: sols.col(si) = line_reg ? cs : gs; break;
-                            case Save::MR: sols.col(si) = mag_reg ? cs : gs; break;
-                            case Save::GS: sols.col(si) = gs; break;
-                            case Save::CS: sols.col(si) = cs; break;
+                        switch (m_Regularise) {
+                            case RegEnum::Line:      sols.col(si) = line_reg ? cs : gs; break;
+                            case RegEnum::Magnitude: sols.col(si) = mag_reg ? cs : gs; break;
+                            case RegEnum::None:      sols.col(si) = gs; break;
                         }
                         si++;
                     }
@@ -220,7 +231,7 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 };
 
-class TwoPassGSFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
+class MinEnergyFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
 {
 protected:
 	size_t m_flips, m_phases, m_lines = 0;
@@ -229,12 +240,12 @@ public:
     typedef VectorImage<complex<float>, 3>     TInputImage;
     typedef Image<complex<float>, 3>           TOutputImage;
 	typedef Image<float, 3>                    TMask;
-    typedef TwoPassGSFilter                   Self;
+    typedef MinEnergyFilter                   Self;
     typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
 	typedef SmartPointer<Self>                 Pointer;
 
 	itkNewMacro(Self);
-    itkTypeMacro(TwoPassGSFilter, ImageToImageFilter);
+    itkTypeMacro(MinEnergyFilter, ImageToImageFilter);
 
 	void SetPhases(const size_t p) {
 		if (p < 4)
@@ -265,13 +276,13 @@ public:
 	}
 
 protected:
-    TwoPassGSFilter() {
+    MinEnergyFilter() {
 		this->SetNumberOfRequiredInputs(2);
 		this->SetNumberOfRequiredOutputs(1);
 		this->SetNthOutput(0, this->MakeOutput(0));
 		this->SetPhases(4);
 	}
-    ~TwoPassGSFilter() {}
+    ~MinEnergyFilter() {}
 
     virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
@@ -328,11 +339,71 @@ protected:
 	}
 
 private:
-    TwoPassGSFilter(const Self &); //purposely not implemented
+    MinEnergyFilter(const Self &); //purposely not implemented
 	void operator=(const Self &);  //purposely not implemented
 };
 
 } // End namespace itk
+
+template<class T> class VectorMean {
+public:
+    VectorMean() {};
+    ~VectorMean() {};
+    bool operator!=( const VectorMean & ) const { return false; }
+    bool operator==( const VectorMean &other ) const { return !(*this != other); }
+    inline T operator()( const itk::VariableLengthVector<T> & v ) const {
+        T sum = T();
+        for (size_t i = 0; i < v.Size(); i++) {
+            sum += v[i];
+        }
+        return sum / static_cast<T>(v.Size());
+    }
+};
+
+template<class T> class VectorMagSum {
+public:
+    VectorMagSum() {};
+    ~VectorMagSum() {};
+    bool operator!=( const VectorMagSum & ) const { return false; }
+    bool operator==( const VectorMagSum &other ) const { return !(*this != other); }
+    inline complex<T> operator()( const itk::VariableLengthVector<complex<T>> & v ) const {
+        T sum = T();
+        for (size_t i = 0; i < v.Size(); i++) {
+            sum += std::abs(v[i]);
+        }
+        return complex<T>(sum, 0.);
+    }
+};
+
+template<class T> class VectorSoS {
+public:
+    VectorSoS() {};
+    ~VectorSoS() {};
+    bool operator!=( const VectorSoS & ) const { return false; }
+    bool operator==( const VectorSoS &other ) const { return !(*this != other); }
+    inline complex<T> operator()( const itk::VariableLengthVector<complex<T>> & v ) const {
+        T sum = T();
+        for (size_t i = 0; i < v.Size(); i++) {
+            sum += std::norm(v[i]);
+        }
+        return complex<T>(sum, 0.);
+    }
+};
+
+template<class T> class VectorMax {
+public:
+    VectorMax() {};
+    ~VectorMax() {};
+    bool operator!=( const VectorMax & ) const { return false; }
+    bool operator==( const VectorMax &other ) const { return !(*this != other); }
+    inline T operator()( const itk::VariableLengthVector<T> & v ) const {
+        T max = std::numeric_limits<T>::lowest();
+        for (size_t i = 0; i < v.Size(); i++) {
+            if (std::abs(v[i]) > std::abs(max)) max = v[i];
+        }
+        return max;
+    }
+};
 
 //******************************************************************************
 // Main
@@ -340,20 +411,17 @@ private:
 int main(int argc, char **argv) {
 	Eigen::initParallel();
 
-	itk::ImageFileReader<itk::Image<float, 3>>::Pointer mask = ITK_NULLPTR;
-    auto pass1 = itk::GSFilter::New();
-    auto pass2 = itk::TwoPassGSFilter::New();
+    QI::ReadImageF::Pointer mask = ITK_NULLPTR;
+    auto gs = itk::GSFilter::New();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
-			case 'm':
-				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = itk::ImageFileReader<itk::Image<float, 3>>::New();
-				mask->SetFileName(optarg);
-				pass1->SetMask(mask->GetOutput());
-				pass2->SetMask(mask->GetOutput());
-				break;
+            case 'm':
+                if (verbose) cout << "Reading mask file " << optarg << endl;
+                mask = QI::ReadImageF::New();
+                mask->SetFileName(optarg);
+                break;
 			case 'o':
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
@@ -361,24 +429,25 @@ int main(int argc, char **argv) {
             case 'F': order_phase = true; break;
 			case 'p': nPhases = atoi(optarg); break;
             case 'a': order_alternate = true; break;
-			case 's':
-				switch(*optarg) {
-                    case 'L': pass1->SetSave(itk::GSFilter::Save::LR); break;
-                    case 'M': pass1->SetSave(itk::GSFilter::Save::MR); break;
-                    case 'G': pass1->SetSave(itk::GSFilter::Save::GS); break;
-                    case 'C': pass1->SetSave(itk::GSFilter::Save::CS); break;
-					default:
-						cerr << "Unknown desired save image: " << *optarg << endl;
-						return EXIT_FAILURE;
+            case 'R':
+                switch(*optarg) {
+                    case 'L': gs->SetRegularise(itk::GSFilter::RegEnum::Line); break;
+                    case 'M': gs->SetRegularise(itk::GSFilter::RegEnum::Magnitude); break;
+                    case 'N': gs->SetRegularise(itk::GSFilter::RegEnum::None); break;
+                    default:
+                        cerr << "Unknown regularisation strategy: " << *optarg << endl;
+                        return EXIT_FAILURE;
 				}
 				break;
-            case '2': do_pass2 = true; break;
+            case '2': do_2pass = true; break;
 			case 'T':
 				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
 				break;
 			case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
+            case 0:   // getopt set a flag from the long_opts
+                break;
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
 			default:
@@ -422,62 +491,72 @@ int main(int argc, char **argv) {
     blockVector->SetInput(reorderPhase->GetOutput());
     blockVector->SetBlockSize(nPhases);
 
-    if (verbose) cout << "Setting up passes" << endl;
-    pass1->SetPhases(nPhases);
-    pass1->SetInput(blockVector->GetOutput());
-    pass2->SetPhases(nPhases);
-    pass2->SetInput(blockVector->GetOutput());
-    pass2->SetPass1(pass1->GetOutput());
+    typename itk::ImageToImageFilter<QI::VectorImageXF, QI::ImageXF>::Pointer process = ITK_NULLPTR;
+    switch (output) {
+    case OutEnum::GS: {
+        gs->SetInput(blockVector->GetOutput());
+        gs->SetPhases(nPhases);
+        if (mask)
+            gs->SetMask(mask->GetOutput());
+        if (do_2pass) {
+            auto p2 = itk::MinEnergyFilter::New();
+            p2->SetInput(blockVector->GetOutput());
+            p2->SetPass1(gs->GetOutput());
+            if (mask)
+                p2->SetMask(mask->GetOutput());
+            process = p2;
+        } else {
+            process = gs;
+        }
+    } break;
+    case OutEnum::CS: {
+        auto cs = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMean<complex<float>>>::New();
+        cs->SetInput(blockVector->GetOutput());
+        process = cs;
+    } break;
+    case OutEnum::MagSum: {
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMagSum<float>>::New();
+        filter->SetInput(blockVector->GetOutput());
+        process = filter;
+    } break;
+    case OutEnum::SoS: {
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorSoS<float>>::New();
+        filter->SetInput(blockVector->GetOutput());
+        process = filter;
+    } break;
+    case OutEnum::Max: {
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMax<complex<float>>>::New();
+        filter->SetInput(blockVector->GetOutput());
+        process = filter;
+    } break;
+    }
 
-    auto pass1Tiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
-    auto pass2Tiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
+    auto outTiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
     itk::FixedArray<unsigned int, 4> layout;
     layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
-    pass1Tiler->SetLayout(layout);
-    pass2Tiler->SetLayout(layout);
+    outTiler->SetLayout(layout);
 
     for (size_t i = 0; i < nVols; i++) {
         if (verbose) cout << "Processing output volume " << i << endl;
         blockVector->SetBlockStart(i * nPhases);
-        blockVector->Update();
+        //blockVector->Update();
+        process->Update();
+        auto volume = process->GetOutput();
+        outTiler->SetInput(i, volume);
+        volume->DisconnectPipeline();
 
-        pass1->Update();
-        auto pass1Image = pass1->GetOutput();
-        pass1Tiler->SetInput(i, pass1Image);
-        pass1Image->DisconnectPipeline();
-
-        if (do_pass2) {
-            pass2->Update();
-            auto pass2Image = pass2->GetOutput();
-            pass2Tiler->SetInput(i, pass2Image);
-            pass2Image->DisconnectPipeline();
-        }
     }
-    pass1Tiler->UpdateLargestPossibleRegion();
-    if (do_pass2)
-        pass2Tiler->UpdateLargestPossibleRegion();
+    outTiler->UpdateLargestPossibleRegion();
 
-	auto outFile = QI::WriteTimeseriesXF::New();
-	if (prefix == "")
-        prefix = QI::StripExt(fname);
-	string outname = prefix;
-	switch (pass1->GetSave()) {
-        case itk::GSFilter::Save::LR: outname.append("_lreg"); break;
-        case itk::GSFilter::Save::MR: outname.append("_mreg"); break;
-        case itk::GSFilter::Save::GS: outname.append("_gs"); break;
-        case itk::GSFilter::Save::CS: outname.append("_cs"); break;
-	}
-	if (do_pass2) {
-		outname.append("_2p");
-        outFile->SetInput(pass2Tiler->GetOutput());
-	} else {
-        outFile->SetInput(pass1Tiler->GetOutput());
-	}
-	outname.append(OutExt());
-	if (verbose) cout << "Output filename: " << outname << endl;
-	outFile->SetFileName(outname);
-	if (verbose) cout << "Processing..." << endl;
-	outFile->Update();
-	if (verbose) cout << "Finished." << endl;
+    if (prefix == "")
+        prefix = QI::StripExt(fname).append("_nobands");
+    string outname = prefix;
+    outname.append(OutExt());
+    if (verbose) cout << "Output filename: " << outname << endl;
+    auto outFile = QI::WriteTimeseriesXF::New();
+    outFile->SetInput(outTiler->GetOutput());
+    outFile->SetFileName(outname);
+    outFile->Update();
+    if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;
 }

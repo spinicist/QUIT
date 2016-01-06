@@ -24,8 +24,8 @@ $QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f "1.0" B1.nii
 
 SSFP_FILE="ssfp.nii"
 SSFP_MAG="ssfp_mag.nii"
-SSFP_OUT_FILE="ssfp_lreg.nii"
-SSFP_OUT_MAG="ssfp_lreg_mag.nii"
+SSFP_OUT_FILE="ssfp_nobands.nii"
+SSFP_OUT_MAG="ssfp_nobands_mag.nii"
 SSFP_PAR="5 10 15 20 25 30 35 40 45 50 55 60
 0 90 180 270
 0.005"
@@ -49,7 +49,7 @@ $GS_PAR
 END
 END_IN
 
-run_test "SSFPGS" $QUITDIR/qissfpbands $SSFP_FILE
+run_test "SSFPGS" $QUITDIR/qissfpbands $SSFP_FILE -R L -2
 $QUITDIR/qicomplex -x $SSFP_FILE -M $SSFP_MAG
 $QUITDIR/qicomplex -x $SSFP_OUT_FILE -M $SSFP_OUT_MAG
 $QUITDIR/qicomplex -x $GS_FILE -M $GS_MAG_FILE
