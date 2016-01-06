@@ -27,13 +27,11 @@ private:
     ReorderImageFilter(const Self &); //purposely not implemented
     void operator=(const Self &);  //purposely not implemented
 
-public:
-    virtual void GenerateOutputInformation() override;
-
 protected:
     ReorderImageFilter() {}
     ~ReorderImageFilter() {}
 
+    void EnlargeOutputRequestedRegion(DataObject *itkNotUsed(output)) override;
     virtual void GenerateData() override;
 
 };

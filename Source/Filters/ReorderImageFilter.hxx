@@ -3,11 +3,10 @@
 
 namespace itk {
 
-template<typename TImage>
-void ReorderImageFilter<TImage>::GenerateOutputInformation() {
-    //std::cout << __PRETTY_FUNCTION__ << std::endl;
-    Superclass::GenerateOutputInformation();
-    //std::cout << "END " << __PRETTY_FUNCTION__ << std::endl;
+// Can only process whole image, can't do subregions
+template< typename TImage >
+void ReorderImageFilter<TImage>::EnlargeOutputRequestedRegion(DataObject *) {
+    this->GetOutput()->SetRequestedRegion(this->GetOutput()->GetLargestPossibleRegion());
 }
 
 template<typename TImage>
@@ -36,6 +35,10 @@ void ReorderImageFilter<TImage>::GenerateData() {
     inRegion.GetModifiableSize()[lastDim] = 1;
     outRegion.GetModifiableSize()[lastDim] = 1;
     size_t o = 0; // Tracks the output volume
+
+    //std::cout << *input << std::endl;
+    //std::cout << *output << std::endl;
+
     for (size_t b = 0; b < m_fullsize; b += m_blocksize) { // b Tracks the start of each block
         for (size_t is = b; is < (b + m_stride); is++) { // Tracks the start of a set
             for (size_t i = is; i < (b + m_blocksize); i += m_stride) { // i Tracks the input volume within block
