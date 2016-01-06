@@ -45,7 +45,6 @@ Options:\n\
               M      : Save the magnitude regularised GS\n\
               G      : Save the unregularised GS\n\
               C      : Save the CS\n\
-              P      : Save the PS\n\
     --secondpass, -2 : Perform a 2nd pass as per Xiang and Hoff\n\
 Options for multiple output volumes:\n\
     --ph_incs, -p N : Number of phase increments (default is 4).\n\
@@ -85,22 +84,22 @@ unsigned long long choose(unsigned long long n, unsigned long long k) {
 
 namespace itk {
 
-class FirstPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, VectorImage<complex<float>, 3>>
+class FirstPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
 {
 public:
-	enum class Save { LR, MR, GS, CS, PS };
+    enum class Save { LR, MR, GS, CS };
 
 protected:
 	size_t m_flips, m_lines, m_crossings, m_phases = 0;
 	Save m_mode = Save::LR;
 public:
 	/** Standard class typedefs. */
-	typedef VectorImage<complex<float>, 3>     TImage;
+    typedef VectorImage<complex<float>, 3>     TInputImage;
+    typedef Image<complex<float>, 3>           TOutputImage;
 	typedef Image<float, 3>                    TMask;
 	typedef FirstPassFilter                    Self;
-	typedef ImageToImageFilter<TImage, TImage> Superclass;
+    typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
 	typedef SmartPointer<Self>                 Pointer;
-	typedef typename TImage::RegionType        RegionType;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(FirstPassFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
@@ -117,11 +116,11 @@ public:
 		m_lines = m_phases / 2;
 		m_crossings = choose(m_lines, 2);
 	}
-    void SetInput(const TImage *img) override {
-		this->SetNthInput(0, const_cast<TImage*>(img));
+    void SetInput(const TInputImage *img) override {
+        this->SetNthInput(0, const_cast<TInputImage*>(img));
 	}
 	void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
-	typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
+    typename TInputImage::ConstPointer GetInput() const { return static_cast<const TInputImage *>(this->ProcessObject::GetInput(0)); }
 	typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(1)); }
 
 	virtual void GenerateOutputInformation() override {
@@ -148,7 +147,7 @@ protected:
 	DataObject::Pointer MakeOutput(unsigned int idx) {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		if (idx == 0) {
-			DataObject::Pointer output = (TImage::New()).GetPointer();
+            DataObject::Pointer output = (TOutputImage::New()).GetPointer();
 			return output.GetPointer();
 		} else {
 			std::cerr << "No output " << idx << std::endl;
@@ -156,87 +155,70 @@ protected:
 		}
 	}
 
-    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
+        ImageRegionConstIterator<TInputImage> inputIter(this->GetInput(), region);
 		auto m = this->GetMask();
 		ImageRegionConstIterator<TMask> maskIter;
 		if (m) {
 			maskIter = ImageRegionConstIterator<TMask>(m, region);
 		}
-		ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
+        ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
 
 		while(!inputIter.IsAtEnd()) {
 			if (!m || maskIter.Get()) {
 				VariableLengthVector<complex<float>> inputVector = inputIter.Get();
 				VariableLengthVector<complex<float>> outputVector(m_flips);
 
-				Map<const ArrayXXcf> allInput(inputVector.GetDataPointer(), m_phases, m_flips);
-				for (int f = m_flips - 1; f > -1; f--) {
-					ArrayXcd a = allInput.col(f).segment(0, m_lines).cast<complex<double>>();
-					ArrayXcd b = allInput.col(f).segment(m_lines, m_lines).cast<complex<double>>();
+                Map<const ArrayXcf> allInput(inputVector.GetDataPointer(), m_phases);
 
-					Eigen::MatrixXd sols = Eigen::MatrixXd::Zero(2, m_crossings);
-					size_t si = 0;
-					for (size_t li = 0; li < m_lines; li++) {
-						for (size_t lj = li + 1; lj < m_lines; lj++) {
-							// Convert to 2D representation
-							Vector2d a_i{a(li).real(), a(li).imag()};
-							Vector2d a_j{a(lj).real(), a(lj).imag()};
-							Vector2d b_i{b(li).real(), b(li).imag()};
-							Vector2d b_j{b(lj).real(), b(lj).imag()};
+                ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
+                ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
 
-							Vector2d d_i = (b_i - a_i);
-							Vector2d d_j = (b_j - a_j);
-							Vector2d n_i{d_i[1], -d_i[0]};
-							Vector2d n_j{d_j[1], -d_j[0]};
+                Eigen::MatrixXd sols = Eigen::MatrixXd::Zero(2, m_crossings);
+                size_t si = 0;
+                for (size_t li = 0; li < m_lines; li++) {
+                    for (size_t lj = li + 1; lj < m_lines; lj++) {
+                        // Convert to 2D representation
+                        Vector2d a_i{a(li).real(), a(li).imag()};
+                        Vector2d a_j{a(lj).real(), a(lj).imag()};
+                        Vector2d b_i{b(li).real(), b(li).imag()};
+                        Vector2d b_j{b(lj).real(), b(lj).imag()};
 
-							double mu = (a_j - a_i).dot(n_j) / d_i.dot(n_j);
-							double nu = (a_i - a_j).dot(n_i) / d_j.dot(n_i);
-							double xi = 1.0 - pow(d_i.dot(d_j) / (d_i.norm() * d_j.norm()),2.0);
+                        Vector2d d_i = (b_i - a_i);
+                        Vector2d d_j = (b_j - a_j);
+                        Vector2d n_i{d_i[1], -d_i[0]};
+                        Vector2d n_j{d_j[1], -d_j[0]};
 
-							Vector2d cs = (a_i + a_j + b_i + b_j) / 4.0;
-							Vector2d gs = a_i + mu * d_i;
+                        double mu = (a_j - a_i).dot(n_j) / d_i.dot(n_j);
+                        double nu = (a_i - a_j).dot(n_i) / d_j.dot(n_i);
+                        double xi = 1.0 - pow(d_i.dot(d_j) / (d_i.norm() * d_j.norm()),2.0);
 
-							Vector2d ps;
-							if (f < (m_flips - 1)) { // Use the phase of the last flip-angle for regularisation
-								double phase = arg(outputVector[m_flips-1]);
-								Vector2d d_p{cos(phase),sin(phase)};
-								double lm_i = (a_i).dot(n_i) / d_p.dot(n_i);
-								double lm_j = (a_j).dot(n_j) / d_p.dot(n_j);
-								Vector2d p_i = lm_i * d_p;
-								Vector2d p_j = lm_j * d_p;
-								ps = (p_i + p_j) / 2.0;
-							}
+                        Vector2d cs = (a_i + a_j + b_i + b_j) / 4.0;
+                        Vector2d gs = a_i + mu * d_i;
 
-							bool line_reg = true;
-							// Do the logic this way round so NaN does not propagate
-							if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi))
-								line_reg = false;
+                        bool line_reg = true;
+                        // Do the logic this way round so NaN does not propagate
+                        if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi))
+                            line_reg = false;
 
-							bool mag_reg = true;
-							double maxnorm = max(max(max(a_i.norm(), a_j.norm()), b_i.norm()), b_j.norm());
-							if (gs.norm() < maxnorm) {
-								mag_reg = false;
-							}
-							if (ps.norm() > maxnorm) {
-								ps = cs;
-							}
-							switch (m_mode) {
-								case Save::LR: sols.col(si) = line_reg ? ps : gs; break;
-								case Save::MR: sols.col(si) = mag_reg ? ps : gs; break;
-								case Save::GS: sols.col(si) = gs; break;
-								case Save::PS: sols.col(si) = ps; break;
-								case Save::CS: sols.col(si) = cs; break;
-							}
-							si++;
-						}
-					}
-					Vector2d mean_sol = sols.rowwise().mean();
-					// Convert back to complex
-					outputVector[f] = {static_cast<float>(mean_sol[0]), static_cast<float>(mean_sol[1])};
-				}
-				outputIter.Set(outputVector);
+                        bool mag_reg = true;
+                        double maxnorm = max(max(max(a_i.norm(), a_j.norm()), b_i.norm()), b_j.norm());
+                        if (gs.norm() < maxnorm) {
+                            mag_reg = false;
+                        }
+                        switch (m_mode) {
+                            case Save::LR: sols.col(si) = line_reg ? cs : gs; break;
+                            case Save::MR: sols.col(si) = mag_reg ? cs : gs; break;
+                            case Save::GS: sols.col(si) = gs; break;
+                            case Save::CS: sols.col(si) = cs; break;
+                        }
+                        si++;
+                    }
+                }
+                Vector2d mean_sol = sols.rowwise().mean();
+                // Convert back to complex
+                outputIter.Set(complex<float>(static_cast<float>(mean_sol[0]), static_cast<float>(mean_sol[1])));
 			}
 			++inputIter;
 			if (m)
@@ -250,19 +232,19 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 };
 
-class SecondPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, VectorImage<complex<float>, 3>>
+class SecondPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
 {
 protected:
 	size_t m_flips, m_phases, m_lines = 0;
 	bool m_2D = false;
 
 public:
-	typedef VectorImage<complex<float>, 3>     TImage;
+    typedef VectorImage<complex<float>, 3>     TInputImage;
+    typedef Image<complex<float>, 3>           TOutputImage;
 	typedef Image<float, 3>                    TMask;
 	typedef SecondPassFilter                   Self;
-	typedef ImageToImageFilter<TImage, TImage> Superclass;
+    typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
 	typedef SmartPointer<Self>                 Pointer;
-	typedef typename TImage::RegionType        RegionType;
 
 	itkNewMacro(Self);
 	itkTypeMacro(SecondPassFilter, ImageToImageFilter);
@@ -276,11 +258,11 @@ public:
 		m_phases = p;
 		m_lines = m_phases / 2;
 	}
-    void SetInput(const TImage *img) override { this->SetNthInput(0, const_cast<TImage*>(img)); }
-	void SetPass1(const TImage *img) { this->SetNthInput(1, const_cast<TImage*>(img)); }
+    void SetInput(const TInputImage *img) override { this->SetNthInput(0, const_cast<TInputImage*>(img)); }
+    void SetPass1(const TOutputImage *img) { this->SetNthInput(1, const_cast<TOutputImage*>(img)); }
 	void SetMask(const TMask *mask) { this->SetNthInput(2, const_cast<TMask*>(mask)); }
-	typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
-	typename TImage::ConstPointer GetPass1() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
+    typename TInputImage::ConstPointer GetInput() const { return static_cast<const TInputImage *>(this->ProcessObject::GetInput(0)); }
+    typename TOutputImage::ConstPointer GetPass1() const { return static_cast<const TOutputImage *>(this->ProcessObject::GetInput(1)); }
 	typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(2)); }
 
 	virtual void GenerateOutputInformation() override {
@@ -289,9 +271,6 @@ public:
 			throw(std::runtime_error("Input size and number of phases do not match"));
 		}
 		m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
-		if (this->GetPass1()->GetNumberOfComponentsPerPixel() != m_flips) {
-			throw(std::runtime_error("First passs output has incorrect number of flip-angles"));
-		}
 		auto op = this->GetOutput();
 		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
 		op->SetNumberOfComponentsPerPixel(m_flips);
@@ -310,7 +289,7 @@ protected:
 	DataObject::Pointer MakeOutput(unsigned int idx) {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		if (idx == 0) {
-			DataObject::Pointer output = (TImage::New()).GetPointer();
+            DataObject::Pointer output = (TOutputImage::New()).GetPointer();
 			return output.GetPointer();
 		} else {
 			std::cerr << "No output " << idx << std::endl;
@@ -318,57 +297,52 @@ protected:
 		}
 	}
 
-    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		ConstNeighborhoodIterator<TImage>::RadiusType radius;
+        ConstNeighborhoodIterator<TInputImage>::RadiusType radius;
 		radius.Fill(1);
 		if (m_2D)
-			radius[TImage::ImageDimension - 1] = 0;
-		ConstNeighborhoodIterator<TImage> inputIter(radius, this->GetInput(), region);
-		ConstNeighborhoodIterator<TImage> pass1Iter(radius, this->GetPass1(), region);
+            radius[TInputImage::ImageDimension - 1] = 0;
+        ConstNeighborhoodIterator<TInputImage> inputIter(radius, this->GetInput(), region);
+        ConstNeighborhoodIterator<TOutputImage> pass1Iter(radius, this->GetPass1(), region);
 
 		auto m = this->GetMask();
 		ImageRegionConstIterator<TMask> maskIter;
 		if (m) {
 			maskIter = ImageRegionConstIterator<TMask>(m, region);
 		}
-		ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
+        ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
 		while(!inputIter.IsAtEnd()) {
 			if (!m || maskIter.Get()) {
-				VariableLengthVector<complex<float>> outputVector(m_flips);
-				ArrayXd num = ArrayXd::Zero(m_flips), den = ArrayXd::Zero(m_flips);
+                double num = 0., den = 0.;
 
 				for (int p = 0; p < inputIter.Size(); ++p) {
-					VariableLengthVector<complex<float>> pass1Vector = pass1Iter.GetPixel(p);
-					VariableLengthVector<complex<float>> inputVector = inputIter.GetPixel(p);
-					Map<const ArrayXXcf> allInput(inputVector.GetDataPointer(), m_phases, m_flips);
-					for (int f = 0; f < m_flips; f++) {
-						ArrayXcd a = allInput.col(f).segment(0, m_lines).cast<complex<double>>();
-						ArrayXcd b = allInput.col(f).segment(m_lines, m_lines).cast<complex<double>>();
-						complex<double> s_i = pass1Vector.GetElement(f);
-						for (int li = 0; li < m_lines; li++) {
-							complex<double> a_i = a[li];
-							complex<double> b_i = b[li];
-							num += real(conj(b_i - s_i)*(a_i - b_i) + conj(a_i - b_i)*(b_i - s_i));
-							den += real(conj(a_i - b_i)*(a_i - b_i));
-						}
-					}
-				}
+                    VariableLengthVector<complex<float>> inputVector = inputIter.GetPixel(p);
+                    Map<const VectorXcf> allInput(inputVector.GetDataPointer(), m_phases);
+                    ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
+                    ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
+                    complex<double> s_i = static_cast<complex<double>>(pass1Iter.GetPixel(p));
+                    for (int li = 0; li < m_lines; li++) {
+                        complex<double> a_i = a[li];
+                        complex<double> b_i = b[li];
+                        num += real(conj(b_i - s_i)*(a_i - b_i) + conj(a_i - b_i)*(b_i - s_i));
+                        den += real(conj(a_i - b_i)*(a_i - b_i));
+                    }
+                }
 
-				ArrayXd w = -num / (2. * den);
+                double w = -num / (2. * den);
 				VariableLengthVector<complex<float>> inputVector = inputIter.GetCenterPixel();
-				Map<const ArrayXXcf> allInput(inputVector.GetDataPointer(), m_phases, m_flips);
-				for (int f = 0; f < m_flips; f++) {
-					if (isfinite(w[f])) {
-						ArrayXcd a = allInput.col(f).segment(0, m_lines).cast<complex<double>>();
-						ArrayXcd b = allInput.col(f).segment(m_lines, m_lines).cast<complex<double>>();
-						for (int li = 0; li < m_lines; li++) {
-							complex<double> s = (a[li]*w[f] + (1.f-w[f])*b[li]);
-							outputVector[f] += static_cast<complex<float>>(s / static_cast<double>(m_lines));
-						}
-					}
-				}
-				outputIter.Set(outputVector);
+                Map<const ArrayXcf> allInput(inputVector.GetDataPointer(), m_phases);
+                complex<float> output = 0.;
+                if (isfinite(w)) {
+                    ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
+                    ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
+                    for (int li = 0; li < m_lines; li++) {
+                        complex<double> s = (a[li]*w + (1.f-w)*b[li]);
+                        output += static_cast<complex<float>>(s / static_cast<double>(m_lines));
+                    }
+                }
+                outputIter.Set(output);
 			}
 			++inputIter;
 			++pass1Iter;
@@ -419,7 +393,6 @@ int main(int argc, char **argv) {
 					case 'M': pass1->SetSave(itk::FirstPassFilter::Save::MR); break;
 					case 'G': pass1->SetSave(itk::FirstPassFilter::Save::GS); break;
 					case 'C': pass1->SetSave(itk::FirstPassFilter::Save::CS); break;
-					case 'P': pass1->SetSave(itk::FirstPassFilter::Save::PS); break;
 					default:
 						cerr << "Unknown desired save image: " << *optarg << endl;
 						return EXIT_FAILURE;
@@ -446,32 +419,69 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
 	string fname(argv[optind++]);
 
-	auto inFile = QI::ReadTimeseriesXF::New();
-	auto inData = QI::TimeseriesToVectorXF::New();
-    auto reorderFlips = QI::ReorderVectorXF::New();
-    auto reorderPhase = QI::ReorderVectorXF::New();
+    auto inFile = QI::ReadTimeseriesXF::New();
+    auto reorderVolumes = QI::ReorderTimeseriesXF::New();
+    auto reorderPhase = QI::ReorderTimeseriesXF::New();
 
-	inFile->SetFileName(fname);
-	inData->SetInput(inFile->GetOutput());
-	reorderFlips->SetInput(inData->GetOutput());       // Does nothing unless stride set
-	inData->Update(); // We need to know the vector length to get the number of flips from the number of phases
-	size_t nFlips = inData->GetOutput()->GetNumberOfComponentsPerPixel() / nPhases;
+    inFile->SetFileName(fname);
+    inFile->Update(); // We need to know the number of input volumes to work out the number of output volumes
+    size_t nVols = inFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3] / nPhases;
+    if (verbose) {
+        cout << "Number of phase increments is " << nPhases << endl;
+        cout << "Number of volumes to process is " << nVols << endl;
+    }
+    // Re-order once to get all phase-increments for one output volume together
+    reorderVolumes->SetInput(inFile->GetOutput());
     if (!order_phase) {
-		reorderFlips->SetStride(nFlips);
-	}
-	if (verbose) {
-		cout << "Number of phase-cycling patterns is " << nPhases << endl;
-		cout << "Number of volumes to process is " << nFlips << endl;
-	}
-	reorderPhase->SetInput(reorderFlips->GetOutput()); // Does nothing unless stride set
+        reorderVolumes->SetStride(nVols);
+    }
+    // Re-order again within blocks to separate opposing phase-increments
+    reorderPhase->SetInput(reorderVolumes->GetOutput());
     if (order_alternate) {
-		reorderPhase->SetStride(2);
-		reorderPhase->SetBlockSize(nPhases);
-	}
-	pass1->SetInput(reorderPhase->GetOutput());
-	pass1->SetPhases(nPhases);
-	pass2->SetPhases(nPhases);
-	auto outImage = QI::VectorToTimeseriesXF::New();
+        reorderPhase->SetStride(2);
+        reorderPhase->SetBlockSize(nPhases);
+    }
+
+    auto block = itk::RegionOfInterestImageFilter<QI::TimeseriesXF, QI::TimeseriesXF>::New();
+    block->SetInput(reorderPhase->GetOutput());
+    QI::TimeseriesF::RegionType blockRegion = inFile->GetOutput()->GetLargestPossibleRegion();
+    blockRegion.GetModifiableSize()[3] = nPhases;
+
+    auto pass1Tiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
+    auto pass2Tiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
+    itk::FixedArray<unsigned int, 4> layout;
+    layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
+    pass1Tiler->SetLayout(layout);
+    pass2Tiler->SetLayout(layout);
+
+    pass1->SetPhases(nPhases);
+    pass2->SetPhases(nPhases);
+    for (size_t i = 0; i < nVols; i++) {
+        if (verbose) cout << "Processing output volume " << i << endl;
+        block->SetRegionOfInterest(blockRegion);
+        block->Update();
+
+        auto blockVector = QI::TimeseriesToVectorXF::New();
+        blockVector->SetInput(block->GetOutput());
+        pass1->SetInput(blockVector->GetOutput());
+        pass1->Update();
+        pass2->SetInput(blockVector->GetOutput());
+        pass2->SetPass1(pass1->GetOutput());
+        pass2->Update();
+
+        auto pass1Image = pass1->GetOutput();
+        pass1Tiler->SetInput(i, pass1Image);
+        pass1Image->DisconnectPipeline();
+
+        auto pass2Image = pass2->GetOutput();
+        pass2Tiler->SetInput(i, pass2Image);
+        pass2Image->DisconnectPipeline();
+
+        blockRegion.GetModifiableIndex()[3] += nPhases;
+    }
+    pass1Tiler->UpdateLargestPossibleRegion();
+    pass2Tiler->UpdateLargestPossibleRegion();
+
 	auto outFile = QI::WriteTimeseriesXF::New();
 	if (prefix == "")
         prefix = QI::StripExt(fname);
@@ -481,19 +491,15 @@ int main(int argc, char **argv) {
 		case itk::FirstPassFilter::Save::MR: outname.append("_mreg"); break;
 		case itk::FirstPassFilter::Save::GS: outname.append("_gs"); break;
 		case itk::FirstPassFilter::Save::CS: outname.append("_cs"); break;
-		case itk::FirstPassFilter::Save::PS: outname.append("_ps"); break;
 	}
 	if (do_pass2) {
 		outname.append("_2p");
-		pass2->SetInput(reorderPhase->GetOutput());
-		pass2->SetPass1(pass1->GetOutput());
-		outImage->SetInput(pass2->GetOutput());
+        outFile->SetInput(pass2Tiler->GetOutput());
 	} else {
-		outImage->SetInput(pass1->GetOutput());
+        outFile->SetInput(pass1Tiler->GetOutput());
 	}
 	outname.append(OutExt());
 	if (verbose) cout << "Output filename: " << outname << endl;
-	outFile->SetInput(outImage->GetOutput());
 	outFile->SetFileName(outname);
 	if (verbose) cout << "Processing..." << endl;
 	outFile->Update();
