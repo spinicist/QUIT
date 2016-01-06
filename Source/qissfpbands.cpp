@@ -35,23 +35,25 @@ Input must be a single complex image with at least two pairs of opposing\n\
 phase-cycles along the 4th dimension.\n\
 \n\
 Options:\n\
-	--help, -h        : Print this message.\n\
-	--verbose, -v     : Print more information.\n\
-	--out, -o path    : Specify an output filename (default image base).\n\
-	--mask, -m file   : Mask input with specified file.\n\
-	--phaseflip, -F   : Data order is phase, then flip-angle (default opposite).\n\
-	--phases, -p N    : Number of phase-cycling patterns used (default is 4).\n\
-	--alternate, -a   : Opposing phase-cycles alternate (default is two blocks).\n\
-	--threads, -T N   : Use N threads (default=hardware limit).\n\
-	--save, -sL       : Save the line regularised GS (default)\n\
-	          M       : Save the magnitude regularised GS\n\
-	          G       : Save the unregularised GS\n\
-	          C       : Save the CS\n\
-	          P       : Save the PS\n\
-	--secondpass, -2  : Perform a 2nd pass as per Xiang and Hoff\n"
+    --help, -h       : Print this message.\n\
+    --verbose, -v    : Print more information.\n\
+    --out, -o path   : Specify an output filename (default image base).\n\
+    --mask, -m file  : Mask input with specified file.\n\
+    --alt_order      : Opposing phase-cycles alternate (default is two blocks).\n\
+    --threads, -T N  : Use N threads (default=hardware limit).\n\
+    --save, -sL      : Save the line regularised GS (default)\n\
+              M      : Save the magnitude regularised GS\n\
+              G      : Save the unregularised GS\n\
+              C      : Save the CS\n\
+              P      : Save the PS\n\
+    --secondpass, -2 : Perform a 2nd pass as per Xiang and Hoff\n\
+Options for multiple output volumes:\n\
+    --ph_incs, -p N : Number of phase increments (default is 4).\n\
+    --ph_order      : Data order is phase, then flip-angle (default opposite).\n"
 };
 
-static bool verbose = false, do_pass2 = false, phaseflip = false, alternate = false;
+bool verbose = false, do_pass2 = false;
+int order_phase = false, order_alternate = false;
 static size_t nPhases = 4;
 static string prefix;
 const struct option long_options[] = {
@@ -59,15 +61,15 @@ const struct option long_options[] = {
 	{"verbose", no_argument, 0, 'v'},
 	{"out", required_argument, 0, 'o'},
 	{"mask", required_argument, 0, 'm'},
-	{"phaseflip", required_argument, 0, 'F'},
-	{"phases", required_argument, 0, 'p'},
-	{"alternate", no_argument, 0, 'a'},
+    {"alt_order", no_argument, &order_alternate, true},
+    {"ph_order", required_argument, &order_phase, true},
+    {"ph_incs", required_argument, 0, 'p'},
 	{"threads", required_argument, 0, 'T'},
 	{"save", required_argument, 0, 's'},
 	{"secondpass", optional_argument, 0, '2'},
 	{0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:Fs:p:aT:2::";
+const char *short_options = "hvo:m:s:p:T:2::";
 // From Knuth, surprised this isn't in STL
 unsigned long long choose(unsigned long long n, unsigned long long k) {
 	if (k > n)
@@ -408,9 +410,9 @@ int main(int argc, char **argv) {
 				prefix = optarg;
 				cout << "Output prefix will be: " << prefix << endl;
 				break;
-			case 'F': phaseflip = true; break;
+            case 'F': order_phase = true; break;
 			case 'p': nPhases = atoi(optarg); break;
-			case 'a': alternate = true; break;
+            case 'a': order_alternate = true; break;
 			case 's':
 				switch(*optarg) {
 					case 'L': pass1->SetSave(itk::FirstPassFilter::Save::LR); break;
@@ -454,7 +456,7 @@ int main(int argc, char **argv) {
 	reorderFlips->SetInput(inData->GetOutput());       // Does nothing unless stride set
 	inData->Update(); // We need to know the vector length to get the number of flips from the number of phases
 	size_t nFlips = inData->GetOutput()->GetNumberOfComponentsPerPixel() / nPhases;
-	if (!phaseflip) {
+    if (!order_phase) {
 		reorderFlips->SetStride(nFlips);
 	}
 	if (verbose) {
@@ -462,7 +464,7 @@ int main(int argc, char **argv) {
 		cout << "Number of volumes to process is " << nFlips << endl;
 	}
 	reorderPhase->SetInput(reorderFlips->GetOutput()); // Does nothing unless stride set
-	if (alternate) {
+    if (order_alternate) {
 		reorderPhase->SetStride(2);
 		reorderPhase->SetBlockSize(nPhases);
 	}
