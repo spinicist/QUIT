@@ -441,11 +441,19 @@ int main(int argc, char **argv) {
         reorderPhase->SetStride(2);
         reorderPhase->SetBlockSize(nPhases);
     }
+    reorderPhase->Update();
 
-    auto block = itk::RegionOfInterestImageFilter<QI::TimeseriesXF, QI::TimeseriesXF>::New();
-    block->SetInput(reorderPhase->GetOutput());
-    QI::TimeseriesF::RegionType blockRegion = inFile->GetOutput()->GetLargestPossibleRegion();
-    blockRegion.GetModifiableSize()[3] = nPhases;
+    if (verbose) cout << "Reordered data" << endl;
+    auto blockVector = QI::TimeseriesToVectorXF::New();
+    blockVector->SetInput(reorderPhase->GetOutput());
+    blockVector->SetBlockSize(nPhases);
+
+    if (verbose) cout << "Setting up passes" << endl;
+    pass1->SetPhases(nPhases);
+    pass1->SetInput(blockVector->GetOutput());
+    pass2->SetPhases(nPhases);
+    pass2->SetInput(blockVector->GetOutput());
+    pass2->SetPass1(pass1->GetOutput());
 
     auto pass1Tiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
     auto pass2Tiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
@@ -454,33 +462,26 @@ int main(int argc, char **argv) {
     pass1Tiler->SetLayout(layout);
     pass2Tiler->SetLayout(layout);
 
-    pass1->SetPhases(nPhases);
-    pass2->SetPhases(nPhases);
     for (size_t i = 0; i < nVols; i++) {
         if (verbose) cout << "Processing output volume " << i << endl;
-        block->SetRegionOfInterest(blockRegion);
-        block->Update();
+        blockVector->SetBlockStart(i * nPhases);
+        blockVector->Update();
 
-        auto blockVector = QI::TimeseriesToVectorXF::New();
-        blockVector->SetInput(block->GetOutput());
-        pass1->SetInput(blockVector->GetOutput());
         pass1->Update();
-        pass2->SetInput(blockVector->GetOutput());
-        pass2->SetPass1(pass1->GetOutput());
-        pass2->Update();
-
         auto pass1Image = pass1->GetOutput();
         pass1Tiler->SetInput(i, pass1Image);
         pass1Image->DisconnectPipeline();
 
-        auto pass2Image = pass2->GetOutput();
-        pass2Tiler->SetInput(i, pass2Image);
-        pass2Image->DisconnectPipeline();
-
-        blockRegion.GetModifiableIndex()[3] += nPhases;
+        if (do_pass2) {
+            pass2->Update();
+            auto pass2Image = pass2->GetOutput();
+            pass2Tiler->SetInput(i, pass2Image);
+            pass2Image->DisconnectPipeline();
+        }
     }
     pass1Tiler->UpdateLargestPossibleRegion();
-    pass2Tiler->UpdateLargestPossibleRegion();
+    if (do_pass2)
+        pass2Tiler->UpdateLargestPossibleRegion();
 
 	auto outFile = QI::WriteTimeseriesXF::New();
 	if (prefix == "")
