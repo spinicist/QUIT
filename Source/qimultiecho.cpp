@@ -273,8 +273,6 @@ int main(int argc, char **argv) {
         inputData->SetStride(nVols);
     inputData->Update();
 
-    QI::TimeseriesF::RegionType region = inputData->GetOutput()->GetLargestPossibleRegion();
-    region.GetModifiableSize()[3] = multiecho->size();
     auto PDoutput = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
     auto T2output = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
     itk::FixedArray<unsigned int, 4> layout;
@@ -282,15 +280,13 @@ int main(int argc, char **argv) {
     PDoutput->SetLayout(layout);
     T2output->SetLayout(layout);
     if (verbose) cout << "Processing" << endl;
-    auto input = itk::RegionOfInterestImageFilter<QI::TimeseriesF, QI::TimeseriesF>::New();
-    input->SetInput(inputData->GetOutput());
+    auto inputVector = QI::TimeseriesToVectorF::New();
+    inputVector->SetInput(inputData->GetOutput());
+    inputVector->SetBlockSize(multiecho->size());
     vector<QI::ImageF::Pointer> PDimgs(nVols), T2imgs(nVols);
     for (size_t i = 0; i < nVols; i++) {
-        input->SetRegionOfInterest(region);
-        input->Update();
+        inputVector->SetBlockStart(i * multiecho->size());
 
-        auto inputVector = QI::TimeseriesToVectorF::New();
-        inputVector->SetInput(input->GetOutput());
         apply->SetAlgorithm(algo);
         apply->SetInput(0, inputVector->GetOutput());
         apply->Update();
@@ -302,8 +298,6 @@ int main(int argc, char **argv) {
 
         PDoutput->SetInput(i, PDimgs.at(i));
         T2output->SetInput(i, T2imgs.at(i));
-
-        region.GetModifiableIndex()[3] += multiecho->size();
     }
     if (verbose) cout << "Writing output" << endl;
     PDoutput->UpdateLargestPossibleRegion();
