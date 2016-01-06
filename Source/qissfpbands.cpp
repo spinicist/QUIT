@@ -17,6 +17,7 @@
 #include "Eigen/Dense"
 
 #include "itkUnaryFunctorImageFilter.h"
+#include "itkComplexToModulusImageFilter.h"
 #include "itkConstNeighborhoodIterator.h"
 
 #include "Filters/ReorderVectorFilter.h"
@@ -42,6 +43,7 @@ Options:\n\
     --mask, -m file  : Mask input with specified file.\n\
     --alt_order      : Opposing phase-cycles alternate (default is two blocks).\n\
     --threads, -T N  : Use N threads (default=hardware limit).\n\
+    --magnitude, -M  : Output a magnitude image (default is complex).\n\
 Output options (mutually exclusive):\n\
     --magsum         : Output the magnitude sum of all phase increments.\n\
     --sos            : Output the Sum-of-Squared magnitudes.\n\
@@ -59,7 +61,7 @@ Options for multiple output volumes:\n\
 };
 
 enum OutEnum { MagSum = 1, SoS, Max, CS, GS };
-bool verbose = false;
+bool verbose = false, output_magnitude = false;
 int order_phase = false, order_alternate = false, output = OutEnum::GS, do_2pass;
 static size_t nPhases = 4;
 static string prefix;
@@ -72,6 +74,7 @@ const struct option long_options[] = {
     {"ph_order", required_argument, &order_phase, true},
     {"ph_incs", required_argument, 0, 'p'},
 	{"threads", required_argument, 0, 'T'},
+    {"magnitude", no_argument, 0, 'M'},
     {"magsum", no_argument, &output, OutEnum::MagSum},
     {"sos", no_argument, &output, OutEnum::SoS},
     {"max", no_argument, &output, OutEnum::Max},
@@ -81,7 +84,7 @@ const struct option long_options[] = {
     {"secondpass", no_argument, &do_2pass, true},
 	{0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:s:p:T:R:2";
+const char *short_options = "hvo:m:s:p:T:MR:2";
 // From Knuth, surprised this isn't in STL
 unsigned long long choose(unsigned long long n, unsigned long long k) {
 	if (k > n)
@@ -429,6 +432,7 @@ int main(int argc, char **argv) {
             case 'F': order_phase = true; break;
 			case 'p': nPhases = atoi(optarg); break;
             case 'a': order_alternate = true; break;
+            case 'M': output_magnitude = true; break;
             case 'R':
                 switch(*optarg) {
                     case 'L': gs->SetRegularise(itk::GSFilter::RegEnum::Line); break;
@@ -553,10 +557,19 @@ int main(int argc, char **argv) {
     string outname = prefix;
     outname.append(OutExt());
     if (verbose) cout << "Output filename: " << outname << endl;
-    auto outFile = QI::WriteTimeseriesXF::New();
-    outFile->SetInput(outTiler->GetOutput());
-    outFile->SetFileName(outname);
-    outFile->Update();
+    if (output_magnitude) {
+        auto mag = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
+        auto outFile = QI::WriteTimeseriesF::New();
+        mag->SetInput(outTiler->GetOutput());
+        outFile->SetInput(mag->GetOutput());
+        outFile->SetFileName(outname);
+        outFile->Update();
+    } else {
+        auto outFile = QI::WriteTimeseriesXF::New();
+        outFile->SetInput(outTiler->GetOutput());
+        outFile->SetFileName(outname);
+        outFile->Update();
+    }
     if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;
 }
