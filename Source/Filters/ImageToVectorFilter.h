@@ -25,10 +25,15 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(ImageToVectorFilter, ImageToImageFilter);
 
+    itkSetMacro(BlockStart, size_t);
+    itkSetMacro(BlockSize, size_t);
+
 protected:
 	typedef ExtractImageFilter<TInput, TVolume>  ExtractType;
 	typedef ComposeImageFilter<TVolume, TOutput> ComposeType;
-	typename ComposeType::Pointer m_compose;
+
+    typename ComposeType::Pointer m_compose;
+    size_t m_BlockStart, m_BlockSize;
 
 	ImageToVectorFilter();
 	~ImageToVectorFilter(){}
