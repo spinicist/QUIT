@@ -145,17 +145,6 @@ protected:
 	}
     ~GSFilter() {}
 
-	DataObject::Pointer MakeOutput(unsigned int idx) {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		if (idx == 0) {
-            DataObject::Pointer output = (TOut::New()).GetPointer();
-			return output.GetPointer();
-		} else {
-			std::cerr << "No output " << idx << std::endl;
-			return NULL;
-		}
-	}
-
     virtual void ThreadedGenerateData(const TIn::RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
         ImageRegionConstIterator<TIn> inputIter(this->GetInput(), region);
@@ -285,17 +274,6 @@ protected:
 		this->SetPhases(4);
 	}
     ~TwoPassGSFilter() {}
-
-	DataObject::Pointer MakeOutput(unsigned int idx) {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		if (idx == 0) {
-            DataObject::Pointer output = (TOutputImage::New()).GetPointer();
-			return output.GetPointer();
-		} else {
-			std::cerr << "No output " << idx << std::endl;
-			return NULL;
-		}
-	}
 
     virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
