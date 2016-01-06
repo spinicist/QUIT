@@ -65,10 +65,10 @@ const struct option long_options[] = {
     {"ph_incs", required_argument, 0, 'p'},
 	{"threads", required_argument, 0, 'T'},
 	{"save", required_argument, 0, 's'},
-	{"secondpass", optional_argument, 0, '2'},
+    {"secondpass", no_argument, 0, '2'},
 	{0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:s:p:T:2::";
+const char *short_options = "hvo:m:s:p:T:2";
 // From Knuth, surprised this isn't in STL
 unsigned long long choose(unsigned long long n, unsigned long long k) {
 	if (k > n)
@@ -236,7 +236,6 @@ class SecondPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3
 {
 protected:
 	size_t m_flips, m_phases, m_lines = 0;
-	bool m_2D = false;
 
 public:
     typedef VectorImage<complex<float>, 3>     TInputImage;
@@ -249,7 +248,6 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(SecondPassFilter, ImageToImageFilter);
 
-	void Set2D(const bool d) { m_2D = d; }
 	void SetPhases(const size_t p) {
 		if (p < 4)
 			throw(runtime_error("Must have a minimum of 4 phase-cycling patterns."));
@@ -257,6 +255,7 @@ public:
 			throw(runtime_error("Number of phases must be even."));
 		m_phases = p;
 		m_lines = m_phases / 2;
+        this->Modified();
 	}
     void SetInput(const TInputImage *img) override { this->SetNthInput(0, const_cast<TInputImage*>(img)); }
     void SetPass1(const TOutputImage *img) { this->SetNthInput(1, const_cast<TOutputImage*>(img)); }
@@ -301,8 +300,6 @@ protected:
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
         ConstNeighborhoodIterator<TInputImage>::RadiusType radius;
 		radius.Fill(1);
-		if (m_2D)
-            radius[TInputImage::ImageDimension - 1] = 0;
         ConstNeighborhoodIterator<TInputImage> inputIter(radius, this->GetInput(), region);
         ConstNeighborhoodIterator<TOutputImage> pass1Iter(radius, this->GetPass1(), region);
 
@@ -367,8 +364,8 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 
 	itk::ImageFileReader<itk::Image<float, 3>>::Pointer mask = ITK_NULLPTR;
-	auto pass1 = itk::FirstPassFilter::New(); // Needs to be here so save option can be set
-	auto pass2 = itk::SecondPassFilter::New(); // Needs to be here so 2D option can be set
+    auto pass1 = itk::FirstPassFilter::New();
+    auto pass2 = itk::SecondPassFilter::New();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -398,7 +395,7 @@ int main(int argc, char **argv) {
 						return EXIT_FAILURE;
 				}
 				break;
-			case '2': do_pass2 = true; if (optarg) pass2->Set2D(true); break;
+            case '2': do_pass2 = true; break;
 			case 'T':
 				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
 				break;
