@@ -49,7 +49,7 @@ void parseInput(shared_ptr<SequenceGroup> seq,
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
         auto file = QI::ReadTimeseriesF::New();
         auto data = QI::TimeseriesToVectorF::New();
-        auto reorder = QI::ReorderF::New();
+        auto reorder = QI::ReorderVectorF::New();
         QI::VectorImageF::Pointer image;
         if (verbose) cout << "Reading file: " << path << endl;
         file->SetFileName(path);

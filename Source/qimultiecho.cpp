@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
     inputFile->SetFileName(argv[optind]);
     inputFile->Update(); // Need to know the length of the vector for re-ordering
     size_t nVols = inputFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3] / multiecho->size();
-    auto inputData = itk::ReorderImageFilter<QI::TimeseriesF>::New();
+    auto inputData = QI::ReorderTimeseriesF::New();
     inputData->SetInput(inputFile->GetOutput());
     if (reorder)
         inputData->SetStride(nVols);

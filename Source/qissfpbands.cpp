@@ -448,8 +448,8 @@ int main(int argc, char **argv) {
 
 	auto inFile = QI::ReadTimeseriesXF::New();
 	auto inData = QI::TimeseriesToVectorXF::New();
-	auto reorderFlips = QI::ReorderXF::New();
-	auto reorderPhase = QI::ReorderXF::New();
+    auto reorderFlips = QI::ReorderVectorXF::New();
+    auto reorderPhase = QI::ReorderVectorXF::New();
 
 	inFile->SetFileName(fname);
 	inData->SetInput(inFile->GetOutput());
