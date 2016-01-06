@@ -84,7 +84,7 @@ unsigned long long choose(unsigned long long n, unsigned long long k) {
 
 namespace itk {
 
-class FirstPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
+class GSFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
 {
 public:
     enum class Save { LR, MR, GS, CS };
@@ -94,15 +94,15 @@ protected:
 	Save m_mode = Save::LR;
 public:
 	/** Standard class typedefs. */
-    typedef VectorImage<complex<float>, 3>     TInputImage;
-    typedef Image<complex<float>, 3>           TOutputImage;
-	typedef Image<float, 3>                    TMask;
-	typedef FirstPassFilter                    Self;
-    typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
-	typedef SmartPointer<Self>                 Pointer;
+    typedef VectorImage<complex<float>, 3> TIn;
+    typedef Image<complex<float>, 3>       TOut;
+    typedef Image<float, 3>                TMask;
+    typedef GSFilter                       Self;
+    typedef ImageToImageFilter<TIn, TOut>  Superclass;
+    typedef SmartPointer<Self>             Pointer;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
-	itkTypeMacro(FirstPassFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
+    itkTypeMacro(GSFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
 	void SetSave(Save s) { m_mode = s; }
 	Save GetSave() { return m_mode; }
@@ -115,12 +115,13 @@ public:
 		m_phases = p;
 		m_lines = m_phases / 2;
 		m_crossings = choose(m_lines, 2);
+        this->Modified();
 	}
-    void SetInput(const TInputImage *img) override {
-        this->SetNthInput(0, const_cast<TInputImage*>(img));
+    void SetInput(const TIn *img) override {
+        this->SetNthInput(0, const_cast<TIn*>(img));
 	}
 	void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
-    typename TInputImage::ConstPointer GetInput() const { return static_cast<const TInputImage *>(this->ProcessObject::GetInput(0)); }
+    typename TIn::ConstPointer GetInput() const { return static_cast<const TIn *>(this->ProcessObject::GetInput(0)); }
 	typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(1)); }
 
 	virtual void GenerateOutputInformation() override {
@@ -136,18 +137,18 @@ public:
 	}
 
 protected:
-	FirstPassFilter() {
+    GSFilter() {
 		this->SetNumberOfRequiredInputs(1);
 		this->SetNumberOfRequiredOutputs(1);
 		this->SetNthOutput(0, this->MakeOutput(0));
 		this->SetPhases(4);
 	}
-	~FirstPassFilter() {}
+    ~GSFilter() {}
 
 	DataObject::Pointer MakeOutput(unsigned int idx) {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		if (idx == 0) {
-            DataObject::Pointer output = (TOutputImage::New()).GetPointer();
+            DataObject::Pointer output = (TOut::New()).GetPointer();
 			return output.GetPointer();
 		} else {
 			std::cerr << "No output " << idx << std::endl;
@@ -155,15 +156,15 @@ protected:
 		}
 	}
 
-    virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const TIn::RegionType &region, ThreadIdType threadId) override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-        ImageRegionConstIterator<TInputImage> inputIter(this->GetInput(), region);
+        ImageRegionConstIterator<TIn> inputIter(this->GetInput(), region);
 		auto m = this->GetMask();
 		ImageRegionConstIterator<TMask> maskIter;
 		if (m) {
 			maskIter = ImageRegionConstIterator<TMask>(m, region);
 		}
-        ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
+        ImageRegionIterator<TOut> outputIter(this->GetOutput(), region);
 
 		while(!inputIter.IsAtEnd()) {
 			if (!m || maskIter.Get()) {
@@ -228,11 +229,11 @@ protected:
 	}
 
 private:
-	FirstPassFilter(const Self &); //purposely not implemented
+    GSFilter(const Self &); //purposely not implemented
 	void operator=(const Self &);  //purposely not implemented
 };
 
-class SecondPassFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
+class TwoPassGSFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
 {
 protected:
 	size_t m_flips, m_phases, m_lines = 0;
@@ -241,12 +242,12 @@ public:
     typedef VectorImage<complex<float>, 3>     TInputImage;
     typedef Image<complex<float>, 3>           TOutputImage;
 	typedef Image<float, 3>                    TMask;
-	typedef SecondPassFilter                   Self;
+    typedef TwoPassGSFilter                   Self;
     typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
 	typedef SmartPointer<Self>                 Pointer;
 
 	itkNewMacro(Self);
-	itkTypeMacro(SecondPassFilter, ImageToImageFilter);
+    itkTypeMacro(TwoPassGSFilter, ImageToImageFilter);
 
 	void SetPhases(const size_t p) {
 		if (p < 4)
@@ -277,13 +278,13 @@ public:
 	}
 
 protected:
-	SecondPassFilter() {
+    TwoPassGSFilter() {
 		this->SetNumberOfRequiredInputs(2);
 		this->SetNumberOfRequiredOutputs(1);
 		this->SetNthOutput(0, this->MakeOutput(0));
 		this->SetPhases(4);
 	}
-	~SecondPassFilter() {}
+    ~TwoPassGSFilter() {}
 
 	DataObject::Pointer MakeOutput(unsigned int idx) {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
@@ -351,7 +352,7 @@ protected:
 	}
 
 private:
-	SecondPassFilter(const Self &); //purposely not implemented
+    TwoPassGSFilter(const Self &); //purposely not implemented
 	void operator=(const Self &);  //purposely not implemented
 };
 
@@ -364,8 +365,8 @@ int main(int argc, char **argv) {
 	Eigen::initParallel();
 
 	itk::ImageFileReader<itk::Image<float, 3>>::Pointer mask = ITK_NULLPTR;
-    auto pass1 = itk::FirstPassFilter::New();
-    auto pass2 = itk::SecondPassFilter::New();
+    auto pass1 = itk::GSFilter::New();
+    auto pass2 = itk::TwoPassGSFilter::New();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -386,10 +387,10 @@ int main(int argc, char **argv) {
             case 'a': order_alternate = true; break;
 			case 's':
 				switch(*optarg) {
-					case 'L': pass1->SetSave(itk::FirstPassFilter::Save::LR); break;
-					case 'M': pass1->SetSave(itk::FirstPassFilter::Save::MR); break;
-					case 'G': pass1->SetSave(itk::FirstPassFilter::Save::GS); break;
-					case 'C': pass1->SetSave(itk::FirstPassFilter::Save::CS); break;
+                    case 'L': pass1->SetSave(itk::GSFilter::Save::LR); break;
+                    case 'M': pass1->SetSave(itk::GSFilter::Save::MR); break;
+                    case 'G': pass1->SetSave(itk::GSFilter::Save::GS); break;
+                    case 'C': pass1->SetSave(itk::GSFilter::Save::CS); break;
 					default:
 						cerr << "Unknown desired save image: " << *optarg << endl;
 						return EXIT_FAILURE;
@@ -485,10 +486,10 @@ int main(int argc, char **argv) {
         prefix = QI::StripExt(fname);
 	string outname = prefix;
 	switch (pass1->GetSave()) {
-		case itk::FirstPassFilter::Save::LR: outname.append("_lreg"); break;
-		case itk::FirstPassFilter::Save::MR: outname.append("_mreg"); break;
-		case itk::FirstPassFilter::Save::GS: outname.append("_gs"); break;
-		case itk::FirstPassFilter::Save::CS: outname.append("_cs"); break;
+        case itk::GSFilter::Save::LR: outname.append("_lreg"); break;
+        case itk::GSFilter::Save::MR: outname.append("_mreg"); break;
+        case itk::GSFilter::Save::GS: outname.append("_gs"); break;
+        case itk::GSFilter::Save::CS: outname.append("_cs"); break;
 	}
 	if (do_pass2) {
 		outname.append("_2p");
