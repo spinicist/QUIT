@@ -85,6 +85,11 @@ const struct option long_options[] = {
 	{0, 0, 0, 0}
 };
 const char *short_options = "hvo:m:s:p:T:MR:2";
+
+/*
+ * Helper functions
+ */
+
 // From Knuth, surprised this isn't in STL
 unsigned long long choose(unsigned long long n, unsigned long long k) {
 	if (k > n)
@@ -96,6 +101,11 @@ unsigned long long choose(unsigned long long n, unsigned long long k) {
 		r /= d;
 	}
 	return r;
+}
+
+// Complex equivalent of the dot product
+template<typename T> inline T cdot(const complex<T> &a, const complex<T> &b) {
+    return real(a * conj(b));
 }
 
 namespace itk {
@@ -171,56 +181,40 @@ protected:
 		while(!inputIter.IsAtEnd()) {
 			if (!m || maskIter.Get()) {
 				VariableLengthVector<complex<float>> inputVector = inputIter.Get();
-				VariableLengthVector<complex<float>> outputVector(m_flips);
-
                 Map<const ArrayXcf> allInput(inputVector.GetDataPointer(), m_phases);
+                const ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
+                const ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
 
-                ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
-                ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
+                complex<double> sum(0., 0.);
+                for (size_t i = 0; i < m_lines; i++) {
+                    for (size_t j = i + 1; j < m_lines; j++) {
+                        const complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
+                        const complex<double> ni(di.imag(), -di.real()), nj(dj.imag(), -dj.real());
 
-                Eigen::MatrixXd sols = Eigen::MatrixXd::Zero(2, m_crossings);
-                size_t si = 0;
-                for (size_t li = 0; li < m_lines; li++) {
-                    for (size_t lj = li + 1; lj < m_lines; lj++) {
-                        // Convert to 2D representation
-                        Vector2d a_i{a(li).real(), a(li).imag()};
-                        Vector2d a_j{a(lj).real(), a(lj).imag()};
-                        Vector2d b_i{b(li).real(), b(li).imag()};
-                        Vector2d b_j{b(lj).real(), b(lj).imag()};
+                        const double mu = cdot(a[j] - a[i], nj) / cdot(di, nj);
+                        const double nu = cdot(a[i] - a[j], ni) / cdot(dj, ni);
+                        const double xi = 1.0 - pow(cdot(di, dj) / (abs(di)*abs(dj)), 2.0);
 
-                        Vector2d d_i = (b_i - a_i);
-                        Vector2d d_j = (b_j - a_j);
-                        Vector2d n_i{d_i[1], -d_i[0]};
-                        Vector2d n_j{d_j[1], -d_j[0]};
+                        const complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
+                        const complex<double> gs = a[i] + mu * di;
 
-                        double mu = (a_j - a_i).dot(n_j) / d_i.dot(n_j);
-                        double nu = (a_i - a_j).dot(n_i) / d_j.dot(n_i);
-                        double xi = 1.0 - pow(d_i.dot(d_j) / (d_i.norm() * d_j.norm()),2.0);
-
-                        Vector2d cs = (a_i + a_j + b_i + b_j) / 4.0;
-                        Vector2d gs = a_i + mu * d_i;
-
-                        bool line_reg = true;
-                        // Do the logic this way round so NaN does not propagate
+                        bool line_reg = true; // Do the logic this way round so NaN does not propagate
                         if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi))
                             line_reg = false;
 
                         bool mag_reg = true;
-                        double maxnorm = max(max(max(a_i.norm(), a_j.norm()), b_i.norm()), b_j.norm());
-                        if (gs.norm() < maxnorm) {
+                        double maxnorm = max(max(max(norm(a[i]), norm(a[j])), norm(b[i])), norm(b[j]));
+                        if (norm(gs) < maxnorm) {
                             mag_reg = false;
                         }
                         switch (m_Regularise) {
-                            case RegEnum::Line:      sols.col(si) = line_reg ? cs : gs; break;
-                            case RegEnum::Magnitude: sols.col(si) = mag_reg ? cs : gs; break;
-                            case RegEnum::None:      sols.col(si) = gs; break;
+                            case RegEnum::Line:      sum += line_reg ? cs : gs; break;
+                            case RegEnum::Magnitude: sum += mag_reg ? cs : gs; break;
+                            case RegEnum::None:      sum += gs; break;
                         }
-                        si++;
                     }
                 }
-                Vector2d mean_sol = sols.rowwise().mean();
-                // Convert back to complex
-                outputIter.Set(complex<float>(static_cast<float>(mean_sol[0]), static_cast<float>(mean_sol[1])));
+                outputIter.Set(static_cast<complex<float>>(sum / static_cast<double>(m_crossings)));
 			}
 			++inputIter;
 			if (m)
