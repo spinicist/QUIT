@@ -45,10 +45,10 @@ Options:\n\
     --threads, -T N  : Use N threads (default=hardware limit).\n\
     --magnitude, -M  : Output a magnitude image (default is complex).\n\
 Output options (mutually exclusive):\n\
-    --magsum         : Output the magnitude sum of all phase increments.\n\
-    --sos            : Output the Sum-of-Squared magnitudes.\n\
+    --magmean        : Output the mean of the magnitudes of the phase increments.\n\
+    --rms            : Output the root mean square.\n\
     --max            : Output the maximum intensity projection.\n\
-    --cs             : Output the Complex Sum.\n\
+    --cs             : Output the Complex Solution (complex mean).\n\
     --gs             : Output the Geometric Solution (default).\n\
 Regularisation options for Geometric Solution\n\
     --regularise, -R M : Use magnitude regularisation (from Xiang and Hoff).\n\
@@ -60,7 +60,7 @@ Options for multiple output volumes:\n\
     --ph_order      : Data order is phase, then flip-angle (default opposite).\n"
 };
 
-enum OutEnum { MagSum = 1, SoS, Max, CS, GS };
+enum OutEnum { MagMean = 1, RMS, Max, CS, GS };
 bool verbose = false, output_magnitude = false;
 int order_phase = false, order_alternate = false, output = OutEnum::GS, do_2pass;
 static size_t nPhases = 4;
@@ -75,8 +75,8 @@ const struct option long_options[] = {
     {"ph_incs", required_argument, 0, 'p'},
 	{"threads", required_argument, 0, 'T'},
     {"magnitude", no_argument, 0, 'M'},
-    {"magsum", no_argument, &output, OutEnum::MagSum},
-    {"sos", no_argument, &output, OutEnum::SoS},
+    {"magmean", no_argument, &output, OutEnum::MagMean},
+    {"rms", no_argument, &output, OutEnum::RMS},
     {"max", no_argument, &output, OutEnum::Max},
     {"cs", no_argument, &output, OutEnum::CS},
     {"gs", no_argument, &output, OutEnum::GS},
@@ -363,33 +363,33 @@ public:
     }
 };
 
-template<class T> class VectorMagSum {
+template<class T> class VectorMagMean {
 public:
-    VectorMagSum() {};
-    ~VectorMagSum() {};
-    bool operator!=( const VectorMagSum & ) const { return false; }
-    bool operator==( const VectorMagSum &other ) const { return !(*this != other); }
+    VectorMagMean() {};
+    ~VectorMagMean() {};
+    bool operator!=( const VectorMagMean & ) const { return false; }
+    bool operator==( const VectorMagMean &other ) const { return !(*this != other); }
     inline complex<T> operator()( const itk::VariableLengthVector<complex<T>> & v ) const {
         T sum = T();
         for (size_t i = 0; i < v.Size(); i++) {
             sum += std::abs(v[i]);
         }
-        return complex<T>(sum, 0.);
+        return complex<T>(sum / v.Size(), 0.);
     }
 };
 
-template<class T> class VectorSoS {
+template<class T> class VectorRMS {
 public:
-    VectorSoS() {};
-    ~VectorSoS() {};
-    bool operator!=( const VectorSoS & ) const { return false; }
-    bool operator==( const VectorSoS &other ) const { return !(*this != other); }
-    inline complex<T> operator()( const itk::VariableLengthVector<complex<T>> & v ) const {
+    VectorRMS() {};
+    ~VectorRMS() {};
+    bool operator!=( const VectorRMS & ) const { return false; }
+    bool operator==( const VectorRMS &other ) const { return !(*this != other); }
+    inline T operator()( const itk::VariableLengthVector<T> & v ) const {
         T sum = T();
         for (size_t i = 0; i < v.Size(); i++) {
-            sum += std::norm(v[i]);
+            sum += v[i] * v[i];
         }
-        return complex<T>(sum, 0.);
+        return std::sqrt(sum / T(v.Size()));
     }
 };
 
@@ -518,13 +518,13 @@ int main(int argc, char **argv) {
         cs->SetInput(blockVector->GetOutput());
         process = cs;
     } break;
-    case OutEnum::MagSum: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMagSum<float>>::New();
+    case OutEnum::MagMean: {
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMagMean<float>>::New();
         filter->SetInput(blockVector->GetOutput());
         process = filter;
     } break;
-    case OutEnum::SoS: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorSoS<float>>::New();
+    case OutEnum::RMS: {
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorRMS<complex<float>>>::New();
         filter->SetInput(blockVector->GetOutput());
         process = filter;
     } break;
