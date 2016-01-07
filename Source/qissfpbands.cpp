@@ -296,35 +296,30 @@ protected:
         ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
 		while(!inputIter.IsAtEnd()) {
 			if (!m || maskIter.Get()) {
-                double num = 0., den = 0.;
 
-				for (int p = 0; p < inputIter.Size(); ++p) {
-                    VariableLengthVector<complex<float>> inputVector = inputIter.GetPixel(p);
-                    Map<const VectorXcf> allInput(inputVector.GetDataPointer(), m_phases);
-                    ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
-                    ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
-                    complex<double> s_i = static_cast<complex<double>>(pass1Iter.GetPixel(p));
-                    for (int li = 0; li < m_lines; li++) {
-                        complex<double> a_i = a[li];
-                        complex<double> b_i = b[li];
-                        num += real(conj(b_i - s_i)*(a_i - b_i) + conj(a_i - b_i)*(b_i - s_i));
-                        den += real(conj(a_i - b_i)*(a_i - b_i));
-                    }
-                }
-
-                double w = -num / (2. * den);
-				VariableLengthVector<complex<float>> inputVector = inputIter.GetCenterPixel();
+                complex<double> output = 0.;
+                VariableLengthVector<complex<float>> inputVector = inputIter.GetCenterPixel();
                 Map<const ArrayXcf> allInput(inputVector.GetDataPointer(), m_phases);
-                complex<float> output = 0.;
-                if (isfinite(w)) {
-                    ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
-                    ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
-                    for (int li = 0; li < m_lines; li++) {
-                        complex<double> s = (a[li]*w + (1.f-w)*b[li]);
-                        output += static_cast<complex<float>>(s / static_cast<double>(m_lines));
+                ArrayXcd a_center = allInput.head(m_lines).cast<complex<double>>();
+                ArrayXcd b_center = allInput.tail(m_lines).cast<complex<double>>();
+                for (int i = 0; i < m_lines; i++) {
+                    double num = 0., den = 0.;
+                    for (int p = 0; p < inputIter.Size(); ++p) {
+                        const complex<double> Id = static_cast<complex<double>>(pass1Iter.GetPixel(p));
+                        VariableLengthVector<complex<float>> inputVector = inputIter.GetPixel(p);
+                        Map<const VectorXcf> allInput(inputVector.GetDataPointer(), m_phases);
+                        const ArrayXcd a_pixel = allInput.head(m_lines).cast<complex<double>>();
+                        const ArrayXcd b_pixel = allInput.tail(m_lines).cast<complex<double>>();
+
+                        num += real(conj(b_pixel[i] - Id)*(b_pixel[i] - a_pixel[i]) + conj(b_pixel[i] - a_pixel[i])*(b_pixel[i] - Id));
+                        den += real(conj(a_pixel[i] - b_pixel[i])*(a_pixel[i] - b_pixel[i]));
+                    }
+                    double w = num / (2. * den);
+                    if (isfinite(w)) {
+                        output += w*a_center[i] + (1. - w)*b_center[i];
                     }
                 }
-                outputIter.Set(output);
+                outputIter.Set(static_cast<complex<float>>(output / static_cast<double>(m_lines)));
 			}
 			++inputIter;
 			++pass1Iter;
