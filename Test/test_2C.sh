@@ -78,7 +78,7 @@ compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
 }
 
 run "BFGS" " -ff0.nii -ab"
-run "GRC"  " -ff0.nii -aG"
 run "SRC"  " -ff0.nii -aS"
+run "GRC"  " -ff0.nii -aG"
 cd ..
 SILENCE_TESTS="0"
