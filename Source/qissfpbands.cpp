@@ -198,19 +198,22 @@ protected:
                         const complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
                         const complex<double> gs = a[i] + mu * di;
 
-                        bool line_reg = true; // Do the logic this way round so NaN does not propagate
-                        if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi))
-                            line_reg = false;
-
-                        bool mag_reg = true;
-                        double maxnorm = max(max(max(norm(a[i]), norm(a[j])), norm(b[i])), norm(b[j]));
-                        if (norm(gs) < maxnorm) {
-                            mag_reg = false;
-                        }
                         switch (m_Regularise) {
-                            case RegEnum::Line:      sum += line_reg ? cs : gs; break;
-                            case RegEnum::Magnitude: sum += mag_reg ? cs : gs; break;
-                            case RegEnum::None:      sum += gs; break;
+                        case RegEnum::None: sum += gs; break;
+                        case RegEnum::Magnitude:
+                            if (norm(gs) < max(max(max(norm(a[i]), norm(a[j])), norm(b[i])), norm(b[j]))) {
+                                sum += gs;
+                            } else {
+                                sum += cs;
+                            }
+                            break;
+                        case RegEnum::Line:
+                            if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi)) {
+                                sum += gs;
+                            } else {
+                                sum += cs;
+                            }
+                            break;
                         }
                     }
                 }
@@ -416,7 +419,7 @@ int main(int argc, char **argv) {
                 break;
 			case 'o':
 				prefix = optarg;
-				cout << "Output prefix will be: " << prefix << endl;
+				if (verbose) cout << "Output prefix will be: " << prefix << endl;
 				break;
             case 'F': order_phase = true; break;
 			case 'p': nPhases = atoi(optarg); break;
