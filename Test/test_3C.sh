@@ -13,13 +13,13 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-DIMS="5 5 3"
+DIMS="20 5 3"
 
-$QUITDIR/qinewimage -d "$DIMS" -f 1.0 PD.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 0.465 T1_m.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 0.026 T2_m.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 1.070 T1_ie.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 0.117 T2_ie.nii
+$QUITDIR/qinewimage -d "$DIMS" -f "1.0" PD.nii
+$QUITDIR/qinewimage -d "$DIMS" -f "0.465" T1_m.nii
+$QUITDIR/qinewimage -d "$DIMS" -f "0.026" T2_m.nii
+$QUITDIR/qinewimage -d "$DIMS" -f "1.070" T1_ie.nii
+$QUITDIR/qinewimage -d "$DIMS" -f "0.117" T2_ie.nii
 $QUITDIR/qinewimage -d "$DIMS" -f 4.0 T1_csf.nii
 $QUITDIR/qinewimage -d "$DIMS" -f 2.5 T2_csf.nii
 $QUITDIR/qinewimage -d "$DIMS" -f "0.18" tau_m.nii
@@ -30,15 +30,12 @@ $QUITDIR/qinewimage -d "$DIMS" -f 0.05 f_csf.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"
-SPGR_FLIP="2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 "
+SPGR_FLIP="3 4 5 6 7 9 13 18"
 SPGR_TR="0.0065"
-#SPGR_Trf="0.001"
-#SPGR_TE="0.003"
 SSFP_FILE="ssfp.nii"
-SSFP_FLIP="5 10 15 20 25 30 35 40 45 50 55 60 65 "
+SSFP_FLIP="12 16 21 27 33 40 51 68 "
 SSFP_PC="180 0"
 SSFP_TR="0.005"
-#SSFP_Trf="0.0025"
 
 INPUT="$SPGR_FILE
 SPGR
@@ -77,7 +74,7 @@ run_test $PREFIX $QUITDIR/qimcdespot $OPTS -n -v -M3 -bB1.nii -r -o $PREFIX < mc
 compare_test $PREFIX f_m.nii ${PREFIX}3C_f_m.nii 0.05
 }
 
-run "GRC" "-ff0.nii -ab"
+run "GRC" "-ff0.nii -aG"
 
 #echo "       Mean     Std.     CoV"
 #echo "T1_m:  " $( fslstats ${PREFIX}${COMP}C_T1_m.nii  -m -s | awk '{print $1, $2, $2/$1}' )
