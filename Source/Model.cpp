@@ -193,11 +193,11 @@ VectorXcd MCD2::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
 }
 
 VectorXcd MCD2::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
-    ArrayXcd s(a.rows() * phi.rows());
-    ArrayXcd::Index start = 0;
-    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
-        s.segment(start, a.rows()) = Two_SSFP_Finite(a, false, TR, Trf, 0., phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]);
-        start += a.rows();
+     ArrayXcd s(a.rows() * phi.rows());
+     ArrayXcd::Index start = 0;
+     for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+         s.segment(start, a.rows()) = Two_SSFP_Finite(a, false, TR, Trf, 0., phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]);
+         start += a.rows();
     }
     return scale(s);
 }
@@ -312,11 +312,7 @@ VectorXcd MCD3::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 }
 
 VectorXcd MCD3::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
-    double f_ab = 1. - p[9];
-    VectorXcd m_ab = Two_SPGR_Echo(a, TR, TE, p[0] * f_ab, p[1], p[2], p[3], p[4], p[7], p[8] / f_ab, p[11]);
-    VectorXcd m_c  = One_SPGR_Echo(a, TR, TE, p[0] * p[9], p[5], p[6], p[11]);
-    VectorXcd r = m_ab + m_c;
-    return scale(r);
+    return scale(Three_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[11]));
 }
 
 VectorXcd MCD3::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
@@ -324,33 +320,21 @@ VectorXcd MCD3::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const
 }
 
 VectorXcd MCD3::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
-    ArrayXcd s(a.rows() * phi.rows());
-    ArrayXcd::Index start = 0;
-    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
-        s.segment(start, a.rows()) = Three_SSFP(a, phi, TR, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]);
-        start += a.rows();
-    }
-    return scale(s);
+    return scale(Three_SSFP(a, phi, TR, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]));
 }
 
 VectorXcd MCD3::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
-    ArrayXcd s(a.rows() * phi.rows());
-    ArrayXcd::Index start = 0;
-    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
-        s.segment(start, a.rows()) = Three_SSFP_Echo(a, phi, TR, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]);
-        start += a.rows();
-    }
-    return scale(s);
+    return scale(Three_SSFP_Echo(a, phi, TR, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]));
 }
 
 VectorXcd MCD3::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
-    ArrayXcd s(a.rows() * phi.rows());
-    ArrayXcd::Index start = 0;
-    for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
-        s.segment(start, a.rows()) = Three_SSFP_Finite(a, false, TR, Trf, 0., phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]);
-        start += a.rows();
-    }
-    return scale(s);
+   ArrayXcd s(a.rows() * phi.rows());
+     ArrayXcd::Index start = 0;
+     for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
+         s.segment(start, a.rows()) = Three_SSFP_Finite(a, false, TR, Trf, 0., phi[i], p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]);
+         start += a.rows();
+     }
+     return scale(s);
 }
 
 /*****************************************************************************/

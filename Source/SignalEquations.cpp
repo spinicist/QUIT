@@ -622,6 +622,15 @@ VectorXcd Three_SPGR(carrd &flip, cdbl TR, cdbl PD,
 	return r;
 }
 
+VectorXcd Three_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE,
+                          cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl T1_c, cdbl T2_c, cdbl tau_a, cdbl f_a, cdbl f_c, cdbl B1) {
+    double f_ab = 1. - f_c;
+    VectorXcd m_ab = Two_SPGR_Echo(flip, TR, TE, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, B1);
+    VectorXcd m_c  = One_SPGR_Echo(flip, TR, TE, PD * f_c, T1_c, T2_c, B1);
+    VectorXcd r = m_ab + m_c;
+    return r;
+}
+
 VectorXcd Three_SSFP(carrd &flip, carrd &phi, cdbl TR, cdbl PD,
                      cdbl T1_a, cdbl T2_a,
 					 cdbl T1_b, cdbl T2_b,
@@ -635,12 +644,9 @@ VectorXcd Three_SSFP(carrd &flip, carrd &phi, cdbl TR, cdbl PD,
 	return r;
 }
 
-VectorXcd Three_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR, cdbl PD,
-                          cdbl T1_a, cdbl T2_a,
-                          cdbl T1_b, cdbl T2_b,
-                          cdbl T1_c, cdbl T2_c,
-                          cdbl tau_a, cdbl f_a, cdbl f_c,
-                          cdbl f0_a, cdbl f0_b, cdbl f0_c, cdbl B1) {
+VectorXcd Three_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR, 
+                          cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl T1_c, cdbl T2_c,
+                          cdbl tau_a, cdbl f_a, cdbl f_c, cdbl f0_a, cdbl f0_b, cdbl f0_c, cdbl B1) {
     double f_ab = 1. - f_c;
     VectorXcd m_ab = Two_SSFP_Echo(flip, phi, TR, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, f0_a, f0_b, B1);
     VectorXcd m_c  = One_SSFP_Echo(flip, phi, TR, PD * f_c, T1_c, T2_c, f0_c, B1);
@@ -662,3 +668,4 @@ VectorXcd Three_SSFP_Finite(carrd &flip, const bool spoil,
 	return r;
 }
 
+    
