@@ -37,13 +37,12 @@ using namespace Eigen;
  */
 void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::VectorImageF::Pointer> &images,
-                Array2d &f0Bandwidth, bool finite, bool flip, bool verbose, bool prompt);
+                Array2d &f0Bandwidth, bool flip, bool verbose, bool prompt);
 void parseInput(shared_ptr<SequenceGroup> seq,
                 vector<typename QI::VectorImageF::Pointer> &images,
-                Array2d &f0Bandwidth, bool finite, bool flip, bool verbose, bool prompt)
+                Array2d &f0Bandwidth, bool flip, bool verbose, bool prompt)
 {
     string type, path;
-    if (verbose && finite) cout << "Using finite pulse-width sequences." << endl;
     if (prompt) cout << "Enter input filename: " << flush;
     f0Bandwidth.setZero();
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
@@ -59,28 +58,27 @@ void parseInput(shared_ptr<SequenceGroup> seq,
         if (prompt) cout << "Enter sequence type (SPGR/SSFP): " << flush;
         QI::Read(cin, type);
         if (type == "SPGR") {
-            if (finite) {
-                seq->addSequence(make_shared<SPGRFinite>(prompt));
-            } else {
-                seq->addSequence(make_shared<SPGRSimple>(prompt));
-            }
+            seq->addSequence(make_shared<SPGRSimple>(prompt));
         } else if (type == "SPGR_ECHO") {
             seq->addSequence(make_shared<SPGREcho>(prompt));
+        } else if (type == "SPGR_FINITE") {
+            seq->addSequence(make_shared<SPGRFinite>(prompt));
+        } else if (type == "SSFP") {
+            seq->addSequence(make_shared<SSFPSimple>(prompt));
         } else if (type == "SSFP_ECHO") {
-            auto s = make_shared<SSFPEcho>(prompt);
+            seq->addSequence(make_shared<SSFPEcho>(prompt));
+        } else if (type == "SSFP_FINITE") {
+            seq->addSequence(make_shared<SSFPFinite>(prompt));
+        } else {
+            throw(std::runtime_error("Unknown sequence type: " + type));
+        }
+        if (type.find("SSFP") != std::string::npos) {
+            shared_ptr<SSFPSimple> s = static_pointer_cast<SSFPSimple>(seq->sequences().back());
             if (flip) {
                 reorder->SetInput(data->GetOutput());
                 reorder->SetStride(s->phases());
                 reorder->Update();
                 image = reorder->GetOutput();
-            }
-            seq->addSequence(s);
-        } else if (type == "SSFP") {
-            shared_ptr<SSFPSimple> s;
-            if (finite) {
-                s = make_shared<SSFPFinite>(prompt);
-            } else {
-                s = make_shared<SSFPSimple>(prompt);
             }
             f0Bandwidth(1) = 0.5 / s->TR();
             if (s->isSymmetric()) {
@@ -88,16 +86,7 @@ void parseInput(shared_ptr<SequenceGroup> seq,
             } else {
                 f0Bandwidth(0) = -f0Bandwidth(1);
             }
-            if (flip) {
-                reorder->SetInput(data->GetOutput());
-                reorder->SetStride(s->phases());
-                reorder->Update();
-                image = reorder->GetOutput();
-            }
-            seq->addSequence(s);
-        } else {
-            throw(std::runtime_error("Unknown sequence type: " + type));
-        }
+        } 
         image->DisconnectPipeline(); // This step is really important.
         images.push_back(image);
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;
@@ -349,8 +338,7 @@ int main(int argc, char **argv) {
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
     int max_its = 4;
-	int verbose = false, prompt = true, all_residuals = false,
-        fitFinite = false, flipData = false;
+	int verbose = false, prompt = true, all_residuals = false, flipData = false;
     string outPrefix;
     enum class Algos { SRC, GRC, BFGS };
     Algos which_algo = Algos::GRC;
@@ -391,7 +379,6 @@ Options:\n\
     --tesla, -t 3     : Boundaries suitable for 3T (default)\n\
                 7     : Boundaries suitable for 7T \n\
                 u     : User specified boundaries from stdin\n\
-    --finite          : Use Finite Pulse Length correction\n\
     --resids, -r      : Write out per flip-angle residuals\n\
     --threads, -T N   : Use N threads (default=hardware limit)\n"
 	};
@@ -410,7 +397,6 @@ Options:\n\
         {"iterations", required_argument, 0, 'i'},
         {"flip", no_argument, 0, 'F'},
 		{"tesla", required_argument, 0, 't'},
-		{"finite", no_argument, &fitFinite, 1},
 		{"resids", no_argument, 0, 'r'},
 		{"threads", required_argument, 0, 'T'},
 		{"no-prompt", no_argument, 0, 'n'},
@@ -516,7 +502,7 @@ Options:\n\
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
     vector<QI::VectorImageF::Pointer> images;
-    parseInput(sequences, images, f0Bandwidth, fitFinite, flipData, verbose, prompt);
+    parseInput(sequences, images, f0Bandwidth, flipData, verbose, prompt);
 
     ArrayXXd bounds = model->Bounds(tesla);
     ArrayXd start = model->Default(tesla);
