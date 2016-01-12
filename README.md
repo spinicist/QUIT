@@ -21,6 +21,11 @@ DESPOT and mcDESPOT.
 Many thanks to Samuel Hurley for many, many suggestions.
 Thanks to Anna Combes, Amy McDowell and Sjoerd Vos for finding bugs.
 
+# Help #
+
+As of version 1.0 there is now a Wiki at http://github.com/spinicist/QUIT/wiki.
+It will be filled out gradually.
+
 # Installation #
 
 ## Dependencies & Requirements ##
@@ -83,6 +88,8 @@ Because QUIT is based on ITK, in theory it supports multiple image formats.
 However I have only tested it with NIFTI.
 
 # Description of Tools and Citations #
+
+NOTE - This section will migrate to the Wiki eventually.
 
 In alphabetical order:
 
