@@ -27,10 +27,10 @@ END_USAGE
 exit 1;
 fi
 
-SPGR="$1"
-IRSPGR="$2"
-SSFP="$3"
-MASK="$4"
+SPGR_FILE="$1"
+IRSPGR_FILE="$2"
+SSFP_FILE="$3"
+MASK_FILE="$4"
 
 export QUIT_EXT=NIFTI
 export FSLOUTPUTTYPE=NIFTI
@@ -48,6 +48,7 @@ export FSLOUTPUTTYPE=NIFTI
 
 SPGR_FLIP="2 3 4 5 6 7 9 13 18"
 SPGR_TR="0.008"
+SPGR_TE="0.003"
 
 IR_SPGR_FLIP="5"
 IR_SPGR_TR="0.008"
@@ -63,7 +64,7 @@ SSFP_PHASE="0 180"
 #
 
 echo "Processing HIFI."
-qidespot1hifi -n -v --clamp 5.0 -m $MASK $SPGR $IRSPGR <<END_HIFI
+qidespot1hifi -n -v --clamp 5.0 -m $MASK_FILE $SPGR_FILE $IRSPGR_FILE $NTHREADS <<END_HIFI
 $SPGR_FLIP
 $SPGR_TR
 $IR_SPGR_FLIP
@@ -72,32 +73,26 @@ $IR_SPGR_NPE
 $IR_SPGR_TI
 END_HIFI
 
-# Process DESPOT2-FM to get a T2, second PD and f0 map
+# Process DESPOT2-FM to get a T2 and f0 map
 # FM is automatically clamped between 0.001 and T1 seconds
 
 echo "Processing FM"
-qidespot2fm -n -v -m $MASK -b HIFI_B1.nii HIFI_T1.nii $SSFP <<END_FM
+qidespot2fm -n -v -m $MASK_FILE -b HIFI_B1.nii HIFI_T1.nii $SSFP_FILE $NTHREADS <<END_FM
 $SSFP_FLIP
 $SSFP_PHASE
 $SSFP_TR
 END_FM
 
-# Now divide the SPGR and SSFP by their respective PD values to remove a parameter for the mcdespot fitting
-
-fslmaths $SPGR -div HIFI_PD ${SPGR%%.nii*}_pd
-fslmaths $SSFP -div FM_PD ${SSFP%%.nii*}_pd
-
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
-# Note that by default the program assumes data has already been scaled to have PD=1
-# If this is not the case add "-S" to the call
 
-qimcdespot -n -v -m $MASK --3 -f FM_f0.nii -b HIFI_B1.nii -S1 <<END_MCD
-${SPGR%%.nii*}_pd.nii
-SPGR
+qimcdespot -n -v -m $MASK_FILE --3 -f FM_f0.nii -b HIFI_B1.nii -S $NTHREADS <<END_MCD
+SPGR_ECHO
+$SPGR_FILE
 $SPGR_FLIP
 $SPGR_TR
-${SSFP%%.nii*}_pd.nii
+$SPGR_TE
 SSFP
+$SSFP_FILE
 $SSFP_FLIP
 $SSFP_PHASE
 $SSFP_TR
