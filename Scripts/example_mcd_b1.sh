@@ -77,12 +77,12 @@ END_FM
 # The SPGR echo-time is used to correct for differential decay between the components
 
 qimcdespot -n -v -b $B1_FILE -f FM_f0.nii -m $MASK_FILE --3 -S $NTHREADS <<END_MCD
-SPGR
+SPGR_ECHO
 $SPGR_FILE
 $SPGR_FLIP
 $SPGR_TR
 $SPGR_TE
-SSFP
+SSFP_ECHO
 $SSFP_FILE
 $SSFP_FLIP
 $SSFP_PHASE
