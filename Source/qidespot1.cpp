@@ -95,18 +95,22 @@ public:
 		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
 		outputs[1] = -m_sequence->TR() / log(b[0]);
 		outputs[0] = b[1] / (1. - b[0]);
-		for (size_t n = 0; n < m_iterations; n++) {
-			MatrixXd W = (flip.sin() / (1. - (exp(-m_sequence->TR()/outputs[1])*flip.cos()))).square();
+		for (its = 0; its < m_iterations; its++) {
+			VectorXd W = (flip.sin() / (1. - (exp(-m_sequence->TR()/outputs[1])*flip.cos()))).square();
 			b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
-			outputs[1] = -m_sequence->TR() / log(b[0]);
-			outputs[0] = b[1] / (1. - b[0]);
+			Array2d newOutputs;
+			newOutputs[1] = -m_sequence->TR() / log(b[0]);
+			newOutputs[0] = b[1] / (1. - b[0]);
+			if (newOutputs.isApprox(outputs))
+				break;
+			else
+				outputs = newOutputs;
 		}
 		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = (data.array() - theory);
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
 		outputs[1] = clamp(outputs[1], m_lo, m_hi);
-        its = m_iterations;
 	}
 };
 
