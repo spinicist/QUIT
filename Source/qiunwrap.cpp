@@ -295,7 +295,7 @@ int main(int argc, char **argv) {
     bool verbose = false, debug = false;
     float erodeRadius = 1;
 	string prefix;
-    QI::MaskImage::Pointer mask = ITK_NULLPTR;
+    QI::ImageUC::Pointer mask = ITK_NULLPTR;
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -303,7 +303,7 @@ int main(int argc, char **argv) {
             case 'm': {
                 if (verbose) cout << "Reading mask file " << optarg << endl;
                 auto maskFile = QI::ReadImageF::New();
-                auto maskThresh = itk::BinaryThresholdImageFilter<QI::ImageF, QI::MaskImage>::New();
+                auto maskThresh = itk::BinaryThresholdImageFilter<QI::ImageF, QI::ImageUC>::New();
                 maskFile->SetFileName(optarg);
                 maskThresh->SetInput(maskFile->GetOutput());
                 maskThresh->SetLowerThreshold(1.0);
@@ -350,11 +350,11 @@ int main(int argc, char **argv) {
 
     QI::ImageF::Pointer lap = calcLaplace->GetOutput();
     if (mask) {
-        auto masker = itk::MaskImageFilter<QI::ImageF, QI::MaskImage>::New();
+        auto masker = itk::MaskImageFilter<QI::ImageF, QI::ImageUC>::New();
         masker->SetInput(calcLaplace->GetOutput());
         masker->SetMaskImage(mask);
         if (erodeRadius > 0) {
-            typedef itk::BinaryBallStructuringElement<QI::MaskImage::PixelType, 3> ElementType;
+            typedef itk::BinaryBallStructuringElement<QI::ImageUC::PixelType, 3> ElementType;
             ElementType structuringElement;
             ElementType::SizeType radii;
             auto spacing = mask->GetSpacing();
@@ -364,14 +364,14 @@ int main(int argc, char **argv) {
             structuringElement.SetRadius(radii);
             structuringElement.CreateStructuringElement();
             if (verbose) cout << "Eroding mask by " << erodeRadius << " mm (" << radii << " voxels)" << endl;
-            typedef itk::BinaryErodeImageFilter <QI::MaskImage, QI::MaskImage, ElementType> BinaryErodeImageFilterType;
+            typedef itk::BinaryErodeImageFilter <QI::ImageUC, QI::ImageUC, ElementType> BinaryErodeImageFilterType;
             BinaryErodeImageFilterType::Pointer erodeFilter = BinaryErodeImageFilterType::New();
             erodeFilter->SetInput(mask);
             erodeFilter->SetErodeValue(1);
             erodeFilter->SetKernel(structuringElement);
             erodeFilter->Update();
             masker->SetMaskImage(erodeFilter->GetOutput());
-            if (debug) QI::writeResult<QI::MaskImage>(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
+            if (debug) QI::writeResult<QI::ImageUC>(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
         }
         if (verbose) cout << "Applying mask" << endl;
         masker->Update();
@@ -420,7 +420,7 @@ int main(int argc, char **argv) {
     auto outFile = QI::WriteImageF::New();
     if (mask) {
         if (verbose) cout << "Re-applying mask" << endl;
-        auto masker = itk::MaskImageFilter<QI::ImageF, QI::MaskImage>::New();
+        auto masker = itk::MaskImageFilter<QI::ImageF, QI::ImageUC>::New();
         masker->SetMaskImage(mask);
         masker->SetInput(extract->GetOutput());
         masker->Update();

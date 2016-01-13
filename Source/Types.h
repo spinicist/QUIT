@@ -25,7 +25,8 @@
 
 namespace QI {
 
-typedef itk::Image<unsigned char, 3> MaskImage;
+typedef itk::Image<unsigned char, 3> ImageUC;
+typedef itk::Image<int, 3> ImageI;
 
 typedef itk::Image<float, 3> ImageF;
 typedef itk::Image<float, 4> TimeseriesF;
