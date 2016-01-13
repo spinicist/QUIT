@@ -30,16 +30,19 @@ using namespace Eigen;
 // Algorithm Subclasses
 //******************************************************************************
 class D1Algo : public Algorithm<double> {
+public:
+	static const size_t DefaultIterations = 15;
 protected:
 	const shared_ptr<Model> m_model = make_shared<SCD>();
 	shared_ptr<SPGRSimple> m_sequence;
-	size_t m_iterations = 15;
+	size_t m_iterations = DefaultIterations;
 	double m_thresh = -numeric_limits<double>::infinity();
 	double m_lo = -numeric_limits<double>::infinity();
 	double m_hi = numeric_limits<double>::infinity();
 
 public:
 	void setIterations(size_t n) { m_iterations = n; }
+	size_t getIterations() { return m_iterations; }
 	void setSequence(shared_ptr<SPGRSimple> &s) { m_sequence = s; }
 	void setThreshold(double t) { m_thresh = t; }
 	void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
@@ -177,10 +180,9 @@ Options:\n\
 	--threads, -T N   : Use N threads (default=hardware limit)\n"
 };
 
-static bool verbose = false, prompt = true, all_residuals = false;
-static size_t nIterations = 4;
-static string outPrefix;
-static struct option long_options[] =
+bool verbose = false, prompt = true, all_residuals = false;
+string outPrefix;
+const struct option long_options[] =
 {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
@@ -290,7 +292,9 @@ int main(int argc, char **argv) {
     QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
 	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
-
+	if (algo->getIterations() != D1Algo::DefaultIterations) {
+		QI::writeResult<QI::ImageI>(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
+	}
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;
 }
