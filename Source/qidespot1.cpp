@@ -13,7 +13,10 @@
 #include <getopt.h>
 #include <iostream>
 #include <atomic>
+
 #include <Eigen/Dense>
+#include <unsupported/Eigen/LevenbergMarquardt>
+#include <unsupported/Eigen/NumericalDiff>
 
 #include "itkImageFileReader.h"
 

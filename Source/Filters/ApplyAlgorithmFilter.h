@@ -2,8 +2,6 @@
 #define APPLYALGOFILTER_H
 
 #include <Eigen/Dense>
-#include <unsupported/Eigen/LevenbergMarquardt>
-#include <unsupported/Eigen/NumericalDiff>
 
 #include "../Sequence.h"
 #include "../Model.h"

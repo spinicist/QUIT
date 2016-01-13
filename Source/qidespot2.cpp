@@ -13,8 +13,11 @@
 #include <getopt.h>
 #include <iostream>
 #include <atomic>
-#include <Eigen/Dense>
 
+#include <Eigen/Dense>
+#include <unsupported/Eigen/LevenbergMarquardt>
+#include <unsupported/Eigen/NumericalDiff>
+ 
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Model.h"
