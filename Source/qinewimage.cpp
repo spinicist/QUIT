@@ -37,7 +37,8 @@ else.\n\
 Main Options:\n\
 	--help, -h              : Print this message\n\
 	--dims, -d \"N N N\"    : Set the dimensions (default 16 16 16)\n\
-	--voxdims, -v \"X X X\" : Set the voxel dimensions (default 1mm iso)\n\
+	--voxdims, -v \"X Y Z\" : Set the voxel dimensions (default 1mm iso)\n\
+	--origin, -o \"X Y Z\"  : Set the origin (default 0 0 0)\n\
 File Content Options:\n\
 	--fill, -f X            : Fill the entire image with value X (default 0)\n\
 	--grad, -g \"D L H\"    : Fill dimension D with a smooth gradient (low, high)\n\
@@ -67,24 +68,27 @@ static struct option long_opts[] = {
 	/*{"rank",      required_argument, 0, 'r'},*/
 	{"dims",      required_argument, 0, 'd'},
 	{"voxdims",   required_argument, 0, 'v'},
+	{"origin",    required_argument, 0, 'o'},
 	{"fill",      required_argument, 0, 'f'},
 	{"grad",      required_argument, 0, 'g'},
 	{"step",      required_argument, 0, 's'},
 	{0, 0, 0, 0}
 };
-static const char* short_opts = "hd:v:f:g:s:"; /* p:x:r: */
+static const char* short_opts = "hd:o:v:f:g:s:"; /* p:x:r: */
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
 	QI::ImageF::Pointer newimg = QI::ImageF::New();
 	QI::ImageF::RegionType imgRegion;
-	QI::ImageF::IndexType imgIndex;
-	QI::ImageF::SizeType imgSize;
+	QI::ImageF::IndexType   imgIndex;
+	QI::ImageF::SizeType    imgSize;
 	QI::ImageF::SpacingType imgSpacing;
+	QI::ImageF::PointType   imgOrigin;
 	imgIndex.Fill(0);
 	imgSize.Fill(0);
 	imgSpacing.Fill(1.0);
+	imgOrigin.Fill(0.);
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
@@ -118,11 +122,13 @@ int main(int argc, char **argv) {
 			case 'v': {
 				string vals(optarg);
 				istringstream stream(vals);
-				for (int i = 0 ; i < 3; i++) {
-					if (!(stream >> imgSpacing[i])) {
-						throw(runtime_error("Failed to parse spacing: " + vals));
-					}
-				}
+				stream >> imgSpacing;
+			} break;
+			case 'o': {
+				string vals(optarg);
+				istringstream stream(vals);
+				stream.imbue(std::locale(std::locale(), new QI::CSVHack()));
+				stream >> imgOrigin;
 			} break;
 			case 'f': fillType = FillTypes::Fill; startVal = atof(optarg); break;
 			case 'g': {
@@ -172,6 +178,7 @@ int main(int argc, char **argv) {
 	imgRegion.SetSize(imgSize);
 	newimg->SetRegions(imgRegion);
 	newimg->SetSpacing(imgSpacing);
+	newimg->SetOrigin(imgOrigin);
 	newimg->Allocate();
 
 	itk::ImageSliceIteratorWithIndex<QI::ImageF> it(newimg, imgRegion);
