@@ -23,18 +23,26 @@ using namespace std;
 //******************************************************************************
 // Arguments / Usage
 //******************************************************************************
+int print_all = true;
+int print_size = false, print_spacing = false, print_origin = false, print_dir = false;
+
 const string usage {
 "Usage is: qihdr [options] input[s] \n\
 \n\
+By default, a summary of the header is printed. If options below are specified,\n\
+only those parts of the header will be printed.\n\
+\n\
 Options:\n\
-    --help, -h        : Print this message.\n"
+    --help, -h        : Print this message.\n\
+    --origin, -o      : Print the origin.\n"
 };
 
 const struct option long_options[] = {
     {"help", no_argument, 0, 'h'},
+    {"origin", no_argument, 0, 'o'},
     {0, 0, 0, 0}
 };
-const char *short_options = "h";
+const char *short_options = "ho";
 
 //******************************************************************************
 // Main
@@ -46,6 +54,7 @@ int main(int argc, char **argv) {
             case 'h':
                 cout << usage << endl;
                 return EXIT_SUCCESS;
+            case 'o': print_origin = true; print_all = false; break;
             case '?': // getopt will print an error message
                 return EXIT_FAILURE;
             default:
@@ -56,13 +65,13 @@ int main(int argc, char **argv) {
 
     while (optind < argc) {
         QI::ReadImageF::Pointer thisImg = QI::ReadImageF::New();
-        cout << "Header for: " << string(argv[optind]) << endl;
+        if (print_all) cout << "Header for: " << string(argv[optind]) << endl;
         thisImg->SetFileName(argv[optind++]);
         thisImg->Update();
-        cout << "Size:      " << thisImg->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
-        cout << "Spacing:   " << thisImg->GetOutput()->GetSpacing() << endl;
-        cout << "Origin:    " << thisImg->GetOutput()->GetOrigin() << endl;
-        cout << "Direction: " << thisImg->GetOutput()->GetDirection() << endl;
+        if (print_all) cout << "Size:      "; if (print_all || print_size)    cout << thisImg->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
+        if (print_all) cout << "Spacing:   "; if (print_all || print_spacing) cout << thisImg->GetOutput()->GetSpacing() << endl;
+        if (print_all) cout << "Origin:    "; if (print_all || print_origin)  cout << thisImg->GetOutput()->GetOrigin() << endl;
+        if (print_all) cout << "Direction: "; if (print_all || print_dir)    cout << thisImg->GetOutput()->GetDirection() << endl;
     }
     return EXIT_SUCCESS;
 }
