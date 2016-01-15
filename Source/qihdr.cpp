@@ -24,25 +24,32 @@ using namespace std;
 // Arguments / Usage
 //******************************************************************************
 int print_all = true;
-int print_size = false, print_spacing = false, print_origin = false, print_dir = false;
+int print_size = false, print_spacing = false, print_origin = false, print_direction = false;
 
 const string usage {
 "Usage is: qihdr [options] input[s] \n\
 \n\
 By default, a summary of the header is printed. If options below are specified,\n\
-only those parts of the header will be printed.\n\
+only those parts of the header will be printed. Multiple files can be input,\n\
+in which case the header info is written for each in order.\n\
 \n\
 Options:\n\
-    --help, -h        : Print this message.\n\
-    --origin, -o      : Print the origin.\n"
+    --help, -h  : Print this message.\n\
+    --size      : Print the image dimensions.\n\
+    --spacing   : Print the image spacing.\n\
+    --origin    : Print the origin.\n\
+    --direction : Print the image direction.\n"
 };
 
 const struct option long_options[] = {
     {"help", no_argument, 0, 'h'},
+    {"size", no_argument, 0, 's'},
+    {"spacing", no_argument, 0, 'p'},
     {"origin", no_argument, 0, 'o'},
+    {"direction", no_argument, 0, 'd'},
     {0, 0, 0, 0}
 };
-const char *short_options = "ho";
+const char *short_options = "h";
 
 //******************************************************************************
 // Main
@@ -54,7 +61,10 @@ int main(int argc, char **argv) {
             case 'h':
                 cout << usage << endl;
                 return EXIT_SUCCESS;
+            case 's': print_size = true; print_all = false; break;
+            case 'p': print_spacing = true; print_all = false; break;
             case 'o': print_origin = true; print_all = false; break;
+            case 'd': print_direction = true; print_all = false; break;
             case '?': // getopt will print an error message
                 return EXIT_FAILURE;
             default:
@@ -68,10 +78,10 @@ int main(int argc, char **argv) {
         if (print_all) cout << "Header for: " << string(argv[optind]) << endl;
         thisImg->SetFileName(argv[optind++]);
         thisImg->Update();
-        if (print_all) cout << "Size:      "; if (print_all || print_size)    cout << thisImg->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
-        if (print_all) cout << "Spacing:   "; if (print_all || print_spacing) cout << thisImg->GetOutput()->GetSpacing() << endl;
-        if (print_all) cout << "Origin:    "; if (print_all || print_origin)  cout << thisImg->GetOutput()->GetOrigin() << endl;
-        if (print_all) cout << "Direction: "; if (print_all || print_dir)    cout << thisImg->GetOutput()->GetDirection() << endl;
+        if (print_all) cout << "Size:      "; if (print_all || print_size)      cout << thisImg->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
+        if (print_all) cout << "Spacing:   "; if (print_all || print_spacing)   cout << thisImg->GetOutput()->GetSpacing() << endl;
+        if (print_all) cout << "Origin:    "; if (print_all || print_origin)    cout << thisImg->GetOutput()->GetOrigin() << endl;
+        if (print_all) cout << "Direction: "; if (print_all || print_direction) cout << thisImg->GetOutput()->GetDirection() << endl;
     }
     return EXIT_SUCCESS;
 }
