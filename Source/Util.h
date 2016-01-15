@@ -19,6 +19,8 @@
 #include <random>
 #include <functional>
 #include <mutex>
+#include <locale>
+#include <vector>
 
 #include <Eigen/Dense>
 
@@ -93,6 +95,26 @@ public:
 	}
 };
 
+/*
+ *  The following is an interesting way to get rid of [] & commas in a stream. Allows ITK vectors to be extracted directly
+ *  From http://stackoverflow.com/questions/1894886/parsing-a-comma-delimited-stdstring
+ */
+class CSVHack : public std::ctype<char> {
+public:
+    CSVHack() : std::ctype<char>(get_table()) {}
+
+    static std::ctype_base::mask const* get_table() {
+    	//table_size is a static member of ctype<char>
+        static std::vector<std::ctype_base::mask> rc(table_size, std::ctype_base::mask());
+
+        rc[','] = std::ctype_base::space;
+        rc['\n'] = std::ctype_base::space;
+        rc[' '] = std::ctype_base::space;
+        rc['['] = std::ctype_base::space;
+		rc[']'] = std::ctype_base::space;
+        return &rc[0];
+    }
+}; 
 
 template<typename T> bool Read(const std::string &s, T &val) {
 	std::istringstream stream(s);
