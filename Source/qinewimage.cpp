@@ -95,7 +95,6 @@ int main(int argc, char **argv) {
 			case 'o': {
 				string vals(optarg);
 				istringstream stream(vals);
-				stream.imbue(std::locale(std::locale(), new QI::CSVHack()));
 				stream >> imgOrigin;
 			} break;
 			case 'f': fillType = FillTypes::Fill; startVal = atof(optarg); break;
