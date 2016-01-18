@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
         if (print_all) cout << "Size:      "; if (print_all || print_size)      cout << thisImg->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
         if (print_all) cout << "Spacing:   "; if (print_all || print_spacing)   cout << thisImg->GetOutput()->GetSpacing() << endl;
         if (print_all) cout << "Origin:    "; if (print_all || print_origin)    cout << thisImg->GetOutput()->GetOrigin() << endl;
-        if (print_all) cout << "Direction: "; if (print_all || print_direction) cout << thisImg->GetOutput()->GetDirection() << endl;
+        if (print_all) cout << "Direction: " << endl; if (print_all || print_direction) cout << thisImg->GetOutput()->GetDirection() << endl;
     }
     return EXIT_SUCCESS;
 }
