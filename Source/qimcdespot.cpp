@@ -35,16 +35,13 @@ using namespace Eigen;
 /*
  * Read in all required files and data from cin
  */
-void parseInput(shared_ptr<SequenceGroup> seq,
-                vector<typename QI::VectorImageF::Pointer> &images,
-                Array2d &f0Bandwidth, bool flip, bool verbose, bool prompt);
-void parseInput(shared_ptr<SequenceGroup> seq,
-                vector<typename QI::VectorImageF::Pointer> &images,
-                Array2d &f0Bandwidth, bool flip, bool verbose, bool prompt)
+void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
+                bool flip, bool verbose, bool prompt);
+void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
+                bool flip, bool verbose, bool prompt)
 {
     string type, path;
     if (prompt) cout << "Enter input filename: " << flush;
-    f0Bandwidth.setZero();
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
         auto file = QI::ReadTimeseriesF::New();
         auto data = QI::TimeseriesToVectorF::New();
@@ -79,12 +76,6 @@ void parseInput(shared_ptr<SequenceGroup> seq,
                 reorder->SetStride(s->phases());
                 reorder->Update();
                 image = reorder->GetOutput();
-            }
-            f0Bandwidth(1) = 0.5 / s->TR();
-            if (s->isSymmetric()) {
-                f0Bandwidth(0) = 0.;
-            } else {
-                f0Bandwidth(0) = -f0Bandwidth(1);
             }
         } 
         image->DisconnectPipeline(); // This step is really important.
@@ -214,8 +205,12 @@ public:
         double f0 = inputs[0];
         double B1 = inputs[1];
         ArrayXXd localBounds = m_bounds;
-        if (isfinite(f0)) {
-            localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
+        if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
+            for (int i = 0; i < m_model->nParameters(); i++) {
+                if (m_model->ParameterNames()[i].find("f0") != std::string::npos) {
+                    localBounds.row(i) += f0;
+                }
+            }
             cost->m_weights = m_sequence->weights(f0);
         } else {
             cost->m_weights = ArrayXd::Ones(m_sequence->size());
@@ -314,8 +309,12 @@ class SRCAlgo : public MCDAlgo {
 			double B1 = inputs[1];
             ArrayXXd localBounds = m_bounds;
             ArrayXd weights = ArrayXd::Ones(m_sequence->size());
-            if (std::isfinite(f0)) {
-                localBounds.row(m_model->ParameterIndex("f0")).setConstant(f0);
+            if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
+                for (int i = 0; i < m_model->nParameters(); i++) {
+                    if (m_model->ParameterNames()[i].find("f0") != std::string::npos) {
+                        localBounds.row(i) += f0;
+                    }
+                }
                 weights = m_sequence->weights(f0);
             }
             localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
@@ -365,6 +364,7 @@ Options:\n\
                 2     : Use 2 component model\n\
                 2nex  : Use 2 component, no exchange model\n\
                 3     : Use 3 component model (default)\n\
+                3_f0  : Use 3 components with a myelin resonance frequency\n\
                 3nex  : Use 3 component, no exchange model\n\
     --f0, -f file     : Use f0 Map file (in Hertz)\n\
     --B1, -b file     : B1 Map file (ratio)\n\
@@ -417,6 +417,7 @@ Options:\n\
                 else if (choose_model == "2") { model = make_shared<MCD2>(); }
                 else if (choose_model == "2nex") { model = make_shared<MCD2_NoEx>(); }
                 else if (choose_model == "3") { model = make_shared<MCD3>(); }
+                else if (choose_model == "3_f0") { model = make_shared<MCD3_f0>(); }
                 else if (choose_model == "3nex") { model = make_shared<MCD3_NoEx>(); }
             } break;
 			default:
@@ -502,7 +503,7 @@ Options:\n\
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
     vector<QI::VectorImageF::Pointer> images;
-    parseInput(sequences, images, f0Bandwidth, flipData, verbose, prompt);
+    parseInput(sequences, images, flipData, verbose, prompt);
 
     ArrayXXd bounds = model->Bounds(tesla);
     ArrayXd start = model->Default(tesla);
@@ -519,7 +520,6 @@ Options:\n\
             QI::ReadArray(cin, start);
         }
     }
-    bounds.row(model->ParameterIndex("f0")) = f0Bandwidth;
     switch (which_algo) {
     case Algos::SRC: {
         if (verbose) cout << "Using SRC algorithm" << endl;

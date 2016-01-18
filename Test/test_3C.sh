@@ -46,6 +46,9 @@ $SSFP_FLIP
 $SSFP_PC
 $SSFP_TR
 END
+1.0 0.300 0.010 0.9 0.040 3.5 1.0 0.025 0.001 0.001 -20.0 -20.0 1.0
+1.0 0.800 0.030 1.5 0.150 5.0 3.5 0.600 0.350 0.999  20.0  20.0 1.0
+
 "
 
 echo "$INPUT" > mcd_input.txt
@@ -69,11 +72,12 @@ END_MCSIG
 function run() {
 PREFIX="$1"
 OPTS="$2"
-run_test $PREFIX $QUITDIR/qimcdespot $OPTS -n -v -M3 -bB1.nii -r -o $PREFIX < mcd_input.txt
-compare_test $PREFIX f_m.nii ${PREFIX}3C_f_m.nii 0.05
+run_test $PREFIX $QUITDIR/qimcdespot $OPTS -n -v -bB1.nii -r < mcd_input.txt
+compare_test $PREFIX f_m.nii ${PREFIX}_f_m.nii 0.05
 }
 
-run "GRC" "-ff0.nii -aG"
+run "3C" "-ff0.nii -aG -M3"
+run "3C_f0" "-ff0.nii -aG -M3_f0 -tu"
 
 #echo "       Mean     Std.     CoV"
 #echo "T1_m:  " $( fslstats ${PREFIX}${COMP}C_T1_m.nii  -m -s | awk '{print $1, $2, $2/$1}' )
