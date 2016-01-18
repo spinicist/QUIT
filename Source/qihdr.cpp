@@ -99,9 +99,9 @@ int main(int argc, char **argv) {
                  << imageIO->GetComponentTypeAsString(imageIO->GetComponentType()) << endl;
         }
         if (dim3 && dims > 3) dims = 3;
-        if (print_all) cout << "Size:        "; if (print_all | print_size)    for (int i = 0; i < dims; i++) cout << imageIO->GetDimensions(i) << "\t"; cout << endl;
-        if (print_all) cout << "Spacing:     "; if (print_all | print_spacing) for (int i = 0; i < dims; i++) cout << imageIO->GetSpacing(i) << "\t"; cout << endl;
-        if (print_all) cout << "Origin:      "; if (print_all | print_origin)  for (int i = 0; i < dims; i++) cout << imageIO->GetOrigin(i) << "\t"; cout << endl;
+        if (print_all) cout << "Size:        "; if (print_all | print_size)    { for (int i = 0; i < dims; i++) cout << imageIO->GetDimensions(i) << "\t"; cout << endl; }
+        if (print_all) cout << "Spacing:     "; if (print_all | print_spacing) { for (int i = 0; i < dims; i++) cout << imageIO->GetSpacing(i) << "\t"; cout << endl; }
+        if (print_all) cout << "Origin:      "; if (print_all | print_origin)  { for (int i = 0; i < dims; i++) cout << imageIO->GetOrigin(i) << "\t"; cout << endl; }
         if (print_all) cout << "Direction:   " << endl;
         if (print_all | print_direction) {
             for (int i = 0; i < dims; i++) {
