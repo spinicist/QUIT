@@ -13,12 +13,12 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-DIMS="11 11 101"
-$QUITDIR/qinewimage -d "$DIMS" -f 1 PD.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "0 0.5 1.5" T1.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "1 0.01 0.1" T2.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "2 -25.0 25.0" f0.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 1 B1.nii
+SIZE="11 11 101"
+$QUITDIR/qinewimage --size "$SIZE" -f 1 PD.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "0 0.5 1.5" T1.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "1 0.01 0.1" T2.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 -25.0 25.0" f0.nii
+$QUITDIR/qinewimage --size "$SIZE" -f 1 B1.nii
 # Setup parameters
 SPIN_FILE="me.nii"
 SPIN_PAR="2.5

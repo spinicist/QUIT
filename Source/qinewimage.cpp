@@ -1,5 +1,5 @@
 /*
- *  qinewimg.cpp
+ *  qinewimage.cpp
  *
  *  Created by Tobias Wood on 02/06/2015.
  *  Copyright (c) 2015 Tobias Wood.
@@ -26,9 +26,9 @@ using namespace std;
 // Arguments / Usage
 //******************************************************************************
 const string usage {
-"Usage is: qinewimg filename dims voxdims [options]\n\
+"Usage is: qinewimage filename dims voxdims [options]\n\
 \n\
-This is a tool to create Nifti files, either blank headers with orientation\n\
+This is a tool to create 3D Nifti files, either blank headers with orientation\n\
 information, e.g. for registration, or files filled with simple patterns of\n\
 data e.g. solid values, gradients, or blocks. The default is to create a\n\
 3D file filled with zeros. Choose from the options below to create something\n\
@@ -36,8 +36,8 @@ else.\n\
 \n\
 Main Options:\n\
 	--help, -h              : Print this message\n\
-	--dims, -d \"N N N\"    : Set the dimensions (default 16 16 16)\n\
-	--voxdims, -v \"X Y Z\" : Set the voxel dimensions (default 1mm iso)\n\
+	--size, -s \"N N N\"    : Set the dimensions (default 1 1 1)\n\
+	--spacing, -p \"X Y Z\" : Set the voxel dimensions (default 1mm iso)\n\
 	--origin, -o \"X Y Z\"  : Set the origin (default 0 0 0)\n\
 File Content Options:\n\
 	--fill, -f X            : Fill the entire image with value X (default 0)\n\
@@ -45,72 +45,40 @@ File Content Options:\n\
 	--step, -s \"D L H S\"  : Fill dimension D with stepped data (low, high, steps)\n"
 };
 
-/*
- * 	--precision, -p F       : Set the datatype to 32 bit float (default)\n\
-	                I       : Set the datatype to 16 bit int\n\
-	                C       : Set the datatype to 64 bit complex\n\
-	--xform, -x FILE        : Copy header transform from another Nifti\n\
-	--rank, -r N            : Set number of dimensions (max 5, default 3)\n\
-*/
-
 enum class FillTypes { Fill, Gradient, Steps };
-enum class PixelTypes { Float, XFloat, Int16 };
-//static bool verbose = false;
-static int ndims = 3;
-static FillTypes fillType = FillTypes::Fill;
-static PixelTypes pixelType = PixelTypes::Float;
-static float startVal = 0, deltaVal = 0, stopVal = 0;
-static int stepLength = 1, fillDim = 0;
-static struct option long_opts[] = {
+int ndims = 3;
+FillTypes fillType = FillTypes::Fill;
+float startVal = 0, deltaVal = 0, stopVal = 0;
+int stepLength = 1, fillDim = 0;
+struct option long_opts[] = {
 	{"help",      no_argument,       0, 'h'},
-	/*{"precision", required_argument, 0, 'p'},*/
-	/*{"xform",     required_argument, 0, 'x'},*/
-	/*{"rank",      required_argument, 0, 'r'},*/
-	{"dims",      required_argument, 0, 'd'},
-	{"voxdims",   required_argument, 0, 'v'},
+	{"size",      required_argument, 0, 's'},
+	{"spacing",   required_argument, 0, 'p'},
 	{"origin",    required_argument, 0, 'o'},
 	{"fill",      required_argument, 0, 'f'},
 	{"grad",      required_argument, 0, 'g'},
-	{"step",      required_argument, 0, 's'},
+	{"step",      required_argument, 0, 't'},
 	{0, 0, 0, 0}
 };
-static const char* short_opts = "hd:o:v:f:g:s:"; /* p:x:r: */
+static const char* short_opts = "hs:p:o:f:g:t:";
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
 	QI::ImageF::Pointer newimg = QI::ImageF::New();
-	QI::ImageF::RegionType imgRegion;
+	QI::ImageF::RegionType  imgRegion;
 	QI::ImageF::IndexType   imgIndex;
 	QI::ImageF::SizeType    imgSize;
 	QI::ImageF::SpacingType imgSpacing;
 	QI::ImageF::PointType   imgOrigin;
 	imgIndex.Fill(0);
-	imgSize.Fill(0);
+	imgSize.Fill(1);
 	imgSpacing.Fill(1.0);
 	imgOrigin.Fill(0.);
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
-			case 'p':
-				/*switch (*optarg) {
-					case 'F': pixelType = PixelTypes::Float; break;
-					case 'C': pixelType = PixelTypes::XFloat; break;
-					case 'I': pixelType = PixelTypes::Int16; break;
-					default: throw(runtime_error("Unknown datatype: " + optarg)); break;
-				}*/ break;
-			case 'x': {
-				//Nifti::File other(optarg);
-				//xform = other.header().transform();
-			} break;
-			case 'r':
-				/*ndims = atoi(optarg);
-				if ((ndims < 2) || (ndims > 5)) {
-					cerr << "Invalid number of dimensions. Must be 2-5." << endl;
-					return EXIT_FAILURE;
-				}*/
-				break;
-			case 'd': {
+			case 's': {
 				string vals(optarg);
 				istringstream stream(vals);
 				for (int i = 0; i < 3; i++) {
@@ -119,7 +87,7 @@ int main(int argc, char **argv) {
 					}
 				}
 			} break;
-			case 'v': {
+			case 'p': {
 				string vals(optarg);
 				istringstream stream(vals);
 				stream >> imgSpacing;
@@ -141,7 +109,7 @@ int main(int argc, char **argv) {
 				deltaVal = (stopVal - startVal) / (imgSize[fillDim] - 1);
 				stepLength = 1;
 			} break;
-			case 's': {
+			case 't': {
 				fillType = FillTypes::Steps;
 				string vals(optarg);
 				istringstream stream(vals);

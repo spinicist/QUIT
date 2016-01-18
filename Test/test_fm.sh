@@ -15,13 +15,12 @@ if [ "$(ls -A ./)" ]; then
 fi
 
 # First, create input data
-DIMS="16 16 17"
-VOXDIMS="2 2 2"
-$QUITDIR/qinewimage PD.nii -d "$DIMS" -v "$VOXDIMS" -f 1.0
-$QUITDIR/qinewimage T1.nii -d "$DIMS" -v "$VOXDIMS" -f 1.25
-$QUITDIR/qinewimage T2.nii -d "$DIMS" -v "$VOXDIMS" -g "1 0.025 0.125"
-$QUITDIR/qinewimage f0.nii -d "$DIMS" -v "$VOXDIMS" -g "2 -150.0 150.0"
-$QUITDIR/qinewimage B1.nii -d "$DIMS" -v "$VOXDIMS" -f 1.0
+SIZE="16 16 17"
+$QUITDIR/qinewimage PD.nii --size "$SIZE" -f 1.0
+$QUITDIR/qinewimage T1.nii --size "$SIZE" -f 1.25
+$QUITDIR/qinewimage T2.nii --size "$SIZE" -g "1 0.025 0.125"
+$QUITDIR/qinewimage f0.nii --size "$SIZE" -g "2 -150.0 150.0"
+$QUITDIR/qinewimage B1.nii --size "$SIZE" -f 1.0
 
 # Setup parameters
 SSFP_FILE="ssfp.nii"

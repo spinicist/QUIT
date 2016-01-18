@@ -13,13 +13,12 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-DIMS="16 16 25"
-VOXDIMS="2 2 2"
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 1.2 0.8" PD.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "0 0.5 2" T1.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "1 0.05 0.5" T2.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 -25.0 25.0" f0.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 0.75 1.25" B1.nii
+SIZE="16 16 25"
+$QUITDIR/qinewimage --size "$SIZE" -g "2 1.2 0.8" PD.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "0 0.5 2" T1.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "1 0.05 0.5" T2.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 -25.0 25.0" f0.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 0.75 1.25" B1.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"

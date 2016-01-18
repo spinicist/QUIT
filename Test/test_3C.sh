@@ -13,20 +13,19 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-DIMS="20 5 3"
-
-$QUITDIR/qinewimage -d "$DIMS" -f "1.0" PD.nii
-$QUITDIR/qinewimage -d "$DIMS" -f "0.465" T1_m.nii
-$QUITDIR/qinewimage -d "$DIMS" -f "0.026" T2_m.nii
-$QUITDIR/qinewimage -d "$DIMS" -f "1.070" T1_ie.nii
-$QUITDIR/qinewimage -d "$DIMS" -f "0.117" T2_ie.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 4.0 T1_csf.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 2.5 T2_csf.nii
-$QUITDIR/qinewimage -d "$DIMS" -f "0.18" tau_m.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "0 -5. 5." f0.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "1 0.75 1.25" B1.nii
-$QUITDIR/qinewimage -d "$DIMS" -g "2 0.05 0.25" f_m.nii
-$QUITDIR/qinewimage -d "$DIMS" -f 0.05 f_csf.nii
+SIZE="20 5 3"
+$QUITDIR/qinewimage --size "$SIZE" -f "1.0" PD.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.465" T1_m.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.026" T2_m.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "1.070" T1_ie.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.117" T2_ie.nii
+$QUITDIR/qinewimage --size "$SIZE" -f 4.0 T1_csf.nii
+$QUITDIR/qinewimage --size "$SIZE" -f 2.5 T2_csf.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.18" tau_m.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "0 -5. 5." f0.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "1 0.75 1.25" B1.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 0.05 0.25" f_m.nii
+$QUITDIR/qinewimage --size "$SIZE" -f 0.05 f_csf.nii
 
 # Setup parameters
 SPGR_FILE="spgr.nii"

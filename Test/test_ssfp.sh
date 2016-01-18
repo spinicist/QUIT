@@ -14,13 +14,12 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-DIMS="32 32 101"
-VOXDIMS="2 2 2"
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f "1.0" PD.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f "1.0" T1.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f "0.1" T2.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -g "2 -100.0 100.0" f0.nii
-$QUITDIR/qinewimage -d "$DIMS" -v "$VOXDIMS" -f "1.0" B1.nii
+SIZE="32 32 101"
+$QUITDIR/qinewimage --size "$SIZE" -f "1.0" PD.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "1.0" T1.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.1" T2.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 -100.0 100.0" f0.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "1.0" B1.nii
 
 SSFP_FILE="ssfp.nii"
 SSFP_PAR="5 10 15 20 25 30 35 40 45 50 55 60
