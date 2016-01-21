@@ -85,7 +85,7 @@ END_FM
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 
-qimcdespot -n -v -m $MASK_FILE --3 -f FM_f0.nii -b HIFI_B1.nii -S $NTHREADS <<END_MCD
+qimcdespot -n -v -m $MASK_FILE -f FM_f0.nii -b HIFI_B1.nii -M3 -S $NTHREADS <<END_MCD
 $SPGR_FILE
 SPGR_ECHO
 $SPGR_FLIP
