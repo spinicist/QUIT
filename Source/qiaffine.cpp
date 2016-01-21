@@ -11,6 +11,7 @@
 
 #include <getopt.h>
 #include <iostream>
+#include <sstream>
 
 #include "itkImage.h"
 #include "itkVersor.h"
@@ -34,6 +35,7 @@ int main(int argc, char **argv) {
         --rotX N  : Rotate about the X axis by N degrees\n\
         --rotY N  : Rotate about the Y axis by N degrees\n\
         --rotZ N  : Rotate about the Z axis by N degrees\n\
+        --origin 'X Y Z' : Set the origin to X Y Z\n\
 	\n\
 	Other Options:\n\
 		--help, -h    : Print this message\n\
@@ -49,6 +51,7 @@ int main(int argc, char **argv) {
 		{"rotX", required_argument, 0, 'X'},
 		{"rotY", required_argument, 0, 'Y'},
 		{"rotZ", required_argument, 0, 'Z'},
+		{"origin", required_argument, 0, 'O'},
 		{0, 0, 0, 0}
 	};
 	const char* short_options = "hv";
@@ -61,7 +64,7 @@ int main(int argc, char **argv) {
 			case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
-            case 'S': case 'X': case 'Y': case 'Z':
+            case 'S': case 'X': case 'Y': case 'Z': case 'O':
 			case 0: break; // A flag
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
@@ -132,6 +135,12 @@ int main(int argc, char **argv) {
 				itk::Versor<double> rotate; rotate.SetRotationAroundZ(radians);
 				direction = rotate.GetMatrix() * direction;
 				origin = rotate.GetMatrix() * origin;
+			} break;
+			case 'O': {
+				string option(optarg);
+				if (verbose) cout << "Setting origin to " << option << endl;
+				stringstream optstream(option);
+				optstream >> origin;
 			} break;
 		}
 	}
