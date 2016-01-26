@@ -348,7 +348,7 @@ int main(int argc, char **argv) {
     typedef itk::ApplyAlgorithmSliceBySliceFilter<MCDAlgo> TMCDFilter;
 	auto applySlices = TMCDFilter::New();
     const string usage {
-"Usage is: mcdespot [options]\n\
+"Usage is: qimcdespot [options]\n\
 \n\
 The program will prompt for input (unless --no-prompt specified)\n\
 \n\

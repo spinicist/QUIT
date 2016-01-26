@@ -35,7 +35,7 @@ using namespace QI;
 // Arguments / Usage
 //******************************************************************************
 const string usage {
-"Usage is: despot1hifi [options] spgr_input ir-spgr_input\n\
+"Usage is: qidespot1hifi [options] spgr_input ir-spgr_input\n\
 \
 Options:\n\
 	--help, -h        : Print this message\n\

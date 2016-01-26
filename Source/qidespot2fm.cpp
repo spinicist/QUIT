@@ -398,7 +398,7 @@ public:
 
 
 const string usage {
-"Usage is: despot2-fm [options] T1_map ssfp_file\n\
+"Usage is: qidespot2fm [options] T1_map ssfp_file\n\
 \
 Options:\n\
     --help, -h        : Print this message\n\

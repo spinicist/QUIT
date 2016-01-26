@@ -213,7 +213,7 @@ public:
 // Arguments / Usage
 //******************************************************************************
 const string usage {
-"Usage is: despot2 [options] T1_map ssfp_file\n\
+"Usage is: qidespot2 [options] T1_map ssfp_file\n\
 \n\
 Options:\n\
 	--help, -h        : Print this message.\n\

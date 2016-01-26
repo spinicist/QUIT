@@ -168,7 +168,7 @@ public:
 // Arguments / Usage
 //******************************************************************************
 const string usage {
-"Usage is: despot1 [options] spgr_input \n\
+"Usage is: qidespot1 [options] spgr_input \n\
 \
 Options:\n\
 	--help, -h        : Print this message\n\
