@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
 	int keep = 4, inwards = false, output_images = false;
+	QI::ImageF::Pointer reference = ITK_NULLPTR;
 	const string usage {
 	"Usage is: qisplit input_file.nii [options]\n\
 	\n\
@@ -42,6 +43,7 @@ int main(int argc, char **argv) {
 		--help, -h    : Print this message\n\
 		--verbose, -v : Print more information\n\
 		--keep, -k    : Keep N largest objects (default 4)\n\
+		--ref, -r     : Specify a reference image for CoG\n\
 		--oimgs       : Output images\n\
 		--inwards     : Subjects were scanned facing 'inwards'\n"
 	};
@@ -51,11 +53,12 @@ int main(int argc, char **argv) {
 		{"help", no_argument, 0, 'h'},
 		{"verbose", no_argument, 0, 'v'},
 		{"keep", required_argument, 0, 'k'},
+		{"ref", required_argument, 0, 'r'},
 		{"oimgs", no_argument, &output_images, true},
 		{"inwards", no_argument, &inwards, true},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvk:";
+	const char* short_options = "hvr:k:";
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -63,6 +66,13 @@ int main(int argc, char **argv) {
 		case 'h':
 			cout << usage << endl;
 			return EXIT_SUCCESS;
+		case 'r': {
+			auto refFile = QI::ReadImageF::New();
+			refFile->SetFileName(optarg);
+			refFile->Update();
+			reference = refFile->GetOutput();
+			reference->DisconnectPipeline();
+		} break;
 		case 'k':
 			keep = atoi(optarg);
 			break;
@@ -129,6 +139,16 @@ int main(int argc, char **argv) {
 	labelStats->SetLabelInput(relabel->GetOutput());
 	labelStats->Update();
 	
+	typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
+	TMoments::VectorType refCoG; refCoG.Fill(0);
+	if (reference) {
+		auto refMoments = TMoments::New();
+		refMoments->SetImage(reference);
+		refMoments->Compute();
+		refCoG = refMoments->GetCenterOfGravity();
+		if (verbose) cout << "Reference CoG is: " << refCoG << endl;
+	}
+	
 	itk::Vector<double, 3> zAxis; zAxis.Fill(0); zAxis[2] = 1.0;
 	for (auto i = 1; i <= 4; i++) {
 		TLabelImage::RegionType region = labelStats->GetRegion(i);
@@ -138,7 +158,6 @@ int main(int argc, char **argv) {
 		extract->SetDirectionCollapseToSubmatrix();
 		extract->Update();
 
-		typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
 		auto moments = TMoments::New();
 		moments->SetImage(extract->GetOutput());
 		moments->Compute();
@@ -154,7 +173,7 @@ int main(int argc, char **argv) {
 		typedef itk::AffineTransform<double, 3> TAffine;
 		auto tfm = TAffine::New();
 		tfm->SetIdentity();
-		tfm->SetOffset(CoG);
+		tfm->SetOffset(CoG - refCoG);
 		//tfm->SetCenter(CoG); // Want to leave this at 0 due to how ITK transforms work
 		tfm->Rotate3D(zAxis, -rotateAngle, 1);
 
