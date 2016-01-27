@@ -28,6 +28,9 @@
 #include "itkImageMomentsCalculator.h"
 #include "itkAffineTransform.h"
 #include "itkTransformFileWriter.h"
+#include "itkResampleImageFilter.h"
+#include "itkLinearInterpolateImageFunction.h"
+#include "itkNearestNeighborInterpolateImageFunction.h"
 
 using namespace std;
 
@@ -134,7 +137,8 @@ int main(int argc, char **argv) {
 	output->SetFileName(prefix + "_labels.nii");
 	output->Update();
 
-	auto labelStats = itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage>::New();
+	typedef itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage> TLabelStats;
+	auto labelStats = TLabelStats::New();
 	labelStats->SetInput(input->GetOutput());
 	labelStats->SetLabelInput(relabel->GetOutput());
 	labelStats->Update();
@@ -148,11 +152,33 @@ int main(int argc, char **argv) {
 		refCoG = refMoments->GetCenterOfGravity();
 		if (verbose) cout << "Reference CoG is: " << refCoG << endl;
 	}
-	
+
+    // Set these up to use in the loop
+    typedef itk::ResampleImageFilter<TLabelImage, TLabelImage, double> TLabelResampler;
+    typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TLabelInterp;
+    auto ilabels = TLabelInterp::New();
+    ilabels->SetInputImage(relabel->GetOutput());
+    auto rlabels = TLabelResampler::New();
+    rlabels->SetInput(relabel->GetOutput());
+    rlabels->SetInterpolator(ilabels);
+    rlabels->SetDefaultPixelValue(0.);
+    rlabels->SetOutputParametersFromImage(relabel->GetOutput());
+
+    typedef itk::ResampleImageFilter<QI::ImageF, QI::ImageF, double> TResampleF;
+    typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TLinearInterpF;
+    auto interp = TLinearInterpF::New();
+    interp->SetInputImage(input->GetOutput());
+    auto rimage = TResampleF::New();
+    rimage->SetInput(input->GetOutput());
+    rimage->SetInterpolator(interp);
+    rimage->SetDefaultPixelValue(0.);
+    rimage->SetOutputParametersFromImage(input->GetOutput());
+
 	itk::Vector<double, 3> zAxis; zAxis.Fill(0); zAxis[2] = 1.0;
 	for (auto i = 1; i <= 4; i++) {
 		TLabelImage::RegionType region = labelStats->GetRegion(i);
-		auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
+		typedef itk::ExtractImageFilter<QI::ImageF, QI::ImageF> TExtractF;
+		auto extract = TExtractF::New();
 		extract->SetInput(input->GetOutput());
 		extract->SetExtractionRegion(region);
 		extract->SetDirectionCollapseToSubmatrix();
@@ -177,16 +203,28 @@ int main(int argc, char **argv) {
 		//tfm->SetCenter(CoG); // Want to leave this at 0 due to how ITK transforms work
 		tfm->Rotate3D(zAxis, -rotateAngle, 1);
 
-		if (verbose) cout << "Transform is: " << tfm << endl;
-
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
 		if (output_images) {
-			fname = prefix + suffix.str() + ".nii";
-			if (verbose) cout << "Writing output file " << fname << endl;
-			auto output = itk::ImageFileWriter<QI::ImageF>::New();
-			output->SetInput(extract->GetOutput());
-			output->SetFileName(fname);
-			output->Update();
+            rlabels->SetTransform(tfm.GetPointer());
+            rimage->SetTransform(tfm.GetPointer());
+			
+            auto rstats = TLabelStats::New();
+			rstats->SetInput(rimage->GetOutput());
+			rstats->SetLabelInput(rlabels->GetOutput());
+			rstats->Update();
+
+            auto rextract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
+            rextract->SetInput(rimage->GetOutput());
+            rextract->SetExtractionRegion(rstats->GetRegion(i));
+            rextract->SetDirectionCollapseToSubmatrix();
+            rextract->Update();
+
+            fname = prefix + suffix.str() + ".nii";
+            if (verbose) cout << "Writing output file " << fname << endl;
+            auto routput = itk::ImageFileWriter<QI::ImageF>::New();
+            routput->SetInput(rextract->GetOutput());
+            routput->SetFileName(fname);
+            routput->Update();
 		}
 
 		fname = prefix + suffix.str() + ".tfm";
