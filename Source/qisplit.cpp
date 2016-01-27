@@ -34,7 +34,7 @@ using namespace std;
 int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
-	int keep = 4, inwards = false;
+	int keep = 4, inwards = false, output_images = false;
 	const string usage {
 	"Usage is: qisplit input_file.nii [options]\n\
 	\n\
@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
 		--help, -h    : Print this message\n\
 		--verbose, -v : Print more information\n\
 		--keep, -k    : Keep N largest objects (default 4)\n\
+		--oimgs       : Output images\n\
 		--inwards     : Subjects were scanned facing 'inwards'\n"
 	};
 
@@ -50,6 +51,7 @@ int main(int argc, char **argv) {
 		{"help", no_argument, 0, 'h'},
 		{"verbose", no_argument, 0, 'v'},
 		{"keep", required_argument, 0, 'k'},
+		{"oimgs", no_argument, &output_images, true},
 		{"inwards", no_argument, &inwards, true},
 		{0, 0, 0, 0}
 	};
@@ -159,14 +161,20 @@ int main(int argc, char **argv) {
 		if (verbose) cout << "Transform is: " << tfm << endl;
 
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
-		auto output = itk::ImageFileWriter<QI::ImageF>::New();
-		output->SetInput(extract->GetOutput());
-		output->SetFileName(prefix + suffix.str() + ".nii");
-		output->Update();
+		if (output_images) {
+			fname = prefix + suffix.str() + ".nii";
+			if (verbose) cout << "Writing output file " << fname << endl;
+			auto output = itk::ImageFileWriter<QI::ImageF>::New();
+			output->SetInput(extract->GetOutput());
+			output->SetFileName(fname);
+			output->Update();
+		}
 
+		fname = prefix + suffix.str() + ".tfm";
+		if (verbose) cout << "Writing transform file " << fname << endl;
   		auto tfmWriter = itk::TransformFileWriterTemplate<double>::New();
   		tfmWriter->SetInput(tfm);
-  		tfmWriter->SetFileName(prefix + suffix.str() + ".tfm");
+  		tfmWriter->SetFileName(fname);
   		tfmWriter->Update();
 	}
 	return EXIT_SUCCESS;
