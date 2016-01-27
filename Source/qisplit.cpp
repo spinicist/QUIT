@@ -16,47 +16,47 @@
 #include "Util.h"
 #include "Types.h"
 
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkOtsuThresholdImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkLabelShapeKeepNObjectsImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkBinaryThresholdImageFilter.h"
-#include "itkOrientedBoundingBoxImageLabelMapFilter.h"
-#include "itkAttributeImageLabelObject.h"
-#include "itkOrientedBoundingBoxLabelObject.h"
-#include "itkShapeLabelMapFilter.h"
-#include "itkStatisticsLabelObject.h"
-#include "itkLabelImageToLabelMapFilter.h"
+#include "itkLabelStatisticsImageFilter.h"
+#include "itkExtractImageFilter.h"
 
 using namespace std;
 
 const string usage {
-"Usage is: qisplit input_file.nii T N [options]\n\
+"Usage is: qisplit input_file.nii [options]\n\
 \n\
-N is the number of samples in the image\n\
-T is the threshold\n\
 Options:\n\
 	--help, -h    : Print this message\n\
-	--verbose, -v : Print more information\n"
+	--verbose, -v : Print more information\n\
+	--keep, -k   : Keep N largest objects (default 4)\n"
 };
 
 const struct option long_options[] =
 {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
+	{"keep", required_argument, 0, 'k'},
 	{0, 0, 0, 0}
 };
-const char* short_options = "hv";
+const char* short_options = "hvk:";
 
 int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
+	int keep = 4;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
 		case 'v': verbose = true; break;
 		case 'h':
 			cout << usage << endl;
 			return EXIT_SUCCESS;
+		case 'k':
+			keep = atoi(optarg);
+			break;
 		case '?': // getopt will print an error message
 			return EXIT_FAILURE;
 		default:
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if ((argc - optind) != 3) {
+	if ((argc - optind) != 1) {
 		cout << usage << endl;
 		throw(runtime_error("Wrong number of input arguments."));
 	}
@@ -75,68 +75,58 @@ int main(int argc, char **argv) {
 
 	typedef unsigned int TLabel;
 	typedef itk::Image<TLabel, 3> TLabelImage;
-	typedef itk::BinaryThresholdImageFilter<QI::ImageF, TLabelImage> TThreshFilter;
+	/*typedef itk::BinaryThresholdImageFilter<QI::ImageF, TLabelImage> TThreshFilter;
 	auto threshold = TThreshFilter::New();
 	threshold->SetInput(input->GetOutput());
 	threshold->SetLowerThreshold(atof(argv[optind++]));
 	threshold->SetUpperThreshold(numeric_limits<float>::infinity());
 	threshold->SetInsideValue(1);
-	threshold->SetOutsideValue(0);
+	threshold->SetOutsideValue(0);*/
+    // Use an Otsu Threshold filter to generate the mask
+    if (verbose) cout << "Generating Otsu mask" << endl;
+    auto otsuFilter = itk::OtsuThresholdImageFilter<QI::ImageF, TLabelImage>::New();
+    otsuFilter->SetInput(input->GetOutput());
+    otsuFilter->SetOutsideValue(1);
+    otsuFilter->SetInsideValue(0);
+    otsuFilter->Update();
 
 	auto CC = itk::ConnectedComponentImageFilter<TLabelImage, TLabelImage>::New();
-	CC->SetInput(threshold->GetOutput());
+	CC->SetInput(otsuFilter->GetOutput());
 	CC->Update();
-	std::cout << "Number of objects: " << CC->GetObjectCount() << std::endl;
+	if (verbose) cout << "Found " << CC->GetObjectCount() << " objects in total, will keep " << keep << " largest." << endl;
 
-	typedef itk::LabelShapeKeepNObjectsImageFilter<TLabelImage> TKeepNFilter;
-	auto keepN = TKeepNFilter::New();
+	typedef itk::LabelShapeKeepNObjectsImageFilter<TLabelImage> TKeepN;
+	auto keepN = TKeepN::New();
 	keepN->SetInput(CC->GetOutput());
 	keepN->SetBackgroundValue(0);
-	keepN->SetNumberOfObjects(atoi(argv[optind++]));
-	keepN->SetAttribute(TKeepNFilter::LabelObjectType::NUMBER_OF_PIXELS);
+	keepN->SetNumberOfObjects(keep);
+	keepN->SetAttribute(TKeepN::LabelObjectType::NUMBER_OF_PIXELS);
 
-	typedef itk::RelabelComponentImageFilter<TLabelImage, TLabelImage> TRelabelFilter;
-	auto relabel = TRelabelFilter::New();
+	auto relabel = itk::RelabelComponentImageFilter<TLabelImage, TLabelImage>::New();
 	relabel->SetInput(keepN->GetOutput());
 
-	typedef itk::OrientedBoundingBoxLabelObject<TLabel, 3> TOBBLabelObject;
-	typedef itk::AttributeImageLabelObject<TLabel, 3, QI::ImageF, TOBBLabelObject> TLabelObject;
-
-	typedef itk::LabelMap<TLabelObject> TLabelMap;
-	typedef itk::LabelImageToLabelMapFilter<TLabelImage, TLabelMap> TLabelToMapFilter;
-	TLabelToMapFilter::Pointer toLabelMap = TLabelToMapFilter::New();
-
-	toLabelMap->SetInput(relabel->GetOutput());
-	toLabelMap->Update();
-
-	typedef itk::OrientedBoundingBoxImageLabelMapFilter<TLabelMap> TOBBILabelMapFilter;
-
-	TOBBILabelMapFilter::Pointer toOBBILabelMap = TOBBILabelMapFilter::New();
-	toOBBILabelMap->SetInput(toLabelMap->GetOutput());
-	toOBBILabelMap->SetAttributeImageSpacing(input->GetOutput()->GetSpacing());
-	toOBBILabelMap->SetFeatureImage(input->GetOutput());
-	toOBBILabelMap->Update();
-
+	if (verbose) cout << "Writing label image." << endl;
 	auto output = itk::ImageFileWriter<TLabelImage>::New();
 	output->SetInput(relabel->GetOutput());
-	output->SetFileName("all.nii");
+	output->SetFileName("labels.nii");
 	output->Update();
 
-	unsigned int nLabels = toLabelMap->GetOutput()->GetNumberOfLabelObjects();
-	cout << "There are " << nLabels << " labels." << endl;
-	//toLabelMap->GetOutput()->PrintLabelObjects();
-	//toOBBILabelMap->GetOutput()->PrintLabelObjects();
-	for (auto i = 1; i <= nLabels; i++) {
-		const TLabelObject *labelObject = toOBBILabelMap->GetOutput()->GetLabelObject(i);
+	auto labelStats = itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage>::New();
+	labelStats->SetInput(input->GetOutput());
+	labelStats->SetLabelInput(relabel->GetOutput());
+	labelStats->Update();
+	
+	for (auto i = 1; i <= 4; i++) {
+		TLabelImage::RegionType region = labelStats->GetRegion(i);
+		auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
+		extract->SetInput(input->GetOutput());
+		extract->SetExtractionRegion(region);
+		extract->SetDirectionCollapseToSubmatrix();
+		if (verbose) cout << "Writing object " << i << " region is " << region << endl;
 		auto output = itk::ImageFileWriter<QI::ImageF>::New();
-		output->SetInput(labelObject->GetAttributeImage());
-		output->SetFileName("label" + to_string(i) + ".nii");
+		output->SetInput(extract->GetOutput());
+		output->SetFileName("image_" + to_string(i) + ".nii");
 		output->Update();
-
-		std::cout << "Label: " << i << std::endl;
-		std::cout << "\tBBox: " << labelObject->GetBoundingBox()
-		          << "\tCentroid: " << labelObject->GetCentroid()
-		          << std::endl;
 	}
 	return EXIT_SUCCESS;
 }
