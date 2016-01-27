@@ -11,7 +11,9 @@
 
 #include <getopt.h>
 #include <string>
+#include <sstream>
 #include <iostream>
+#include <iomanip>
 
 #include "Util.h"
 #include "Types.h"
@@ -78,7 +80,9 @@ int main(int argc, char **argv) {
 	}
 
 	auto input = QI::ReadImageF::New();
-	input->SetFileName(argv[optind++]);
+	string fname(argv[optind++]);
+	input->SetFileName(fname);
+	string prefix = QI::StripExt(fname);
 
 	typedef unsigned int TLabel;
 	typedef itk::Image<TLabel, 3> TLabelImage;
@@ -115,7 +119,7 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Writing label image." << endl;
 	auto output = itk::ImageFileWriter<TLabelImage>::New();
 	output->SetInput(relabel->GetOutput());
-	output->SetFileName("labels.nii");
+	output->SetFileName(prefix + "_labels.nii");
 	output->Update();
 
 	auto labelStats = itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage>::New();
@@ -148,19 +152,21 @@ int main(int argc, char **argv) {
 		typedef itk::AffineTransform<double, 3> TAffine;
 		auto tfm = TAffine::New();
 		tfm->SetIdentity();
-		tfm->SetOffset(-CoG);
-		tfm->Rotate3D(zAxis, rotateAngle, 1);
+		tfm->SetOffset(CoG);
+		//tfm->SetCenter(CoG); // Want to leave this at 0 due to how ITK transforms work
+		tfm->Rotate3D(zAxis, -rotateAngle, 1);
 
 		if (verbose) cout << "Transform is: " << tfm << endl;
 
+		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
 		auto output = itk::ImageFileWriter<QI::ImageF>::New();
 		output->SetInput(extract->GetOutput());
-		output->SetFileName("image_" + to_string(i) + ".nii");
+		output->SetFileName(prefix + suffix.str() + ".nii");
 		output->Update();
 
   		auto tfmWriter = itk::TransformFileWriterTemplate<double>::New();
   		tfmWriter->SetInput(tfm);
-  		tfmWriter->SetFileName("image_" + to_string(i) + ".tfm");
+  		tfmWriter->SetFileName(prefix + suffix.str() + ".tfm");
   		tfmWriter->Update();
 	}
 	return EXIT_SUCCESS;
