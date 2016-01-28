@@ -26,7 +26,7 @@
 #include "itkLabelStatisticsImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkImageMomentsCalculator.h"
-#include "itkAffineTransform.h"
+#include "itkEuler3DTransform.h"
 #include "itkTransformFileWriter.h"
 #include "itkResampleImageFilter.h"
 #include "itkLinearInterpolateImageFunction.h"
@@ -173,8 +173,7 @@ int main(int argc, char **argv) {
     rimage->SetInterpolator(interp);
     rimage->SetDefaultPixelValue(0.);
     rimage->SetOutputParametersFromImage(input->GetOutput());
-
-	itk::Vector<double, 3> zAxis; zAxis.Fill(0); zAxis[2] = 1.0;
+    
 	for (auto i = 1; i <= 4; i++) {
 		TLabelImage::RegionType region = labelStats->GetRegion(i);
 		typedef itk::ExtractImageFilter<QI::ImageF, QI::ImageF> TExtractF;
@@ -196,12 +195,12 @@ int main(int argc, char **argv) {
 			rotateAngle = (M_PI * 3./2.) - rotateAngle;
 		if (verbose) cout << "Rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
 
-		typedef itk::AffineTransform<double, 3> TAffine;
-		auto tfm = TAffine::New();
+		typedef itk::Euler3DTransform<double> TRigid;
+		auto tfm = TRigid::New();
 		tfm->SetIdentity();
 		tfm->SetOffset(CoG - refCoG);
 		//tfm->SetCenter(CoG); // Want to leave this at 0 due to how ITK transforms work
-		tfm->Rotate3D(zAxis, -rotateAngle, 1);
+		tfm->SetRotation(0, 0, -rotateAngle);
 
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
 		if (output_images) {
