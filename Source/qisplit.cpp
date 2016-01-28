@@ -24,7 +24,8 @@
 #include "itkLabelShapeKeepNObjectsImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
 #include "itkLabelStatisticsImageFilter.h"
-#include "itkLabelStatisticsOpeningImageFilter.h"
+#include "itkLabelImageToLabelMapFilter.h"
+#include "itkLabelMapMaskImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkImageMomentsCalculator.h"
 #include "itkEuler3DTransform.h"
@@ -225,21 +226,26 @@ int main(int argc, char **argv) {
             rlabels->SetTransform(tfm.GetPointer());
             rimage->SetTransform(tfm.GetPointer());
 			
-            auto rstats = TLabelStats::New();
-			rstats->SetInput(rimage->GetOutput());
-			rstats->SetLabelInput(rlabels->GetOutput());
-			rstats->Update();
+            rlabels->Update();
+            rimage->Update();
 
-            auto rextract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
-            rextract->SetInput(rimage->GetOutput());
-            rextract->SetExtractionRegion(rstats->GetRegion(i));
-            rextract->SetDirectionCollapseToSubmatrix();
-            rextract->Update();
+              // convert the label image into a LabelMap
+            typedef itk::LabelMap<itk::LabelObject<TLabel, 3>> TLabelMap;
+            auto convert = itk::LabelImageToLabelMapFilter<TLabelImage, TLabelMap> ::New();
+            convert->SetInput(rlabels->GetOutput());
+
+            auto masker = itk::LabelMapMaskImageFilter<TLabelMap, QI::ImageF>::New();
+            masker->SetInput(convert->GetOutput());
+            masker->SetFeatureImage(rimage->GetOutput());
+            masker->SetLabel(i);
+            masker->SetBackgroundValue(0.);
+            masker->SetNegated(false); // Mask outside the mask
+            masker->SetCrop(true);
 
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
             auto routput = itk::ImageFileWriter<QI::ImageF>::New();
-            routput->SetInput(rextract->GetOutput());
+            routput->SetInput(masker->GetOutput());
             routput->SetFileName(fname);
             routput->Update();
 		}
