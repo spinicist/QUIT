@@ -36,24 +36,29 @@
 
 using namespace std;
 
+const string usage {
+"Usage is: qisplit input_file.nii [options]\n\
+\n\
+Options:\n\
+	--help, -h      : Print this message\n\
+	--verbose, -v   : Print more information\n\
+	--keep, -k N    : Keep N largest subjects\n\
+    --size, -s N    : Only keep subjects with >N voxels (default 1000)\n\
+	--ref, -r       : Specify a reference image for CoG\n\
+	--center=IN/OUT : Center and rotate subjects that were scanned in standard\n\
+	                  ring arrangement facing IN or OUT.\n\
+	--oimgs         : Output images\n"
+};
+enum { CENTER_IN = 0, CENTER_OUT, CENTER_NONE};
+
 int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
-	int keep = numeric_limits<int>::max(), size_threshold = -1, inwards = false, output_images = false;
-	QI::ImageF::Pointer reference = ITK_NULLPTR;
-	const string usage {
-	"Usage is: qisplit input_file.nii [options]\n\
-	\n\
-	Options:\n\
-		--help, -h    : Print this message\n\
-		--verbose, -v : Print more information\n\
-		--keep, -k N  : Keep N largest objects\n\
-        --size, -s N  : Only keep objects with >N voxels\n\
-		--ref, -r     : Specify a reference image for CoG\n\
-		--oimgs       : Output images\n\
-		--inwards     : Subjects were scanned facing 'inwards'\n"
-	};
+	int keep = numeric_limits<int>::max(), size_threshold = 1000, output_images = false,
+	    center = CENTER_NONE;
 
+	QI::ImageF::Pointer reference = ITK_NULLPTR;
+	
 	const struct option long_options[] =
 	{
 		{"help", no_argument, 0, 'h'},
@@ -61,11 +66,11 @@ int main(int argc, char **argv) {
 		{"keep", required_argument, 0, 'k'},
         {"size", required_argument, 0, 's'},
 		{"ref", required_argument, 0, 'r'},
+		{"center", required_argument, 0, 'c'},
 		{"oimgs", no_argument, &output_images, true},
-		{"inwards", no_argument, &inwards, true},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvr:k:s:";
+	const char* short_options = "hvr:c:k:s:";
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -80,6 +85,15 @@ int main(int argc, char **argv) {
 			reference = refFile->GetOutput();
 			reference->DisconnectPipeline();
 		} break;
+		case 'c':
+			if (string(optarg) == "IN") {
+				center = CENTER_IN;
+			} else if (string(optarg) == "OUT") {
+				center = CENTER_OUT;
+			} else {
+				cerr << "Unrecognised center specifier: " << string(optarg) << endl;
+				return EXIT_FAILURE;
+			} break;
 		case 'k': keep = atoi(optarg); break;
         case 's': size_threshold = atoi(optarg); break;
 		case 0: // longopts flag
@@ -131,7 +145,6 @@ int main(int argc, char **argv) {
     if (keep > label_sizes.size())
         keep = label_sizes.size();
     for (int i = 0; i < keep; i++) {
-        cout << "Object " << i << " size " << label_sizes[i] << endl;
         if (label_sizes[i] < size_threshold) {
             keep = i;
             break;
@@ -163,13 +176,13 @@ int main(int argc, char **argv) {
 	labelStats->Update();
 
 	typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
-	TMoments::VectorType refCoG; refCoG.Fill(0);
+	TMoments::VectorType offset; offset.Fill(0);
 	if (reference) {
 		auto refMoments = TMoments::New();
 		refMoments->SetImage(reference);
 		refMoments->Compute();
-		refCoG = refMoments->GetCenterOfGravity();
-		if (verbose) cout << "Reference CoG is: " << refCoG << endl;
+		offset = -refMoments->GetCenterOfGravity();
+		if (verbose) cout << "Reference CoG is: " << refMoments->GetCenterOfGravity() << endl;
 	}
 
     // Set these up to use in the loop
@@ -193,6 +206,7 @@ int main(int argc, char **argv) {
     rimage->SetDefaultPixelValue(0.);
     rimage->SetOutputParametersFromImage(input->GetOutput());
 
+    double angleX = 0., angleY = 0., angleZ = 0.;
 	for (auto i = 1; i <= keep; i++) {
 		TLabelImage::RegionType region = labelStats->GetRegion(i);
 		typedef itk::ExtractImageFilter<QI::ImageF, QI::ImageF> TExtractF;
@@ -202,24 +216,28 @@ int main(int argc, char **argv) {
 		extract->SetDirectionCollapseToSubmatrix();
 		extract->Update();
 
-		auto moments = TMoments::New();
-		moments->SetImage(extract->GetOutput());
-		moments->Compute();
-		TMoments::VectorType CoG = moments->GetCenterOfGravity();
-		if (verbose) cout << "Writing object " << i << " CoG is " << CoG << endl;
-		float rotateAngle = atan2(CoG[1], CoG[0]);
-		if (inwards)
-			rotateAngle = (M_PI / 2.) - rotateAngle;
-		else
-			rotateAngle = (M_PI * 3./2.) - rotateAngle;
-		if (verbose) cout << "Rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
+		if (center != CENTER_NONE) {
+			auto moments = TMoments::New();
+			moments->SetImage(extract->GetOutput());
+			moments->Compute();
+			TMoments::VectorType CoG = moments->GetCenterOfGravity();
+			if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
+			float rotateAngle = atan2(CoG[1], CoG[0]);
+			if (center == CENTER_IN)
+				rotateAngle = (M_PI / 2.) - rotateAngle;
+			else if (center == CENTER_OUT)
+				rotateAngle = (M_PI * 3./2.) - rotateAngle;
+			if (verbose) cout << "Rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
+			angleZ -= rotateAngle;
+			offset += CoG;
+		}
 
 		typedef itk::Euler3DTransform<double> TRigid;
 		auto tfm = TRigid::New();
 		tfm->SetIdentity();
-		tfm->SetOffset(CoG - refCoG);
+		tfm->SetOffset(offset);
 		//tfm->SetCenter(CoG); // Want to leave this at 0 due to how ITK transforms work
-		tfm->SetRotation(0, 0, -rotateAngle);
+		tfm->SetRotation(angleX, angleY, angleZ);
 
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
 		if (output_images) {
