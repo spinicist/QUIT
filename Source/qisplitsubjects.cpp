@@ -47,6 +47,9 @@ Options:\n\
 	--ref, -r       : Specify a reference image for CoG\n\
 	--center=IN/OUT : Center and rotate subjects that were scanned in standard\n\
 	                  ring arrangement facing IN or OUT.\n\
+	--rotX N        : Rotate by N degrees around the X axis.\n\
+	--rotY N        : Rotate by N degrees around the Y axis.\n\
+	--rotZ N        : Rotate by N degrees around the Z axis.\n\
 	--oimgs         : Output images\n"
 };
 enum { CENTER_IN = 0, CENTER_OUT, CENTER_NONE};
@@ -56,6 +59,7 @@ int main(int argc, char **argv) {
 	int indexptr = 0, c;
 	int keep = numeric_limits<int>::max(), size_threshold = 1000, output_images = false,
 	    center = CENTER_NONE;
+    double angleX = 0., angleY = 0., angleZ = 0.;
 
 	QI::ImageF::Pointer reference = ITK_NULLPTR;
 	
@@ -67,6 +71,9 @@ int main(int argc, char **argv) {
         {"size", required_argument, 0, 's'},
 		{"ref", required_argument, 0, 'r'},
 		{"center", required_argument, 0, 'c'},
+		{"rotX", required_argument, 0, 'X'},
+		{"rotY", required_argument, 0, 'Y'},
+		{"rotZ", required_argument, 0, 'Z'},
 		{"oimgs", no_argument, &output_images, true},
 		{0, 0, 0, 0}
 	};
@@ -96,6 +103,9 @@ int main(int argc, char **argv) {
 			} break;
 		case 'k': keep = atoi(optarg); break;
         case 's': size_threshold = atoi(optarg); break;
+        case 'X': angleX = stod(optarg)*M_PI/180.; break;
+        case 'Y': angleY = stod(optarg)*M_PI/180.; break;
+        case 'Z': angleZ = stod(optarg)*M_PI/180.; break;
 		case 0: // longopts flag
 			break;
 		case '?': // getopt will print an error message
@@ -176,13 +186,13 @@ int main(int argc, char **argv) {
 	labelStats->Update();
 
 	typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
-	TMoments::VectorType offset; offset.Fill(0);
+	TMoments::VectorType refCoG; refCoG.Fill(0);
 	if (reference) {
 		auto refMoments = TMoments::New();
 		refMoments->SetImage(reference);
 		refMoments->Compute();
-		offset = -refMoments->GetCenterOfGravity();
-		if (verbose) cout << "Reference CoG is: " << refMoments->GetCenterOfGravity() << endl;
+		refCoG = refMoments->GetCenterOfGravity();
+		if (verbose) cout << "Reference CoG is: " << refCoG << endl;
 	}
 
     // Set these up to use in the loop
@@ -194,7 +204,10 @@ int main(int argc, char **argv) {
     rlabels->SetInput(keepN->GetOutput());
     rlabels->SetInterpolator(ilabels);
     rlabels->SetDefaultPixelValue(0.);
-    rlabels->SetOutputParametersFromImage(relabel->GetOutput());
+    if (reference)
+    	rlabels->SetOutputParametersFromImage(reference);
+   	else
+    	rlabels->SetOutputParametersFromImage(relabel->GetOutput());
 
     typedef itk::ResampleImageFilter<QI::ImageF, QI::ImageF, double> TResampleF;
     typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TLinearInterpF;
@@ -204,9 +217,11 @@ int main(int argc, char **argv) {
     rimage->SetInput(input->GetOutput());
     rimage->SetInterpolator(interp);
     rimage->SetDefaultPixelValue(0.);
-    rimage->SetOutputParametersFromImage(input->GetOutput());
+    if (reference)
+    	rimage->SetOutputParametersFromImage(reference);
+    else
+    	rimage->SetOutputParametersFromImage(input->GetOutput());
 
-    double angleX = 0., angleY = 0., angleZ = 0.;
 	for (auto i = 1; i <= keep; i++) {
 		TLabelImage::RegionType region = labelStats->GetRegion(i);
 		typedef itk::ExtractImageFilter<QI::ImageF, QI::ImageF> TExtractF;
@@ -216,19 +231,20 @@ int main(int argc, char **argv) {
 		extract->SetDirectionCollapseToSubmatrix();
 		extract->Update();
 
+		TMoments::VectorType offset = -refCoG;
+		double rotateAngle = 0.;
 		if (center != CENTER_NONE) {
 			auto moments = TMoments::New();
 			moments->SetImage(extract->GetOutput());
 			moments->Compute();
 			TMoments::VectorType CoG = moments->GetCenterOfGravity();
 			if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
-			float rotateAngle = atan2(CoG[1], CoG[0]);
+			rotateAngle = atan2(CoG[1], CoG[0]);
 			if (center == CENTER_IN)
 				rotateAngle = (M_PI / 2.) - rotateAngle;
 			else if (center == CENTER_OUT)
 				rotateAngle = (M_PI * 3./2.) - rotateAngle;
 			if (verbose) cout << "Rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
-			angleZ -= rotateAngle;
 			offset += CoG;
 		}
 
@@ -236,8 +252,7 @@ int main(int argc, char **argv) {
 		auto tfm = TRigid::New();
 		tfm->SetIdentity();
 		tfm->SetOffset(offset);
-		//tfm->SetCenter(CoG); // Want to leave this at 0 due to how ITK transforms work
-		tfm->SetRotation(angleX, angleY, angleZ);
+		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
 
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
 		if (output_images) {
@@ -258,13 +273,14 @@ int main(int argc, char **argv) {
             masker->SetLabel(i);
             masker->SetBackgroundValue(0.);
             masker->SetNegated(false); // Mask outside the mask
-            masker->SetCrop(true);
+            if (reference == ITK_NULLPTR)
+            	masker->SetCrop(true);
 
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
             auto routput = itk::ImageFileWriter<QI::ImageF>::New();
-            routput->SetInput(masker->GetOutput());
             routput->SetFileName(fname);
+            routput->SetInput(masker->GetOutput());
             routput->Update();
 		}
 
