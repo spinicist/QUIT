@@ -24,6 +24,7 @@
 #include "itkLabelShapeKeepNObjectsImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
 #include "itkLabelStatisticsImageFilter.h"
+#include "itkLabelStatisticsOpeningImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkImageMomentsCalculator.h"
 #include "itkEuler3DTransform.h"
@@ -37,7 +38,7 @@ using namespace std;
 int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
-	int keep = 4, inwards = false, output_images = false;
+	int keep = numeric_limits<int>::max(), size_threshold = -1, inwards = false, output_images = false;
 	QI::ImageF::Pointer reference = ITK_NULLPTR;
 	const string usage {
 	"Usage is: qisplit input_file.nii [options]\n\
@@ -45,7 +46,8 @@ int main(int argc, char **argv) {
 	Options:\n\
 		--help, -h    : Print this message\n\
 		--verbose, -v : Print more information\n\
-		--keep, -k    : Keep N largest objects (default 4)\n\
+		--keep, -k N  : Keep N largest objects\n\
+        --size, -s N  : Only keep objects with >N voxels\n\
 		--ref, -r     : Specify a reference image for CoG\n\
 		--oimgs       : Output images\n\
 		--inwards     : Subjects were scanned facing 'inwards'\n"
@@ -56,12 +58,13 @@ int main(int argc, char **argv) {
 		{"help", no_argument, 0, 'h'},
 		{"verbose", no_argument, 0, 'v'},
 		{"keep", required_argument, 0, 'k'},
+        {"size", required_argument, 0, 's'},
 		{"ref", required_argument, 0, 'r'},
 		{"oimgs", no_argument, &output_images, true},
 		{"inwards", no_argument, &inwards, true},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvr:k:";
+	const char* short_options = "hvr:k:s:";
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -76,9 +79,8 @@ int main(int argc, char **argv) {
 			reference = refFile->GetOutput();
 			reference->DisconnectPipeline();
 		} break;
-		case 'k':
-			keep = atoi(optarg);
-			break;
+		case 'k': keep = atoi(optarg); break;
+        case 's': size_threshold = atoi(optarg); break;
 		case 0: // longopts flag
 			break;
 		case '?': // getopt will print an error message
@@ -118,31 +120,47 @@ int main(int argc, char **argv) {
 
 	auto CC = itk::ConnectedComponentImageFilter<TLabelImage, TLabelImage>::New();
 	CC->SetInput(otsuFilter->GetOutput());
-	CC->Update();
-	if (verbose) cout << "Found " << CC->GetObjectCount() << " objects in total, will keep " << keep << " largest." << endl;
+	
+    typedef itk::RelabelComponentImageFilter<TLabelImage, TLabelImage> TRelabel;
+    auto relabel = TRelabel::New();
+    relabel->SetInput(CC->GetOutput());
+    relabel->Update();
+    // Relabel sorts on size by default, so now work out how many make the size threshold
+    auto label_sizes = relabel->GetSizeOfObjectsInPixels();
+    if (keep > label_sizes.size())
+        keep = label_sizes.size();
+    for (int i = 0; i < keep; i++) {
+        cout << "Object " << i << " size " << label_sizes[i] << endl;
+        if (label_sizes[i] < size_threshold) {
+            keep = i;
+            break;
+        }
+    }
+    if (keep == 0) {
+        cerr << "Found 0 objects to keep. Exiting." << endl;
+        return EXIT_FAILURE;
+    }
+    if (verbose) cout << "Found " << keep << " objects to keep." << endl;
 
 	typedef itk::LabelShapeKeepNObjectsImageFilter<TLabelImage> TKeepN;
 	auto keepN = TKeepN::New();
-	keepN->SetInput(CC->GetOutput());
+	keepN->SetInput(relabel->GetOutput());
 	keepN->SetBackgroundValue(0);
 	keepN->SetNumberOfObjects(keep);
 	keepN->SetAttribute(TKeepN::LabelObjectType::NUMBER_OF_PIXELS);
 
-	auto relabel = itk::RelabelComponentImageFilter<TLabelImage, TLabelImage>::New();
-	relabel->SetInput(keepN->GetOutput());
-
 	if (verbose) cout << "Writing label image." << endl;
 	auto output = itk::ImageFileWriter<TLabelImage>::New();
-	output->SetInput(relabel->GetOutput());
+	output->SetInput(keepN->GetOutput());
 	output->SetFileName(prefix + "_labels.nii");
 	output->Update();
 
 	typedef itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage> TLabelStats;
 	auto labelStats = TLabelStats::New();
 	labelStats->SetInput(input->GetOutput());
-	labelStats->SetLabelInput(relabel->GetOutput());
+	labelStats->SetLabelInput(keepN->GetOutput());
 	labelStats->Update();
-	
+
 	typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
 	TMoments::VectorType refCoG; refCoG.Fill(0);
 	if (reference) {
@@ -157,9 +175,9 @@ int main(int argc, char **argv) {
     typedef itk::ResampleImageFilter<TLabelImage, TLabelImage, double> TLabelResampler;
     typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TLabelInterp;
     auto ilabels = TLabelInterp::New();
-    ilabels->SetInputImage(relabel->GetOutput());
+    ilabels->SetInputImage(keepN->GetOutput());
     auto rlabels = TLabelResampler::New();
-    rlabels->SetInput(relabel->GetOutput());
+    rlabels->SetInput(keepN->GetOutput());
     rlabels->SetInterpolator(ilabels);
     rlabels->SetDefaultPixelValue(0.);
     rlabels->SetOutputParametersFromImage(relabel->GetOutput());
@@ -173,8 +191,8 @@ int main(int argc, char **argv) {
     rimage->SetInterpolator(interp);
     rimage->SetDefaultPixelValue(0.);
     rimage->SetOutputParametersFromImage(input->GetOutput());
-    
-	for (auto i = 1; i <= 4; i++) {
+
+	for (auto i = 1; i <= keep; i++) {
 		TLabelImage::RegionType region = labelStats->GetRegion(i);
 		typedef itk::ExtractImageFilter<QI::ImageF, QI::ImageF> TExtractF;
 		auto extract = TExtractF::New();
