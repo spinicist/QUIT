@@ -280,7 +280,15 @@ int main(int argc, char **argv) {
         tfm->SetOffset(offset);
         
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
-		if (output_images) {
+        
+        fname = prefix + suffix.str() + ".tfm";
+        if (verbose) cout << "Writing transform file " << fname << endl;
+        auto tfmWriter = itk::TransformFileWriterTemplate<double>::New();
+        tfmWriter->SetInput(tfm);
+        tfmWriter->SetFileName(fname);
+        tfmWriter->Update();
+        
+        if (output_images) {
             typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TLinInterp;
             typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
             QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TLinInterp>(input, tfm, reference);
@@ -303,13 +311,6 @@ int main(int argc, char **argv) {
             if (verbose) cout << "Writing output file " << fname << endl;
             QI::WriteImage(masker->GetOutput(), fname);
 		}
-
-		fname = prefix + suffix.str() + ".tfm";
-		if (verbose) cout << "Writing transform file " << fname << endl;
-  		auto tfmWriter = itk::TransformFileWriterTemplate<double>::New();
-  		tfmWriter->SetInput(tfm);
-  		tfmWriter->SetFileName(fname);
-  		tfmWriter->Update();
 	}
 	return EXIT_SUCCESS;
 }
