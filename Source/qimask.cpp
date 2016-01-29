@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     otsuFilter->SetInsideValue(0);
     otsuFilter->Update();
     if (verbose) cout << "Saving mask" << endl;
-    QI::writeResult(otsuFilter->GetOutput(), outPrefix + "_mask" + QI::OutExt());
+    QI::WriteImage(otsuFilter->GetOutput(), outPrefix + "_mask" + QI::OutExt());
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

@@ -176,11 +176,8 @@ int main(int argc, char **argv) {
 	keepN->SetNumberOfObjects(keep);
 	keepN->SetAttribute(TKeepN::LabelObjectType::NUMBER_OF_PIXELS);
 
-	if (verbose) cout << "Writing label image." << endl;
-	auto output = itk::ImageFileWriter<TLabelImage>::New();
-	output->SetInput(keepN->GetOutput());
-	output->SetFileName(prefix + "_labels.nii");
-	output->Update();
+    if (verbose) cout << "Writing label image." << endl;
+    QI::WriteImage<TLabelImage>(keepN->GetOutput(), prefix + "_labels.nii");
 
 	typedef itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage> TLabelStats;
 	auto labelStats = TLabelStats::New();
@@ -274,10 +271,7 @@ int main(int argc, char **argv) {
 
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
-            auto routput = itk::ImageFileWriter<QI::ImageF>::New();
-            routput->SetFileName(fname);
-            routput->SetInput(masker->GetOutput());
-            routput->Update();
+            QI::WriteImage(masker->GetOutput(), fname);
 		}
 
 		fname = prefix + suffix.str() + ".tfm";

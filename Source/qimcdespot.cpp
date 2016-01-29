@@ -590,10 +590,10 @@ Options:\n\
 		cout << "Writing results files." << endl;
 	}
 	for (int i = 0; i < model->nParameters(); i++) {
-        QI::writeResult(applySlices->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
+        QI::WriteImage(applySlices->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
 	}
 	QI::writeResiduals(applySlices->GetResidOutput(), outPrefix, all_residuals);
-    QI::writeResult<itk::Image<int, 3>>(applySlices->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
+    QI::WriteImage<itk::Image<int, 3>>(applySlices->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
 	return EXIT_SUCCESS;
 }
 

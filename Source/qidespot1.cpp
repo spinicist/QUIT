@@ -296,11 +296,11 @@ int main(int argc, char **argv) {
 	apply->Update();
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "D1_";
-    QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-    QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
+    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
+    QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
 	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 	if (algo->getIterations() != D1Algo::DefaultIterations) {
-		QI::writeResult<QI::ImageI>(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
+		QI::WriteImage<QI::ImageI>(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
 	}
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;

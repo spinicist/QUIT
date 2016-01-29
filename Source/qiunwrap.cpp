@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
 	inFile->Update(); // Need the size info
 	calcLaplace->SetInput(inFile->GetOutput());
     calcLaplace->Update();
-    if (debug) QI::writeResult(calcLaplace->GetOutput(), prefix + "_step1_laplace" + QI::OutExt());
+    if (debug) QI::WriteImage(calcLaplace->GetOutput(), prefix + "_step1_laplace" + QI::OutExt());
 
     QI::ImageF::Pointer lap = calcLaplace->GetOutput();
     if (mask) {
@@ -371,13 +371,13 @@ int main(int argc, char **argv) {
             erodeFilter->SetKernel(structuringElement);
             erodeFilter->Update();
             masker->SetMaskImage(erodeFilter->GetOutput());
-            if (debug) QI::writeResult<QI::ImageUC>(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
+            if (debug) QI::WriteImage<QI::ImageUC>(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
         }
         if (verbose) cout << "Applying mask" << endl;
         masker->Update();
         lap = masker->GetOutput();
         lap->DisconnectPipeline();
-        if (debug) QI::writeResult(lap, prefix + "_step1_laplace_masked" + QI::OutExt());
+        if (debug) QI::WriteImage(lap, prefix + "_step1_laplace_masked" + QI::OutExt());
     }
 
     if (verbose) cout << "Padding image to valid FFT size." << endl;
@@ -385,7 +385,7 @@ int main(int argc, char **argv) {
     auto padFFT = PadFFTType::New();
     padFFT->SetInput(lap);
     padFFT->Update();
-    if (debug) QI::writeResult(padFFT->GetOutput(), prefix + "_step2_padFFT" + QI::OutExt());
+    if (debug) QI::WriteImage(padFFT->GetOutput(), prefix + "_step2_padFFT" + QI::OutExt());
     if (verbose) {
         cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
         cout << "Calculating Forward FFT." << endl;
@@ -394,29 +394,29 @@ int main(int argc, char **argv) {
 	auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
-    if (debug) QI::writeResult<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
+    if (debug) QI::WriteImage<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
 	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
     auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
-    if (debug) QI::writeResult(inverseLaplace->GetOutput(), prefix + "_inverse_laplace_filter" + QI::OutExt());
+    if (debug) QI::WriteImage(inverseLaplace->GetOutput(), prefix + "_inverse_laplace_filter" + QI::OutExt());
     if (verbose) cout << "Multiplying." << endl;
     auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
 	mult->SetInput1(forwardFFT->GetOutput());
 	mult->SetInput2(inverseLaplace->GetOutput());
-    if (debug) QI::writeResult<QI::ImageXF>(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
+    if (debug) QI::WriteImage<QI::ImageXF>(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
 	if (verbose) cout << "Inverse FFT." << endl;
     auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
 	inverseFFT->SetInput(mult->GetOutput());
     inverseFFT->Update();
-    if (debug) QI::writeResult(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
+    if (debug) QI::WriteImage(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
     if (verbose) cout << "Extracting original size image" << endl;
     auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
     extract->SetInput(inverseFFT->GetOutput());
     extract->SetDirectionCollapseToSubmatrix();
     extract->SetExtractionRegion(calcLaplace->GetOutput()->GetLargestPossibleRegion());
     extract->Update();
-    if (debug) QI::writeResult(extract->GetOutput(), prefix + "_step5_extract" + QI::OutExt());
+    if (debug) QI::WriteImage(extract->GetOutput(), prefix + "_step5_extract" + QI::OutExt());
     auto outFile = QI::ImageWriterF::New();
     if (mask) {
         if (verbose) cout << "Re-applying mask" << endl;

@@ -226,9 +226,9 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Writing results." << endl;
 	outPrefix = outPrefix + "HIFI_";
 
-    QI::writeResult(apply->GetOutput(0), outPrefix + "PD.nii");
-    QI::writeResult(apply->GetOutput(1), outPrefix + "T1.nii");
-    QI::writeResult(apply->GetOutput(2), outPrefix + "B1.nii");
+    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
+    QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
+    QI::WriteImage(apply->GetOutput(2), outPrefix + "B1.nii");
 	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	if (verbose) cout << "Finished." << endl;

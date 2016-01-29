@@ -49,9 +49,9 @@ auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
 }
 
 template<typename TImg = QI::ImageF>
-void writeResult(const typename TImg::Pointer img, const std::string path) {
+void WriteImage(const typename TImg::Pointer img, const std::string path) {
     typedef itk::ImageFileWriter<TImg> TWriter;
-    auto file = TWriter::New();
+    typename TWriter::Pointer file = TWriter::New();
     file->SetFileName(path);
     file->SetInput(img);
     file->Update();

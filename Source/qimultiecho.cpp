@@ -303,8 +303,8 @@ int main(int argc, char **argv) {
     PDoutput->UpdateLargestPossibleRegion();
     T2output->UpdateLargestPossibleRegion();
     outPrefix = outPrefix + "ME_";
-    QI::writeResult<QI::TimeseriesF>(PDoutput->GetOutput(), outPrefix + "PD" + suffix + QI::OutExt());
-    QI::writeResult<QI::TimeseriesF>(T2output->GetOutput(), outPrefix + "T2" + suffix + QI::OutExt());
+    QI::WriteImage<QI::TimeseriesF>(PDoutput->GetOutput(), outPrefix + "PD" + suffix + QI::OutExt());
+    QI::WriteImage<QI::TimeseriesF>(T2output->GetOutput(), outPrefix + "T2" + suffix + QI::OutExt());
     //QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
 	return EXIT_SUCCESS;

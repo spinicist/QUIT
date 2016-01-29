@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
 		it.NextSlice();
 		if ((it.GetIndex()[fillDim] % stepLength) == (stepLength - 1)) val += deltaVal;
 	}
-    QI::writeResult(newimg, fName);
+    QI::WriteImage(newimg, fName);
 
 	return EXIT_SUCCESS;
 }

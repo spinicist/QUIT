@@ -222,14 +222,14 @@ int main(int argc, char **argv) {
             vol_j->Update();
             MPContrastFilter->SetInput2(vol_j->GetOutput());
             MPContrastFilter->Update();
-            QI::writeResult(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
+            QI::WriteImage(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
         }
     }
 
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetInput(MPContrastFilter->GetOutput());
     apply->Update();
-    QI::writeResult(apply->GetOutput(0), outName + "_R1" + QI::OutExt());
+    QI::WriteImage(apply->GetOutput(0), outName + "_R1" + QI::OutExt());
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

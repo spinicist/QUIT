@@ -363,8 +363,8 @@ int main(int argc, char **argv) {
 		cout << "Writing results." << endl;
 	}
 	outPrefix = outPrefix + "D2_";
-    writeResult(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
-	writeResult(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
+    WriteImage(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
+	WriteImage(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
 	writeResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals);
 
 	if (verbose) cout << "All done." << endl;
