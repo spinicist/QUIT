@@ -34,6 +34,11 @@
 #include "itkResampleImageFilter.h"
 #include "itkLinearInterpolateImageFunction.h"
 #include "itkNearestNeighborInterpolateImageFunction.h"
+#include "itkShrinkImageFilter.h"
+#include "itkSmoothingRecursiveGaussianImageFilter.h"
+#include "itkMeanSquaresImageToImageMetric.h"
+#include "itkRegularStepGradientDescentOptimizer.h"
+#include "itkImageRegistrationMethod.h"
 
 using namespace std;
 
@@ -152,6 +157,55 @@ typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const 
     return rimage;
 }
 
+void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference, TRigid::Pointer tfm, const int shrink) {
+    typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
+    typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
+    typedef itk::RegularStepGradientDescentOptimizer TOpt;
+    typedef itk::MeanSquaresImageToImageMetric<QI::ImageF, QI::ImageF> TMetric;
+    typedef itk::ImageRegistrationMethod<QI::ImageF, QI::ImageF> TReg;
+    typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TInterp;
+    
+    TSmooth::Pointer smooth_img = TSmooth::New();
+    TSmooth::Pointer smooth_ref = TSmooth::New();
+    TSmooth::SigmaArrayType sigma = image->GetSpacing();
+    for (int i = 0; i < sigma.Size(); i++)
+        sigma[i] = sigma[i] * shrink;
+    smooth_img->SetInput(image);
+    smooth_img->SetSigmaArray(sigma);
+    smooth_ref->SetInput(reference);
+    smooth_ref->SetSigmaArray(sigma);
+    
+    TShrink::Pointer shrink_img = TShrink::New();
+    TShrink::Pointer shrink_ref = TShrink::New();
+    shrink_img->SetInput(smooth_img->GetOutput());
+    shrink_img->SetShrinkFactors(shrink);
+    shrink_ref->SetInput(smooth_ref->GetOutput());
+    shrink_ref->SetShrinkFactors(shrink);
+    
+    TMetric::Pointer metric = TMetric::New();
+    TInterp::Pointer interp = TInterp::New();
+    TOpt::Pointer opt = TOpt::New();
+    TReg::Pointer reg = TReg::New();
+    
+    reg->SetMetric(metric);
+    reg->SetOptimizer(opt);
+    reg->SetTransform(tfm);
+    reg->SetInterpolator(interp);
+    reg->SetFixedImage(shrink_ref->GetOutput());
+    reg->SetMovingImage(shrink_img->GetOutput());
+    reg->SetFixedImageRegion(reference->GetLargestPossibleRegion());
+    
+    typedef TReg::ParametersType TPars;
+    TPars initPars = tfm->GetParameters();
+    reg->SetInitialTransformParameters(initPars);
+    opt->SetMaximumStepLength(4.0);
+    opt->SetMinimumStepLength(0.01);
+    opt->SetNumberOfIterations(50);
+    
+    reg->Update();
+    
+    tfm->SetParameters(reg->GetLastTransformParameters());
+}
 
 const string usage {
 "Usage is: qisplit input_file.nii [options]\n\
@@ -290,6 +344,11 @@ int main(int argc, char **argv) {
 		tfm->SetIdentity();
 		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
         tfm->SetOffset(offset);
+        
+        cout << "Before: " << endl << tfm << endl;
+        if (reference)
+            RegisterImageToReference(subject, reference, tfm, 4);
+        cout << "After: " << endl << tfm << endl;
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
         fname = prefix + suffix.str() + ".tfm";
