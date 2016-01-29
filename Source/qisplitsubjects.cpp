@@ -230,7 +230,9 @@ Options:\n\
     --keep, -k N   : Keep N largest subjects\n\
     --size, -s N   : Only keep subjects with >N voxels (default 1000)\n\
     --oimgs        : Output images (default only transforms)\n\
+Reference Options:\n\
     --ref, -r      : Specify a reference image for output space\n\
+    --shrink, -S N : Specify shrink factor for registration step (default 2)\n\
 Masking options (default is generate a mask with Otsu's method):\n\
     --mask, -m F   : Read the mask from file F\n\
     --thresh, -t N : Generate a mask by thresholding input at intensity N\n\
@@ -247,7 +249,7 @@ enum class ALIGN { NONE = 0, RING_IN, RING_OUT };
 int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
-    int keep = numeric_limits<int>::max(), size_threshold = 1000, output_images = false;
+    int keep = numeric_limits<int>::max(), size_threshold = 1000, shrink = 2, output_images = false;
     ALIGN alignment = ALIGN::NONE;
     float intensity_threshold = 0;
     double angleX = 0., angleY = 0., angleZ = 0.;
@@ -264,6 +266,7 @@ int main(int argc, char **argv) {
         {"thresh", required_argument, 0, 't'},
         {"mask", required_argument, 0, 'm'},
 		{"ref", required_argument, 0, 'r'},
+        {"shrink", required_argument, 0, 'S'},
         {"ring", required_argument, 0, 'R'},
 		{"rotX", required_argument, 0, 'X'},
 		{"rotY", required_argument, 0, 'Y'},
@@ -271,7 +274,7 @@ int main(int argc, char **argv) {
 		{"oimgs", no_argument, &output_images, true},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvr:c:k:s:";
+	const char* short_options = "hvr:c:k:s:S:";
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -290,7 +293,8 @@ int main(int argc, char **argv) {
                 cerr << "Unrecognised ring alignment specifier: " << string(optarg) << endl;
                 return EXIT_FAILURE;
             } break;
-		case 'k': keep = atoi(optarg); break;
+        case 'k': keep = stoi(optarg); break;
+        case 'S': shrink = stoi(optarg); break;
         case 's': size_threshold = atoi(optarg); break;
         case 't': intensity_threshold = stof(optarg); break;
         case 'X': angleX = stod(optarg)*M_PI/180.; break;
@@ -359,10 +363,10 @@ int main(int argc, char **argv) {
 		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
         tfm->SetOffset(offset);
         
-        cout << "Before: " << endl << tfm->GetParameters() << endl;
-        if (reference)
-            RegisterImageToReference(subject, reference, tfm, 4);
-        cout << "After: " << endl << tfm->GetParameters() << endl;
+        if (reference) {
+            if (verbose) cout << "Registering to reference image..." << endl;
+            RegisterImageToReference(subject, reference, tfm, shrink);
+        }
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
         fname = prefix + suffix.str() + ".tfm";
@@ -378,7 +382,6 @@ int main(int argc, char **argv) {
             QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TLinInterp>(input, tfm, reference);
             TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
             QI::ImageF::Pointer masked = MaskWithLabel(rimage, rlabels, i, (reference == ITK_NULLPTR));
-
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
             QI::WriteImage(masked, fname);
