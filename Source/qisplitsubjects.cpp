@@ -197,11 +197,22 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     
     typedef TReg::ParametersType TPars;
     TPars initPars = tfm->GetParameters();
-    reg->SetInitialTransformParameters(initPars);
+    
+    TOpt::ScalesType scales(tfm->GetNumberOfParameters());
+    const double translationScale = 1000.0;   // dynamic range of translations
+    const double rotationScale    =    1.0;   // dynamic range of rotations
+    scales[0] = 1.0 / rotationScale;
+    scales[1] = 1.0 / rotationScale;
+    scales[2] = 1.0 / rotationScale;
+    scales[3] = 1.0 / translationScale;
+    scales[4] = 1.0 / translationScale;
+    scales[5] = 1.0 / translationScale;
+    opt->SetScales(scales);
     opt->SetMaximumStepLength(4.0);
     opt->SetMinimumStepLength(0.01);
-    opt->SetNumberOfIterations(50);
+    opt->SetNumberOfIterations(250);
     
+    reg->SetInitialTransformParameters(initPars);
     reg->Update();
     
     tfm->SetParameters(reg->GetLastTransformParameters());
@@ -345,10 +356,10 @@ int main(int argc, char **argv) {
 		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
         tfm->SetOffset(offset);
         
-        cout << "Before: " << endl << tfm << endl;
+        cout << "Before: " << endl << tfm->GetParameters() << endl;
         if (reference)
             RegisterImageToReference(subject, reference, tfm, 4);
-        cout << "After: " << endl << tfm << endl;
+        cout << "After: " << endl << tfm->GetParameters() << endl;
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
         fname = prefix + suffix.str() + ".tfm";
