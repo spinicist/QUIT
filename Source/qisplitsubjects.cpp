@@ -36,7 +36,7 @@
 #include "itkNearestNeighborInterpolateImageFunction.h"
 #include "itkShrinkImageFilter.h"
 #include "itkSmoothingRecursiveGaussianImageFilter.h"
-#include "itkMeanSquaresImageToImageMetric.h"
+#include "itkMattesMutualInformationImageToImageMetric.h"
 #include "itkRegularStepGradientDescentOptimizer.h"
 #include "itkImageRegistrationMethod.h"
 
@@ -161,7 +161,7 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
     typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
     typedef itk::RegularStepGradientDescentOptimizer TOpt;
-    typedef itk::MeanSquaresImageToImageMetric<QI::ImageF, QI::ImageF> TMetric;
+    typedef itk::MattesMutualInformationImageToImageMetric<QI::ImageF, QI::ImageF> TMetric;
     typedef itk::ImageRegistrationMethod<QI::ImageF, QI::ImageF> TReg;
     typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TInterp;
     
@@ -186,6 +186,9 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     TInterp::Pointer interp = TInterp::New();
     TOpt::Pointer opt = TOpt::New();
     TReg::Pointer reg = TReg::New();
+    
+    metric->SetNumberOfHistogramBins(32);
+    metric->SetNumberOfSpatialSamples(10000);
     
     reg->SetMetric(metric);
     reg->SetOptimizer(opt);
