@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
     string outname = prefix + "_filtered" + QI::OutExt();
     if (verbose) cout << "Output filename: " << outname << endl;
 
-    auto inFile = QI::ReadImageF::New();
+    auto inFile = QI::ImageReaderF::New();
     inFile->SetFileName(fname);
     inFile->Update(); // Need the size info
 
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
     extract->SetDirectionCollapseToSubmatrix();
     extract->SetExtractionRegion(inFile->GetOutput()->GetLargestPossibleRegion());
     extract->Update();
-    auto outFile = QI::WriteImageF::New();
+    auto outFile = QI::ImageWriterF::New();
     outFile->SetInput(extract->GetOutput());
     outFile->SetFileName(outname);
     if (verbose) cout << "Writing output." << endl;

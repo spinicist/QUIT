@@ -71,13 +71,13 @@ int main(int argc, char **argv) {
 	string outPrefix = "AFI_";
 	bool verbose = false;
 	double n = 5., nomFlip = 55.;
-	QI::ReadImageF::Pointer maskFile = ITK_NULLPTR;
+	QI::ImageReaderF::Pointer maskFile = ITK_NULLPTR;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
 			case 'm':
 				cout << "Reading mask." << endl;
-				maskFile = QI::ReadImageF::New();
+				maskFile = QI::ImageReaderF::New();
 				maskFile->SetFileName(optarg);
 				break;
 			case 'o':
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 	if (verbose) cout << "Opening input file " << argv[optind] << endl;
-	auto inFile = QI::ReadTimeseriesF::New();
+	auto inFile = QI::TimeseriesReaderF::New();
 	inFile->SetFileName(argv[optind]);
 	inFile->Update();
 	if (verbose) {

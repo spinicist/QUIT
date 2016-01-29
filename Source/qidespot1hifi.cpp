@@ -149,7 +149,7 @@ class HIFIAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	ReadImageF::Pointer mask = ITK_NULLPTR;
+	ImageReaderF::Pointer mask = ITK_NULLPTR;
 	auto hifi = make_shared<HIFIAlgo>();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 			case 'M': IR = false; break;
 			case 'm':
 				if (verbose) cout << "Opening mask file: " << optarg << endl;
-				mask = ReadImageF::New();
+				mask = ImageReaderF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -190,13 +190,13 @@ int main(int argc, char **argv) {
 	}
 	
 	if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
-	auto spgrFile = ReadTimeseriesF::New();
+	auto spgrFile = TimeseriesReaderF::New();
 	auto spgrImg = TimeseriesToVectorF::New();
 	spgrFile->SetFileName(argv[optind++]);
 	spgrImg->SetInput(spgrFile->GetOutput());
 	auto spgrSequence = make_shared<SPGRSimple>(prompt);
 	if (verbose) cout << "Opening IR-SPGR file: " << argv[optind] << endl;
-	auto irFile = ReadTimeseriesF::New();
+	auto irFile = TimeseriesReaderF::New();
 	auto irImg = TimeseriesToVectorF::New();
 	irFile->SetFileName(argv[optind++]);
 	irImg->SetInput(irFile->GetOutput());

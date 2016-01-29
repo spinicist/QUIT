@@ -406,7 +406,7 @@ public:
 int main(int argc, char **argv) {
 	Eigen::initParallel();
 
-    QI::ReadImageF::Pointer mask = ITK_NULLPTR;
+    QI::ImageReaderF::Pointer mask = ITK_NULLPTR;
     auto gs = itk::GSFilter::New();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
 			case 'v': verbose = true; break;
             case 'm':
                 if (verbose) cout << "Reading mask file " << optarg << endl;
-                mask = QI::ReadImageF::New();
+                mask = QI::ImageReaderF::New();
                 mask->SetFileName(optarg);
                 break;
 			case 'o':
@@ -458,7 +458,7 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
 	string fname(argv[optind++]);
 
-    auto inFile = QI::ReadTimeseriesXF::New();
+    auto inFile = QI::TimeseriesReaderXF::New();
     auto reorderVolumes = QI::ReorderTimeseriesXF::New();
     auto reorderPhase = QI::ReorderTimeseriesXF::New();
 
@@ -551,13 +551,13 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Output filename: " << outname << endl;
     if (output_magnitude) {
         auto mag = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
-        auto outFile = QI::WriteTimeseriesF::New();
+        auto outFile = QI::TimeseriesWriterF::New();
         mag->SetInput(outTiler->GetOutput());
         outFile->SetInput(mag->GetOutput());
         outFile->SetFileName(outname);
         outFile->Update();
     } else {
-        auto outFile = QI::WriteTimeseriesXF::New();
+        auto outFile = QI::TimeseriesWriterXF::New();
         outFile->SetInput(outTiler->GetOutput());
         outFile->SetFileName(outname);
         outFile->Update();

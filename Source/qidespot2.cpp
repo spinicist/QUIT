@@ -257,8 +257,8 @@ static const char *short_opts = "hm:o:b:t:c:vna:i:T:er";
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	ReadImageF::Pointer mask = ITK_NULLPTR;
-	ReadImageF::Pointer B1   = ITK_NULLPTR;
+	ImageReaderF::Pointer mask = ITK_NULLPTR;
+	ImageReaderF::Pointer B1   = ITK_NULLPTR;
 	shared_ptr<D2Algo> algo = make_shared<D2LLS>();
 
 	// Do first pass to get the algorithm type, then do everything else
@@ -289,12 +289,12 @@ int main(int argc, char **argv) {
 				break;
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = ReadImageF::New();
+				mask = ImageReaderF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = ReadImageF::New();
+				B1 = ImageReaderF::New();
 				B1->SetFileName(optarg);
 				break;
 			case 't': algo->setThreshold(atof(optarg)); break;
@@ -320,11 +320,11 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 	if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-	auto T1File = ReadImageF::New();
+	auto T1File = ImageReaderF::New();
 	T1File->SetFileName(argv[optind++]);
 
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-	auto ssfp4D = ReadTimeseriesF::New();
+	auto ssfp4D = TimeseriesReaderF::New();
 	ssfp4D->SetFileName(argv[optind++]);
 	auto ssfp3D = itk::ImageToVectorFilter<TimeseriesF>::New();
 	ssfp3D->SetInput(ssfp4D->GetOutput());

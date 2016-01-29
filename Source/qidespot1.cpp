@@ -212,8 +212,8 @@ static const char *short_opts = "hvnm:o:b:t:c:a:i:rT:";
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	QI::ReadImageF::Pointer mask = ITK_NULLPTR;
-	QI::ReadImageF::Pointer B1   = ITK_NULLPTR;
+	QI::ImageReaderF::Pointer mask = ITK_NULLPTR;
+	QI::ImageReaderF::Pointer B1   = ITK_NULLPTR;
 
 	shared_ptr<D1Algo> algo = make_shared<D1LLS>();
 	int indexptr = 0, c;
@@ -240,7 +240,7 @@ int main(int argc, char **argv) {
 			case 'v': case 'n': case 'a': break;
 			case 'm':
 				if (verbose) cout << "Opening mask file " << optarg << endl;
-				mask = QI::ReadImageF::New();
+				mask = QI::ImageReaderF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
 				break;
 			case 'b':
 				if (verbose) cout << "Opening B1 file: " << optarg << endl;
-				B1 = QI::ReadImageF::New();
+				B1 = QI::ImageReaderF::New();
 				B1->SetFileName(optarg);
 				break;
 			case 't': algo->setThreshold(atof(optarg)); break;
@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
 
 	string inputFilename = argv[optind++];
 	if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
-	auto input = QI::ReadTimeseriesF::New();
+	auto input = QI::TimeseriesReaderF::New();
 	auto convert = QI::TimeseriesToVectorF::New();
 	input->SetFileName(inputFilename);
 	convert->SetInput(input->GetOutput());

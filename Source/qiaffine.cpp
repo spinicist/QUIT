@@ -81,11 +81,11 @@ int main(int argc, char **argv) {
 	}
 
 	// Now read in the input image
-	auto reader = QI::ReadTimeseriesF::New();
+	auto reader = QI::TimeseriesReaderF::New();
 	reader->SetFileName(argv[optind]);
 	reader->Update();
 	auto image = reader->GetOutput();
-	auto writer = QI::WriteTimeseriesF::New();
+	auto writer = QI::TimeseriesWriterF::New();
 	if ((argc - optind) == 2) {
 		optind++;
 	}

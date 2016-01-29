@@ -286,7 +286,7 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 int main(int argc, char **argv)
 {
 	Eigen::initParallel();
-	QI::ReadImageF::Pointer mask = ITK_NULLPTR;
+	QI::ImageReaderF::Pointer mask = ITK_NULLPTR;
     int indexptr = 0, c;
     double sigma = 0.;
     int seed = -1;
@@ -298,7 +298,7 @@ int main(int argc, char **argv)
             case 'S': seed = stoi(optarg); break;
 			case 'm':
 				cout << "Reading mask file " << optarg << endl;
-				mask = QI::ReadImageF::New();
+				mask = QI::ImageReaderF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -351,7 +351,7 @@ int main(int argc, char **argv)
 	SignalsFilter::Pointer calcSignal = SignalsFilter::New();
 	calcSignal->SetModel(model);
 	calcSignal->SetSigma(sigma);
-	vector<QI::ReadImageF::Pointer> pFiles(model->nParameters());
+	vector<QI::ImageReaderF::Pointer> pFiles(model->nParameters());
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
         if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << flush;
@@ -359,7 +359,7 @@ int main(int argc, char **argv)
 		getline(cin, filename);
         if (filename != "") {
             if (verbose) cout << "Opening " << filename << endl;
-            pFiles[i] = QI::ReadImageF::New();
+            pFiles[i] = QI::ImageReaderF::New();
             pFiles[i]->SetFileName(filename);
             calcSignal->SetInput(i, pFiles[i]->GetOutput());
         } else {
@@ -382,12 +382,12 @@ int main(int argc, char **argv)
 		auto VecTo4D = QI::VectorToTimeseriesXF::New();
 		VecTo4D->SetInput(calcSignal->GetOutput());
 		if (outputComplex) {
-			auto writer = QI::WriteTimeseriesXF::New();
+			auto writer = QI::TimeseriesWriterXF::New();
 			writer->SetInput(VecTo4D->GetOutput());
 			writer->SetFileName(filenames[i]);
 			writer->Update();
 		} else {
-			auto writer = QI::WriteTimeseriesF::New();
+			auto writer = QI::TimeseriesWriterF::New();
 			auto abs = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
 			abs->SetInput(VecTo4D->GetOutput());
 			writer->SetInput(abs->GetOutput());

@@ -202,7 +202,7 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::ImageReaderF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<RelaxAlgo> algo = make_shared<LogLinAlgo>();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'm':
 				cout << "Reading mask file " << optarg << endl;
-				mask = QI::ReadImageF::New();
+				mask = QI::ImageReaderF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
     if (mask)
         apply->SetMask(mask->GetOutput());
     if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-    auto inputFile = QI::ReadTimeseriesF::New();
+    auto inputFile = QI::TimeseriesReaderF::New();
     inputFile->SetFileName(argv[optind]);
     inputFile->Update(); // Need to know the length of the vector for re-ordering
     size_t nVols = inputFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3] / multiecho->size();

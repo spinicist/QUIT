@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
             case 'v': verbose = true; break;
             case 'm': {
                 cout << "Reading mask." << endl;
-                auto maskFile = QI::ReadImageF::New();
+                auto maskFile = QI::ImageReaderF::New();
                 maskFile->SetFileName(optarg);
                 maskFile->Update();
                 mask = maskFile->GetOutput();
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Opening input file " << inName << endl;
     if (outName == "")
         outName = QI::StripExt(inName);
-    auto inFile = QI::ReadTimeseriesXF::New();
+    auto inFile = QI::TimeseriesReaderXF::New();
     inFile->SetFileName(inName);
     inFile->Update();
     if (verbose) cout << "Processing" << endl;

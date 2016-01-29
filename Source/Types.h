@@ -42,22 +42,19 @@ typedef itk::Image<std::complex<double>, 3> ImageXD;
 typedef itk::Image<std::complex<double>, 4> TimeseriesXD;
 typedef itk::VectorImage<std::complex<double>, 3> VectorImageXD;
 
-typedef itk::ImageFileReader<ImageF> ReadImageF;
-typedef itk::ImageFileWriter<ImageF> WriteImageF;
-typedef itk::ImageFileReader<TimeseriesF> ReadTimeseriesF;
-typedef itk::ImageFileWriter<TimeseriesF> WriteTimeseriesF;
+typedef itk::ImageFileReader<ImageF> ImageReaderF;
+typedef itk::ImageFileWriter<ImageF> ImageWriterF;
+typedef itk::ImageFileReader<TimeseriesF> TimeseriesReaderF;
+typedef itk::ImageFileWriter<TimeseriesF> TimeseriesWriterF;
 typedef itk::ReorderImageFilter<TimeseriesF> ReorderTimeseriesF;
 typedef itk::ImageToVectorFilter<TimeseriesF> TimeseriesToVectorF;
 typedef itk::VectorToImageFilter<VectorImageF> VectorToTimeseriesF;
 typedef itk::ReorderVectorFilter<VectorImageF> ReorderVectorF;
 
-typedef itk::ImageFileReader<ImageD> ReadImageD;
-typedef itk::ImageFileWriter<ImageD> WriteImageD;
-
-typedef itk::ImageFileReader<ImageXF> ReadImageXF;
-typedef itk::ImageFileWriter<ImageXF> WriteImageXF;
-typedef itk::ImageFileReader<TimeseriesXF> ReadTimeseriesXF;
-typedef itk::ImageFileWriter<TimeseriesXF> WriteTimeseriesXF;
+typedef itk::ImageFileReader<ImageXF> ImageReaderXF;
+typedef itk::ImageFileWriter<ImageXF> ImageWriterXF;
+typedef itk::ImageFileReader<TimeseriesXF> TimeseriesReaderXF;
+typedef itk::ImageFileWriter<TimeseriesXF> TimeseriesWriterXF;
 typedef itk::ReorderImageFilter<TimeseriesXF> ReorderTimeseriesXF;
 typedef itk::ImageToVectorFilter<TimeseriesXF> TimeseriesToVectorXF;
 typedef itk::VectorToImageFilter<VectorImageXF> VectorToTimeseriesXF;

@@ -70,14 +70,14 @@ void writeResiduals(const VectorImageF::Pointer img,
                     const string prefix,
                     const bool allResids) {
 	auto magFilter = itk::VectorMagnitudeImageFilter<VectorImageF, ImageF>::New();
-	auto magFile = WriteImageF::New();
+	auto magFile = ImageWriterF::New();
 	magFilter->SetInput(img);
 	magFile->SetInput(magFilter->GetOutput());
 	magFile->SetFileName(prefix + "residual.nii");
 	magFile->Update();
 	if (allResids) {
 		auto to4D = QI::VectorToTimeseriesF::New();
-		auto allFile = QI::WriteTimeseriesF::New();
+		auto allFile = QI::TimeseriesWriterF::New();
 		to4D->SetInput(img);
 		allFile->SetInput(to4D->GetOutput());
 		allFile->SetFileName(prefix + "residuals.nii");

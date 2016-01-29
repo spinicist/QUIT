@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
         outPrefix = fname.substr(0, fname.find(".nii"));;
     QI::TimeseriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {
-        auto inFile = QI::ReadTimeseriesXF::New();
+        auto inFile = QI::TimeseriesReaderXF::New();
         inFile->SetFileName(fname);
         auto magFilter = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
         magFilter->SetInput(inFile->GetOutput());
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
         vols = magFilter->GetOutput();
         vols->DisconnectPipeline();
     } else {
-        auto inFile = QI::ReadTimeseriesF::New();
+        auto inFile = QI::TimeseriesReaderF::New();
         inFile->SetFileName(fname);
         inFile->Update();
         vols = inFile->GetOutput();

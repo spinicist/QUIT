@@ -302,7 +302,7 @@ int main(int argc, char **argv) {
 			case 'v': verbose = true; break;
             case 'm': {
                 if (verbose) cout << "Reading mask file " << optarg << endl;
-                auto maskFile = QI::ReadImageF::New();
+                auto maskFile = QI::ImageReaderF::New();
                 auto maskThresh = itk::BinaryThresholdImageFilter<QI::ImageF, QI::ImageUC>::New();
                 maskFile->SetFileName(optarg);
                 maskThresh->SetInput(maskFile->GetOutput());
@@ -340,7 +340,7 @@ int main(int argc, char **argv) {
 	string outname = prefix + "_unwrap" + QI::OutExt();
 	if (verbose) cout << "Output filename: " << outname << endl;
 
-    auto inFile = QI::ReadImageF::New();
+    auto inFile = QI::ImageReaderF::New();
 	auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();
 	inFile->SetFileName(fname);
 	inFile->Update(); // Need the size info
@@ -417,7 +417,7 @@ int main(int argc, char **argv) {
     extract->SetExtractionRegion(calcLaplace->GetOutput()->GetLargestPossibleRegion());
     extract->Update();
     if (debug) QI::writeResult(extract->GetOutput(), prefix + "_step5_extract" + QI::OutExt());
-    auto outFile = QI::WriteImageF::New();
+    auto outFile = QI::ImageWriterF::New();
     if (mask) {
         if (verbose) cout << "Re-applying mask" << endl;
         auto masker = itk::MaskImageFilter<QI::ImageF, QI::ImageUC>::New();

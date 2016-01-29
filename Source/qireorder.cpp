@@ -74,9 +74,9 @@ Options:\n\
     string inName(argv[optind++]);
     string outName(argv[optind++]);
 
-    auto inFile = QI::ReadTimeseriesF::New();
+    auto inFile = QI::TimeseriesReaderF::New();
     auto reorder = itk::ReorderImageFilter<QI::TimeseriesF>::New();
-    auto outFile = QI::WriteTimeseriesF::New();
+    auto outFile = QI::TimeseriesWriterF::New();
 
     inFile->SetFileName(inName);
     reorder->SetInput(inFile->GetOutput());       // Does nothing unless stride set

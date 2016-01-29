@@ -453,7 +453,7 @@ int run_main(int argc, char **argv) {
     int verbose = false, prompt = true, all_residuals = false,
         fitFinite = false, flipData = false, use_BFGS = true;
     string outPrefix;
-    QI::ReadImageF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
+    QI::ImageReaderF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
     optind = 1;
     while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
@@ -469,7 +469,7 @@ int run_main(int argc, char **argv) {
         } break;
         case 'm':
             if (verbose) cout << "Reading mask file " << optarg << endl;
-            mask = QI::ReadImageF::New();
+            mask = QI::ImageReaderF::New();
             mask->SetFileName(optarg);
             break;
         case 'o':
@@ -478,7 +478,7 @@ int run_main(int argc, char **argv) {
             break;
         case 'b':
             if (verbose) cout << "Reading B1 file: " << optarg << endl;
-            B1 = QI::ReadImageF::New();
+            B1 = QI::ImageReaderF::New();
             B1->SetFileName(optarg);
             break;
         case 's': start_slice = atoi(optarg); break;
@@ -509,7 +509,7 @@ int run_main(int argc, char **argv) {
     if (verbose) cout << *ssfpSequence << endl;
 
     if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-    auto T1 = QI::ReadImageF::New();
+    auto T1 = QI::ImageReaderF::New();
     T1->SetFileName(argv[optind++]);
     if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
     auto ssfpFile = TReader::New();

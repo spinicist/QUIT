@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 			cout << usage << endl;
 			return EXIT_SUCCESS;
 		case 'r': {
-			auto refFile = QI::ReadImageF::New();
+			auto refFile = QI::ImageReaderF::New();
 			refFile->SetFileName(optarg);
 			refFile->Update();
 			reference = refFile->GetOutput();
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
 		throw(runtime_error("Wrong number of input arguments."));
 	}
 
-	auto input = QI::ReadImageF::New();
+	auto input = QI::ImageReaderF::New();
 	string fname(argv[optind++]);
 	input->SetFileName(fname);
 	string prefix = QI::StripExt(fname);

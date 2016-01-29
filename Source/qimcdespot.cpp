@@ -43,7 +43,7 @@ void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF:
     string type, path;
     if (prompt) cout << "Enter input filename: " << flush;
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
-        auto file = QI::ReadTimeseriesF::New();
+        auto file = QI::TimeseriesReaderF::New();
         auto data = QI::TimeseriesToVectorF::New();
         auto reorder = QI::ReorderVectorF::New();
         QI::VectorImageF::Pointer image;
@@ -342,7 +342,7 @@ int main(int argc, char **argv) {
     enum class Algos { SRC, GRC, BFGS };
     Algos which_algo = Algos::GRC;
 
-	QI::ReadImageF::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::ImageReaderF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<Model> model = make_shared<MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
     typedef itk::ApplyAlgorithmSliceBySliceFilter<MCDAlgo> TMCDFilter;
@@ -431,7 +431,7 @@ Options:\n\
             case 'v': case 'n': case 'M': break; // Already handled
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = QI::ReadImageF::New();
+				mask = QI::ImageReaderF::New();
 				mask->SetFileName(optarg);
 				break;
 			case 'o':
@@ -440,12 +440,12 @@ Options:\n\
 				break;
 			case 'f':
 				if (verbose) cout << "Reading f0 file: " << optarg << endl;
-				f0 = QI::ReadImageF::New();
+				f0 = QI::ImageReaderF::New();
 				f0->SetFileName(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = QI::ReadImageF::New();
+				B1 = QI::ImageReaderF::New();
 				B1->SetFileName(optarg);
 				break;
 			case 's': start_slice = atoi(optarg); break;
