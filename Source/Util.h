@@ -40,10 +40,10 @@ void writeResiduals(const typename VectorImageF::Pointer img, const std::string 
 template<typename TImg = QI::ImageF>
 auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
     typedef itk::ImageFileReader<TImg> TReader;
-    auto file = TReader::New();
+    typename TReader::Pointer file = TReader::New();
     file->SetFileName(fname);
     file->Update();
-    auto img = file->GetOutput();
+    typename TImg::Pointer img = file->GetOutput();
     img->DisconnectPipeline();
     return img;
 }
