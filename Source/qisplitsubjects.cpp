@@ -36,6 +36,15 @@
 
 using namespace std;
 
+typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
+
+TMoments::VectorType GetCoG(const QI::ImageF::Pointer &img) {
+    auto moments = TMoments::New();
+    moments->SetImage(img);
+    moments->Compute();
+    return moments->GetCenterOfGravity();
+}
+
 const string usage {
 "Usage is: qisplit input_file.nii [options]\n\
 \n\
@@ -179,16 +188,12 @@ int main(int argc, char **argv) {
 	labelStats->SetLabelInput(keepN->GetOutput());
 	labelStats->Update();
 
-	typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
-	TMoments::VectorType refCoG; refCoG.Fill(0);
-	if (reference) {
-		auto refMoments = TMoments::New();
-		refMoments->SetImage(reference);
-		refMoments->Compute();
-		refCoG = refMoments->GetCenterOfGravity();
-		if (verbose) cout << "Reference CoG is: " << refCoG << endl;
-	}
-
+    TMoments::VectorType refCoG;
+    if (reference)
+        refCoG = GetCoG(reference);
+    else
+        refCoG.Fill(0);
+    
     // Set these up to use in the loop
     typedef itk::ResampleImageFilter<TLabelImage, TLabelImage, double> TLabelResampler;
     typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TLabelInterp;
@@ -228,10 +233,7 @@ int main(int argc, char **argv) {
 		TMoments::VectorType offset = -refCoG;
 		double rotateAngle = 0.;
 		if (center != CENTER_NONE) {
-			auto moments = TMoments::New();
-			moments->SetImage(extract->GetOutput());
-			moments->Compute();
-			TMoments::VectorType CoG = moments->GetCenterOfGravity();
+            TMoments::VectorType CoG = GetCoG(extract->GetOutput());
 			if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
 			rotateAngle = atan2(CoG[1], CoG[0]);
 			if (center == CENTER_IN)
@@ -245,9 +247,9 @@ int main(int argc, char **argv) {
 		typedef itk::Euler3DTransform<double> TRigid;
 		auto tfm = TRigid::New();
 		tfm->SetIdentity();
-		tfm->SetOffset(offset);
 		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
-
+        tfm->SetOffset(offset);
+        
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
 		if (output_images) {
             rlabels->SetTransform(tfm.GetPointer());
