@@ -102,6 +102,25 @@ typename TLabelImage::Pointer FindLabels(const TLabelImage::Pointer &mask, const
     return labels;
 }
 
+QI::ImageF::Pointer MaskWithLabel(const QI::ImageF::Pointer &image, const TLabelImage::Pointer &labels, const int l, const bool crop) {
+    // convert the label image into a LabelMap
+    typedef itk::LabelMap<itk::LabelObject<TLabel, 3>> TLabelMap;
+    auto convert = itk::LabelImageToLabelMapFilter<TLabelImage, TLabelMap> ::New();
+    convert->SetInput(labels);
+    auto masker = itk::LabelMapMaskImageFilter<TLabelMap, QI::ImageF>::New();
+    masker->SetInput(convert->GetOutput());
+    masker->SetFeatureImage(image);
+    masker->SetLabel(l);
+    masker->SetBackgroundValue(0.);
+    masker->SetNegated(false); // Mask outside the mask
+    if (crop)
+        masker->SetCrop(true);
+    masker->Update();
+    QI::ImageF::Pointer masked = masker->GetOutput();
+    masked->DisconnectPipeline();
+    return masked;
+}
+
 typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
 TMoments::VectorType GetCoG(const QI::ImageF::Pointer &img) {
     auto moments = TMoments::New();
@@ -252,18 +271,11 @@ int main(int argc, char **argv) {
         refCoG.Fill(0);
 
 	for (auto i = 1; i <= keep; i++) {
-		TLabelImage::RegionType region = labelStats->GetRegion(i);
-		typedef itk::ExtractImageFilter<QI::ImageF, QI::ImageF> TExtractF;
-		auto extract = TExtractF::New();
-		extract->SetInput(input);
-		extract->SetExtractionRegion(region);
-		extract->SetDirectionCollapseToSubmatrix();
-		extract->Update();
-
+        QI::ImageF::Pointer subject = MaskWithLabel(input, labels, i, true);
 		TMoments::VectorType offset = -refCoG;
 		double rotateAngle = 0.;
 		if (alignment != ALIGN::NONE) {
-            TMoments::VectorType CoG = GetCoG(extract->GetOutput());
+            TMoments::VectorType CoG = GetCoG(subject);
 			if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
 			rotateAngle = atan2(CoG[1], CoG[0]);
 			if (alignment == ALIGN::RING_IN)
@@ -279,8 +291,7 @@ int main(int argc, char **argv) {
 		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
         tfm->SetOffset(offset);
         
-		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
-        
+        stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
         fname = prefix + suffix.str() + ".tfm";
         if (verbose) cout << "Writing transform file " << fname << endl;
         auto tfmWriter = itk::TransformFileWriterTemplate<double>::New();
@@ -293,23 +304,11 @@ int main(int argc, char **argv) {
             typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
             QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TLinInterp>(input, tfm, reference);
             TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
-              // convert the label image into a LabelMap
-            typedef itk::LabelMap<itk::LabelObject<TLabel, 3>> TLabelMap;
-            auto convert = itk::LabelImageToLabelMapFilter<TLabelImage, TLabelMap> ::New();
-            convert->SetInput(rlabels);
-
-            auto masker = itk::LabelMapMaskImageFilter<TLabelMap, QI::ImageF>::New();
-            masker->SetInput(convert->GetOutput());
-            masker->SetFeatureImage(rimage);
-            masker->SetLabel(i);
-            masker->SetBackgroundValue(0.);
-            masker->SetNegated(false); // Mask outside the mask
-            if (reference == ITK_NULLPTR)
-                masker->SetCrop(true);
+            QI::ImageF::Pointer masked = MaskWithLabel(rimage, rlabels, i, (reference == ITK_NULLPTR));
 
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
-            QI::WriteImage(masker->GetOutput(), fname);
+            QI::WriteImage(masked, fname);
 		}
 	}
 	return EXIT_SUCCESS;
