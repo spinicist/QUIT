@@ -23,6 +23,7 @@
 #include "itkConnectedComponentImageFilter.h"
 #include "itkLabelShapeKeepNObjectsImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
+#include "itkGrayscaleFillholeImageFilter.h"
 #include "itkLabelStatisticsImageFilter.h"
 #include "itkLabelImageToLabelMapFilter.h"
 #include "itkLabelMapMaskImageFilter.h"
@@ -85,13 +86,18 @@ typename TLabelImage::Pointer FindLabels(const TLabelImage::Pointer &mask, const
     }
 
     typedef itk::LabelShapeKeepNObjectsImageFilter<TLabelImage> TKeepN;
-    auto keepN = TKeepN::New();
+    TKeepN::Pointer keepN = TKeepN::New();
     keepN->SetInput(relabel->GetOutput());
     keepN->SetBackgroundValue(0);
     keepN->SetNumberOfObjects(keep);
     keepN->SetAttribute(TKeepN::LabelObjectType::NUMBER_OF_PIXELS);
-    keepN->Update();
-    typename TLabelImage::Pointer labels = keepN->GetOutput();
+    
+    typedef itk::GrayscaleFillholeImageFilter<TLabelImage, TLabelImage> TFill;
+    TFill::Pointer fill = TFill::New();
+    fill->SetInput(keepN->GetOutput());
+    fill->Update();
+    
+    typename TLabelImage::Pointer labels = fill->GetOutput();
     labels->DisconnectPipeline();
     return labels;
 }
@@ -207,7 +213,6 @@ int main(int argc, char **argv) {
 
     TLabelImage::Pointer labels = FindLabels(mask, size_threshold, keep);
     if (verbose) cout << "Found " << keep << " subjects, saving labels." << endl;
-    cout << labels << endl;
     QI::WriteImage<TLabelImage>(labels, prefix + "_labels.nii");
 
 	typedef itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage> TLabelStats;
