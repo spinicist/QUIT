@@ -110,6 +110,30 @@ TMoments::VectorType GetCoG(const QI::ImageF::Pointer &img) {
     return moments->GetCenterOfGravity();
 }
 
+typedef itk::Euler3DTransform<double> TRigid;
+template<typename TImg, typename TInterpFunction>
+typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const typename TRigid::Pointer &tfm, const QI::ImageF::Pointer &reference = ITK_NULLPTR) {
+    // Set these up to use in the loop
+    typedef itk::ResampleImageFilter<TImg, TImg, double> TResampler;
+    typedef TInterpFunction TInterpolator;
+    typename TInterpolator::Pointer interp = TInterpolator::New();
+    interp->SetInputImage(image);
+    typename TResampler::Pointer resamp = TResampler::New();
+    resamp->SetInput(image);
+    resamp->SetInterpolator(interp);
+    resamp->SetDefaultPixelValue(0.);
+    resamp->SetTransform(tfm);
+    if (reference)
+        resamp->SetOutputParametersFromImage(reference);
+    else
+        resamp->SetOutputParametersFromImage(image);
+    resamp->Update();
+    typename TImg::Pointer rimage = resamp->GetOutput();
+    rimage->DisconnectPipeline();
+    return rimage;
+}
+
+
 const string usage {
 "Usage is: qisplit input_file.nii [options]\n\
 \n\
@@ -226,33 +250,6 @@ int main(int argc, char **argv) {
         refCoG = GetCoG(reference);
     else
         refCoG.Fill(0);
-    
-    // Set these up to use in the loop
-    typedef itk::ResampleImageFilter<TLabelImage, TLabelImage, double> TLabelResampler;
-    typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TLabelInterp;
-    auto ilabels = TLabelInterp::New();
-    ilabels->SetInputImage(labels);
-    auto rlabels = TLabelResampler::New();
-    rlabels->SetInput(labels);
-    rlabels->SetInterpolator(ilabels);
-    rlabels->SetDefaultPixelValue(0.);
-    if (reference)
-    	rlabels->SetOutputParametersFromImage(reference);
-   	else
-    	rlabels->SetOutputParametersFromImage(labels);
-
-    typedef itk::ResampleImageFilter<QI::ImageF, QI::ImageF, double> TResampleF;
-    typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TLinearInterpF;
-    auto interp = TLinearInterpF::New();
-    interp->SetInputImage(input);
-    auto rimage = TResampleF::New();
-    rimage->SetInput(input);
-    rimage->SetInterpolator(interp);
-    rimage->SetDefaultPixelValue(0.);
-    if (reference)
-    	rimage->SetOutputParametersFromImage(reference);
-    else
-    	rimage->SetOutputParametersFromImage(input);
 
 	for (auto i = 1; i <= keep; i++) {
 		TLabelImage::RegionType region = labelStats->GetRegion(i);
@@ -277,7 +274,6 @@ int main(int argc, char **argv) {
 			offset += CoG;
 		}
 
-		typedef itk::Euler3DTransform<double> TRigid;
 		auto tfm = TRigid::New();
 		tfm->SetIdentity();
 		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
@@ -285,25 +281,23 @@ int main(int argc, char **argv) {
         
 		stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
 		if (output_images) {
-            rlabels->SetTransform(tfm.GetPointer());
-            rimage->SetTransform(tfm.GetPointer());
-			
-            rlabels->Update();
-            rimage->Update();
-
+            typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TLinInterp;
+            typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
+            QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TLinInterp>(input, tfm, reference);
+            TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
               // convert the label image into a LabelMap
             typedef itk::LabelMap<itk::LabelObject<TLabel, 3>> TLabelMap;
             auto convert = itk::LabelImageToLabelMapFilter<TLabelImage, TLabelMap> ::New();
-            convert->SetInput(rlabels->GetOutput());
+            convert->SetInput(rlabels);
 
             auto masker = itk::LabelMapMaskImageFilter<TLabelMap, QI::ImageF>::New();
             masker->SetInput(convert->GetOutput());
-            masker->SetFeatureImage(rimage->GetOutput());
+            masker->SetFeatureImage(rimage);
             masker->SetLabel(i);
             masker->SetBackgroundValue(0.);
             masker->SetNegated(false); // Mask outside the mask
             if (reference == ITK_NULLPTR)
-            	masker->SetCrop(true);
+                masker->SetCrop(true);
 
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
