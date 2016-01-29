@@ -85,13 +85,7 @@ int main(int argc, char **argv) {
 		case 'h':
 			cout << usage << endl;
 			return EXIT_SUCCESS;
-		case 'r': {
-			auto refFile = QI::ImageReaderF::New();
-			refFile->SetFileName(optarg);
-			refFile->Update();
-			reference = refFile->GetOutput();
-			reference->DisconnectPipeline();
-		} break;
+		case 'r': reference = QI::ReadImage(optarg); break;
 		case 'c':
 			if (string(optarg) == "IN") {
 				center = CENTER_IN;

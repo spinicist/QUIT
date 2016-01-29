@@ -38,6 +38,17 @@ std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
 
 template<typename TImg = QI::ImageF>
+auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
+    typedef itk::ImageFileReader<TImg> TReader;
+    auto file = TReader::New();
+    file->SetFileName(fname);
+    file->Update();
+    auto img = file->GetOutput();
+    img->DisconnectPipeline();
+    return img;
+}
+
+template<typename TImg = QI::ImageF>
 void writeResult(const typename TImg::Pointer img, const std::string path) {
     typedef itk::ImageFileWriter<TImg> TWriter;
     auto file = TWriter::New();
