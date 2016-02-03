@@ -17,13 +17,13 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(Source)
 
 add_library(qi_core Source/Types.h Source/Util.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
-add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
-                                      Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
-                                      Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
-                                      Source/Filters/ApplyAlgorithmSliceBySliceFilter.h Source/Filters/ApplyAlgorithmSliceBySliceFilter.hxx
-                                      Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
-                                      Source/Filters/ReorderImageFilter.h Source/Filters/ReorderImageFilter.hxx
-                                      Source/RegionContraction.h)
+set(FILTER_FILES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
+                 Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
+                 Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
+                 Source/Filters/ApplyAlgorithmSliceBySliceFilter.h Source/Filters/ApplyAlgorithmSliceBySliceFilter.hxx
+                 Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
+                 Source/Filters/ReorderImageFilter.h Source/Filters/ReorderImageFilter.hxx)
+add_custom_target(qi_template SOURCES ${FILTER_FILES} Source/RegionContraction.h)
 
 set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask qikfilter qireorder qisplitsubjects
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
