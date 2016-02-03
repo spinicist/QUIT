@@ -61,7 +61,7 @@ VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1, cdbl
 VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl TE, cdbl ph,
                           cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
-VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TRseg, cdbl PD, cdbl T1, cdbl B1);
+VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1);
 Array2cd  One_MP2RAGE(const Array2d &alpha, cdbl TR, const int N, const Array3d &TD, cdbl M0, cdbl T1, cdbl B1, cdbl eta);
 Array3cd  One_MP3RAGE(const Array3d &alpha, cdbl TR, const int N, const Array4d &TD, cdbl M0, cdbl T1, cdbl B1, cdbl eta);
 VectorXcd One_AFI(cdbl flip, cdbl TR1, cdbl TR2, cdbl PD, cdbl T1, cdbl B1);

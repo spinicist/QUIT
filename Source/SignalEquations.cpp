@@ -229,14 +229,13 @@ VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl
 	return SigComplex(result);
 }
 
-VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TRseg, cdbl PD, cdbl T1, cdbl B1) {
+VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1) {
 	const double M0 = PD;
 	const double T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
 	const double M0s = M0 * (1. - exp(-TR/T1)) / (1 - exp(-TR/T1s));
 
 	const double A_1 = M0s*(1 - exp(-(Nseg*TR)/T1s));
 
-    carrd TD = TRseg - (TI + Nseg*TR);
     carrd A_2 = M0*(1 - exp(-TD/T1));
 	carrd A_3 = M0*(1 - exp(-TI/T1));
 	const double B_1 = exp(-(Nseg*TR)/T1s);

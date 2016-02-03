@@ -132,11 +132,13 @@ ArrayXcd SPGRFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
 	return m->SPGRFinite(p, m_flip, m_TR, m_Trf, m_TE);
 }
 
-MPRAGE::MPRAGE(const ArrayXd &TI, const double TRseg, const double TR, const int Nseg, const int Nk0, const double flip) :
-    SteadyState(), m_TI(TI), m_Nseg(Nseg), m_Nk0(Nk0) {
+MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip) :
+    SteadyState(), m_TI(TI), m_TD(TD), m_Nseg(Nseg), m_Nk0(Nk0) {
 	m_TR = TR;
 	m_flip.resize(1); m_flip[0] = flip;
-    m_TRseg = ArrayXd::Ones(m_TI.size()) * TRseg;
+    if (m_TI.size() != m_TD.size()) {
+        throw(std::runtime_error("Inversion and delay time arrays must match in size."));
+    }
 }
 
 MPRAGE::MPRAGE(const bool prompt) : SteadyState() {
@@ -152,12 +154,8 @@ MPRAGE::MPRAGE(const bool prompt) : SteadyState() {
     QI::Read(cin, m_Nk0);
 	if (prompt) cout << "Enter inversion times (seconds): " << flush;
 	QI::ReadArray(cin, m_TI);
-    if (prompt) cout << "Enter segment TR time (seconds): " << flush;
-    QI::Read(cin, TRseg);
-    m_TRseg = ArrayXd::Ones(m_TI.size()) * TRseg;
-    if ((m_TRseg < (m_TI + m_Nseg * m_TR)).any()) {
-        throw(std::runtime_error("Invalid segment TR specified."));
-    }
+    if (prompt) cout << "Enter relaxation delay times (seconds): " << flush;
+    QI::ReadArray(cin, m_TD);
 }
 
 IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
@@ -181,18 +179,18 @@ IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
 	if (prompt) cout << "Enter TIs (seconds): " << flush;
 	QI::ReadArray(cin, m_TI);
 
-    m_TRseg = m_TI + m_Nseg*m_TR; // For IR-SPGR the segment TR will vary for different TIs, because this is what a GE scanner would do
+    m_TD = ArrayXd::Zero(m_TI.size()); // For GE IR-SPGR the delay time is zero
 }
 
 ArrayXcd MPRAGE::signal(shared_ptr<Model> m, const VectorXd &par) const {
-    return m->MPRAGE(par, m_flip[0], m_TR, m_Nseg, m_Nk0, m_TI, m_TRseg);
+    return m->MPRAGE(par, m_flip[0], m_TR, m_Nseg, m_Nk0, m_TI, m_TD);
 }
 
 void MPRAGE::write(ostream &os) const {
 	os << name() << endl;
     os << "TR: " << m_TR << "\tSegment Length: " << m_Nseg << "\tk-Zero: " << m_Nk0 << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
 	os << "TI: " << m_TI.transpose() << endl;
-    os << "TRseg: " << m_TRseg.transpose() << endl;
+    os << "TD: " << m_TD.transpose() << endl;
 }
 
 MP2RAGE::MP2RAGE(const Array3d &TD, const double TR, const int N, const Array2d flip) :

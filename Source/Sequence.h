@@ -100,10 +100,10 @@ class SPGRFinite : public SPGRSimple {
 };
 class MPRAGE : public SteadyState {
 	public:
-        ArrayXd m_TI, m_TRseg;
+        ArrayXd m_TI, m_TD;
 		int m_Nseg, m_Nk0;
 		MPRAGE() : SteadyState() {}
-        MPRAGE(const ArrayXd &TI, const double TRseg, const double TR, const int Nseg, const int Nk0, const double flip);
+        MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip);
 		MPRAGE(const bool prompt);
 		size_t size() const override { return m_TI.size(); }
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
