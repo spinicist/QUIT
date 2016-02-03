@@ -51,7 +51,7 @@ public:
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
     virtual VectorXcd SPGREcho(cvecd &p, carrd& a, cdbl TR, cdbl TE) const;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const;
-    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, carrd &TRseg) const;
+    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TRseg) const;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const;
     virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
     virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
@@ -74,7 +74,7 @@ class SCD : public Model {
     virtual VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const override;
     virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int N, cvecd &TI, carrd &TRseg) const override;
+    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TRseg) const override;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
     virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
     virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;

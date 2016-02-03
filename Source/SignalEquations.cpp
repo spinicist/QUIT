@@ -229,18 +229,17 @@ VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl
 	return SigComplex(result);
 }
 
-VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int N, carrd &TI, carrd &TRseg,
-                  cdbl PD, cdbl T1, cdbl B1) {
+VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TRseg, cdbl PD, cdbl T1, cdbl B1) {
 	const double M0 = PD;
 	const double T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
 	const double M0s = M0 * (1. - exp(-TR/T1)) / (1 - exp(-TR/T1s));
 
-	const double A_1 = M0s*(1 - exp(-(N*TR)/T1s));
+	const double A_1 = M0s*(1 - exp(-(Nseg*TR)/T1s));
 
-    carrd TD = TRseg - (TI + N*TR);
+    carrd TD = TRseg - (TI + Nseg*TR);
     carrd A_2 = M0*(1 - exp(-TD/T1));
 	carrd A_3 = M0*(1 - exp(-TI/T1));
-	const double B_1 = exp(-(N*TR)/T1s);
+	const double B_1 = exp(-(Nseg*TR)/T1s);
     carrd B_2 = exp(-TD/T1);
 	carrd B_3 = -exp(-TI/T1);
 
@@ -249,7 +248,7 @@ VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int N, carrd &TI, carrd &TRseg,
 	carrd M1 = A / (1. - B);
 
 	VectorXcd M(TI.size()); M.setZero();
-	M.real() = M1 * sin(flip * B1);
+	M.real() = (M0s + (M1 - M0s)*exp(-Nk0*TR/T1s)) * sin(flip * B1);
 	return M;
 }
 

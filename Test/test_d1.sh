@@ -28,9 +28,10 @@ SPGR_PAR="5 10 15 #Test comment
 MPRAGE_FILE="mprage.nii"
 MPRAGE_PAR="5
 0.01
-11
+64
+32
 0.5
-0"
+2.0"
 HIFI_PAR="$SPGR_PAR
 $MPRAGE_PAR"
 AFI_FILE="afi.nii"

@@ -132,8 +132,8 @@ ArrayXcd SPGRFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
 	return m->SPGRFinite(p, m_flip, m_TR, m_Trf, m_TE);
 }
 
-MPRAGE::MPRAGE(const ArrayXd &TI, const double TRseg, const double TR, const int N, const double flip) :
-    SteadyState(), m_TI(TI), m_N(N) {
+MPRAGE::MPRAGE(const ArrayXd &TI, const double TRseg, const double TR, const int Nseg, const int Nk0, const double flip) :
+    SteadyState(), m_TI(TI), m_Nseg(Nseg), m_Nk0(Nk0) {
 	m_TR = TR;
 	m_flip.resize(1); m_flip[0] = flip;
     m_TRseg = ArrayXd::Ones(m_TI.size()) * TRseg;
@@ -147,12 +147,17 @@ MPRAGE::MPRAGE(const bool prompt) : SteadyState() {
 	if (prompt) cout << "Enter read-out TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
 	if (prompt) cout << "Enter segment size: " << flush;
-	QI::Read(cin, m_N);
+	QI::Read(cin, m_Nseg);
+    if (prompt) cout << "Enter k0: " << flush;
+    QI::Read(cin, m_Nk0);
 	if (prompt) cout << "Enter inversion times (seconds): " << flush;
 	QI::ReadArray(cin, m_TI);
     if (prompt) cout << "Enter segment TR time (seconds): " << flush;
     QI::Read(cin, TRseg);
     m_TRseg = ArrayXd::Ones(m_TI.size()) * TRseg;
+    if ((m_TRseg < (m_TI + m_Nseg * m_TR)).any()) {
+        throw(std::runtime_error("Invalid segment TR specified."));
+    }
 }
 
 IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
@@ -167,24 +172,25 @@ IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
     if (prompt) cout << "Enter number of spatial locations (remember +4): ";
 	QI::Read(cin, NPE2);
     if (NPE2 >= 64) {
-        m_N = NPE2 / 2;
+        m_Nseg = NPE2 / 2;
     } else {
-        m_N = NPE2;
+        m_Nseg = NPE2;
     }
-
+    m_Nk0 = 0;
+    
 	if (prompt) cout << "Enter TIs (seconds): " << flush;
 	QI::ReadArray(cin, m_TI);
 
-    m_TRseg = m_TI + m_N*m_TR; // For IR-SPGR the segment TR will vary for different TIs, because this is what a GE scanner would do
+    m_TRseg = m_TI + m_Nseg*m_TR; // For IR-SPGR the segment TR will vary for different TIs, because this is what a GE scanner would do
 }
 
 ArrayXcd MPRAGE::signal(shared_ptr<Model> m, const VectorXd &par) const {
-    return m->MPRAGE(par, m_flip[0], m_TR, m_N, m_TI, m_TRseg);
+    return m->MPRAGE(par, m_flip[0], m_TR, m_Nseg, m_Nk0, m_TI, m_TRseg);
 }
 
 void MPRAGE::write(ostream &os) const {
 	os << name() << endl;
-    os << "TR: " << m_TR << "\tN: " << m_N << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
+    os << "TR: " << m_TR << "\tSegment Length: " << m_Nseg << "\tk-Zero: " << m_Nk0 << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
 	os << "TI: " << m_TI.transpose() << endl;
     os << "TRseg: " << m_TRseg.transpose() << endl;
 }
