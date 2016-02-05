@@ -592,7 +592,7 @@ Options:\n\
 	for (int i = 0; i < model->nParameters(); i++) {
         QI::WriteImage(applySlices->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
 	}
-	QI::writeResiduals(applySlices->GetResidOutput(), outPrefix, all_residuals);
+	QI::WriteResiduals(applySlices->GetResidOutput(), outPrefix, all_residuals, applySlices->GetOutput(0));
     QI::WriteImage<itk::Image<int, 3>>(applySlices->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
 	return EXIT_SUCCESS;
 }

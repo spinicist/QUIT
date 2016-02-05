@@ -556,7 +556,7 @@ int run_main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2.nii");
     QI::WriteImage(apply->GetOutput(2), outPrefix + "f0.nii");
-    QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+    QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
 
     return EXIT_SUCCESS;
 }

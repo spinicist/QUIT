@@ -25,7 +25,6 @@
 #include <Eigen/Dense>
 
 #include "itkCommand.h"
-#include "itkVectorMagnitudeImageFilter.h"
 
 #include "Types.h"
 
@@ -35,7 +34,7 @@ const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
 std::string StripExt(const std::string &filename);
 std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
 
-void writeResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false);
+void WriteResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false, const typename ImageF::Pointer scaleImage = ITK_NULLPTR);
 
 template<typename TImg = QI::ImageF>
 auto ReadImage(const std::string &fname) -> typename TImg::Pointer {

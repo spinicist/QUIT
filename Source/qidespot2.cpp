@@ -365,7 +365,7 @@ int main(int argc, char **argv) {
 	outPrefix = outPrefix + "D2_";
     WriteImage(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
 	WriteImage(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
-	writeResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals);
+	WriteResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals, DESPOT2->GetOutput(0));
 
 	if (verbose) cout << "All done." << endl;
 	return EXIT_SUCCESS;

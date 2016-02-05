@@ -298,7 +298,7 @@ int main(int argc, char **argv) {
 	outPrefix = outPrefix + "D1_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
-	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
 	if (algo->getIterations() != D1Algo::DefaultIterations) {
 		QI::WriteImage<QI::ImageI>(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
 	}

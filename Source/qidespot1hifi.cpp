@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
     QI::WriteImage(apply->GetOutput(2), outPrefix + "B1.nii");
-	QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
+	QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
 
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;

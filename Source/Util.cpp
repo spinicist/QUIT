@@ -13,6 +13,10 @@
 #include "Util.h"
 #include <iostream>
 
+#include "itkVectorMagnitudeImageFilter.h"
+#include "itkMultiplyImageFilter.h"
+#include "itkDivideImageFilter.h"
+
 using namespace std;
 
 namespace QI {
@@ -66,15 +70,22 @@ mt19937_64::result_type RandomSeed() {
 	return r;
 }
 
-void writeResiduals(const VectorImageF::Pointer img,
-                    const string prefix,
-                    const bool allResids) {
+void WriteResiduals(const VectorImageF::Pointer img, const string prefix,
+                    const bool allResids, const ImageF::Pointer scaleImage) {
 	auto magFilter = itk::VectorMagnitudeImageFilter<VectorImageF, ImageF>::New();
-	auto magFile = ImageWriterF::New();
+    auto scaleFilter = itk::DivideImageFilter<ImageF, ImageF, ImageF>::New();
+    auto sqrtNFilter = itk::MultiplyImageFilter<ImageF>::New();
 	magFilter->SetInput(img);
-	magFile->SetInput(magFilter->GetOutput());
-	magFile->SetFileName(prefix + "residual.nii");
-	magFile->Update();
+    if (scaleImage != ITK_NULLPTR) {
+        scaleFilter->SetInput1(magFilter->GetOutput());
+        scaleFilter->SetInput2(scaleImage);
+        sqrtNFilter->SetInput(scaleFilter->GetOutput());
+    } else {
+        sqrtNFilter->SetInput(magFilter->GetOutput());
+    }
+    sqrtNFilter->SetConstant(1./sqrt(img->GetNumberOfComponentsPerPixel()));
+    sqrtNFilter->Update();
+    WriteImage(sqrtNFilter->GetOutput(), prefix + "residual.nii");
 	if (allResids) {
 		auto to4D = QI::VectorToTimeseriesF::New();
 		auto allFile = QI::TimeseriesWriterF::New();
