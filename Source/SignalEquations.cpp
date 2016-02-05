@@ -149,10 +149,10 @@ VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
-    const double psi_over_2 = M_PI * f0 * TR;
+    const double psi = 2. * M_PI * f0 * TR;
     const ArrayXd alpha = flip * B1;
-    const ArrayXcd G = (PD * sqrt(E2) * (1 - E1)*sin(alpha) / (1 - E1*E2*E2-(E1-E2*E2)*cos(alpha))) * polar(1., psi_over_2);
-
+    const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
+    const ArrayXcd G = -PD*sqrt(E2)*polar(1., psi/2)* (1 - E1)*sin(alpha)/d;
     return G;
 }
 
@@ -162,17 +162,16 @@ VectorXcd One_SSFP(carrd &flip, carrd &phi, cdbl TR,
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
-    const double psi = 2. * M_PI * f0 * TR;
+    const double  psi = 2. * M_PI * f0 * TR;
     const ArrayXd alpha = flip * B1;
     const ArrayXd theta = phi + psi;
-    // This is not at the echo time
     const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
-    const ArrayXd G = PD*(1. - E1)*sin(alpha)/d;
+    const ArrayXd G = -PD*(1. - E1)*sin(alpha)/d;
     const ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
-    ArrayXcd t(theta.size());
-    t.real() = E2 * cos(-theta);
-    t.imag() = E2 * sin(theta);
-    const ArrayXcd M = G*(1. - t) / (1 - b*cos(theta));
+    ArrayXcd et(theta.size());
+    et.real() = cos(-theta);
+    et.imag() = sin(-theta);
+    const ArrayXcd M = G*(1. - E2*et) / (1 - b*cos(theta));
     return M;
 }
 
@@ -182,17 +181,16 @@ VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR,
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
-    const double psi = 2. * M_PI * f0 * TR;
-    const ArrayXd alpha = flip * B1;
-    const ArrayXd theta = phi + psi;
-    // This is not at the echo time
-    const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
-    const ArrayXcd G = (PD * sqrt(E2) * (1 - E1)*sin(alpha)/d) * polar(1., psi/2.);
-    const ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
-    ArrayXcd t(theta.size());
-    t.real() = E2 * cos(-theta);
-    t.imag() = E2 * sin(theta);
-    const ArrayXcd M = G*(1. - t) / (1 - b*cos(theta));
+    const double   psi = 2. * M_PI * f0 * TR;
+    const ArrayXd  alpha = flip * B1;
+    const ArrayXd  theta = phi + psi;
+    const ArrayXd  d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
+    const ArrayXcd G = -PD*sqrt(E2)*polar(1., psi/2.)*(1 - E1)*sin(alpha)/d;
+    const ArrayXd  b = E2*(1. - E1)*(1.+cos(alpha))/d;
+    ArrayXcd et(theta.size());
+    et.real() = cos(-theta);
+    et.imag() = sin(-theta);
+    const ArrayXcd M = G*(1. - E2*et) / (1 - b*cos(theta));
     return M;
 }
 
