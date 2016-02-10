@@ -186,10 +186,10 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 //void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() {
-	std::cout <<  __PRETTY_FUNCTION__ << std::endl;
+	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
 
     TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
-    std::cout << region << std::endl;
+    //std::cout << region << std::endl;
 
 	ProgressReporter progress(this, 0, region.GetNumberOfPixels(), 10);
 
@@ -279,7 +279,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
         ++iterationsIter;
 		progress.CompletedPixel();
 	}
-	std::cout << "Finished " << __PRETTY_FUNCTION__ << std::endl;
+	//std::cout << "Finished " << __PRETTY_FUNCTION__ << std::endl;
 }
 } // namespace ITK
 

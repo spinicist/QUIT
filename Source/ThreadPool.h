@@ -31,7 +31,7 @@ private:
     std::mutex m_tasksMutex, m_queueMutex;
     std::condition_variable m_queueCondition, m_threadCondition;
     
-    bool m_stopping;
+    bool m_stopping, m_debug;
     
     void invokeThread();
     
@@ -42,6 +42,7 @@ public:
     ~ThreadPool();
     
     void enqueue(TFunc f);
+    void setDebug(const bool d);
 };
     
     
