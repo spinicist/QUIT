@@ -336,7 +336,7 @@ int main(int argc, char **argv) {
 
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
-    int max_its = 4;
+    int max_its = 4, num_threads = 1;
 	int verbose = false, prompt = true, all_residuals = false, flipData = false;
     string outPrefix;
     enum class Algos { SRC, GRC, BFGS };
@@ -380,7 +380,7 @@ Options:\n\
                 7     : Boundaries suitable for 7T \n\
                 u     : User specified boundaries from stdin\n\
     --resids, -r      : Write out per flip-angle residuals\n\
-    --threads, -T N   : Use N threads (default=hardware limit)\n"
+    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 	};
 
 	const struct option long_options[] = {
@@ -466,7 +466,11 @@ Options:\n\
                     break;
                 } break;
             case 'F': flipData = true; if (verbose) cout << "Data order is phase, then flip-angle" << endl; break;
-			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break; break;
+			case 'T': 
+                num_threads = stoi(optarg);
+                if (num_threads == 0)
+                    num_threads = std::thread::hardware_concurrency();
+                break;
 			case 't':
 				switch (*optarg) {
 					case '3': tesla = FieldStrength::Three; break;
@@ -542,6 +546,7 @@ Options:\n\
     } break;
     }
 	applySlices->SetSlices(start_slice, stop_slice);
+    applySlices->SetPoolsize(num_threads);
     for (int i = 0; i < images.size(); i++) {
         applySlices->SetInput(i, images[i]);
     }

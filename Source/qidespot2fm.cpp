@@ -415,7 +415,7 @@ Options:\n\
     --flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
     --finite          : Use finite pulse length correction\n\
     --resids, -r      : Write out per flip-angle residuals\n\
-    --threads, -T N   : Use N threads (default=hardware limit)\n"
+    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 };
 /* --complex, -x     : Fit to complex data\n\ */
 
@@ -451,7 +451,7 @@ int run_main(int argc, char **argv) {
 
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false,
-        fitFinite = false, flipData = false, use_BFGS = true;
+        fitFinite = false, flipData = false, use_BFGS = true, num_threads = 4;
     string outPrefix;
     QI::ImageReaderF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
@@ -485,7 +485,11 @@ int run_main(int argc, char **argv) {
         case 'p': stop_slice = atoi(optarg); break;
         case 'F': flipData = true; if (verbose) cout << "Data order is phase, then flip-angle" << endl; break;
         case 'f': fitFinite = true; if (verbose) cout << "Finite pulse model selected" << endl; break;
-        case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+        case 'T':
+            num_threads = stoi(optarg);
+            if (num_threads == 0)
+                num_threads = std::thread::hardware_concurrency();
+            break;
         case 'r': all_residuals = true; break;
         case 0: break; // Just a flag
         default:
@@ -524,13 +528,14 @@ int run_main(int argc, char **argv) {
     auto apply = TApply::New();
     shared_ptr<FMAlgo<T>> algo;
     if (use_BFGS) {
-        itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
+        num_threads = 1; // BFGS code is not thread-safe
         algo = make_shared<BFGSAlgo<T>>();
     } else {
         algo = make_shared<LMAlgo<T>>();
     }
     algo->setSequence(ssfpSequence);
     apply->SetAlgorithm(algo);
+    apply->SetPoolsize(num_threads);
     apply->SetInput(0, ssfpFlip->GetOutput());
     apply->SetConst(0, T1->GetOutput());
     apply->SetSlices(start_slice, stop_slice);

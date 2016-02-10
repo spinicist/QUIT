@@ -184,10 +184,11 @@ Options:\n\
 	           n      : NLLS (Levenberg-Marquardt)\n\
 	--its, -i N       : Max iterations for WLLS/NLLS (default 15)\n\
 	--resids, -r      : Write out per flip-angle residuals\n\
-	--threads, -T N   : Use N threads (default=hardware limit)\n"
+	--threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 };
 
 bool verbose = false, prompt = true, all_residuals = false;
+int num_threads = 4;
 string outPrefix;
 const struct option long_options[] =
 {
@@ -256,7 +257,11 @@ int main(int argc, char **argv) {
 			case 'c': algo->setClamp(0, atof(optarg)); break;
 			case 'i': algo->setIterations(atoi(optarg)); break;
 			case 'r': all_residuals = true; break;
-			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+			case 'T':
+                num_threads = stoi(optarg);
+                if (num_threads == 0)
+                    num_threads = std::thread::hardware_concurrency();
+                break;
 			case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
@@ -283,6 +288,7 @@ int main(int argc, char **argv) {
 	algo->setSequence(spgrSequence);
     auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();
 	apply->SetAlgorithm(algo);
+    apply->SetPoolsize(num_threads);
 	apply->SetInput(0, convert->GetOutput());
 	if (mask)
 		apply->SetMask(mask->GetOutput());

@@ -48,11 +48,11 @@ Options:\n\
 	--clamp, -c n     : Clamp T1 between 0 and n\n\
 	--its, -i N       : Max iterations for NLLS (default 4)\n\
 	--resids, -r      : Write out per flip-angle residuals\n\
-	--threads, -T N   : Use N threads (default=hardware limit)\n"
+	--threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 };
 
 static bool verbose = false, prompt = true, IR = true, all_residuals = false;
-static size_t nIterations = 4;
+static size_t nIterations = 4, num_threads = 4;
 static string outPrefix;
 static double thresh = -numeric_limits<double>::infinity();
 static double clamp_lo = -numeric_limits<double>::infinity(), clamp_hi = numeric_limits<double>::infinity();
@@ -171,8 +171,10 @@ int main(int argc, char **argv) {
 			case 'i': hifi->setIterations(atoi(optarg)); break;
 			case 'r': all_residuals = true; break;
 			case 'T':
-				itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg));
-				break;
+                num_threads = stoi(optarg);
+                if (num_threads == 0)
+                    num_threads = std::thread::hardware_concurrency();
+                break;
 			case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
@@ -213,6 +215,7 @@ int main(int argc, char **argv) {
     auto apply = itk::ApplyAlgorithmFilter<HIFIAlgo>::New();
 	hifi->setSequence(combined);
 	apply->SetAlgorithm(hifi);
+    apply->SetPoolsize(num_threads);
 	apply->SetInput(0, spgrImg->GetOutput());
 	apply->SetInput(1, irImg->GetOutput());
 	if (mask)

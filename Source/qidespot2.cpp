@@ -233,9 +233,9 @@ Options:\n\
 	--elliptical, -e  : Input is band-free elliptical data.\n"
 };
 
-static int verbose = false, prompt = true, elliptical = false, all_residuals = false;
-static string outPrefix;
-static struct option long_opts[] = {
+int verbose = false, prompt = true, elliptical = false, all_residuals = false, num_threads = 4;
+string outPrefix;
+const struct option long_opts[] = {
 	{"B1", required_argument, 0, 'b'},
 	{"elliptical", no_argument, 0, 'e'},
 	{"help", no_argument, 0, 'h'},
@@ -250,7 +250,7 @@ static struct option long_opts[] = {
 	{"resids", no_argument, 0, 'r'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hm:o:b:t:c:vna:i:T:er";
+const char *short_opts = "hm:o:b:t:c:vna:i:T:er";
 
 //******************************************************************************
 // Main
@@ -302,7 +302,11 @@ int main(int argc, char **argv) {
 			case 'i': algo->setIterations(atoi(optarg));	break;
 			case 'e': elliptical = true; break;
 			case 'r': all_residuals = true; break;
-			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+            case 'T':
+                num_threads = stoi(optarg);
+                if (num_threads == 0)
+                    num_threads = std::thread::hardware_concurrency();
+                break;
 			case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
@@ -341,6 +345,7 @@ int main(int argc, char **argv) {
 	algo->setSequence(ssfp);
 	algo->setElliptical(elliptical);
 	DESPOT2->SetAlgorithm(algo);
+    DESPOT2->SetPoolsize(num_threads);
 	DESPOT2->SetInput(0, ssfp3D->GetOutput());
 	DESPOT2->SetConst(0, T1File->GetOutput());
 	if (B1)
