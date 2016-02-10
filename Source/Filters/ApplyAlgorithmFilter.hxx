@@ -38,6 +38,9 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 bool ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetScaleToMean() const { return m_scale_to_mean; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetPoolsize(const size_t n) { m_poolsize = n; }
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMeanEvalTime() const { return m_meanTime; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
@@ -181,12 +184,14 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
-	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
-	//std::cout << "Thread " << threadId << std::endl;
-	//std::cout << region << std::endl;
+//void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
+void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() {
+	std::cout <<  __PRETTY_FUNCTION__ << std::endl;
 
-	ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
+    TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
+    std::cout << region << std::endl;
+
+	ProgressReporter progress(this, 0, region.GetNumberOfPixels(), 10);
 
 	vector<ImageRegionConstIterator<TDataVectorImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
@@ -213,35 +218,51 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
     ImageRegionIterator<TIterationsImage> iterationsIter(this->GetIterationsOutput(), region);
 	typedef typename TAlgorithm::TArray TArray;
     TimeProbe clock;
+    QI::ThreadPool threadPool(m_poolsize);
 	while(!dataIters[0].IsAtEnd()) {
-		TArray outputs = TArray::Zero(m_algorithm->numOutputs());
-		TArray resids =  TArray::Zero(m_algorithm->dataSize());
-        typename TAlgorithm::TIterations iterations{0};
 		if (!mask || maskIter.Get()) {
-			TArray constants = m_algorithm->defaultConsts();
-			for (size_t i = 0; i < constIters.size(); i++) {
-				if (this->GetConst(i)) {
-					constants[i] = constIters[i].Get();
-				}
-			}
-			typename TAlgorithm::TInput allData(m_algorithm->dataSize());
-			size_t dataIndex = 0;
-			for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
-				VariableLengthVector<TData> dataVector = dataIters[i].Get();
-				Map<const Eigen::Array<TData, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
-				Eigen::Array<TData, Eigen::Dynamic, 1> scaled = data;
-				if (m_scale_to_mean) {
-					scaled /= scaled.mean();
-				}
-				allData.segment(dataIndex, data.rows()) = scaled.template cast<typename TAlgorithm::TScalar>();
-				dataIndex += data.rows();
-			}
-            if (threadId == 0)
-                clock.Start();
-            m_algorithm->apply(allData, constants, outputs, resids, iterations);
-            if (threadId == 0)
-                clock.Stop();
-		}
+            auto task = [=] {
+                TArray outputs = TArray::Zero(m_algorithm->numOutputs());
+                TArray resids =  TArray::Zero(m_algorithm->dataSize());
+                typename TAlgorithm::TIterations iterations{0};
+                
+                TArray constants = m_algorithm->defaultConsts();
+                for (size_t i = 0; i < constIters.size(); i++) {
+                    if (this->GetConst(i)) {
+                        constants[i] = constIters[i].Get();
+                    }
+                }
+                typename TAlgorithm::TInput allData(m_algorithm->dataSize());
+                size_t dataIndex = 0;
+                for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
+                    VariableLengthVector<TData> dataVector = dataIters[i].Get();
+                    Map<const Eigen::Array<TData, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
+                    Eigen::Array<TData, Eigen::Dynamic, 1> scaled = data;
+                    if (m_scale_to_mean) {
+                        scaled /= scaled.mean();
+                    }
+                    allData.segment(dataIndex, data.rows()) = scaled.template cast<typename TAlgorithm::TScalar>();
+                    dataIndex += data.rows();
+                }
+                m_algorithm->apply(allData, constants, outputs, resids, iterations);
+                for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
+                    outputIters[i].Set(static_cast<float>(outputs[i]));
+                }
+                ArrayXf residF = resids.template cast<float>();
+                VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
+                residIter.Set(residVector);
+                iterationsIter.Set(iterations);
+            };
+            threadPool.enqueue(task);
+		} else {
+            for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
+                outputIters[i].Set(0);
+            }
+            VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
+            residIter.Set(residZeros);
+            iterationsIter.Set(0);
+        }
+        
 		if (this->GetMask())
 			++maskIter;
 		for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
@@ -252,22 +273,13 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerat
 				++constIters[i];
 		}
 		for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-			outputIters[i].Set(static_cast<float>(outputs[i]));
 			++outputIters[i];
 		}
-		ArrayXf residF = resids.template cast<float>();
-		VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
-		residIter.Set(residVector);
 		++residIter;
-        iterationsIter.Set(iterations);
         ++iterationsIter;
 		progress.CompletedPixel();
 	}
-    if (threadId == 0) {
-        m_meanTime = clock.GetMean();
-        m_evaluations = clock.GetNumberOfStops();
-    }
-	//std::cout << "Finished " << std::endl;
+	std::cout << "Finished " << __PRETTY_FUNCTION__ << std::endl;
 }
 } // namespace ITK
 

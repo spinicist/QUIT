@@ -16,7 +16,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 include_directories(Source)
 
-add_library(qi_core Source/Types.h Source/Util.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
+add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
                                       Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx

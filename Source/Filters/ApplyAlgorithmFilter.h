@@ -5,6 +5,7 @@
 
 #include "../Sequence.h"
 #include "../Model.h"
+#include "../ThreadPool.h"
 
 #include "itkImageToImageFilter.h"
 #include "itkVariableLengthVector.h"
@@ -62,6 +63,8 @@ public:
 	void SetMask(const TScalarImage *mask);
 	typename TScalarImage::ConstPointer GetMask() const;
 
+    void SetPoolsize(const size_t nThreads);
+
     TScalarImage       *GetOutput(const size_t i);
     TScalarVectorImage *GetResidOutput();
     TIterationsImage   *GetIterationsOutput();
@@ -70,16 +73,17 @@ public:
     SizeValueType GetEvaluations() const;
 
 	virtual void GenerateOutputInformation() override;
+    //virtual void ThreadedGenerateData(const TRegion &outputRegionForThread, ThreadIdType threadId) override;
+    virtual void GenerateData() override;
 
 protected:
 	ApplyAlgorithmFilter();
 	~ApplyAlgorithmFilter(){}
-
-	virtual void ThreadedGenerateData(const TRegion &outputRegionForThread, ThreadIdType threadId) override;
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
 	shared_ptr<TAlgorithm> m_algorithm;
 	bool m_scale_to_mean = false;
+    size_t m_poolsize = 1;
 
     RealTimeClock::TimeStampType m_meanTime = 0.0;
     SizeValueType m_evaluations = 0;

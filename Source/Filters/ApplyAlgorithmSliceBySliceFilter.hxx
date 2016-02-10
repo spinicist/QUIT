@@ -172,7 +172,8 @@ void ApplyAlgorithmSliceBySliceFilter<TAlgorithm, TData, TScalar, ImageDim>::Gen
 			typename TSliceFilter::Pointer sliceFilter = TSliceFilter::New();
 			sliceFilter->SetAlgorithm(this->m_algorithm);
 			sliceFilter->SetScaleToMean(this->m_scale_to_mean);
-
+            sliceFilter->SetPoolsize(this->m_poolsize);
+            
 			// reallocate the internal input at each slice, so the slice by slice filter can work
 			// even if the pipeline is run in place
 			//std::cout << "Setting input regions" << std::endl;
