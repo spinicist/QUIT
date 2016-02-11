@@ -28,6 +28,7 @@
 #include "Model.h"
 #include "Sequence.h"
 #include "Util.h"
+#include "ThreadPool.h"
 
 using namespace std;
 using namespace Eigen;
@@ -45,6 +46,7 @@ protected:
 	shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<Model> m_model;
     double m_sigma = 0.0;
+    size_t m_nThreads = 1;
     itk::RealTimeClock::TimeStampType m_meanTime = 0.0;
     itk::SizeValueType m_evaluations = 0;
 
@@ -53,7 +55,7 @@ public:
 	typedef SignalsFilter                        Self;
 	typedef ImageToImageFilter<TImage, TCVImage> Superclass;
     typedef itk::SmartPointer<Self>              Pointer;
-	typedef typename TImage::RegionType          RegionType;
+	typedef typename TImage::RegionType          TRegion;
 
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
@@ -70,7 +72,8 @@ public:
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		this->SetNthInput(m_model->nParameters(), const_cast<TImage*>(mask));
 	}
-
+    void SetPoolsize(const size_t n) { m_nThreads = n; }
+    
 	typename TImage::ConstPointer GetInput(const size_t i) const {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		if (i < m_model->nParameters()) {
@@ -122,46 +125,47 @@ protected:
 	SignalsFilter() {}
 	~SignalsFilter(){}
 
-    virtual void ThreadedGenerateData(const RegionType &region, itk::ThreadIdType threadId) override {
+    virtual void GenerateData() override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
+        TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
 		vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
 		for (size_t i = 0; i < m_model->nParameters(); i++) {
             if (this->GetInput(i))
                 inIters[i] = itk::ImageRegionConstIterator<TImage>(this->GetInput(i), region);
 		}
+        typename TImage::ConstPointer mask = this->GetMask();
 		itk::ImageRegionConstIterator<TImage> maskIter;
-		if (this->GetMask()) {
-			maskIter = itk::ImageRegionConstIterator<TImage>(this->GetMask(), region);
+		if (mask) {
+			maskIter = itk::ImageRegionConstIterator<TImage>(mask, region);
 		}
 		itk::ImageRegionIterator<TCVImage> outputIter(this->GetOutput(), region);
         itk::TimeProbe clock;
+        QI::ThreadPool threadPool(m_nThreads);
 		while(!inIters[0].IsAtEnd()) {
-			typename TImage::ConstPointer m = this->GetMask();
-			if (!m || maskIter.Get()) {
-                VectorXd parameters = m_model->Default();
-				for (size_t i = 0; i < inIters.size(); i++) {
-                    if (this->GetInput(i))
-                        parameters[i] = inIters[i].Get();
-				}
-                if (threadId == 0)
-                    clock.Start();
-				VectorXcd allData = m_sequence->signal(m_model, parameters);
-                if (threadId == 0)
-                    clock.Stop();
-				if (m_sigma != 0.0) {
-					VectorXcd noise(m_sequence->size());
-					// Simple Box Muller transform
-					ArrayXd U = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
-					ArrayXd V = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
-					noise.real() = (m_sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
-					noise.imag() = (m_sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
-					allData += noise;
-				}
-				VectorXcf floatData = allData.cast<complex<float>>();
-				itk::VariableLengthVector<complex<float>> dataVector(floatData.data(), m_sequence->size());
-				outputIter.Set(dataVector);
+			if (!mask || maskIter.Get()) {
+                auto task = [=] {
+                    VectorXd parameters = m_model->Default();
+                    for (size_t i = 0; i < inIters.size(); i++) {
+                        if (this->GetInput(i))
+                            parameters[i] = inIters[i].Get();
+                    }
+                    VectorXcd allData = m_sequence->signal(m_model, parameters);
+                    if (m_sigma != 0.0) {
+                        VectorXcd noise(m_sequence->size());
+                        // Simple Box Muller transform
+                        ArrayXd U = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
+                        ArrayXd V = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
+                        noise.real() = (m_sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
+                        noise.imag() = (m_sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
+                        allData += noise;
+                    }
+                    VectorXcf floatData = allData.cast<complex<float>>();
+                    itk::VariableLengthVector<complex<float>> dataVector(floatData.data(), m_sequence->size());
+                    outputIter.Set(dataVector);
+                };
+                threadPool.enqueue(task);
 			}
-			if (this->GetMask())
+			if (mask)
 				++maskIter;
 			for (size_t i = 0; i < m_model->nParameters(); i++) {
                 if (this->GetInput(i))
@@ -169,10 +173,6 @@ protected:
 			}
 			++outputIter;
 		}
-        if (threadId == 0) {
-            m_meanTime = clock.GetMean();
-            m_evaluations = clock.GetNumberOfStops();
-        }
 	}
 
 	itk::DataObject::Pointer MakeOutput(unsigned int idx) {
@@ -218,13 +218,13 @@ Options:\n\
 	--complex, -x     : Output complex-valued signal.\n\
 	--sequences, -M s : Use simple sequences (default).\n\
 	            f     : Use Finite Pulse Length correction.\n\
-	--threads, -T N   : Use N threads (default=hardware limit)\n"
+	--threads, -T N   : Use N threads (default=1, 0=hardware limit)\n"
 };
-
-static shared_ptr<Model> model = make_shared<SCD>();
-static bool verbose = false, prompt = true, finitesequences = false, outputComplex = false;
-static string outPrefix = "";
-static struct option long_opts[] = {
+shared_ptr<Model> model = make_shared<SCD>();
+bool verbose = false, prompt = true, finitesequences = false, outputComplex = false;
+string outPrefix = "";
+size_t num_threads = 1;
+const struct option long_opts[] = {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
 	{"mask", required_argument, 0, 'm'},
@@ -286,7 +286,7 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 int main(int argc, char **argv)
 {
 	Eigen::initParallel();
-	QI::ImageReaderF::Pointer mask = ITK_NULLPTR;
+	QI::ImageF::Pointer mask = ITK_NULLPTR;
     int indexptr = 0, c;
     double sigma = 0.;
     int seed = -1;
@@ -296,11 +296,10 @@ int main(int argc, char **argv)
 			case 'n': prompt = false; break;
             case 'N': sigma = stod(optarg); break;
             case 'S': seed = stoi(optarg); break;
-			case 'm':
-				cout << "Reading mask file " << optarg << endl;
-				mask = QI::ImageReaderF::New();
-				mask->SetFileName(optarg);
-				break;
+            case 'm':
+                cout << "Reading mask file " << optarg << endl;
+                mask = QI::ReadImage(optarg);
+                break;
 			case 'o':
 				outPrefix = optarg;
 				cout << "Output prefix will be: " << outPrefix << endl;
@@ -319,7 +318,11 @@ int main(int argc, char **argv)
 						break;
 				}
 				break;
-			case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
+			case 'T':
+                num_threads = stoi(optarg);
+                if (num_threads == 0)
+                    num_threads = std::thread::hardware_concurrency();
+                break;
 			case 'h':
 				cout << usage << endl;
 				return EXIT_SUCCESS;
@@ -351,6 +354,8 @@ int main(int argc, char **argv)
 	SignalsFilter::Pointer calcSignal = SignalsFilter::New();
 	calcSignal->SetModel(model);
 	calcSignal->SetSigma(sigma);
+    calcSignal->SetPoolsize(num_threads);
+    calcSignal->SetMask(mask);
 	vector<QI::ImageReaderF::Pointer> pFiles(model->nParameters());
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
