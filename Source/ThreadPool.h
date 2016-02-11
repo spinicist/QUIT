@@ -38,7 +38,7 @@ private:
 public:
     typedef std::function<void (void)> TFunc;
     
-    ThreadPool(const size_t nThreads);
+    ThreadPool(const size_t nThreads, const bool debug = false);
     ~ThreadPool();
     
     void enqueue(TFunc f);

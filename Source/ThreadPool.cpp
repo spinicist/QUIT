@@ -14,7 +14,7 @@
  
  namespace QI {
      
-    ThreadPool::ThreadPool(const size_t nThreads) : m_stopping(false), m_debug(false) {
+    ThreadPool::ThreadPool(const size_t nThreads, const bool d) : m_stopping(false), m_debug(d) {
         for (size_t i = 0; i < nThreads; i++) {
             m_threads.emplace_back(std::thread(&ThreadPool::invokeThread, this));
             if (m_debug) std::cout << "Emplaced thread " << m_threads.back().get_id() << std::endl;
