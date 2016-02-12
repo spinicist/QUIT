@@ -72,33 +72,7 @@ public:
     void Execute(const itk::Object *object, const itk::EventObject &event) override {
 		const itk::ProcessObject *filter = static_cast<const itk::ProcessObject *>(object);
 		if (typeid(event) == typeid(itk::ProgressEvent)) {
-			std::cout << "Progress: " << (filter->GetProgress()*100) << "% complete" << std::endl;
-		} else {
-			std::cout << "Received event: " << typeid(event).name() << std::endl;
-		}
-	}
-};
-
-template <typename TFilter>
-class SliceMonitor : public itk::Command {
-public:
-	typedef SliceMonitor            Self;
-	typedef itk::Command            Superclass;
-	typedef itk::SmartPointer<Self> Pointer;
-	itkTypeMacro(SliceMonitor, Superclass);
-	itkNewMacro(Self);
-protected:
-	SliceMonitor() {}
-public:
-    void Execute(itk::Object *caller, const itk::EventObject &event) override {
-		Execute((const itk::Object *)caller, event);
-	}
-    void Execute(const itk::Object *object, const itk::EventObject & event) override {
-		const TFilter *filter = static_cast<const TFilter *>(object);
-		if (typeid(event) == typeid(itk::ProgressEvent)) {
-			std::cout << "Completed slice " << filter->GetSliceIndex() << std::endl;
-		} else if (typeid(event) == typeid(itk::IterationEvent)) {
-			std::cout << "Starting slice " << filter->GetSliceIndex() << std::endl;
+			std::cout << "Progress: " << round(filter->GetProgress()*100) << "% complete" << std::endl;
 		} else {
 			std::cout << "Received event: " << typeid(event).name() << std::endl;
 		}

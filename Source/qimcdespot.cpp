@@ -23,7 +23,7 @@
 #include "itkTimeProbe.h"
 
 #include "Util.h"
-#include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
+#include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderVectorFilter.h"
 #include "Model.h"
 #include "Sequence.h"
@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
 	shared_ptr<Model> model = make_shared<MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
     typedef itk::ApplyAlgorithmFilter<MCDAlgo> TMCDFilter;
-	auto applySlices = TMCDFilter::New();
+	auto apply = TMCDFilter::New();
     const string usage {
 "Usage is: qimcdespot [options]\n\
 \n\
@@ -453,7 +453,7 @@ Options:\n\
             case 'S':
                 if (verbose) cout << "Mean scaling selected." << endl;
                 model->setScaleToMean(true);
-                applySlices->SetScaleToMean(true);
+                apply->SetScaleToMean(true);
                 break;
             case 'a':
                 switch (*optarg) {
@@ -529,38 +529,38 @@ Options:\n\
         if (verbose) cout << "Using SRC algorithm" << endl;
         shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, max_its);
         algo->setGauss(false);
-        applySlices->SetAlgorithm(algo);
+        apply->SetAlgorithm(algo);
     } break;
     case Algos::GRC: {
         if (verbose) cout << "Using GRC algorithm" << endl;
         shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, max_its);
         algo->setGauss(true);
-        applySlices->SetAlgorithm(algo);
+        apply->SetAlgorithm(algo);
     } break;
     case Algos::BFGS: {
         if (verbose) cout << "Using BFGS algorithm" << endl;
         itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
         shared_ptr<BFGSAlgo> algo = make_shared<BFGSAlgo>(model, bounds, sequences, max_its);
         algo->setStart(start);
-        applySlices->SetAlgorithm(algo);
+        apply->SetAlgorithm(algo);
     } break;
     }
-	applySlices->SetSlices(start_slice, stop_slice);
-    applySlices->SetPoolsize(num_threads);
+	apply->SetSlices(start_slice, stop_slice);
+    apply->SetPoolsize(num_threads);
     for (int i = 0; i < images.size(); i++) {
-        applySlices->SetInput(i, images[i]);
+        apply->SetInput(i, images[i]);
     }
 	if (f0) {
 		f0->Update();
-		applySlices->SetConst(0, f0->GetOutput());
+		apply->SetConst(0, f0->GetOutput());
 	}
 	if (B1) {
 		B1->Update();
-		applySlices->SetConst(1, B1->GetOutput());
+		apply->SetConst(1, B1->GetOutput());
 	}
 	if (mask) {
 		mask->Update();
-		applySlices->SetMask(mask->GetOutput());
+		apply->SetMask(mask->GetOutput());
 	}
 
     // Need this here so the bounds.txt file will have the correct prefix
@@ -583,22 +583,23 @@ Options:\n\
 
     itk::TimeProbe clock;
 	if (verbose) {
-		//auto monitor = QI::SliceMonitor<TMCDFilter>::New();
-		//applySlices->AddObserver(itk::IterationEvent(), monitor);
+        cout << "Processing" << endl;
+        auto monitor = QI::GenericMonitor::New();
+        apply->AddObserver(itk::ProgressEvent(), monitor);
         clock.Start();
 	}
-	applySlices->Update();
+	apply->Update();
 	if (verbose) {
         clock.Stop();
         cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
-        cout << "Mean evaluation time per voxel was " << applySlices->GetMeanEvalTime() << "s " << endl;
+        cout << "Mean evaluation time per voxel was " << apply->GetMeanEvalTime() << "s " << endl;
 		cout << "Writing results files." << endl;
 	}
 	for (int i = 0; i < model->nParameters(); i++) {
-        QI::WriteImage(applySlices->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
+        QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
 	}
-	QI::WriteResiduals(applySlices->GetResidOutput(), outPrefix, all_residuals, applySlices->GetOutput(0));
-    QI::WriteImage<itk::Image<int, 3>>(applySlices->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
+	QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
+    QI::WriteImage<itk::Image<int, 3>>(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
 	return EXIT_SUCCESS;
 }
 

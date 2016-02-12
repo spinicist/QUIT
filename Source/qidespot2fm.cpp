@@ -20,7 +20,7 @@
 #include <unsupported/Eigen/NumericalDiff>
 
 #include "Util.h"
-#include "Filters/ApplyAlgorithmSliceBySliceFilter.h"
+#include "Filters/ApplyAlgorithmFilter.h"
 #include "Model.h"
 #include "Sequence.h"
 
@@ -402,7 +402,7 @@ const string usage {
 \
 Options:\n\
     --help, -h        : Print this message\n\
-    --verbose, -v     : Print slice processing times\n\
+    --verbose, -v     : Print more information\n\
     --no-prompt, -n   : Suppress input prompts\n\
     --mask, -m file   : Mask input with specified file\n\
     --out, -o path    : Add a prefix to the output filenames\n\
@@ -447,7 +447,7 @@ int run_main(int argc, char **argv) {
     typedef itk::ImageFileReader<TSeries> TReader;
     typedef itk::ImageToVectorFilter<TSeries> TToVector;
     typedef itk::ReorderVectorFilter<TVectorImage> TReorder;
-    typedef itk::ApplyAlgorithmSliceBySliceFilter<FMAlgo<T>, T, float, 3> TApply;
+    typedef itk::ApplyAlgorithmFilter<FMAlgo<T>, T, float, 3> TApply;
 
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false,
@@ -547,8 +547,9 @@ int run_main(int argc, char **argv) {
     }
     itk::TimeProbe clock;
     if (verbose) {
-        auto monitor = QI::SliceMonitor<TApply>::New();
-        apply->AddObserver(itk::IterationEvent(), monitor);
+        cout << "Processing" << endl;
+        auto monitor = QI::GenericMonitor::New();
+        apply->AddObserver(itk::ProgressEvent(), monitor);
         clock.Start();
     }
     apply->Update();
