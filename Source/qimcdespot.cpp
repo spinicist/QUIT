@@ -545,6 +545,7 @@ Options:\n\
         apply->SetAlgorithm(algo);
     } break;
     }
+    apply->SetVerbose(verbose);
 	apply->SetSlices(start_slice, stop_slice);
     apply->SetPoolsize(num_threads);
     for (int i = 0; i < images.size(); i++) {

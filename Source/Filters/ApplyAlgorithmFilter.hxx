@@ -44,6 +44,9 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetSlices(const size_t start, const size_t stop) { m_start = start; m_stop = stop; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetVerbose(const bool v) { m_verbose = v; }
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMeanEvalTime() const { return m_meanTime; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
@@ -162,6 +165,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
     auto spacing =   input->GetSpacing();
     auto origin =    input->GetOrigin();
     auto direction = input->GetDirection();
+    if (m_verbose) std::cout << "Allocating output memory" << std::endl;
     for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
         auto op = this->GetOutput(i);
         op->SetRegions(region);
@@ -170,6 +174,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
         op->SetDirection(direction);
         op->Allocate(true);
     }
+    if (m_verbose) std::cout << "Allocating residuals memory" << std::endl;
     auto r = this->GetResidOutput();
     r->SetRegions(region);
     r->SetSpacing(spacing);
@@ -200,20 +205,32 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
         region.GetModifiableIndex()[LastDim] = m_start;
         region.GetModifiableSize()[LastDim] = m_stop - m_start;
     }
-    //std::cout << region << std::endl;
 
-	ProgressReporter progress(this, 0, region.GetNumberOfPixels(), 10);
+    unsigned int numPix = 0;
+    ImageRegionConstIterator<TScalarImage> maskIter;
+    const auto mask = this->GetMask();
+    if (mask && m_verbose) {
+        std::cout << "Counting voxels in mask..." << std::endl;
+        numPix = 0;
+        maskIter = ImageRegionConstIterator<TScalarImage>(mask, region);
+        maskIter.GoToBegin();
+        while (!maskIter.IsAtEnd()) {
+            if (maskIter.Get())
+                ++numPix;
+            ++maskIter;
+        }
+        maskIter.GoToBegin(); // Reset
+        std::cout << "Found " << numPix << " unmasked voxels." << std::endl;
+    } else {
+        numPix = region.GetNumberOfPixels();
+    }
+	ProgressReporter progress(this, 0, numPix, 10);
 
 	vector<ImageRegionConstIterator<TDataVectorImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		dataIters[i] = ImageRegionConstIterator<TDataVectorImage>(this->GetInput(i), region);
 	}
 
-	ImageRegionConstIterator<TScalarImage> maskIter;
-	const auto mask = this->GetMask();
-	if (mask) {
-		maskIter = ImageRegionConstIterator<TScalarImage>(mask, region);
-	}
 	vector<ImageRegionConstIterator<TScalarImage>> constIters(m_algorithm->numConsts());
 	for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
 		typename TScalarImage::ConstPointer c = this->GetConst(i);
@@ -230,6 +247,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
 	typedef typename TAlgorithm::TArray TArray;
     TimeProbe clock;
     QI::ThreadPool threadPool(m_poolsize);
+    if (m_verbose) std::cout << "Starting processing" << std::endl;
 	while(!dataIters[0].IsAtEnd()) {
 		if (!mask || maskIter.Get()) {
             auto task = [=] {
@@ -265,6 +283,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
                 iterationsIter.Set(iterations);
             };
             threadPool.enqueue(task);
+            progress.CompletedPixel(); // We can get away with this because enqueue blocks if the queue is full
 		} else {
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
                 outputIters[i].Set(0);
@@ -288,9 +307,8 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
 		}
 		++residIter;
         ++iterationsIter;
-		progress.CompletedPixel();
 	}
-	//std::cout << "Finished " << __PRETTY_FUNCTION__ << std::endl;
+	if (m_verbose) std::cout << "Finished processing" << std::endl;
 }
 } // namespace ITK
 

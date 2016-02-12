@@ -534,6 +534,7 @@ int run_main(int argc, char **argv) {
         algo = make_shared<LMAlgo<T>>();
     }
     algo->setSequence(ssfpSequence);
+    apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(num_threads);
     apply->SetInput(0, ssfpFlip->GetOutput());

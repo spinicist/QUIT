@@ -65,6 +65,7 @@ public:
 
     void SetPoolsize(const size_t nThreads);
     void SetSlices(const size_t start, const size_t stop);
+    void SetVerbose(const bool v);
     
     TScalarImage       *GetOutput(const size_t i);
     TScalarVectorImage *GetResidOutput();
@@ -83,7 +84,7 @@ protected:
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
 	shared_ptr<TAlgorithm> m_algorithm;
-	bool m_scale_to_mean = false;
+	bool m_scale_to_mean = false, m_verbose = false;
     size_t m_poolsize = 1, m_start = 0, m_stop = 0;
 
     RealTimeClock::TimeStampType m_meanTime = 0.0;
