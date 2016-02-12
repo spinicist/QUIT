@@ -41,6 +41,9 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetPoolsize(const size_t n) { m_poolsize = n; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetSlices(const size_t start, const size_t stop) { m_start = start; m_stop = stop; }
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMeanEvalTime() const { return m_meanTime; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
@@ -165,7 +168,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
         op->SetSpacing(spacing);
         op->SetOrigin(origin);
         op->SetDirection(direction);
-        op->Allocate();
+        op->Allocate(true);
     }
     auto r = this->GetResidOutput();
     r->SetRegions(region);
@@ -173,13 +176,13 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
     r->SetOrigin(origin);
     r->SetDirection(direction);
     r->SetNumberOfComponentsPerPixel(size);
-    r->Allocate();
+    r->Allocate(true);
     auto i = this->GetIterationsOutput();
     i->SetRegions(region);
     i->SetSpacing(spacing);
     i->SetOrigin(origin);
     i->SetDirection(direction);
-    i->Allocate();
+    i->Allocate(true);
     //std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
 
@@ -187,8 +190,16 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 //void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() {
 	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
-
+    const unsigned int LastDim = ImageDim - 1;
     TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
+    if (m_stop != 0) {
+        if (m_start < region.GetIndex()[LastDim])
+            throw(std::runtime_error("Start slice is before start of image."));
+        if ((m_stop - m_start) > region.GetSize()[LastDim])
+            throw(std::runtime_error("Stop slice is past end of image"));
+        region.GetModifiableIndex()[LastDim] = m_start;
+        region.GetModifiableSize()[LastDim] = m_stop - m_start;
+    }
     //std::cout << region << std::endl;
 
 	ProgressReporter progress(this, 0, region.GetNumberOfPixels(), 10);

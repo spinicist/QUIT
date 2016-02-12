@@ -64,7 +64,8 @@ public:
 	typename TScalarImage::ConstPointer GetMask() const;
 
     void SetPoolsize(const size_t nThreads);
-
+    void SetSlices(const size_t start, const size_t stop);
+    
     TScalarImage       *GetOutput(const size_t i);
     TScalarVectorImage *GetResidOutput();
     TIterationsImage   *GetIterationsOutput();
@@ -83,7 +84,7 @@ protected:
 
 	shared_ptr<TAlgorithm> m_algorithm;
 	bool m_scale_to_mean = false;
-    size_t m_poolsize = 1;
+    size_t m_poolsize = 1, m_start = 0, m_stop = 0;
 
     RealTimeClock::TimeStampType m_meanTime = 0.0;
     SizeValueType m_evaluations = 0;

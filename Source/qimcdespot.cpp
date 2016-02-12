@@ -345,7 +345,7 @@ int main(int argc, char **argv) {
 	QI::ImageReaderF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<Model> model = make_shared<MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
-    typedef itk::ApplyAlgorithmSliceBySliceFilter<MCDAlgo> TMCDFilter;
+    typedef itk::ApplyAlgorithmFilter<MCDAlgo> TMCDFilter;
 	auto applySlices = TMCDFilter::New();
     const string usage {
 "Usage is: qimcdespot [options]\n\
@@ -583,8 +583,8 @@ Options:\n\
 
     itk::TimeProbe clock;
 	if (verbose) {
-		auto monitor = QI::SliceMonitor<TMCDFilter>::New();
-		applySlices->AddObserver(itk::IterationEvent(), monitor);
+		//auto monitor = QI::SliceMonitor<TMCDFilter>::New();
+		//applySlices->AddObserver(itk::IterationEvent(), monitor);
         clock.Start();
 	}
 	applySlices->Update();
