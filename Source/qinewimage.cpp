@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
 				istringstream stream(vals);
 				for (int i = 0; i < 3; i++) {
 					if (!(stream >> imgSize[i])) {
-						throw(std::runtime_error("Failed to parse dims: " + vals));
+                        QI_EXCEPTION("Failed to parse dims: " << vals);
 					}
 				}
 			} break;

@@ -19,6 +19,7 @@
 #include <memory>
 #include <Eigen/Dense>
 
+#include "Util.h"
 #include "SignalEquations.h"
 #include "Model.h"
 
@@ -118,7 +119,7 @@ class MP2RAGE : public SteadyState {
         MP2RAGE(const Array3d &TD, const double TR, const int N, const Array2d flip);
         MP2RAGE(const bool prompt);
         size_t size() const override { return 3; }
-        ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override { throw(runtime_error(string(__PRETTY_FUNCTION__) + " unimplemented")); }
+        ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override { QI_EXCEPTION("Not implemented"); }
         ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
         void write(ostream &os) const override;
         string name() const override { return "MP3RAGE"; }
@@ -131,7 +132,7 @@ class MP3RAGE : public SteadyState {
         MP3RAGE(const Array4d &TD, const double TR, const int N, const Array3d flip);
         MP3RAGE(const bool prompt);
         size_t size() const override { return 3; }
-        ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override { throw(runtime_error(string(__PRETTY_FUNCTION__) + " unimplemented")); }
+        ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override { QI_EXCEPTION("Not implemented"); }
         ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
         void write(ostream &os) const override;
         string name() const override { return "MP3RAGE"; }

@@ -67,7 +67,7 @@ void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF:
         } else if (type == "SSFP_FINITE") {
             seq->addSequence(make_shared<SSFPFinite>(prompt));
         } else {
-            throw(std::runtime_error("Unknown sequence type: " + type));
+            QI_EXCEPTION("Unknown sequence type: " << type);
         }
         if (type.find("SSFP") != std::string::npos) {
             shared_ptr<SSFPSimple> s = static_pointer_cast<SSFPSimple>(seq->sequences().back());

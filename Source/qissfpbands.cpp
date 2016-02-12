@@ -133,9 +133,9 @@ public:
 
 	void SetPhases(const size_t p) {
 		if (p < 4)
-			throw(runtime_error("Must have a minimum of 4 phase-cycling patterns."));
+            QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
 		if ((p % 2) != 0)
-			throw(runtime_error("Number of phases must be even."));
+            QI_EXCEPTION("Number of phases must be even.");
 
 		m_phases = p;
 		m_lines = m_phases / 2;
@@ -150,7 +150,7 @@ public:
 	virtual void GenerateOutputInformation() override {
 		Superclass::GenerateOutputInformation();
 		if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
-			throw(std::runtime_error("Input size and number of phases do not match"));
+            QI_EXCEPTION("Input size and number of phases do not match");
 		}
 		m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
 		auto op = this->GetOutput();
@@ -249,9 +249,9 @@ public:
 
 	void SetPhases(const size_t p) {
 		if (p < 4)
-			throw(runtime_error("Must have a minimum of 4 phase-cycling patterns."));
+            QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
 		if ((p % 2) != 0)
-			throw(runtime_error("Number of phases must be even."));
+            QI_EXCEPTION("Number of phases must be even.");
 		m_phases = p;
 		m_lines = m_phases / 2;
         this->Modified();
@@ -266,7 +266,7 @@ public:
 	virtual void GenerateOutputInformation() override {
 		Superclass::GenerateOutputInformation();
 		if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
-			throw(std::runtime_error("Input size and number of phases do not match"));
+            QI_EXCEPTION("Input size and number of phases do not match");
 		}
 		m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
 		auto op = this->GetOutput();

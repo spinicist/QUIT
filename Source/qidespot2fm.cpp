@@ -465,7 +465,7 @@ int run_main(int argc, char **argv) {
         switch (*optarg) {
             case 'l': use_BFGS = false; if (verbose) cout << "LM algorithm selected." << endl; break;
             case 'b': use_BFGS = true; if (verbose) cout << "BFGS algorithm selected." << endl; break;
-            default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
+            default: QI_EXCEPTION("Unknown algorithm type " << string(optarg)); break;
         } break;
         case 'm':
             if (verbose) cout << "Reading mask file " << optarg << endl;

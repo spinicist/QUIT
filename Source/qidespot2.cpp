@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
 				case 'l': algo = make_shared<D2LLS>();   if (verbose) cout << "LLS algorithm selected." << endl; break;
 				case 'w': algo = make_shared<D2WLLS>();  if (verbose) cout << "WLLS algorithm selected." << endl; break;
 				case 'n': algo = make_shared<D2NLLS>(); if (verbose) cout << "NLLS algorithm selected." << endl; break;
-				default: throw(runtime_error(string("Unknown algorithm type ") + optarg)); break;
+                default: QI_EXCEPTION("Unknown algorithm type " << string(optarg)); break;
 			} break;
 			default: break;
 		}

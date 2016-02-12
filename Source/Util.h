@@ -28,6 +28,27 @@
 
 #include "Types.h"
 
+/*
+ * The following macros are adapted from ITK for use in QUIT files which don't include any of ITK
+ */
+
+#if defined( _WIN32 ) && !defined( __MINGW32__ )
+    #define QI_LOCATION __FUNCSIG__
+#elif defined( __GNUC__ )
+    #define QI_LOCATION __PRETTY_FUNCTION__   
+#else
+    #define QI_LOCATION __FUNCTION__
+#endif
+
+#define QI_EXCEPTION( x )                               \
+{                                                       \
+    std::ostringstream message;                         \
+    message << QI_LOCATION << std::endl                 \
+            << __FILE__ << ":" << __LINE__ << std::endl \
+            << x << std::endl;                          \
+    throw(std::runtime_error(message.str()));                 \
+}
+
 namespace QI {
 
 const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
@@ -103,7 +124,7 @@ public:
 template<typename T> bool Read(const std::string &s, T &val) {
 	std::istringstream stream(s);
 	if (!(stream >> val)) {
-		throw(std::runtime_error("Failed to parse input: " + s));
+        QI_EXCEPTION("Failed to parse input: " << s);
 	}
 	return true;
 }
@@ -113,10 +134,10 @@ template<typename T> bool Read(std::istream &in, T &val) {
 	// Ignore comment lines. Use shell script convention
 	while (in.peek() == '#') {
 		if (!std::getline(in, line))
-			throw(std::runtime_error("Failed to read input."));
+            QI_EXCEPTION("Failed to read input.");
 	}
 	if (!std::getline(in, line)) {
-		throw(std::runtime_error("Failed to read input. Last line was: " + line));
+        QI_EXCEPTION("Failed to read input. Last line was: " << line);
 	}
 	return Read(line, val);
 }
@@ -143,10 +164,10 @@ void ReadArray(std::istream &in, Eigen::Array<Scalar, Eigen::Dynamic, 1> &array)
 	// Ignore comment lines. Use shell script convention
 	while (in.peek() == '#') {
 		if (!std::getline(in, line))
-			throw(std::runtime_error("Failed to read input."));
+            QI_EXCEPTION("Failed to read input.");
 	}
 	if (!std::getline(in, line)) {
-		throw(std::runtime_error("Failed to read input."));
+        QI_EXCEPTION("Failed to read input.");
 	}
 	ReadArray(line, array);
 }

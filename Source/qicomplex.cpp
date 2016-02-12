@@ -24,6 +24,8 @@
 #include "itkComposeImageFilter.h"
 #include "itkMagnitudeAndPhaseToComplexImageFilter.h"
 
+#include "Util.h"
+
 using namespace std;
 
 namespace itk {
@@ -164,7 +166,7 @@ template<typename TPixel> void Run(int argc, char **argv) {
 		// Nothing to see here
 	} else if (ri) {
 		if (!(img1 && img2)) {
-			throw(runtime_error("Must set real and imaginary inputs"));
+            QI_EXCEPTION("Must set real and imaginary inputs");
 		}
 		if (verbose) cout << "Combining real and imaginary input" << endl;
 		auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
@@ -174,7 +176,7 @@ template<typename TPixel> void Run(int argc, char **argv) {
 		imgX = compose->GetOutput();
 	} else {
 		if (!(img1 && img2)) {
-			throw(runtime_error("Must set magnitude and phase inputs"));
+            QI_EXCEPTION("Must set magnitude and phase inputs");
 		}
 		if (verbose) cout << "Combining magnitude and phase input" << endl;
 		auto compose = itk::MagnitudeAndPhaseToComplexImageFilter<TImage, TImage, TXImage>::New();

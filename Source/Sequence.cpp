@@ -137,7 +137,7 @@ MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int 
 	m_TR = TR;
 	m_flip.resize(1); m_flip[0] = flip;
     if (m_TI.size() != m_TD.size()) {
-        throw(std::runtime_error("Inversion and delay time arrays must match in size."));
+        QI_EXCEPTION("Inversion and delay time arrays must match in size.");
     }
 }
 
@@ -203,7 +203,7 @@ MP2RAGE::MP2RAGE(const bool prompt) : SteadyState() {
     if (prompt) cout << "Enter read-out flip-angles (degrees): " << flush;
     QI::ReadArray(cin, m_flip);
     if (m_flip.size() != 2) {
-        throw(runtime_error("Must have 2 flip-angles for MP3RAGE"));
+        QI_EXCEPTION("Must have 2 flip-angles for MP3RAGE");
     }
     m_flip *= M_PI / 180.;
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
@@ -214,7 +214,7 @@ MP2RAGE::MP2RAGE(const bool prompt) : SteadyState() {
     ArrayXd m_TI;
     QI::ReadArray(cin, m_TI);
     if (m_TI.size() != 2) {
-        throw(runtime_error("Must specify 2 TI times for MP3RAGE"));
+        QI_EXCEPTION("Must specify 2 TI times for MP3RAGE");
     }
     // Assume centric for now
     m_TD[0] = m_TI[0];
@@ -245,7 +245,7 @@ MP3RAGE::MP3RAGE(const bool prompt) : SteadyState() {
     if (prompt) cout << "Enter read-out flip-angles (degrees): " << flush;
     QI::ReadArray(cin, m_flip);
     if (m_flip.size() != 3) {
-        throw(runtime_error("Must have 3 flip-angles for MP3RAGE"));
+        QI_EXCEPTION("Must have 3 flip-angles for MP3RAGE");
     }
     m_flip *= M_PI / 180.;
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
@@ -256,7 +256,7 @@ MP3RAGE::MP3RAGE(const bool prompt) : SteadyState() {
     ArrayXd m_TI;
     QI::ReadArray(cin, m_TI);
     if (m_TI.size() != 3) {
-        throw(runtime_error("Must specify 3 TI times for MP3RAGE"));
+        QI_EXCEPTION("Must specify 3 TI times for MP3RAGE");
     }
     // Assume centric for now
     m_TD[0] = m_TI[0];
@@ -394,7 +394,7 @@ AFI::AFI(const bool prompt) : SteadyState() {
 	ArrayXd temp;
 	QI::ReadArray(cin, temp);
 	if (temp.rows() != 2)
-		throw(runtime_error("Must enter 2 TR values."));
+        QI_EXCEPTION("Must enter 2 TR values.");
 	m_TR1 = temp[0]; m_TR2 = temp[1];
 }
 

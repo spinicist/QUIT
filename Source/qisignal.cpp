@@ -61,35 +61,30 @@ public:
 	itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
 	void SetInput(const size_t i, const TImage *img) {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		if (i < m_model->nParameters()) {
 			this->SetNthInput(i, const_cast<TImage*>(img));
 		} else {
-			throw(runtime_error("Const input out of range"));
+            QI_EXCEPTION("Const input " << i << " out of range");
 		}
 	}
 	void SetMask(const TImage *mask) {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		this->SetNthInput(m_model->nParameters(), const_cast<TImage*>(mask));
 	}
     void SetPoolsize(const size_t n) { m_nThreads = n; }
     
 	typename TImage::ConstPointer GetInput(const size_t i) const {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		if (i < m_model->nParameters()) {
 			return static_cast<const TImage *> (this->ProcessObject::GetInput(i));
 		} else {
-			throw(runtime_error("Get Data Input out of range."));
+            QI_EXCEPTION("Get Data Input " << i << " out of range.");
 		}
 	}
 
 	typename TImage::ConstPointer GetMask() const {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		return static_cast<const TImage *>(this->ProcessObject::GetInput(m_model->nParameters()));
 	}
 
 	TCVImage *GetOutput() {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
 		return dynamic_cast<TCVImage *>(this->ProcessObject::GetOutput(0));
 	}
 
@@ -281,7 +276,7 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 		} else if (type == "SPINECHO") {
 			cs.push_back(make_shared<MultiEcho>(prompt));
 		} else {
-            throw(std::runtime_error("Unknown sequence type: " + type));
+            QI_EXCEPTION("Unknown sequence type: " << type);
 		}
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;
 	}

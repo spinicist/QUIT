@@ -1,4 +1,5 @@
 #include "Model.h"
+#include "Util.h"
 
 using namespace std;
 using namespace Eigen;
@@ -20,7 +21,7 @@ ptrdiff_t Model::ParameterIndex(const string &p) const {
     if (it != ParameterNames().end()) {
         return distance(ParameterNames().begin(), it);
     } else {
-        throw(runtime_error("Parameter " + p + " does not exist in model " + Name()));
+        QI_EXCEPTION("Parameter " << p << " does not exist in model " << Name());
     }
 }
 
@@ -36,16 +37,16 @@ ArrayXcd Model::scale(const ArrayXcd &s) const {
 	}
 }
 
-VectorXcd Model::MultiEcho(cvecd &, carrd &, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SPGR(cvecd &, carrd &, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SPGREcho(cvecd &, carrd &, cdbl, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SPGRFinite(cvecd &, carrd &, cdbl, cdbl, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, const int, cvecd &, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::AFI(cvecd &, cdbl, cdbl, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFP(cvecd &, carrd &a, cdbl, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFPEcho(cvecd &, carrd &, cdbl, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFPEllipse(cvecd &, carrd &, cdbl) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
-VectorXcd Model::SSFPFinite(cvecd &, carrd &, cdbl, cdbl, carrd &) const { throw(logic_error(std::string(__PRETTY_FUNCTION__) + " not implemented.")); }
+VectorXcd Model::MultiEcho(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SPGR(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SPGREcho(cvecd &, carrd &, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SPGRFinite(cvecd &, carrd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, const int, cvecd &, carrd &) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::AFI(cvecd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SSFP(cvecd &, carrd &a, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SSFPEcho(cvecd &, carrd &, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SSFPEllipse(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SSFPFinite(cvecd &, carrd &, cdbl, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 
 /*****************************************************************************/
 /* Single Component DESPOT                                                   */

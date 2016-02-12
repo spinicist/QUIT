@@ -87,7 +87,7 @@ typename TLabelImage::Pointer FindLabels(const TLabelImage::Pointer &mask, const
         }
     }
     if (keep == 0) {
-        throw(runtime_error("No labels found in mask"));
+        QI_EXCEPTION("No labels found in mask");
     }
 
     typedef itk::LabelShapeKeepNObjectsImageFilter<TLabelImage> TKeepN;
@@ -312,7 +312,7 @@ int main(int argc, char **argv) {
 
 	if ((argc - optind) != 1) {
 		cout << usage << endl;
-		throw(runtime_error("Wrong number of input arguments."));
+        QI_EXCEPTION("Wrong number of input arguments.");
 	}
 
     string fname(argv[optind++]);
