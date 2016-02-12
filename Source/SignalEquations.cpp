@@ -134,13 +134,13 @@ VectorXcd One_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1) {
 	return M;
 }
 
-VectorXcd One_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1, cdbl T2, cdbl B1) {
-    VectorXcd M = VectorXcd::Zero(flip.size());
+VectorXcd One_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
     ArrayXd sa = (B1 * flip).sin();
     ArrayXd ca = (B1 * flip).cos();
-    double e1 = exp(-TR / T1);
-    double e2 = exp(-TE / T2); // T2' is incorporated into PD in this formalism
-    M.real() = PD * e2 * ((1. - e1) * sa) / (1. - e1*ca);
+    double E1 = exp(-TR / T1);
+    double E2 = exp(-TE / T2); // T2' is incorporated into PD in this formalism
+    complex<double> phase = polar(PD * E2, 2. * M_PI * TE * f0);
+    VectorXcd M = phase * (((1. - E1) * sa) / (1. - E1*ca));
     return M;
 }
 
@@ -342,32 +342,36 @@ VectorXcd Two_SPGR(carrd &flip, cdbl TR,
 	return SigComplex(signal);
 }
 
-VectorXcd Two_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE,
-                        cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl tau_a, cdbl f_a, cdbl B1) {
+VectorXcd Two_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD,
+                        cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, 
+                        cdbl tau_a, cdbl f_a, 
+                        cdbl f0_a, cdbl f0_b, cdbl B1) {
     Matrix2d A, eATR;
-    Vector2d M0, Mobs;
-    MagVector signal(3, flip.size()); signal.setZero();
+    Vector2d M0, Mz;
+    Vector2cd Mxy;
     double k_ab, k_ba, f_b;
     CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
     M0 << f_a, f_b;
     A << -(1./T1_a) - k_ab,              k_ba,
                       k_ab, -(1./T1_b) - k_ba;
     eATR = (TR*A).exp();
-    Matrix2d e2 = Matrix2d::Zero();
-    e2(0,0) = exp(-TE/T2_a); // T2' absorbed into PD as it effects both components equally
-    e2(1,1) = exp(-TE/T2_b);
+    Matrix2cd echo = Matrix2cd::Zero();
+    echo(0,0) = polar(exp(-TE/T2_a),2.*M_PI*f0_a); // T2' absorbed into PD as it effects both components equally
+    echo(1,1) = polar(exp(-TE/T2_b),2.*M_PI*f0_b);
     const Vector2d RHS = (Matrix2d::Identity() - eATR) * M0;
+    VectorXcd signal(flip.size());
     for (int i = 0; i < flip.size(); i++) {
         const double a = flip[i] * B1;
-        Mobs = e2 * (Matrix2d::Identity() - eATR*cos(a)).partialPivLu().solve(RHS * sin(a));
-        signal(1, i) = PD * Mobs.sum();
+        Mz.noalias() = (Matrix2d::Identity() - eATR*cos(a)).partialPivLu().solve(RHS);
+        Mxy.noalias() = echo * Mz * sin(a);
+        signal(i) = PD * (Mxy(0) + Mxy(1));
     }
-    return SigComplex(signal);
+    return signal;
 }
 
 MatrixXd Two_SSFP_Matrix(carrd &flip, carrd &phi, const double TR,
-                   cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
-                   cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
+                         cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
+                         cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     const double E1_a = exp(-TR/T1_a);
     const double E1_b = exp(-TR/T1_b);
     const double E2_a = exp(-TR/T2_a);
@@ -386,7 +390,6 @@ MatrixXd Two_SSFP_Matrix(carrd &flip, carrd &phi, const double TR,
     MatrixXd M(4, flip.size());
     Matrix6d LHS;
     Vector6d RHS;
-    Vector6d mc;
     RHS << 0, 0, 0, 0, -E1_b*K3*f_b + f_a*(-E1_a*K1 + 1), -E1_a*K4*f_a + f_b*(-E1_b*K2 + 1);
 
     for (int i = 0; i < flip.size(); i++) {
@@ -403,15 +406,14 @@ MatrixXd Two_SSFP_Matrix(carrd &flip, carrd &phi, const double TR,
                -E2_a*K4*stb, -E2_b*K2*stb, -E2_a*K4*ctb, -E2_b*K2*ctb + 1, 0, 0,
                -sa, 0, 0, 0, -E1_a*K1 + ca, -E1_b*K3,
                 0, -sa, 0, 0, -E1_a*K4, -E1_b*K2 + ca;
-        mc = LHS.partialPivLu().solve(RHS);
-        M.col(i) = mc.head(4);
+        M.col(i).noalias() = (LHS.partialPivLu().solve(RHS)).head(4);
     }
     return M;
 }
 
 MatrixXd Two_SSFP_Analytic(carrd &flip, carrd &phi, const double TR,
-                   cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
-                   cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
+                           cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
+                           cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     const double E1_a = exp(-TR/T1_a);
     const double E1_b = exp(-TR/T1_b);
     const double E2_a = exp(-TR/T2_a);
@@ -511,10 +513,10 @@ VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
                    cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     eigen_assert(flip.size() == phi.size())
 
-    MatrixXd M = Two_SSFP_Matrix(flip, phi, TR, PD, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
+    MatrixXd M = Two_SSFP_Matrix(flip, phi, TR, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
     VectorXcd mc(flip.size());
-    mc.real() = M.row(0) + M.row(1);
-    mc.imag() = M.row(2) + M.row(3);
+    mc.real() = PD * (M.row(0) + M.row(1));
+    mc.imag() = PD * (M.row(2) + M.row(3));
     return mc;
 }
 
@@ -523,7 +525,7 @@ VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
                         cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
     eigen_assert(flip.size() == phi.size())
 
-    MatrixXd M = Two_SSFP_Matrix(flip, phi, TR, PD, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
+    MatrixXd M = Two_SSFP_Matrix(flip, phi, TR, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
 
     const double sE2_a = exp(-TR/(2.*T2_a));
     const double sE2_b = exp(-TR/(2.*T2_b));
@@ -547,8 +549,8 @@ VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
 
     const MatrixXd Me = echo*M;
     VectorXcd mce(flip.size());
-    mce.real() = Me.row(0) + Me.row(1);
-    mce.imag() = Me.row(2) + Me.row(3);
+    mce.real() = PD * (Me.row(0) + Me.row(1));
+    mce.imag() = PD * (Me.row(2) + Me.row(3));
     return mce;
 }
 
@@ -596,7 +598,7 @@ VectorXcd Two_SSFP_Finite(carrd &flip, const bool spoil,
 	
 	for (int i = 0; i < flip.size(); i++) {
 		A.block(0,0,3,3) = A.block(3,3,3,3) = InfinitesimalRF(B1 * flip(i) / Trf);
-		l1 = (-(RpOpK+A)*Trf).exp();
+		l1.noalias() = (-(RpOpK+A)*Trf).exp();
 		Vector6d m1 = (RpO + A).partialPivLu().solve(Rm0);
 		mp.noalias() = Cm2 + (I - l1*C*l2).partialPivLu().solve((I - l1)*(m1 - Cm2));
 		me.noalias() = le*(mp - m2) + m2;				
@@ -618,11 +620,16 @@ VectorXcd Three_SPGR(carrd &flip, cdbl TR, cdbl PD,
 	return r;
 }
 
-VectorXcd Three_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE,
-                          cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl T1_c, cdbl T2_c, cdbl tau_a, cdbl f_a, cdbl f_c, cdbl B1) {
+VectorXcd Three_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD,
+                          cdbl T1_a, cdbl T2_a, 
+                          cdbl T1_b, cdbl T2_b, 
+                          cdbl T1_c, cdbl T2_c, 
+                          cdbl tau_a, cdbl f_a, cdbl f_c, 
+                          cdbl f0_a, cdbl f0_b, cdbl f0_c,
+                          cdbl B1) {
     double f_ab = 1. - f_c;
-    VectorXcd m_ab = Two_SPGR_Echo(flip, TR, TE, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, B1);
-    VectorXcd m_c  = One_SPGR_Echo(flip, TR, TE, PD * f_c, T1_c, T2_c, B1);
+    VectorXcd m_ab = Two_SPGR_Echo(flip, TR, TE, PD * f_ab, T1_a, T2_a, T1_b, T2_b, tau_a, f_a / f_ab, f0_a, f0_b, B1);
+    VectorXcd m_c  = One_SPGR_Echo(flip, TR, TE, PD * f_c, T1_c, T2_c, f0_c, B1);
     VectorXcd r = m_ab + m_c;
     return r;
 }
