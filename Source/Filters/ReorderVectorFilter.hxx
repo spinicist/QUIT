@@ -5,7 +5,6 @@ namespace itk {
 
 template<typename TImage>
 void ReorderVectorFilter<TImage>::GenerateOutputInformation() {
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	Superclass::GenerateOutputInformation();
 	m_fullsize = this->GetInput()->GetNumberOfComponentsPerPixel();
 
@@ -13,18 +12,16 @@ void ReorderVectorFilter<TImage>::GenerateOutputInformation() {
 		m_blocksize = m_fullsize;
 
 	if ((m_fullsize % m_blocksize) != 0) {
-		throw(std::runtime_error("Fullsize must be an integer multiple of blocksize."));
+        itkExceptionMacro("Fullsize must be an integer multiple of blocksize.");
 	}
 	if ((m_blocksize % m_stride) != 0) {
-		throw(std::runtime_error("Blocksize must be an integer multiple of stride."));
+        itkExceptionMacro("Blocksize must be an integer multiple of stride.");
 	}
 	m_blocks = m_fullsize / m_blocksize;
-	//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
 }
 
 template<typename TImage>
 void ReorderVectorFilter<TImage>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
-	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
 	ImageRegionConstIterator<TImage> inIt(this->GetInput(), region);
 	ImageRegionIterator<TImage>      outIt(this->GetOutput(), region);
 

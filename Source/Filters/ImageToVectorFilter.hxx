@@ -23,9 +23,9 @@ void ImageToVectorFilter<TInput>::GenerateOutputInformation() {
     if (m_BlockSize == 0) {
         m_BlockSize = inputRegion.GetSize()[OutputDimension];
     } else if (m_BlockSize > inputRegion.GetSize()[OutputDimension]) {
-        throw(std::runtime_error("Block size is larger than input image length."));
+        itkExceptionMacro("Block size is larger than input image length.");
     } else if (inputRegion.GetSize()[OutputDimension] % m_BlockSize) {
-        throw(std::runtime_error("Block size does not divide input image length."));
+        itkExceptionMacro("Block size does not divide input image length.");
     }
     outputPtr->SetNumberOfComponentsPerPixel(m_BlockSize);
     outputPtr->SetLargestPossibleRegion(inputRegion.Slice(OutputDimension));
@@ -58,7 +58,7 @@ void ImageToVectorFilter<TInput>::GenerateData() {
     size_t blockEnd = m_BlockStart + m_BlockSize;
     size_t inputLength = region.GetSize()[OutputDimension];
     if (blockEnd > inputLength) {
-        throw(std::runtime_error("Block end " + std::to_string(blockEnd) + " would be greater than input length (" + std::to_string(inputLength) + ")"));
+        itkExceptionMacro("Block end " << blockEnd << " would be greater than input length (" << inputLength << ")");
     }
     region.GetModifiableSize()[OutputDimension] = 0;
     for (int i = 0; i < m_BlockSize; i ++) {

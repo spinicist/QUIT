@@ -5,13 +5,11 @@ namespace itk {
 
 template<typename TPixel>
 VectorToImageFilter<TPixel>::VectorToImageFilter() {
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	m_tiler = TTiler::New();
 }
 
 template<typename TPixel>
 void VectorToImageFilter<TPixel>::GenerateOutputInformation() {
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	auto out = this->GetOutput();
 	auto in  = this->GetInput();
 	if ( !out || !in ) {
@@ -54,9 +52,7 @@ void VectorToImageFilter<TPixel>::GenerateOutputInformation() {
 
 template<typename TPixel>
 void VectorToImageFilter<TPixel>::Update() {
-	//std::cout << __PRETTY_FUNCTION__ << std::endl;
 	m_tiler->Update();
-	//this->GraftOutput(m_tiler->GetOutput());
 }
 
 } // End namespace itk

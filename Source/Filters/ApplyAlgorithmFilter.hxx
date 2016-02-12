@@ -57,62 +57,53 @@ SizeValueType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetEva
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetInput(const size_t i, const TDataVectorImage *image) {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
 		this->SetNthInput(i, const_cast<TDataVectorImage*>(image));
 	} else {
-		throw(runtime_error("Data input exceeds range"));
+        itkExceptionMacro("Requested input " << i << " does not exist (" << m_algorithm->numInputs() << " inputs)");
 	}
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetConst(const size_t i, const TScalarImage *image) {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		this->SetNthInput(m_algorithm->numInputs() + 1 + i, const_cast<TScalarImage*>(image));
 	} else {
-		throw(runtime_error("ConstInput " + to_string(i) + " out of range (there are " + to_string(m_algorithm->numConsts()) + " inputs)"));
+        itkExceptionMacro("Requested const input " << i << " does not exist (" << m_algorithm->numConsts() << " const inputs)");
 	}
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetMask(const TScalarImage *image) {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	this->SetNthInput(m_algorithm->numInputs(), const_cast<TScalarImage*>(image));
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetInput(const size_t i) const -> typename TDataVectorImage::ConstPointer {
-	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numInputs()) {
 		return static_cast<const TDataVectorImage *> (this->ProcessObject::GetInput(i));
 	} else {
-		throw(runtime_error(__PRETTY_FUNCTION__ +
-		                    string("Input ") + to_string(i) +
-		                    " out of range (" + to_string(m_algorithm->numInputs()) + ")"));
+        itkExceptionMacro("Requested input " << i << " does not exist (" << m_algorithm->numInputs() << " inputs)");
 	}
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetConst(const size_t i) const -> typename TScalarImage::ConstPointer {
-	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numConsts()) {
 		size_t index = m_algorithm->numInputs() + 1 + i;
 		return static_cast<const TScalarImage *> (this->ProcessObject::GetInput(index));
 	} else {
-		throw(runtime_error("Get Data Input out of range."));
+        itkExceptionMacro("Requested const input " << i << " does not exist (" << m_algorithm->numConsts() << " const inputs)");
 	}
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMask() const -> typename TScalarImage::ConstPointer {
-	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	return static_cast<const TScalarImage *>(this->ProcessObject::GetInput(m_algorithm->numInputs()));
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 DataObject::Pointer ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::MakeOutput(unsigned int idx) {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	DataObject::Pointer output;
     if (idx == ResidualsOutput) {
 		auto img = TScalarVectorImage::New();
@@ -130,7 +121,6 @@ DataObject::Pointer ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetOutput(const size_t i) -> TScalarImage *{
-	////std::cout <<  __PRETTY_FUNCTION__ << endl;
 	if (i < m_algorithm->numOutputs()) {
         return dynamic_cast<TScalarImage *>(this->ProcessObject::GetOutput(i+StartOutputs));
 	} else {
@@ -150,23 +140,22 @@ auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetIterationsOu
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputInformation() {
-	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	Superclass::GenerateOutputInformation();
 	size_t size = 0;
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		size += this->GetInput(i)->GetNumberOfComponentsPerPixel();
     }
 	if (m_algorithm->dataSize() != size) {
-        throw(std::runtime_error(string(__PRETTY_FUNCTION__) + "Sequence size (" + to_string(m_algorithm->dataSize()) + ") does not match input size (" + to_string(size) + ")"));
+        itkExceptionMacro("Sequence size (" << m_algorithm->dataSize() << ") does not match input size (" << size << ")");
 	}
     if (size == 0) {
-        throw(std::runtime_error(string(__PRETTY_FUNCTION__) + "Total input size cannot be 0"));
+        itkExceptionMacro("Total input size cannot be 0");
     }
 
-    auto input =     this->GetInput(0);
-    auto region =    input->GetLargestPossibleRegion();
-    auto spacing =   input->GetSpacing();
-    auto origin =    input->GetOrigin();
+    auto input     = this->GetInput(0);
+    auto region    = input->GetLargestPossibleRegion();
+    auto spacing   = input->GetSpacing();
+    auto origin    = input->GetOrigin();
     auto direction = input->GetDirection();
     if (m_verbose) std::cout << "Allocating output memory" << std::endl;
     for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
@@ -191,20 +180,17 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
     i->SetOrigin(origin);
     i->SetDirection(direction);
     i->Allocate(true);
-    //std::cout <<  "Finished " << __PRETTY_FUNCTION__ << endl;
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-//void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() {
-	//std::cout <<  __PRETTY_FUNCTION__ << std::endl;
     const unsigned int LastDim = ImageDim - 1;
     TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
     if (m_stop != 0) {
         if (m_start < region.GetIndex()[LastDim])
-            throw(std::runtime_error("Start slice is before start of image."));
+            itkExceptionMacro("Start slice is before start of image.");
         if ((m_stop - m_start) > region.GetSize()[LastDim])
-            throw(std::runtime_error("Stop slice is past end of image"));
+            itkExceptionMacro("Stop slice is past end of image");
         region.GetModifiableIndex()[LastDim] = m_start;
         region.GetModifiableSize()[LastDim] = m_stop - m_start;
     }
