@@ -40,13 +40,10 @@
     void ThreadPool::setDebug(const bool d) { m_debug = d; }
     
     void ThreadPool::enqueue(TFunc f) {
-        {   // Wait for space in the queue
-            std::unique_lock<std::mutex> qLock(m_queueMutex);
-            m_queueCondition.wait(qLock, [this]{ return m_tasks.size() < 2 * m_threads.size(); });
-        }
-        
         { // Lock will exist in this scope
             std::unique_lock<std::mutex> tLock(m_tasksMutex);
+            if (m_debug) std::cout << "Checking for space for task " << &f << std::endl;
+            m_queueCondition.wait(tLock, [this]{ return m_tasks.size() < 2 * m_threads.size(); });
             m_tasks.push(f);
             if (m_debug) std::cout << "Pushed task" << &f << std::endl;
         }
@@ -65,7 +62,7 @@
                 }
                 task = m_tasks.front();
                 m_tasks.pop();
-                m_queueCondition.notify_one(); // Wake up main thread if something is waiting to enqueue
+                m_queueCondition.notify_all(); // Wake up main thread if something is waiting to enqueue
                 if (m_debug) std::cout << "Starting task " << &task << std::endl;
             }
             task();

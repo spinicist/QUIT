@@ -28,7 +28,7 @@ class ThreadPool {
 private:
     std::vector<std::thread> m_threads;
     std::queue<std::function<void ()>> m_tasks;
-    std::mutex m_tasksMutex, m_queueMutex;
+    std::mutex m_tasksMutex;
     std::condition_variable m_queueCondition, m_threadCondition;
     
     bool m_stopping, m_debug;
