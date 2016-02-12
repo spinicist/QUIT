@@ -47,10 +47,13 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetVerbose(const bool v) { m_verbose = v; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMeanEvalTime() const { return m_meanTime; }
+RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetTotalTime() const { return m_elapsedTime; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-SizeValueType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetEvaluations() const { return m_evaluations; }
+RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMeanTime() const { return m_elapsedTime / m_unmaskedVoxels; }
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+SizeValueType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetEvaluations() const { return m_unmaskedVoxels; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetInput(const size_t i, const TDataVectorImage *image) {
@@ -206,25 +209,24 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
         region.GetModifiableSize()[LastDim] = m_stop - m_start;
     }
 
-    unsigned int numPix = 0;
     ImageRegionConstIterator<TScalarImage> maskIter;
     const auto mask = this->GetMask();
-    if (mask && m_verbose) {
-        std::cout << "Counting voxels in mask..." << std::endl;
-        numPix = 0;
+    if (mask) {
+        if (m_verbose) std::cout << "Counting voxels in mask..." << std::endl;
+        m_unmaskedVoxels = 0;
         maskIter = ImageRegionConstIterator<TScalarImage>(mask, region);
         maskIter.GoToBegin();
         while (!maskIter.IsAtEnd()) {
             if (maskIter.Get())
-                ++numPix;
+                ++m_unmaskedVoxels;
             ++maskIter;
         }
         maskIter.GoToBegin(); // Reset
-        std::cout << "Found " << numPix << " unmasked voxels." << std::endl;
+        if (m_verbose) std::cout << "Found " << m_unmaskedVoxels << " unmasked voxels." << std::endl;
     } else {
-        numPix = region.GetNumberOfPixels();
+        m_unmaskedVoxels = region.GetNumberOfPixels();
     }
-	ProgressReporter progress(this, 0, numPix, 10);
+	ProgressReporter progress(this, 0, m_unmaskedVoxels, 10);
 
 	vector<ImageRegionConstIterator<TDataVectorImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
@@ -245,9 +247,10 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
 	ImageRegionIterator<TScalarVectorImage> residIter(this->GetResidOutput(), region);
     ImageRegionIterator<TIterationsImage> iterationsIter(this->GetIterationsOutput(), region);
 	typedef typename TAlgorithm::TArray TArray;
-    TimeProbe clock;
-    QI::ThreadPool threadPool(m_poolsize);
     if (m_verbose) std::cout << "Starting processing" << std::endl;
+    QI::ThreadPool threadPool(m_poolsize);
+    TimeProbe clock;
+    clock.Start();
 	while(!dataIters[0].IsAtEnd()) {
 		if (!mask || maskIter.Get()) {
             auto task = [=] {
@@ -307,8 +310,9 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
 		}
 		++residIter;
         ++iterationsIter;
-	}
-	if (m_verbose) std::cout << "Finished processing" << std::endl;
+    }
+    clock.Stop();
+    m_elapsedTime = clock.GetTotal();
 }
 } // namespace ITK
 

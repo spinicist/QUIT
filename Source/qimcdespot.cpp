@@ -582,20 +582,17 @@ Options:\n\
         boundsFile.close();
     }
 
-    itk::TimeProbe clock;
-	if (verbose) {
+    if (verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
-        clock.Start();
-	}
-	apply->Update();
-	if (verbose) {
-        clock.Stop();
-        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
-        cout << "Mean evaluation time per voxel was " << apply->GetMeanEvalTime() << "s " << endl;
-		cout << "Writing results files." << endl;
-	}
+    }
+    apply->Update();
+    if (verbose) {
+        cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
+        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s " << endl;
+        cout << "Writing results files." << endl;
+    }
 	for (int i = 0; i < model->nParameters(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
 	}

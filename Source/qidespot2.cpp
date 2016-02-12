@@ -353,19 +353,17 @@ int main(int argc, char **argv) {
 	if (mask)
 		DESPOT2->SetMask(mask->GetOutput());
 
-    itk::TimeProbe clock;
 	if (verbose) {
 		cout << "DESPOT2 setup complete. Processing." << endl;
 		auto monitor = QI::GenericMonitor::New();
 		DESPOT2->AddObserver(itk::ProgressEvent(), monitor);
-        clock.Start();
 	}
 	DESPOT2->Update();
 	if (verbose) {
-        clock.Stop();
-        clock.Stop();
-        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
-		cout << "Writing results." << endl;
+        cout << "Elapsed time was " << DESPOT2->GetTotalTime() << "s" << endl;
+        cout << "Mean time per voxel was " << DESPOT2->GetMeanTime() << "s" << endl;
+        cout << "Writing results files." << endl;
+
 	}
 	outPrefix = outPrefix + "D2_";
     WriteImage(DESPOT2->GetOutput(0), outPrefix + "PD.nii");

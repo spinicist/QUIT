@@ -546,18 +546,16 @@ int run_main(int argc, char **argv) {
     if (mask) {
         apply->SetMask(mask->GetOutput());
     }
-    itk::TimeProbe clock;
     if (verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
-        clock.Start();
     }
     apply->Update();
     if (verbose) {
-        clock.Stop();
-        cout << "Elapsed time was " << clock.GetTotal() << "s" << endl;
-        cout << "Writing output files. Prefix is " << outPrefix << endl;
+        cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
+        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
+        cout << "Writing results files." << endl;
     }
     outPrefix = outPrefix + "FM_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");

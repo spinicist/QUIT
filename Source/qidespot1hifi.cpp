@@ -226,7 +226,11 @@ int main(int argc, char **argv) {
 		apply->AddObserver(itk::ProgressEvent(), monitor);
 	}
 	apply->Update();
-	if (verbose) cout << "Writing results." << endl;
+    if (verbose) {
+        cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
+        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
+        cout << "Writing results files." << endl;
+    }
 	outPrefix = outPrefix + "HIFI_";
 
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");

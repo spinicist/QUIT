@@ -71,11 +71,11 @@ public:
     TScalarVectorImage *GetResidOutput();
     TIterationsImage   *GetIterationsOutput();
 
-    RealTimeClock::TimeStampType GetMeanEvalTime() const;
+    RealTimeClock::TimeStampType GetTotalTime() const;
+    RealTimeClock::TimeStampType GetMeanTime() const;
     SizeValueType GetEvaluations() const;
 
 	virtual void GenerateOutputInformation() override;
-    //virtual void ThreadedGenerateData(const TRegion &outputRegionForThread, ThreadIdType threadId) override;
     virtual void GenerateData() override;
 
 protected:
@@ -87,8 +87,8 @@ protected:
 	bool m_scale_to_mean = false, m_verbose = false;
     size_t m_poolsize = 1, m_start = 0, m_stop = 0;
 
-    RealTimeClock::TimeStampType m_meanTime = 0.0;
-    SizeValueType m_evaluations = 0;
+    RealTimeClock::TimeStampType m_elapsedTime = 0.0;
+    SizeValueType m_unmaskedVoxels = 0;
     static const int ResidualsOutput = 0;
     static const int IterationsOutput = 1;
     static const int StartOutputs = 2;

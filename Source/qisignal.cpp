@@ -47,7 +47,7 @@ protected:
 	shared_ptr<Model> m_model;
     double m_sigma = 0.0;
     size_t m_nThreads = 1;
-    itk::RealTimeClock::TimeStampType m_meanTime = 0.0;
+    itk::RealTimeClock::TimeStampType m_totalTime = 0.0;
     itk::SizeValueType m_evaluations = 0;
 
 public:
@@ -104,8 +104,9 @@ public:
 	}
 	void SetSigma(const double s) { m_sigma = s; }
 
-    itk::RealTimeClock::TimeStampType GetMeanTime() { return m_meanTime; }
-    itk::SizeValueType GetEvaluations() { return m_evaluations; }
+    itk::RealTimeClock::TimeStampType GetTotalTime() const { return m_totalTime; }
+    itk::RealTimeClock::TimeStampType GetMeanTime() const { return m_totalTime / m_evaluations; }
+    itk::SizeValueType GetEvaluations() const { return m_evaluations; }
 
 	virtual void GenerateOutputInformation() override {
 		//std::cout <<  __PRETTY_FUNCTION__ << endl;
@@ -139,8 +140,10 @@ protected:
 			maskIter = itk::ImageRegionConstIterator<TImage>(mask, region);
 		}
 		itk::ImageRegionIterator<TCVImage> outputIter(this->GetOutput(), region);
-        itk::TimeProbe clock;
         QI::ThreadPool threadPool(m_nThreads);
+        itk::TimeProbe clock;
+        clock.Start();
+        m_evaluations = 0;
 		while(!inIters[0].IsAtEnd()) {
 			if (!mask || maskIter.Get()) {
                 auto task = [=] {
@@ -164,6 +167,7 @@ protected:
                     outputIter.Set(dataVector);
                 };
                 threadPool.enqueue(task);
+                ++m_evaluations;
 			}
 			if (mask)
 				++maskIter;
@@ -173,6 +177,8 @@ protected:
 			}
 			++outputIter;
 		}
+        clock.Stop();
+        m_totalTime = clock.GetTotal();
 	}
 
 	itk::DataObject::Pointer MakeOutput(unsigned int idx) {
