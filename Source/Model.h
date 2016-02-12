@@ -73,6 +73,7 @@ class SCD : public Model {
 
     virtual VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const override;
     virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
 	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
     virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TD) const override;
 	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;

@@ -25,10 +25,13 @@ ptrdiff_t Model::ParameterIndex(const string &p) const {
 }
 
 ArrayXcd Model::scale(const ArrayXcd &s) const {
+    //std::cout << __PRETTY_FUNCTION__ << std::endl;
 	if (m_scale_to_mean) {
+        //std::cout << "Scaling to mean value" << std::endl;
 		ArrayXcd scaled = s / s.abs().mean();
 		return scaled;
 	} else {
+        //std::cout << "Not scaling" << std::endl;
 		return s;
 	}
 }
@@ -88,6 +91,9 @@ VectorXcd SCD::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 	return scale(One_SPGR(a, TR, p[0], p[1], p[4]));
 }
 
+VectorXcd SCD::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
+    return scale(One_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4]));
+}
 VectorXcd SCD::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
 	return scale(One_SSFP_Finite(a, true, TR, Trf, TE, 0, p[0], p[1], p[2], p[3], p[4]));
 }
@@ -177,7 +183,7 @@ VectorXcd MCD2::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 }
 
 VectorXcd MCD2::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
-    return scale(Two_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[8]));
+    return scale(Two_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
 }
 
 VectorXcd MCD2::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
@@ -312,7 +318,7 @@ VectorXcd MCD3::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 }
 
 VectorXcd MCD3::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
-    return scale(Three_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[11]));
+    return scale(Three_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[10], p[10], p[11]));
 }
 
 VectorXcd MCD3::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
@@ -393,7 +399,7 @@ VectorXcd MCD3_f0::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 }
 
 VectorXcd MCD3_f0::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
-    return scale(Three_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[12]));
+    return scale(Three_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[11], p[12]));
 }
 
 VectorXcd MCD3_f0::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
@@ -476,9 +482,9 @@ VectorXcd MCD3_NoEx::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 }
 
 VectorXcd MCD3_NoEx::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
-    return scale(One_SPGR_Echo(a, TR, TE, p[0]*p[7], p[1], p[2], p[10]) +
-                 One_SPGR_Echo(a, TR, TE, p[0]*(1-p[7]-p[8]), p[3], p[4], p[10]) +
-                 One_SPGR_Echo(a, TR, TE, p[0]*p[8], p[5], p[6], p[10]));
+    return scale(One_SPGR_Echo(a, TR, TE, p[0]*p[7], p[1], p[2], p[9], p[10]) +
+                 One_SPGR_Echo(a, TR, TE, p[0]*(1-p[7]-p[8]), p[3], p[4], p[9], p[10]) +
+                 One_SPGR_Echo(a, TR, TE, p[0]*p[8], p[5], p[6], p[9], p[10]));
 }
 
 
