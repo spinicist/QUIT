@@ -334,9 +334,7 @@ double SSFPSimple::bwMult() const { return 1.; }
 
 ArrayXd SSFPSimple::weights(const double f0) const {
     ArrayXd offset = m_phi + (M_PI * f0*m_TR);
-	ArrayXd weight = 0.75 * (offset / 2).sin().square();
-	ArrayXXd allWeights = weight.transpose().replicate(m_flip.size(), 1);
-	ArrayXd weights = Map<ArrayXd>(allWeights.data(), size());
+	ArrayXd weights = 0.75 * (offset / 2).sin().square();
 	return weights;
 }
 
