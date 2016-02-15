@@ -1,1 +1,0 @@
-static const std::string Version = "QUIT @QUIT_BUILD_VERSION@";
