@@ -30,7 +30,7 @@ ELSE(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
     SET(QUIT_BUILD_VERSION 1.1)
 ENDIF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
 MESSAGE( STATUS "Version: ${QUIT_BUILD_VERSION}" )
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion.in ${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion @ONLY)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion.h.in ${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion.h @ONLY)
 
 add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx

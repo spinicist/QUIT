@@ -9,21 +9,20 @@
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  */
-
-#include "Util.h"
 #include <iostream>
+using namespace std;
 
 #include "itkVectorMagnitudeImageFilter.h"
 #include "itkMultiplyImageFilter.h"
 #include "itkDivideImageFilter.h"
 
-using namespace std;
+#include "Util.h"
 
 namespace QI {
 
+// This file contains "const std::string Version = "version";"
+#include "BuildVersion.h"
 const std::string &GetVersion() {
-    // This file contains "static const std::string Version = "version";"
-    #include "BuildVersion"
     return Version;
 }
 
