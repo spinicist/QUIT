@@ -15,24 +15,27 @@ find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(Source)
 
-# Set up the version file
-IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
-    FIND_PACKAGE(Git)
-    IF(GIT_FOUND)
-        EXECUTE_PROCESS(
-        COMMAND ${GIT_EXECUTABLE} describe --tags
-        OUTPUT_VARIABLE "QUIT_BUILD_VERSION"
-        OUTPUT_STRIP_TRAILING_WHITESPACE)
-    ELSE(GIT_FOUND)
-        SET(QUIT_BUILD_VERSION 1.1)
-    ENDIF(GIT_FOUND)
-ELSE(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+# Setup version
+include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file
+add_custom_target( qi_version ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.h )
+message( STATUS "Source: ${CMAKE_CURRENT_SOURCE_DIR}" )
+FIND_PACKAGE(Git)
+IF( GIT_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git )
+    EXECUTE_PROCESS(
+    COMMAND ${GIT_EXECUTABLE} describe --tags
+    OUTPUT_VARIABLE "QUIT_BUILD_VERSION"
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+ELSE( GIT_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git )
     SET(QUIT_BUILD_VERSION 1.1)
-ENDIF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+ENDIF( GIT_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git )
+MESSAGE( STATUS "Source: " ${CMAKE_CURRENT_SOURCE_DIR} )
+MESSAGE( STATUS "Build:  " ${CMAKE_CURRENT_BINARY_DIR} )
 MESSAGE( STATUS "Version: ${QUIT_BUILD_VERSION}" )
-CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion.h.in ${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion.h @ONLY)
+CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/CMake/GetVersion.h.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.h @ONLY )
+set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.h PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
 add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
+add_dependencies( qi_core qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
                                       Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
