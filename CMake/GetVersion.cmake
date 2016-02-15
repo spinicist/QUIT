@@ -1,10 +1,10 @@
 # Set up the version file
-set( VERSION_FILE_NAME "IncludeVersion")
+set( VERSION_FILE_NAME "VersionFile")
 
 find_package(Git)
 set( BUILD_VERSION 1.1 )
 if( GIT_FOUND )
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --dirty=modified RESULT_VARIABLE GIT_RES OUTPUT_VARIABLE GIT_DESCRIPTION )
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --dirty RESULT_VARIABLE GIT_RES OUTPUT_VARIABLE GIT_DESCRIPTION )
     if( NOT ${GIT_RES} EQUAL 0 )
         message( WARNING "Git failed (not a repo, or no tags). Defaulting to static build number." )
     endif()

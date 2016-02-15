@@ -17,11 +17,10 @@ include_directories(Source)
 
 # Setup version
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file
-set( VERSION_FILE_NAME "IncludeVersion")
+set( VERSION_FILE_NAME "VersionFile")
 add_custom_target( qi_version ALL DEPENDS version_depend_dummy )
 add_custom_command(OUTPUT version_depend_dummy
                    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/CMake/GetVersion.cmake)
-message( STATUS "version: ${VERSION_FILE_NAME}")
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
 add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
