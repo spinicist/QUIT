@@ -17,21 +17,13 @@ include_directories(Source)
 
 # Setup version
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file
-add_custom_target( qi_version ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.h )
+add_custom_target( qi_version ALL
+                              DEPENDS VERSION_DEPENDENCY )
 message( STATUS "Source: ${CMAKE_CURRENT_SOURCE_DIR}" )
-FIND_PACKAGE(Git)
-IF( GIT_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git )
-    EXECUTE_PROCESS(
-    COMMAND ${GIT_EXECUTABLE} describe --tags
-    OUTPUT_VARIABLE "QUIT_BUILD_VERSION"
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-ELSE( GIT_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git )
-    SET(QUIT_BUILD_VERSION 1.1)
-ENDIF( GIT_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git )
-MESSAGE( STATUS "Source: " ${CMAKE_CURRENT_SOURCE_DIR} )
-MESSAGE( STATUS "Build:  " ${CMAKE_CURRENT_BINARY_DIR} )
-MESSAGE( STATUS "Version: ${QUIT_BUILD_VERSION}" )
-CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/CMake/GetVersion.h.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.h @ONLY )
+add_custom_command(OUTPUT VERSION_DEPENDENCY
+                   COMMAND ${CMAKE_COMMAND} -DCMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/CMake/GetVersion.cmake)
+
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.h PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
 add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
