@@ -452,7 +452,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	if ((argc - optind) != 1) {
-		cout << "Incorrect number of arguments." << endl << usage << endl;
+		cout << "Incorrect number of arguments." << endl << QI::GetVersion() << endl << usage << endl;
 		return EXIT_FAILURE;
 	}
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
