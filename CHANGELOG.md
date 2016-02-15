@@ -1,5 +1,14 @@
 # QUIT Changelog #
 
+## Version 1.1 ##
+
+1. Bug-fixes for qimcdespot.
+2. All programs now print the version number with the usage string.
+3. Improved multi-threading that will make more consistent use of available
+threads.
+4. Added 'qisplitsubject' for splitting up images with multiple subjects
+scanned at the same time (e.g. ex-vivo scanning).
+
 ## Version 1.0 ##
 
 1. I gave up and used a version number for simplicity. The changelog will
