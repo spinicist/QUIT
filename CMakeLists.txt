@@ -13,14 +13,29 @@ include(${ITK_USE_FILE})
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
-
 include_directories(Source)
+
+# Set up the version file
+IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+    FIND_PACKAGE(Git)
+    IF(GIT_FOUND)
+        EXECUTE_PROCESS(
+        COMMAND ${GIT_EXECUTABLE} describe --tags
+        OUTPUT_VARIABLE "QUIT_BUILD_VERSION"
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    ELSE(GIT_FOUND)
+        SET(QUIT_BUILD_VERSION 1.1)
+    ENDIF(GIT_FOUND)
+ELSE(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+    SET(QUIT_BUILD_VERSION 1.1)
+ENDIF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/.git)
+MESSAGE( STATUS "Version: ${QUIT_BUILD_VERSION}" )
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion.in ${CMAKE_CURRENT_SOURCE_DIR}/Source/BuildVersion @ONLY)
 
 add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
                                       Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
-                                      Source/Filters/ApplyAlgorithmSliceBySliceFilter.h Source/Filters/ApplyAlgorithmSliceBySliceFilter.hxx
                                       Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
                                       Source/Filters/ReorderImageFilter.h Source/Filters/ReorderImageFilter.hxx
                                       Source/RegionContraction.h)

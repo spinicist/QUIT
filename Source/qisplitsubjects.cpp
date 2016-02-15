@@ -280,7 +280,7 @@ int main(int argc, char **argv) {
 		switch (c) {
 		case 'v': verbose = true; break;
 		case 'h':
-            cout << usage << endl;
+            cout << QI::GetVersion() << endl << usage << endl;
             return EXIT_SUCCESS;
         case 'r': reference = QI::ReadImage(optarg); break;
         case 'm': mask = QI::ReadImage<TLabelImage>(optarg); break;
@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
 	}
 
 	if ((argc - optind) != 1) {
-		cout << usage << endl;
+		cout << QI::GetVersion() << endl << usage << endl;
         QI_EXCEPTION("Wrong number of input arguments.");
 	}
 

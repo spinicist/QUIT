@@ -51,9 +51,10 @@
 
 namespace QI {
 
-const std::string &OutExt(); //!< Return the extension stored in $QUIT_EXT
-std::string StripExt(const std::string &filename);
-std::mt19937_64::result_type RandomSeed(); // Thread-safe random seed
+const std::string &GetVersion();                    //!< Return the version of the QI library
+const std::string &OutExt();                        //!< Return the extension stored in $QUIT_EXT
+std::string StripExt(const std::string &filename);  //!< Remove the extension from a filename
+std::mt19937_64::result_type RandomSeed();          //!< Thread-safe random seed
 
 void WriteResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false, const typename ImageF::Pointer scaleImage = ITK_NULLPTR);
 

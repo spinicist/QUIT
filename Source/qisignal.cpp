@@ -200,7 +200,7 @@ private:
 // Arguments / Usage
 //******************************************************************************
 const string usage {
-"Usage is: mcsignal [options]\n\
+"Usage is: qisignal [options]\n\
 \n\
 Calculates multi-component DESPOT signals (mainly for testing purposes).\n\
 The program will prompt for input (unless --no-prompt specified)\n\
@@ -325,7 +325,7 @@ int main(int argc, char **argv)
                     num_threads = std::thread::hardware_concurrency();
                 break;
 			case 'h':
-				cout << usage << endl;
+				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;

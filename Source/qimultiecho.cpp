@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
 			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
 			case 'r': all_residuals = true; break;
 			case 'h':
-				cout << usage << endl;
+				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;

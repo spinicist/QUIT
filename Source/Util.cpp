@@ -21,6 +21,12 @@ using namespace std;
 
 namespace QI {
 
+const std::string &GetVersion() {
+    // This file contains "static const std::string Version = "version";"
+    #include "BuildVersion"
+    return Version;
+}
+
 const std::string &OutExt() {
 	static char *env_ext = getenv("QUIT_EXT");
 	static string ext;

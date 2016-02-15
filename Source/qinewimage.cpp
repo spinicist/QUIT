@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
 				deltaVal = (stopVal - startVal) / (steps - 1);
 			} break;
 			case 'h':
-				cout << usage << endl;
+				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
@@ -132,11 +132,11 @@ int main(int argc, char **argv) {
 	}
 	if ((argc - optind) < 1) {
 		cerr << "Missing output filename." << endl;
-		cout << usage << endl;
+		cout << QI::GetVersion() << endl << usage << endl;
 		return EXIT_FAILURE;
 	} else if ((argc - optind) > 1) {
 		cerr << "Unexpected extra arguments." << endl;
-		cout << usage << endl;
+		cout << QI::GetVersion() << endl << usage << endl;
 		return EXIT_FAILURE;
 	}
 	string fName(argv[optind++]);

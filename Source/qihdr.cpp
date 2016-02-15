@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
             case 'h':
-                cout << usage << endl;
+                cout << QI::GetVersion() << endl << usage << endl;
                 return EXIT_SUCCESS;
             case 'D': print_dims = true; print_all = false; break;
             case 'T': print_type = true; print_all = false; break;

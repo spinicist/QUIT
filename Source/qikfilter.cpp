@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
             case 'd': debug = true; break;
             case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
             case 'h':
-                cout << usage << endl;
+                cout << QI::GetVersion() << endl << usage << endl;
                 return EXIT_SUCCESS;
             case '?': // getopt will print an error message
                 return EXIT_FAILURE;

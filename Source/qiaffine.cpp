@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 		switch (c) {
 			case 'v': verbose = true; break;
 			case 'h':
-				cout << usage << endl;
+				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
             case 'S': case 'X': case 'Y': case 'Z': case 'O':
 			case 0: break; // A flag
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (((argc - optind) == 0) || ((argc - optind) > 2)) {
-		cout << usage << endl;
+		cout << QI::GetVersion() << endl << usage << endl;
 		cout << "Incorrect number of arguments" << endl;
 		return EXIT_FAILURE;
 	}

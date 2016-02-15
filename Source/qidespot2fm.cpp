@@ -498,7 +498,7 @@ int run_main(int argc, char **argv) {
         }
     }
     if ((argc - optind) != 2) {
-        cout << usage << endl;
+        cout << QI::GetVersion() << endl << usage << endl;
         cout << "Wrong number of arguments. Need a T1 map and one SSFP file." << endl;
         return EXIT_FAILURE;
     }
@@ -578,7 +578,7 @@ int main(int argc, char **argv) {
 		switch (c) {
             case 'x': use_complex = true; break;
             case 'h':
-                cout << usage << endl;
+                cout << QI::GetVersion() << endl << usage << endl;
                 return EXIT_SUCCESS;
             case '?': // getopt will print an error message
                 return EXIT_FAILURE;

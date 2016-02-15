@@ -440,7 +440,7 @@ int main(int argc, char **argv) {
 				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
 				break;
 			case 'h':
-				cout << usage << endl;
+				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
             case 0:   // getopt set a flag from the long_opts
                 break;

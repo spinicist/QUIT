@@ -250,7 +250,7 @@ int main(int argc, char **argv) {
 		switch (c) {
 			case 'v': verbose = true; break;
 			case 'h':
-				cout << usage << endl;
+				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
 			case 0: break; // A flag
 			case 'm': case 'M': case 'p': case 'P':
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (!have_some_options) {
-		cout << usage << endl;
+		cout << QI::GetVersion() << endl << usage << endl;
 		return EXIT_FAILURE;
 	}
 

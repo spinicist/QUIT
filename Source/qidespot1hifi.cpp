@@ -176,7 +176,7 @@ int main(int argc, char **argv) {
                     num_threads = std::thread::hardware_concurrency();
                 break;
 			case 'h':
-				cout << usage << endl;
+				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
 			case '?': // getopt will print an error message
 				return EXIT_FAILURE;
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
 	}
 	if ((argc - optind) != 2) {
 		cerr << "Incorrect number of arguments." << endl;
-		cout << usage << endl;
+		cout << QI::GetVersion() << endl << usage << endl;
 		return EXIT_FAILURE;
 	}
 	
