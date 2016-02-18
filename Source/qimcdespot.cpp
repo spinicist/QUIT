@@ -45,7 +45,6 @@ void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF:
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
         auto file = QI::TimeseriesReaderF::New();
         auto data = QI::TimeseriesToVectorF::New();
-        auto reorder = QI::ReorderVectorF::New();
         QI::VectorImageF::Pointer image;
         if (verbose) cout << "Reading file: " << path << endl;
         file->SetFileName(path);
@@ -69,15 +68,6 @@ void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF:
         } else {
             QI_EXCEPTION("Unknown sequence type: " << type);
         }
-        if (type.find("SSFP") != std::string::npos) {
-            shared_ptr<SSFPSimple> s = static_pointer_cast<SSFPSimple>(seq->sequences().back());
-            if (flip) {
-                reorder->SetInput(data->GetOutput());
-                reorder->SetStride(s->phases());
-                reorder->Update();
-                image = reorder->GetOutput();
-            }
-        } 
         image->DisconnectPipeline(); // This step is really important.
         images.push_back(image);
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;
@@ -206,11 +196,7 @@ public:
         double B1 = inputs[1];
         ArrayXXd localBounds = m_bounds;
         if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
-            for (int i = 0; i < m_model->nParameters(); i++) {
-                if (m_model->ParameterNames()[i].find("f0") != std::string::npos) {
-                    localBounds.row(i) += f0;
-                }
-            }
+            localBounds.row(m_model->ParameterIndex("f0")) += f0;
             cost->m_weights = m_sequence->weights(f0);
         } else {
             cost->m_weights = ArrayXd::Ones(m_sequence->size());
@@ -310,11 +296,7 @@ class SRCAlgo : public MCDAlgo {
             ArrayXXd localBounds = m_bounds;
             ArrayXd weights = ArrayXd::Ones(m_sequence->size());
             if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
-                for (int i = 0; i < m_model->nParameters(); i++) {
-                    if (m_model->ParameterNames()[i].find("f0") != std::string::npos) {
-                        localBounds.row(i) += f0;
-                    }
-                }
+                localBounds.row(m_model->ParameterIndex("f0")) += f0;
                 weights = m_sequence->weights(f0);
             }
             localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
