@@ -95,6 +95,60 @@ private:
 
 } // End namespace itk
 
+QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, const bool verbose, const bool debug, const string &prefix) {
+    if (verbose) cout << "Padding image to valid FFT size." << endl;
+    typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
+    auto padFFT = PadFFTType::New();
+    padFFT->SetInput(invol);
+    padFFT->Update();
+    if (debug) QI::WriteImage(padFFT->GetOutput(), prefix + "_step1_padFFT" + QI::OutExt());
+    if (verbose) {
+        cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
+        cout << "Calculating Forward FFT." << endl;
+    }
+    typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
+    auto forwardFFT = FFFTType::New();
+    forwardFFT->SetInput(padFFT->GetOutput());
+    forwardFFT->Update();
+    if (debug) QI::WriteImage<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
+
+    typedef itk::FFTShiftImageFilter<QI::ImageXF, QI::ImageXF> ShiftType;
+    auto shiftFFT = ShiftType::New();
+    shiftFFT->SetInput(forwardFFT->GetOutput());
+    shiftFFT->Update();
+
+    if (verbose) cout << "Generating K-Space Filter." << endl;
+    auto k_filter = itk::TukeyFilter::New();
+    k_filter->SetImageProperties(padFFT->GetOutput());
+    k_filter->Update();
+    if (debug) QI::WriteImage(k_filter->GetOutput(), prefix + "_kfilter" + QI::OutExt());
+    if (verbose) cout << "Multiplying." << endl;
+    auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
+    mult->SetInput1(shiftFFT->GetOutput());
+    mult->SetInput2(k_filter->GetOutput());
+    if (debug) QI::WriteImage<QI::ImageXF>(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
+
+    auto unshiftFFT = ShiftType::New();
+    unshiftFFT->SetInput(mult->GetOutput());
+    unshiftFFT->Update();
+
+    if (verbose) cout << "Inverse FFT." << endl;
+    auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
+    inverseFFT->SetInput(unshiftFFT->GetOutput());
+    inverseFFT->Update();
+    if (debug) QI::WriteImage(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
+    if (verbose) cout << "Extracting original size image" << endl;
+    auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
+    extract->SetInput(inverseFFT->GetOutput());
+    extract->SetDirectionCollapseToSubmatrix();
+    extract->SetExtractionRegion(invol->GetLargestPossibleRegion());
+    extract->Update();
+    QI::ImageF::Pointer outvol = extract->GetOutput();
+    outvol->DisconnectPipeline();
+    return outvol;
+}
+
+
 //******************************************************************************
 // Arguments / Usage
 //******************************************************************************
@@ -153,69 +207,17 @@ int main(int argc, char **argv) {
         cout << "Incorrect number of arguments." << endl << usage << endl;
         return EXIT_FAILURE;
     }
-    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
+
     string fname(argv[optind++]);
     if (prefix == "")
         prefix = fname.substr(0, fname.find(".nii"));
     string outname = prefix + "_filtered" + QI::OutExt();
-    if (verbose) cout << "Output filename: " << outname << endl;
 
-    auto inFile = QI::ImageReaderF::New();
-    inFile->SetFileName(fname);
-    inFile->Update(); // Need the size info
-
-    if (verbose) cout << "Padding image to valid FFT size." << endl;
-    typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
-    auto padFFT = PadFFTType::New();
-    padFFT->SetInput(inFile->GetOutput());
-    padFFT->Update();
-    if (debug) QI::WriteImage(padFFT->GetOutput(), prefix + "_step1_padFFT" + QI::OutExt());
-    if (verbose) {
-        cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
-        cout << "Calculating Forward FFT." << endl;
-    }
-    typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
-    auto forwardFFT = FFFTType::New();
-    forwardFFT->SetInput(padFFT->GetOutput());
-    forwardFFT->Update();
-    if (debug) QI::WriteImage<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
-
-    typedef itk::FFTShiftImageFilter<QI::ImageXF, QI::ImageXF> ShiftType;
-    auto shiftFFT = ShiftType::New();
-    shiftFFT->SetInput(forwardFFT->GetOutput());
-    shiftFFT->Update();
-
-    if (verbose) cout << "Generating K-Space Filter." << endl;
-    auto k_filter = itk::TukeyFilter::New();
-    k_filter->SetImageProperties(padFFT->GetOutput());
-    k_filter->Update();
-    if (debug) QI::WriteImage(k_filter->GetOutput(), prefix + "_kfilter" + QI::OutExt());
-    if (verbose) cout << "Multiplying." << endl;
-    auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
-    mult->SetInput1(shiftFFT->GetOutput());
-    mult->SetInput2(k_filter->GetOutput());
-    if (debug) QI::WriteImage<QI::ImageXF>(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
-
-    auto unshiftFFT = ShiftType::New();
-    unshiftFFT->SetInput(mult->GetOutput());
-    unshiftFFT->Update();
-
-    if (verbose) cout << "Inverse FFT." << endl;
-    auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
-    inverseFFT->SetInput(unshiftFFT->GetOutput());
-    inverseFFT->Update();
-    if (debug) QI::WriteImage(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
-    if (verbose) cout << "Extracting original size image" << endl;
-    auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
-    extract->SetInput(inverseFFT->GetOutput());
-    extract->SetDirectionCollapseToSubmatrix();
-    extract->SetExtractionRegion(inFile->GetOutput()->GetLargestPossibleRegion());
-    extract->Update();
-    auto outFile = QI::ImageWriterF::New();
-    outFile->SetInput(extract->GetOutput());
-    outFile->SetFileName(outname);
-    if (verbose) cout << "Writing output." << endl;
-    outFile->Update();
+    if (verbose) cout << "Opening input file: " << fname << endl;
+    QI::ImageF::Pointer infile = QI::ReadImage(fname);
+    QI::ImageF::Pointer outfile = FilterVolume(infile, verbose, debug, prefix);
+    if (verbose) cout << "Writing output:" << outname << endl;
+    QI::WriteImage(outfile, outname);
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
