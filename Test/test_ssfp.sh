@@ -22,8 +22,8 @@ $QUITDIR/qinewimage --size "$SIZE" -g "2 -100.0 100.0" f0.nii
 $QUITDIR/qinewimage --size "$SIZE" -f "1.0" B1.nii
 
 SSFP_FILE="ssfp.nii"
-SSFP_PAR="5 10 15 20 25 30 35 40 45 50 55 60
-0 90 180 270
+SSFP_PAR="5 25 45 65 5 25 45 65 5 25 45 65 5 25 45 65
+0 0 0 0 90 90 90 90 180 180 180 180 270 270 270 270
 0.005"
 GS_REF_FILE="gs_ref.nii"
 GS_REF_MAG="gs_ref_mag.nii"
@@ -35,7 +35,7 @@ CS_FILE="cs.nii"
 MAG_FILE="mag.nii"
 RMS_FILE="rms.nii"
 MAX_FILE="max.nii"
-GS_PAR="5 10 15 20 25 30 35 40 45 50 55 60
+GS_PAR="5 25 45 65
 0.005"
 
 run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --1 -n -N 0.001 -x <<END_IN

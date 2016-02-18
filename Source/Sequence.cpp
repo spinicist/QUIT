@@ -193,6 +193,10 @@ void MPRAGE::write(ostream &os) const {
     os << "TD: " << m_TD.transpose() << endl;
 }
 
+ArrayXd MPRAGE::weights(const double f0) const {
+    return ArrayXd::Ones(size()) * 1.0;
+}
+
 MP2RAGE::MP2RAGE(const Array3d &TD, const double TR, const int N, const Array2d flip) :
     SteadyState(), m_TD(TD), m_N(N) {
     m_TR = TR;
@@ -282,34 +286,24 @@ SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phi)
     SteadyState()
 {
     m_TR = TR;
-    m_flip = (flip * M_PI / 180.).replicate(phi.rows(), 1);
-    m_nphi = phi.size();
-    m_phi = ArrayXd::Zero(m_flip.size());
-    int start = 0;
-    for (int i = 0; i < phi.size(); i++) {
-        m_phi.segment(start, flip.size()).setConstant(phi[i] * M_PI / 180.);
-        start += flip.size();
-    }
+    m_flip = flip * M_PI / 180.;
+    m_phi = phi * M_PI / 180.;
 }
 
 SSFPSimple::SSFPSimple(const bool prompt) :
 	SteadyState()
 {
-    ArrayXd flip, phi;
 	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, flip);
+    QI::ReadArray(cin, m_flip);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
-    QI::ReadArray(cin, phi);
+    QI::ReadArray(cin, m_phi);
+    if (m_flip.size() != m_phi.size()) {
+        QI_EXCEPTION("SSFP must have the same number of flip-angles and phase-increments.");
+    }
 	if (prompt) cout << "Enter TR (seconds): " << flush;
 	QI::Read(cin, m_TR);
-    m_flip = (flip * M_PI / 180.).replicate(phi.rows(), 1);
-    m_nphi = phi.size();
-    m_phi = ArrayXd::Zero(m_flip.size());
-    int start = 0;
-    for (int i = 0; i < phi.size(); i++) {
-        m_phi.segment(start, flip.size()).setConstant(phi[i] * M_PI / 180.);
-        start += flip.size();
-    }
+    m_flip *= M_PI / 180.;
+    m_phi *= M_PI / 180.;
 }
 
 void SSFPSimple::write(ostream &os) const {
@@ -318,19 +312,6 @@ void SSFPSimple::write(ostream &os) const {
     os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
     os << "TR: " << m_TR << endl;
 }
-
-bool SSFPSimple::isSymmetric() const {
-	bool sym = true;
-    for (ArrayXcd::Index i = 0; i < m_phi.rows(); i++) {
-        if (!((abs(m_phi(i) - M_PI) <= (M_PI * numeric_limits<double>::epsilon())) ||
-              (abs(m_phi(i) - 0.) <= numeric_limits<double>::epsilon()))) {
-			sym = false;
-			break; // Don't need to bother checking other values
-		}
-	}
-	return sym;
-}
-double SSFPSimple::bwMult() const { return 1.; }
 
 ArrayXd SSFPSimple::weights(const double f0) const {
     ArrayXd offset = m_phi + (M_PI * f0*m_TR);
@@ -363,7 +344,6 @@ void SSFPFinite::write(ostream &os) const {
 ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phi);
 }
-double SSFPFinite::bwMult() const { return 2.; }
 
 SSFPEllipse::SSFPEllipse(const bool prompt) :
 	SteadyState()

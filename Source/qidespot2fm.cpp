@@ -125,6 +125,7 @@ class FMAlgo : public Algorithm<T> {
 protected:
 	const shared_ptr<SCD> m_model = make_shared<SCD>();
 	shared_ptr<SSFPSimple> m_sequence;
+    bool m_symmetric;
 
 public:
     typedef typename Algorithm<T>::TArray TArray;
@@ -132,7 +133,8 @@ public:
     typedef typename Algorithm<T>::TIterations TIterations;
 
     void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
-
+    void setSymmetric(const bool b) { m_symmetric = b; }
+    
 	size_t numInputs() const override  { return m_sequence->count(); }
 	size_t numConsts() const override  { return 2; }
 	size_t numOutputs() const override { return 3; }
@@ -164,24 +166,11 @@ void LMAlgo<T>::f0guess(double &lo, double &hi, double &step, const TInput &data
     lo = -bw + 1.;
     hi = bw + 2.;
     step = bw;
-    if (this->m_sequence->isSymmetric()) {
+    if (this->m_symmetric) {
         lo = 1.;
     }
     //cout << __PRETTY_FUNCTION__ << endl;
     //cout << lo << "/" << hi << "/" << step << endl;
-}
-
-template<>
-void LMAlgo<complex<double>>::f0guess(double &lo, double &hi, double &step, const TInput &data) const {
-    double bw = 1. / (4. * this->m_sequence->TR());
-    lo = -bw + 1.;
-    hi = bw + 2.;
-    step = bw;
-    if (this->m_sequence->isSymmetric()) {
-        lo = 1.;
-    }
-    //cout << endl << __PRETTY_FUNCTION__ << endl;
-    //cout << lo << "/" << a << "/" << hi << "/" << step << endl;
 }
 
 template<typename T>
@@ -344,26 +333,18 @@ public:
             lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0;
             upper[0] = 0;     upper[1] = T1;
             double f0_lo, f0_hi, f0_step;
-            if (this->m_sequence->isSymmetric()) {
+            if (this->m_symmetric) {
                 lower[2] = 0.001;
                 upper[2] = 0.6/this->m_sequence->TR(); // Allow for a bit of fuzz on upper boundary
                 f0_lo = (2./15.) / this->m_sequence->TR();
                 f0_step = 0.4 / this->m_sequence->TR();
                 f0_hi = f0_lo + 1. + f0_step;
             } else {
-                if (this->m_sequence->phases() == 2) {
-                    lower[2] = -0.26/this->m_sequence->TR();
-                    upper[2] = 0.26/this->m_sequence->TR();
-                    f0_lo = -(1./15.) / this->m_sequence->TR();
-                    f0_step = 2./15.;
-                    f0_hi =  f0_lo + f0_step + 1.;
-                } else {
-                    lower[2] = -0.6/this->m_sequence->TR();
-                    upper[2] = 0.6/this->m_sequence->TR();
-                    f0_lo = -(0.4 / this->m_sequence->TR());
-                    f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
-                    f0_step = (4./15.) / this->m_sequence->TR(); // 2/3 * 0.4
-                }
+                lower[2] = -0.6/this->m_sequence->TR();
+                upper[2] = 0.6/this->m_sequence->TR();
+                f0_lo = -(0.4 / this->m_sequence->TR());
+                f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
+                f0_step = (4./15.) / this->m_sequence->TR(); // 2/3 * 0.4
             }
             optimizer->SetLowerBound(lower);
             optimizer->SetUpperBound(upper);
@@ -410,9 +391,9 @@ Options:\n\
     --algo, -a l      : Use 2-step LM algorithm\n\
                b      : Use BFGS algorithm (default)\n\
     --complex, -x     : Fit to complex data\n\
+    --asym, -A        : Fit +/- off-resonance frequency\n\
     --start, -s N     : Start processing from slice N\n\
     --stop, -p  N     : Stop processing at slice N\n\
-    --flip, -F        : Data order is phase, then flip-angle (default opposite)\n\
     --finite          : Use finite pulse length correction\n\
     --resids, -r      : Write out per flip-angle residuals\n\
     --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
@@ -428,6 +409,7 @@ struct option long_opts[] = {
     {"B1", required_argument, 0, 'b'},
     {"algo", required_argument, 0, 'a'},
     {"complex", no_argument, 0, 'x'},
+    {"asym", no_argument, 0, 'A'},
     {"start", required_argument, 0, 's'},
     {"stop", required_argument, 0, 'p'},
     {"flip", required_argument, 0, 'F'},
@@ -436,7 +418,7 @@ struct option long_opts[] = {
     {"resids", no_argument, 0, 'r'},
     {0, 0, 0, 0}
 };
-const char* short_opts = "hvnm:o:b:a:xs:p:FT:frd:";
+const char* short_opts = "hvnm:o:b:a:xAs:p:FT:frd:";
 int indexptr = 0;
 char c;
 
@@ -450,7 +432,7 @@ int run_main(int argc, char **argv) {
     typedef itk::ApplyAlgorithmFilter<FMAlgo<T>, T, float, 3> TApply;
 
     int start_slice = 0, stop_slice = 0;
-    int verbose = false, prompt = true, all_residuals = false,
+    int verbose = false, prompt = true, all_residuals = false, symmetric = true,
         fitFinite = false, flipData = false, use_BFGS = true, num_threads = 4;
     string outPrefix;
     QI::ImageReaderF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
@@ -461,6 +443,7 @@ int run_main(int argc, char **argv) {
         case 'x': case 'h': break; //Already handled in main
         case 'v': verbose = true; break;
         case 'n': prompt = false; break;
+        case 'A': symmetric = false; break;
         case 'a':
         switch (*optarg) {
             case 'l': use_BFGS = false; if (verbose) cout << "LM algorithm selected." << endl; break;
@@ -518,13 +501,8 @@ int run_main(int argc, char **argv) {
     if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
     auto ssfpFile = TReader::New();
     auto ssfpData = TToVector::New();
-    auto ssfpFlip = TReorder::New();
     ssfpFile->SetFileName(argv[optind++]);
     ssfpData->SetInput(ssfpFile->GetOutput());
-    ssfpFlip->SetInput(ssfpData->GetOutput());
-    if (flipData) {
-        ssfpFlip->SetStride(ssfpSequence->phases());
-    }
     auto apply = TApply::New();
     shared_ptr<FMAlgo<T>> algo;
     if (use_BFGS) {
@@ -534,10 +512,11 @@ int run_main(int argc, char **argv) {
         algo = make_shared<LMAlgo<T>>();
     }
     algo->setSequence(ssfpSequence);
+    algo->setSymmetric(symmetric);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(num_threads);
-    apply->SetInput(0, ssfpFlip->GetOutput());
+    apply->SetInput(0, ssfpData->GetOutput());
     apply->SetConst(0, T1->GetOutput());
     apply->SetSlices(start_slice, stop_slice);
     if (B1) {

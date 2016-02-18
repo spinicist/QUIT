@@ -69,7 +69,7 @@ class SteadyState : public SequenceBase {
 		SteadyState(const ArrayXd &flip, const double TR);
 
         virtual size_t size() const override { return m_flip.rows(); }
-		virtual ArrayXd weights(double f0) const { return ArrayXd::Ones(size()); }
+		virtual ArrayXd weights(double f0 = 0.0) const { return ArrayXd::Ones(size()); }
 };
 
 class SPGRSimple : public SteadyState {
@@ -79,7 +79,7 @@ class SPGRSimple : public SteadyState {
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream &os) const override;
 		string name() const override { return "SPGR"; }
-		ArrayXd weights(const double f0) const override;
+		ArrayXd weights(const double f0 = 0.0) const override;
 };
 class SPGREcho : public SPGRSimple {
 public:
@@ -110,6 +110,7 @@ class MPRAGE : public SteadyState {
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream &os) const override;
 		string name() const override { return "MPRAGE"; }
+        ArrayXd weights(const double f0 = 0.0) const override;
 };
 class MP2RAGE : public SteadyState {
     public:
@@ -145,20 +146,16 @@ class IRSPGR : public MPRAGE {
 };
 
 class SSFPSimple : public SteadyState {
-    private:
-        size_t m_nphi;
-
-	public:
+    protected:
         ArrayXd m_phi;
+    
+    public:
 		SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phases);
 		SSFPSimple(const bool prompt);
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream& os) const override;
 		string name() const override { return "SSFP"; }
 
-		bool isSymmetric() const;
-        virtual double bwMult() const;
-        size_t phases() { return m_nphi; }
 		ArrayXd weights(const double f0) const override;
 };
 class SSFPEcho : public SSFPSimple {
@@ -176,8 +173,6 @@ class SSFPFinite : public SSFPSimple {
 		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
 		void write(ostream& os) const override;
 		string name() const override { return "SSFP_Finite"; }
-
-        virtual double bwMult() const override;
 };
 
 class SSFPEllipse : public SteadyState {
@@ -215,7 +210,7 @@ public:
 
 	size_t size() const override;
 	ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
-	ArrayXd weights(const double f0) const;
+	ArrayXd weights(const double f0 = 0.0) const;
 	
 	void addSequence(const shared_ptr<SteadyState> &seq);
 };

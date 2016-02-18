@@ -24,13 +24,13 @@ $QUITDIR/qinewimage B1.nii --size "$SIZE" -f 1.0
 
 # Setup parameters
 SSFP_FILE="ssfp.nii"
-SSFP_FLIP="10 15 20 30 40 50 60"
 SSFP_TR="0.01"
 SSFP_Trf="0.001"
 
 function run_tests() {
 PREFIX="$1"
-SSFP_PC="$2"
+SSFP_FLIP="$2"
+SSFP_PC="$3"
 
 run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v -x --noise 0.002 << END_SIG
 PD.nii
@@ -75,7 +75,7 @@ compare_test "BFGS"   T2.nii ${PREFIX}bFM_T2.nii  0.01
 #compare_test "BFGS_F" T2.nii ${PREFIX}bfFM_T2.nii 0.01
 }
 
-run_tests "2" "0 180"
+run_tests "2" "5 25 45 65 5 25 45 65" "180 180 180 180 0 0 0 0"
 #run_tests "4" "0 90 180 270"
 
 cd ..
