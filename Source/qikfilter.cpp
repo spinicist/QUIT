@@ -13,6 +13,7 @@
 #include <getopt.h>
 #include <iostream>
 #include <atomic>
+#include <sstream>
 #include "Eigen/Dense"
 
 #include "itkImageSource.h"
@@ -25,6 +26,8 @@
 #include "itkFFTShiftImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkFFTPadImageFilter.h"
+#include "itkExtractImageFilter.h"
+#include "itkTileImageFilter.h"
 
 #include "Types.h"
 #include "Util.h"
@@ -41,16 +44,6 @@ public:
     typedef ImageSource<TImage> Superclass;
     typedef SmartPointer<Self>  Pointer;
 
-    itkNewMacro(Self);
-    itkTypeMacro(TukeyFilter, ImageSource);
-
-    void SetImageProperties(const TImage *img) {
-        m_region = img->GetLargestPossibleRegion();
-        m_spacing = img->GetSpacing();
-        m_direction = img->GetDirection();
-        m_origin = img->GetOrigin();
-    }
-
 protected:
     typedef typename TImage::RegionType::SizeType SizeType;
     typename TImage::RegionType    m_region;
@@ -63,6 +56,23 @@ protected:
 
     TukeyFilter(){}
     ~TukeyFilter(){}
+    
+public:
+    itkNewMacro(Self);
+    itkTypeMacro(TukeyFilter, ImageSource);
+
+    void SetImageProperties(const TImage *img) {
+        m_region = img->GetLargestPossibleRegion();
+        m_spacing = img->GetSpacing();
+        m_direction = img->GetDirection();
+        m_origin = img->GetOrigin();
+    }
+
+    void SetFilterProperties(const double a, const double q) {
+        m_a = a;
+        m_q = q;
+    }
+
     virtual void GenerateData() override {
         typename TImage::Pointer output = this->GetOutput();
         output->SetRegions(m_region);
@@ -73,7 +83,8 @@ protected:
 
         itk::ImageRegionIteratorWithIndex<TImage> imageIt(output,output->GetLargestPossibleRegion());
         SizeType size = m_region.GetSize();
-        int hx = size[0] / 2; int hy = size[1] / 2; int hz = size[2] / 2;
+        int sx = size[0]; int sy = size[1]; int sz = size[2];
+        int hx = sx / 2;  int hy = sy / 2;  int hz = sz / 2;
 
         const double rad_k = sqrt(static_cast<double>((hx*hx)+(hy*hy)+(hz*hz)));
         imageIt.GoToBegin();
@@ -81,7 +92,10 @@ protected:
         while(!imageIt.IsAtEnd()) {
             const auto index = imageIt.GetIndex() - m_region.GetIndex(); // Might be padded to a negative start
             int x = index[0]; int y = index[1]; int z = index[2];
-            const double r = sqrt(static_cast<double>((x-hx)*(x-hx)+(y-hy)*(y-hy)+(z-hz)*(z-hz))) / rad_k;
+            const double rx = static_cast<double>(x - hx)/hx;
+            const double ry = static_cast<double>(y - hy)/hy;
+            const double rz = static_cast<double>(z - hz)/hz;
+            const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
             const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
             imageIt.Set(v);
             ++imageIt;
@@ -95,7 +109,7 @@ private:
 
 } // End namespace itk
 
-QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, const bool verbose, const bool debug, const string &prefix) {
+QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, itk::TukeyFilter::Pointer k_filter, const bool verbose, const bool debug, const string &prefix) {
     if (verbose) cout << "Padding image to valid FFT size." << endl;
     typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
     auto padFFT = PadFFTType::New();
@@ -110,15 +124,14 @@ QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, const bool ver
     auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
-    if (debug) QI::WriteImage<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
 
     typedef itk::FFTShiftImageFilter<QI::ImageXF, QI::ImageXF> ShiftType;
     auto shiftFFT = ShiftType::New();
     shiftFFT->SetInput(forwardFFT->GetOutput());
     shiftFFT->Update();
+    if (debug) QI::WriteImage<QI::ImageXF>(shiftFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
 
     if (verbose) cout << "Generating K-Space Filter." << endl;
-    auto k_filter = itk::TukeyFilter::New();
     k_filter->SetImageProperties(padFFT->GetOutput());
     k_filter->Update();
     if (debug) QI::WriteImage(k_filter->GetOutput(), prefix + "_kfilter" + QI::OutExt());
@@ -158,17 +171,19 @@ const string usage {
 Filter images in k-Space\n\
 \n\
 Options:\n\
-    --help, -h        : Print this message.\n\
-    --verbose, -v     : Print more information.\n\
-    --out, -o path    : Specify an output filename (default image base).\n\
-    --debug, -d       : Save all pipeline steps.\n\
-    --threads, -T N   : Use N threads (default=hardware limit).\n"
+    --help, -h           : Print this message.\n\
+    --verbose, -v        : Print more information.\n\
+    --out, -o path       : Specify an output filename (default image base).\n\
+    --filter, -f \"a q\" : Set Filter a and q values (default 0.75 0.25).\n\
+    --debug, -d          : Save all pipeline steps.\n\
+    --threads, -T N      : Use N threads (default=hardware limit).\n"
 };
 
 const struct option long_options[] = {
     {"help", no_argument, 0, 'h'},
     {"verbose", no_argument, 0, 'v'},
     {"out", required_argument, 0, 'o'},
+    {"filter", required_argument, 0, 'f'},
     {"debug", no_argument, 0, 'd'},
     {"threads", required_argument, 0, 'T'},
     {0, 0, 0, 0}
@@ -182,6 +197,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
 
     bool verbose = false, debug = false;
+    double filter_a = 0.75, filter_q = 0.25;
     string prefix;
     int indexptr = 0, c;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -191,6 +207,10 @@ int main(int argc, char **argv) {
                 prefix = optarg;
                 cout << "Output prefix will be: " << prefix << endl;
                 break;
+            case 'f': {
+                stringstream f(optarg);
+                f >> filter_a >> filter_q;
+            } break;
             case 'd': debug = true; break;
             case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
             case 'h':
@@ -214,10 +234,33 @@ int main(int argc, char **argv) {
     string outname = prefix + "_filtered" + QI::OutExt();
 
     if (verbose) cout << "Opening input file: " << fname << endl;
-    QI::ImageF::Pointer infile = QI::ReadImage(fname);
-    QI::ImageF::Pointer outfile = FilterVolume(infile, verbose, debug, prefix);
+    QI::TimeseriesF::Pointer vols = QI::ReadImage<QI::TimeseriesF>(fname);
+    auto region = vols->GetLargestPossibleRegion();
+    const size_t nvols = region.GetSize()[3]; // Save for the loop
+    region.GetModifiableSize()[3] = 0;
+    auto extract = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
+    extract->SetInput(vols);
+    extract->SetDirectionCollapseToSubmatrix();
+    auto tiler   = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
+    itk::FixedArray<unsigned int, 4> tileLayout;
+    tileLayout.Fill(1); tileLayout[3] = nvols;
+    tiler->SetLayout(tileLayout);
+    auto k_filter = itk::TukeyFilter::New();
+    k_filter->SetFilterProperties(filter_a, filter_q);
+    for (int i = 0; i < nvols; i++) {
+        region.GetModifiableIndex()[3] = i;
+        extract->SetExtractionRegion(region);
+        extract->Update();
+        QI::ImageF::Pointer outvol = FilterVolume(extract->GetOutput(), k_filter, verbose, debug, prefix);
+        tiler->SetInput(i, outvol);
+    }
+    tiler->UpdateLargestPossibleRegion();
     if (verbose) cout << "Writing output:" << outname << endl;
-    QI::WriteImage(outfile, outname);
+    QI::TimeseriesF::Pointer out = tiler->GetOutput();
+    out->DisconnectPipeline();
+    out->SetDirection(vols->GetDirection());
+    out->SetSpacing(vols->GetSpacing());
+    QI::WriteImage<QI::TimeseriesF>(out, outname);
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
