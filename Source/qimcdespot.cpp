@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
 
 	auto tesla = FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
-    int max_its = 4, num_threads = 1;
+    int max_its = 4, num_threads = 4;
 	int verbose = false, prompt = true, all_residuals = false, flipData = false;
     string outPrefix;
     enum class Algos { SRC, GRC, BFGS };
