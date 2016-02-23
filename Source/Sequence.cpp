@@ -314,7 +314,7 @@ void SSFPSimple::write(ostream &os) const {
 }
 
 ArrayXd SSFPSimple::weights(const double f0) const {
-    ArrayXd offset = m_phi + (M_PI * f0*m_TR);
+    ArrayXd offset = m_phi + 2.*M_PI*f0*m_TR;
 	ArrayXd weights = 0.75 * (offset / 2).sin().square();
 	return weights;
 }
