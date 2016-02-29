@@ -19,6 +19,7 @@
 #include "Types.h"
 
 #include "itkRescaleIntensityImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
 #include "itkOtsuThresholdImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkLabelShapeKeepNObjectsImageFilter.h"
@@ -381,12 +382,20 @@ int main(int argc, char **argv) {
             typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
             QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TLinInterp>(input, tfm, reference);
             TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
+            typedef itk::BinaryThresholdImageFilter<TLabelImage, TLabelImage> TThreshFilter;
+            auto rthresh = TThreshFilter::New();
+            rthresh->SetInput(rlabels);
+            rthresh->SetLowerThreshold(i);
+            rthresh->SetUpperThreshold(i);
+            rthresh->SetInsideValue(1);
+            rthresh->SetOutsideValue(0);
+            rthresh->Update();
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
             QI::WriteImage(rimage, fname);
             fname = prefix + suffix.str() + "_mask.nii";
             if (verbose) cout << "Writing output mask " << fname << endl;
-            QI::WriteImage<TLabelImage>(rlabels, fname);
+            QI::WriteImage<TLabelImage>(rthresh->GetOutput(), fname);
 		}
 	}
 	return EXIT_SUCCESS;
