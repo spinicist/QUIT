@@ -381,10 +381,12 @@ int main(int argc, char **argv) {
             typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
             QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TLinInterp>(input, tfm, reference);
             TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
-            QI::ImageF::Pointer masked = MaskWithLabel(rimage, rlabels, i, (reference == ITK_NULLPTR));
             fname = prefix + suffix.str() + ".nii";
             if (verbose) cout << "Writing output file " << fname << endl;
-            QI::WriteImage(masked, fname);
+            QI::WriteImage(rimage, fname);
+            fname = prefix + suffix.str() + "_mask.nii";
+            if (verbose) cout << "Writing output mask " << fname << endl;
+            QI::WriteImage<TLabelImage>(rlabels, fname);
 		}
 	}
 	return EXIT_SUCCESS;
