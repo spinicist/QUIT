@@ -20,7 +20,7 @@
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Types.h"
 #include "Util.h"
-#include "Sequence.h"
+#include "Sequences/Sequence.h"
 
 using namespace std;
 

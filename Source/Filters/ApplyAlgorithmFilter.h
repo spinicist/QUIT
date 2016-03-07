@@ -3,9 +3,9 @@
 
 #include <Eigen/Dense>
 
-#include "../Sequence.h"
-#include "../Model.h"
-#include "../ThreadPool.h"
+#include "Sequences/Sequence.h"
+#include "Models/Models.h"
+#include "ThreadPool.h"
 
 #include "itkImageToImageFilter.h"
 #include "itkVariableLengthVector.h"

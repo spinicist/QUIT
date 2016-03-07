@@ -22,7 +22,7 @@
 
 #include "itkImageFileReader.h"
 
-#include "Sequence.h"
+#include "Sequences/Sequence.h"
 #include "Util.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"

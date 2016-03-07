@@ -20,7 +20,7 @@
 
 #include "Types.h"
 #include "Util.h"
-#include "Sequence.h"
+#include "Sequences/Sequence.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderImageFilter.h"
 #include "itkTimeProbe.h"

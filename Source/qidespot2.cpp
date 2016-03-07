@@ -20,8 +20,8 @@
  
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
-#include "Model.h"
-#include "Sequence.h"
+#include "Models/Models.h"
+#include "Sequences/Sequence.h"
 #include "Util.h"
 #include "itkTimeProbe.h"
 

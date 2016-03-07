@@ -20,8 +20,8 @@
 #include <Eigen/Dense>
 
 #include "Util.h"
-#include "SignalEquations.h"
-#include "Model.h"
+#include "Signals/SignalEquations.h"
+#include "Models/Models.h"
 
 using namespace std;
 using namespace Eigen;

@@ -23,7 +23,10 @@ add_custom_command(OUTPUT version_depend_dummy
                    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/CMake/GetVersion.cmake)
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
-add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp Source/SignalEquations.cpp Source/Model.cpp Source/Sequence.cpp)
+add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp 
+                    Source/Signals/SignalEquations.cpp 
+                    Source/Models/Model.cpp Source/Models/DESPOT_2C.cpp Source/Models/DESPOT_3C.cpp
+                    Source/Sequences/Sequence.cpp)
 add_dependencies( qi_core qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx

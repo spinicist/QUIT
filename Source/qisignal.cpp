@@ -25,8 +25,8 @@
 
 #include "Filters/VectorToImageFilter.h"
 
-#include "Model.h"
-#include "Sequence.h"
+#include "Models/Model.h"
+#include "Sequences/Sequence.h"
 #include "Util.h"
 #include "ThreadPool.h"
 

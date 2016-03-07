@@ -25,8 +25,8 @@
 #include "Util.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderVectorFilter.h"
-#include "Model.h"
-#include "Sequence.h"
+#include "Models/Model.h"
+#include "Sequences/Sequence.h"
 #include "RegionContraction.h"
 
 using namespace std;
