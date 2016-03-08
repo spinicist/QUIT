@@ -1,5 +1,5 @@
 /*
- *  SteadyState.cpp
+ *  SteadyStateSequence.cpp
  *
  *  Copyright (c) 2016 Tobias Wood.
  *
@@ -9,7 +9,7 @@
  *
  */
 
-#include "Sequences/SteadyState.h"
+#include "Sequences/SteadyStateSequence.h"
 
 /******************************************************************************
  * SteadyState

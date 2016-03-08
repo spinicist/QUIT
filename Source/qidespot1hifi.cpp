@@ -22,7 +22,7 @@
 
 #include "itkImageFileReader.h"
 
-#include "Sequences/Sequence.h"
+#include "Sequences/MPRAGESequence.h"
 #include "Util.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 	auto irImg = TimeseriesToVectorF::New();
 	irFile->SetFileName(argv[optind++]);
 	irImg->SetInput(irFile->GetOutput());
-	shared_ptr<SteadyState> irSequence;
+	shared_ptr<SequenceBase> irSequence;
 	if (IR) {
 		irSequence = make_shared<IRSPGR>(prompt);
 	} else {

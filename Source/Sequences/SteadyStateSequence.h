@@ -1,5 +1,5 @@
 /*
- *  SteadyState.h
+ *  SteadyStateSequence.h
  *
  *  Copyright (c) 2016 Tobias Wood.
  *
