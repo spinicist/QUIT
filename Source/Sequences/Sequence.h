@@ -157,24 +157,4 @@ protected:
 		string name() const override { return "AFI"; }
 };
 
-class SequenceGroup : public SequenceBase {
-private:
-	vector<shared_ptr<SteadyState>> m_sequences;
-
-public:
-	SequenceGroup();
-	void write(ostream &os) const override;
-	string name() const override { return "Sequences"; }
-
-	size_t count() const override;
-	shared_ptr<SteadyState> sequence(const size_t i) const;
-	vector<shared_ptr<SteadyState>> &sequences();
-
-	size_t size() const override;
-	ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
-	ArrayXd weights(const double f0 = 0.0) const;
-	
-	void addSequence(const shared_ptr<SteadyState> &seq);
-};
-
 #endif // SEQUENCES_SEQUENCE_H

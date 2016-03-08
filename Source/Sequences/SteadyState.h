@@ -20,7 +20,6 @@ class SteadyState : public SequenceBase {
         SteadyState(const ArrayXd &flip, const double TR);
 
         virtual size_t size() const override { return m_flip.rows(); }
-        virtual ArrayXd weights(double f0 = 0.0) const { return ArrayXd::Ones(size()); }
 };
 
 #endif // SEQUENCES_STEADYSTATE_H

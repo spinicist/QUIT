@@ -40,8 +40,29 @@ class SequenceBase {
         void setTR(const double TR) { m_TR = TR; }
         const ArrayXd & flip() const { return m_flip; }
         void setFlip(const ArrayXd &f) { m_flip = f; }
+        virtual ArrayXd weights(double f0 = 0.0) const { return ArrayXd::Ones(size()); }        
 };
-
 ostream& operator<<(ostream& os, const SequenceBase& s);
+
+
+class SequenceGroup : public SequenceBase {
+private:
+    vector<shared_ptr<SequenceBase>> m_sequences;
+
+public:
+    SequenceGroup();
+    void write(ostream &os) const override;
+    string name() const override { return "Sequences"; }
+
+    size_t count() const override;
+    shared_ptr<SequenceBase> sequence(const size_t i) const;
+    vector<shared_ptr<SequenceBase>> &sequences();
+
+    size_t size() const override;
+    ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
+    ArrayXd weights(const double f0 = 0.0) const override;
+    
+    void addSequence(const shared_ptr<SequenceBase> &seq);
+};
 
 #endif // SEQUENCES_BASE_H
