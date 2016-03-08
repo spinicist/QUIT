@@ -26,7 +26,7 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PRO
 add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp 
                     Source/Signals/Common.cpp Source/Signals/SignalEquations.cpp Source/Signals/SPGR.cpp Source/Signals/SSFP.cpp Source/Signals/MPRAGE.cpp
                     Source/Models/Model.cpp Source/Models/DESPOT_2C.cpp Source/Models/DESPOT_3C.cpp
-                    Source/Sequences/Sequence.cpp)
+                    Source/Sequences/SequenceBase.cpp Source/Sequences/SteadyState.cpp Source/Sequences/Sequence.cpp)
 add_dependencies( qi_core qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx

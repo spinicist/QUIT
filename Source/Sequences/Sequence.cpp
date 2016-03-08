@@ -14,14 +14,6 @@
 #include "Util.h"
 
 /******************************************************************************
- * SequenceBase
- *****************************************************************************/
-ostream& operator<<(ostream& os, const SequenceBase& s) {
-	s.write(os);
-	return os;
-}
-
-/******************************************************************************
  * MultiEcho
  *****************************************************************************/
 MultiEcho::MultiEcho() : SequenceBase() {}
@@ -54,17 +46,6 @@ ArrayXcd MultiEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
 void MultiEcho::write(ostream &os) const {
 	os << "MultiEcho" << endl;
 	os << "TE: " << m_TE.transpose() << endl;
-}
-
-/******************************************************************************
- * SteadyState
- *****************************************************************************/
-SteadyState::SteadyState() : SequenceBase() {}
-SteadyState::SteadyState(const ArrayXd &flip, const double TR) :
-	SequenceBase()
-{
-	m_TR = TR;
-	m_flip = flip;
 }
 
 SPGRSimple::SPGRSimple(const ArrayXd &flip, const double TR) :

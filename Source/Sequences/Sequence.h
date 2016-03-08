@@ -10,40 +10,11 @@
  *
  */
 
-#ifndef DESPOT_SEQUENCE
-#define DESPOT_SEQUENCE
+#ifndef SEQUENCES_SEQUENCE_H
+#define SEQUENCES_SEQUENCE_H
 
-#include <string>
-#include <iostream>
-#include <vector>
-#include <memory>
-#include <Eigen/Dense>
-
-#include "Util.h"
-#include "Signals/SignalEquations.h"
-#include "Models/Models.h"
-
-using namespace std;
-using namespace Eigen;
-
-class SequenceBase {
-	protected:
-		double m_TR = 0.;
-        ArrayXd m_flip;
-
-	public:
-		virtual ArrayXcd signal(const shared_ptr<Model> m, const VectorXd &p) const = 0;
-		virtual size_t size() const = 0;
-		virtual void write(ostream &os) const = 0;
-		virtual string name() const = 0;
-		virtual size_t count() const { return 1; }
-		double TR() const { return m_TR; }
-		void setTR(const double TR) { m_TR = TR; }
-		const ArrayXd & flip() const { return m_flip; }
-		void setFlip(const ArrayXd &f) { m_flip = f; }
-};
-
-ostream& operator<<(ostream& os, const SequenceBase& s);
+#include "Sequences/SequenceBase.h"
+#include "Sequences/SteadyState.h"
 
 class MultiEcho : public SequenceBase {
 	public:
@@ -61,15 +32,6 @@ class MultiEcho : public SequenceBase {
 
         ArrayXd TE() const { return m_TE; }
         void setTE(const ArrayXd &TE) { m_TE = TE; }
-};
-
-class SteadyState : public SequenceBase {
-	public:
-		SteadyState();
-		SteadyState(const ArrayXd &flip, const double TR);
-
-        virtual size_t size() const override { return m_flip.rows(); }
-		virtual ArrayXd weights(double f0 = 0.0) const { return ArrayXd::Ones(size()); }
 };
 
 class SPGRSimple : public SteadyState {
@@ -215,4 +177,4 @@ public:
 	void addSequence(const shared_ptr<SteadyState> &seq);
 };
 
-#endif
+#endif // SEQUENCES_SEQUENCE_H
