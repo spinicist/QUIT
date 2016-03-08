@@ -7,13 +7,19 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 
+# Prevent undefined lookup errors when building qi_core as a shared library with Clang
+message( STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}" )
+if(CMAKE_CXX_COMPILER_ID MATCHES "(C|c?)lang")
+  set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -undefined dynamic_lookup")
+endif()
+
 find_package(ITK 4.8.1 REQUIRED)
 include(${ITK_USE_FILE})
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
-include_directories(Source)
+include_directories( ${PROJECT_SOURCE_DIR}/Source )
 
 # Setup version
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file
@@ -23,10 +29,10 @@ add_custom_command(OUTPUT version_depend_dummy
                    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/CMake/GetVersion.cmake)
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
-add_library(qi_core Source/Types.h Source/Util.cpp Source/ThreadPool.cpp 
-                    Source/Signals/Common.cpp Source/Signals/SignalEquations.cpp Source/Signals/SPGR.cpp Source/Signals/SSFP.cpp Source/Signals/MPRAGE.cpp
-                    Source/Models/Model.cpp Source/Models/DESPOT_2C.cpp Source/Models/DESPOT_3C.cpp
-                    Source/Sequences/SequenceBase.cpp Source/Sequences/SteadyStateSequence.cpp Source/Sequences/MPRAGESequence.cpp Source/Sequences/Sequence.cpp)
+add_library(qi_core SHARED Source/Types.h Source/Util.cpp Source/ThreadPool.cpp 
+            Source/Signals/Common.cpp Source/Signals/SignalEquations.cpp Source/Signals/SPGR.cpp Source/Signals/SSFP.cpp Source/Signals/MPRAGE.cpp
+            Source/Models/Model.cpp Source/Models/DESPOT_2C.cpp Source/Models/DESPOT_3C.cpp
+            Source/Sequences/SequenceBase.cpp Source/Sequences/SteadyStateSequence.cpp Source/Sequences/MPRAGESequence.cpp Source/Sequences/Sequence.cpp)
 add_dependencies( qi_core qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
