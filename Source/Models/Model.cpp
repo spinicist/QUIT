@@ -45,7 +45,7 @@ VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, const int, cvecd &, carr
 VectorXcd Model::AFI(cvecd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFP(cvecd &, carrd &a, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFPEcho(cvecd &, carrd &, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
-VectorXcd Model::SSFPEllipse(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SSFP_GS(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFPFinite(cvecd &, carrd &, cdbl, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 
 /*****************************************************************************/
@@ -125,6 +125,6 @@ VectorXcd SCD::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) con
     return scale(s);
 }
 
-VectorXcd SCD::SSFPEllipse(cvecd &p, carrd &a, cdbl TR) const {
+VectorXcd SCD::SSFP_GS(cvecd &p, carrd &a, cdbl TR) const {
 	return scale(One_SSFP_Ellipse(a, TR, p[0], p[1], p[2], p[3], p[4]));
 }

@@ -266,7 +266,7 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 		} else if (type == "SSFP_FINITE") {
 			cs.push_back(make_shared<SSFPFinite>(prompt));
 		} else if (type == "SSFP_GS") {
-			cs.push_back(make_shared<SSFPEllipse>(prompt));
+			cs.push_back(make_shared<SSFP_GS>(prompt));
 		} else if (type == "IRSPGR") {
 			cs.push_back(make_shared<IRSPGR>(prompt));
 		} else if (type == "MPRAGE") {

@@ -159,9 +159,7 @@ ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phi);
 }
 
-SSFPEllipse::SSFPEllipse(const bool prompt) :
-    SteadyState()
-{
+SSFP_GS::SSFP_GS(const bool prompt) : SteadyState() {
     if (prompt) cout << "Enter flip-angles (degrees): " << flush;
     QI::ReadArray(cin, m_flip);
     m_flip *= M_PI / 180.;
@@ -169,14 +167,14 @@ SSFPEllipse::SSFPEllipse(const bool prompt) :
     QI::Read(cin, m_TR);
 }
 
-void SSFPEllipse::write(ostream &os) const {
-    os << "SSFP Ellipse" << endl;
+void SSFP_GS::write(ostream &os) const {
+    os << "SSFP Geometric Solution" << endl;
     os << "TR: " << m_TR << endl;
     os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
 }
 
-ArrayXcd SSFPEllipse::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFPEllipse(p, m_flip, m_TR);
+ArrayXcd SSFP_GS::signal(shared_ptr<Model> m, const VectorXd &p) const {
+    return m->SSFP_GS(p, m_flip, m_TR);
 }
 
 /******************************************************************************

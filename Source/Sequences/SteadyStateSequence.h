@@ -84,9 +84,9 @@ class SSFPFinite : public SSFPSimple {
         string name() const override { return "SSFP_Finite"; }
 };
 
-class SSFPEllipse : public SteadyState {
+class SSFP_GS : public SteadyState {
     public:
-        SSFPEllipse(const bool prompt);
+        SSFP_GS(const bool prompt);
         ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
         void write(ostream& os) const override;
         string name() const override { return "SSFP_Ellipse"; }

@@ -335,7 +335,7 @@ int main(int argc, char **argv) {
 
 	shared_ptr<SteadyState> ssfp;
 	if (elliptical) {
-		ssfp = make_shared<SSFPEllipse>(prompt);
+		ssfp = make_shared<SSFP_GS>(prompt);
 	} else {
 		ssfp = make_shared<SSFPSimple>(prompt);
 	}
