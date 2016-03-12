@@ -12,7 +12,7 @@
 #ifndef SIGNALS_SSFP_H
 #define SIGNALS_SSFP_H
 
-#include "Signals/Common.h"
+#include "QI/Signals/Common.h"
 
 VectorXcd One_SSFP(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);

@@ -18,9 +18,9 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
-#include "Types.h"
-#include "Util.h"
-#include "Sequences/Sequence.h"
+#include "QI/Types.h"
+#include "QI/Util.h"
+#include "QI/Sequences/Sequence.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderImageFilter.h"
 #include "itkTimeProbe.h"

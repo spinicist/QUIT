@@ -12,7 +12,7 @@
 #ifndef SIGNALS_MPRAGE_H
 #define SIGNALS_MPRAGE_H
 
-#include "Signals/Common.h"
+#include "QI/Signals/Common.h"
 
 VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1);
 Array2cd  One_MP2RAGE(const Array2d &alpha, cdbl TR, const int N, const Array3d &TD, cdbl M0, cdbl T1, cdbl B1, cdbl eta);

@@ -13,9 +13,9 @@
 #ifndef SIGNAL_EQUATIONS_H
 #define SIGNAL_EQUATIONS_H
 
-#include "Signals/SPGR.h"
-#include "Signals/SSFP.h"
-#include "Signals/MPRAGE.h"
+#include "QI/Signals/SPGR.h"
+#include "QI/Signals/SSFP.h"
+#include "QI/Signals/MPRAGE.h"
 
 VectorXcd One_MultiEcho(carrd &TE, cdbl TR, cdbl PD, cdbl T1, cdbl T2);
 VectorXcd One_AFI(cdbl flip, cdbl TR1, cdbl TR2, cdbl PD, cdbl T1, cdbl B1);

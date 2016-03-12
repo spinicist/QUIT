@@ -21,8 +21,8 @@
 
 #include "Util.h"
 #include "Filters/ApplyAlgorithmFilter.h"
-#include "Models/Models.h"
-#include "Sequences/Sequence.h"
+#include "QI/Models/Models.h"
+#include "QI/Sequences/Sequence.h"
 
 #include "itkAmoebaOptimizer.h"
 #include "itkLBFGSBOptimizer.h"

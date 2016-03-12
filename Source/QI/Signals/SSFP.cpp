@@ -9,7 +9,7 @@
  *
  */
 
-#include "Signals/SSFP.h"
+#include "QI/Signals/SSFP.h"
 // There's a bug in matrix log that leads to duplicate symbol definitions if
 // this is included in the header file
 #include <unsupported/Eigen/MatrixFunctions>

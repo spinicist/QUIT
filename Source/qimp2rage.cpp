@@ -18,9 +18,9 @@
 #include "itkBinaryFunctorImageFilter.h"
 
 #include "Filters/ApplyAlgorithmFilter.h"
-#include "Types.h"
-#include "Util.h"
-#include "Sequences/MPRAGESequence.h"
+#include "QI/Types.h"
+#include "QI/Util.h"
+#include "QI/Sequences/MPRAGESequence.h"
 
 using namespace std;
 

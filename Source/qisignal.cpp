@@ -25,10 +25,10 @@
 
 #include "Filters/VectorToImageFilter.h"
 
-#include "Models/Model.h"
-#include "Sequences/Sequences.h"
-#include "Util.h"
-#include "ThreadPool.h"
+#include "QI/Models/Model.h"
+#include "QI/Sequences/Sequences.h"
+#include "QI/Util.h"
+#include "QI/ThreadPool.h"
 
 using namespace std;
 using namespace Eigen;

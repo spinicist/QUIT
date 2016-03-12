@@ -9,7 +9,7 @@
  *
  */
 
-#include "Models/DESPOT_3C.h"
+#include "QI/Models/DESPOT_3C.h"
  
 /*****************************************************************************/
 /* Three Component DESPOT                                                    */

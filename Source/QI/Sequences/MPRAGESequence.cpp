@@ -9,7 +9,7 @@
  *
  */
 
-#include "Sequences/MPRAGESequence.h"
+#include "QI/Sequences/MPRAGESequence.h"
 
 MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip) :
     SequenceBase(), m_TI(TI), m_TD(TD), m_Nseg(Nseg), m_Nk0(Nk0) {

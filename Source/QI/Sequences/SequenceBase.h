@@ -18,9 +18,9 @@
 #include <memory>
 #include <Eigen/Dense>
 
-#include "Util.h"
-#include "Signals/SignalEquations.h"
-#include "Models/Models.h"
+#include "QI/Util.h"
+#include "QI/Signals/SignalEquations.h"
+#include "QI/Models/Models.h"
 
 using namespace std;
 using namespace Eigen;

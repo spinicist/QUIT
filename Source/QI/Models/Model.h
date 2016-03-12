@@ -18,7 +18,7 @@
 
 #include <Eigen/Dense>
 
-#include "Signals/SignalEquations.h"
+#include "QI/Signals/SignalEquations.h"
 
 using namespace std;
 using namespace Eigen;

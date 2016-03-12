@@ -17,8 +17,8 @@
 #include "itkVersor.h"
 #include "itkChangeInformationImageFilter.h"
 
-#include "Util.h"
-#include "Types.h"
+#include "QI/Util.h"
+#include "QI/Types.h"
 
 using namespace std;
 

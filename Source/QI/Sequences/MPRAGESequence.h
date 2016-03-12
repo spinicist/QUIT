@@ -12,7 +12,7 @@
 #ifndef SEQUENCES_MPRAGE_H
 #define SEQUENCES_MPRAGE_H
 
-#include "Sequences/SequenceBase.h"
+#include "QI/Sequences/SequenceBase.h"
 
 class MPRAGE : public SequenceBase {
     public:

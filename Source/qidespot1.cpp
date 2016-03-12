@@ -22,9 +22,9 @@
 
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
-#include "Models/Models.h"
-#include "Sequences/Sequence.h"
-#include "Util.h"
+#include "QI/Models/Models.h"
+#include "QI/Sequences/Sequence.h"
+#include "QI/Util.h"
 
 using namespace std;
 using namespace Eigen;

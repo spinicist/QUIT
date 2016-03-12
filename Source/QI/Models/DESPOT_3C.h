@@ -1,5 +1,5 @@
 /*
- *  DESPOT_2C.h
+ *  DESPOT_3C.h
  *
  *  Copyright (c) 2016 Tobias Wood.
  *
@@ -9,12 +9,12 @@
  *
  */
 
-#ifndef MODELS_DESPOT_2C_H
-#define MODELS_DESPOT_2C_H
+#ifndef MODELS_DESPOT_3C_H
+#define MODELS_DESPOT_3C_H
 
-#include "Models/Model.h"
+#include "QI/Models/Model.h"
 
-class MCD2 : public Model {
+ class MCD3 : public Model {
 	DECLARE_MODEL_INTERFACE()
 
 	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
@@ -25,11 +25,24 @@ class MCD2 : public Model {
     virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
 };
 
-class MCD2_NoEx : public Model {
+class MCD3_f0 : public Model {
     DECLARE_MODEL_INTERFACE()
 
     virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
+    virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
     virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
 };
 
-#endif
+class MCD3_NoEx : public Model {
+    DECLARE_MODEL_INTERFACE()
+
+    virtual VectorXcd SPGR(cvecd &p, carrd &a, cdbl TR) const override;
+    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
+    virtual VectorXcd SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+};
+
+#endif // MODELS_DESPOT_3C_H

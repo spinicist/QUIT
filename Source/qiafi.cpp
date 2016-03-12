@@ -15,8 +15,8 @@
 #include <time.h>
 #include <getopt.h>
 
-#include "Types.h"
-#include "Util.h"
+#include "QI/Types.h"
+#include "QI/Util.h"
 
 #include "itkExtractImageFilter.h"
 #include "itkDivideImageFilter.h"

@@ -12,7 +12,7 @@
 #ifndef SEQUENCES_STEADYSTATE_H
 #define SEQUENCES_STEADYSTATE_H
 
-#include "Sequences/SequenceBase.h"
+#include "QI/Sequences/SequenceBase.h"
 
 class SteadyState : public SequenceBase {
     public:

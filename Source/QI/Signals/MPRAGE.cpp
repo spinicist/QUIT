@@ -9,7 +9,7 @@
  *
  */
 
-#include "Signals/MPRAGE.h"
+#include "QI/Signals/MPRAGE.h"
 
 VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1) {
     const double M0 = PD;

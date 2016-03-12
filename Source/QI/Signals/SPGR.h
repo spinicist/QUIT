@@ -12,7 +12,7 @@
 #ifndef SIGNALS_SPGR_H
 #define SIGNALS_SPGR_H
 
-#include "Signals/Common.h"
+#include "QI/Signals/Common.h"
 
 VectorXcd One_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1);
 VectorXcd One_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);

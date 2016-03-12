@@ -15,8 +15,8 @@
 #include <iostream>
 #include <atomic>
 
-#include "Types.h"
-#include "Util.h"
+#include "QI/Types.h"
+#include "QI/Util.h"
 
 using namespace std;
 

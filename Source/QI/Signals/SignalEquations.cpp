@@ -12,7 +12,7 @@
  *
  */
 
-#include "SignalEquations.h"
+#include "QI/Signals/SignalEquations.h"
 
 /******************************************************************************
  * One Component Signals

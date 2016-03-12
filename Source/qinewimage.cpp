@@ -18,7 +18,7 @@
 #include "itkImage.h"
 #include "itkImageSliceIteratorWithIndex.h"
 
-#include "Util.h"
+#include "QI/Util.h"
 
 using namespace std;
 

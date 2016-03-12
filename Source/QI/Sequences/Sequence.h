@@ -13,8 +13,8 @@
 #ifndef SEQUENCES_SEQUENCE_H
 #define SEQUENCES_SEQUENCE_H
 
-#include "Sequences/SequenceBase.h"
-#include "Sequences/SteadyStateSequence.h"
+#include "QI/Sequences/SequenceBase.h"
+#include "QI/Sequences/SteadyStateSequence.h"
 
 class MultiEcho : public SequenceBase {
 	public:

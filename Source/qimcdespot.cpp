@@ -22,12 +22,12 @@
 #include "itkLBFGSBOptimizer.h"
 #include "itkTimeProbe.h"
 
-#include "Util.h"
+#include "QI/Util.h"
+#include "QI/Models/Model.h"
+#include "QI/Sequences/Sequence.h"
+#include "QI/RegionContraction.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderVectorFilter.h"
-#include "Models/Model.h"
-#include "Sequences/Sequence.h"
-#include "RegionContraction.h"
 
 using namespace std;
 using namespace Eigen;

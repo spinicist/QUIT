@@ -9,7 +9,7 @@
  *
  */
 
-#include "Sequences/SequenceBase.h"
+#include "QI/Sequences/SequenceBase.h"
 
 /******************************************************************************
  * SequenceBase

@@ -12,8 +12,8 @@
 #ifndef MODELS_H
 #define MODELS_H
 
-#include "Models/Model.h"
-#include "Models/DESPOT_2C.h"
-#include "Models/DESPOT_3C.h"
+#include "QI/Models/Model.h"
+#include "QI/Models/DESPOT_2C.h"
+#include "QI/Models/DESPOT_3C.h"
 
 #endif // MODELS_H

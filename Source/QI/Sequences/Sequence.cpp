@@ -10,8 +10,8 @@
  *
  */
 
-#include "Sequence.h"
-#include "Util.h"
+#include "QI/Sequences/Sequence.h"
+#include "QI/Util.h"
 
 /******************************************************************************
  * MultiEcho

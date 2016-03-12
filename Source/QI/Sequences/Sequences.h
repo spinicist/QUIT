@@ -12,8 +12,8 @@
 #ifndef SEQUENCES_SEQUENCES_H
 #define SEQUENCES_SEQUENCES_H
 
-#include "Sequences/SteadyStateSequence.h"
-#include "Sequences/MPRAGESequence.h"
-#include "Sequences/Sequence.h"
+#include "QI/Sequences/SteadyStateSequence.h"
+#include "QI/Sequences/MPRAGESequence.h"
+#include "QI/Sequences/Sequence.h"
 
 #endif // SEQUENCES_SEQUENCES_H

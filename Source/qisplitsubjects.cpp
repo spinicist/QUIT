@@ -15,8 +15,8 @@
 #include <iostream>
 #include <iomanip>
 
-#include "Util.h"
-#include "Types.h"
+#include "QI/Util.h"
+#include "QI/Types.h"
 
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkBinaryThresholdImageFilter.h"

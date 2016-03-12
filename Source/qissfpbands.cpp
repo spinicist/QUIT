@@ -21,7 +21,7 @@
 #include "itkConstNeighborhoodIterator.h"
 
 #include "Filters/ReorderVectorFilter.h"
-#include "Util.h"
+#include "QI/Util.h"
 
 using namespace std;
 using namespace Eigen;

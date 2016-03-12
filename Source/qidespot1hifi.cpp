@@ -22,8 +22,8 @@
 
 #include "itkImageFileReader.h"
 
-#include "Sequences/MPRAGESequence.h"
-#include "Util.h"
+#include "QI/Sequences/MPRAGESequence.h"
+#include "QI/Util.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 

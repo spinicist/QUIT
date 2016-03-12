@@ -29,8 +29,8 @@
 #include "itkExtractImageFilter.h"
 #include "itkTileImageFilter.h"
 
-#include "Types.h"
-#include "Util.h"
+#include "QI/Types.h"
+#include "QI/Util.h"
 
 using namespace std;
 using namespace Eigen;

@@ -9,7 +9,7 @@
  *
  */
 
-#include "Sequences/SteadyStateSequence.h"
+#include "QI/Sequences/SteadyStateSequence.h"
 
 /******************************************************************************
  * SteadyState

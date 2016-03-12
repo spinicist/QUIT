@@ -13,7 +13,7 @@
 #include <getopt.h>
 #include <iostream>
 #include <Eigen/Dense>
-#include "Types.h"
+#include "QI/Types.h"
 #include "Filters/ReorderImageFilter.h"
 
 using namespace std;
