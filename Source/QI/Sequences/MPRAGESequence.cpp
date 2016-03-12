@@ -11,6 +11,8 @@
 
 #include "QI/Sequences/MPRAGESequence.h"
 
+namespace QI {
+
 MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip) :
     SequenceBase(), m_TI(TI), m_TD(TD), m_Nseg(Nseg), m_Nk0(Nk0) {
     m_TR = TR;
@@ -160,3 +162,5 @@ void MP3RAGE::write(ostream &os) const {
     os << "TR: " << m_TR << "\tN: " << m_N << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
     os << "TD: " << m_TD.transpose() << "\tTS: " << (m_TD.sum() + 3*m_N*m_TR) << endl;
 }
+
+} // End namespace QI

@@ -14,6 +14,8 @@
 
 #include "QI/Models/Model.h"
 
+namespace QI {
+
 class MCD2 : public Model {
 	DECLARE_MODEL_INTERFACE()
 
@@ -32,4 +34,6 @@ class MCD2_NoEx : public Model {
     virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
 };
 
-#endif
+} // End namespace QI
+
+#endif // MODELS_DESPOT_2C_H

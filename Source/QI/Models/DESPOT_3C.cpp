@@ -10,7 +10,9 @@
  */
 
 #include "QI/Models/DESPOT_3C.h"
- 
+
+namespace QI {
+
 /*****************************************************************************/
 /* Three Component DESPOT                                                    */
 /*****************************************************************************/
@@ -248,3 +250,5 @@ VectorXcd MCD3_NoEx::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
                  One_SSFP_Echo(a, phi, TR, p[0]*(1-p[7]-p[8]), p[3], p[4], p[9], p[10]) +
                  One_SSFP_Echo(a, phi, TR, p[0]*p[8], p[5], p[6], p[9], p[10]));
 }
+
+} // End namespace QI

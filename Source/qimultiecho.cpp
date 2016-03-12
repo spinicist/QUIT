@@ -77,9 +77,9 @@ static const char *short_opts = "hvnm:Se:o:b:t:c:Ra:T:r";
  */
 class RelaxAlgo : public Algorithm<double> {
 private:
-	const shared_ptr<SCD> m_model = make_shared<SCD>();
+	const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 protected:
-	shared_ptr<MultiEcho> m_sequence;
+	shared_ptr<QI::MultiEcho> m_sequence;
     double m_clampLo = -numeric_limits<double>::infinity();
     double m_clampHi = numeric_limits<double>::infinity();
     double m_thresh = -numeric_limits<double>::infinity();
@@ -98,7 +98,7 @@ protected:
     }
 
 public:
-	void setSequence(shared_ptr<MultiEcho> &s) { m_sequence = s; }
+	void setSequence(shared_ptr<QI::MultiEcho> &s) { m_sequence = s; }
     void setClamp(double lo, double hi) { m_clampLo = lo; m_clampHi = hi; }
     void setThresh(double t) { m_thresh = t; }
     size_t numInputs() const override { return m_sequence->count(); }
@@ -153,12 +153,12 @@ public:
 
 class RelaxFunctor : public DenseFunctor<double> {
 	protected:
-		const shared_ptr<SequenceBase> m_sequence;
+		const shared_ptr<QI::SequenceBase> m_sequence;
 		const ArrayXd m_data;
-		const shared_ptr<SCD> m_model = make_shared<SCD>();
+		const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
 	public:
-		RelaxFunctor(shared_ptr<SequenceBase> cs, const ArrayXd &data) :
+		RelaxFunctor(shared_ptr<QI::SequenceBase> cs, const ArrayXd &data) :
 			DenseFunctor<double>(2, cs->size()),
 			m_sequence(cs), m_data(data)
 		{
@@ -257,7 +257,7 @@ int main(int argc, char **argv) {
         cout << "Thresh: " << thresh << endl;
     }
     // Gather input data
-    auto multiecho = make_shared<MultiEcho>(prompt);
+    auto multiecho = make_shared<QI::MultiEcho>(prompt);
     algo->setSequence(multiecho);
     auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
     if (mask)

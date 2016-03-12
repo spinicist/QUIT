@@ -11,6 +11,8 @@
 
 #include "QI/Sequences/SequenceBase.h"
 
+namespace QI {
+
 /******************************************************************************
  * SequenceBase
  *****************************************************************************/
@@ -74,3 +76,5 @@ ArrayXd SequenceGroup::weights(const double f0) const {
 void SequenceGroup::addSequence(const shared_ptr<SequenceBase> &seq) {
     m_sequences.push_back(seq);
 }
+
+} // End namespace QI

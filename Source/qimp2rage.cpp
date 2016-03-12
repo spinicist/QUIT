@@ -94,7 +94,7 @@ protected:
         this->SetNumberOfRequiredInputs(1);
         this->SetNumberOfRequiredOutputs(1);
         this->SetNthOutput(0, this->MakeOutput(0));
-        MP2RAGE sequence(true);
+        QI::MP2RAGE sequence(true);
         MPRAGEFunctor<double> con;
         m_T1.clear();
         m_con.clear();

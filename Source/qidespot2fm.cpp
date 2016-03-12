@@ -58,12 +58,12 @@ class FMFunctor : public DenseFunctor<double> {
 public:
     typedef Array<T, Eigen::Dynamic, 1> TArray;
 
-	const shared_ptr<SequenceBase> m_sequence;
-	shared_ptr<SCD> m_model;
+	const shared_ptr<QI::SequenceBase> m_sequence;
+	shared_ptr<QI::SCD> m_model;
     TArray m_data;
 	const double m_T1, m_B1;
 
-    FMFunctor(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const TArray &d, const double T1, const double B1) :
+    FMFunctor(const shared_ptr<QI::SCD> m, const shared_ptr<QI::SequenceBase> s, const TArray &d, const double T1, const double B1) :
 		DenseFunctor<double>(3, s->size()),
 		m_model(m), m_sequence(s), m_data(d),
 		m_T1(T1), m_B1(B1)
@@ -93,13 +93,13 @@ class FixT2 : public DenseFunctor<double> {
 public:
     typedef Array<T, Eigen::Dynamic, 1> TArray;
 
-	const shared_ptr<SequenceBase> m_sequence;
-	shared_ptr<SCD> m_model;
+	const shared_ptr<QI::SequenceBase> m_sequence;
+	shared_ptr<QI::SCD> m_model;
     TArray m_data;
 	const double m_T1, m_B1;
 	double m_T2;
 
-    FixT2(const shared_ptr<SCD> m, const shared_ptr<SequenceBase> s, const TArray &d, const double T1, const double T2, const double B1) :
+    FixT2(const shared_ptr<QI::SCD> m, const shared_ptr<QI::SequenceBase> s, const TArray &d, const double T1, const double T2, const double B1) :
 		DenseFunctor<double>(2, s->size()),
 		m_model(m), m_sequence(s), m_data(d),
 		m_T1(T1), m_T2(T2), m_B1(B1)
@@ -123,8 +123,8 @@ public:
 template<typename T>
 class FMAlgo : public Algorithm<T> {
 protected:
-	const shared_ptr<SCD> m_model = make_shared<SCD>();
-	shared_ptr<SSFPSimple> m_sequence;
+	const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
+	shared_ptr<QI::SSFPSimple> m_sequence;
     bool m_symmetric;
 
 public:
@@ -132,7 +132,7 @@ public:
     typedef typename Algorithm<T>::TInput TInput;
     typedef typename Algorithm<T>::TIterations TIterations;
 
-    void setSequence(shared_ptr<SSFPSimple> s) { m_sequence = s; }
+    void setSequence(shared_ptr<QI::SSFPSimple> s) { m_sequence = s; }
     void setSymmetric(const bool b) { m_symmetric = b; }
     
 	size_t numInputs() const override  { return m_sequence->count(); }
@@ -247,8 +247,8 @@ public:
 
     TArray m_data;
     double m_T1, m_B1;
-    shared_ptr<SequenceBase> m_sequence;
-    shared_ptr<SCD> m_model;
+    shared_ptr<QI::SequenceBase> m_sequence;
+    shared_ptr<QI::SCD> m_model;
 
     unsigned int GetNumberOfParameters(void) const override { return 3; } // itk::CostFunction
     ArrayXd residuals(const ParametersType &p) const {
@@ -486,12 +486,12 @@ int run_main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    shared_ptr<SSFPSimple> ssfpSequence;
+    shared_ptr<QI::SSFPSimple> ssfpSequence;
     if (fitFinite) {
         cout << "Using finite pulse model." << endl;
-        ssfpSequence = make_shared<SSFPFinite>(prompt);
+        ssfpSequence = make_shared<QI::SSFPFinite>(prompt);
     } else {
-        ssfpSequence = make_shared<SSFPEcho>(prompt);
+        ssfpSequence = make_shared<QI::SSFPEcho>(prompt);
     }
     if (verbose) cout << *ssfpSequence << endl;
 

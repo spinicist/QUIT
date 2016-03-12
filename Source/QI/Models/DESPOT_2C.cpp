@@ -11,6 +11,8 @@
 
 #include "QI/Models/DESPOT_2C.h"
 
+namespace QI {
+
 /*****************************************************************************/
 /* Two Component DESPOT                                                      */
 /*****************************************************************************/
@@ -144,3 +146,5 @@ VectorXcd MCD2_NoEx::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
     return scale(One_SSFP(a, phi, TR, p[0]*p[5], p[1], p[2], p[6], p[7]) +
                  One_SSFP(a, phi, TR, p[0]*(1-p[5]), p[3], p[4], p[6], p[7]));
 }
+
+} // End namespace QI

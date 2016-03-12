@@ -16,6 +16,8 @@
 #include "QI/Sequences/SequenceBase.h"
 #include "QI/Sequences/SteadyStateSequence.h"
 
+namespace QI {
+
 class MultiEcho : public SequenceBase {
 	public:
 		double m_ESP;
@@ -33,5 +35,7 @@ class MultiEcho : public SequenceBase {
         ArrayXd TE() const { return m_TE; }
         void setTE(const ArrayXd &TE) { m_TE = TE; }
 };
+
+} // End namespace QI
 
 #endif // SEQUENCES_SEQUENCE_H

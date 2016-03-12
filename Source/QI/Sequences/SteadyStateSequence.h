@@ -14,6 +14,8 @@
 
 #include "QI/Sequences/SequenceBase.h"
 
+namespace QI {
+
 class SteadyState : public SequenceBase {
     public:
         SteadyState();
@@ -103,5 +105,7 @@ protected:
         void write(ostream& os) const override;
         string name() const override { return "AFI"; }
 };
+
+} // End namespace QI
 
 #endif // SEQUENCES_STEADYSTATE_H

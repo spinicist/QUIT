@@ -13,6 +13,8 @@
 #include "QI/Sequences/Sequence.h"
 #include "QI/Util.h"
 
+namespace QI {
+
 /******************************************************************************
  * MultiEcho
  *****************************************************************************/
@@ -47,3 +49,5 @@ void MultiEcho::write(ostream &os) const {
 	os << "MultiEcho" << endl;
 	os << "TE: " << m_TE.transpose() << endl;
 }
+
+} // End namespace QI

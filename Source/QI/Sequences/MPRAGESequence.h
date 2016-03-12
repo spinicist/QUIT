@@ -14,6 +14,8 @@
 
 #include "QI/Sequences/SequenceBase.h"
 
+namespace QI {
+
 class MPRAGE : public SequenceBase {
     public:
         ArrayXd m_TI, m_TD;
@@ -61,5 +63,7 @@ class MP3RAGE : public SequenceBase {
         void write(ostream &os) const override;
         string name() const override { return "MP3RAGE"; }
 };
+
+} // End namespace QI
 
 #endif // SEQUENCES_MPRAGE_H

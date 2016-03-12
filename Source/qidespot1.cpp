@@ -36,8 +36,8 @@ class D1Algo : public Algorithm<double> {
 public:
 	static const size_t DefaultIterations = 15;
 protected:
-	const shared_ptr<Model> m_model = make_shared<SCD>();
-	shared_ptr<SPGRSimple> m_sequence;
+	const shared_ptr<QI::Model> m_model = make_shared<QI::SCD>();
+	shared_ptr<QI::SPGRSimple> m_sequence;
 	size_t m_iterations = DefaultIterations;
 	double m_thresh = -numeric_limits<double>::infinity();
 	double m_lo = -numeric_limits<double>::infinity();
@@ -46,7 +46,7 @@ protected:
 public:
 	void setIterations(size_t n) { m_iterations = n; }
 	size_t getIterations() { return m_iterations; }
-	void setSequence(shared_ptr<SPGRSimple> &s) { m_sequence = s; }
+	void setSequence(shared_ptr<QI::SPGRSimple> &s) { m_sequence = s; }
 	void setThreshold(double t) { m_thresh = t; }
 	void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
 	size_t numInputs() const override { return m_sequence->count(); }
@@ -120,13 +120,13 @@ public:
 // T1 only Functor
 class T1Functor : public DenseFunctor<double> {
 	protected:
-		const shared_ptr<SequenceBase> m_sequence;
+		const shared_ptr<QI::SequenceBase> m_sequence;
 		const ArrayXd m_data;
 		const double m_B1;
-		const shared_ptr<SCD> m_model;
+		const shared_ptr<QI::SCD> m_model;
 
 	public:
-		T1Functor(const shared_ptr<SequenceBase> cs, const ArrayXd &data, const double B1) :
+		T1Functor(const shared_ptr<QI::SequenceBase> cs, const ArrayXd &data, const double B1) :
 			DenseFunctor<double>(2, cs->size()),
 			m_sequence(cs), m_data(data), m_B1(B1)
 		{
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
 	auto convert = QI::TimeseriesToVectorF::New();
 	input->SetFileName(inputFilename);
 	convert->SetInput(input->GetOutput());
-	shared_ptr<SPGRSimple> spgrSequence = make_shared<SPGRSimple>(prompt);
+	shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(prompt);
 	if (verbose) cout << *spgrSequence;
 	algo->setSequence(spgrSequence);
     auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();

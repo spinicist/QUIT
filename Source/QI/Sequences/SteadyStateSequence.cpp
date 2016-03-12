@@ -11,6 +11,8 @@
 
 #include "QI/Sequences/SteadyStateSequence.h"
 
+namespace QI {
+
 /******************************************************************************
  * SteadyState
  *****************************************************************************/
@@ -203,3 +205,5 @@ void AFI::write(ostream &os) const {
 ArrayXcd AFI::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->AFI(p, m_flip[0], m_TR1, m_TR2);
 }
+
+} // End namespace QI

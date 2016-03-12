@@ -35,9 +35,9 @@ using namespace Eigen;
 /*
  * Read in all required files and data from cin
  */
-void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
+void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
                 bool flip, bool verbose, bool prompt);
-void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
+void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
                 bool flip, bool verbose, bool prompt)
 {
     string type, path;
@@ -54,17 +54,17 @@ void parseInput(shared_ptr<SequenceGroup> seq, vector<typename QI::VectorImageF:
         if (prompt) cout << "Enter sequence type (SPGR/SSFP): " << flush;
         QI::Read(cin, type);
         if (type == "SPGR") {
-            seq->addSequence(make_shared<SPGRSimple>(prompt));
+            seq->addSequence(make_shared<QI::SPGRSimple>(prompt));
         } else if (type == "SPGR_ECHO") {
-            seq->addSequence(make_shared<SPGREcho>(prompt));
+            seq->addSequence(make_shared<QI::SPGREcho>(prompt));
         } else if (type == "SPGR_FINITE") {
-            seq->addSequence(make_shared<SPGRFinite>(prompt));
+            seq->addSequence(make_shared<QI::SPGRFinite>(prompt));
         } else if (type == "SSFP") {
-            seq->addSequence(make_shared<SSFPSimple>(prompt));
+            seq->addSequence(make_shared<QI::SSFPSimple>(prompt));
         } else if (type == "SSFP_ECHO") {
-            seq->addSequence(make_shared<SSFPEcho>(prompt));
+            seq->addSequence(make_shared<QI::SSFPEcho>(prompt));
         } else if (type == "SSFP_FINITE") {
-            seq->addSequence(make_shared<SSFPFinite>(prompt));
+            seq->addSequence(make_shared<QI::SSFPFinite>(prompt));
         } else {
             QI_EXCEPTION("Unknown sequence type: " << type);
         }
@@ -90,9 +90,9 @@ public:
     /** Run-time type information (and related methods). */
     itkTypeMacro(CostFunction, SingleValuedCostfunction);
 
-    shared_ptr<SequenceGroup> m_sequence;
+    shared_ptr<QI::SequenceGroup> m_sequence;
     ArrayXd m_data, m_weights;
-    shared_ptr<Model> m_model;
+    shared_ptr<QI::Model> m_model;
 
     unsigned int GetNumberOfParameters(void) const override { return m_model->nParameters(); } // itk::CostFunction
 
@@ -148,14 +148,14 @@ public:
 class MCDAlgo : public Algorithm<double> {
 protected:
     ArrayXXd m_bounds;
-    shared_ptr<Model> m_model = nullptr;
-    shared_ptr<SequenceGroup> m_sequence = nullptr;
-    FieldStrength m_tesla = FieldStrength::Three;
+    shared_ptr<QI::Model> m_model = nullptr;
+    shared_ptr<QI::SequenceGroup> m_sequence = nullptr;
+    QI::FieldStrength m_tesla = QI::FieldStrength::Three;
     int m_iterations = 0;
 
 public:
-    MCDAlgo(shared_ptr<Model>&m, ArrayXXd &b,
-            shared_ptr<SequenceGroup> s, int mi) :
+    MCDAlgo(shared_ptr<QI::Model>&m, ArrayXXd &b,
+            shared_ptr<QI::SequenceGroup> s, int mi) :
         m_model(m), m_bounds(b), m_sequence(s), m_iterations(mi)
     {}
 
@@ -163,8 +163,8 @@ public:
     size_t numOutputs() const override { return m_model->nParameters(); }
     size_t dataSize() const override   { return m_sequence->size(); }
 
-    void setModel(shared_ptr<Model> &m) { m_model = m; }
-    void setSequence(shared_ptr<SequenceGroup> &s) { m_sequence = s; }
+    void setModel(shared_ptr<QI::Model> &m) { m_model = m; }
+    void setSequence(shared_ptr<QI::SequenceGroup> &s) { m_sequence = s; }
     void setBounds(ArrayXXd &b) { m_bounds = b; }
     void setIterations(const int i) { m_iterations = i; }
 };
@@ -242,11 +242,11 @@ public:
 
 class MCDSRCFunctor {
     public:
-        const shared_ptr<SequenceGroup> m_sequence;
+        const shared_ptr<QI::SequenceGroup> m_sequence;
         const ArrayXd m_data, m_weights;
-        const shared_ptr<Model> m_model;
+        const shared_ptr<QI::Model> m_model;
 
-        MCDSRCFunctor(shared_ptr<Model> m,shared_ptr<SequenceGroup> s, const ArrayXd &d, const ArrayXd &w) :
+        MCDSRCFunctor(shared_ptr<QI::Model> m,shared_ptr<QI::SequenceGroup> s, const ArrayXd &d, const ArrayXd &w) :
             m_sequence(s), m_data(d), m_model(m), m_weights(w)
         {
             assert(static_cast<size_t>(m_data.rows()) == m_sequence->size());
@@ -316,7 +316,7 @@ class SRCAlgo : public MCDAlgo {
 int main(int argc, char **argv) {
 	Eigen::initParallel();
 
-	auto tesla = FieldStrength::Three;
+	auto tesla = QI::FieldStrength::Three;
 	int start_slice = 0, stop_slice = 0;
     int max_its = 4, num_threads = 4;
 	int verbose = false, prompt = true, all_residuals = false, flipData = false;
@@ -325,7 +325,7 @@ int main(int argc, char **argv) {
     Algos which_algo = Algos::GRC;
 
 	QI::ImageReaderF::Pointer mask, B1, f0 = ITK_NULLPTR;
-	shared_ptr<Model> model = make_shared<MCD3>();
+	shared_ptr<QI::Model> model = make_shared<QI::MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
     typedef itk::ApplyAlgorithmFilter<MCDAlgo> TMCDFilter;
 	auto apply = TMCDFilter::New();
@@ -395,12 +395,12 @@ Options:\n\
 			case 'n': prompt = false; break;
             case 'M': {
                 string choose_model(optarg);
-                if (choose_model == "1") { model = make_shared<SCD>(); }
-                else if (choose_model == "2") { model = make_shared<MCD2>(); }
-                else if (choose_model == "2nex") { model = make_shared<MCD2_NoEx>(); }
-                else if (choose_model == "3") { model = make_shared<MCD3>(); }
-                else if (choose_model == "3_f0") { model = make_shared<MCD3_f0>(); }
-                else if (choose_model == "3nex") { model = make_shared<MCD3_NoEx>(); }
+                if (choose_model == "1") { model = make_shared<QI::SCD>(); }
+                else if (choose_model == "2") { model = make_shared<QI::MCD2>(); }
+                else if (choose_model == "2nex") { model = make_shared<QI::MCD2_NoEx>(); }
+                else if (choose_model == "3") { model = make_shared<QI::MCD3>(); }
+                else if (choose_model == "3_f0") { model = make_shared<QI::MCD3_f0>(); }
+                else if (choose_model == "3nex") { model = make_shared<QI::MCD3_NoEx>(); }
             } break;
 			default:
 				break;
@@ -455,9 +455,9 @@ Options:\n\
                 break;
 			case 't':
 				switch (*optarg) {
-					case '3': tesla = FieldStrength::Three; break;
-					case '7': tesla = FieldStrength::Seven; break;
-					case 'u': tesla = FieldStrength::User; break;
+					case '3': tesla = QI::FieldStrength::Three; break;
+					case '7': tesla = QI::FieldStrength::Seven; break;
+					case 'u': tesla = QI::FieldStrength::User; break;
 					default:
 						cerr << "Unknown boundaries type " << *optarg << endl;
 						return EXIT_FAILURE;
@@ -485,7 +485,7 @@ Options:\n\
 	}
     Array2d f0Bandwidth;
 
-	shared_ptr<SequenceGroup> sequences = make_shared<SequenceGroup>();
+	shared_ptr<QI::SequenceGroup> sequences = make_shared<QI::SequenceGroup>();
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
     vector<QI::VectorImageF::Pointer> images;
@@ -493,7 +493,7 @@ Options:\n\
 
     ArrayXXd bounds = model->Bounds(tesla);
     ArrayXd start = model->Default(tesla);
-    if (tesla == FieldStrength::User) {
+    if (tesla == QI::FieldStrength::User) {
         ArrayXd temp;
         if (prompt) cout << "Enter lower bounds" << endl;
         QI::ReadArray(cin, temp);

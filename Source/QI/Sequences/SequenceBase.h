@@ -22,8 +22,7 @@
 #include "QI/Signals/SignalEquations.h"
 #include "QI/Models/Models.h"
 
-using namespace std;
-using namespace Eigen;
+namespace QI {
 
 class SequenceBase {
     protected:
@@ -64,5 +63,7 @@ public:
     
     void addSequence(const shared_ptr<SequenceBase> &seq);
 };
+
+} // End namespace QI
 
 #endif // SEQUENCES_BASE_H

@@ -15,6 +15,8 @@
 using namespace std;
 using namespace Eigen;
 
+namespace QI {
+
 const string to_string(const FieldStrength& f) {
 	static const string f3{"3T"}, f7{"7T"}, fu{"User"};
 	switch (f) {
@@ -139,3 +141,5 @@ VectorXcd SCD::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) con
 VectorXcd SCD::SSFP_GS(cvecd &p, carrd &a, cdbl TR) const {
 	return scale(One_SSFP_Ellipse(a, TR, p[0], p[1], p[2], p[3], p[4]));
 }
+
+} // End namespace QI
