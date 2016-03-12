@@ -10,7 +10,7 @@
  */
 
 #include "QI/Models/Model.h"
-#include "QI/Util.h"
+#include "QI/Macro.h"
 
 using namespace std;
 using namespace Eigen;

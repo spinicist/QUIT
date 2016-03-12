@@ -18,6 +18,7 @@
 #include <memory>
 #include <Eigen/Dense>
 
+#include "QI/Macro.h"
 #include "QI/Util.h"
 #include "QI/Signals/SignalEquations.h"
 #include "QI/Models/Models.h"

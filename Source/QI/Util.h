@@ -24,28 +24,8 @@
 #include <Eigen/Dense>
 
 #include "itkCommand.h"
+#include "QI/Macro.h"
 #include "QI/Types.h"
-
-/*
- * The following macros are adapted from ITK for use in QUIT files which don't include any of ITK
- */
-
-#if defined( _WIN32 ) && !defined( __MINGW32__ )
-    #define QI_LOCATION __FUNCSIG__
-#elif defined( __GNUC__ )
-    #define QI_LOCATION __PRETTY_FUNCTION__   
-#else
-    #define QI_LOCATION __FUNCTION__
-#endif
-
-#define QI_EXCEPTION( x )                               \
-{                                                       \
-    std::ostringstream message;                         \
-    message << QI_LOCATION << std::endl                 \
-            << __FILE__ << ":" << __LINE__ << std::endl \
-            << x << std::endl;                          \
-    throw(std::runtime_error(message.str()));                 \
-}
 
 namespace QI {
 

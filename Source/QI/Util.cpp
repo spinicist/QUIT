@@ -16,7 +16,7 @@ using namespace std;
 #include "itkMultiplyImageFilter.h"
 #include "itkDivideImageFilter.h"
 
-#include "Util.h"
+#include "QI/Util.h"
 
 namespace QI {
 
