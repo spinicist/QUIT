@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 
-# Prevent undefined lookup errors when building qi_core as a shared library with Clang
+# Prevent undefined lookup errors when building libqi as a shared library with Clang
 message( STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}" )
 if(CMAKE_CXX_COMPILER_ID MATCHES "(C|c?)lang")
   set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -undefined dynamic_lookup")
@@ -30,11 +30,12 @@ add_custom_command(OUTPUT version_depend_dummy
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
 set(QIDIR "Source/QI")
-add_library(qi_core SHARED ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp 
-            ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
-            ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp
-            ${QIDIR}/Sequences/SequenceBase.cpp ${QIDIR}/Sequences/SteadyStateSequence.cpp ${QIDIR}/Sequences/MPRAGESequence.cpp ${QIDIR}/Sequences/Sequence.cpp)
-add_dependencies( qi_core qi_version )
+set(QI "qi")
+add_library( ${QI} STATIC ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp 
+             ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
+             ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp
+             ${QIDIR}/Sequences/SequenceBase.cpp ${QIDIR}/Sequences/SteadyStateSequence.cpp ${QIDIR}/Sequences/MPRAGESequence.cpp ${QIDIR}/Sequences/Sequence.cpp )
+add_dependencies( ${QI} qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
                                       Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
@@ -49,7 +50,7 @@ set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask qikfilter qireo
 
 foreach(PROGRAM ${PROGRAMS})
 	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-	target_link_libraries(${PROGRAM} qi_core ${ITK_LIBRARIES})
+	target_link_libraries(${PROGRAM} ${QI} ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
 set(TESTS_DIR Test)
@@ -64,4 +65,4 @@ foreach(SCRIPT ${SCRIPTS})
 	configure_file(${SCRIPTS_DIR}/${SCRIPT} ${SCRIPTS_DIR}/${SCRIPT} COPYONLY)
 endforeach(SCRIPT)
 
-install(TARGETS ${PROGRAMS} RUNTIME DESTINATION bin)
+install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
