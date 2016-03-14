@@ -19,7 +19,7 @@ using namespace Eigen;
 
 namespace QI {
 
-VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
+VectorXcd One_SSFP_GS(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
     // This is at the echo time
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
