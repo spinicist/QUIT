@@ -14,6 +14,11 @@
 // this is included in the header file
 #include <unsupported/Eigen/MatrixFunctions>
 
+using namespace std;
+using namespace Eigen;
+
+namespace QI {
+
 VectorXcd One_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1) {
     VectorXcd M = VectorXcd::Zero(flip.size());
     ArrayXd sa = (B1 * flip).sin();
@@ -102,3 +107,5 @@ VectorXcd Three_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD,
     VectorXcd r = m_ab + m_c;
     return r;
 }
+
+} // End namespace QI

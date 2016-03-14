@@ -13,6 +13,9 @@
 #include "QI/Sequences/Sequence.h"
 #include "QI/Util.h"
 
+using namespace std;
+using namespace Eigen;
+
 namespace QI {
 
 /******************************************************************************

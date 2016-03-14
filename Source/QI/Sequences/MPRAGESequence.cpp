@@ -11,6 +11,9 @@
 
 #include "QI/Sequences/MPRAGESequence.h"
 
+using namespace std;
+using namespace Eigen;
+
 namespace QI {
 
 MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip) :

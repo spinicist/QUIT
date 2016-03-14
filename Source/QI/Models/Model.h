@@ -23,7 +23,7 @@
 namespace QI {
     
 //cdbl and carrd already typedef'd in SignalEquations
-typedef const VectorXd cvecd;
+typedef const Eigen::VectorXd cvecd;
 
 enum class FieldStrength { Three, Seven, User };
 static const std::string to_string(const FieldStrength& f);
@@ -33,29 +33,29 @@ public:
 
 protected:
 	bool m_scale_to_mean = false;
-	ArrayXcd scale(const ArrayXcd &signal) const;
+    Eigen::ArrayXcd scale(const Eigen::ArrayXcd &signal) const;
 
 public:
 	virtual std::string Name() const = 0;
 	virtual size_t nParameters() const = 0;
 	virtual bool ValidParameters(cvecd &params) const = 0;
-    virtual const vector<std::string> &ParameterNames() const = 0;
+    virtual const std::vector<std::string> &ParameterNames() const = 0;
     ptrdiff_t ParameterIndex(const std::string &parameter) const;
-    virtual ArrayXXd Bounds(const FieldStrength f) const = 0;
-    virtual ArrayXd Default(const FieldStrength f = FieldStrength::Three) const = 0;
+    virtual Eigen::ArrayXXd Bounds(const FieldStrength f) const = 0;
+    virtual Eigen::ArrayXd Default(const FieldStrength f = FieldStrength::Three) const = 0;
 
 	void setScaleToMean(bool s) { m_scale_to_mean = s; }
 
-    virtual VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const;
-	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
-    virtual VectorXcd SPGREcho(cvecd &p, carrd& a, cdbl TR, cdbl TE) const;
-	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const;
-    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TD) const;
-	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const;
-    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
-    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
-	virtual VectorXcd SSFP_GS(cvecd &params, carrd &a, cdbl TR) const;
-    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const;
+    virtual Eigen::VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const;
+	virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
+    virtual Eigen::VectorXcd SPGREcho(cvecd &p, carrd& a, cdbl TR, cdbl TE) const;
+	virtual Eigen::VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const;
+    virtual Eigen::VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TD) const;
+	virtual Eigen::VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const;
+    virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
+    virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
+	virtual Eigen::VectorXcd SSFP_GS(cvecd &params, carrd &a, cdbl TR) const;
+    virtual Eigen::VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const;
 };
 
 #define DECLARE_MODEL_INTERFACE( )\
@@ -63,23 +63,23 @@ public:\
 	std::string Name() const override;\
 	size_t nParameters() const override;\
 	bool ValidParameters(cvecd &p) const override;\
-    const vector<std::string> &ParameterNames() const override;\
-    ArrayXXd Bounds(const FieldStrength f) const override;\
-    ArrayXd Default(const FieldStrength f = FieldStrength::Three) const override;\
+    const std::vector<std::string> &ParameterNames() const override;\
+    Eigen::ArrayXXd Bounds(const FieldStrength f) const override;\
+    Eigen::ArrayXd Default(const FieldStrength f = FieldStrength::Three) const override;\
 
 class SCD : public Model {
 	DECLARE_MODEL_INTERFACE()
 
-    virtual VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const override;
-    virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
-    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
-	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-    virtual VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TD) const override;
-	virtual VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
-    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
-    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
-    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
-    virtual VectorXcd SSFP_GS(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual Eigen::VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const override;
+    virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual Eigen::VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
+	virtual Eigen::VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
+    virtual Eigen::VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TD) const override;
+	virtual Eigen::VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
+    virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual Eigen::VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
+    virtual Eigen::VectorXcd SSFP_GS(cvecd &params, carrd &a, cdbl TR) const override;
 };
 
 } // End namespace QI

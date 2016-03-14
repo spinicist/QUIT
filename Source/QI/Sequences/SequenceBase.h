@@ -28,41 +28,41 @@ namespace QI {
 class SequenceBase {
     protected:
         double m_TR = 0.;
-        ArrayXd m_flip;
+        Eigen::ArrayXd m_flip;
 
     public:
-        virtual ArrayXcd signal(const shared_ptr<Model> m, const VectorXd &p) const = 0;
+        virtual Eigen::ArrayXcd signal(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const = 0;
         virtual size_t size() const = 0;
-        virtual void write(ostream &os) const = 0;
-        virtual string name() const = 0;
+        virtual void write(std::ostream &os) const = 0;
+        virtual std::string name() const = 0;
         virtual size_t count() const { return 1; }
         double TR() const { return m_TR; }
         void setTR(const double TR) { m_TR = TR; }
-        const ArrayXd & flip() const { return m_flip; }
-        void setFlip(const ArrayXd &f) { m_flip = f; }
-        virtual ArrayXd weights(double f0 = 0.0) const { return ArrayXd::Ones(size()); }        
+        const Eigen::ArrayXd & flip() const { return m_flip; }
+        void setFlip(const Eigen::ArrayXd &f) { m_flip = f; }
+        virtual Eigen::ArrayXd weights(double f0 = 0.0) const { return Eigen::ArrayXd::Ones(size()); }        
 };
-ostream& operator<<(ostream& os, const SequenceBase& s);
+std::ostream& operator<<(std::ostream& os, const SequenceBase& s);
 
 
 class SequenceGroup : public SequenceBase {
 private:
-    vector<shared_ptr<SequenceBase>> m_sequences;
+    std::vector<std::shared_ptr<SequenceBase>> m_sequences;
 
 public:
     SequenceGroup();
-    void write(ostream &os) const override;
-    string name() const override { return "Sequences"; }
+    void write(std::ostream &os) const override;
+    std::string name() const override { return "Sequences"; }
 
     size_t count() const override;
-    shared_ptr<SequenceBase> sequence(const size_t i) const;
-    vector<shared_ptr<SequenceBase>> &sequences();
+    std::shared_ptr<SequenceBase> sequence(const size_t i) const;
+    std::vector<std::shared_ptr<SequenceBase>> &sequences();
 
     size_t size() const override;
-    ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
-    ArrayXd weights(const double f0 = 0.0) const override;
+    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    Eigen::ArrayXd weights(const double f0 = 0.0) const override;
     
-    void addSequence(const shared_ptr<SequenceBase> &seq);
+    void addSequence(const std::shared_ptr<SequenceBase> &seq);
 };
 
 } // End namespace QI

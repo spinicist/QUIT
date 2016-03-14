@@ -23,6 +23,7 @@
 #include "QI/Sequences/MPRAGESequence.h"
 
 using namespace std;
+using namespace Eigen;
 
 const string usage{
 "A tool to process MP-2/3-RAGE images\n\

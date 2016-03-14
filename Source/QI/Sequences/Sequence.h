@@ -21,19 +21,19 @@ namespace QI {
 class MultiEcho : public SequenceBase {
 	public:
 		double m_ESP;
-		ArrayXd m_TE;
+        Eigen::ArrayXd m_TE;
 
 		MultiEcho();
-		MultiEcho(const ArrayXd &te);
+        MultiEcho(const Eigen::ArrayXd &te);
 		MultiEcho(const bool prompt);
 
 		size_t size() const override { return m_TE.rows(); }
-		ArrayXcd signal(shared_ptr<Model> m, const VectorXd &par) const override;
-		void write(ostream &os) const override;
-		string name() const override { return "MultiEcho"; }
+        Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+        void write(std::ostream &os) const override;
+        std::string name() const override { return "MultiEcho"; }
 
-        ArrayXd TE() const { return m_TE; }
-        void setTE(const ArrayXd &TE) { m_TE = TE; }
+        Eigen::ArrayXd TE() const { return m_TE; }
+        void setTE(const Eigen::ArrayXd &TE) { m_TE = TE; }
 };
 
 } // End namespace QI

@@ -14,6 +14,11 @@
 
 #include "QI/Signals/SignalEquations.h"
 
+using namespace std;
+using namespace Eigen;
+
+namespace QI {
+
 /******************************************************************************
  * One Component Signals
  *****************************************************************************/
@@ -34,4 +39,4 @@ VectorXcd One_AFI(cdbl flip, cdbl TR1, cdbl TR2, cdbl PD, cdbl T1, cdbl B1) {
 	return M;
 }
 
-    
+} // End namespace QI

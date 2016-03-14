@@ -88,8 +88,8 @@ protected:
                             const double PD, const double T2) const {
         if (PD > m_thresh) {
             outputs[0] = PD;
-            outputs[1] = clamp(T2, m_clampLo, m_clampHi);
-            ArrayXcd theory = One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2); // T1 isn't modelled, set to 0 for instant recovery
+            outputs[1] = QI::clamp(T2, m_clampLo, m_clampHi);
+            ArrayXcd theory = QI::One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2); // T1 isn't modelled, set to 0 for instant recovery
             resids = data.array() - theory.abs();
         } else {
             outputs.setZero();

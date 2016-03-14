@@ -14,7 +14,7 @@ ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::ApplyAlgorithmFilter
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetAlgorithm(const shared_ptr<TAlgorithm> &a) {
+void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetAlgorithm(const std::shared_ptr<TAlgorithm> &a) {
 	//std::cout <<  __PRETTY_FUNCTION__ << endl;
 	m_algorithm = a;
 	// Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
@@ -29,7 +29,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetAlgorithm(co
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-shared_ptr<const TAlgorithm> ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetAlgorithm() const { return m_algorithm; }
+std::shared_ptr<const TAlgorithm> ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetAlgorithm() const { return m_algorithm; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetScaleToMean(const bool s) { m_scale_to_mean = s; }
@@ -124,7 +124,7 @@ auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetOutput(const
 	if (i < m_algorithm->numOutputs()) {
         return dynamic_cast<TScalarImage *>(this->ProcessObject::GetOutput(i+StartOutputs));
 	} else {
-        itkExceptionMacro("Requested output " << to_string(i) << " is past maximum (" << to_string(m_algorithm->numOutputs()) << ")");
+        itkExceptionMacro("Requested output " << std::to_string(i) << " is past maximum (" << std::to_string(m_algorithm->numOutputs()) << ")");
 	}
 }
 
@@ -214,19 +214,19 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
     }
 	ProgressReporter progress(this, 0, m_unmaskedVoxels, 10);
 
-	vector<ImageRegionConstIterator<TDataVectorImage>> dataIters(m_algorithm->numInputs());
+    std::vector<ImageRegionConstIterator<TDataVectorImage>> dataIters(m_algorithm->numInputs());
 	for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
 		dataIters[i] = ImageRegionConstIterator<TDataVectorImage>(this->GetInput(i), region);
 	}
 
-	vector<ImageRegionConstIterator<TScalarImage>> constIters(m_algorithm->numConsts());
+    std::vector<ImageRegionConstIterator<TScalarImage>> constIters(m_algorithm->numConsts());
 	for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
 		typename TScalarImage::ConstPointer c = this->GetConst(i);
 		if (c) {
 			constIters[i] = ImageRegionConstIterator<TScalarImage>(c, region);
 		}
 	}
-	vector<ImageRegionIterator<TScalarImage>> outputIters(m_algorithm->numOutputs());
+    std::vector<ImageRegionIterator<TScalarImage>> outputIters(m_algorithm->numOutputs());
 	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 		outputIters[i] = ImageRegionIterator<TScalarImage>(this->GetOutput(i), region);
 	}
@@ -254,7 +254,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
                 size_t dataIndex = 0;
                 for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
                     VariableLengthVector<TData> dataVector = dataIters[i].Get();
-                    Map<const Eigen::Array<TData, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
+                    Eigen::Map<const Eigen::Array<TData, Eigen::Dynamic, 1>> data(dataVector.GetDataPointer(), dataVector.Size());
                     Eigen::Array<TData, Eigen::Dynamic, 1> scaled = data;
                     if (m_scale_to_mean) {
                         scaled /= scaled.mean();
@@ -266,7 +266,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
                 for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
                     outputIters[i].Set(static_cast<float>(outputs[i]));
                 }
-                ArrayXf residF = resids.template cast<float>();
+                Eigen::ArrayXf residF = resids.template cast<float>();
                 VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
                 residIter.Set(residVector);
                 iterationsIter.Set(iterations);

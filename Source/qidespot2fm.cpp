@@ -214,7 +214,7 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
                 its += fixT2LM.iterations() + fullLM.iterations();
             }
         }
-        outputs[1] = clamp(outputs[1], 0.001, T1);
+        outputs[1] = QI::clamp(outputs[1], 0.001, T1);
         VectorXd pfull(5); pfull << outputs[0], T1, outputs[1], outputs[2], B1; // Now include EVERYTHING to get a residual
         ArrayXcd theory = this->m_sequence->signal(this->m_model, pfull);
         resids = DifferenceVector(theory, data);

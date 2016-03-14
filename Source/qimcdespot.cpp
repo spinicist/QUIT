@@ -301,7 +301,7 @@ class SRCAlgo : public MCDAlgo {
             }
             localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
             MCDSRCFunctor func(m_model, m_sequence, data, weights);
-            RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
+            QI::RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
             rc.optimise(outputs);
             //outputs(m_model->nParameters() - 1) = rc.contractions();
             //outputs(0) = static_cast<int>(rc.status());

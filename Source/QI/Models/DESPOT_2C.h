@@ -19,19 +19,19 @@ namespace QI {
 class MCD2 : public Model {
 	DECLARE_MODEL_INTERFACE()
 
-	virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
-    virtual VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
-	virtual VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
-    virtual VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
-    virtual VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
+    virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual Eigen::VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
+    virtual Eigen::VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
+    virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual Eigen::VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
 };
 
 class MCD2_NoEx : public Model {
     DECLARE_MODEL_INTERFACE()
 
-    virtual VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
-    virtual VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
 };
 
 } // End namespace QI

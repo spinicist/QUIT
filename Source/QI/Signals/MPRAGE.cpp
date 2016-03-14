@@ -11,6 +11,11 @@
 
 #include "QI/Signals/MPRAGE.h"
 
+using namespace std;
+using namespace Eigen;
+
+namespace QI {
+
 VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1) {
     const double M0 = PD;
     const double T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
@@ -91,3 +96,5 @@ Array3cd One_MP3RAGE(const Array3d &alpha, cdbl TR, const int N, const Array4d &
     cout << "Me " << Me.transpose() << endl;*/
     return Me;
 }
+
+} // End namespace QI

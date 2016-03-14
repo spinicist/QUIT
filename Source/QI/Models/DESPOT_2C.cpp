@@ -11,6 +11,9 @@
 
 #include "QI/Models/DESPOT_2C.h"
 
+using namespace std;
+using namespace Eigen;
+
 namespace QI {
 
 /*****************************************************************************/

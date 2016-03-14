@@ -11,6 +11,11 @@
 
 #include "Common.h"
 
+using namespace std;
+using namespace Eigen;
+
+namespace QI {
+
 double clamp(double value, double low, double high)
 {
     if (value > low) {
@@ -108,3 +113,5 @@ const void CalcExchange(const double tau_a, const double f_a, double &f_b, doubl
         k_ba = 0.;
     }
 }
+
+} // End namespace QI

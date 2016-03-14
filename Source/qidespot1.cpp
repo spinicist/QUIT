@@ -75,11 +75,11 @@ public:
 		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
 		outputs[1] = -m_sequence->TR() / log(b[0]);
 		outputs[0] = b[1] / (1. - b[0]);
-		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
+		ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = (data.array() - theory);
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
-		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+		outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
         its = 1;
 	}
 };
@@ -109,11 +109,11 @@ public:
 			else
 				outputs = newOutputs;
 		}
-		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
+		ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = (data.array() - theory);
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
-		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+		outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
 	}
 };
 
@@ -135,7 +135,7 @@ class T1Functor : public DenseFunctor<double> {
 
 		int operator()(const Ref<VectorXd> &p, Ref<ArrayXd> diffs) const {
 			eigen_assert(diffs.size() == values());
-			ArrayXd s = One_SPGR(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1).array().abs();
+            ArrayXd s = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1).array().abs();
 			diffs = s.abs() - m_data;
 			return 0;
 		}
@@ -155,11 +155,11 @@ public:
 		VectorXd p(2); p << data.maxCoeff() * 10., 1.;
 		lm.minimize(p);
 		outputs = p;
-		ArrayXd theory = One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
+        ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
 		resids = data.array() - theory;
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
-		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+        outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
         its = lm.iterations();
 	}
 };

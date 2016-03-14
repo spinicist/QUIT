@@ -13,7 +13,12 @@
 // There's a bug in matrix log that leads to duplicate symbol definitions if
 // this is included in the header file
 #include <unsupported/Eigen/MatrixFunctions>
- 
+
+using namespace std;
+using namespace Eigen;
+
+namespace QI {
+
 VectorXcd One_SSFP_Ellipse(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
     // This is at the echo time
     const double E1 = exp(-TR / T1);
@@ -275,3 +280,5 @@ VectorXcd Three_SSFP_Finite(carrd &flip, const bool spoil,
     VectorXcd r = m_ab + m_c;
     return r;
 }
+
+} // End namespace QI

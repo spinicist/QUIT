@@ -51,8 +51,8 @@ public:
 	itkNewMacro(Self); /** Method for creation through the object factory. */
 	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
-	void SetAlgorithm(const shared_ptr<TAlgorithm> &a);
-	shared_ptr<const TAlgorithm> GetAlgorithm() const;
+	void SetAlgorithm(const std::shared_ptr<TAlgorithm> &a);
+	std::shared_ptr<const TAlgorithm> GetAlgorithm() const;
 	void SetScaleToMean(const bool s);
 	bool GetScaleToMean() const;
 
@@ -83,7 +83,7 @@ protected:
 	~ApplyAlgorithmFilter(){}
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
-	shared_ptr<TAlgorithm> m_algorithm;
+	std::shared_ptr<TAlgorithm> m_algorithm;
 	bool m_scale_to_mean = false, m_verbose = false;
     size_t m_poolsize = 1, m_start = 0, m_stop = 0;
 
