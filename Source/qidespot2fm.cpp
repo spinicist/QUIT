@@ -330,21 +330,20 @@ public:
             TOptimizer::BoundSelectionType select(3);
             select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
             TOptimizer::BoundValueType lower(3), upper(3);
-            lower[0] = 0.001; lower[1] = this->m_sequence->TR() * 2.0;
-            upper[0] = 0;     upper[1] = T1;
-            double f0_lo, f0_hi, f0_step;
+            lower[0] = 0.001; upper[0] = 0;
+            lower[1] = this->m_sequence->TR() * 2.0; upper[1] = T1;
             if (this->m_symmetric) {
-                lower[2] = 0.001;
-                upper[2] = 0.6/this->m_sequence->TR(); // Allow for a bit of fuzz on upper boundary
-                f0_lo = (2./15.) / this->m_sequence->TR();
-                f0_step = 0.4 / this->m_sequence->TR();
-                f0_hi = f0_lo + 1. + f0_step;
+                lower[2] = 0.;
             } else {
-                lower[2] = -0.6/this->m_sequence->TR();
-                upper[2] = 0.6/this->m_sequence->TR();
-                f0_lo = -(0.4 / this->m_sequence->TR());
-                f0_hi =  (0.4 / this->m_sequence->TR()) + 1.;
-                f0_step = (4./15.) / this->m_sequence->TR(); // 2/3 * 0.4
+                lower[2] = -0.6 / this->m_sequence->TR();
+            }
+            upper[2] = 0.6 / this->m_sequence->TR(); // Allow some fuzz
+            
+            vector<double> f0_starts;
+            for (double f = 1.; f < 1. / (2. * this->m_sequence->TR()); f += 1. / (4. * this->m_sequence->TR())) {
+                f0_starts.push_back(f);
+                if (!this->m_symmetric)
+                    f0_starts.push_back(-f);
             }
             optimizer->SetLowerBound(lower);
             optimizer->SetUpperBound(upper);
@@ -352,7 +351,7 @@ public:
             double best = numeric_limits<double>::infinity();
             TOptimizer::ParametersType bestP(3);
             its = 0;
-            for (double f0 = f0_lo; f0 < f0_hi; f0 += f0_step) {
+            for (const double &f0 : f0_starts) {
                 TOptimizer::ParametersType p(3);
                 p[0] = 10.; p[1] = 0.1 * T1; p[2] = f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 optimizer->SetInitialPosition(p);
