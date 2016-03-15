@@ -20,6 +20,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories( ${PROJECT_SOURCE_DIR}/Source )
+include_directories( ${PROJECT_SOURCE_DIR}/External )
 
 # Setup version
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file

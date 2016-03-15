@@ -14,16 +14,16 @@
 #include <iostream>
  
 #include <Eigen/Dense>
-#include <unsupported/Eigen/LevenbergMarquardt>
-#include <unsupported/Eigen/NumericalDiff>
+
+#include "cppoptlib/meta.h"
+#include "cppoptlib/problem.h"
+#include "cppoptlib/solver/gradientdescentsolver.h"
+#include "cppoptlib/solver/lbfgsbsolver.h"
 
 #include "QI/Util.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
 #include "Filters/ApplyAlgorithmFilter.h"
-
-#include "itkLBFGSBOptimizer.h"
-#include "itkTimeProbe.h"
 
 using namespace std;
 using namespace Eigen;
@@ -50,7 +50,7 @@ ArrayXd DifferenceVector(Ref<const ArrayXcd> a1, const Array<complex<T>, Dynamic
     return (a1 - a2).abs();
 }
 
-template<typename T>
+/*template<typename T>
 class FMFunctor : public DenseFunctor<double> {
 public:
     typedef Array<T, Eigen::Dynamic, 1> TArray;
@@ -115,7 +115,7 @@ public:
         diffs = DifferenceVector(s, m_data);
         return 0;
     }
-};
+};*/
 
 template<typename T>
 class FMAlgo : public Algorithm<T> {
@@ -144,7 +144,7 @@ public:
     }
 };
 
-template<typename T>
+/*template<typename T>
 class LMAlgo : public FMAlgo<T> {
 protected:
     static const int m_iterations = 100;
@@ -221,77 +221,27 @@ void LMAlgo<T>::apply(const TInput &data, const TArray &inputs, TArray &outputs,
         resids.setZero();
         its = 0;
     }
-}
+}*/
 
-namespace itk {
-template<typename T>
-class FMCostFunction : public SingleValuedCostFunction
-{
+class FMCostFunction : public cppoptlib::Problem<double> {
 public:
-    /** Standard class typedefs. */
-    typedef FMCostFunction            Self;
-    typedef SingleValuedCostFunction  Superclass;
-    typedef SmartPointer<Self>        Pointer;
-    typedef SmartPointer<const Self>  ConstPointer;
-
-    typedef Eigen::Array<T, Dynamic, 1> TArray;
-
-    /** Method for creation through the object factory. */
-    itkNewMacro(Self);
-
-    /** Run-time type information (and related methods). */
-    itkTypeMacro(CostFunction, SingleValuedCostfunction);
-
-    TArray m_data;
+    Eigen::ArrayXd m_data;
     double m_T1, m_B1;
     shared_ptr<QI::SequenceBase> m_sequence;
-    shared_ptr<QI::SCD> m_model;
+    const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
-    unsigned int GetNumberOfParameters(void) const override { return 3; } // itk::CostFunction
-    ArrayXd residuals(const ParametersType &p) const {
-        ArrayXd fullparams(5);
+    Eigen::ArrayXd residuals(const Eigen::VectorXd &p) {
+        Eigen::ArrayXd fullparams(5);
         fullparams << p(0), m_T1, p(1), p(2), m_B1;
         ArrayXcd s = m_sequence->signal(m_model, fullparams);
-        //cout << "fullp " << fullparams.transpose() << endl;
-        return DifferenceVector(s, m_data);
-    }
-    MeasureType GetValue(const ParametersType &p1) const override {
-        double r = residuals(p1).square().sum();
-        //cout << "r " << r << endl;
-        return r;
-    }
-    void GetDerivative(const ParametersType &p, DerivativeType &df) const override {
-        using std::sqrt;
-        using std::abs;
-        double eps = sqrt(numeric_limits<double>::epsilon());
-        df.SetSize(p.Size());
-        ParametersType x = p;
-        for (int i = 0; i < p.Size(); ++i) {
-            double h = eps * abs(x[i]);
-            if (h == 0.) {
-                h = eps;
-            }
-            double _x = x[i];
-            x[i] += h;
-            double v2 = GetValue(x);
-            x[i] -= 2*h;
-            double v1 = GetValue(x);
-            df[i] = (v2 - v1)/(2*h);
-            //cout << "h " << h << " x " << x << " v1 " << v1 << " v2 " << v2 << endl;
-            x[i] = _x;
-        }
-        //cout << "df " << df << endl;
+        Eigen::ArrayXd diff = DifferenceVector(s, m_data);
+        return diff;
     }
 
-    protected:
-    FMCostFunction(){};
-    ~FMCostFunction(){};
-
-    private:
-    FMCostFunction(const Self &); //purposely not implemented
-    void operator = (const Self &); //purposely not implemented
+    double value(const cppoptlib::Vector<double> &p) {
+        return residuals(p).square().sum();;
+    }
 };
-}
 
 template<typename T>
 class BFGSAlgo : public FMAlgo<T> {
@@ -299,7 +249,6 @@ public:
     using typename FMAlgo<T>::TArray;
     using typename FMAlgo<T>::TInput;
     using typename FMAlgo<T>::TIterations;
-    typedef typename itk::LBFGSBOptimizer TOptimizer;
 
     virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
         double T1 = consts[0];
@@ -308,63 +257,54 @@ public:
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             const auto data = indata / indata.abs().maxCoeff();
-            TOptimizer::Pointer optimizer = TOptimizer::New();
-            // Set properties pertinent to convergence
-            optimizer->SetCostFunctionConvergenceFactor(1.e3);
-            optimizer->SetProjectedGradientTolerance(1e-10);
-            optimizer->SetMaximumNumberOfIterations(100);
-            optimizer->SetMaximumNumberOfEvaluations(9999);
-            optimizer->SetMaximumNumberOfCorrections(10);
-            // Instantiate the cost function
-            auto cost = itk::FMCostFunction<T>::New();
-            cost->m_data = data;
-            cost->m_T1 = T1;
-            cost->m_B1 = B1;
-            cost->m_sequence = this->m_sequence;
-            cost->m_model = this->m_model;
-            optimizer->SetCostFunction(cost.GetPointer());
-
-            TOptimizer::BoundSelectionType select(3);
-            select[0] = 1; select[1] = 2; select[2] = 2; // Lower bounds for PD, upper and lower for f0 & T2
-            TOptimizer::BoundValueType lower(3), upper(3);
-            lower[0] = 0.001; upper[0] = 0;
-            lower[1] = this->m_sequence->TR() * 2.0; upper[1] = T1;
-            if (this->m_symmetric) {
+            
+            cppoptlib::Options opts;
+            opts.rate = 1.e-5;
+            opts.maxIter = 50;
+            opts.gradTol = 1.e-3;
+            opts.m = 5;
+            
+            cppoptlib::LbfgsbSolver<double> solver;
+            solver.settings_ = opts;
+            FMCostFunction cost;
+            cost.m_B1 = B1;
+            cost.m_data = data;
+            cost.m_sequence = this->m_sequence;
+            cost.m_T1 = T1;
+            Array3d lower; lower << 0.001, this->m_sequence->TR(), -0.6 / this->m_sequence->TR();
+            Array3d upper; upper << 1.e3,  T1,                      0.6 / this->m_sequence->TR();
+            if (this->m_symmetric)
                 lower[2] = 0.;
-            } else {
-                lower[2] = -0.6 / this->m_sequence->TR();
-            }
-            upper[2] = 0.6 / this->m_sequence->TR(); // Allow some fuzz
+            //cout << "Lower: " << lower.transpose() << endl;
+            //cout << "Upper: " << upper.transpose() << endl;
+            cost.setLowerBound(lower);
+            cost.setUpperBound(upper);
             
             vector<double> f0_starts;
-            for (double f = 1.; f < 1. / (2. * this->m_sequence->TR()); f += 1. / (4. * this->m_sequence->TR())) {
+            for (double f = 1.; f < 0.5 / this->m_sequence->TR(); f += 0.25 / this->m_sequence->TR()) {
                 f0_starts.push_back(f);
                 if (!this->m_symmetric)
                     f0_starts.push_back(-f);
             }
-            optimizer->SetLowerBound(lower);
-            optimizer->SetUpperBound(upper);
-            optimizer->SetBoundSelection(select);
             double best = numeric_limits<double>::infinity();
-            TOptimizer::ParametersType bestP(3);
+            Eigen::Array3d bestP;
             its = 0;
             for (const double &f0 : f0_starts) {
-                TOptimizer::ParametersType p(3);
-                p[0] = 10.; p[1] = 0.1 * T1; p[2] = f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
-                optimizer->SetInitialPosition(p);
-                optimizer->StartOptimization();
-                p = optimizer->GetCurrentPosition();
-                double r = cost->GetValue(p);
+                Eigen::VectorXd p(3); p << 10., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                //cout << "Start: " << p.transpose() << endl;
+                solver.minimize(cost, p);
+                //cout << "End: " << p.transpose() << endl;
+                double r = cost(p);
                 if (r < best) {
                     best = r;
                     bestP = p;
                 }
-                its += optimizer->GetCurrentIteration();
+                its += solver.iterations();
             }
             outputs[0] = bestP[0] * indata.abs().maxCoeff();
             outputs[1] = bestP[1];
             outputs[2] = bestP[2];
-            resids = cost->residuals(bestP) * indata.abs().maxCoeff();
+            resids = cost.residuals(bestP) * indata.abs().maxCoeff();
         } else {
             outputs.setZero();
             resids.setZero();
@@ -499,12 +439,12 @@ int run_main(int argc, char **argv) {
     auto ssfpData = QI::ReadVectorImage<T>(argv[optind++]);
     auto apply = TApply::New();
     shared_ptr<FMAlgo<T>> algo;
-    if (use_BFGS) {
-        num_threads = 1; // BFGS code is not thread-safe
+    //if (use_BFGS) {
+        //num_threads = 1; // BFGS code is not thread-safe
         algo = make_shared<BFGSAlgo<T>>();
-    } else {
+    /*} else {
         algo = make_shared<LMAlgo<T>>();
-    }
+    }*/
     algo->setSequence(ssfpSequence);
     algo->setSymmetric(symmetric);
     apply->SetVerbose(verbose);
@@ -560,7 +500,7 @@ int main(int argc, char **argv) {
     }
 
     if (use_complex) {
-        return run_main<complex<double>>(argc, argv);
+        //return run_main<complex<double>>(argc, argv);
     } else {
         return run_main<double>(argc, argv);
     }
