@@ -59,6 +59,7 @@ class SSFPSimple : public SteadyState {
         Eigen::ArrayXd m_phi;
     
     public:
+        SSFPSimple();
         SSFPSimple(const Eigen::ArrayXd &flip, const double TR, const Eigen::ArrayXd &phases);
         SSFPSimple(const bool prompt);
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
@@ -70,10 +71,16 @@ class SSFPSimple : public SteadyState {
 
 class SSFPEcho : public SSFPSimple {
 public:
-    SSFPEcho(const bool prompt) : SSFPSimple(prompt) {}
+    SSFPEcho();
+    SSFPEcho(const bool prompt);
 
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     std::string name() const override { return "SSFPEcho"; }
+};
+
+class SSFPEchoFlex : public SSFPEcho {
+public:
+    SSFPEchoFlex(const bool prompt);
 };
 
 class SSFPFinite : public SSFPSimple {

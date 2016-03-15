@@ -19,6 +19,16 @@ namespace QI {
 /******************************************************************************
  * SequenceBase
  *****************************************************************************/
+SequenceBase::SequenceBase() :
+    m_flip(),
+    m_TR(0.0)
+{}
+
+SequenceBase::SequenceBase(const Eigen::ArrayXd& flip, const double TR) :
+    m_flip(flip * M_PI / 180.),
+    m_TR(TR)
+{}
+
 ostream& operator<<(ostream& os, const SequenceBase& s) {
     s.write(os);
     return os;

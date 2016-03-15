@@ -391,9 +391,10 @@ Options:\n\
                b      : Use BFGS algorithm (default)\n\
     --complex, -x     : Fit to complex data\n\
     --asym, -A        : Fit +/- off-resonance frequency\n\
+    --flex, -f        : Specify all phase-incs for all flip-angles\n\
     --start, -s N     : Start processing from slice N\n\
     --stop, -p  N     : Stop processing at slice N\n\
-    --finite          : Use finite pulse length correction\n\
+    --finite, -F      : Use finite pulse length correction\n\
     --resids, -r      : Write out per flip-angle residuals\n\
     --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 };
@@ -409,15 +410,15 @@ struct option long_opts[] = {
     {"algo", required_argument, 0, 'a'},
     {"complex", no_argument, 0, 'x'},
     {"asym", no_argument, 0, 'A'},
+    {"flex", no_argument, 0, 'f'},
     {"start", required_argument, 0, 's'},
     {"stop", required_argument, 0, 'p'},
-    {"flip", required_argument, 0, 'F'},
     {"threads", required_argument, 0, 'T'},
-    {"finite", no_argument, 0, 'f'},
+    {"finite", no_argument, 0, 'F'},
     {"resids", no_argument, 0, 'r'},
     {0, 0, 0, 0}
 };
-const char* short_opts = "hvnm:o:b:a:xAs:p:FT:frd:";
+const char* short_opts = "hvnm:o:b:a:fxAs:p:FT:rd:";
 int indexptr = 0;
 char c;
 
@@ -432,7 +433,7 @@ int run_main(int argc, char **argv) {
 
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false, symmetric = true,
-        fitFinite = false, flipData = false, use_BFGS = true, num_threads = 4;
+        fitFinite = false, flex = false, use_BFGS = true, num_threads = 4;
     string outPrefix;
     QI::ImageReaderF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
@@ -465,8 +466,8 @@ int run_main(int argc, char **argv) {
             break;
         case 's': start_slice = atoi(optarg); break;
         case 'p': stop_slice = atoi(optarg); break;
-        case 'F': flipData = true; if (verbose) cout << "Data order is phase, then flip-angle" << endl; break;
-        case 'f': fitFinite = true; if (verbose) cout << "Finite pulse model selected" << endl; break;
+        case 'F': fitFinite = true; if (verbose) cout << "Finite pulse model selected" << endl; break;
+        case 'f': flex = true; if (verbose) cout << "Flexible sequence input selected" << endl; break;
         case 'T':
             num_threads = stoi(optarg);
             if (num_threads == 0)
@@ -490,7 +491,10 @@ int run_main(int argc, char **argv) {
         cout << "Using finite pulse model." << endl;
         ssfpSequence = make_shared<QI::SSFPFinite>(prompt);
     } else {
-        ssfpSequence = make_shared<QI::SSFPEcho>(prompt);
+        if (flex)
+            ssfpSequence = make_shared<QI::SSFPEchoFlex>(prompt);
+        else
+            ssfpSequence = make_shared<QI::SSFPEcho>(prompt);
     }
     if (verbose) cout << *ssfpSequence << endl;
 

@@ -21,12 +21,10 @@ namespace QI {
  *****************************************************************************/
  
 SteadyState::SteadyState() : SequenceBase() {}
+
 SteadyState::SteadyState(const ArrayXd &flip, const double TR) :
-    SequenceBase()
-{
-    m_TR = TR;
-    m_flip = flip;
-}
+    SequenceBase(flip, TR)
+{}
 
 /******************************************************************************
  * SPGR
@@ -100,29 +98,28 @@ ArrayXcd SPGRFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
 /******************************************************************************
  * SSFP
  *****************************************************************************/
+SSFPSimple::SSFPSimple() : SteadyState() {}
 
 SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phi) :
-    SteadyState()
-{
-    m_TR = TR;
-    m_flip = flip * M_PI / 180.;
-    m_phi = phi * M_PI / 180.;
-}
+    SteadyState(flip, TR),
+    m_phi(phi * M_PI / 180.)
+{}
 
-SSFPSimple::SSFPSimple(const bool prompt) :
-    SteadyState()
-{
-    if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, m_flip);
+SSFPSimple::SSFPSimple(const bool prompt) : SteadyState() {
+    ArrayXd flip, phi;
+	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
+    QI::ReadArray(cin, flip);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
-    QI::ReadArray(cin, m_phi);
-    if (m_flip.size() != m_phi.size()) {
-        QI_EXCEPTION("SSFP must have the same number of flip-angles and phase-increments.");
+    QI::ReadArray(cin, phi);
+	if (prompt) cout << "Enter TR (seconds): " << flush;
+	QI::Read(cin, m_TR);
+    m_flip = (flip * M_PI / 180.).replicate(phi.rows(), 1);
+    m_phi = ArrayXd::Zero(m_flip.size());
+    int start = 0;
+    for (int i = 0; i < phi.size(); i++) {
+        m_phi.segment(start, flip.size()).setConstant(phi[i] * M_PI / 180.);
+        start += flip.size();
     }
-    if (prompt) cout << "Enter TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
-    m_flip *= M_PI / 180.;
-    m_phi *= M_PI / 180.;
 }
 
 void SSFPSimple::write(ostream &os) const {
@@ -141,12 +138,33 @@ ArrayXd SSFPSimple::weights(const double f0) const {
 ArrayXcd SSFPSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->SSFP(p, m_flip, m_TR, m_phi);
 }
+
+SSFPEcho::SSFPEcho() : SSFPSimple() {}
+SSFPEcho::SSFPEcho(const bool prompt) : SSFPSimple(prompt) {}
+
 ArrayXcd SSFPEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->SSFPEcho(p, m_flip, m_TR, m_phi);
 }
+
+SSFPEchoFlex::SSFPEchoFlex(const bool prompt) : SSFPEcho() {
+    if (prompt) cout << "Enter flip-angles (degrees): " << flush;
+    QI::ReadArray(cin, m_flip);
+    if (prompt) cout << "Enter phase-increments (degrees): " << flush;
+    QI::ReadArray(cin, m_phi);
+    if (m_flip.size() != m_phi.size()) {
+        QI_EXCEPTION("SSFP must have the same number of flip-angles and phase-increments.");
+    }
+    if (prompt) cout << "Enter TR (seconds): " << flush;
+    QI::Read(cin, m_TR);
+    m_flip *= M_PI / 180.;
+    m_phi *= M_PI / 180.;
+}
+
 SSFPFinite::SSFPFinite(const ArrayXd &flip, const double TR, const double Trf, const ArrayXd &phases) :
-    SSFPSimple(flip, TR, phases), m_Trf(Trf)
+    SSFPSimple(flip, TR, phases),
+    m_Trf(Trf)
 {}
+
 SSFPFinite::SSFPFinite(const bool prompt) :
     SSFPSimple(prompt)
 {
