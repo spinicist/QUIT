@@ -47,12 +47,21 @@ auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
     return img;
 }
 
-template<typename TImg = QI::ImageF>
-void WriteImage(const typename TImg::Pointer img, const std::string path) {
+template<typename TImg>
+void WriteImage(const TImg *ptr, const std::string path) {
     typedef itk::ImageFileWriter<TImg> TWriter;
     typename TWriter::Pointer file = TWriter::New();
     file->SetFileName(path);
-    file->SetInput(img);
+    file->SetInput(ptr);
+    file->Update();
+}
+
+template<typename TImg>
+void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string path) {
+    typedef itk::ImageFileWriter<TImg> TWriter;
+    typename TWriter::Pointer file = TWriter::New();
+    file->SetFileName(path);
+    file->SetInput(ptr);
     file->Update();
 }
 

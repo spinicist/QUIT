@@ -371,7 +371,7 @@ int main(int argc, char **argv) {
             erodeFilter->SetKernel(structuringElement);
             erodeFilter->Update();
             masker->SetMaskImage(erodeFilter->GetOutput());
-            if (debug) QI::WriteImage<QI::ImageUC>(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
+            if (debug) QI::WriteImage(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
         }
         if (verbose) cout << "Applying mask" << endl;
         masker->Update();
@@ -394,7 +394,7 @@ int main(int argc, char **argv) {
 	auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
-    if (debug) QI::WriteImage<QI::ImageXF>(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
+    if (debug) QI::WriteImage(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
 	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
     auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
     auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
 	mult->SetInput1(forwardFFT->GetOutput());
 	mult->SetInput2(inverseLaplace->GetOutput());
-    if (debug) QI::WriteImage<QI::ImageXF>(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
+    if (debug) QI::WriteImage(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
 	if (verbose) cout << "Inverse FFT." << endl;
     auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
 	inverseFFT->SetInput(mult->GetOutput());

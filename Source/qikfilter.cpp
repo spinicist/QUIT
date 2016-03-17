@@ -129,7 +129,7 @@ QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, itk::TukeyFilt
     auto shiftFFT = ShiftType::New();
     shiftFFT->SetInput(forwardFFT->GetOutput());
     shiftFFT->Update();
-    if (debug) QI::WriteImage<QI::ImageXF>(shiftFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
+    if (debug) QI::WriteImage(shiftFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
 
     if (verbose) cout << "Generating K-Space Filter." << endl;
     k_filter->SetImageProperties(padFFT->GetOutput());
@@ -139,7 +139,7 @@ QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, itk::TukeyFilt
     auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
     mult->SetInput1(shiftFFT->GetOutput());
     mult->SetInput2(k_filter->GetOutput());
-    if (debug) QI::WriteImage<QI::ImageXF>(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
+    if (debug) QI::WriteImage   (mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
 
     auto unshiftFFT = ShiftType::New();
     unshiftFFT->SetInput(mult->GetOutput());
@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
     out->DisconnectPipeline();
     out->SetDirection(vols->GetDirection());
     out->SetSpacing(vols->GetSpacing());
-    QI::WriteImage<QI::TimeseriesF>(out, outname);
+    QI::WriteImage(out, outname);
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

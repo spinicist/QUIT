@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
 	QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
 	if (algo->getIterations() != D1Algo::DefaultIterations) {
-		QI::WriteImage<QI::ImageI>(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
+		QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
 	}
 	if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;

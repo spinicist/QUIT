@@ -579,7 +579,7 @@ Options:\n\
         QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
 	}
 	QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
-    QI::WriteImage<itk::Image<int, 3>>(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
+    QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
 	return EXIT_SUCCESS;
 }
 

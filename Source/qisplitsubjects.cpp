@@ -329,7 +329,7 @@ int main(int argc, char **argv) {
 
     TLabelImage::Pointer labels = FindLabels(mask, size_threshold, keep);
     if (verbose) cout << "Found " << keep << " subjects, saving labels." << endl;
-    QI::WriteImage<TLabelImage>(labels, prefix + "_labels.nii");
+    QI::WriteImage(labels, prefix + "_labels.nii");
 
 	typedef itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage> TLabelStats;
 	auto labelStats = TLabelStats::New();
@@ -395,7 +395,7 @@ int main(int argc, char **argv) {
             QI::WriteImage(rimage, fname);
             fname = prefix + suffix.str() + "_mask.nii";
             if (verbose) cout << "Writing output mask " << fname << endl;
-            QI::WriteImage<TLabelImage>(rthresh->GetOutput(), fname);
+            QI::WriteImage(rthresh->GetOutput(), fname);
 		}
 	}
 	return EXIT_SUCCESS;
