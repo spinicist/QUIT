@@ -19,12 +19,11 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
-#include "Util.h"
-#include "Filters/ApplyAlgorithmFilter.h"
+#include "QI/Util.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequence.h"
+#include "Filters/ApplyAlgorithmFilter.h"
 
-#include "itkAmoebaOptimizer.h"
 #include "itkLBFGSBOptimizer.h"
 #include "itkTimeProbe.h"
 
