@@ -17,6 +17,7 @@
 #include <random>
 #include <iostream>
 #include <atomic>
+#include <cmath>
 
 #include <Eigen/Dense>
 
@@ -175,7 +176,7 @@ class RegionContraction {
 							tempSample += m_currentBounds.col(0);
 						} else {
 							for (int p = 0; p < nP; p++) {
-								if (isfinite(gauss_sigma(p))) {
+                                if (std::isfinite(gauss_sigma(p))) {
                                     std::normal_distribution<double> gauss(gauss_mu(p), gauss_sigma(p));
 									do {
 										tempSample(p) = gauss(m_rng);
@@ -202,7 +203,7 @@ class RegionContraction {
 					} while (!m_f.constraint(tempSample));
 					
                     residuals[s] = m_f(tempSample);
-                    if (!isfinite(residuals[s])) {
+                    if (!std::isfinite(residuals[s])) {
 						warn_mtx.lock();
 						if (!finiteWarning) {
 							finiteWarning = true;
