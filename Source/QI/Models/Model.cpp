@@ -50,6 +50,20 @@ ArrayXcd Model::scale(const ArrayXcd &s) const {
 	}
 }
 
+ArrayXd Model::scale_mag(const ArrayXd &s) const {
+    //std::cout << __PRETTY_FUNCTION__ << std::endl;
+    if (m_scale_to_mean) {
+        //std::cout << "Scaling to mean value" << std::endl;
+        ArrayXd scaled = s / s.mean();
+        return scaled;
+    } else {
+        //std::cout << "Not scaling" << std::endl;
+        return s;
+    }
+}
+
+VectorXd Model::SSFPEchoMagnitude(cvecd &params, carrd &a, cdbl TR, carrd &phi) const { QI_EXCEPTION("Function not implemented."); }
+
 VectorXcd Model::MultiEcho(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGR(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGREcho(cvecd &, carrd &, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
@@ -122,6 +136,10 @@ VectorXcd SCD::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const {
 
 VectorXcd SCD::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
     return scale(One_SSFP(a, phi, TR, p[0], p[1], p[2], p[3], p[4]));
+}
+
+VectorXd SCD::SSFPEchoMagnitude(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+    return scale_mag(One_SSFP_Echo_Magnitude(a, phi, TR, p[0], p[1], p[2], p[3], p[4]));
 }
 
 VectorXcd SCD::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {

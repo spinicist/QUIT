@@ -65,7 +65,7 @@ class SSFPSimple : public SteadyState {
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream& os) const override;
         std::string name() const override { return "SSFP"; }
-
+        const Eigen::ArrayXd & phase_incs() const { return m_phi; }
         Eigen::ArrayXd weights(const double f0) const override;
 };
 
@@ -75,6 +75,7 @@ public:
     SSFPEcho(std::istream &istr, const bool prompt);
 
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    Eigen::ArrayXd  signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     std::string name() const override { return "SSFPEcho"; }
 };
 

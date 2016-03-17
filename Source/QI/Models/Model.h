@@ -34,6 +34,7 @@ public:
 protected:
 	bool m_scale_to_mean = false;
     Eigen::ArrayXcd scale(const Eigen::ArrayXcd &signal) const;
+    Eigen::ArrayXd  scale_mag(const Eigen::ArrayXd  &signal) const;
 
 public:
 	virtual std::string Name() const = 0;
@@ -45,6 +46,8 @@ public:
     virtual Eigen::ArrayXd Default(const FieldStrength f = FieldStrength::Three) const = 0;
 
 	void setScaleToMean(bool s) { m_scale_to_mean = s; }
+
+    virtual Eigen::VectorXd SSFPEchoMagnitude(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
 
     virtual Eigen::VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const;
 	virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
@@ -69,6 +72,8 @@ public:\
 
 class SCD : public Model {
 	DECLARE_MODEL_INTERFACE()
+
+    virtual Eigen::VectorXd SSFPEchoMagnitude(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
 
     virtual Eigen::VectorXcd MultiEcho(cvecd &params, carrd &TE, cdbl TR) const override;
     virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;

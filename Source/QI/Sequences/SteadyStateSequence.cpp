@@ -146,6 +146,10 @@ ArrayXcd SSFPEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->SSFPEcho(p, m_flip, m_TR, m_phi);
 }
 
+ArrayXd  SSFPEcho::signal_magnitude(shared_ptr<Model> m, const VectorXd &p) const {
+    return m->SSFPEchoMagnitude(p, m_flip, m_TR, m_phi);
+}
+
 SSFPEchoFlex::SSFPEchoFlex(std::istream &istr, const bool prompt) : SSFPEcho() {
     if (prompt) cout << "Enter flip-angles (degrees): " << flush;
     QI::ReadArray(istr, m_flip);

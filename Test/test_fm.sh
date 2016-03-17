@@ -5,7 +5,7 @@
 # separately to other single-component programs.
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
 DATADIR="fm"
 mkdir -p $DATADIR
@@ -31,48 +31,33 @@ function run_tests() {
 PREFIX="$1"
 SSFP_FLIP="$2"
 SSFP_PC="$3"
+ARGS="$4"
 
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v -x --noise 0.002 << END_SIG
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise 0.004 << END_SIG
 PD.nii
 T1.nii
 T2.nii
 f0.nii
 B1.nii
-${PREFIX}x$SSFP_FILE
+${PREFIX}$SSFP_FILE
 SSFP_ECHO
 $SSFP_FLIP
 $SSFP_PC
 $SSFP_TR
-${PREFIX}xf${SSFP_FILE}
-SSFP_FINITE
-$SSFP_FLIP
-$SSFP_PC
-$SSFP_TR
-$SSFP_Trf
 END
 END_SIG
-
-$QUITDIR/qicomplex -x ${PREFIX}x$SSFP_FILE -M ${PREFIX}$SSFP_FILE -P ${PREFIX}p$SSFP_FILE
-$QUITDIR/qicomplex -x ${PREFIX}xf$SSFP_FILE -M ${PREFIX}f$SSFP_FILE -P ${PREFIX}pf$SSFP_FILE
 
 echo "$SSFP_FLIP
 $SSFP_PC
 $SSFP_TR" > ${PREFIX}fm_in.txt
 
-echo "$SSFP_FLIP
-$SSFP_PC
-$SSFP_TR
-$SSFP_Trf" > ${PREFIX}fm_f_in.txt
+run_test "${PREFIX}BFGS"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o${PREFIX} $ARGS < ${PREFIX}fm_in.txt
+compare_test "BFGS"   T2.nii ${PREFIX}FM_T2.nii  0.01
 
-#run_test "${PREFIX}LM"       $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o${PREFIX}   -al  -T1       < ${PREFIX}fm_in.txt
-run_test "${PREFIX}BFGS"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o${PREFIX}b  -ab      < ${PREFIX}fm_in.txt
-
-#compare_test "LM"     T2.nii ${PREFIX}FM_T2.nii  0.01
-compare_test "BFGS"   T2.nii ${PREFIX}bFM_T2.nii  0.01
 }
 
-run_tests "2" "5 25 45 65 " "180 0"
-#run_tests "4" "0 90 180 270"
+run_tests "2_180_0" "5 25 45 65" "180 0"
+run_tests "2_90_270" "5 25 45 65" "90 270" "-A"
 
 cd ..
 SILENCE_TESTS="0"

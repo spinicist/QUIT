@@ -18,9 +18,12 @@ namespace QI {
 
 Eigen::VectorXcd One_SSFP(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 Eigen::VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
+Eigen::VectorXd  One_SSFP_Echo_Magnitude(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 Eigen::VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl TE, cdbl ph,
                                  cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 Eigen::VectorXcd One_SSFP_GS(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
+
+Eigen::MatrixXd One_SSFP_Echo_Derivs(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 
 Eigen::VectorXcd Two_SSFP(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1);
 Eigen::VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR, cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1);

@@ -29,6 +29,10 @@ SequenceBase::SequenceBase(const Eigen::ArrayXd& flip, const double TR) :
     m_TR(TR)
 {}
 
+Eigen::ArrayXd SequenceBase::signal_magnitude(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+    QI_EXCEPTION("Function not implemented.");
+}
+
 ostream& operator<<(ostream& os, const SequenceBase& s) {
     s.write(os);
     return os;

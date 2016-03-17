@@ -69,6 +69,46 @@ VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR,
     return M;
 }
 
+VectorXd One_SSFP_Echo_Magnitude(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
+    eigen_assert(flip.size() = phi.size());
+    const double E1 = exp(-TR / T1);
+    const double E2 = exp(-TR / T2);
+
+    const double  psi = 2. * M_PI * f0 * TR;
+    const ArrayXd al = flip * B1;
+    const ArrayXd th = phi + psi;
+    const ArrayXd d = (1. - E1*cos(al))*(1. - E2*cos(th)) - E2*(E1-cos(al))*(E2-cos(th));
+    const ArrayXd rtn = (E2*(E2*E2-2*E2*cos(th)+1.)).sqrt();
+    const ArrayXd Mxy = M0*(1.-E1)*rtn*sin(al)/d;
+    return Mxy;
+}
+
+/*
+ * For DESPOT2-FM, only includes M0, T2, f0/th derivs for now
+ */
+MatrixXd One_SSFP_Echo_Derivs(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
+    eigen_assert(flip.size() = phi.size());
+    const double E1 = exp(-TR / T1);
+    const double E2 = exp(-TR / T2);
+    const double E2sqr = E2*E2;
+    const double  psi = 2. * M_PI * f0 * TR;
+    const ArrayXd al = flip * B1;
+    const ArrayXd sa = sin(al);
+    const ArrayXd ca = cos(al);
+    const ArrayXd th = phi + psi;
+    const ArrayXd sth = sin(th);
+    const ArrayXd cth = cos(th);
+    const ArrayXd d = (1. - E1*ca)*(1. - E2*cth) - E2*(E1-ca)*(E2-cth);
+    const ArrayXd dd = (d*d*(E2sqr - 2*E2*cth + 1)); // Denom for dT2, dth
+    const ArrayXd n = E2*(E2sqr-2*E2*cth+1.);
+    const ArrayXd rtna = n.sqrt()*(1. - E1)*sa;
+    
+    MatrixXd drv(flip.size(), 3);
+    drv.col(0) = rtna/d;
+    drv.col(1) = M0*TR*rtna*(2.*n*(E2*(E1 - ca) + (E1 - ca)*(E2 - cth) - (E1*ca - 1.)*cth) - (E2*(E1 - ca)*(E2 - cth) - (E1*ca - 1.)*(E2*cth - 1.))*(3.*E2sqr - 4.*E2*cth + 1.))/(2.*T2*T2*dd);
+    drv.col(2) = 2.*M_PI*TR*E2*M0*rtna*sth*(d + (E2sqr - 2.*E2*cth + 1.)*(E1*ca + E1 - ca - 1.))/dd;
+    return drv;
+}
 VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl inTE, cdbl phase,
                           cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
     const Matrix3d I = Matrix3d::Identity();

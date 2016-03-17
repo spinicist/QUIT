@@ -35,6 +35,7 @@ class SequenceBase {
         SequenceBase(const Eigen::ArrayXd &flip, const double TR);
     
         virtual Eigen::ArrayXcd signal(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const = 0;
+        virtual Eigen::ArrayXd  signal_magnitude(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const;
         virtual size_t size() const = 0;
         virtual void write(std::ostream &os) const = 0;
         virtual std::string name() const = 0;
