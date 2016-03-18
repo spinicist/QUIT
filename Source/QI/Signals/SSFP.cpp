@@ -85,13 +85,15 @@ VectorXd One_SSFP_Echo_Magnitude(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl
 
 /*
  * For DESPOT2-FM, only includes M0, T2, f0/th derivs for now
+ * Note that the f0 deriv is scaled in terms of f0/TR, i.e. there is no multiply by TR
+ * This is to match the scaling of that parameter in DESPOT2-FM which improves fitting
  */
 MatrixXd One_SSFP_Echo_Derivs(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
     eigen_assert(flip.size() = phi.size());
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
     const double E2sqr = E2*E2;
-    const double  psi = 2. * M_PI * f0 * TR;
+    const double psi = 2. * M_PI * f0 * TR;
     const ArrayXd al = flip * B1;
     const ArrayXd sa = sin(al);
     const ArrayXd ca = cos(al);
@@ -106,7 +108,7 @@ MatrixXd One_SSFP_Echo_Derivs(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1
     MatrixXd drv(flip.size(), 3);
     drv.col(0) = rtna/d;
     drv.col(1) = M0*TR*rtna*(2.*n*(E2*(E1 - ca) + (E1 - ca)*(E2 - cth) - (E1*ca - 1.)*cth) - (E2*(E1 - ca)*(E2 - cth) - (E1*ca - 1.)*(E2*cth - 1.))*(3.*E2sqr - 4.*E2*cth + 1.))/(2.*T2*T2*dd);
-    drv.col(2) = 2.*M_PI*TR*E2*M0*rtna*sth*(d + (E2sqr - 2.*E2*cth + 1.)*(E1*ca + E1 - ca - 1.))/dd;
+    drv.col(2) = 2.*M_PI*E2*M0*rtna*sth*(d + (E2sqr - 2.*E2*cth + 1.)*(E1*ca + E1 - ca - 1.))/dd;
     return drv;
 }
 VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl inTE, cdbl phase,

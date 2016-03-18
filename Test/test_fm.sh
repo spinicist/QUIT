@@ -5,7 +5,7 @@
 # separately to other single-component programs.
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
 DATADIR="fm"
 mkdir -p $DATADIR
@@ -17,14 +17,14 @@ fi
 # First, create input data
 SIZE="16 16 17"
 $QUITDIR/qinewimage PD.nii --size "$SIZE" -f 1.0
-$QUITDIR/qinewimage T1.nii --size "$SIZE" -f 1.25
+$QUITDIR/qinewimage T1.nii --size "$SIZE" -f 1.0
 $QUITDIR/qinewimage T2.nii --size "$SIZE" -g "1 0.025 0.125"
 $QUITDIR/qinewimage f0.nii --size "$SIZE" -g "2 -150.0 150.0"
 $QUITDIR/qinewimage B1.nii --size "$SIZE" -f 1.0
 
 # Setup parameters
 SSFP_FILE="ssfp.nii"
-SSFP_TR="0.01"
+SSFP_TR="0.005"
 SSFP_Trf="0.001"
 
 function run_tests() {
@@ -33,7 +33,7 @@ SSFP_FLIP="$2"
 SSFP_PC="$3"
 ARGS="$4"
 
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise 0.004 << END_SIG
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise 0.002 << END_SIG
 PD.nii
 T1.nii
 T2.nii
@@ -51,14 +51,15 @@ echo "$SSFP_FLIP
 $SSFP_PC
 $SSFP_TR" > ${PREFIX}fm_in.txt
 
-run_test "${PREFIX}BFGS"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o${PREFIX} $ARGS < ${PREFIX}fm_in.txt
-compare_test "BFGS"   T2.nii ${PREFIX}FM_T2.nii  0.01
+run_test "${PREFIX}"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o${PREFIX} $ARGS < ${PREFIX}fm_in.txt
+compare_test "${PREFIX}"   T2.nii ${PREFIX}FM_T2.nii  0.01
 
 }
 
-run_tests "C_180_0" "5 65" "180 0" "-ac"
-#run_tests "2_180_0" "5 65" "180 0"
-#run_tests "2_90_270" "5 65" "90 270" "-A"
+run_tests "CM2SYM" "12 65" "180 0" "-ac"
+run_tests "CM2ASYM" "12 65" "90 270" "-ac --asym"
+run_tests "BFGS2SYM" "12 65" "180 0"
+run_tests "BFGS2ASYM" "12 65" "90 270" "--asym"
 
 cd ..
 SILENCE_TESTS="0"

@@ -60,19 +60,19 @@ public:
     const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
     Eigen::ArrayXd residuals(const Eigen::VectorXd &p) {
-        ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
+        ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
         Eigen::ArrayXd diff = s - m_data;
         return diff;
     }
 
     double value(const cppoptlib::Vector<double> &p) {
-        return residuals(p).square().sum();;
+        return residuals(p).square().sum();
     }
     
-    void gradient(const  cppoptlib::Vector<double> &p,  cppoptlib::Vector<double> &grad) {
-        ArrayXd  s   = QI::One_SSFP_Echo_Magnitude(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
-        ArrayXXd drv = QI::One_SSFP_Echo_Derivs(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
-        grad = 2*(drv.colwise()*(s - m_data)).colwise().sum();
+    void gradient(const cppoptlib::Vector<double> &p, cppoptlib::Vector<double> &grad) {
+        ArrayXd  s     = QI::One_SSFP_Echo_Magnitude(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
+        ArrayXXd deriv = QI::One_SSFP_Echo_Derivs(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
+        grad = 2*(deriv.colwise()*(s - m_data)).colwise().sum();
     }
 };
 
@@ -88,13 +88,11 @@ public:
         if (isfinite(T1) && (T1 > 0.001)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
-            const auto data = indata / indata.abs().maxCoeff();
+            const TInput data = indata / indata.maxCoeff();
             
-            cppoptlib::LbfgsbSolver<double>::Info opts;
-            opts.rate = 1.e-5;
+            auto opts = cppoptlib::LbfgsbSolver<double>::Defaults();
             opts.iterations = 100;
-            opts.gradNorm = 1.e-3;
-            opts.m = 5;
+            opts.gradNorm = 1e-8;
             
             cppoptlib::LbfgsbSolver<double> solver(opts);
             FMCostFunction cost;
@@ -102,29 +100,28 @@ public:
             cost.m_data = data;
             cost.m_sequence = this->m_sequence;
             cost.m_T1 = T1;
-            Array3d lower; lower << 1.e-3, this->m_sequence->TR(), -0.75 / this->m_sequence->TR();
-            Array3d upper; upper << 1.e3,  T1,                      0.75 / this->m_sequence->TR();
+            Array3d lower; lower << 0., 2.*this->m_sequence->TR(), -0.55;
+            Array3d upper; upper << 20,    T1,                         0.55;
             if (this->m_symmetric)
                 lower[2] = 0.;
             cost.setLowerBound(lower);
             cost.setUpperBound(upper);
             
+            // f0 is scaled by TR in the cost function so that scaling is better here
             vector<double> f0_starts;
             if (this->m_symmetric) {
-                f0_starts.push_back(5.);
-                f0_starts.push_back(0.25 / this->m_sequence->TR());
+                f0_starts.push_back(0.01);
+                f0_starts.push_back(0.25);
             } else {
-				f0_starts.push_back(0.);
-                f0_starts.push_back( 0.25 / this->m_sequence->TR());
-                f0_starts.push_back(-0.25 / this->m_sequence->TR());
-                f0_starts.push_back( 0.5 / this->m_sequence->TR());
-				f0_starts.push_back(-0.5 / this->m_sequence->TR());
+                f0_starts.push_back(0.);
+                f0_starts.push_back( 0.25);
+                f0_starts.push_back(-0.25);
             }
             double best = numeric_limits<double>::infinity();
             Eigen::Array3d bestP;
             its = 0;
             for (const double &f0 : f0_starts) {
-                Eigen::VectorXd p(3); p << 10., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                Eigen::VectorXd p(3); p << 5., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 solver.minimize(cost, p);
                 double r = cost(p);
                 if (r < best) {
@@ -135,7 +132,7 @@ public:
             }
             outputs[0] = bestP[0] * indata.abs().maxCoeff();
             outputs[1] = bestP[1];
-            outputs[2] = bestP[2];
+            outputs[2] = bestP[2] / this->m_sequence->TR();
             resids = cost.residuals(bestP) * indata.abs().maxCoeff();
         } else {
             outputs.setZero();
@@ -159,51 +156,29 @@ public:
             // This gets scaled back up at the end.
             const auto data = indata / indata.abs().maxCoeff();
             
-            cppoptlib::LbfgsbSolver<double>::Info opts;
-            opts.rate = 1.e-5;
-            opts.iterations = 50;
-            opts.gradNorm = 1.e-3;
-            opts.m = 5;
-            
+            cppoptlib::CMAesSolver<double>::Criteria opts = cppoptlib::CMAesSolver<double>::Defaults();
+            opts.iterations = 1000;
             cppoptlib::CMAesSolver<double> solver(opts);
             FMCostFunction cost;
             cost.m_B1 = B1;
             cost.m_data = data;
             cost.m_sequence = this->m_sequence;
             cost.m_T1 = T1;
-            Array3d lower; lower << 0.001, this->m_sequence->TR(), -0.6 / this->m_sequence->TR();
-            Array3d upper; upper << 1.e3,  T1,                      0.6 / this->m_sequence->TR();
+            // f0 is scaled by TR in the cost function so that scaling is better here
+            Array3d lower; lower << 0.001, this->m_sequence->TR(), -0.6;
+            Array3d upper; upper << 1.e3,  T1,                      0.6;
             if (this->m_symmetric)
                 lower[2] = 0.;
             cost.setLowerBound(lower);
             cost.setUpperBound(upper);
             
-            vector<double> f0_starts;
-            if (this->m_symmetric) {
-                f0_starts.push_back(5.);
-                f0_starts.push_back(0.25 / this->m_sequence->TR());
-            } else {
-                f0_starts.push_back(0.);
-                f0_starts.push_back(0.25 / this->m_sequence->TR());
-                f0_starts.push_back(-0.25/ this->m_sequence->TR());
-            }
-            double best = numeric_limits<double>::infinity();
-            Eigen::Array3d bestP;
-            its = 0;
-            for (const double &f0 : f0_starts) {
-                Eigen::VectorXd p(3); p << 10., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
-                solver.minimize(cost, p);
-                double r = cost(p);
-                if (r < best) {
-                    best = r;
-                    bestP = p;
-                }
-                its += solver.info().iterations;
-            }
-            outputs[0] = bestP[0] * indata.abs().maxCoeff();
-            outputs[1] = bestP[1];
-            outputs[2] = bestP[2];
-            resids = cost.residuals(bestP) * indata.abs().maxCoeff();
+            Eigen::VectorXd p(3); p << 5., 0.1 * T1, 0.1; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+            solver.minimize(cost, p);
+            its = solver.info().iterations;
+            outputs[0] = p[0] * indata.abs().maxCoeff();
+            outputs[1] = p[1];
+            outputs[2] = p[2];
+            resids = cost.residuals(p) * indata.abs().maxCoeff();
         } else {
             outputs.setZero();
             resids.setZero();
