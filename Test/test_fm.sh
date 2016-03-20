@@ -5,7 +5,7 @@
 # separately to other single-component programs.
 
 source ./test_common.sh
-SILENCE_TESTS="1"
+SILENCE_TESTS="0"
 
 DATADIR="fm"
 mkdir -p $DATADIR
@@ -56,8 +56,9 @@ compare_test "BFGS"   T2.nii ${PREFIX}FM_T2.nii  0.01
 
 }
 
-run_tests "2_180_0" "5 25 45 65" "180 0"
-run_tests "2_90_270" "5 25 45 65" "90 270" "-A"
+run_tests "C_180_0" "5 65" "180 0" "-ac"
+#run_tests "2_180_0" "5 65" "180 0"
+#run_tests "2_90_270" "5 65" "90 270" "-A"
 
 cd ..
 SILENCE_TESTS="0"

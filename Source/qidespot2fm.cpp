@@ -17,9 +17,8 @@
 
 #include "cppoptlib/meta.h"
 #include "cppoptlib/problem.h"
-#include "cppoptlib/solver/gradientdescentsolver.h"
 #include "cppoptlib/solver/lbfgsbsolver.h"
-
+#include "cppoptlib/solver/cmaessolver.h"
 #include "QI/Util.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
@@ -146,6 +145,73 @@ public:
     }
 };
 
+class CMAlgo : public FMAlgo {
+public:
+    using typename FMAlgo::TArray;
+    using typename FMAlgo::TInput;
+    using typename FMAlgo::TIterations;
+
+    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
+        double T1 = consts[0];
+        double B1 = consts[1];
+        if (isfinite(T1) && (T1 > 0.001)) {
+            // Improve scaling by dividing the PD down to something sensible.
+            // This gets scaled back up at the end.
+            const auto data = indata / indata.abs().maxCoeff();
+            
+            cppoptlib::LbfgsbSolver<double>::Info opts;
+            opts.rate = 1.e-5;
+            opts.iterations = 50;
+            opts.gradNorm = 1.e-3;
+            opts.m = 5;
+            
+            cppoptlib::CMAesSolver<double> solver(opts);
+            FMCostFunction cost;
+            cost.m_B1 = B1;
+            cost.m_data = data;
+            cost.m_sequence = this->m_sequence;
+            cost.m_T1 = T1;
+            Array3d lower; lower << 0.001, this->m_sequence->TR(), -0.6 / this->m_sequence->TR();
+            Array3d upper; upper << 1.e3,  T1,                      0.6 / this->m_sequence->TR();
+            if (this->m_symmetric)
+                lower[2] = 0.;
+            cost.setLowerBound(lower);
+            cost.setUpperBound(upper);
+            
+            vector<double> f0_starts;
+            if (this->m_symmetric) {
+                f0_starts.push_back(5.);
+                f0_starts.push_back(0.25 / this->m_sequence->TR());
+            } else {
+                f0_starts.push_back(0.);
+                f0_starts.push_back(0.25 / this->m_sequence->TR());
+                f0_starts.push_back(-0.25/ this->m_sequence->TR());
+            }
+            double best = numeric_limits<double>::infinity();
+            Eigen::Array3d bestP;
+            its = 0;
+            for (const double &f0 : f0_starts) {
+                Eigen::VectorXd p(3); p << 10., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                solver.minimize(cost, p);
+                double r = cost(p);
+                if (r < best) {
+                    best = r;
+                    bestP = p;
+                }
+                its += solver.info().iterations;
+            }
+            outputs[0] = bestP[0] * indata.abs().maxCoeff();
+            outputs[1] = bestP[1];
+            outputs[2] = bestP[2];
+            resids = cost.residuals(bestP) * indata.abs().maxCoeff();
+        } else {
+            outputs.setZero();
+            resids.setZero();
+            its = 0;
+        }
+    }
+};
+
 
 const string usage {
 "Usage is: qidespot2fm [options] T1_map ssfp_file\n\
@@ -157,6 +223,8 @@ Options:\n\
     --mask, -m file   : Mask input with specified file\n\
     --out, -o path    : Add a prefix to the output filenames\n\
     --B1, -b file     : B1 Map file (ratio)\n\
+    --algo, -a b      : Use LBFGSB algorithm (default)\n\
+               c      : Use Covariance Maximization algorithm\n\
     --asym, -A        : Fit +/- off-resonance frequency\n\
     --flex, -f        : Specify all phase-incs for all flip-angles\n\
     --start, -s N     : Start processing from slice N\n\
@@ -173,6 +241,7 @@ struct option long_opts[] = {
     {"mask", required_argument, 0, 'm'},
     {"out", required_argument, 0, 'o'},
     {"B1", required_argument, 0, 'b'},
+    {"algo", required_argument, 0, 'a'},
     {"asym", no_argument, 0, 'A'},
     {"flex", no_argument, 0, 'f'},
     {"start", required_argument, 0, 's'},
@@ -181,7 +250,7 @@ struct option long_opts[] = {
     {"resids", no_argument, 0, 'r'},
     {0, 0, 0, 0}
 };
-const char* short_opts = "hvnm:o:b:fAs:p:T:rd:";
+const char* short_opts = "hvnm:o:b:a:Afs:p:T:rd:";
 int indexptr = 0;
 char c;
 
@@ -195,6 +264,7 @@ int main(int argc, char **argv) {
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false, symmetric = true,
         fitFinite = false, flex = false, use_BFGS = true, num_threads = 4;
+    bool useCM = false;
     string outPrefix;
     QI::VolumeF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
@@ -204,6 +274,11 @@ int main(int argc, char **argv) {
         case 'v': verbose = true; break;
         case 'n': prompt = false; break;
         case 'A': symmetric = false; if (verbose) cout << "Asymmetric f0 fitting selected." << endl; break;
+        case 'a':
+            switch (*optarg) {
+                case 'b': useCM = false; if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
+                case 'c': useCM = true;  if (verbose) cout << "CovMax algorithm selected." << endl; break;
+            } break;
         case 'm':
             if (verbose) cout << "Reading mask file " << optarg << endl;
             mask = QI::ReadImage(optarg);
@@ -259,7 +334,12 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
     auto ssfpData = QI::ReadVectorImage<T>(argv[optind++]);
     auto apply = TApply::New();
-    shared_ptr<FMAlgo> algo = make_shared<BFGSAlgo>();
+    shared_ptr<FMAlgo> algo;
+    if (useCM) {
+        algo = make_shared<CMAlgo>();
+    } else {
+        algo = make_shared<BFGSAlgo>();
+    }
     algo->setSequence(ssfpSequence);
     algo->setSymmetric(symmetric);
     apply->SetVerbose(verbose);
