@@ -63,6 +63,8 @@ void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorIma
             seq->addSequence(make_shared<QI::SSFPSimple>(prompt));
         } else if (type == "SSFP_ECHO") {
             seq->addSequence(make_shared<QI::SSFPEcho>(prompt));
+        } else if (type == "SSFP_ECHO_FLEX") {
+            seq->addSequence(make_shared<QI::SSFPEchoFlex>(prompt));
         } else if (type == "SSFP_FINITE") {
             seq->addSequence(make_shared<QI::SSFPFinite>(prompt));
         } else {

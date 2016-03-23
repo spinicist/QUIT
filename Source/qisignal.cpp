@@ -263,7 +263,9 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 			cs.push_back(make_shared<SSFPSimple>(prompt));
         } else if (type == "SSFP_ECHO") {
             cs.push_back(make_shared<SSFPEcho>(prompt));
-		} else if (type == "SSFP_FINITE") {
+        } else if (type == "SSFP_ECHO_FLEX") {
+            cs.push_back(make_shared<SSFPEchoFlex>(prompt));
+        } else if (type == "SSFP_FINITE") {
 			cs.push_back(make_shared<SSFPFinite>(prompt));
 		} else if (type == "SSFP_GS") {
 			cs.push_back(make_shared<SSFP_GS>(prompt));
