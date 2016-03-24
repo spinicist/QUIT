@@ -22,6 +22,8 @@
 #include "itkImageToImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkTimeProbe.h"
+#include "itkResampleImageFilter.h"
+#include "itkLinearInterpolateImageFunction.h"
 
 #include "Filters/VectorToImageFilter.h"
 
@@ -216,6 +218,7 @@ Options:\n\
 	--noise, -N val   : Add complex noise with std=val.\n\
     --seed, -S val    : Specify seed for noise.\n\
 	--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
+    --ref, -r FILE    : Output images in space defined by reference file.\n\
 	--complex, -x     : Output complex-valued signal.\n\
 	--threads, -T N   : Use N threads (default=1, 0=hardware limit)\n"
 };
@@ -234,11 +237,12 @@ const struct option long_opts[] = {
 	{"1", no_argument, 0, '1'},
 	{"2", no_argument, 0, '2'},
 	{"3", no_argument, 0, '3'},
+    {"ref", required_argument, 0, 'r'},
 	{"complex", no_argument, 0, 'x'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnN:S:m:o:123xT:";
+static const char *short_opts = "hvnN:S:m:o:123rxT:";
 //******************************************************************************
 #pragma mark Read in all required files and data from cin
 //******************************************************************************
@@ -286,7 +290,7 @@ void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 int main(int argc, char **argv)
 {
 	Eigen::initParallel();
-	QI::ImageF::Pointer mask = ITK_NULLPTR;
+	QI::ImageF::Pointer mask = ITK_NULLPTR, reference = ITK_NULLPTR;
     int indexptr = 0, c;
     double sigma = 0.;
     int seed = -1;
@@ -307,6 +311,10 @@ int main(int argc, char **argv)
 			case '1': model = make_shared<SCD>(); break;
 			case '2': model = make_shared<MCD2>(); break;
 			case '3': model = make_shared<MCD3>(); break;
+            case 'r':
+                if (verbose) cout << "Reading reference file: " << optarg << endl;
+                reference = QI::ReadImage(optarg);
+                break;
 			case 'x': outputComplex = true; break;
 			case 'T':
                 num_threads = stoi(optarg);
@@ -346,7 +354,6 @@ int main(int argc, char **argv)
 	calcSignal->SetSigma(sigma);
     calcSignal->SetPoolsize(num_threads);
     calcSignal->SetMask(mask);
-	vector<QI::ImageReaderF::Pointer> pFiles(model->nParameters());
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
         if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << flush;
@@ -354,9 +361,25 @@ int main(int argc, char **argv)
 		getline(cin, filename);
         if (filename != "") {
             if (verbose) cout << "Opening " << filename << endl;
-            pFiles[i] = QI::ImageReaderF::New();
-            pFiles[i]->SetFileName(filename);
-            calcSignal->SetInput(i, pFiles[i]->GetOutput());
+            QI::ImageF::Pointer param = QI::ReadImage(filename);
+            if (reference) {
+                if (verbose) cout << "Resampling to reference" << endl;
+                typedef itk::ResampleImageFilter<QI::ImageF, QI::ImageF, double> TResampler;
+                typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TInterp;
+                typename TInterp::Pointer interp = TInterp::New();
+                interp->SetInputImage(param);
+                typename TResampler::Pointer resamp = TResampler::New();
+                resamp->SetInput(param);
+                resamp->SetInterpolator(interp);
+                resamp->SetDefaultPixelValue(0.);
+                resamp->SetOutputParametersFromImage(reference);
+                resamp->Update();
+                QI::ImageF::Pointer rparam = resamp->GetOutput();
+                rparam->DisconnectPipeline();   
+                calcSignal->SetInput(i, rparam);
+            } else { 
+                calcSignal->SetInput(i, param);
+            }
         } else {
             if (verbose) cout << "Using default value: " << model->Default()[i] << endl;
         }
