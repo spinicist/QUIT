@@ -217,12 +217,10 @@ Options:\n\
     --seed, -S val    : Specify seed for noise.\n\
 	--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
 	--complex, -x     : Output complex-valued signal.\n\
-	--sequences, -M s : Use simple sequences (default).\n\
-	            f     : Use Finite Pulse Length correction.\n\
 	--threads, -T N   : Use N threads (default=1, 0=hardware limit)\n"
 };
 shared_ptr<Model> model = make_shared<SCD>();
-bool verbose = false, prompt = true, finitesequences = false, outputComplex = false;
+bool verbose = false, prompt = true, outputComplex = false;
 string outPrefix = "";
 size_t num_threads = 1;
 const struct option long_opts[] = {
@@ -237,11 +235,10 @@ const struct option long_opts[] = {
 	{"2", no_argument, 0, '2'},
 	{"3", no_argument, 0, '3'},
 	{"complex", no_argument, 0, 'x'},
-	{"sequences", no_argument, 0, 'M'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnN:S:m:o:123xM:T:";
+static const char *short_opts = "hvnN:S:m:o:123xT:";
 //******************************************************************************
 #pragma mark Read in all required files and data from cin
 //******************************************************************************
@@ -311,16 +308,6 @@ int main(int argc, char **argv)
 			case '2': model = make_shared<MCD2>(); break;
 			case '3': model = make_shared<MCD3>(); break;
 			case 'x': outputComplex = true; break;
-			case 'M':
-				switch (*optarg) {
-					case 's': finitesequences = false; if (prompt) cout << "Simple sequences selected." << endl; break;
-					case 'f': finitesequences = true; if (prompt) cout << "Finite pulse correction selected." << endl; break;
-					default:
-						cout << "Unknown sequences type " << *optarg << endl;
-						return EXIT_FAILURE;
-						break;
-				}
-				break;
 			case 'T':
                 num_threads = stoi(optarg);
                 if (num_threads == 0)
