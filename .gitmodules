@@ -1,0 +1,6 @@
+[submodule "External/ITK"]
+	path = External/ITK
+	url = http://itk.org/ITK.git
+[submodule "External/CppNumericalSolvers"]
+	path = External/CppNumericalSolvers
+	url = https://github.com/spinicist/CppNumericalSolvers
