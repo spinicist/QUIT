@@ -242,7 +242,7 @@ const struct option long_opts[] = {
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnN:S:m:o:123rxT:";
+static const char *short_opts = "hvnN:S:m:o:123r:xT:";
 //******************************************************************************
 #pragma mark Read in all required files and data from cin
 //******************************************************************************
