@@ -24,6 +24,7 @@
 #include "itkTimeProbe.h"
 #include "itkResampleImageFilter.h"
 #include "itkLinearInterpolateImageFunction.h"
+#include "itkProgressReporter.h"
 
 #include "Filters/VectorToImageFilter.h"
 
@@ -133,11 +134,22 @@ protected:
 		}
         typename TImage::ConstPointer mask = this->GetMask();
 		itk::ImageRegionConstIterator<TImage> maskIter;
-		if (mask) {
-			maskIter = itk::ImageRegionConstIterator<TImage>(mask, region);
-		}
+        if (mask) {
+            m_evaluations = 0;
+            maskIter = itk::ImageRegionConstIterator<TImage>(mask, region);
+            maskIter.GoToBegin();
+            while (!maskIter.IsAtEnd()) {
+                if (maskIter.Get())
+                    ++m_evaluations;
+                ++maskIter;
+            }
+            maskIter.GoToBegin(); // Reset
+        } else {
+            m_evaluations = region.GetNumberOfPixels();
+        }
 		itk::ImageRegionIterator<TCVImage> outputIter(this->GetOutput(), region);
         QI::ThreadPool threadPool(m_nThreads);
+        itk::ProgressReporter progress(this, 0, m_evaluations, 10);
         itk::TimeProbe clock;
         clock.Start();
         m_evaluations = 0;
@@ -164,7 +176,7 @@ protected:
                     outputIter.Set(dataVector);
                 };
                 threadPool.enqueue(task);
-                ++m_evaluations;
+                progress.CompletedPixel();
 			}
 			if (mask)
 				++maskIter;
@@ -354,6 +366,10 @@ int main(int argc, char **argv)
 	calcSignal->SetSigma(sigma);
     calcSignal->SetPoolsize(num_threads);
     calcSignal->SetMask(mask);
+    if (verbose) {
+        auto monitor = QI::GenericMonitor::New();
+        calcSignal->AddObserver(itk::ProgressEvent(), monitor);
+    }
 	if (prompt) cout << "Loading parameters." << endl;
 	for (size_t i = 0; i < model->nParameters(); i++) {
         if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << flush;
