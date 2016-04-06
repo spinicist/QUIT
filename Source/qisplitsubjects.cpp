@@ -158,7 +158,8 @@ typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const 
     return rimage;
 }
 
-void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference, TRigid::Pointer tfm, const int shrink) {
+void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference, TRigid::Pointer tfm,
+                              const int shrink, const int iterations) {
     typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
     typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
     typedef itk::RegularStepGradientDescentOptimizer TOpt;
@@ -214,7 +215,7 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     opt->SetScales(scales);
     opt->SetMaximumStepLength(4.0);
     opt->SetMinimumStepLength(0.01);
-    opt->SetNumberOfIterations(250);
+    opt->SetNumberOfIterations(iterations);
     
     reg->SetInitialTransformParameters(initPars);
     reg->Update();
@@ -234,6 +235,7 @@ Options:\n\
 Reference Options:\n\
     --ref, -r      : Specify a reference image for output space\n\
     --shrink, -S N : Specify shrink factor for registration step (default 2)\n\
+    --iters, -I N : Specify the max number of iterations (default 250)\n\
 Masking options (default is generate a mask with Otsu's method):\n\
     --mask, -m F   : Read the mask from file F\n\
     --thresh, -t N : Generate a mask by thresholding input at intensity N\n\
@@ -250,7 +252,8 @@ enum class ALIGN { NONE = 0, RING_IN, RING_OUT };
 int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
-    int keep = numeric_limits<int>::max(), size_threshold = 1000, shrink = 2, output_images = false;
+    int keep = numeric_limits<int>::max(), size_threshold = 1000, output_images = false,
+        shrink = 2, iterations = 250;
     ALIGN alignment = ALIGN::NONE;
     float intensity_threshold = 0;
     double angleX = 0., angleY = 0., angleZ = 0.;
@@ -266,8 +269,9 @@ int main(int argc, char **argv) {
         {"size", required_argument, 0, 's'},
         {"thresh", required_argument, 0, 't'},
         {"mask", required_argument, 0, 'm'},
-		{"ref", required_argument, 0, 'r'},
+        {"ref", required_argument, 0, 'r'},
         {"shrink", required_argument, 0, 'S'},
+        {"iters", required_argument, 0, 'I'},
         {"ring", required_argument, 0, 'R'},
 		{"rotX", required_argument, 0, 'X'},
 		{"rotY", required_argument, 0, 'Y'},
@@ -275,7 +279,7 @@ int main(int argc, char **argv) {
 		{"oimgs", no_argument, &output_images, true},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvr:c:k:s:S:";
+	const char* short_options = "hvr:c:k:s:I:S:";
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -296,6 +300,7 @@ int main(int argc, char **argv) {
             } break;
         case 'k': keep = stoi(optarg); break;
         case 'S': shrink = stoi(optarg); break;
+        case 'I': iterations = stoi(optarg); break;
         case 's': size_threshold = atoi(optarg); break;
         case 't': intensity_threshold = stof(optarg); break;
         case 'X': angleX = stod(optarg)*M_PI/180.; break;
@@ -366,7 +371,7 @@ int main(int argc, char **argv) {
         
         if (reference) {
             if (verbose) cout << "Registering to reference image..." << endl;
-            RegisterImageToReference(subject, reference, tfm, shrink);
+            RegisterImageToReference(subject, reference, tfm, shrink, iterations);
         }
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
