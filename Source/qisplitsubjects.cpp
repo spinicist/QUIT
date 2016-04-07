@@ -34,6 +34,8 @@
 #include "itkTransformFileWriter.h"
 #include "itkResampleImageFilter.h"
 #include "itkLinearInterpolateImageFunction.h"
+#include "itkWindowedSincInterpolateImageFunction.h"
+#include "itkConstantBoundaryCondition.h"
 #include "itkNearestNeighborInterpolateImageFunction.h"
 #include "itkShrinkImageFilter.h"
 #include "itkSmoothingRecursiveGaussianImageFilter.h"
@@ -158,7 +160,7 @@ typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const 
     return rimage;
 }
 
-void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference, TRigid::Pointer tfm,
+float RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference, TRigid::Pointer tfm,
                               const int shrink, const int iterations) {
     typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
     typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
@@ -171,7 +173,7 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     TSmooth::Pointer smooth_ref = TSmooth::New();
     TSmooth::SigmaArrayType sigma = image->GetSpacing();
     for (int i = 0; i < sigma.Size(); i++)
-        sigma[i] = sigma[i] * shrink;
+        sigma[i] = sigma[i] * shrink / 2.0;
     smooth_img->SetInput(image);
     smooth_img->SetSigmaArray(sigma);
     smooth_ref->SetInput(reference);
@@ -213,14 +215,16 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     scales[4] = 1.0 / translationScale;
     scales[5] = 1.0 / translationScale;
     opt->SetScales(scales);
-    opt->SetMaximumStepLength(4.0);
+    opt->SetMaximumStepLength(1.0);
     opt->SetMinimumStepLength(0.01);
     opt->SetNumberOfIterations(iterations);
     
     reg->SetInitialTransformParameters(initPars);
     reg->Update();
-    
+
     tfm->SetParameters(reg->GetLastTransformParameters());
+    
+    return opt->GetValue();
 }
 
 const string usage {
@@ -371,7 +375,8 @@ int main(int argc, char **argv) {
         
         if (reference) {
             if (verbose) cout << "Registering to reference image..." << endl;
-            RegisterImageToReference(subject, reference, tfm, shrink, iterations);
+            float m = RegisterImageToReference(subject, reference, tfm, shrink, iterations);
+            if (verbose) cout << "Final metric " << m << endl;
         }
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
@@ -383,9 +388,9 @@ int main(int argc, char **argv) {
         tfmWriter->Update();
         
         if (output_images) {
-            typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TLinInterp;
+            typedef itk::WindowedSincInterpolateImageFunction<QI::ImageF, 5, itk::Function::LanczosWindowFunction<5>, itk::ConstantBoundaryCondition<QI::ImageF>, double> TInterp;
             typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
-            QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TLinInterp>(input, tfm, reference);
+            QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TInterp>(input, tfm, reference);
             TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
             typedef itk::BinaryThresholdImageFilter<TLabelImage, TLabelImage> TThreshFilter;
             auto rthresh = TThreshFilter::New();
