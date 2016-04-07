@@ -19,6 +19,7 @@
 #include "QI/Types.h"
 
 #include "itkRescaleIntensityImageFilter.h"
+#include "itkThresholdImageFilter.h"
 #include "itkBinaryThresholdImageFilter.h"
 #include "itkOtsuThresholdImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
@@ -138,12 +139,10 @@ TMoments::VectorType GetCoG(const QI::ImageF::Pointer &img) {
 }
 
 typedef itk::Euler3DTransform<double> TRigid;
-template<typename TImg, typename TInterpFunction>
+template<typename TImg, typename TInterp>
 typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const typename TRigid::Pointer &tfm, const QI::ImageF::Pointer &reference = ITK_NULLPTR) {
-    // Set these up to use in the loop
     typedef itk::ResampleImageFilter<TImg, TImg, double> TResampler;
-    typedef TInterpFunction TInterpolator;
-    typename TInterpolator::Pointer interp = TInterpolator::New();
+    typename TInterp::Pointer interp = TInterp::New();
     interp->SetInputImage(image);
     typename TResampler::Pointer resamp = TResampler::New();
     resamp->SetInput(image);
@@ -154,14 +153,20 @@ typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const 
         resamp->SetOutputParametersFromImage(reference);
     else
         resamp->SetOutputParametersFromImage(image);
-    resamp->Update();
-    typename TImg::Pointer rimage = resamp->GetOutput();
+    // Get rid of any negative values
+    typedef itk::ThresholdImageFilter<TImg> TThreshold;
+    auto threshold = TThreshold::New();
+    threshold->SetInput(resamp->GetOutput());
+    threshold->ThresholdBelow(0);
+    threshold->SetOutsideValue(0);
+    threshold->Update();
+    typename TImg::Pointer rimage = threshold->GetOutput();
     rimage->DisconnectPipeline();
     return rimage;
 }
 
-float RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference, TRigid::Pointer tfm,
-                              const int shrink, const int iterations) {
+float RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference,
+                               TRigid::Pointer tfm, const int shrink, const int iterations) {
     typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
     typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
     typedef itk::RegularStepGradientDescentOptimizer TOpt;
@@ -206,14 +211,14 @@ float RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::Image
     TPars initPars = tfm->GetParameters();
     
     TOpt::ScalesType scales(tfm->GetNumberOfParameters());
-    const double translationScale = 1000.0;   // dynamic range of translations
-    const double rotationScale    =    1.0;   // dynamic range of rotations
-    scales[0] = 1.0 / rotationScale;
-    scales[1] = 1.0 / rotationScale;
-    scales[2] = 1.0 / rotationScale;
-    scales[3] = 1.0 / translationScale;
-    scales[4] = 1.0 / translationScale;
-    scales[5] = 1.0 / translationScale;
+    const double translationScale = 1.0 / 500.0; // dynamic range of translations
+    const double rotationScale    = 1.0;         // dynamic range of rotations
+    scales[0] = rotationScale;
+    scales[1] = rotationScale;
+    scales[2] = rotationScale;
+    scales[3] = translationScale;
+    scales[4] = translationScale;
+    scales[5] = translationScale;
     opt->SetScales(scales);
     opt->SetMaximumStepLength(1.0);
     opt->SetMinimumStepLength(0.01);
@@ -239,7 +244,7 @@ Options:\n\
 Reference Options:\n\
     --ref, -r      : Specify a reference image for output space\n\
     --shrink, -S N : Specify shrink factor for registration step (default 2)\n\
-    --iters, -I N : Specify the max number of iterations (default 250)\n\
+    --iters, -I N  : Specify the max number of iterations (default 250)\n\
 Masking options (default is generate a mask with Otsu's method):\n\
     --mask, -m F   : Read the mask from file F\n\
     --thresh, -t N : Generate a mask by thresholding input at intensity N\n\
@@ -364,19 +369,71 @@ int main(int argc, char **argv) {
 				rotateAngle = (M_PI / 2.) - rotateAngle;
 			else if (alignment == ALIGN::RING_OUT)
 				rotateAngle = (M_PI * 3./2.) - rotateAngle;
-			if (verbose) cout << "Rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
+			if (verbose) cout << "Initial rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
 			offset += CoG;
 		}
 
-		auto tfm = TRigid::New();
+        TRigid::Pointer tfm = TRigid::New();
 		tfm->SetIdentity();
 		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
         tfm->SetOffset(offset);
         
         if (reference) {
             if (verbose) cout << "Registering to reference image..." << endl;
-            float m = RegisterImageToReference(subject, reference, tfm, shrink, iterations);
-            if (verbose) cout << "Final metric " << m << endl;
+            float metric_val = 0., oldm = 0.; // MI is -ve, so this works
+            float pangle = 30.;
+            float pdist = subject->GetSpacing()[0] * 10.;
+            
+            metric_val = RegisterImageToReference(subject, reference, tfm, shrink, iterations);
+            if (verbose) cout << "Initial metric " << metric_val << endl;
+            
+            float best_val = 0;
+            TRigid::Pointer best_tfm;
+            auto tryPerturbation = [&] (const double &x, const double &y, const double &z,
+                                        const double &ax, const double &ay, const double &az)->void {
+                if (verbose) cout << "Try perturbation " << x << " " << " " << y << " " << z << " " << ax << " " << ay << " " << az << "...";
+                TRigid::Pointer ptfm = tfm->Clone();
+                ptfm->SetRotation(tfm->GetAngleX() + ax, 
+                                  tfm->GetAngleY() + ay,
+                                  tfm->GetAngleZ() + az);
+                TMoments::VectorType poff = ptfm->GetOffset();
+                poff[0] += x; poff[1] += y; poff[2] += z;
+                ptfm->SetOffset(poff);
+                float p_val = RegisterImageToReference(subject, reference, ptfm, shrink, iterations);
+                if (verbose) cout << "Metric: " << p_val << endl;
+                if (p_val < best_val) {
+                    best_tfm = ptfm;
+                    best_val = p_val;
+                }
+            };
+            
+            do {
+                best_val = 0;
+                
+                tryPerturbation(0, 0, 0, 0, 0, +pangle*M_PI/180.);
+                tryPerturbation(0, 0, 0, 0, 0, -pangle*M_PI/180.);
+                tryPerturbation(0, 0, 0, 0, +pangle*M_PI/180., 0);
+                tryPerturbation(0, 0, 0, 0, -pangle*M_PI/180., 0);
+                tryPerturbation(0, 0, 0, +pangle*M_PI/180., 0, 0);
+                tryPerturbation(0, 0, 0, -pangle*M_PI/180., 0, 0);
+                tryPerturbation(0, 0, +pdist, 0, 0, 0);
+                tryPerturbation(0, 0, -pdist, 0, 0, 0);
+                tryPerturbation(0, +pdist, 0, 0, 0, 0);
+                tryPerturbation(0, -pdist, 0, 0, 0, 0);
+                tryPerturbation(+pdist, 0, 0, 0, 0, 0);
+                tryPerturbation(-pdist, 0, 0, 0, 0, 0);
+                
+                if (best_val < metric_val) {
+                    if (verbose) cout << "Accepted metric value " << best_val << endl;
+                    metric_val = best_val;
+                    tfm = best_tfm;
+                    pangle *= 2./3.;
+                    pdist *= 2./3.;
+                } else {
+                    break;
+                }
+            } while (true);
+            if (verbose) cout << "No improvement." << endl;
         }
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
@@ -390,7 +447,8 @@ int main(int argc, char **argv) {
         if (output_images) {
             typedef itk::WindowedSincInterpolateImageFunction<QI::ImageF, 5, itk::Function::LanczosWindowFunction<5>, itk::ConstantBoundaryCondition<QI::ImageF>, double> TInterp;
             typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
-            QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TInterp>(input, tfm, reference);
+            if (verbose) cout << "Resampling image" << endl;
+            QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TInterp>(subject, tfm, reference);
             TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
             typedef itk::BinaryThresholdImageFilter<TLabelImage, TLabelImage> TThreshFilter;
             auto rthresh = TThreshFilter::New();
