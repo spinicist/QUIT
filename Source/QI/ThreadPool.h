@@ -30,8 +30,8 @@ private:
     std::queue<std::function<void ()>> m_tasks;
     std::mutex m_tasksMutex;
     std::condition_variable m_queueCondition, m_threadCondition;
-    
     bool m_stopping, m_debug;
+    int  m_maxQueueMultiple = 2;
     
     void invokeThread();
     
@@ -43,6 +43,7 @@ public:
     
     void enqueue(TFunc f);
     void setDebug(const bool d);
+    void setMaxQueueMultiple(const int n);
 };
     
     

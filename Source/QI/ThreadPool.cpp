@@ -38,12 +38,16 @@
     }
     
     void ThreadPool::setDebug(const bool d) { m_debug = d; }
+    void ThreadPool::setMaxQueueMultiple(const int n) { m_maxQueueMultiple = n; }
     
     void ThreadPool::enqueue(TFunc f) {
         { // Lock will exist in this scope
             std::unique_lock<std::mutex> tLock(m_tasksMutex);
-            if (m_debug) std::cout << "Checking for space for task " << &f << std::endl;
-            m_queueCondition.wait(tLock, [this]{ return m_tasks.size() < 2 * m_threads.size(); });
+            if (m_debug) {
+                std::cout << "Checking for space for task " << &f << std::endl;
+                std::cout << "Threads size " << m_threads.size() << " Tasks size " << m_tasks.size() << " Max size " << m_maxQueueMultiple * m_threads.size() << std::endl;
+            }
+            m_queueCondition.wait(tLock, [this]{ return m_tasks.size() < m_maxQueueMultiple * m_threads.size(); });
             m_tasks.push(f);
             if (m_debug) std::cout << "Pushed task" << &f << std::endl;
         }
