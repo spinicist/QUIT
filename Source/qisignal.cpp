@@ -25,6 +25,7 @@
 #include "itkResampleImageFilter.h"
 #include "itkLinearInterpolateImageFunction.h"
 #include "itkProgressReporter.h"
+#include "itkUnaryFunctorImageFilter.h"
 
 #include "Filters/VectorToImageFilter.h"
 
@@ -209,6 +210,20 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 };
 
+class EnsureFinite {
+public:
+    EnsureFinite() {};
+    ~EnsureFinite() {};
+    bool operator!=( const EnsureFinite & ) const { return false; }
+    bool operator==( const EnsureFinite &other ) const { return !(*this != other); }
+    inline complex<float> operator()( const complex<float> &v ) const {
+        if (!isfinite(real((proj(v))))) {
+            return complex<float>(0.0);
+        } else {
+            return v;
+        }
+    }
+};
 
 //******************************************************************************
 // Arguments / Usage
@@ -231,6 +246,7 @@ Options:\n\
     --seed, -S val    : Specify seed for noise.\n\
 	--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
     --ref, -r FILE    : Output images in space defined by reference file.\n\
+    --finite, -f      : Replace inf/NaN in output with zeros.\n\
 	--complex, -x     : Output complex-valued signal.\n\
 	--threads, -T N   : Use N threads (default=1, 0=hardware limit)\n"
 };
@@ -250,16 +266,17 @@ const struct option long_opts[] = {
 	{"2", no_argument, 0, '2'},
 	{"3", no_argument, 0, '3'},
     {"ref", required_argument, 0, 'r'},
+    {"finite", no_argument, 0, 'f'},
 	{"complex", no_argument, 0, 'x'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnN:S:m:o:123r:xT:";
+static const char *short_opts = "hvnN:S:m:o:123r:fxT:";
 //******************************************************************************
 #pragma mark Read in all required files and data from cin
 //******************************************************************************
-void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names);
-void parseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
+void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names);
+void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
     string type, path;
     if (prompt) cout << "Enter output filename: " << flush;
     while (Read(cin, path) && (path != "END") && (path != "")) {
@@ -306,6 +323,7 @@ int main(int argc, char **argv)
     int indexptr = 0, c;
     double sigma = 0.;
     int seed = -1;
+    bool ensure_finite = false;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
@@ -326,6 +344,10 @@ int main(int argc, char **argv)
             case 'r':
                 if (verbose) cout << "Reading reference file: " << optarg << endl;
                 reference = QI::ReadImage(optarg);
+                break;
+            case 'f':
+                if (verbose) cout << "NaN/Inf will be set to 0 in output" << endl;
+                ensure_finite = true;
                 break;
 			case 'x': outputComplex = true; break;
 			case 'T':
@@ -406,24 +428,32 @@ int main(int argc, char **argv)
 	 **************************************************************************/
 	vector<shared_ptr<SequenceBase>> sequences;
 	vector<string> filenames;
-	parseInput(sequences, filenames);
+    ParseInput(sequences, filenames);
+    auto vecTo4D = QI::VectorToTimeseriesXF::New();
+    auto finite_filter = itk::UnaryFunctorImageFilter<QI::TimeseriesXF, QI::TimeseriesXF, EnsureFinite>::New();
+    QI::TimeseriesXF::Pointer out_series = ITK_NULLPTR;
 	for (size_t i = 0; i < sequences.size(); i++) {
         if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
 		calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         if (verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
+		vecTo4D->SetInput(calcSignal->GetOutput());
+        if (ensure_finite) {
+            finite_filter->SetInput(vecTo4D->GetOutput());
+            out_series = finite_filter->GetOutput();
+        } else {
+            out_series = vecTo4D->GetOutput();
+        }
         if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
-		auto VecTo4D = QI::VectorToTimeseriesXF::New();
-		VecTo4D->SetInput(calcSignal->GetOutput());
 		if (outputComplex) {
 			auto writer = QI::TimeseriesWriterXF::New();
-			writer->SetInput(VecTo4D->GetOutput());
+            writer->SetInput(out_series);
 			writer->SetFileName(filenames[i]);
 			writer->Update();
 		} else {
 			auto writer = QI::TimeseriesWriterF::New();
 			auto abs = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
-			abs->SetInput(VecTo4D->GetOutput());
+            abs->SetInput(out_series);
 			writer->SetInput(abs->GetOutput());
 			writer->SetFileName(filenames[i]);
 			writer->Update();
