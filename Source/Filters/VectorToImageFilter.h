@@ -26,7 +26,7 @@ public:
 	itkNewMacro(Self);
 	itkTypeMacro(Self, Superclass);
 
-    virtual void Update() override;
+    void SetInput(const TInput *img) override;
     
 protected:
 	typedef itk::VectorIndexSelectionCastImageFilter<TInput, TVolume> TIndexer;
@@ -38,8 +38,7 @@ protected:
 	~VectorToImageFilter(){}
 
     virtual void GenerateOutputInformation() override; // Because output will be different dimension to input
-    virtual void GenerateData() override {} // Don't need a GenerateData, just call m_tiler->Update()
-	//DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
+    virtual void GenerateData() override; // Don't need a GenerateData, just call m_tiler->Update()
 
 private:
 	VectorToImageFilter(const Self &); //purposely not implemented
