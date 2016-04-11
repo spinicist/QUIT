@@ -4,7 +4,7 @@
 # Test script for ssfpbands etc.
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
 # First, create input data
 DATADIR="ssfp"

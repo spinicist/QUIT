@@ -50,8 +50,8 @@ protected:
 	shared_ptr<SequenceBase> m_sequence;
 	shared_ptr<Model> m_model;
     double m_sigma = 0.0;
-    size_t m_nThreads = 1;
-    itk::RealTimeClock::TimeStampType m_totalTime = 0.0;
+    itk::TimeProbe m_clock;
+    itk::RealTimeClock::TimeStampType m_meanTime = 0.0, m_totalTime = 0.0;
     itk::SizeValueType m_evaluations = 0;
 
 public:
@@ -74,7 +74,6 @@ public:
 	void SetMask(const TImage *mask) {
 		this->SetNthInput(m_model->nParameters(), const_cast<TImage*>(mask));
 	}
-    void SetPoolsize(const size_t n) { m_nThreads = n; }
     
 	typename TImage::ConstPointer GetInput(const size_t i) const {
 		if (i < m_model->nParameters()) {
@@ -104,7 +103,7 @@ public:
 	void SetSigma(const double s) { m_sigma = s; }
 
     itk::RealTimeClock::TimeStampType GetTotalTime() const { return m_totalTime; }
-    itk::RealTimeClock::TimeStampType GetMeanTime() const { return m_totalTime / m_evaluations; }
+    itk::RealTimeClock::TimeStampType GetMeanTime() const { return m_meanTime; }
     itk::SizeValueType GetEvaluations() const { return m_evaluations; }
 
 	virtual void GenerateOutputInformation() override {
@@ -113,72 +112,54 @@ public:
 		const auto op = this->GetOutput();
 		op->SetRegions(this->GetInput(0)->GetLargestPossibleRegion());
 		op->SetNumberOfComponentsPerPixel(m_sequence->size());
-		op->Allocate();
-	}
-
-	virtual void Update() override {
-		//std::cout << __PRETTY_FUNCTION__ << endl;
-		Superclass::Update();
 	}
 
 protected:
 	SignalsFilter() {}
 	~SignalsFilter(){}
 
-    virtual void GenerateData() override {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-        TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
-		vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
-		for (size_t i = 0; i < m_model->nParameters(); i++) {
+    virtual void ThreadedGenerateData(const OutputImageRegionType &region, itk::ThreadIdType threadId) override {
+        vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
+        for (size_t i = 0; i < m_model->nParameters(); i++) {
             if (this->GetInput(i))
                 inIters[i] = itk::ImageRegionConstIterator<TImage>(this->GetInput(i), region);
-		}
+        }
         typename TImage::ConstPointer mask = this->GetMask();
 		itk::ImageRegionConstIterator<TImage> maskIter;
         if (mask) {
-            m_evaluations = 0;
             maskIter = itk::ImageRegionConstIterator<TImage>(mask, region);
-            maskIter.GoToBegin();
-            while (!maskIter.IsAtEnd()) {
-                if (maskIter.Get())
-                    ++m_evaluations;
-                ++maskIter;
-            }
-            maskIter.GoToBegin(); // Reset
-        } else {
-            m_evaluations = region.GetNumberOfPixels();
         }
-		itk::ImageRegionIterator<TCVImage> outputIter(this->GetOutput(), region);
-        QI::ThreadPool threadPool(m_nThreads);
-        itk::ProgressReporter progress(this, 0, m_evaluations, 10);
-        itk::TimeProbe clock;
-        clock.Start();
-        m_evaluations = 0;
-		while(!inIters[0].IsAtEnd()) {
+        itk::ImageRegionIterator<TCVImage> outputIter(this->GetOutput(), region);
+        
+        if (threadId == 0)
+            m_clock.Reset();
+        while(!outputIter.IsAtEnd()) {
 			if (!mask || maskIter.Get()) {
-                auto task = [=] {
-                    VectorXd parameters = m_model->Default();
-                    for (size_t i = 0; i < inIters.size(); i++) {
-                        if (this->GetInput(i))
-                            parameters[i] = inIters[i].Get();
-                    }
-                    VectorXcd allData = m_sequence->signal(m_model, parameters);
-                    if (m_sigma != 0.0) {
-                        VectorXcd noise(m_sequence->size());
-                        // Simple Box Muller transform
-                        ArrayXd U = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
-                        ArrayXd V = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
-                        noise.real() = (m_sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
-                        noise.imag() = (m_sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
-                        allData += noise;
-                    }
-                    VectorXcf floatData = allData.cast<complex<float>>();
-                    itk::VariableLengthVector<complex<float>> dataVector(floatData.data(), m_sequence->size());
-                    outputIter.Set(dataVector);
-                };
-                threadPool.enqueue(task);
-                progress.CompletedPixel();
-			}
+                if (threadId == 0) {
+                    m_clock.Start();
+                }
+                VectorXd parameters = m_model->Default();
+                for (size_t i = 0; i < inIters.size(); i++) {
+                    if (this->GetInput(i))
+                        parameters[i] = inIters[i].Get();
+                }
+                VectorXcd allData = m_sequence->signal(m_model, parameters);
+                if (m_sigma != 0.0) {
+                    VectorXcd noise(m_sequence->size());
+                    // Simple Box Muller transform
+                    ArrayXd U = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
+                    ArrayXd V = (ArrayXd::Random(m_sequence->size()) * 0.5) + 0.5;
+                    noise.real() = (m_sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
+                    noise.imag() = (m_sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
+                    allData += noise;
+                }
+                VectorXcf floatData = allData.cast<complex<float>>();
+                itk::VariableLengthVector<complex<float>> dataVector(floatData.data(), m_sequence->size());
+                outputIter.Set(dataVector);
+                if (threadId == 0) {
+                    m_clock.Stop();
+                }
+            }
 			if (mask)
 				++maskIter;
 			for (size_t i = 0; i < m_model->nParameters(); i++) {
@@ -187,8 +168,11 @@ protected:
 			}
 			++outputIter;
 		}
-        clock.Stop();
-        m_totalTime = clock.GetTotal();
+        if (threadId == 0) {
+            m_evaluations = m_clock.GetNumberOfStops();
+            m_meanTime = m_clock.GetMean();
+            m_totalTime = m_clock.GetTotal();
+        }
 	}
 
 	itk::DataObject::Pointer MakeOutput(unsigned int idx) {
@@ -217,10 +201,11 @@ public:
     bool operator!=( const EnsureFinite & ) const { return false; }
     bool operator==( const EnsureFinite &other ) const { return !(*this != other); }
     inline complex<float> operator()( const complex<float> &v ) const {
-        if (!isfinite(real((proj(v))))) {
-            return complex<float>(0.0);
-        } else {
+        if (isfinite(real((proj(v))))) {
             return v;
+        } else {
+            cout << "Voxel value was: " << v << endl;
+            return complex<float>(-1.0,0.0);
         }
     }
 };
@@ -237,23 +222,23 @@ The program will prompt for input (unless --no-prompt specified)\n\
 All times (TR) are in SECONDS. All angles are in degrees.\n\
 \n\
 Options:\n\
-	--help, -h        : Print this message.\n\
-	--verbose, -v     : Print extra information.\n\
-	--mask, -m file   : Only calculate inside the mask.\n\
-	--out, -o path    : Add a prefix to the output filenames\n\
-	--no-prompt, -n   : Don't print prompts for input.\n\
-	--noise, -N val   : Add complex noise with std=val.\n\
+    --help, -h        : Print this message.\n\
+    --verbose, -v     : Print extra information.\n\
+    --mask, -m file   : Only calculate inside the mask.\n\
+    --out, -o path    : Add a prefix to the output filenames\n\
+    --no-prompt, -n   : Don't print prompts for input.\n\
+    --noise, -N val   : Add complex noise with std=val.\n\
     --seed, -S val    : Specify seed for noise.\n\
-	--1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
+    --1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
     --ref, -r FILE    : Output images in space defined by reference file.\n\
     --finite, -f      : Replace inf/NaN in output with zeros.\n\
-	--complex, -x     : Output complex-valued signal.\n\
-	--threads, -T N   : Use N threads (default=1, 0=hardware limit)\n"
+    --complex, -x     : Output complex-valued signal.\n\
+    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 };
 shared_ptr<Model> model = make_shared<SCD>();
 bool verbose = false, prompt = true, outputComplex = false;
 string outPrefix = "";
-size_t num_threads = 1;
+size_t num_threads = 4;
 const struct option long_opts[] = {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
@@ -355,6 +340,7 @@ int main(int argc, char **argv)
                 if (num_threads == 0)
                     num_threads = std::thread::hardware_concurrency();
                 break;
+                if (verbose) cout << "Using " << num_threads << " threads" << endl;
 			case 'h':
 				cout << QI::GetVersion() << endl << usage << endl;
 				return EXIT_SUCCESS;
@@ -386,7 +372,7 @@ int main(int argc, char **argv)
 	SignalsFilter::Pointer calcSignal = SignalsFilter::New();
 	calcSignal->SetModel(model);
 	calcSignal->SetSigma(sigma);
-    calcSignal->SetPoolsize(num_threads);
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(num_threads);
     calcSignal->SetMask(mask);
     if (verbose) {
         auto monitor = QI::GenericMonitor::New();
@@ -429,17 +415,23 @@ int main(int argc, char **argv)
 	vector<shared_ptr<SequenceBase>> sequences;
 	vector<string> filenames;
     ParseInput(sequences, filenames);
-    auto vecTo4D = QI::VectorToTimeseriesXF::New();
-    auto finite_filter = itk::UnaryFunctorImageFilter<QI::TimeseriesXF, QI::TimeseriesXF, EnsureFinite>::New();
+    
+    typedef itk::UnaryFunctorImageFilter<QI::TimeseriesXF, QI::TimeseriesXF, EnsureFinite> TFinite;
+    TFinite::Pointer finite_filter = TFinite::New();
     QI::TimeseriesXF::Pointer out_series = ITK_NULLPTR;
 	for (size_t i = 0; i < sequences.size(); i++) {
         if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
 		calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         if (verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
-		vecTo4D->SetInput(calcSignal->GetOutput());
+        if (verbose) cout << "Converting to timeseries" << endl;
+        
+        QI::VectorToTimeseriesXF::Pointer vecTo4D = QI::VectorToTimeseriesXF::New();
+        vecTo4D->SetInput(calcSignal->GetOutput());
         if (ensure_finite) {
+            if (verbose) cout << "Removing NaN/Inf" << endl;
             finite_filter->SetInput(vecTo4D->GetOutput());
+            finite_filter->Update();
             out_series = finite_filter->GetOutput();
         } else {
             out_series = vecTo4D->GetOutput();
