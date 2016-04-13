@@ -212,7 +212,8 @@ TPars MakePars(const TPars &ip, double ax, double ay, double az, double tx, doub
  * Actual registration step
  */
 void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference,
-                               TRigid::Pointer tfm, double gridSpacing, const int iterations, const bool verbose) {
+                               TRigid::Pointer tfm, double gridSpacing, double angleStep, int searchAngles,
+                               const int iterations, const bool verbose) {
     TSmooth::Pointer smooth_img = TSmooth::New();
     smooth_img->SetInput(image);
     TSmooth::Pointer smooth_ref = TSmooth::New();
@@ -242,8 +243,7 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     reg->SetMovingImage(shrink_img->GetOutput());
     reg->SetFixedImageRegion(reference->GetLargestPossibleRegion());
     
-    double pangle = 45.*M_PI/180.;
-    int searchAngles = 1; // Search will be +/- this amount
+    double pangle = angleStep*M_PI/180.;
     double initMetric = 0, bestMetric = 0;
     TPars initPars;
     TPars bestPars = tfm->GetParameters();
@@ -307,9 +307,11 @@ Options:\n\
     --size, -s N   : Only keep subjects with >N voxels (default 1000)\n\
     --oimgs        : Output images (default only transforms)\n\
 Reference Options:\n\
-    --ref, -r      : Specify a reference image for output space\n\
+    --ref, -R FILE : Specify a reference image for output space\n\
     --grid, -G N   : Specify initial grid scale (default 1mm)\n\
     --iters, -I N  : Specify the max number of iterations (default 25)\n\
+    --angle, -A N  : Search angle step in degrees (default 30)\n\
+    --nangle, -N N : Number of angle steps (default 1)\n\
 Masking options (default is generate a mask with Otsu's method):\n\
     --mask, -m F   : Read the mask from file F\n\
     --thresh, -t N : Generate a mask by thresholding input at intensity N\n\
@@ -327,10 +329,10 @@ int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
     int keep = numeric_limits<int>::max(), size_threshold = 1000, output_images = false,
-        iterations = 25;
+        iterations = 25, angleSteps = 1;
     ALIGN alignment = ALIGN::NONE;
     float intensity_threshold = 0;
-    double angleX = 0., angleY = 0., angleZ = 0., gridSpacing = 1.0;
+    double angleX = 0., angleY = 0., angleZ = 0., angleStep = 30., gridSpacing = 1.0;
 
 	QI::ImageF::Pointer reference = ITK_NULLPTR;
     TLabelImage::Pointer mask = ITK_NULLPTR;
@@ -343,17 +345,19 @@ int main(int argc, char **argv) {
         {"size", required_argument, 0, 's'},
         {"thresh", required_argument, 0, 't'},
         {"mask", required_argument, 0, 'm'},
-        {"ref", required_argument, 0, 'r'},
+        {"ref", required_argument, 0, 'R'},
         {"grid", required_argument, 0, 'G'},
         {"iters", required_argument, 0, 'I'},
-        {"ring", required_argument, 0, 'R'},
+        {"ring", required_argument, 0, 'r'},
+        {"angle", required_argument, 0, 'A'},
+        {"nangle", required_argument, 0, 'N'},
 		{"rotX", required_argument, 0, 'X'},
 		{"rotY", required_argument, 0, 'Y'},
 		{"rotZ", required_argument, 0, 'Z'},
 		{"oimgs", no_argument, &output_images, true},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvr:c:k:s:I:G:";
+	const char* short_options = "hvR:G:I:A:N:c:k:s:";
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -361,9 +365,8 @@ int main(int argc, char **argv) {
 		case 'h':
             cout << QI::GetVersion() << endl << usage << endl;
             return EXIT_SUCCESS;
-        case 'r': reference = QI::ReadImage(optarg); break;
         case 'm': mask = QI::ReadImage<TLabelImage>(optarg); break;
-        case 'R':
+        case 'r':
             if (string(optarg) == "IN") {
                 alignment = ALIGN::RING_IN;
             } else if (string(optarg) == "OUT") {
@@ -373,8 +376,11 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
             } break;
         case 'k': keep = stoi(optarg); break;
+        case 'R': reference = QI::ReadImage(optarg); break;
         case 'G': gridSpacing = stod(optarg); break;
         case 'I': iterations = stoi(optarg); break;
+        case 'A': angleStep = stod(optarg); break;
+        case 'N': angleSteps = stoi(optarg); break;
         case 's': size_threshold = atoi(optarg); break;
         case 't': intensity_threshold = stof(optarg); break;
         case 'X': angleX = stod(optarg)*M_PI/180.; break;
@@ -445,7 +451,7 @@ int main(int argc, char **argv) {
         
         if (reference) {
             if (verbose) cout << "Registering to reference image..." << endl;
-            RegisterImageToReference(subject, reference, tfm, gridSpacing, iterations, verbose);
+            RegisterImageToReference(subject, reference, tfm, gridSpacing, angleStep, angleSteps, iterations, verbose);
         }
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
