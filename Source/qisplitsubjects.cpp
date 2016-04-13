@@ -203,7 +203,7 @@ TShrink::ShrinkFactorsType MakeShrink(const double &gridSpacing, const QI::Image
 
 TPars MakePars(const TPars &ip, double ax, double ay, double az, double tx, double ty, double tz) {
     TPars p((TRigid::ParametersDimension));
-    p[0] = ip[0] + ax; p[1] = ip[1] + ay; p[2] = ip[2] + ax;
+    p[0] = ip[0] + ax; p[1] = ip[1] + ay; p[2] = ip[2] + az;
     p[3] = ip[3] + tx; p[4] = ip[4] + ty; p[5] = ip[5] + tz;
     return p;
 }
