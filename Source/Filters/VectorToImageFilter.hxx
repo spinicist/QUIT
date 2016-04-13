@@ -73,7 +73,6 @@ void VectorToImageFilter<TInput>::GenerateOutputInformation() {
 
 template<typename TInput>
 void VectorToImageFilter<TInput>::GenerateData() {
-    std::cout << __PRETTY_FUNCTION__ << std::endl;
     typename TInput::Pointer input = TInput::New();
     input->Graft(const_cast<TInput *>(this->GetInput()));
     m_tiler->UpdateLargestPossibleRegion();
