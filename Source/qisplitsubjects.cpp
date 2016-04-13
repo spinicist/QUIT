@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <array>
 
 #include "QI/Util.h"
 #include "QI/Types.h"
@@ -165,40 +166,74 @@ typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const 
     return rimage;
 }
 
-float RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference,
-                               TRigid::Pointer tfm, const int shrink, const int iterations) {
-    typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
-    typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
-    typedef itk::RegularStepGradientDescentOptimizer TOpt;
-    typedef itk::MattesMutualInformationImageToImageMetric<QI::ImageF, QI::ImageF> TMetric;
-    typedef itk::ImageRegistrationMethod<QI::ImageF, QI::ImageF> TReg;
-    typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TInterp;
-    
+/*
+ * Typedefs for registration
+ */
+typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
+typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
+typedef itk::RegularStepGradientDescentOptimizer TOpt;
+typedef itk::MattesMutualInformationImageToImageMetric<QI::ImageF, QI::ImageF> TMetric;
+typedef itk::ImageRegistrationMethod<QI::ImageF, QI::ImageF> TReg;
+typedef TReg::ParametersType TPars;
+typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TInterp;
+
+/*
+ * Helper functions for registration
+ */
+TOpt::ScalesType MakeScales(double rotScale, double tScale) {
+    TOpt::ScalesType scales(TRigid::ParametersDimension);
+    scales[0] = rotScale;
+    scales[1] = rotScale;
+    scales[2] = rotScale;
+    scales[3] = tScale;
+    scales[4] = tScale;
+    scales[5] = tScale;
+    return scales;
+}
+
+TShrink::ShrinkFactorsType MakeShrink(const double &gridSpacing, const QI::ImageF::Pointer &image) {
+    TShrink::ShrinkFactorsType shrink;
+    for (int i = 0; i < shrink.Size(); i++) {
+        shrink[i] = round(gridSpacing / image->GetSpacing()[i]);
+        if (shrink[i] < 1)
+            shrink[i] = 1;
+    }
+    return shrink;
+}
+
+TPars MakePars(const TPars &ip, double ax, double ay, double az, double tx, double ty, double tz) {
+    TPars p((TRigid::ParametersDimension));
+    p[0] = ip[0] + ax; p[1] = ip[1] + ay; p[2] = ip[2] + ax;
+    p[3] = ip[3] + tx; p[4] = ip[4] + ty; p[5] = ip[5] + tz;
+    return p;
+}
+
+/*
+ * Actual registration step
+ */
+void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference,
+                               TRigid::Pointer tfm, double gridSpacing, const int iterations, const bool verbose) {
     TSmooth::Pointer smooth_img = TSmooth::New();
-    TSmooth::Pointer smooth_ref = TSmooth::New();
-    TSmooth::SigmaArrayType sigma = image->GetSpacing();
-    for (int i = 0; i < sigma.Size(); i++)
-        sigma[i] = sigma[i] * shrink / 2.0;
     smooth_img->SetInput(image);
-    smooth_img->SetSigmaArray(sigma);
+    TSmooth::Pointer smooth_ref = TSmooth::New();
     smooth_ref->SetInput(reference);
-    smooth_ref->SetSigmaArray(sigma);
-    
     TShrink::Pointer shrink_img = TShrink::New();
-    TShrink::Pointer shrink_ref = TShrink::New();
     shrink_img->SetInput(smooth_img->GetOutput());
-    shrink_img->SetShrinkFactors(shrink);
+    TShrink::Pointer shrink_ref = TShrink::New();
     shrink_ref->SetInput(smooth_ref->GetOutput());
-    shrink_ref->SetShrinkFactors(shrink);
     
     TMetric::Pointer metric = TMetric::New();
-    TInterp::Pointer interp = TInterp::New();
-    TOpt::Pointer opt = TOpt::New();
-    TReg::Pointer reg = TReg::New();
-    
     metric->SetNumberOfHistogramBins(32);
     metric->SetNumberOfSpatialSamples(10000);
+    TInterp::Pointer interp = TInterp::New();
     
+    TOpt::Pointer opt = TOpt::New();
+    opt->SetScales(MakeScales(1.0,1./1000.));
+    opt->SetMaximumStepLength(1.0);
+    opt->SetMinimumStepLength(0.01);
+    opt->SetNumberOfIterations(iterations);
+
+    TReg::Pointer reg = TReg::New();
     reg->SetMetric(metric);
     reg->SetOptimizer(opt);
     reg->SetTransform(tfm);
@@ -207,29 +242,59 @@ float RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::Image
     reg->SetMovingImage(shrink_img->GetOutput());
     reg->SetFixedImageRegion(reference->GetLargestPossibleRegion());
     
-    typedef TReg::ParametersType TPars;
-    TPars initPars = tfm->GetParameters();
+    double pangle = 45.*M_PI/180.;
+    int searchAngles = 1; // Search will be +/- this amount
+    double initMetric = 0, bestMetric = 0;
+    TPars initPars;
+    TPars bestPars = tfm->GetParameters();
     
-    TOpt::ScalesType scales(tfm->GetNumberOfParameters());
-    const double translationScale = 1.0 / 500.0; // dynamic range of translations
-    const double rotationScale    = 1.0;         // dynamic range of rotations
-    scales[0] = rotationScale;
-    scales[1] = rotationScale;
-    scales[2] = rotationScale;
-    scales[3] = translationScale;
-    scales[4] = translationScale;
-    scales[5] = translationScale;
-    opt->SetScales(scales);
-    opt->SetMaximumStepLength(1.0);
-    opt->SetMinimumStepLength(0.01);
-    opt->SetNumberOfIterations(iterations);
-    
-    reg->SetInitialTransformParameters(initPars);
-    reg->Update();
-
-    tfm->SetParameters(reg->GetLastTransformParameters());
-    
-    return opt->GetValue();
+    if (verbose) cout << "Starting registration" << endl;
+    std::array<std::array<int, 3>, 7> translations{{ {0,0,0}, {{-1,0,0}}, {{1,0,0}}, {{0,-1,0}}, {{0,1,0}}, {{0,0,-1}}, {{0,0,1}} }};
+    do {
+        TShrink::ShrinkFactorsType imageShrink = MakeShrink(gridSpacing, image);
+        shrink_img->SetShrinkFactors(imageShrink);
+        TShrink::ShrinkFactorsType refShrink = MakeShrink(gridSpacing, reference);
+        shrink_ref->SetShrinkFactors(refShrink);
+        
+        TSmooth::SigmaArrayType smooth; smooth.Fill(gridSpacing);
+        smooth_img->SetSigmaArray(smooth);
+        smooth_ref->SetSigmaArray(smooth);
+        
+        if (verbose) cout << "Grid: " << gridSpacing << " Image Shrink: " << imageShrink << " Ref Shrink:   " << refShrink << endl;
+        
+        initPars = bestPars;
+        reg->SetInitialTransformParameters(initPars);
+        reg->Update(); // The initial registration should not fail, so don't catch exceptions here.
+        initMetric = opt->GetValue();
+        bestMetric = initMetric;
+        bestPars = reg->GetLastTransformParameters();
+        if (verbose) cout << "Initial metric at this level: " << initMetric << endl;
+        
+        for (double ax = -searchAngles*pangle; ax <= searchAngles*pangle; ax+=pangle) {
+            for (double ay = -searchAngles*pangle; ay <= searchAngles*pangle; ay+=pangle) {
+                for (double az = -searchAngles*pangle; az <= searchAngles*pangle; az+=pangle) {
+                    for (const auto &t : translations) {
+                        TPars p = MakePars(initPars, ax,ay,az,t[0]*gridSpacing,t[1]*gridSpacing,t[2]*gridSpacing);
+                        reg->SetInitialTransformParameters(p);
+                        try {
+                            reg->Update();
+                        } catch (itk::ExceptionObject &e) {
+                            if (verbose) cout << "Registration failed for parameters: " << reg->GetLastTransformParameters() << endl;
+                        }
+                        if (opt->GetValue() < bestMetric) {
+                            bestMetric = opt->GetValue();
+                            bestPars = reg->GetLastTransformParameters();
+                            if (verbose) cout << "Metric improved to: " << bestMetric << endl;
+                        }
+                    }
+                }
+            }
+        }
+        pangle /= 2;
+        gridSpacing /= 2;
+    } while ((gridSpacing >= image->GetSpacing()[0]) && (bestMetric != initMetric));
+    if (verbose) cout << "Finished" << endl;
+    tfm->SetParameters(bestPars);
 }
 
 const string usage {
@@ -243,8 +308,8 @@ Options:\n\
     --oimgs        : Output images (default only transforms)\n\
 Reference Options:\n\
     --ref, -r      : Specify a reference image for output space\n\
-    --shrink, -S N : Specify shrink factor for registration step (default 2)\n\
-    --iters, -I N  : Specify the max number of iterations (default 250)\n\
+    --grid, -G N   : Specify initial grid scale (default 1mm)\n\
+    --iters, -I N  : Specify the max number of iterations (default 25)\n\
 Masking options (default is generate a mask with Otsu's method):\n\
     --mask, -m F   : Read the mask from file F\n\
     --thresh, -t N : Generate a mask by thresholding input at intensity N\n\
@@ -262,10 +327,10 @@ int main(int argc, char **argv) {
 	bool verbose = false;
 	int indexptr = 0, c;
     int keep = numeric_limits<int>::max(), size_threshold = 1000, output_images = false,
-        shrink = 2, iterations = 250;
+        iterations = 25;
     ALIGN alignment = ALIGN::NONE;
     float intensity_threshold = 0;
-    double angleX = 0., angleY = 0., angleZ = 0.;
+    double angleX = 0., angleY = 0., angleZ = 0., gridSpacing = 1.0;
 
 	QI::ImageF::Pointer reference = ITK_NULLPTR;
     TLabelImage::Pointer mask = ITK_NULLPTR;
@@ -279,7 +344,7 @@ int main(int argc, char **argv) {
         {"thresh", required_argument, 0, 't'},
         {"mask", required_argument, 0, 'm'},
         {"ref", required_argument, 0, 'r'},
-        {"shrink", required_argument, 0, 'S'},
+        {"grid", required_argument, 0, 'G'},
         {"iters", required_argument, 0, 'I'},
         {"ring", required_argument, 0, 'R'},
 		{"rotX", required_argument, 0, 'X'},
@@ -288,7 +353,7 @@ int main(int argc, char **argv) {
 		{"oimgs", no_argument, &output_images, true},
 		{0, 0, 0, 0}
 	};
-	const char* short_options = "hvr:c:k:s:I:S:";
+	const char* short_options = "hvr:c:k:s:I:G:";
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
@@ -308,7 +373,7 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
             } break;
         case 'k': keep = stoi(optarg); break;
-        case 'S': shrink = stoi(optarg); break;
+        case 'G': gridSpacing = stod(optarg); break;
         case 'I': iterations = stoi(optarg); break;
         case 's': size_threshold = atoi(optarg); break;
         case 't': intensity_threshold = stof(optarg); break;
@@ -380,60 +445,7 @@ int main(int argc, char **argv) {
         
         if (reference) {
             if (verbose) cout << "Registering to reference image..." << endl;
-            float metric_val = 0., oldm = 0.; // MI is -ve, so this works
-            float pangle = 30.;
-            float pdist = subject->GetSpacing()[0] * 10.;
-            
-            metric_val = RegisterImageToReference(subject, reference, tfm, shrink, iterations);
-            if (verbose) cout << "Initial metric " << metric_val << endl;
-            
-            float best_val = 0;
-            TRigid::Pointer best_tfm;
-            auto tryPerturbation = [&] (const double &x, const double &y, const double &z,
-                                        const double &ax, const double &ay, const double &az)->void {
-                if (verbose) cout << "Try perturbation " << x << " " << " " << y << " " << z << " " << ax << " " << ay << " " << az << "...";
-                TRigid::Pointer ptfm = tfm->Clone();
-                ptfm->SetRotation(tfm->GetAngleX() + ax, 
-                                  tfm->GetAngleY() + ay,
-                                  tfm->GetAngleZ() + az);
-                TMoments::VectorType poff = ptfm->GetOffset();
-                poff[0] += x; poff[1] += y; poff[2] += z;
-                ptfm->SetOffset(poff);
-                float p_val = RegisterImageToReference(subject, reference, ptfm, shrink, iterations);
-                if (verbose) cout << "Metric: " << p_val << endl;
-                if (p_val < best_val) {
-                    best_tfm = ptfm;
-                    best_val = p_val;
-                }
-            };
-            
-            do {
-                best_val = 0;
-                
-                tryPerturbation(0, 0, 0, 0, 0, +pangle*M_PI/180.);
-                tryPerturbation(0, 0, 0, 0, 0, -pangle*M_PI/180.);
-                tryPerturbation(0, 0, 0, 0, +pangle*M_PI/180., 0);
-                tryPerturbation(0, 0, 0, 0, -pangle*M_PI/180., 0);
-                tryPerturbation(0, 0, 0, +pangle*M_PI/180., 0, 0);
-                tryPerturbation(0, 0, 0, -pangle*M_PI/180., 0, 0);
-                tryPerturbation(0, 0, +pdist, 0, 0, 0);
-                tryPerturbation(0, 0, -pdist, 0, 0, 0);
-                tryPerturbation(0, +pdist, 0, 0, 0, 0);
-                tryPerturbation(0, -pdist, 0, 0, 0, 0);
-                tryPerturbation(+pdist, 0, 0, 0, 0, 0);
-                tryPerturbation(-pdist, 0, 0, 0, 0, 0);
-                
-                if (best_val < metric_val) {
-                    if (verbose) cout << "Accepted metric value " << best_val << endl;
-                    metric_val = best_val;
-                    tfm = best_tfm;
-                    pangle *= 2./3.;
-                    pdist *= 2./3.;
-                } else {
-                    break;
-                }
-            } while (true);
-            if (verbose) cout << "No improvement." << endl;
+            RegisterImageToReference(subject, reference, tfm, gridSpacing, iterations, verbose);
         }
         
         stringstream suffix; suffix << "_" << setfill('0') << setw(2) << i;
