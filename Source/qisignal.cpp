@@ -25,7 +25,7 @@
 #include "itkResampleImageFilter.h"
 #include "itkLinearInterpolateImageFunction.h"
 #include "itkProgressReporter.h"
-#include "itkUnaryFunctorImageFilter.h"
+#include "itkClampImageFilter.h"
 
 #include "Filters/VectorToImageFilter.h"
 
@@ -194,22 +194,6 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 };
 
-class EnsureFinite {
-public:
-    EnsureFinite() {};
-    ~EnsureFinite() {};
-    bool operator!=( const EnsureFinite & ) const { return false; }
-    bool operator==( const EnsureFinite &other ) const { return !(*this != other); }
-    inline complex<float> operator()( const complex<float> &v ) const {
-        if (isfinite(real((proj(v))))) {
-            return v;
-        } else {
-            cout << "Voxel value was: " << v << endl;
-            return complex<float>(-1.0,0.0);
-        }
-    }
-};
-
 //******************************************************************************
 // Arguments / Usage
 //******************************************************************************
@@ -231,7 +215,7 @@ Options:\n\
     --seed, -S val    : Specify seed for noise.\n\
     --1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
     --ref, -r FILE    : Output images in space defined by reference file.\n\
-    --finite, -f      : Replace inf/NaN in output with zeros.\n\
+    --clamp, -c M     : Clamp output to be between 0 and M.\n\
     --complex, -x     : Output complex-valued signal.\n\
     --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 };
@@ -251,12 +235,12 @@ const struct option long_opts[] = {
 	{"2", no_argument, 0, '2'},
 	{"3", no_argument, 0, '3'},
     {"ref", required_argument, 0, 'r'},
-    {"finite", no_argument, 0, 'f'},
+    {"clamp", required_argument, 0, 'c'},
 	{"complex", no_argument, 0, 'x'},
 	{"threads", required_argument, 0, 'T'},
 	{0, 0, 0, 0}
 };
-static const char *short_opts = "hvnN:S:m:o:123r:fxT:";
+static const char *short_opts = "hvnN:S:m:o:123r:c:xT:";
 //******************************************************************************
 #pragma mark Read in all required files and data from cin
 //******************************************************************************
@@ -306,9 +290,8 @@ int main(int argc, char **argv)
 	Eigen::initParallel();
 	QI::ImageF::Pointer mask = ITK_NULLPTR, reference = ITK_NULLPTR;
     int indexptr = 0, c;
-    double sigma = 0.;
+    double sigma = 0., clamp = numeric_limits<double>::infinity();
     int seed = -1;
-    bool ensure_finite = false;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
@@ -330,9 +313,9 @@ int main(int argc, char **argv)
                 if (verbose) cout << "Reading reference file: " << optarg << endl;
                 reference = QI::ReadImage(optarg);
                 break;
-            case 'f':
-                if (verbose) cout << "NaN/Inf will be set to 0 in output" << endl;
-                ensure_finite = true;
+            case 'c':
+                clamp = stod(optarg);
+                if (verbose) cout << "Output magnitude will be clamped at " << clamp << endl;
                 break;
 			case 'x': outputComplex = true; break;
 			case 'T':
@@ -416,37 +399,33 @@ int main(int argc, char **argv)
 	vector<string> filenames;
     ParseInput(sequences, filenames);
     
-    typedef itk::UnaryFunctorImageFilter<QI::TimeseriesXF, QI::TimeseriesXF, EnsureFinite> TFinite;
-    TFinite::Pointer finite_filter = TFinite::New();
-    QI::TimeseriesXF::Pointer out_series = ITK_NULLPTR;
+    typedef itk::ClampImageFilter<QI::TimeseriesF, QI::TimeseriesF> TClamp;
+    TClamp::Pointer clamp_filter = TClamp::New();
+    clamp_filter->SetBounds(0, clamp);
 	for (size_t i = 0; i < sequences.size(); i++) {
         if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
 		calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         if (verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
         if (verbose) cout << "Converting to timeseries" << endl;
-        
         QI::VectorToTimeseriesXF::Pointer vecTo4D = QI::VectorToTimeseriesXF::New();
         vecTo4D->SetInput(calcSignal->GetOutput());
-        if (ensure_finite) {
-            if (verbose) cout << "Removing NaN/Inf" << endl;
-            finite_filter->SetInput(vecTo4D->GetOutput());
-            finite_filter->Update();
-            out_series = finite_filter->GetOutput();
-        } else {
-            out_series = vecTo4D->GetOutput();
-        }
         if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
 		if (outputComplex) {
 			auto writer = QI::TimeseriesWriterXF::New();
-            writer->SetInput(out_series);
+            writer->SetInput(vecTo4D->GetOutput());
 			writer->SetFileName(filenames[i]);
 			writer->Update();
 		} else {
 			auto writer = QI::TimeseriesWriterF::New();
 			auto abs = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
-            abs->SetInput(out_series);
-			writer->SetInput(abs->GetOutput());
+            abs->SetInput(vecTo4D->GetOutput());
+            if (isfinite(clamp)) {
+                clamp_filter->SetInput(abs->GetOutput());
+                writer->SetInput(clamp_filter->GetOutput());
+            } else {
+                writer->SetInput(abs->GetOutput());
+            }
 			writer->SetFileName(filenames[i]);
 			writer->Update();
 		}
