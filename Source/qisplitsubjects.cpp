@@ -42,6 +42,8 @@
 #include "itkShrinkImageFilter.h"
 #include "itkSmoothingRecursiveGaussianImageFilter.h"
 #include "itkMattesMutualInformationImageToImageMetric.h"
+#include "itkMeanSquaresImageToImageMetric.h"
+#include "itkHistogramMatchingImageFilter.h"
 #include "itkRegularStepGradientDescentOptimizer.h"
 #include "itkImageRegistrationMethod.h"
 
@@ -214,10 +216,36 @@ TPars MakePars(const TPars &ip, double ax, double ay, double az, double tx, doub
 void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference,
                                TRigid::Pointer tfm, double gridSpacing, double angleStep, int searchAngles,
                                const int iterations, const bool verbose) {
+    
+    if (verbose) cout << "Rescaling to matched intensity ranges" << endl;
+    typedef itk::RescaleIntensityImageFilter<QI::ImageF,QI::ImageF> TRescale;
+    TRescale::Pointer scale_image = TRescale::New();
+    TRescale::Pointer scale_ref   = TRescale::New();
+    scale_image->SetInput(image);
+    scale_ref->SetInput(reference);
+    const double desiredMinimum =  0.0;
+    const double desiredMaximum =  1000.0;
+    scale_image->SetOutputMinimum( desiredMinimum );
+    scale_image->SetOutputMaximum( desiredMaximum );
+    scale_image->UpdateLargestPossibleRegion();
+    scale_ref->SetOutputMinimum( desiredMinimum );
+    scale_ref->SetOutputMaximum( desiredMaximum );
+    scale_ref->UpdateLargestPossibleRegion();
+
+    if (verbose) cout << "Matching histograms" << endl;
+    typedef itk::HistogramMatchingImageFilter<QI::ImageF,QI::ImageF> THistMatch;
+    THistMatch::Pointer hist_match = THistMatch::New();
+    hist_match->SetReferenceImage(scale_ref->GetOutput());
+    hist_match->SetInput(scale_image->GetOutput());
+    hist_match->SetNumberOfHistogramLevels(100);
+    hist_match->SetNumberOfMatchPoints(15);
+    hist_match->ThresholdAtMeanIntensityOn();
+    hist_match->Update();
+
     TSmooth::Pointer smooth_img = TSmooth::New();
-    smooth_img->SetInput(image);
+    smooth_img->SetInput(hist_match->GetOutput());
     TSmooth::Pointer smooth_ref = TSmooth::New();
-    smooth_ref->SetInput(reference);
+    smooth_ref->SetInput(scale_ref->GetOutput());
     TShrink::Pointer shrink_img = TShrink::New();
     shrink_img->SetInput(smooth_img->GetOutput());
     TShrink::Pointer shrink_ref = TShrink::New();
@@ -256,7 +284,7 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
         TShrink::ShrinkFactorsType refShrink = MakeShrink(gridSpacing, reference);
         shrink_ref->SetShrinkFactors(refShrink);
         
-        TSmooth::SigmaArrayType smooth; smooth.Fill(gridSpacing);
+        TSmooth::SigmaArrayType smooth; smooth.Fill(gridSpacing / 2);
         smooth_img->SetSigmaArray(smooth);
         smooth_ref->SetSigmaArray(smooth);
         
@@ -284,7 +312,7 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
                         if (opt->GetValue() < bestMetric) {
                             bestMetric = opt->GetValue();
                             bestPars = reg->GetLastTransformParameters();
-                            if (verbose) cout << "Metric improved to: " << bestMetric << endl;
+                            if (verbose) cout << "Metric improved to: " << bestMetric << " Iterations: " << opt->GetCurrentIteration() << endl;
                         }
                     }
                 }
