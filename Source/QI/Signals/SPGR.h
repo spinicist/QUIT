@@ -17,6 +17,8 @@
 namespace QI {
 
 Eigen::VectorXcd One_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1);
+Eigen::VectorXd One_SPGR_Magnitude(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1);
+Eigen::ArrayXXd One_SPGR_Magnitude_Derivs(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1);
 Eigen::VectorXcd One_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1);
 
 Eigen::VectorXcd Two_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1_a, cdbl T1_b, cdbl tau_a, cdbl f_a, cdbl B1);

@@ -28,6 +28,25 @@ VectorXcd One_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1) {
     return M;
 }
 
+VectorXd One_SPGR_Magnitude(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1) {
+    const ArrayXd sa = sin(B1 * flip);
+    const ArrayXd ca = cos(B1 * flip);
+    const double E1 = exp(-TR / T1);
+    return PD * ((1. - E1) * sa) / (1. - E1*ca);
+}
+
+ArrayXXd One_SPGR_Magnitude_Derivs(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl B1) {
+    const ArrayXd sa = sin(B1 * flip);
+    const ArrayXd ca = cos(B1 * flip);
+    const double E1 = exp(-TR / T1);
+    const ArrayXd d = (1.-E1*ca);
+    ArrayXXd derivs(flip.rows(), 2);
+    derivs.col(0) = (1.-E1)*sa/d;
+    derivs.col(1) = E1*PD*TR*(ca-1.)*sa/((d*T1).square());
+    return derivs;
+}
+
+
 VectorXcd One_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
     ArrayXd sa = (B1 * flip).sin();
     ArrayXd ca = (B1 * flip).cos();

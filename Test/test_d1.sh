@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Simple test scripts for QUIT programs
@@ -13,60 +13,90 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-SIZE="40 16 25"
-$QUITDIR/qinewimage --size "$SIZE" -g "2 1.2 0.8" PD.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "0 0.2 4.3" T1.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "1 0.05 0.5" T2.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "2 -25.0 25.0" f0.nii
+SIZE="64 64 64"
+$QUITDIR/qinewimage --size "$SIZE" -g "1 0.5 1.5" PD.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "0 0.5 1.5" T1.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.05" T2.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.0" f0.nii
 $QUITDIR/qinewimage --size "$SIZE" -g "2 0.75 1.25" B1.nii
 
 # Setup parameters
-SPGR_FILE="spgr.nii"
-SPGR_PAR="5 10 15 #Test comment
-#Test line below has trailing whitespace
-0.01 "
+SPGR2_FILE="spgr2.nii"
+SPGR2_FLIP="3 3 20 20"
+SPGR4_FILE="spgr4.nii"
+SPGR4_FLIP="3 9 15 20"
+SPGR_TR="0.01"
 MPRAGE_FILE="mprage.nii"
-MPRAGE_PAR="5
-0.01
-64
-32
-0.5
-0.0"
-HIFI_PAR="$SPGR_PAR
-$MPRAGE_PAR"
+MPRAGE_FLIP="5"
+MPRAGE_SEGSIZE="64"
+MPRAGE_KZERO="0"
+MPRAGE_INV="0.45"
+MPRAGE_DELAY="0.0"
 AFI_FILE="afi.nii"
 AFI_PAR="55.
 0.02 0.1"
 # Create input for Single Component
-SIG_INPUT="PD.nii
+run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -v --noise=0.002 <<END_SIGNALS
+PD.nii
 T1.nii
 T2.nii
 f0.nii
 B1.nii
-$SPGR_FILE
+$SPGR2_FILE
 SPGR
-$SPGR_PAR
+$SPGR2_FLIP
+$SPGR_TR
+$SPGR4_FILE
+SPGR
+$SPGR4_FLIP
+$SPGR_TR
 $MPRAGE_FILE
 MPRAGE
-$MPRAGE_PAR
+$MPRAGE_FLIP
+$SPGR_TR
+$MPRAGE_SEGSIZE
+$MPRAGE_KZERO
+$MPRAGE_INV
+$MPRAGE_DELAY
 $AFI_FILE
 AFI
 $AFI_PAR
-END"
-echo "$SIG_INPUT" > signal.in
-run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -v -n < signal.in
+END
+END_SIGNALS
 
-echo "$SPGR_PAR" > despot1.in
-echo "$HIFI_PAR" > despot1hifi.in
+echo "$SPGR2_FLIP
+$SPGR_TR" > despot1_2.in
+echo "$SPGR4_FLIP
+$SPGR_TR" > despot1_4.in
+echo "$SPGR2_FLIP
+$SPGR_TR
+$MPRAGE_FLIP
+$SPGR_TR
+$MPRAGE_SEGSIZE
+$MPRAGE_KZERO
+$MPRAGE_INV
+$MPRAGE_DELAY" > despot1hifi.in
+
+function d1_test () {
+    TEST="$1"
+    FILE="$2"
+    ARGS="$3"
+    INPUT="$4"
+    run_test "DESPOT1_${TEST}" $QUITDIR/qidespot1 -v -n -bB1.nii $ARGS -o $TEST $FILE < $INPUT
+    compare_test "DESPOT1_${TEST}" T1.nii ${TEST}D1_T1.nii 0.01
+}
+
+d1_test "LLS2"   $SPGR2_FILE "" despot1_2.in
+d1_test "LLS4"   $SPGR4_FILE "" despot1_4.in
+d1_test "LM"     $SPGR4_FILE "-an" despot1_4.in
+d1_test "LBFGSB" $SPGR4_FILE "-ab" despot1_4.in
+
+run_test "HIFI" $QUITDIR/qidespot1hifi $SPGR2_FILE $MPRAGE_FILE -M -n -T1 -v < despot1hifi.in
+compare_test "HIFIT1" T1.nii HIFI_T1.nii 0.01
+compare_test "HIFIB1" B1.nii HIFI_B1.nii 0.05
 
 run_test "AFI" $QUITDIR/qiafi $AFI_FILE -v
-compare_test "AFI_B1" B1.nii AFI_B1.nii 0.01
-run_test "DESPOT1" $QUITDIR/qidespot1 $SPGR_FILE -n -bB1.nii -v < despot1.in
-compare_test "DESPOT1" T1.nii D1_T1.nii 0.01
-run_test "DESPOT1LM" $QUITDIR/qidespot1 $SPGR_FILE -n -an -oN -bB1.nii -v < despot1.in
-compare_test "DESPOT1LM" T1.nii ND1_T1.nii 0.01
-run_test "DESPOT1HIFI" $QUITDIR/qidespot1hifi $SPGR_FILE $MPRAGE_FILE -M -n -T1 -v < despot1hifi.in
-compare_test "DESPOT1HIFI" T1.nii HIFI_T1.nii 0.01
+compare_test "AFI_B1" B1.nii AFI_B1.nii 0.05
 
 cd ..
 SILENCE_TESTS="0"

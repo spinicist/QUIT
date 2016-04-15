@@ -16,6 +16,9 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
+#include "cppoptlib/problem.h"
+#include "cppoptlib/solver/lbfgsbsolver.h"
+#include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
@@ -136,6 +139,63 @@ class T1Functor : public DenseFunctor<double> {
         }
 };
 
+class D1CostFunction : public cppoptlib::Problem<double> {
+public:
+    shared_ptr<QI::SequenceBase> m_sequence;
+    ArrayXd m_data;
+    double m_B1;
+
+    Eigen::ArrayXd residuals(const cppoptlib::Vector<double> &p) const {
+        ArrayXd s = QI::One_SPGR_Magnitude(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
+        Eigen::ArrayXd diff = s - m_data;
+        return diff;
+    }
+
+    double value(const cppoptlib::Vector<double> &p) {
+        return residuals(p).square().sum();
+    }
+    
+    void gradient(const cppoptlib::Vector<double> &p, cppoptlib::Vector<double> &grad) const {
+        ArrayXXd deriv = QI::One_SPGR_Magnitude_Derivs(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
+        grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
+    }
+};
+
+class D1LBFGSB : public D1Algo {
+public:
+    using typename D1Algo::TArray;
+    using typename D1Algo::TInput;
+    using typename D1Algo::TIterations;
+
+    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
+        double B1 = consts[0];
+        // Improve scaling by dividing the PD down to something sensible.
+        // This gets scaled back up at the end.
+        const TInput data = indata / indata.maxCoeff();
+        auto opts = cppoptlib::LbfgsbSolver<double>::Defaults();
+        opts.iterations = 100;
+        opts.gradNorm = 1e-8;
+        
+        cppoptlib::LbfgsbSolver<double> solver(opts);
+        D1CostFunction cost;
+        cost.m_B1 = B1;
+        cost.m_data = data;
+        cost.m_sequence = this->m_sequence;
+        Array2d lower; lower << 0., 0.1;
+        Array2d upper; upper << 30, 5.0;
+        cost.setLowerBound(lower);
+        cost.setUpperBound(upper);
+        Eigen::VectorXd p(2); p << 10., 1.0;
+        solver.minimize(cost, p);
+        outputs[0] = p[0] * indata.abs().maxCoeff();
+        outputs[1] = p[1];
+        if (!isfinite(p[1])) {
+            cout << p.transpose() << endl << B1 << " " << indata.abs().maxCoeff() << endl;
+        }
+        resids = cost.residuals(p) * indata.abs().maxCoeff();
+    }
+};
+
 class D1NLLS : public D1Algo {
 public:
     virtual void apply(const TInput &data, const TArray &inputs,
@@ -177,6 +237,7 @@ Options:\n\
     --algo, -a l      : LLS algorithm (default)\n\
                w      : WLLS algorithm\n\
                n      : NLLS (Levenberg-Marquardt)\n\
+               b      : LBFGSB algorithm\n\
     --its, -i N       : Max iterations for WLLS/NLLS (default 15)\n\
     --resids, -r      : Write out per flip-angle residuals\n\
     --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
@@ -222,6 +283,7 @@ int main(int argc, char **argv) {
                     case 'l': algo = make_shared<D1LLS>();  if (verbose) cout << "LLS algorithm selected." << endl; break;
                     case 'w': algo = make_shared<D1WLLS>(); if (verbose) cout << "WLLS algorithm selected." << endl; break;
                     case 'n': algo = make_shared<D1NLLS>(); if (verbose) cout << "NLLS algorithm selected." << endl; break;
+                    case 'b': algo = make_shared<D1LBFGSB>(); if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
                     default:
                         cerr << "Unknown algorithm type " << optarg << endl;
                         return EXIT_FAILURE;
@@ -251,6 +313,7 @@ int main(int argc, char **argv) {
             case 'i': algo->setIterations(atoi(optarg)); break;
             case 'r': all_residuals = true; break;
             case 'T':
+
                 num_threads = stoi(optarg);
                 if (num_threads == 0)
                     num_threads = std::thread::hardware_concurrency();
