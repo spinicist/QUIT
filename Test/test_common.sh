@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Common functions for QUITK Tests
@@ -50,6 +50,7 @@ function compare_test {
 		REGEXP='^-?[0-9]+([.][0-9]+)?(e-?[0-9]+)?$'
         if ! [[ $MEAN =~ $REGEXP ]] ; then
             echo "Comparison test $NAME failed, mean diff $MEAN is not a valid number"
+            return 1
 		fi
 		# Now do the tolerance test
         TEST=$(echo "$MEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
