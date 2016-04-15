@@ -59,7 +59,7 @@ public:
     shared_ptr<QI::SSFPSimple> m_sequence;
     const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
-    Eigen::ArrayXd residuals(const Eigen::VectorXd &p) {
+    Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
         ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
         Eigen::ArrayXd diff = s - m_data;
         return diff;
@@ -69,10 +69,9 @@ public:
         return residuals(p).square().sum();
     }
     
-    void gradient(const cppoptlib::Vector<double> &p, cppoptlib::Vector<double> &grad) {
-        ArrayXd  s     = QI::One_SSFP_Echo_Magnitude(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
+    void gradient(const cppoptlib::Vector<double> &p, cppoptlib::Vector<double> &grad) const {
         ArrayXXd deriv = QI::One_SSFP_Echo_Derivs(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
-        grad = 2*(deriv.colwise()*(s - m_data)).colwise().sum();
+        grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
     }
 };
 
