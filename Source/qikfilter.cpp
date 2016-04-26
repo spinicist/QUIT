@@ -213,6 +213,7 @@ int main(int argc, char **argv) {
             case 'h':
                 cout << QI::GetVersion() << endl << usage << endl;
                 return EXIT_SUCCESS;
+            case 0: break; // Just a flag
             case '?': // getopt will print an error message
                 return EXIT_FAILURE;
             default:

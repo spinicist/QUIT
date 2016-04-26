@@ -62,7 +62,7 @@ public:
 	typename TScalarImage::ConstPointer GetMask() const;
 
     void SetPoolsize(const size_t nThreads);
-    void SetSlices(const size_t start, const size_t stop);
+    void SetSubregion(const TRegion &sr); 
     void SetVerbose(const bool v);
     
     TScalarImage       *GetOutput(const size_t i);
@@ -82,8 +82,9 @@ protected:
 	DataObject::Pointer MakeOutput(unsigned int idx);
 
 	std::shared_ptr<TAlgorithm> m_algorithm;
-	bool m_scale_to_mean = false, m_verbose = false;
-    size_t m_poolsize = 1, m_start = 0, m_stop = 0;
+    bool m_scale_to_mean = false, m_verbose = false, m_hasSubregion = false;
+    size_t m_poolsize = 1;
+    TRegion m_subregion;
 
     RealTimeClock::TimeStampType m_elapsedTime = 0.0;
     SizeValueType m_unmaskedVoxels = 0;

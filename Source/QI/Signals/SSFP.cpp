@@ -33,7 +33,7 @@ VectorXcd One_SSFP_GS(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, 
 
 VectorXcd One_SSFP(carrd &flip, carrd &phi, cdbl TR,
                    cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
-    eigen_assert(flip.size() == phi.size())
+    eigen_assert(flip.size() == phi.size());
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
@@ -52,7 +52,7 @@ VectorXcd One_SSFP(carrd &flip, carrd &phi, cdbl TR,
 
 VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR,
                         cdbl PD, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
-    eigen_assert(flip.size() = phi.size());
+    eigen_assert(flip.size() == phi.size());
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
@@ -70,7 +70,7 @@ VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR,
 }
 
 VectorXd One_SSFP_Echo_Magnitude(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
-    eigen_assert(flip.size() = phi.size());
+    eigen_assert(flip.size() == phi.size());
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
 
@@ -89,7 +89,7 @@ VectorXd One_SSFP_Echo_Magnitude(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl
  * This is to match the scaling of that parameter in DESPOT2-FM which improves fitting
  */
 MatrixXd One_SSFP_Echo_Derivs(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
-    eigen_assert(flip.size() = phi.size());
+    eigen_assert(flip.size() == phi.size());
     const double E1 = exp(-TR / T1);
     const double E2 = exp(-TR / T2);
     const double E2sqr = E2*E2;
@@ -189,7 +189,7 @@ MatrixXd Two_SSFP_Matrix(carrd &flip, carrd &phi, const double TR,
 VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
                    cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
                    cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
-    eigen_assert(flip.size() == phi.size())
+    eigen_assert(flip.size() == phi.size());
 
     MatrixXd M = Two_SSFP_Matrix(flip, phi, TR, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
     VectorXcd mc(flip.size());
@@ -201,7 +201,7 @@ VectorXcd Two_SSFP(carrd &flip, carrd &phi, const double TR,
 VectorXcd Two_SSFP_Echo(carrd &flip, carrd &phi, const double TR,
                         cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b,
                         cdbl tau_a, cdbl f_a, cdbl f0_a, cdbl f0_b, cdbl B1) {
-    eigen_assert(flip.size() == phi.size())
+    eigen_assert(flip.size() == phi.size());
 
     MatrixXd M = Two_SSFP_Matrix(flip, phi, TR, T1_a, T2_a, T1_b, T2_b, tau_a, f_a, f0_a, f0_b, B1);
 

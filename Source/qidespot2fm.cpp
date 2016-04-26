@@ -52,8 +52,10 @@ public:
     }
 };
 
-class FMCostFunction : public cppoptlib::Problem<double> {
+class FMCostFunction : public cppoptlib::Problem<double, 3> {
 public:
+    using typename Problem<double, 3>::VectorType;
+    
     Eigen::ArrayXd m_data;
     double m_T1, m_B1;
     shared_ptr<QI::SSFPSimple> m_sequence;
@@ -65,11 +67,11 @@ public:
         return diff;
     }
 
-    double value(const cppoptlib::Vector<double> &p) {
+    double value(const VectorType &p) {
         return residuals(p).square().sum();
     }
     
-    void gradient(const cppoptlib::Vector<double> &p, cppoptlib::Vector<double> &grad) const {
+    void gradient(const VectorType &p, VectorType &grad) const {
         ArrayXXd deriv = QI::One_SSFP_Echo_Derivs(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
         grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
     }
@@ -89,11 +91,12 @@ public:
             // This gets scaled back up at the end.
             const TInput data = indata / indata.maxCoeff();
             
-            auto opts = cppoptlib::LbfgsbSolver<double>::Defaults();
-            opts.iterations = 100;
-            opts.gradNorm = 1e-8;
+            auto stop = cppoptlib::Criteria<double>::defaults();
+            stop.iterations = 100;
+            stop.gradNorm = 1e-8;
             
-            cppoptlib::LbfgsbSolver<double> solver(opts);
+            cppoptlib::LbfgsbSolver<FMCostFunction> solver;
+            solver.setStopCriteria(stop);
             FMCostFunction cost;
             cost.m_B1 = B1;
             cost.m_data = data;
@@ -120,13 +123,13 @@ public:
             Eigen::Array3d bestP;
             its = 0;
             for (const double &f0 : f0_starts) {
-                Eigen::VectorXd p(3); p << 5., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                Eigen::Vector3d p; p << 5., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 solver.minimize(cost, p);
                 double r = cost(p);
                 if (r < best) {
                     best = r;
                     bestP = p;
-					its = solver.info().iterations;
+                    its = solver.criteria().iterations;
                 }
             }
             outputs[0] = bestP[0] * indata.abs().maxCoeff();
@@ -155,9 +158,10 @@ public:
             // This gets scaled back up at the end.
             const auto data = indata / indata.abs().maxCoeff();
             
-            cppoptlib::CMAesSolver<double>::Criteria opts = cppoptlib::CMAesSolver<double>::Defaults();
-            opts.iterations = 1000;
-            cppoptlib::CMAesSolver<double> solver(opts);
+            auto stop = cppoptlib::Criteria<double>::defaults();
+            stop.iterations = 1000;
+            cppoptlib::CMAesSolver<FMCostFunction> solver;
+            solver.setStopCriteria(stop);
             FMCostFunction cost;
             cost.m_B1 = B1;
             cost.m_data = data;
@@ -171,9 +175,9 @@ public:
             cost.setLowerBound(lower);
             cost.setUpperBound(upper);
             
-            Eigen::VectorXd p(3); p << 5., 0.1 * T1, 0.1; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+            Eigen::Vector3d p; p << 5., 0.1 * T1, 0.1; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
             solver.minimize(cost, p);
-            its = solver.info().iterations;
+            its = solver.criteria().iterations;
             outputs[0] = p[0] * indata.abs().maxCoeff();
             outputs[1] = p[1];
             outputs[2] = p[2];
@@ -191,21 +195,22 @@ const string usage {
 "Usage is: qidespot2fm [options] T1_map ssfp_file\n\
 \
 Options:\n\
-    --help, -h        : Print this message\n\
-    --verbose, -v     : Print more information\n\
-    --no-prompt, -n   : Suppress input prompts\n\
-    --mask, -m file   : Mask input with specified file\n\
-    --out, -o path    : Add a prefix to the output filenames\n\
-    --B1, -b file     : B1 Map file (ratio)\n\
-    --algo, -a b      : Use LBFGSB algorithm (default)\n\
-               c      : Use Covariance Maximization algorithm\n\
-    --asym, -A        : Fit +/- off-resonance frequency\n\
-    --flex, -f        : Specify all phase-incs for all flip-angles\n\
-    --start, -s N     : Start processing from slice N\n\
-    --stop, -p  N     : Stop processing at slice N\n\
-    --finite, -F      : Use finite pulse length correction\n\
-    --resids, -r      : Write out per flip-angle residuals\n\
-    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
+    --help, -h          : Print this message\n\
+    --verbose, -v       : Print more information\n\
+    --no-prompt, -n     : Suppress input prompts\n\
+    --mask, -m file     : Mask input with specified file\n\
+    --out, -o path      : Add a prefix to the output filenames\n\
+    --B1, -b file       : B1 Map file (ratio)\n\
+    --algo, -a b        : Use LBFGSB algorithm (default)\n\
+               c        : Use Covariance Maximization algorithm\n\
+    --asym, -A          : Fit +/- off-resonance frequency\n\
+    --flex, -f          : Specify all phase-incs for all flip-angles\n\
+    --stop, -p  N       : Stop processing at slice N\n\
+    --finite, -F        : Use finite pulse length correction\n\
+    --resids, -r        : Write out per flip-angle residuals\n\
+    --threads, -T N     : Use N threads (default=4, 0=hardware limit)\n\
+    -s \"I J K SI SJ SK\" : Only process a subregion starting at voxel I,J,K\n\
+                            with size SI,SJ,SK. Must fit within image.\n"
 };
 
 struct option long_opts[] = {
@@ -218,13 +223,11 @@ struct option long_opts[] = {
     {"algo", required_argument, 0, 'a'},
     {"asym", no_argument, 0, 'A'},
     {"flex", no_argument, 0, 'f'},
-    {"start", required_argument, 0, 's'},
-    {"stop", required_argument, 0, 'p'},
     {"threads", required_argument, 0, 'T'},
     {"resids", no_argument, 0, 'r'},
     {0, 0, 0, 0}
 };
-const char* short_opts = "hvnm:o:b:a:Afs:p:T:rd:";
+const char* short_opts = "hvnm:o:b:a:Afs:T:rd:";
 int indexptr = 0;
 char c;
 
@@ -238,10 +241,10 @@ int main(int argc, char **argv) {
     int start_slice = 0, stop_slice = 0;
     int verbose = false, prompt = true, all_residuals = false, symmetric = true,
         fitFinite = false, flex = false, use_BFGS = true, num_threads = 4;
-    bool useCM = false;
+    bool useCM = false, has_subregion = false;
     string outPrefix;
     QI::VolumeF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
-
+    typename TApply::TRegion subregion;
     optind = 1;
     while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
         switch (c) {
@@ -265,8 +268,19 @@ int main(int argc, char **argv) {
             if (verbose) cout << "Reading B1 file: " << optarg << endl;
             B1 = QI::ReadImage(optarg);
             break;
-        case 's': start_slice = atoi(optarg); break;
-        case 'p': stop_slice = atoi(optarg); break;
+        case 's': {
+            ArrayXd vals; QI::ReadArray(optarg, vals);
+            if (vals.rows() != 6) {
+                QI_EXCEPTION( "Subregion must have 3 start indices and 3 sizes." );
+            }
+            typename TApply::TRegion::IndexType start;
+            typename TApply::TRegion::SizeType size;
+            start[0] = vals[0]; start[1] = vals[1]; start[2] = vals[2];
+            size[0]  = vals[3]; size[1] =  vals[4]; size[2]  = vals[5];
+            subregion.SetIndex(start);
+            subregion.SetSize(size);
+            has_subregion = true;
+        } break;
         case 'f': flex = true; if (verbose) cout << "Flexible sequence input selected" << endl; break;
         case 'T':
             num_threads = stoi(optarg);
@@ -306,7 +320,7 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
     auto T1 = QI::ReadImage(argv[optind++]);
     if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-    auto ssfpData = QI::ReadVectorImage<T>(argv[optind++]);
+    auto ssfpData = QI::ReadVectorImage<float>(argv[optind++]);
     auto apply = TApply::New();
     shared_ptr<FMAlgo> algo;
     if (useCM) {
@@ -321,12 +335,10 @@ int main(int argc, char **argv) {
     apply->SetPoolsize(num_threads);
     apply->SetInput(0, ssfpData);
     apply->SetConst(0, T1);
-    apply->SetSlices(start_slice, stop_slice);
-    if (B1) {
-        apply->SetConst(1, B1);
-    }
-    if (mask) {
-        apply->SetMask(mask);
+    apply->SetConst(1, B1);
+    apply->SetMask(mask);
+    if (has_subregion) {
+        apply->SetSubregion(subregion);
     }
     if (verbose) {
         cout << "Processing" << endl;

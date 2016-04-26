@@ -41,7 +41,7 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetPoolsize(const size_t n) { m_poolsize = n; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetSlices(const size_t start, const size_t stop) { m_start = start; m_stop = stop; }
+void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetSubregion(const TRegion &sr) { m_subregion = sr; m_hasSubregion = true; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetVerbose(const bool v) { m_verbose = v; }
@@ -186,15 +186,13 @@ template<typename TAlgorithm, typename TData, typename TScalar, unsigned int Ima
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() {
     const unsigned int LastDim = ImageDim - 1;
     TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
-    if (m_stop != 0) {
-        if (m_start < region.GetIndex()[LastDim])
-            itkExceptionMacro("Start slice is before start of image.");
-        if ((m_stop - m_start) > region.GetSize()[LastDim])
-            itkExceptionMacro("Stop slice is past end of image");
-        region.GetModifiableIndex()[LastDim] = m_start;
-        region.GetModifiableSize()[LastDim] = m_stop - m_start;
+    if (m_hasSubregion) {
+        if (region.IsInside(m_subregion)) {
+            region = m_subregion;
+        } else {
+            itkExceptionMacro("Specified subregion is not entirely inside image.");
+        }
     }
-
     ImageRegionConstIterator<TScalarImage> maskIter;
     const auto mask = this->GetMask();
     if (mask) {

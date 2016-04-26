@@ -58,8 +58,8 @@ compare_test "${PREFIX}"   T2.nii ${PREFIX}FM_T2.nii  0.01
 
 run_tests "BFGS2SYM" "12 65" "180 0"
 run_tests "BFGS2ASYM" "12 65" "90 270" "--asym"
-run_tests "CM2SYM" "12 65" "180 0" "-ac"
-run_tests "CM2ASYM" "12 65" "90 270" "-ac --asym"
+#run_tests "CM2SYM" "12 65" "180 0" "-ac"
+#run_tests "CM2ASYM" "12 65" "90 270" "-ac --asym"
 
 cd ..
 SILENCE_TESTS="0"

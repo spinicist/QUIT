@@ -13,8 +13,8 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-SIZE="64 64 64"
-$QUITDIR/qinewimage --size "$SIZE" -g "1 0.5 1.5" PD.nii
+SIZE="32 32 32"
+$QUITDIR/qinewimage --size "$SIZE" -g "1 0.75 1.25" PD.nii
 $QUITDIR/qinewimage --size "$SIZE" -g "0 0.5 1.5" T1.nii
 $QUITDIR/qinewimage --size "$SIZE" -f "0.05" T2.nii
 $QUITDIR/qinewimage --size "$SIZE" -f "0.0" f0.nii
@@ -36,7 +36,7 @@ AFI_FILE="afi.nii"
 AFI_PAR="55.
 0.02 0.1"
 # Create input for Single Component
-run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -v --noise=0.002 <<END_SIGNALS
+run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -v -n --noise=0.002 <<END_SIGNALS
 PD.nii
 T1.nii
 T2.nii
@@ -89,7 +89,7 @@ function d1_test () {
 d1_test "LLS2"   $SPGR2_FILE "" despot1_2.in
 d1_test "LLS4"   $SPGR4_FILE "" despot1_4.in
 d1_test "LM"     $SPGR4_FILE "-an" despot1_4.in
-d1_test "LBFGSB" $SPGR4_FILE "-ab" despot1_4.in
+#d1_test "LBFGSB" $SPGR4_FILE "-ab" despot1_4.in
 
 run_test "HIFI" $QUITDIR/qidespot1hifi $SPGR2_FILE $MPRAGE_FILE -M -n -T1 -v < despot1hifi.in
 compare_test "HIFIT1" T1.nii HIFI_T1.nii 0.01

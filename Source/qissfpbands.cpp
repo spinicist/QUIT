@@ -126,8 +126,8 @@ public:
     itkNewMacro(Self); /** Method for creation through the object factory. */
     itkTypeMacro(GSFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
-    itkSetMacro(Regularise, RegEnum);
-    itkGetMacro(Regularise, RegEnum);
+    void SetRegularise(const RegEnum &r) { m_Regularise = r;};
+    const RegEnum &GetRegularise()       { return m_Regularise; }
 
     void SetPhases(const size_t p) {
         if (p < 4)

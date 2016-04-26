@@ -240,7 +240,6 @@ class MCDSRCFunctor {
             return m_data - s;
         }
         double operator()(const Ref<VectorXd> &params) const {
-            eigen_assert(diffs.size() == values());
             return (residuals(params) * m_weights).square().sum();
         }
 };
@@ -326,8 +325,6 @@ Options:\n\
                 3nex  : Use 3 component, no exchange model\n\
     --f0, -f file     : Use f0 Map file (in Hertz)\n\
     --B1, -b file     : B1 Map file (ratio)\n\
-    --start, -s n     : Only start processing at slice n.\n\
-    --stop, -p n      : Finish at slice n-1\n\
     --scale, -S       : Normalise signals to mean\n\
     --algo, -a S      : Use Uniform distribution for Region Contraction\n\
                G      : Use Gaussian distribution for RC (default)\n\
@@ -338,7 +335,9 @@ Options:\n\
                 7     : Boundaries suitable for 7T \n\
                 u     : User specified boundaries from stdin\n\
     --resids, -r      : Write out per flip-angle residuals\n\
-    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
+    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n\
+    -s \"I J K SI SJ SK\" : Only process a subregion starting at voxel I,J,K\n\
+                            with size SI,SJ,SK. Must fit within image.\n"
     };
 
     const struct option long_options[] = {
@@ -348,8 +347,6 @@ Options:\n\
         {"out", required_argument, 0, 'o'},
         {"f0", required_argument, 0, 'f'},
         {"B1", required_argument, 0, 'b'},
-        {"start", required_argument, 0, 's'},
-        {"stop", required_argument, 0, 'p'},
         {"scale", no_argument, 0, 'S'},
         {"algo", required_argument, 0, 'a'},
         {"iterations", required_argument, 0, 'i'},
@@ -361,7 +358,7 @@ Options:\n\
         {"model", required_argument, 0, 'M'},
         {0, 0, 0, 0}
     };
-    const char* short_options = "hvm:o:f:b:s:p:Sa:t:FT:rnM:i:j:";
+    const char* short_options = "hvm:o:f:b:s:Sa:t:FT:rnM:i:j:";
 
     // Deal with these options in first pass to ensure the correct model is selected
     int indexptr = 0, c;
@@ -403,8 +400,20 @@ Options:\n\
                 if (verbose) cout << "Reading B1 file: " << optarg << endl;
                 B1 = QI::ReadImage(optarg);
                 break;
-            case 's': start_slice = atoi(optarg); break;
-            case 'p': stop_slice = atoi(optarg); break;
+            case 's': {
+                ArrayXd vals; QI::ReadArray(optarg, vals);
+                if (vals.rows() != 6) {
+                    QI_EXCEPTION( "Subregion must have 3 start indices and 3 sizes." );
+                }
+                typename TMCDFilter::TRegion::IndexType start;
+                typename TMCDFilter::TRegion::SizeType size;
+                start[0] = vals[0]; start[1] = vals[1]; start[2] = vals[2];
+                size[0]  = vals[3]; size[1] =  vals[4]; size[2]  = vals[5];
+                typename TMCDFilter::TRegion subregion;
+                subregion.SetIndex(start);
+                subregion.SetSize(size);
+                apply->SetSubregion(subregion);
+            } break;
             case 'S':
                 if (verbose) cout << "Mean scaling selected." << endl;
                 model->setScaleToMean(true);
@@ -501,7 +510,6 @@ Options:\n\
     } break;
     }
     apply->SetVerbose(verbose);
-    apply->SetSlices(start_slice, stop_slice);
     apply->SetPoolsize(num_threads);
     for (int i = 0; i < images.size(); i++) {
         apply->SetInput(i, images[i]);

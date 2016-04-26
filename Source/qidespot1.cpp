@@ -139,23 +139,25 @@ class T1Functor : public DenseFunctor<double> {
         }
 };
 
-class D1CostFunction : public cppoptlib::Problem<double> {
+class D1CostFunction : public cppoptlib::Problem<double, 2> {
 public:
+    using typename Problem<double, 2>::VectorType;
+    
     shared_ptr<QI::SequenceBase> m_sequence;
     ArrayXd m_data;
     double m_B1;
 
-    Eigen::ArrayXd residuals(const cppoptlib::Vector<double> &p) const {
+    Eigen::ArrayXd residuals(const VectorType &p) const {
         ArrayXd s = QI::One_SPGR_Magnitude(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
         Eigen::ArrayXd diff = s - m_data;
         return diff;
     }
 
-    double value(const cppoptlib::Vector<double> &p) {
+    double value(const VectorType &p) {
         return residuals(p).square().sum();
     }
     
-    void gradient(const cppoptlib::Vector<double> &p, cppoptlib::Vector<double> &grad) const {
+    void gradient(const VectorType &p, VectorType &grad) const {
         ArrayXXd deriv = QI::One_SPGR_Magnitude_Derivs(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
         grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
     }
@@ -172,25 +174,32 @@ public:
         // Improve scaling by dividing the PD down to something sensible.
         // This gets scaled back up at the end.
         const TInput data = indata / indata.maxCoeff();
-        auto opts = cppoptlib::LbfgsbSolver<double>::Defaults();
-        opts.iterations = 100;
-        opts.gradNorm = 1e-8;
+        auto stop = cppoptlib::Criteria<double>::defaults();
+        stop.iterations = 100;
+        stop.gradNorm = 1e-8;
         
-        cppoptlib::LbfgsbSolver<double> solver(opts);
+        cppoptlib::LbfgsbSolver<D1CostFunction> solver;
+        solver.setStopCriteria(stop);
         D1CostFunction cost;
         cost.m_B1 = B1;
         cost.m_data = data;
         cost.m_sequence = this->m_sequence;
-        Array2d lower; lower << 0., 0.1;
-        Array2d upper; upper << 30, 5.0;
+        Array2d lower; lower << 0.001, 0.1;
+        Array2d upper; upper << 50, 5.0;
         cost.setLowerBound(lower);
         cost.setUpperBound(upper);
-        Eigen::VectorXd p(2); p << 10., 1.0;
+        Eigen::Vector2d p; p << 10., 1.0;
         solver.minimize(cost, p);
-        outputs[0] = p[0] * indata.abs().maxCoeff();
+        outputs[0] = p[0] * indata.maxCoeff();
         outputs[1] = p[1];
         if (!isfinite(p[1])) {
+            cout << "Not finite" << endl;
+            cout << indata.transpose() << endl;
+            cout << data.transpose() << endl;
             cout << p.transpose() << endl << B1 << " " << indata.abs().maxCoeff() << endl;
+            solver.setDebug(cppoptlib::DebugLevel::High);
+            Eigen::Vector2d p; p << 10., 1.0;
+            solver.minimize(cost, p);
         }
         resids = cost.residuals(p) * indata.abs().maxCoeff();
     }
@@ -224,8 +233,9 @@ public:
 //******************************************************************************
 const string usage {
 "Usage is: qidespot1 [options] spgr_input \n\
-\
+\n\
 Options:\n\
+\n\
     --help, -h        : Print this message\n\
     --verbose, -v     : Print more information\n\
     --no-prompt, -n   : Suppress input prompts\n\
@@ -313,7 +323,6 @@ int main(int argc, char **argv) {
             case 'i': algo->setIterations(atoi(optarg)); break;
             case 'r': all_residuals = true; break;
             case 'T':
-
                 num_threads = stoi(optarg);
                 if (num_threads == 0)
                     num_threads = std::thread::hardware_concurrency();
