@@ -17,6 +17,7 @@
 #include "itkImageFileWriter.h"
 #include "itkImageSliceConstIteratorWithIndex.h"
 #include "itkImageSliceIteratorWithIndex.h"
+#include "itkMultiplyImageFilter.h"
 #include "itkComplexToPhaseImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkComplexToRealImageFilter.h"
@@ -101,19 +102,21 @@ following can be specified:\n\
 	-X : Output a complex image\n\
 \n\
 Other options:\n\
-	--double : Use double precision instead of float\n\
-	--fixge  : Fix alternate slice problem with GE data.\n\
+    --negate : Multiply everything by -1 before output.\n\
+    --double : Use double precision instead of float\n\
+    --fixge  : Fix alternate slice problem with GE data.\n\
 \n\
 Example:\n\
 	qicomplex -m mag.nii -p phase.nii -R real.nii -I imag.nii\n"
 };
-int verbose = false, use_double = false, fixge = false;
+int verbose = false, use_double = false, fixge = false, do_negate = false;
 const struct option long_options[] =
 {
 	{"help", no_argument, 0, 'h'},
 	{"verbose", no_argument, 0, 'v'},
 	{"double", no_argument, &use_double, 1},
 	{"fixge", no_argument, &fixge, 1},
+    {"negate", no_argument, &do_negate, 1},
 	{0, 0, 0, 0}
 };
 const char* short_options = "hvm:M:p:P:r:R:i:I:x:X:";
@@ -194,6 +197,14 @@ template<typename TPixel> void Run(int argc, char **argv) {
         imgX = fix->GetOutput();
     }
 
+    if (do_negate) {
+        if (verbose) cout << "Negating values" << endl;
+        auto neg = itk::MultiplyImageFilter<TXImage, TXImage, TXImage>::New();
+        neg->SetInput(imgX);
+        neg->SetConstant(complex<TPixel>(-1.0, 0.0));
+        neg->Update();
+        imgX = neg->GetOutput();
+    }
 	if (verbose) cout << "Writing output files" << endl;
 	typename TWriter::Pointer write = TWriter::New();
 	optind = 1;
