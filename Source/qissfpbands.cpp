@@ -540,10 +540,13 @@ int main(int argc, char **argv) {
         auto volume = process->GetOutput();
         outTiler->SetInput(i, volume);
         volume->DisconnectPipeline();
-
     }
     outTiler->UpdateLargestPossibleRegion();
-
+    QI::TimeseriesXF::Pointer output = outTiler->GetOutput();
+    output->DisconnectPipeline();
+    output->SetDirection(inFile->GetOutput()->GetDirection());
+    output->SetSpacing(inFile->GetOutput()->GetSpacing());
+    
     if (prefix == "")
         prefix = QI::StripExt(fname).append("_nobands");
     string outname = prefix;
@@ -552,13 +555,13 @@ int main(int argc, char **argv) {
     if (output_magnitude) {
         auto mag = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
         auto outFile = QI::TimeseriesWriterF::New();
-        mag->SetInput(outTiler->GetOutput());
+        mag->SetInput(output);
         outFile->SetInput(mag->GetOutput());
         outFile->SetFileName(outname);
         outFile->Update();
     } else {
         auto outFile = QI::TimeseriesWriterXF::New();
-        outFile->SetInput(outTiler->GetOutput());
+        outFile->SetInput(output);
         outFile->SetFileName(outname);
         outFile->Update();
     }
