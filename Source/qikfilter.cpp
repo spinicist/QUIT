@@ -56,9 +56,9 @@ public:
     }
     
     double operator() (const int x, const int y, const int z) const {
-            const double rx = static_cast<double>(x - m_hx)/m_hx;
-            const double ry = static_cast<double>(y - m_hy)/m_hy;
-            const double rz = static_cast<double>(z - m_hz)/m_hz;
+            const double rx = fmod(static_cast<double>(x)/m_hx + 1.0, 2.0) - 1.0;
+            const double ry = fmod(static_cast<double>(y)/m_hy + 1.0, 2.0) - 1.0;
+            const double rz = fmod(static_cast<double>(z)/m_hz + 1.0, 2.0) - 1.0;
             const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
             const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
             return v;
@@ -77,13 +77,8 @@ public:
     typedef SmartPointer<Self>                 Pointer;
 
 protected:
-    typedef typename TImage::RegionType::SizeType SizeType;
-    typename TImage::RegionType    m_region;
-    typename TImage::SpacingType   m_spacing;
-    typename TImage::DirectionType m_direction;
-    typename TImage::PointType     m_origin;
-
     TukeyKernel m_kernel;
+    bool m_WriteKernel = false;
 
     KSpaceFilter(){}
     ~KSpaceFilter(){}
@@ -91,10 +86,11 @@ protected:
 public:
     itkNewMacro(Self);
     itkTypeMacro(KSpaceFilter, ImageSource);
-
+    itkSetMacro(WriteKernel, bool);
+    
     virtual void GenerateOutputInformation() override {
         Superclass::GenerateOutputInformation();
-        SizeType size = this->GetOutput()->GetLargestPossibleRegion().GetSize();
+        typename TImage::SizeType size = this->GetOutput()->GetLargestPossibleRegion().GetSize();
         m_kernel.setSize(size[0], size[1], size[2]);
     }
     
@@ -102,15 +98,20 @@ public:
 
 protected:
     virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) override {
+        typename TImage::IndexType startIndex = this->GetInput()->GetLargestPossibleRegion().GetIndex();
         itk::ImageRegionIterator<TImage> outIt(this->GetOutput(),region);
         itk::ImageRegionConstIteratorWithIndex<TImage> inIt(this->GetInput(),region);
         inIt.GoToBegin();
         outIt.GoToBegin();
         while(!inIt.IsAtEnd()) {
-            const auto index = inIt.GetIndex() - m_region.GetIndex(); // Might be padded to a negative start
+            const auto index = inIt.GetIndex() - startIndex; // Might be padded to a negative start
             const typename TImage::PixelType::value_type k = m_kernel(index[0], index[1], index[2]);
             const typename TImage::PixelType v = inIt.Get();
-            outIt.Set(v * k);
+            if (m_WriteKernel) {
+                outIt.Set(k);
+            } else {
+                outIt.Set(v * k);
+            }
             ++inIt;
             ++outIt;
         }
@@ -126,48 +127,23 @@ private:
 template<typename TImage> typename TImage::Pointer FilterVolume(const typename TImage::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name);
 
 template<> QI::ImageXD::Pointer FilterVolume<QI::ImageXD>(const typename QI::ImageXD::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name) {
-    if (verbose) cout << "Padding image to valid FFT size." << endl;
     typedef itk::FFTPadImageFilter<QI::ImageXD> TPad;
-    typename TPad::Pointer padFFT = TPad::New();
-    padFFT->SetInput(invol);
-    padFFT->Update();
-    if (debug) QI::WriteImage(padFFT->GetOutput(), out_name + "_step1_padFFT" + QI::OutExt());
-    if (verbose) {
-        cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
-        cout << "Calculating Forward FFT." << endl;
-    }
-    
     typedef itk::ComplexToComplexFFTImageFilter<QI::ImageXD> FFTType;
+    typedef itk::FFTShiftImageFilter<QI::ImageXD, QI::ImageXD> TShift;
+    typedef itk::KSpaceFilter<QI::ImageXD> TFilter;
+
+    auto padFFT = TPad::New();
+    padFFT->SetInput(invol);
     auto forwardFFT = FFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
-    forwardFFT->Update();
-
-    typedef itk::FFTShiftImageFilter<QI::ImageXD, QI::ImageXD> TShift;
-    TShift::Pointer shiftFFT = TShift::New();
-    shiftFFT->SetInput(forwardFFT->GetOutput());
-    shiftFFT->Update();
-    if (debug) QI::WriteImage(shiftFFT->GetOutput(), out_name + "_step2_forwardFFT" + QI::OutExt());
-
-    if (verbose) cout << "Filtering." << endl;
-    typedef itk::KSpaceFilter<QI::ImageXD> TFilter;
-    TFilter::Pointer k_filter = TFilter::New();
+    auto k_filter = TFilter::New();
     k_filter->SetKernel(kernel);
-    k_filter->SetInput(shiftFFT->GetOutput());
-    if (debug) QI::WriteImage   (k_filter->GetOutput(), out_name + "_step3_multFFT" + QI::OutExt());
-
-    auto unshiftFFT = TShift::New();
-    unshiftFFT->SetInput(k_filter->GetOutput());
-    unshiftFFT->Update();
-
-    if (verbose) cout << "Inverse FFT." << endl;
+    k_filter->SetInput(forwardFFT->GetOutput());
     auto inverseFFT = FFTType::New();
     inverseFFT->SetTransformDirection(FFTType::INVERSE);
-    inverseFFT->SetInput(unshiftFFT->GetOutput());
-    inverseFFT->Update();
-
-    if (debug) QI::WriteImage(inverseFFT->GetOutput(), out_name + "_step4_inverseFFT" + QI::OutExt());
-    if (verbose) cout << "Extracting original size image" << endl;
+    inverseFFT->SetInput(k_filter->GetOutput());
     auto extract = itk::ExtractImageFilter<QI::ImageXD, QI::ImageXD>::New();
+    extract->InPlaceOn();
     extract->SetInput(inverseFFT->GetOutput());
     extract->SetDirectionCollapseToSubmatrix();
     extract->SetExtractionRegion(invol->GetLargestPossibleRegion());
@@ -193,7 +169,6 @@ template<> QI::ImageD::Pointer FilterVolume<QI::ImageD>(const typename QI::Image
     return final;
 }
 
-
 template<typename TPixel>
 void run_pipeline(const std::string &in_name, const std::string &out_name, const bool verbose, const bool debug, const TukeyKernel &kernel) {
     typedef itk::Image<TPixel, 4> TSeries;
@@ -207,22 +182,19 @@ void run_pipeline(const std::string &in_name, const std::string &out_name, const
     auto extract = itk::ExtractImageFilter<TSeries, TVolume>::New();
     extract->SetInput(vols);
     extract->SetDirectionCollapseToSubmatrix();
+    extract->InPlaceOn();
     typename itk::PasteImageFilter<TSeries>::Pointer paster = itk::PasteImageFilter<TSeries>::New();
     typename itk::CastImageFilter<TVolume, TSeries>::Pointer caster = itk::CastImageFilter<TVolume, TSeries>::New();
     paster->SetDestinationImage(vols);
     //paster->InPlaceOn();
     for (int i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
+        if (verbose) cout << "Processing volume " << i << endl;
         extract->SetExtractionRegion(region);
-        if (verbose) cout << "Extracting volume " << i << endl;
-        cout << extract->GetInPlace() << endl;
         extract->Update();
-        if (verbose) cout << "Launching filter pipeline" << endl;
         typename TVolume::Pointer outvol = FilterVolume<TVolume>(extract->GetOutput(), kernel, verbose, debug, out_name);
-        if (verbose) cout << "Casting to 4D" << endl;
         caster->SetInput(outvol);
         caster->Update();
-        if (verbose) cout << "Pasting" << endl;
         paster->SetSourceImage(caster->GetOutput());
         paster->SetSourceRegion(caster->GetOutput()->GetLargestPossibleRegion());
         paster->SetDestinationImage(vols);
@@ -230,7 +202,6 @@ void run_pipeline(const std::string &in_name, const std::string &out_name, const
         paster->Update();
         vols = paster->GetOutput();
     }
-    cout << "paster in place " << paster->GetInPlace() << endl;
     if (verbose) cout << "Writing output:" << out_name + QI::OutExt() << endl;
     QI::WriteImage(vols, out_name + QI::OutExt());
     if (verbose) cout << "Finished." << endl;
@@ -310,7 +281,7 @@ int main(int argc, char **argv) {
         out_name = in_name.substr(0, in_name.find(".")) + "_filtered";
 
     TukeyKernel filter_kernel;
-    filter_kernel.setAQ(filter_a, filter_q);
+    filter_kernel.setAQ(filter_a, filter_q);    
     if (is_complex) {
         if (verbose) cout << "Data is complex." << endl;
         run_pipeline<complex<double>>(in_name, out_name, verbose, debug, filter_kernel);
