@@ -21,7 +21,7 @@
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkMultiplyImageFilter.h"
 #include "itkDivideImageFilter.h"
-#include "itkForwardFFTImageFilter.h"
+#include "itkComplexToComplexFFTImageFilter.h"
 #include "itkInverseFFTImageFilter.h"
 #include "itkFFTShiftImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
@@ -123,52 +123,118 @@ private:
 
 } // End namespace itk
 
-QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, const itk::KSpaceFilter<QI::ImageXF>::Pointer k_filter, const bool verbose, const bool debug, const string &prefix) {
+template<typename TImage> typename TImage::Pointer FilterVolume(const typename TImage::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name);
+
+template<> QI::ImageXD::Pointer FilterVolume<QI::ImageXD>(const typename QI::ImageXD::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name) {
     if (verbose) cout << "Padding image to valid FFT size." << endl;
-    typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
-    auto padFFT = PadFFTType::New();
+    typedef itk::FFTPadImageFilter<QI::ImageXD> TPad;
+    typename TPad::Pointer padFFT = TPad::New();
     padFFT->SetInput(invol);
     padFFT->Update();
-    if (debug) QI::WriteImage(padFFT->GetOutput(), prefix + "_step1_padFFT" + QI::OutExt());
+    if (debug) QI::WriteImage(padFFT->GetOutput(), out_name + "_step1_padFFT" + QI::OutExt());
     if (verbose) {
         cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
         cout << "Calculating Forward FFT." << endl;
     }
-    typedef itk::ForwardFFTImageFilter<QI::ImageF> FFFTType;
-    auto forwardFFT = FFFTType::New();
+    
+    typedef itk::ComplexToComplexFFTImageFilter<QI::ImageXD> FFTType;
+    auto forwardFFT = FFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
 
-    typedef itk::FFTShiftImageFilter<QI::ImageXF, QI::ImageXF> ShiftType;
-    auto shiftFFT = ShiftType::New();
+    typedef itk::FFTShiftImageFilter<QI::ImageXD, QI::ImageXD> TShift;
+    TShift::Pointer shiftFFT = TShift::New();
     shiftFFT->SetInput(forwardFFT->GetOutput());
     shiftFFT->Update();
-    if (debug) QI::WriteImage(shiftFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
+    if (debug) QI::WriteImage(shiftFFT->GetOutput(), out_name + "_step2_forwardFFT" + QI::OutExt());
 
     if (verbose) cout << "Filtering." << endl;
+    typedef itk::KSpaceFilter<QI::ImageXD> TFilter;
+    TFilter::Pointer k_filter = TFilter::New();
+    k_filter->SetKernel(kernel);
     k_filter->SetInput(shiftFFT->GetOutput());
-    if (debug) QI::WriteImage   (k_filter->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
+    if (debug) QI::WriteImage   (k_filter->GetOutput(), out_name + "_step3_multFFT" + QI::OutExt());
 
-    auto unshiftFFT = ShiftType::New();
+    auto unshiftFFT = TShift::New();
     unshiftFFT->SetInput(k_filter->GetOutput());
     unshiftFFT->Update();
 
     if (verbose) cout << "Inverse FFT." << endl;
-    auto inverseFFT = itk::InverseFFTImageFilter<QI::ImageXF, QI::ImageF>::New();
+    auto inverseFFT = FFTType::New();
+    inverseFFT->SetTransformDirection(FFTType::INVERSE);
     inverseFFT->SetInput(unshiftFFT->GetOutput());
     inverseFFT->Update();
-    if (debug) QI::WriteImage(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
+
+    if (debug) QI::WriteImage(inverseFFT->GetOutput(), out_name + "_step4_inverseFFT" + QI::OutExt());
     if (verbose) cout << "Extracting original size image" << endl;
-    auto extract = itk::ExtractImageFilter<QI::ImageF, QI::ImageF>::New();
+    auto extract = itk::ExtractImageFilter<QI::ImageXD, QI::ImageXD>::New();
     extract->SetInput(inverseFFT->GetOutput());
     extract->SetDirectionCollapseToSubmatrix();
     extract->SetExtractionRegion(invol->GetLargestPossibleRegion());
     extract->Update();
-    QI::ImageF::Pointer outvol = extract->GetOutput();
+    typename QI::ImageXD::Pointer outvol = extract->GetOutput();
     outvol->DisconnectPipeline();
     return outvol;
 }
 
+template<> QI::ImageD::Pointer FilterVolume<QI::ImageD>(const typename QI::ImageD::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name) {
+    typedef itk::CastImageFilter<QI::ImageD, QI::ImageXD> TCast;
+    auto caster = TCast::New();
+    caster->SetInput(invol);
+    caster->Update();
+    QI::ImageXD::Pointer filtered = FilterVolume<QI::ImageXD>(caster->GetOutput(), kernel, verbose, debug, out_name);
+    if (verbose) cout << "Taking complex modulus" << endl;
+    typedef itk::ComplexToModulusImageFilter<QI::ImageXD, QI::ImageD> TMod;
+    auto mod = TMod::New();
+    mod->SetInput(filtered);
+    mod->Update();
+    QI::ImageD::Pointer final = mod->GetOutput();
+    final->DisconnectPipeline();
+    return final;
+}
+
+
+template<typename TPixel>
+void run_pipeline(const std::string &in_name, const std::string &out_name, const bool verbose, const bool debug, const TukeyKernel &kernel) {
+    typedef itk::Image<TPixel, 4> TSeries;
+    typedef itk::Image<TPixel, 3> TVolume;
+
+    if (verbose) cout << "Opening input file: " << in_name << endl;
+    typename TSeries::Pointer vols = QI::ReadImage<TSeries>(in_name);
+    auto region = vols->GetLargestPossibleRegion();
+    const size_t nvols = region.GetSize()[3]; // Save for the loop
+    region.GetModifiableSize()[3] = 0;
+    auto extract = itk::ExtractImageFilter<TSeries, TVolume>::New();
+    extract->SetInput(vols);
+    extract->SetDirectionCollapseToSubmatrix();
+    typename itk::PasteImageFilter<TSeries>::Pointer paster = itk::PasteImageFilter<TSeries>::New();
+    typename itk::CastImageFilter<TVolume, TSeries>::Pointer caster = itk::CastImageFilter<TVolume, TSeries>::New();
+    paster->SetDestinationImage(vols);
+    //paster->InPlaceOn();
+    for (int i = 0; i < nvols; i++) {
+        region.GetModifiableIndex()[3] = i;
+        extract->SetExtractionRegion(region);
+        if (verbose) cout << "Extracting volume " << i << endl;
+        cout << extract->GetInPlace() << endl;
+        extract->Update();
+        if (verbose) cout << "Launching filter pipeline" << endl;
+        typename TVolume::Pointer outvol = FilterVolume<TVolume>(extract->GetOutput(), kernel, verbose, debug, out_name);
+        if (verbose) cout << "Casting to 4D" << endl;
+        caster->SetInput(outvol);
+        caster->Update();
+        if (verbose) cout << "Pasting" << endl;
+        paster->SetSourceImage(caster->GetOutput());
+        paster->SetSourceRegion(caster->GetOutput()->GetLargestPossibleRegion());
+        paster->SetDestinationImage(vols);
+        paster->SetDestinationIndex(region.GetIndex());
+        paster->Update();
+        vols = paster->GetOutput();
+    }
+    cout << "paster in place " << paster->GetInPlace() << endl;
+    if (verbose) cout << "Writing output:" << out_name + QI::OutExt() << endl;
+    QI::WriteImage(vols, out_name + QI::OutExt());
+    if (verbose) cout << "Finished." << endl;
+}
 
 //******************************************************************************
 // Arguments / Usage
@@ -184,6 +250,7 @@ Options:\n\
     --out, -o path       : Specify an output filename (default image base).\n\
     --filter, -f \"a q\" : Set Filter a and q values (default 0.75 0.25).\n\
     --debug, -d          : Save all pipeline steps.\n\
+    --complex, -x        : Input/output data is complex.\n\
     --threads, -T N      : Use N threads (default=hardware limit).\n"
 };
 
@@ -193,10 +260,11 @@ const struct option long_options[] = {
     {"out", required_argument, 0, 'o'},
     {"filter", required_argument, 0, 'f'},
     {"debug", no_argument, 0, 'd'},
+    {"complex", no_argument, 0, 'x'},
     {"threads", required_argument, 0, 'T'},
     {0, 0, 0, 0}
 };
-const char *short_options = "hvo:m:e:dT:";
+const char *short_options = "hvo:m:e:dxT:";
 
 //******************************************************************************
 // Main
@@ -204,22 +272,23 @@ const char *short_options = "hvo:m:e:dT:";
 int main(int argc, char **argv) {
     Eigen::initParallel();
 
-    bool verbose = false, debug = false;
+    bool verbose = false, debug = false, is_complex = false;
     double filter_a = 0.75, filter_q = 0.25;
-    string prefix;
+    string out_name;
     int indexptr = 0, c;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
             case 'v': verbose = true; break;
             case 'o':
-                prefix = optarg;
-                cout << "Output prefix will be: " << prefix << endl;
+                out_name = optarg;
+                cout << "Output filename will be: " << out_name << endl;
                 break;
             case 'f': {
                 stringstream f(optarg);
                 f >> filter_a >> filter_q;
             } break;
             case 'd': debug = true; break;
+            case 'x': is_complex = true; break;
             case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
             case 'h':
                 cout << QI::GetVersion() << endl << usage << endl;
@@ -236,44 +305,19 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    string fname(argv[optind++]);
-    if (prefix == "")
-        prefix = fname.substr(0, fname.find(".nii"));
-    string outname = prefix + "_filtered" + QI::OutExt();
+    string in_name(argv[optind++]);
+    if (out_name == "")
+        out_name = in_name.substr(0, in_name.find(".")) + "_filtered";
 
-    if (verbose) cout << "Opening input file: " << fname << endl;
-    QI::TimeseriesF::Pointer vols = QI::ReadImage<QI::TimeseriesF>(fname);
-    auto region = vols->GetLargestPossibleRegion();
-    const size_t nvols = region.GetSize()[3]; // Save for the loop
-    region.GetModifiableSize()[3] = 0;
-    auto extract = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
-    extract->SetInput(vols);
-    extract->SetDirectionCollapseToSubmatrix();
-    itk::PasteImageFilter<QI::TimeseriesF>::Pointer paster = itk::PasteImageFilter<QI::TimeseriesF>::New();
-    itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::Pointer caster = itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::New();
-    paster->SetDestinationImage(vols);
-    //paster->SetInPlace(true);
-    auto k_filter = itk::KSpaceFilter<QI::ImageXF>::New();
-    TukeyKernel tukey;
-    tukey.setAQ(filter_a, filter_q);
-    k_filter->SetKernel(tukey);
-    for (int i = 0; i < nvols; i++) {
-        region.GetModifiableIndex()[3] = i;
-        extract->SetExtractionRegion(region);
-        extract->Update();
-        QI::ImageF::Pointer outvol = FilterVolume(extract->GetOutput(), k_filter, verbose, debug, prefix);
-        caster->SetInput(outvol);
-        caster->Update();
-        paster->SetSourceImage(caster->GetOutput());
-        paster->SetSourceRegion(caster->GetOutput()->GetLargestPossibleRegion());
-        paster->SetDestinationImage(vols);
-        paster->SetDestinationIndex(region.GetIndex());
-        paster->Update();
-        vols = paster->GetOutput();
+    TukeyKernel filter_kernel;
+    filter_kernel.setAQ(filter_a, filter_q);
+    if (is_complex) {
+        if (verbose) cout << "Data is complex." << endl;
+        run_pipeline<complex<double>>(in_name, out_name, verbose, debug, filter_kernel);
+    } else {
+        if (verbose) cout << "Data is real." << endl;
+        run_pipeline<double>(in_name, out_name, verbose, debug, filter_kernel);
     }
-    cout << "paster in place " << paster->GetInPlace() << endl;
-    if (verbose) cout << "Writing output:" << outname << endl;
-    QI::WriteImage(vols, outname);
-    if (verbose) cout << "Finished." << endl;
+
     return EXIT_SUCCESS;
 }
