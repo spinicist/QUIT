@@ -36,13 +36,43 @@
 using namespace std;
 using namespace Eigen;
 
+class FilterKernel {
+    
+};
+
+class TukeyKernel : FilterKernel {
+protected:
+    double m_a = 0.75;
+    double m_q = 0.25;
+    int m_hx = 0, m_hy = 0, m_hz = 0;
+    
+public:
+    void setSize(const int sx, const int sy, const int sz) {
+        m_hx = sx / 2;  m_hy = sy / 2;  m_hz = sz / 2;
+    }
+    void setAQ(const double a, const double q) {
+        m_a = a;
+        m_q = q;
+    }
+    
+    double operator() (const int x, const int y, const int z) const {
+            const double rx = static_cast<double>(x - m_hx)/m_hx;
+            const double ry = static_cast<double>(y - m_hy)/m_hy;
+            const double rz = static_cast<double>(z - m_hz)/m_hz;
+            const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
+            const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
+            return v;
+    }
+};
+
+
 namespace itk {
 
-class TukeyFilter : public ImageSource<QI::ImageF> {
+class KSpaceFilter : public ImageToImageFilter<QI::ImageXF, QI::ImageXF> {
 public:
-    typedef QI::ImageF          TImage;
-    typedef TukeyFilter         Self;
-    typedef ImageSource<TImage> Superclass;
+    typedef QI::ImageXF         TImage;
+    typedef KSpaceFilter        Self;
+    typedef ImageToImageFilter<TImage, TImage> Superclass;
     typedef SmartPointer<Self>  Pointer;
 
 protected:
@@ -52,65 +82,47 @@ protected:
     typename TImage::DirectionType m_direction;
     typename TImage::PointType     m_origin;
 
-    double m_a = 0.75;
-    double m_q = 0.25;
+    TukeyKernel m_kernel;
 
-    TukeyFilter(){}
-    ~TukeyFilter(){}
-    
+    KSpaceFilter(){}
+    ~KSpaceFilter(){}
+
 public:
     itkNewMacro(Self);
-    itkTypeMacro(TukeyFilter, ImageSource);
+    itkTypeMacro(KSpaceFilter, ImageSource);
 
-    void SetImageProperties(const TImage *img) {
-        m_region = img->GetLargestPossibleRegion();
-        m_spacing = img->GetSpacing();
-        m_direction = img->GetDirection();
-        m_origin = img->GetOrigin();
+    virtual void GenerateOutputInformation() override {
+        Superclass::GenerateOutputInformation();
+        SizeType size = this->GetOutput()->GetLargestPossibleRegion().GetSize();
+        m_kernel.setSize(size[0], size[1], size[2]);
     }
+    
+    void SetKernel(const TukeyKernel &k) { m_kernel = k; }
 
-    void SetFilterProperties(const double a, const double q) {
-        m_a = a;
-        m_q = q;
-    }
-
-    virtual void GenerateData() override {
-        typename TImage::Pointer output = this->GetOutput();
-        output->SetRegions(m_region);
-        output->Allocate();
-        output->SetSpacing(m_spacing);
-        output->SetDirection(m_direction);
-        output->SetOrigin(m_origin);
-
-        itk::ImageRegionIteratorWithIndex<TImage> imageIt(output,output->GetLargestPossibleRegion());
-        SizeType size = m_region.GetSize();
-        int sx = size[0]; int sy = size[1]; int sz = size[2];
-        int hx = sx / 2;  int hy = sy / 2;  int hz = sz / 2;
-
-        const double rad_k = sqrt(static_cast<double>((hx*hx)+(hy*hy)+(hz*hz)));
-        imageIt.GoToBegin();
-        ++imageIt;
-        while(!imageIt.IsAtEnd()) {
-            const auto index = imageIt.GetIndex() - m_region.GetIndex(); // Might be padded to a negative start
-            int x = index[0]; int y = index[1]; int z = index[2];
-            const double rx = static_cast<double>(x - hx)/hx;
-            const double ry = static_cast<double>(y - hy)/hy;
-            const double rz = static_cast<double>(z - hz)/hz;
-            const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
-            const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
-            imageIt.Set(v);
-            ++imageIt;
+protected:
+    virtual void ThreadedGenerateData(const TImage::RegionType &region, ThreadIdType threadId) override {
+        itk::ImageRegionIterator<TImage> outIt(this->GetOutput(),region);
+        itk::ImageRegionConstIteratorWithIndex<TImage> inIt(this->GetInput(),region);
+        inIt.GoToBegin();
+        outIt.GoToBegin();
+        while(!inIt.IsAtEnd()) {
+            const auto index = inIt.GetIndex() - m_region.GetIndex(); // Might be padded to a negative start
+            const float k = m_kernel(index[0], index[1], index[2]);
+            const complex<float> v = inIt.Get();
+            outIt.Set(v * k);
+            ++inIt;
+            ++outIt;
         }
     }
 
 private:
-    TukeyFilter(const Self &);
+    KSpaceFilter(const Self &);
     void operator=(const Self &);
 };
 
 } // End namespace itk
 
-QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, itk::TukeyFilter::Pointer k_filter, const bool verbose, const bool debug, const string &prefix) {
+QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, const itk::KSpaceFilter::Pointer k_filter, const bool verbose, const bool debug, const string &prefix) {
     if (verbose) cout << "Padding image to valid FFT size." << endl;
     typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
     auto padFFT = PadFFTType::New();
@@ -132,18 +144,12 @@ QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, itk::TukeyFilt
     shiftFFT->Update();
     if (debug) QI::WriteImage(shiftFFT->GetOutput(), prefix + "_step2_forwardFFT" + QI::OutExt());
 
-    if (verbose) cout << "Generating K-Space Filter." << endl;
-    k_filter->SetImageProperties(padFFT->GetOutput());
-    k_filter->Update();
-    if (debug) QI::WriteImage(k_filter->GetOutput(), prefix + "_kfilter" + QI::OutExt());
-    if (verbose) cout << "Multiplying." << endl;
-    auto mult = itk::MultiplyImageFilter<QI::ImageXF, QI::ImageF, QI::ImageXF>::New();
-    mult->SetInput1(shiftFFT->GetOutput());
-    mult->SetInput2(k_filter->GetOutput());
-    if (debug) QI::WriteImage   (mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
+    if (verbose) cout << "Filtering." << endl;
+    k_filter->SetInput(shiftFFT->GetOutput());
+    if (debug) QI::WriteImage   (k_filter->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
 
     auto unshiftFFT = ShiftType::New();
-    unshiftFFT->SetInput(mult->GetOutput());
+    unshiftFFT->SetInput(k_filter->GetOutput());
     unshiftFFT->Update();
 
     if (verbose) cout << "Inverse FFT." << endl;
@@ -246,8 +252,10 @@ int main(int argc, char **argv) {
     itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::Pointer caster = itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::New();
     paster->SetDestinationImage(vols);
     //paster->SetInPlace(true);
-    auto k_filter = itk::TukeyFilter::New();
-    k_filter->SetFilterProperties(filter_a, filter_q);
+    auto k_filter = itk::KSpaceFilter::New();
+    TukeyKernel tukey;
+    tukey.setAQ(filter_a, filter_q);
+    k_filter->SetKernel(tukey);
     for (int i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
         extract->SetExtractionRegion(region);
