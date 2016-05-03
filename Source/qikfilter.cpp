@@ -68,12 +68,13 @@ public:
 
 namespace itk {
 
-class KSpaceFilter : public ImageToImageFilter<QI::ImageXF, QI::ImageXF> {
+template<typename ImageType>
+class KSpaceFilter : public ImageToImageFilter<ImageType, ImageType> {
 public:
-    typedef QI::ImageXF         TImage;
-    typedef KSpaceFilter        Self;
+    typedef ImageType                          TImage;
+    typedef KSpaceFilter                       Self;
     typedef ImageToImageFilter<TImage, TImage> Superclass;
-    typedef SmartPointer<Self>  Pointer;
+    typedef SmartPointer<Self>                 Pointer;
 
 protected:
     typedef typename TImage::RegionType::SizeType SizeType;
@@ -100,15 +101,15 @@ public:
     void SetKernel(const TukeyKernel &k) { m_kernel = k; }
 
 protected:
-    virtual void ThreadedGenerateData(const TImage::RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) override {
         itk::ImageRegionIterator<TImage> outIt(this->GetOutput(),region);
         itk::ImageRegionConstIteratorWithIndex<TImage> inIt(this->GetInput(),region);
         inIt.GoToBegin();
         outIt.GoToBegin();
         while(!inIt.IsAtEnd()) {
             const auto index = inIt.GetIndex() - m_region.GetIndex(); // Might be padded to a negative start
-            const float k = m_kernel(index[0], index[1], index[2]);
-            const complex<float> v = inIt.Get();
+            const typename TImage::PixelType::value_type k = m_kernel(index[0], index[1], index[2]);
+            const typename TImage::PixelType v = inIt.Get();
             outIt.Set(v * k);
             ++inIt;
             ++outIt;
@@ -122,7 +123,7 @@ private:
 
 } // End namespace itk
 
-QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, const itk::KSpaceFilter::Pointer k_filter, const bool verbose, const bool debug, const string &prefix) {
+QI::ImageF::Pointer FilterVolume(const QI::ImageF::Pointer invol, const itk::KSpaceFilter<QI::ImageXF>::Pointer k_filter, const bool verbose, const bool debug, const string &prefix) {
     if (verbose) cout << "Padding image to valid FFT size." << endl;
     typedef itk::FFTPadImageFilter<QI::ImageF> PadFFTType;
     auto padFFT = PadFFTType::New();
@@ -252,7 +253,7 @@ int main(int argc, char **argv) {
     itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::Pointer caster = itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::New();
     paster->SetDestinationImage(vols);
     //paster->SetInPlace(true);
-    auto k_filter = itk::KSpaceFilter::New();
+    auto k_filter = itk::KSpaceFilter<QI::ImageXF>::New();
     TukeyKernel tukey;
     tukey.setAQ(filter_a, filter_q);
     k_filter->SetKernel(tukey);
