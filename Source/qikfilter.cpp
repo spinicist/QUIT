@@ -27,7 +27,8 @@
 #include "itkComplexToModulusImageFilter.h"
 #include "itkFFTPadImageFilter.h"
 #include "itkExtractImageFilter.h"
-#include "itkTileImageFilter.h"
+#include "itkPasteImageFilter.h"
+#include "itkCastImageFilter.h"
 
 #include "QI/Types.h"
 #include "QI/Util.h"
@@ -241,10 +242,10 @@ int main(int argc, char **argv) {
     auto extract = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
     extract->SetInput(vols);
     extract->SetDirectionCollapseToSubmatrix();
-    auto tiler   = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
-    itk::FixedArray<unsigned int, 4> tileLayout;
-    tileLayout.Fill(1); tileLayout[3] = nvols;
-    tiler->SetLayout(tileLayout);
+    itk::PasteImageFilter<QI::TimeseriesF>::Pointer paster = itk::PasteImageFilter<QI::TimeseriesF>::New();
+    itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::Pointer caster = itk::CastImageFilter<QI::ImageF, QI::TimeseriesF>::New();
+    paster->SetDestinationImage(vols);
+    //paster->SetInPlace(true);
     auto k_filter = itk::TukeyFilter::New();
     k_filter->SetFilterProperties(filter_a, filter_q);
     for (int i = 0; i < nvols; i++) {
@@ -252,15 +253,18 @@ int main(int argc, char **argv) {
         extract->SetExtractionRegion(region);
         extract->Update();
         QI::ImageF::Pointer outvol = FilterVolume(extract->GetOutput(), k_filter, verbose, debug, prefix);
-        tiler->SetInput(i, outvol);
+        caster->SetInput(outvol);
+        caster->Update();
+        paster->SetSourceImage(caster->GetOutput());
+        paster->SetSourceRegion(caster->GetOutput()->GetLargestPossibleRegion());
+        paster->SetDestinationImage(vols);
+        paster->SetDestinationIndex(region.GetIndex());
+        paster->Update();
+        vols = paster->GetOutput();
     }
-    tiler->UpdateLargestPossibleRegion();
+    cout << "paster in place " << paster->GetInPlace() << endl;
     if (verbose) cout << "Writing output:" << outname << endl;
-    QI::TimeseriesF::Pointer out = tiler->GetOutput();
-    out->DisconnectPipeline();
-    out->SetDirection(vols->GetDirection());
-    out->SetSpacing(vols->GetSpacing());
-    QI::WriteImage(out, outname);
+    QI::WriteImage(vols, outname);
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
