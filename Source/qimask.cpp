@@ -54,15 +54,12 @@ static const char *short_options = "vo:V:xF:T:h";
 
 int main(int argc, char **argv) {
     int indexptr = 0, c, volume = 0, fillh_radius = 0;
-    string outPrefix = "";
+    string outName = "";
     bool verbose = false, is_complex = false;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
         case 'v': verbose = true; break;
-        case 'o':
-            outPrefix = optarg;
-            cout << "Output prefix will be: " << outPrefix << endl;
-            break;
+        case 'o': outName = optarg; break;
         case 'V': volume = atoi(optarg); break;
         case 'x': is_complex = true; break;
         case 'F': fillh_radius = stoi(optarg); break;
@@ -87,8 +84,8 @@ int main(int argc, char **argv) {
     }
     string fname(argv[optind]);
     if (verbose) cout << "Opening input file " << fname << endl;
-    if (outPrefix == "")
-        outPrefix = fname.substr(0, fname.find(".nii"));;
+    if (outName == "")
+        outName = fname.substr(0, fname.find(".nii")) + "_mask";
     QI::TimeseriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {
         auto inFile = QI::TimeseriesReaderXF::New();
@@ -149,7 +146,7 @@ int main(int argc, char **argv) {
         finalMask = otsuFilter->GetOutput();
     }
     if (verbose) cout << "Saving mask" << endl;
-    QI::WriteImage(finalMask, outPrefix + "_mask" + QI::OutExt());
+    QI::WriteImage(finalMask, outName + QI::OutExt());
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
