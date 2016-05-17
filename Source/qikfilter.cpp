@@ -124,86 +124,52 @@ private:
 
 } // End namespace itk
 
-template<typename TImage> typename TImage::Pointer FilterVolume(const typename TImage::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name);
-
-template<> QI::ImageXD::Pointer FilterVolume<QI::ImageXD>(const typename QI::ImageXD::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name) {
-    typedef itk::FFTPadImageFilter<QI::ImageXD> TPad;
-    typedef itk::ComplexToComplexFFTImageFilter<QI::ImageXD> FFTType;
-    typedef itk::FFTShiftImageFilter<QI::ImageXD, QI::ImageXD> TShift;
-    typedef itk::KSpaceFilter<QI::ImageXD> TFilter;
-
-    auto padFFT = TPad::New();
-    padFFT->SetInput(invol);
-    auto forwardFFT = FFTType::New();
-    forwardFFT->SetInput(padFFT->GetOutput());
-    auto k_filter = TFilter::New();
-    k_filter->SetKernel(kernel);
-    k_filter->SetInput(forwardFFT->GetOutput());
-    auto inverseFFT = FFTType::New();
-    inverseFFT->SetTransformDirection(FFTType::INVERSE);
-    inverseFFT->SetInput(k_filter->GetOutput());
-    auto extract = itk::ExtractImageFilter<QI::ImageXD, QI::ImageXD>::New();
-    extract->InPlaceOn();
-    extract->SetInput(inverseFFT->GetOutput());
-    extract->SetDirectionCollapseToSubmatrix();
-    extract->SetExtractionRegion(invol->GetLargestPossibleRegion());
-    extract->Update();
-    typename QI::ImageXD::Pointer outvol = extract->GetOutput();
-    outvol->DisconnectPipeline();
-    return outvol;
-}
-
-template<> QI::ImageD::Pointer FilterVolume<QI::ImageD>(const typename QI::ImageD::Pointer invol, const TukeyKernel &kernel, const bool verbose, const bool debug, const string &out_name) {
-    typedef itk::CastImageFilter<QI::ImageD, QI::ImageXD> TCast;
-    auto caster = TCast::New();
-    caster->SetInput(invol);
-    caster->Update();
-    QI::ImageXD::Pointer filtered = FilterVolume<QI::ImageXD>(caster->GetOutput(), kernel, verbose, debug, out_name);
-    if (verbose) cout << "Taking complex modulus" << endl;
-    typedef itk::ComplexToModulusImageFilter<QI::ImageXD, QI::ImageD> TMod;
-    auto mod = TMod::New();
-    mod->SetInput(filtered);
-    mod->Update();
-    QI::ImageD::Pointer final = mod->GetOutput();
-    final->DisconnectPipeline();
-    return final;
-}
-
-template<typename TPixel>
-void run_pipeline(const std::string &in_name, const std::string &out_name, const bool verbose, const bool debug, const TukeyKernel &kernel) {
-    typedef itk::Image<TPixel, 4> TSeries;
-    typedef itk::Image<TPixel, 3> TVolume;
-
+QI::TimeseriesXF::Pointer run_pipeline(const std::string &in_name, const std::string &out_name, const bool verbose, const bool debug, const TukeyKernel &kernel) {
+    typedef itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXD> TExtract;
+    typedef itk::PasteImageFilter<QI::TimeseriesXF>                TPaste;
+    typedef itk::CastImageFilter<QI::ImageXD, QI::TimeseriesXF>    TCast;
+    typedef itk::FFTPadImageFilter<QI::ImageXD>                    TPad;
+    typedef itk::ComplexToComplexFFTImageFilter<QI::ImageXD>       TFFT;
+    typedef itk::KSpaceFilter<QI::ImageXD>                         TFilter;
+    
     if (verbose) cout << "Opening input file: " << in_name << endl;
-    typename TSeries::Pointer vols = QI::ReadImage<TSeries>(in_name);
+    auto vols = QI::ReadImage<QI::TimeseriesXF>(in_name);
     auto region = vols->GetLargestPossibleRegion();
     const size_t nvols = region.GetSize()[3]; // Save for the loop
-    region.GetModifiableSize()[3] = 0;
-    auto extract = itk::ExtractImageFilter<TSeries, TVolume>::New();
+    
+    auto extract = TExtract::New();
+    auto pad     = TPad::New();
+    auto forward = TFFT::New();
+    auto inverse = TFFT::New();
+    auto k_filter = TFilter::New();
+    auto caster = TCast::New();
+    auto paster = TPaste::New();
+    
     extract->SetInput(vols);
     extract->SetDirectionCollapseToSubmatrix();
     extract->InPlaceOn();
-    typename itk::PasteImageFilter<TSeries>::Pointer paster = itk::PasteImageFilter<TSeries>::New();
-    typename itk::CastImageFilter<TVolume, TSeries>::Pointer caster = itk::CastImageFilter<TVolume, TSeries>::New();
+    pad->SetInput(extract->GetOutput());
+    forward->SetInput(pad->GetOutput());
+    k_filter->SetInput(forward->GetOutput());
+    k_filter->SetKernel(kernel);
+    inverse->SetInput(k_filter->GetOutput());
+    inverse->SetTransformDirection(TFFT::INVERSE);
+    caster->SetInput(inverse->GetOutput());
+    paster->SetSourceImage(caster->GetOutput());
+    region.GetModifiableSize()[3] = 1;
+    paster->SetSourceRegion(region);
     paster->SetDestinationImage(vols);
     //paster->InPlaceOn();
+    region.GetModifiableSize()[3] = 0;
     for (int i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
         if (verbose) cout << "Processing volume " << i << endl;
         extract->SetExtractionRegion(region);
-        extract->Update();
-        typename TVolume::Pointer outvol = FilterVolume<TVolume>(extract->GetOutput(), kernel, verbose, debug, out_name);
-        caster->SetInput(outvol);
-        caster->Update();
-        paster->SetSourceImage(caster->GetOutput());
-        paster->SetSourceRegion(caster->GetOutput()->GetLargestPossibleRegion());
-        paster->SetDestinationImage(vols);
         paster->SetDestinationIndex(region.GetIndex());
         paster->Update();
         vols = paster->GetOutput();
     }
-    if (verbose) cout << "Writing output:" << out_name + QI::OutExt() << endl;
-    QI::WriteImage(vols, out_name + QI::OutExt());
+    return vols;
     if (verbose) cout << "Finished." << endl;
 }
 
@@ -221,7 +187,7 @@ Options:\n\
     --out, -o path       : Specify an output filename (default image base).\n\
     --filter, -f \"a q\" : Set Filter a and q values (default 0.75 0.25).\n\
     --debug, -d          : Save all pipeline steps.\n\
-    --complex, -x        : Input/output data is complex.\n\
+    --complex, -x        : Output complex data.\n\
     --threads, -T N      : Use N threads (default=hardware limit).\n"
 };
 
@@ -281,13 +247,18 @@ int main(int argc, char **argv) {
         out_name = in_name.substr(0, in_name.find(".")) + "_filtered";
 
     TukeyKernel filter_kernel;
-    filter_kernel.setAQ(filter_a, filter_q);    
+    filter_kernel.setAQ(filter_a, filter_q);
+    QI::TimeseriesXF::Pointer vols = run_pipeline(in_name, out_name, verbose, debug, filter_kernel);     
     if (is_complex) {
         if (verbose) cout << "Data is complex." << endl;
-        run_pipeline<complex<double>>(in_name, out_name, verbose, debug, filter_kernel);
+        QI::WriteImage(vols, out_name + QI::OutExt());
     } else {
         if (verbose) cout << "Data is real." << endl;
-        run_pipeline<double>(in_name, out_name, verbose, debug, filter_kernel);
+        if (verbose) cout << "Writing output:" << out_name + QI::OutExt() << endl;
+        auto mag = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
+        mag->SetInput(vols);
+        mag->Update();
+        QI::WriteImage(mag->GetOutput(), out_name + QI::OutExt());
     }
 
     return EXIT_SUCCESS;
