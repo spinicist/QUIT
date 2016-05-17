@@ -14,17 +14,17 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-SIZE="32 32 101"
+SIZE="100 101 101"
 $QUITDIR/qinewimage --size "$SIZE" -f "1.0" PD.nii
 $QUITDIR/qinewimage --size "$SIZE" -f "1.0" T1.nii
-$QUITDIR/qinewimage --size "$SIZE" -f "0.1" T2.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "2 -100.0 100.0" f0.nii
-$QUITDIR/qinewimage --size "$SIZE" -f "1.0" B1.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "0 0.01 0.25" T2.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "1 -100.0 100.0" f0.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 0.0 0.45" B1.nii
 
 SSFP_FILE="ssfp.nii"
-SSFP_PAR="5 25 45 65 5 25 45 65 5 25 45 65 5 25 45 65
-0 0 0 0 90 90 90 90 180 180 180 180 270 270 270 270
-0.005"
+SSFP_FLIP="100"
+SSFP_PINC="0 90 180 270"
+SSFP_TR="0.005"
 GS_REF_FILE="gs_ref.nii"
 GS_REF_MAG="gs_ref_mag.nii"
 GS_FILE="gs.nii"
@@ -35,9 +35,6 @@ CS_FILE="cs.nii"
 MAG_FILE="mag.nii"
 RMS_FILE="rms.nii"
 MAX_FILE="max.nii"
-GS_PAR="5 25 45 65
-0.005"
-
 run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --1 -n -N 0.001 -x <<END_IN
 PD.nii
 T1.nii
@@ -46,10 +43,13 @@ f0.nii
 B1.nii
 $SSFP_FILE
 SSFP
-$SSFP_PAR
+$SSFP_FLIP
+$SSFP_PINC
+$SSFP_TR
 $GS_REF_FILE
 SSFP_GS
-$GS_PAR
+$SSFP_FLIP
+$SSFP_TR
 END
 END_IN
 $QUITDIR/qicomplex -x $GS_REF_FILE -M $GS_REF_MAG
