@@ -434,7 +434,7 @@ int run_main(int argc, char **argv) {
     int verbose = false, prompt = true, all_residuals = false, symmetric = true,
         fitFinite = false, flex = false, use_BFGS = true, num_threads = 4;
     string outPrefix;
-    QI::ImageReaderF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
+    QI::VolumeF::Pointer mask = ITK_NULLPTR, B1 = ITK_NULLPTR;
 
     optind = 1;
     while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
@@ -451,8 +451,7 @@ int run_main(int argc, char **argv) {
         } break;
         case 'm':
             if (verbose) cout << "Reading mask file " << optarg << endl;
-            mask = QI::ImageReaderF::New();
-            mask->SetFileName(optarg);
+            mask = QI::ReadImage(optarg);
             break;
         case 'o':
             outPrefix = optarg;
@@ -460,8 +459,7 @@ int run_main(int argc, char **argv) {
             break;
         case 'b':
             if (verbose) cout << "Reading B1 file: " << optarg << endl;
-            B1 = QI::ImageReaderF::New();
-            B1->SetFileName(optarg);
+            B1 = QI::ReadImage(optarg);
             break;
         case 's': start_slice = atoi(optarg); break;
         case 'p': stop_slice = atoi(optarg); break;
@@ -498,13 +496,9 @@ int run_main(int argc, char **argv) {
     if (verbose) cout << *ssfpSequence << endl;
 
     if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-    auto T1 = QI::ImageReaderF::New();
-    T1->SetFileName(argv[optind++]);
+    auto T1 = QI::ReadImage(argv[optind++]);
     if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-    auto ssfpFile = TReader::New();
-    auto ssfpData = TToVector::New();
-    ssfpFile->SetFileName(argv[optind++]);
-    ssfpData->SetInput(ssfpFile->GetOutput());
+    auto ssfpData = QI::ReadVectorImage<T>(argv[optind++]);
     auto apply = TApply::New();
     shared_ptr<FMAlgo<T>> algo;
     if (use_BFGS) {
@@ -518,14 +512,14 @@ int run_main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(num_threads);
-    apply->SetInput(0, ssfpData->GetOutput());
-    apply->SetConst(0, T1->GetOutput());
+    apply->SetInput(0, ssfpData);
+    apply->SetConst(0, T1);
     apply->SetSlices(start_slice, stop_slice);
     if (B1) {
-        apply->SetConst(1, B1->GetOutput());
+        apply->SetConst(1, B1);
     }
     if (mask) {
-        apply->SetMask(mask->GetOutput());
+        apply->SetMask(mask);
     }
     if (verbose) {
         cout << "Processing" << endl;

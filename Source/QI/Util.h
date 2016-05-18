@@ -24,6 +24,8 @@
 #include <Eigen/Dense>
 
 #include "itkCommand.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "QI/Macro.h"
 #include "QI/Types.h"
@@ -35,9 +37,9 @@ const std::string &OutExt();                        //!< Return the extension st
 std::string StripExt(const std::string &filename);  //!< Remove the extension from a filename
 std::mt19937_64::result_type RandomSeed();          //!< Thread-safe random seed
 
-void WriteResiduals(const typename VectorImageF::Pointer img, const std::string prefix, const bool allResids = false, const typename ImageF::Pointer scaleImage = ITK_NULLPTR);
+void WriteResiduals(const typename VectorVolumeF::Pointer img, const std::string prefix, const bool allResids = false, const typename VolumeF::Pointer scaleImage = ITK_NULLPTR);
 
-template<typename TImg = QI::ImageF>
+template<typename TImg = QI::VolumeF>
 auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
     typedef itk::ImageFileReader<TImg> TReader;
     typename TReader::Pointer file = TReader::New();
@@ -47,6 +49,22 @@ auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
     img->DisconnectPipeline();
     return img;
 }
+
+template<typename TPixel>
+auto ReadVectorImage(const std::string &fname) -> typename itk::VectorImage<TPixel, 3>::Pointer {
+	typedef itk::Image<TPixel, 4> TSeries;
+	typedef itk::VectorImage<TPixel, 3> TVector;
+	typedef itk::ImageToVectorFilter<TSeries> TToVector;
+	
+	auto img = ReadImage<TSeries>(fname);
+	auto convert = TToVector::New();
+	convert->SetInput(img);
+	convert->Update();
+	typename TVector::Pointer vols = convert->GetOutput();
+	vols->DisconnectPipeline();
+	return vols;
+}
+
 
 template<typename TImg>
 void WriteImage(const TImg *ptr, const std::string path) {

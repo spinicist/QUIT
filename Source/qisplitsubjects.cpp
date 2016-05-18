@@ -52,8 +52,8 @@ using namespace std;
 typedef unsigned int TLabel;
 typedef itk::Image<TLabel, 3> TLabelImage;
 
-typename TLabelImage::Pointer ThresholdMask(const QI::ImageF::Pointer &img, const float thresh) {
-    typedef itk::BinaryThresholdImageFilter<QI::ImageF, TLabelImage> TThreshFilter;
+typename TLabelImage::Pointer ThresholdMask(const QI::VolumeF::Pointer &img, const float thresh) {
+    typedef itk::BinaryThresholdImageFilter<QI::VolumeF, TLabelImage> TThreshFilter;
     auto threshold = TThreshFilter::New();
     threshold->SetInput(img);
     threshold->SetLowerThreshold(thresh);
@@ -66,8 +66,8 @@ typename TLabelImage::Pointer ThresholdMask(const QI::ImageF::Pointer &img, cons
     return mask;
 }
 
-typename TLabelImage::Pointer OtsuMask(const QI::ImageF::Pointer &img) {
-    auto otsuFilter = itk::OtsuThresholdImageFilter<QI::ImageF, TLabelImage>::New();
+typename TLabelImage::Pointer OtsuMask(const QI::VolumeF::Pointer &img) {
+    auto otsuFilter = itk::OtsuThresholdImageFilter<QI::VolumeF, TLabelImage>::New();
     otsuFilter->SetInput(img);
     otsuFilter->SetOutsideValue(1);
     otsuFilter->SetInsideValue(0);
@@ -114,12 +114,12 @@ typename TLabelImage::Pointer FindLabels(const TLabelImage::Pointer &mask, const
     return labels;
 }
 
-QI::ImageF::Pointer MaskWithLabel(const QI::ImageF::Pointer &image, const TLabelImage::Pointer &labels, const int l, const bool crop) {
+QI::VolumeF::Pointer MaskWithLabel(const QI::VolumeF::Pointer &image, const TLabelImage::Pointer &labels, const int l, const bool crop) {
     // convert the label image into a LabelMap
     typedef itk::LabelMap<itk::LabelObject<TLabel, 3>> TLabelMap;
     auto convert = itk::LabelImageToLabelMapFilter<TLabelImage, TLabelMap> ::New();
     convert->SetInput(labels);
-    auto masker = itk::LabelMapMaskImageFilter<TLabelMap, QI::ImageF>::New();
+    auto masker = itk::LabelMapMaskImageFilter<TLabelMap, QI::VolumeF>::New();
     masker->SetInput(convert->GetOutput());
     masker->SetFeatureImage(image);
     masker->SetLabel(l);
@@ -128,13 +128,13 @@ QI::ImageF::Pointer MaskWithLabel(const QI::ImageF::Pointer &image, const TLabel
     if (crop)
         masker->SetCrop(true);
     masker->Update();
-    QI::ImageF::Pointer masked = masker->GetOutput();
+    QI::VolumeF::Pointer masked = masker->GetOutput();
     masked->DisconnectPipeline();
     return masked;
 }
 
-typedef itk::ImageMomentsCalculator<QI::ImageF> TMoments;
-TMoments::VectorType GetCoG(const QI::ImageF::Pointer &img) {
+typedef itk::ImageMomentsCalculator<QI::VolumeF> TMoments;
+TMoments::VectorType GetCoG(const QI::VolumeF::Pointer &img) {
     auto moments = TMoments::New();
     moments->SetImage(img);
     moments->Compute();
@@ -143,7 +143,7 @@ TMoments::VectorType GetCoG(const QI::ImageF::Pointer &img) {
 
 typedef itk::Euler3DTransform<double> TRigid;
 template<typename TImg, typename TInterp>
-typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const typename TRigid::Pointer &tfm, const QI::ImageF::Pointer &reference = ITK_NULLPTR) {
+typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const typename TRigid::Pointer &tfm, const QI::VolumeF::Pointer &reference = ITK_NULLPTR) {
     typedef itk::ResampleImageFilter<TImg, TImg, double> TResampler;
     typename TInterp::Pointer interp = TInterp::New();
     interp->SetInputImage(image);
@@ -171,13 +171,13 @@ typename TImg::Pointer ResampleImage(const typename TImg::Pointer &image, const 
 /*
  * Typedefs for registration
  */
-typedef itk::SmoothingRecursiveGaussianImageFilter<QI::ImageF, QI::ImageF> TSmooth;
-typedef itk::ShrinkImageFilter<QI::ImageF, QI::ImageF> TShrink;
+typedef itk::SmoothingRecursiveGaussianImageFilter<QI::VolumeF, QI::VolumeF> TSmooth;
+typedef itk::ShrinkImageFilter<QI::VolumeF, QI::VolumeF> TShrink;
 typedef itk::RegularStepGradientDescentOptimizer TOpt;
-typedef itk::MattesMutualInformationImageToImageMetric<QI::ImageF, QI::ImageF> TMetric;
-typedef itk::ImageRegistrationMethod<QI::ImageF, QI::ImageF> TReg;
+typedef itk::MattesMutualInformationImageToImageMetric<QI::VolumeF, QI::VolumeF> TMetric;
+typedef itk::ImageRegistrationMethod<QI::VolumeF, QI::VolumeF> TReg;
 typedef TReg::ParametersType TPars;
-typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TInterp;
+typedef itk::LinearInterpolateImageFunction<QI::VolumeF, double> TInterp;
 
 /*
  * Helper functions for registration
@@ -193,7 +193,7 @@ TOpt::ScalesType MakeScales(double rotScale, double tScale) {
     return scales;
 }
 
-TShrink::ShrinkFactorsType MakeShrink(const double &gridSpacing, const QI::ImageF::Pointer &image) {
+TShrink::ShrinkFactorsType MakeShrink(const double &gridSpacing, const QI::VolumeF::Pointer &image) {
     TShrink::ShrinkFactorsType shrink;
     for (int i = 0; i < shrink.Size(); i++) {
         shrink[i] = round(gridSpacing / image->GetSpacing()[i]);
@@ -213,12 +213,12 @@ TPars MakePars(const TPars &ip, double ax, double ay, double az, double tx, doub
 /*
  * Actual registration step
  */
-void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF::Pointer &reference,
+void RegisterImageToReference(const QI::VolumeF::Pointer &image, const QI::VolumeF::Pointer &reference,
                                TRigid::Pointer tfm, double gridSpacing, double angleStep, int searchAngles,
                                const int iterations, const bool verbose) {
     
     if (verbose) cout << "Rescaling to matched intensity ranges" << endl;
-    typedef itk::RescaleIntensityImageFilter<QI::ImageF,QI::ImageF> TRescale;
+    typedef itk::RescaleIntensityImageFilter<QI::VolumeF,QI::VolumeF> TRescale;
     TRescale::Pointer scale_image = TRescale::New();
     TRescale::Pointer scale_ref   = TRescale::New();
     scale_image->SetInput(image);
@@ -233,7 +233,7 @@ void RegisterImageToReference(const QI::ImageF::Pointer &image, const QI::ImageF
     scale_ref->UpdateLargestPossibleRegion();
 
     if (verbose) cout << "Matching histograms" << endl;
-    typedef itk::HistogramMatchingImageFilter<QI::ImageF,QI::ImageF> THistMatch;
+    typedef itk::HistogramMatchingImageFilter<QI::VolumeF,QI::VolumeF> THistMatch;
     THistMatch::Pointer hist_match = THistMatch::New();
     hist_match->SetReferenceImage(scale_ref->GetOutput());
     hist_match->SetInput(scale_image->GetOutput());
@@ -362,7 +362,7 @@ int main(int argc, char **argv) {
     float intensity_threshold = 0;
     double angleX = 0., angleY = 0., angleZ = 0., angleStep = 30., gridSpacing = 1.0;
 
-	QI::ImageF::Pointer reference = ITK_NULLPTR;
+	QI::VolumeF::Pointer reference = ITK_NULLPTR;
     TLabelImage::Pointer mask = ITK_NULLPTR;
 	
 	const struct option long_options[] =
@@ -430,7 +430,7 @@ int main(int argc, char **argv) {
 	}
 
     string fname(argv[optind++]);
-    QI::ImageF::Pointer input = QI::ReadImage(fname);
+    QI::VolumeF::Pointer input = QI::ReadImage(fname);
     string prefix = QI::StripExt(fname);
 
     if (mask == ITK_NULLPTR) {
@@ -444,7 +444,7 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Found " << keep << " subjects, saving labels." << endl;
     QI::WriteImage(labels, prefix + "_labels.nii");
 
-	typedef itk::LabelStatisticsImageFilter<QI::ImageF, TLabelImage> TLabelStats;
+	typedef itk::LabelStatisticsImageFilter<QI::VolumeF, TLabelImage> TLabelStats;
 	auto labelStats = TLabelStats::New();
 	labelStats->SetInput(input);
 	labelStats->SetLabelInput(labels);
@@ -457,7 +457,7 @@ int main(int argc, char **argv) {
         refCoG.Fill(0);
 
 	for (auto i = 1; i <= keep; i++) {
-        QI::ImageF::Pointer subject = MaskWithLabel(input, labels, i, true);
+        QI::VolumeF::Pointer subject = MaskWithLabel(input, labels, i, true);
 		TMoments::VectorType offset = -refCoG;
 		double rotateAngle = 0.;
 		if (alignment != ALIGN::NONE) {
@@ -491,10 +491,10 @@ int main(int argc, char **argv) {
         tfmWriter->Update();
         
         if (output_images) {
-            typedef itk::WindowedSincInterpolateImageFunction<QI::ImageF, 5, itk::Function::LanczosWindowFunction<5>, itk::ConstantBoundaryCondition<QI::ImageF>, double> TInterp;
+            typedef itk::WindowedSincInterpolateImageFunction<QI::VolumeF, 5, itk::Function::LanczosWindowFunction<5>, itk::ConstantBoundaryCondition<QI::VolumeF>, double> TInterp;
             typedef itk::NearestNeighborInterpolateImageFunction<TLabelImage, double> TNNInterp;
             if (verbose) cout << "Resampling image" << endl;
-            QI::ImageF::Pointer rimage = ResampleImage<QI::ImageF, TInterp>(subject, tfm, reference);
+            QI::VolumeF::Pointer rimage = ResampleImage<QI::VolumeF, TInterp>(subject, tfm, reference);
             TLabelImage::Pointer rlabels = ResampleImage<TLabelImage, TNNInterp>(labels, tfm, reference);
             typedef itk::BinaryThresholdImageFilter<TLabelImage, TLabelImage> TThreshFilter;
             auto rthresh = TThreshFilter::New();

@@ -29,7 +29,6 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QI;
 
 //******************************************************************************
 // Arguments / Usage
@@ -75,12 +74,12 @@ static const char *short_opts = "hvnMm:o:t:c:s:p:i:rT:";
 // HIFI Algorithm - includes optimising B1
 class HIFIFunctor : public DenseFunctor<double> {
 	protected:
-		const shared_ptr<SequenceBase> m_sequence;
+		const shared_ptr<QI::SequenceBase> m_sequence;
 		const ArrayXd m_data;
-		const shared_ptr<SCD> m_model = make_shared<SCD>();
+		const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
 	public:
-		HIFIFunctor(const shared_ptr<SequenceBase> cs, const ArrayXd &data) :
+		HIFIFunctor(const shared_ptr<QI::SequenceBase> cs, const ArrayXd &data) :
 			DenseFunctor<double>(3, cs->size()),
 			m_sequence(cs), m_data(data)
 		{
@@ -99,13 +98,13 @@ class HIFIFunctor : public DenseFunctor<double> {
 
 class HIFIAlgo : public Algorithm<double> {
 	private:
-		shared_ptr<SequenceGroup> m_sequence;
+		shared_ptr<QI::SequenceGroup> m_sequence;
 		size_t m_iterations = 15; // From tests this seems to be a sensible maximum number
 		double m_thresh = -numeric_limits<double>::infinity();
 		double m_lo = -numeric_limits<double>::infinity();
 		double m_hi = numeric_limits<double>::infinity();
 	public:
-		void setSequence(shared_ptr<SequenceGroup> & s) { m_sequence = s; }
+		void setSequence(shared_ptr<QI::SequenceGroup> & s) { m_sequence = s; }
 		void setIterations(size_t n) { m_iterations = n; }
 		void setThreshold(double t) { m_thresh = t; }
 		void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
@@ -134,12 +133,12 @@ class HIFIAlgo : public Algorithm<double> {
 			outputs = op;
 			// PD, T1, B1
 			VectorXd pfull(5); pfull << outputs[0], outputs[1], 0, 0, outputs[2]; // Build full parameter vector
-			auto model = make_shared<SCD>();
+			auto model = make_shared<QI::SCD>();
 			ArrayXd theory = m_sequence->signal(model, pfull).abs();
 			resids = (data.array() - theory);
 			if (outputs[0] < m_thresh)
 				outputs.setZero();
-			outputs[1] = clamp(outputs[1], m_lo, m_hi);
+			outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
             its = lm.iterations();
 		}
 };
@@ -149,7 +148,7 @@ class HIFIAlgo : public Algorithm<double> {
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	ImageReaderF::Pointer mask = ITK_NULLPTR;
+	QI::VolumeF::Pointer mask = ITK_NULLPTR;
 	auto hifi = make_shared<HIFIAlgo>();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
@@ -159,8 +158,7 @@ int main(int argc, char **argv) {
 			case 'M': IR = false; break;
 			case 'm':
 				if (verbose) cout << "Opening mask file: " << optarg << endl;
-				mask = ImageReaderF::New();
-				mask->SetFileName(optarg);
+				mask = QI::ReadImage(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
@@ -192,23 +190,17 @@ int main(int argc, char **argv) {
 	}
 	
 	if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
-	auto spgrFile = TimeseriesReaderF::New();
-	auto spgrImg = TimeseriesToVectorF::New();
-	spgrFile->SetFileName(argv[optind++]);
-	spgrImg->SetInput(spgrFile->GetOutput());
-	auto spgrSequence = make_shared<SPGRSimple>(prompt);
+	auto spgrImg = QI::ReadVectorImage<float>(argv[optind++]);
+	auto spgrSequence = make_shared<QI::SPGRSimple>(prompt);
 	if (verbose) cout << "Opening IR-SPGR file: " << argv[optind] << endl;
-	auto irFile = TimeseriesReaderF::New();
-	auto irImg = TimeseriesToVectorF::New();
-	irFile->SetFileName(argv[optind++]);
-	irImg->SetInput(irFile->GetOutput());
-	shared_ptr<SequenceBase> irSequence;
+	auto irImg = QI::ReadVectorImage<float>(argv[optind++]);
+	shared_ptr<QI::SequenceBase> irSequence;
 	if (IR) {
-		irSequence = make_shared<IRSPGR>(prompt);
+		irSequence = make_shared<QI::IRSPGR>(prompt);
 	} else {
-		irSequence = make_shared<MPRAGE>(prompt);
+		irSequence = make_shared<QI::MPRAGE>(prompt);
 	}
-	auto combined = make_shared<SequenceGroup>();
+	auto combined = make_shared<QI::SequenceGroup>();
 	combined->addSequence(spgrSequence);
 	combined->addSequence(irSequence);
 	if (verbose) cout << *combined << endl;
@@ -216,10 +208,10 @@ int main(int argc, char **argv) {
 	hifi->setSequence(combined);
 	apply->SetAlgorithm(hifi);
     apply->SetPoolsize(num_threads);
-	apply->SetInput(0, spgrImg->GetOutput());
-	apply->SetInput(1, irImg->GetOutput());
+	apply->SetInput(0, spgrImg);
+	apply->SetInput(1, irImg);
 	if (mask)
-		apply->SetMask(mask->GetOutput());
+		apply->SetMask(mask);
 	if (verbose) {
 		cout << "Processing..." << endl;
 		auto monitor = QI::GenericMonitor::New();

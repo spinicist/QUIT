@@ -75,11 +75,11 @@ mt19937_64::result_type RandomSeed() {
 	return r;
 }
 
-void WriteResiduals(const VectorImageF::Pointer img, const string prefix,
-                    const bool allResids, const ImageF::Pointer scaleImage) {
-	auto magFilter = itk::VectorMagnitudeImageFilter<VectorImageF, ImageF>::New();
-    auto scaleFilter = itk::DivideImageFilter<ImageF, ImageF, ImageF>::New();
-    auto sqrtNFilter = itk::MultiplyImageFilter<ImageF>::New();
+void WriteResiduals(const VectorVolumeF::Pointer img, const string prefix,
+                    const bool allResids, const VolumeF::Pointer scaleImage) {
+	auto magFilter = itk::VectorMagnitudeImageFilter<VectorVolumeF, VolumeF>::New();
+    auto scaleFilter = itk::DivideImageFilter<VolumeF, VolumeF, VolumeF>::New();
+    auto sqrtNFilter = itk::MultiplyImageFilter<VolumeF>::New();
 	magFilter->SetInput(img);
     if (scaleImage != ITK_NULLPTR) {
         scaleFilter->SetInput1(magFilter->GetOutput());
@@ -92,12 +92,10 @@ void WriteResiduals(const VectorImageF::Pointer img, const string prefix,
     sqrtNFilter->Update();
     WriteImage(sqrtNFilter->GetOutput(), prefix + "residual.nii");
 	if (allResids) {
-		auto to4D = QI::VectorToTimeseriesF::New();
-		auto allFile = QI::TimeseriesWriterF::New();
+		auto to4D = QI::VectorToSeriesF::New();
 		to4D->SetInput(img);
-		allFile->SetInput(to4D->GetOutput());
-		allFile->SetFileName(prefix + "residuals.nii");
-		allFile->Update();
+		to4D->Update();
+		WriteImage<SeriesF>(to4D->GetOutput(), prefix + "residuals.nii");
 	}
 }
 

@@ -288,7 +288,7 @@ void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
 int main(int argc, char **argv)
 {
 	Eigen::initParallel();
-	QI::ImageF::Pointer mask = ITK_NULLPTR, reference = ITK_NULLPTR;
+	QI::VolumeF::Pointer mask = ITK_NULLPTR, reference = ITK_NULLPTR;
     int indexptr = 0, c;
     double sigma = 0., clamp = numeric_limits<double>::infinity();
     int seed = -1;
@@ -368,11 +368,11 @@ int main(int argc, char **argv)
 		getline(cin, filename);
         if (filename != "") {
             if (verbose) cout << "Opening " << filename << endl;
-            QI::ImageF::Pointer param = QI::ReadImage(filename);
+            QI::VolumeF::Pointer param = QI::ReadImage(filename);
             if (reference) {
                 if (verbose) cout << "Resampling to reference" << endl;
-                typedef itk::ResampleImageFilter<QI::ImageF, QI::ImageF, double> TResampler;
-                typedef itk::LinearInterpolateImageFunction<QI::ImageF, double> TInterp;
+                typedef itk::ResampleImageFilter<QI::VolumeF, QI::VolumeF, double> TResampler;
+                typedef itk::LinearInterpolateImageFunction<QI::VolumeF, double> TInterp;
                 typename TInterp::Pointer interp = TInterp::New();
                 interp->SetInputImage(param);
                 typename TResampler::Pointer resamp = TResampler::New();
@@ -381,7 +381,7 @@ int main(int argc, char **argv)
                 resamp->SetDefaultPixelValue(0.);
                 resamp->SetOutputParametersFromImage(reference);
                 resamp->Update();
-                QI::ImageF::Pointer rparam = resamp->GetOutput();
+                QI::VolumeF::Pointer rparam = resamp->GetOutput();
                 rparam->DisconnectPipeline();   
                 calcSignal->SetInput(i, rparam);
             } else { 
@@ -399,7 +399,7 @@ int main(int argc, char **argv)
 	vector<string> filenames;
     ParseInput(sequences, filenames);
     
-    typedef itk::ClampImageFilter<QI::TimeseriesF, QI::TimeseriesF> TClamp;
+    typedef itk::ClampImageFilter<QI::SeriesF, QI::SeriesF> TClamp;
     TClamp::Pointer clamp_filter = TClamp::New();
     clamp_filter->SetBounds(0, clamp);
 	for (size_t i = 0; i < sequences.size(); i++) {
@@ -408,26 +408,20 @@ int main(int argc, char **argv)
         calcSignal->Update();
         if (verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
         if (verbose) cout << "Converting to timeseries" << endl;
-        QI::VectorToTimeseriesXF::Pointer vecTo4D = QI::VectorToTimeseriesXF::New();
+        QI::VectorToSeriesXF::Pointer vecTo4D = QI::VectorToSeriesXF::New();
         vecTo4D->SetInput(calcSignal->GetOutput());
         if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
 		if (outputComplex) {
-			auto writer = QI::TimeseriesWriterXF::New();
-            writer->SetInput(vecTo4D->GetOutput());
-			writer->SetFileName(filenames[i]);
-			writer->Update();
+			QI::WriteImage<SeriesXF>(vecTo4D->GetOutput(), filenames[i]);
 		} else {
-			auto writer = QI::TimeseriesWriterF::New();
-			auto abs = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
+			auto abs = itk::ComplexToModulusImageFilter<QI::SeriesXF, QI::SeriesF>::New();
             abs->SetInput(vecTo4D->GetOutput());
             if (isfinite(clamp)) {
                 clamp_filter->SetInput(abs->GetOutput());
-                writer->SetInput(clamp_filter->GetOutput());
+                QI::WriteImage<SeriesF>(clamp_filter->GetOutput(),filenames[i]);
             } else {
-                writer->SetInput(abs->GetOutput());
+                QI::WriteImage<SeriesF>(abs->GetOutput(),filenames[i]);
             }
-			writer->SetFileName(filenames[i]);
-			writer->Update();
 		}
 	}
 	if (verbose) cout << "Finished all sequences." << endl;

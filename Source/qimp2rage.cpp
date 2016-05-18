@@ -68,7 +68,7 @@ public:
 
 namespace itk {
 
-class MPRAGELookUpFilter : public ImageToImageFilter<QI::ImageF, QI::ImageF>
+class MPRAGELookUpFilter : public ImageToImageFilter<QI::VolumeF, QI::VolumeF>
 {
 public:
 
@@ -77,7 +77,7 @@ protected:
 
 public:
     /** Standard class typedefs. */
-    typedef QI::ImageF                         TImage;
+    typedef QI::VolumeF                        TImage;
     typedef MPRAGELookUpFilter                 Self;
     typedef ImageToImageFilter<TImage, TImage> Superclass;
     typedef SmartPointer<Self>                 Pointer;
@@ -156,17 +156,13 @@ int main(int argc, char **argv) {
     int indexptr = 0, c;
     string outName = "";
     bool verbose = false, complex_output = false, do_lookup = false;
-    QI::ImageF::Pointer mask = ITK_NULLPTR;
+    QI::VolumeF::Pointer mask = ITK_NULLPTR;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
             case 'v': verbose = true; break;
             case 'm': {
                 cout << "Reading mask." << endl;
-                auto maskFile = QI::ImageReaderF::New();
-                maskFile->SetFileName(optarg);
-                maskFile->Update();
-                mask = maskFile->GetOutput();
-                mask->DisconnectPipeline();
+                auto maskFile = QI::ReadImage(optarg);
             } break;
             case 'o':
                 outName = optarg;
@@ -193,32 +189,30 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Opening input file " << inName << endl;
     if (outName == "")
         outName = QI::StripExt(inName);
-    auto inFile = QI::TimeseriesReaderXF::New();
-    inFile->SetFileName(inName);
-    inFile->Update();
+    auto inFile = QI::ReadImage<QI::SeriesXF>(inName);
     if (verbose) cout << "Processing" << endl;
 
-    typedef itk::BinaryFunctorImageFilter<QI::ImageXF, QI::ImageXF, QI::ImageF, MPRAGEFunctor<float>> MPRageContrastFilterType;
-    int nti = inFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3];
+    typedef itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MPRAGEFunctor<float>> MPRageContrastFilterType;
+    int nti = inFile->GetLargestPossibleRegion().GetSize()[3];
 
     auto MPContrastFilter = MPRageContrastFilterType::New();
-    typedef itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXF> ExtractType;
+    typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF> ExtractType;
     auto vol_i = ExtractType::New();
     auto vol_j = ExtractType::New();
     vol_i->SetDirectionCollapseToSubmatrix();
     vol_j->SetDirectionCollapseToSubmatrix();
-    QI::TimeseriesXF::RegionType region_i = inFile->GetOutput()->GetLargestPossibleRegion();
+    QI::SeriesXF::RegionType region_i = inFile->GetLargestPossibleRegion();
     region_i.GetModifiableSize()[3] = 0;
-    QI::TimeseriesXF::RegionType region_j = region_i;
+    QI::SeriesXF::RegionType region_j = region_i;
     for (int i = 0; i < nti - 1; i++) {
         region_i.GetModifiableIndex()[3] = i;
-        vol_i->SetInput(inFile->GetOutput());
+        vol_i->SetInput(inFile);
         vol_i->SetExtractionRegion(region_i);
         vol_i->Update();
         MPContrastFilter->SetInput1(vol_i->GetOutput());
         for (int j = (i + 1); j < nti; j++) {
             region_j.GetModifiableIndex()[3] = j;
-            vol_j->SetInput(inFile->GetOutput());
+            vol_j->SetInput(inFile);
             vol_j->SetExtractionRegion(region_j);
             vol_j->Update();
             MPContrastFilter->SetInput2(vol_j->GetOutput());

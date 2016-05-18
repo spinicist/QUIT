@@ -13,6 +13,8 @@
 #include <getopt.h>
 #include <iostream>
 #include <Eigen/Dense>
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
 #include "QI/Types.h"
 #include "Filters/ReorderImageFilter.h"
 
@@ -74,9 +76,9 @@ Options:\n\
     string inName(argv[optind++]);
     string outName(argv[optind++]);
 
-    auto inFile = QI::TimeseriesReaderF::New();
-    auto reorder = itk::ReorderImageFilter<QI::TimeseriesF>::New();
-    auto outFile = QI::TimeseriesWriterF::New();
+    auto inFile = itk::ImageFileReader<QI::SeriesF>::New();
+    auto reorder = itk::ReorderImageFilter<QI::SeriesF>::New();
+    auto outFile = itk::ImageFileWriter<QI::SeriesF>::New();
 
     inFile->SetFileName(inName);
     reorder->SetInput(inFile->GetOutput());       // Does nothing unless stride set

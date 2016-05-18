@@ -81,23 +81,23 @@ int main(int argc, char **argv) {
 	}
 
 	// Now read in the input image
-	auto reader = QI::TimeseriesReaderF::New();
+	auto reader = itk::ImageFileReader<QI::SeriesF>::New();
 	reader->SetFileName(argv[optind]);
 	reader->Update();
 	auto image = reader->GetOutput();
-	auto writer = QI::TimeseriesWriterF::New();
+	auto writer = itk::ImageFileWriter<QI::SeriesF>::New();
 	if ((argc - optind) == 2) {
 		optind++;
 	}
 	writer->SetFileName(argv[optind]);
 
 	// Now reset optind and actually process
-	QI::TimeseriesF::DirectionType fullDir = image->GetDirection();
-	QI::TimeseriesF::SpacingType fullSpacing = image->GetSpacing();
-	QI::TimeseriesF::PointType fullOrigin = image->GetOrigin();
-	QI::ImageF::DirectionType direction;
-	QI::ImageF::SpacingType spacing;
-	QI::ImageF::PointType origin;
+	QI::SeriesF::DirectionType fullDir = image->GetDirection();
+	QI::SeriesF::SpacingType fullSpacing = image->GetSpacing();
+	QI::SeriesF::PointType fullOrigin = image->GetOrigin();
+	QI::VolumeF::DirectionType direction;
+	QI::VolumeF::SpacingType spacing;
+	QI::VolumeF::PointType origin;
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
 			direction[i][j] = fullDir[i][j];
@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
 			} break;
 		}
 	}
-	auto changeInfo = itk::ChangeInformationImageFilter<QI::TimeseriesF>::New();
+	auto changeInfo = itk::ChangeInformationImageFilter<QI::SeriesF>::New();
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
 			fullDir[i][j] = direction[i][j];

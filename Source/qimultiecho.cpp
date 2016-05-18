@@ -24,6 +24,7 @@
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderImageFilter.h"
 #include "itkTimeProbe.h"
+#include "itkImageFileReader.h"
 
 using namespace std;
 using namespace Eigen;
@@ -202,7 +203,7 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	QI::ImageReaderF::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<RelaxAlgo> algo = make_shared<LogLinAlgo>();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
@@ -211,8 +212,7 @@ int main(int argc, char **argv) {
 			case 'n': prompt = false; break;
 			case 'm':
 				cout << "Reading mask file " << optarg << endl;
-				mask = QI::ImageReaderF::New();
-				mask->SetFileName(optarg);
+				mask = QI::ReadImage(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
@@ -261,29 +261,29 @@ int main(int argc, char **argv) {
     algo->setSequence(multiecho);
     auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
     if (mask)
-        apply->SetMask(mask->GetOutput());
+        apply->SetMask(mask);
     if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-    auto inputFile = QI::TimeseriesReaderF::New();
+    auto inputFile = itk::ImageFileReader<QI::SeriesF>::New();
     inputFile->SetFileName(argv[optind]);
     inputFile->Update(); // Need to know the length of the vector for re-ordering
     size_t nVols = inputFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3] / multiecho->size();
-    auto inputData = QI::ReorderTimeseriesF::New();
+    auto inputData = QI::ReorderSeriesF::New();
     inputData->SetInput(inputFile->GetOutput());
     if (reorder)
         inputData->SetStride(nVols);
     inputData->Update();
 
-    auto PDoutput = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
-    auto T2output = itk::TileImageFilter<QI::ImageF, QI::TimeseriesF>::New();
+    auto PDoutput = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
+    auto T2output = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
     itk::FixedArray<unsigned int, 4> layout;
     layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
     PDoutput->SetLayout(layout);
     T2output->SetLayout(layout);
     if (verbose) cout << "Processing" << endl;
-    auto inputVector = QI::TimeseriesToVectorF::New();
+    auto inputVector = QI::SeriesToVectorF::New();
     inputVector->SetInput(inputData->GetOutput());
     inputVector->SetBlockSize(multiecho->size());
-    vector<QI::ImageF::Pointer> PDimgs(nVols), T2imgs(nVols);
+    vector<QI::VolumeF::Pointer> PDimgs(nVols), T2imgs(nVols);
     for (size_t i = 0; i < nVols; i++) {
         inputVector->SetBlockStart(i * multiecho->size());
 

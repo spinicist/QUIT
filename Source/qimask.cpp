@@ -86,25 +86,20 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Opening input file " << fname << endl;
     if (outName == "")
         outName = fname.substr(0, fname.find(".nii")) + "_mask";
-    QI::TimeseriesF::Pointer vols = ITK_NULLPTR;
+    QI::SeriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {
-        auto inFile = QI::TimeseriesReaderXF::New();
-        inFile->SetFileName(fname);
-        auto magFilter = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
-        magFilter->SetInput(inFile->GetOutput());
+        auto inFile = QI::ReadImage<QI::SeriesXF>(fname);
+        auto magFilter = itk::ComplexToModulusImageFilter<QI::SeriesXF, QI::SeriesF>::New();
+        magFilter->SetInput(inFile);
         magFilter->Update();
         vols = magFilter->GetOutput();
         vols->DisconnectPipeline();
     } else {
-        auto inFile = QI::TimeseriesReaderF::New();
-        inFile->SetFileName(fname);
-        inFile->Update();
-        vols = inFile->GetOutput();
-        vols->DisconnectPipeline();
+        vols = QI::ReadImage<QI::SeriesF>(fname);
     }
 
     // Extract one volume to process
-    auto vol = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
+    auto vol = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto region = vols->GetLargestPossibleRegion();
     if (volume == -1) {
         volume = region.GetSize()[3] - 1;
@@ -121,17 +116,17 @@ int main(int argc, char **argv) {
 
     // Use an Otsu Threshold filter to generate the mask
     if (verbose) cout << "Generating Otsu mask" << endl;
-    auto otsuFilter = itk::OtsuThresholdImageFilter<QI::ImageF, QI::ImageF>::New();
+    auto otsuFilter = itk::OtsuThresholdImageFilter<QI::VolumeF, QI::VolumeF>::New();
     otsuFilter->SetInput(vol->GetOutput());
     otsuFilter->SetOutsideValue(1);
     otsuFilter->SetInsideValue(0);
     otsuFilter->Update();
     
-    QI::ImageF::Pointer finalMask = ITK_NULLPTR;
+    QI::VolumeF::Pointer finalMask = ITK_NULLPTR;
     if (fillh_radius > 0) {
         if (verbose) cout << "Filling holes" << endl;
-        auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::ImageF>::New();
-        itk::VotingBinaryIterativeHoleFillingImageFilter<QI::ImageF>::InputSizeType radius;
+        auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeF>::New();
+        itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeF>::InputSizeType radius;
         radius.Fill(2);
         fillHoles->SetInput(otsuFilter->GetOutput());
         fillHoles->SetRadius(radius);

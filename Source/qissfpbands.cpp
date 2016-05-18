@@ -406,7 +406,7 @@ public:
 int main(int argc, char **argv) {
 	Eigen::initParallel();
 
-    QI::ImageReaderF::Pointer mask = ITK_NULLPTR;
+    QI::VolumeF::Pointer mask = ITK_NULLPTR;
     auto gs = itk::GSFilter::New();
 	int indexptr = 0, c;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -414,8 +414,7 @@ int main(int argc, char **argv) {
 			case 'v': verbose = true; break;
             case 'm':
                 if (verbose) cout << "Reading mask file " << optarg << endl;
-                mask = QI::ImageReaderF::New();
-                mask->SetFileName(optarg);
+                mask = QI::ReadImage(optarg);
                 break;
 			case 'o':
 				prefix = optarg;
@@ -458,9 +457,9 @@ int main(int argc, char **argv) {
 	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
 	string fname(argv[optind++]);
 
-    auto inFile = QI::TimeseriesReaderXF::New();
-    auto reorderVolumes = QI::ReorderTimeseriesXF::New();
-    auto reorderPhase = QI::ReorderTimeseriesXF::New();
+    auto inFile = itk::ImageFileReader<QI::SeriesXF>::New();
+    auto reorderVolumes = QI::ReorderSeriesXF::New();
+    auto reorderPhase = QI::ReorderSeriesXF::New();
 
     inFile->SetFileName(fname);
     inFile->Update(); // We need to know the number of input volumes to work out the number of output volumes
@@ -483,51 +482,51 @@ int main(int argc, char **argv) {
     reorderPhase->Update();
 
     if (verbose) cout << "Reordered data" << endl;
-    auto blockVector = QI::TimeseriesToVectorXF::New();
+    auto blockVector = QI::SeriesToVectorXF::New();
     blockVector->SetInput(reorderPhase->GetOutput());
     blockVector->SetBlockSize(nPhases);
 
-    typename itk::ImageToImageFilter<QI::VectorImageXF, QI::ImageXF>::Pointer process = ITK_NULLPTR;
+    typename itk::ImageToImageFilter<QI::VectorVolumeXF, QI::VolumeXF>::Pointer process = ITK_NULLPTR;
     switch (output) {
     case OutEnum::GS: {
         gs->SetInput(blockVector->GetOutput());
         gs->SetPhases(nPhases);
         if (mask)
-            gs->SetMask(mask->GetOutput());
+            gs->SetMask(mask);
         if (do_2pass) {
             auto p2 = itk::MinEnergyFilter::New();
             p2->SetInput(blockVector->GetOutput());
             p2->SetPass1(gs->GetOutput());
             if (mask)
-                p2->SetMask(mask->GetOutput());
+                p2->SetMask(mask);
             process = p2;
         } else {
             process = gs;
         }
     } break;
     case OutEnum::CS: {
-        auto cs = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMean<complex<float>>>::New();
+        auto cs = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorMean<complex<float>>>::New();
         cs->SetInput(blockVector->GetOutput());
         process = cs;
     } break;
     case OutEnum::MagMean: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMagMean<float>>::New();
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorMagMean<float>>::New();
         filter->SetInput(blockVector->GetOutput());
         process = filter;
     } break;
     case OutEnum::RMS: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorRMS<complex<float>>>::New();
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorRMS<complex<float>>>::New();
         filter->SetInput(blockVector->GetOutput());
         process = filter;
     } break;
     case OutEnum::Max: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorImageXF, QI::ImageXF, VectorMax<complex<float>>>::New();
+        auto filter = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorMax<complex<float>>>::New();
         filter->SetInput(blockVector->GetOutput());
         process = filter;
     } break;
     }
 
-    auto outTiler = itk::TileImageFilter<QI::ImageXF, QI::TimeseriesXF>::New();
+    auto outTiler = itk::TileImageFilter<QI::VolumeXF, QI::SeriesXF>::New();
     itk::FixedArray<unsigned int, 4> layout;
     layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
     outTiler->SetLayout(layout);
@@ -542,7 +541,7 @@ int main(int argc, char **argv) {
         volume->DisconnectPipeline();
     }
     outTiler->UpdateLargestPossibleRegion();
-    QI::TimeseriesXF::Pointer output = outTiler->GetOutput();
+    QI::SeriesXF::Pointer output = outTiler->GetOutput();
     output->DisconnectPipeline();
     output->SetDirection(inFile->GetOutput()->GetDirection());
     output->SetSpacing(inFile->GetOutput()->GetSpacing());
@@ -553,17 +552,9 @@ int main(int argc, char **argv) {
     outname.append(OutExt());
     if (verbose) cout << "Output filename: " << outname << endl;
     if (output_magnitude) {
-        auto mag = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
-        auto outFile = QI::TimeseriesWriterF::New();
-        mag->SetInput(output);
-        outFile->SetInput(mag->GetOutput());
-        outFile->SetFileName(outname);
-        outFile->Update();
+        QI::WriteMagnitudeImage<QI::SeriesXF>(output, outname);
     } else {
-        auto outFile = QI::TimeseriesWriterXF::New();
-        outFile->SetInput(output);
-        outFile->SetFileName(outname);
-        outFile->Update();
+        QI::WriteImage<QI::SeriesXF>(output, outname);
     }
     if (verbose) cout << "Finished." << endl;
 	return EXIT_SUCCESS;

@@ -213,8 +213,8 @@ static const char *short_opts = "hvnm:o:b:t:c:a:i:rT:";
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	QI::ImageReaderF::Pointer mask = ITK_NULLPTR;
-	QI::ImageReaderF::Pointer B1   = ITK_NULLPTR;
+	QI::VolumeF::Pointer mask = ITK_NULLPTR;
+	QI::VolumeF::Pointer B1   = ITK_NULLPTR;
 
 	shared_ptr<D1Algo> algo = make_shared<D1LLS>();
 	int indexptr = 0, c;
@@ -241,8 +241,7 @@ int main(int argc, char **argv) {
 			case 'v': case 'n': case 'a': break;
 			case 'm':
 				if (verbose) cout << "Opening mask file " << optarg << endl;
-				mask = QI::ImageReaderF::New();
-				mask->SetFileName(optarg);
+				mask = QI::ReadImage(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
@@ -250,8 +249,7 @@ int main(int argc, char **argv) {
 				break;
 			case 'b':
 				if (verbose) cout << "Opening B1 file: " << optarg << endl;
-				B1 = QI::ImageReaderF::New();
-				B1->SetFileName(optarg);
+				B1 = QI::ReadImage(optarg);
 				break;
 			case 't': algo->setThreshold(atof(optarg)); break;
 			case 'c': algo->setClamp(0, atof(optarg)); break;
@@ -279,21 +277,18 @@ int main(int argc, char **argv) {
 
 	string inputFilename = argv[optind++];
 	if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
-	auto input = QI::TimeseriesReaderF::New();
-	auto convert = QI::TimeseriesToVectorF::New();
-	input->SetFileName(inputFilename);
-	convert->SetInput(input->GetOutput());
+	auto data = QI::ReadVectorImage<float>(inputFilename);
 	shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(prompt);
 	if (verbose) cout << *spgrSequence;
 	algo->setSequence(spgrSequence);
     auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();
 	apply->SetAlgorithm(algo);
     apply->SetPoolsize(num_threads);
-	apply->SetInput(0, convert->GetOutput());
+	apply->SetInput(0, data);
 	if (mask)
-		apply->SetMask(mask->GetOutput());
+		apply->SetMask(mask);
 	if (B1)
-		apply->SetConst(0, B1->GetOutput());
+		apply->SetConst(0, B1);
 	if (verbose) {
 		cout << "Processing" << endl;
 		auto monitor = QI::GenericMonitor::New();

@@ -35,22 +35,16 @@ using namespace Eigen;
 /*
  * Read in all required files and data from cin
  */
-void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
+void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorVolumeF::Pointer> &images,
                 bool flip, bool verbose, bool prompt);
-void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorImageF::Pointer> &images,
+void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorVolumeF::Pointer> &images,
                 bool flip, bool verbose, bool prompt)
 {
     string type, path;
     if (prompt) cout << "Enter input filename: " << flush;
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
-        auto file = QI::TimeseriesReaderF::New();
-        auto data = QI::TimeseriesToVectorF::New();
-        QI::VectorImageF::Pointer image;
         if (verbose) cout << "Reading file: " << path << endl;
-        file->SetFileName(path);
-        data->SetInput(file->GetOutput());
-        data->Update();
-        image = data->GetOutput();
+        auto image = QI::ReadVectorImage<float>(path);
         if (prompt) cout << "Enter sequence type (SPGR/SSFP): " << flush;
         QI::Read(cin, type);
         if (type == "SPGR") {
@@ -326,7 +320,7 @@ int main(int argc, char **argv) {
     enum class Algos { SRC, GRC, BFGS };
     Algos which_algo = Algos::GRC;
 
-	QI::ImageReaderF::Pointer mask, B1, f0 = ITK_NULLPTR;
+	QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
 	shared_ptr<QI::Model> model = make_shared<QI::MCD3>();
 	typedef itk::VectorImage<float, 2> VectorSliceF;
     typedef itk::ApplyAlgorithmFilter<MCDAlgo> TMCDFilter;
@@ -415,8 +409,7 @@ Options:\n\
             case 'v': case 'n': case 'M': break; // Already handled
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = QI::ImageReaderF::New();
-				mask->SetFileName(optarg);
+				mask = QI::ReadImage(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
@@ -424,13 +417,11 @@ Options:\n\
 				break;
 			case 'f':
 				if (verbose) cout << "Reading f0 file: " << optarg << endl;
-				f0 = QI::ImageReaderF::New();
-				f0->SetFileName(optarg);
+				f0 = QI::ReadImage(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = QI::ImageReaderF::New();
-				B1->SetFileName(optarg);
+				B1 = QI::ReadImage(optarg);
 				break;
 			case 's': start_slice = atoi(optarg); break;
 			case 'p': stop_slice = atoi(optarg); break;
@@ -490,7 +481,7 @@ Options:\n\
 	shared_ptr<QI::SequenceGroup> sequences = make_shared<QI::SequenceGroup>();
 	// Build a Functor here so we can query number of parameters etc.
 	if (verbose) cout << "Using " << model->Name() << " model." << endl;
-    vector<QI::VectorImageF::Pointer> images;
+    vector<QI::VectorVolumeF::Pointer> images;
     parseInput(sequences, images, flipData, verbose, prompt);
 
     ArrayXXd bounds = model->Bounds(tesla);
@@ -537,15 +528,15 @@ Options:\n\
     }
 	if (f0) {
 		f0->Update();
-		apply->SetConst(0, f0->GetOutput());
+		apply->SetConst(0, f0);
 	}
 	if (B1) {
 		B1->Update();
-		apply->SetConst(1, B1->GetOutput());
+		apply->SetConst(1, B1);
 	}
 	if (mask) {
 		mask->Update();
-		apply->SetMask(mask->GetOutput());
+		apply->SetMask(mask);
 	}
 
     // Need this here so the bounds.txt file will have the correct prefix

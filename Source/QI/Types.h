@@ -14,9 +14,6 @@
 
 #include "itkImage.h"
 #include "itkVectorImage.h"
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkRegionOfInterestImageFilter.h"
 
 #include "Filters/VectorToImageFilter.h"
 #include "Filters/ImageToVectorFilter.h"
@@ -25,40 +22,32 @@
 
 namespace QI {
 
-typedef itk::Image<unsigned char, 3> ImageUC;
-typedef itk::Image<int, 3> ImageI;
+typedef itk::Image<unsigned char, 3> VolumeUC;
+typedef itk::Image<int, 3> VolumeI;
 
-typedef itk::Image<float, 3> ImageF;
-typedef itk::Image<float, 4> TimeseriesF;
-typedef itk::VectorImage<float, 3> VectorImageF;
-typedef itk::Image<std::complex<float>, 3> ImageXF;
-typedef itk::Image<std::complex<float>, 4> TimeseriesXF;
-typedef itk::VectorImage<std::complex<float>, 3> VectorImageXF;
+typedef itk::Image<float, 3> VolumeF;
+typedef itk::Image<float, 4> SeriesF;
+typedef itk::VectorImage<float, 3> VectorVolumeF;
+typedef itk::Image<std::complex<float>, 3> VolumeXF;
+typedef itk::Image<std::complex<float>, 4> SeriesXF;
+typedef itk::VectorImage<std::complex<float>, 3> VectorVolumeXF;
 
-typedef itk::Image<double, 3> ImageD;
-typedef itk::Image<double, 4> TimeseriesD;
-typedef itk::VectorImage<double, 3> VectorImageD;
-typedef itk::Image<std::complex<double>, 3> ImageXD;
-typedef itk::Image<std::complex<double>, 4> TimeseriesXD;
-typedef itk::VectorImage<std::complex<double>, 3> VectorImageXD;
+typedef itk::Image<double, 3> VolumeD;
+typedef itk::Image<double, 4> SeriesD;
+typedef itk::VectorImage<double, 3> VectorVolumeD;
+typedef itk::Image<std::complex<double>, 3> VolumeXD;
+typedef itk::Image<std::complex<double>, 4> SeriesXD;
+typedef itk::VectorImage<std::complex<double>, 3> VectorVolumeXD;
 
-typedef itk::ImageFileReader<ImageF> ImageReaderF;
-typedef itk::ImageFileWriter<ImageF> ImageWriterF;
-typedef itk::ImageFileReader<TimeseriesF> TimeseriesReaderF;
-typedef itk::ImageFileWriter<TimeseriesF> TimeseriesWriterF;
-typedef itk::ReorderImageFilter<TimeseriesF> ReorderTimeseriesF;
-typedef itk::ImageToVectorFilter<TimeseriesF> TimeseriesToVectorF;
-typedef itk::VectorToImageFilter<VectorImageF> VectorToTimeseriesF;
-typedef itk::ReorderVectorFilter<VectorImageF> ReorderVectorF;
+typedef itk::ReorderImageFilter<SeriesF> ReorderSeriesF;
+typedef itk::ImageToVectorFilter<SeriesF> SeriesToVectorF;
+typedef itk::VectorToImageFilter<VectorVolumeF> VectorToSeriesF;
+typedef itk::ReorderVectorFilter<VectorVolumeF>  ReorderVectorF;
 
-typedef itk::ImageFileReader<ImageXF> ImageReaderXF;
-typedef itk::ImageFileWriter<ImageXF> ImageWriterXF;
-typedef itk::ImageFileReader<TimeseriesXF> TimeseriesReaderXF;
-typedef itk::ImageFileWriter<TimeseriesXF> TimeseriesWriterXF;
-typedef itk::ReorderImageFilter<TimeseriesXF> ReorderTimeseriesXF;
-typedef itk::ImageToVectorFilter<TimeseriesXF> TimeseriesToVectorXF;
-typedef itk::VectorToImageFilter<VectorImageXF> VectorToTimeseriesXF;
-typedef itk::ReorderVectorFilter<VectorImageXF> ReorderVectorXF;
+typedef itk::ReorderImageFilter<SeriesXF> ReorderSeriesXF;
+typedef itk::ImageToVectorFilter<SeriesXF> SeriesToVectorXF;
+typedef itk::VectorToImageFilter<VectorVolumeXF> VectorToSeriesXF;
+typedef itk::ReorderVectorFilter<VectorVolumeXF>  ReorderVectorXF;
 
 } // End namespace QI
 

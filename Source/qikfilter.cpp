@@ -124,13 +124,13 @@ private:
 
 } // End namespace itk
 
-QI::TimeseriesXF::Pointer run_pipeline(QI::TimeseriesXF::Pointer vols, const bool verbose, const int debug, const TukeyKernel &kernel) {
-    typedef itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXD>   TExtract;
-    typedef itk::PasteImageFilter<QI::TimeseriesXF>                TPaste;
-    typedef itk::CastImageFilter<QI::ImageXD, QI::TimeseriesXF>    TCast;
-    typedef itk::FFTPadImageFilter<QI::ImageXD>                    TPad;
-    typedef itk::ComplexToComplexFFTImageFilter<QI::ImageXD>       TFFT;
-    typedef itk::KSpaceFilter<QI::ImageXD>                         TFilter;
+QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbose, const int debug, const TukeyKernel &kernel) {
+    typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXD> TExtract;
+    typedef itk::PasteImageFilter<QI::SeriesXF>                 TPaste;
+    typedef itk::CastImageFilter<QI::VolumeXD, QI::SeriesXF>    TCast;
+    typedef itk::FFTPadImageFilter<QI::VolumeXD>                TPad;
+    typedef itk::ComplexToComplexFFTImageFilter<QI::VolumeXD>   TFFT;
+    typedef itk::KSpaceFilter<QI::VolumeXD>                     TFilter;
     
     auto region = vols->GetLargestPossibleRegion();
     const size_t nvols = region.GetSize()[3]; // Save for the loop
@@ -258,14 +258,14 @@ int main(int argc, char **argv) {
     TukeyKernel filter_kernel;
     filter_kernel.setAQ(filter_a, filter_q);
     
-    QI::TimeseriesXF::Pointer vols;
+    QI::SeriesXF::Pointer vols;
     if (is_complex) {
         cout << "Reading complex file: " << in_name << endl;
-        vols = QI::ReadImage<QI::TimeseriesXF>(in_name);
+        vols = QI::ReadImage<QI::SeriesXF>(in_name);
     } else {
         cout << "Reading real file: " << in_name << endl;
-        QI::TimeseriesF::Pointer rvols = QI::ReadImage<QI::TimeseriesF>(in_name);
-        auto cast = itk::CastImageFilter<QI::TimeseriesF, QI::TimeseriesXF>::New();
+        QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(in_name);
+        auto cast = itk::CastImageFilter<QI::SeriesF, QI::SeriesXF>::New();
         cast->SetInput(rvols);
         cast->Update();
         vols = cast->GetOutput();

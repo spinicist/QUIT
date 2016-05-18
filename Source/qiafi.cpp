@@ -71,14 +71,13 @@ int main(int argc, char **argv) {
 	string outPrefix = "AFI_";
 	bool verbose = false;
 	double n = 5., nomFlip = 55.;
-	QI::ImageReaderF::Pointer maskFile = ITK_NULLPTR;
+	QI::VolumeF::Pointer maskFile = ITK_NULLPTR;
 	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
 		switch (c) {
 			case 'v': verbose = true; break;
 			case 'm':
 				cout << "Reading mask." << endl;
-				maskFile = QI::ImageReaderF::New();
-				maskFile->SetFileName(optarg);
+				maskFile = QI::ReadImage(optarg);
 				break;
 			case 'o':
 				outPrefix = optarg;
@@ -102,33 +101,31 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 	if (verbose) cout << "Opening input file " << argv[optind] << endl;
-	auto inFile = QI::TimeseriesReaderF::New();
-	inFile->SetFileName(argv[optind]);
-	inFile->Update();
+	auto inFile = QI::ReadImage<QI::SeriesF>(argv[optind]);
 	if (verbose) {
 		cout << "Nominal flip-angle is " << nomFlip << " degrees." << endl;
 		cout << "TR2:TR1 ratio is " << n << endl;
 	}
-	auto volume1 = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
-	auto volume2 = itk::ExtractImageFilter<QI::TimeseriesF, QI::ImageF>::New();
-	auto region = inFile->GetOutput()->GetLargestPossibleRegion();
+	auto volume1 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
+	auto volume2 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
+	auto region = inFile->GetLargestPossibleRegion();
 	region.GetModifiableSize()[3] = 0;
 	region.GetModifiableIndex()[3] = 0;
 	volume1->SetExtractionRegion(region);
-	volume1->SetInput(inFile->GetOutput());
+	volume1->SetInput(inFile);
 	volume1->SetDirectionCollapseToSubmatrix();
 	region.GetModifiableIndex()[3] = 1;
 	volume2->SetExtractionRegion(region);
-	volume2->SetInput(inFile->GetOutput());
+	volume2->SetInput(inFile);
 	volume2->SetDirectionCollapseToSubmatrix();
 
-	auto imageRatio = itk::DivideImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
+	auto imageRatio = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
 	imageRatio->SetInput(0, volume2->GetOutput());
 	imageRatio->SetInput(1, volume1->GetOutput());
-	auto afi = itk::BinaryFunctorImageFilter<QI::ImageF, QI::ImageF, QI::ImageF, AFI<float>>::New();
+	auto afi = itk::BinaryFunctorImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF, AFI<float>>::New();
 	afi->SetInput1(imageRatio->GetOutput());
 	afi->SetConstant2(n);
-	auto B1 = itk::DivideImageFilter<QI::ImageF, QI::ImageF, QI::ImageF>::New();
+	auto B1 = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
 	B1->SetInput1(afi->GetOutput());
 	B1->SetConstant2(nomFlip);
 	B1->Update();

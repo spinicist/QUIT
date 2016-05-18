@@ -27,15 +27,14 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace QI;
 
 //******************************************************************************
 // Algorithm Subclasses
 //******************************************************************************
 class D2Algo : public Algorithm<double> {
 protected:
-	const shared_ptr<SCD> m_model = make_shared<SCD>();
-	shared_ptr<SteadyState> m_sequence;
+	const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
+	shared_ptr<QI::SteadyState> m_sequence;
 	size_t m_iterations = 15;
 	bool m_elliptical = false;
 	double m_thresh = -numeric_limits<double>::infinity();
@@ -44,7 +43,7 @@ protected:
 
 public:
 	void setIterations(size_t n) { m_iterations = n; }
-	void setSequence(shared_ptr<SteadyState> &s) { m_sequence = s; }
+	void setSequence(shared_ptr<QI::SteadyState> &s) { m_sequence = s; }
 	void setElliptical(bool e) { m_elliptical = e; }
 	void setThreshold(double t) { m_thresh = t; }
 	void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
@@ -91,7 +90,7 @@ public:
 		resids = data.array() - theory;
 		if (PD < m_thresh)
 			PD = T2 = 0.;
-		T2 = clamp(T2, m_lo, m_hi);
+		T2 = QI::clamp(T2, m_lo, m_hi);
 		outputs[0] = PD;
 		outputs[1] = T2;
         its = 1;
@@ -147,7 +146,7 @@ public:
 		resids = data.array() - theory;
 		if (PD < m_thresh)
 			PD = T2 = 0.;
-		T2 = clamp(T2, m_lo, m_hi);
+		T2 = QI::clamp(T2, m_lo, m_hi);
 		outputs[0] = PD;
 		outputs[1] = T2;
         its = m_iterations;
@@ -159,12 +158,12 @@ public:
 //******************************************************************************
 class D2Functor : public DenseFunctor<double> {
 	public:
-		const shared_ptr<SequenceBase> m_sequence;
+		const shared_ptr<QI::SequenceBase> m_sequence;
 		const double m_T1, m_B1;
-		const shared_ptr<SCD> m_model = make_shared<SCD>();
+		const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 		const ArrayXd m_data;
 
-		D2Functor(const double T1, const shared_ptr<SequenceBase> s, const ArrayXd &d, const double B1, const bool fitComplex, const bool debug = false) :
+		D2Functor(const double T1, const shared_ptr<QI::SequenceBase> s, const ArrayXd &d, const double B1, const bool fitComplex, const bool debug = false) :
 			DenseFunctor<double>(3, s->size()),
 			m_sequence(s), m_data(d),
 			m_T1(T1), m_B1(B1)
@@ -198,13 +197,13 @@ public:
 		outputs = p;
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
-		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+		outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
 		VectorXd fullp(5); fullp << outputs[0], T1, outputs[1], 0, B1; // Assume on-resonance
 		ArrayXd theory = m_sequence->signal(m_model, fullp).abs(); // Sequence will already be elliptical if necessary
 		resids = data.array() - theory;
 		if (outputs[0] < m_thresh)
 			outputs.setZero();
-		outputs[1] = clamp(outputs[1], m_lo, m_hi);
+		outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
         its = lm.iterations();
 	}
 };
@@ -257,8 +256,8 @@ const char *short_opts = "hm:o:b:t:c:vna:i:T:er";
 //******************************************************************************
 int main(int argc, char **argv) {
 	Eigen::initParallel();
-	ImageReaderF::Pointer mask = ITK_NULLPTR;
-	ImageReaderF::Pointer B1   = ITK_NULLPTR;
+	QI::VolumeF::Pointer mask = ITK_NULLPTR;
+	QI::VolumeF::Pointer B1   = ITK_NULLPTR;
 	shared_ptr<D2Algo> algo = make_shared<D2LLS>();
 
 	// Do first pass to get the algorithm type, then do everything else
@@ -289,13 +288,11 @@ int main(int argc, char **argv) {
 				break;
 			case 'm':
 				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = ImageReaderF::New();
-				mask->SetFileName(optarg);
+				mask = QI::ReadImage(optarg);
 				break;
 			case 'b':
 				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = ImageReaderF::New();
-				B1->SetFileName(optarg);
+				B1 = QI::ReadImage(optarg);
 				break;
 			case 't': algo->setThreshold(atof(optarg)); break;
 			case 'c': algo->setClamp(0, atof(optarg)); break;
@@ -324,20 +321,15 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 	if (verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-	auto T1File = ImageReaderF::New();
-	T1File->SetFileName(argv[optind++]);
+	auto T1 = QI::ReadImage(argv[optind++]);
 
 	if (verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-	auto ssfp4D = TimeseriesReaderF::New();
-	ssfp4D->SetFileName(argv[optind++]);
-	auto ssfp3D = itk::ImageToVectorFilter<TimeseriesF>::New();
-	ssfp3D->SetInput(ssfp4D->GetOutput());
-
-	shared_ptr<SteadyState> ssfp;
+	auto data = QI::ReadVectorImage<float>(argv[optind++]);
+	shared_ptr<QI::SteadyState> ssfp;
 	if (elliptical) {
-		ssfp = make_shared<SSFP_GS>(prompt);
+		ssfp = make_shared<QI::SSFP_GS>(prompt);
 	} else {
-		ssfp = make_shared<SSFPSimple>(prompt);
+		ssfp = make_shared<QI::SSFPSimple>(prompt);
 	}
 	if (verbose) cout << *ssfp << endl;
 
@@ -346,12 +338,12 @@ int main(int argc, char **argv) {
 	algo->setElliptical(elliptical);
 	DESPOT2->SetAlgorithm(algo);
     DESPOT2->SetPoolsize(num_threads);
-	DESPOT2->SetInput(0, ssfp3D->GetOutput());
-	DESPOT2->SetConst(0, T1File->GetOutput());
+	DESPOT2->SetInput(0, data);
+	DESPOT2->SetConst(0, T1);
 	if (B1)
-		DESPOT2->SetConst(1, B1->GetOutput());
+		DESPOT2->SetConst(1, B1);
 	if (mask)
-		DESPOT2->SetMask(mask->GetOutput());
+		DESPOT2->SetMask(mask);
 
 	if (verbose) {
 		cout << "DESPOT2 setup complete. Processing." << endl;
@@ -366,9 +358,9 @@ int main(int argc, char **argv) {
 
 	}
 	outPrefix = outPrefix + "D2_";
-    WriteImage(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
-	WriteImage(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
-	WriteResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals, DESPOT2->GetOutput(0));
+    QI::WriteImage(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
+	QI::WriteImage(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
+	QI::WriteResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals, DESPOT2->GetOutput(0));
 
 	if (verbose) cout << "All done." << endl;
 	return EXIT_SUCCESS;
