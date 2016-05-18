@@ -24,6 +24,7 @@
 #include <Eigen/Dense>
 
 #include "itkCommand.h"
+#include "itkComplexToModulusImageFilter.h"
 #include "QI/Macro.h"
 #include "QI/Types.h"
 
@@ -58,11 +59,22 @@ void WriteImage(const TImg *ptr, const std::string path) {
 
 template<typename TImg>
 void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string path) {
-    typedef itk::ImageFileWriter<TImg> TWriter;
-    typename TWriter::Pointer file = TWriter::New();
-    file->SetFileName(path);
-    file->SetInput(ptr);
-    file->Update();
+    WriteImage<TImg>(ptr.GetPointer(), path);
+}
+
+template<typename TImg>
+void WriteMagnitudeImage(const TImg *ptr, const std::string path) {
+    typedef typename TImg::PixelType::value_type TReal;
+    typedef itk::Image<TReal, TImg::ImageDimension> TRealImage;
+    auto mag = itk::ComplexToModulusImageFilter<TImg, TRealImage>::New();
+    mag->SetInput(ptr);
+    mag->Update();
+    QI::WriteImage<TRealImage>(mag->GetOutput(), path);
+}
+
+template<typename TImg>
+void WriteMagnitudeImage(const itk::SmartPointer<TImg> ptr, const std::string path) {
+    QI::WriteMagnitudeImage<TImg>(ptr.GetPointer(), path);
 }
 
 class GenericMonitor : public itk::Command {

@@ -124,16 +124,14 @@ private:
 
 } // End namespace itk
 
-QI::TimeseriesXF::Pointer run_pipeline(const std::string &in_name, const std::string &out_name, const bool verbose, const bool debug, const TukeyKernel &kernel) {
-    typedef itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXD> TExtract;
+QI::TimeseriesXF::Pointer run_pipeline(QI::TimeseriesXF::Pointer vols, const bool verbose, const int debug, const TukeyKernel &kernel) {
+    typedef itk::ExtractImageFilter<QI::TimeseriesXF, QI::ImageXD>   TExtract;
     typedef itk::PasteImageFilter<QI::TimeseriesXF>                TPaste;
     typedef itk::CastImageFilter<QI::ImageXD, QI::TimeseriesXF>    TCast;
     typedef itk::FFTPadImageFilter<QI::ImageXD>                    TPad;
     typedef itk::ComplexToComplexFFTImageFilter<QI::ImageXD>       TFFT;
     typedef itk::KSpaceFilter<QI::ImageXD>                         TFilter;
     
-    if (verbose) cout << "Opening input file: " << in_name << endl;
-    auto vols = QI::ReadImage<QI::TimeseriesXF>(in_name);
     auto region = vols->GetLargestPossibleRegion();
     const size_t nvols = region.GetSize()[3]; // Save for the loop
     
@@ -167,10 +165,22 @@ QI::TimeseriesXF::Pointer run_pipeline(const std::string &in_name, const std::st
         extract->SetExtractionRegion(region);
         paster->SetDestinationIndex(region.GetIndex());
         paster->Update();
-        vols = paster->GetOutput();
+        paster->SetDestinationImage(paster->GetOutput());
+        if (debug) {
+            cout << "Writing debug images for volume " << i << endl;
+            QI::WriteMagnitudeImage(extract->GetOutput(), "kextract_" + to_string(i) + ".nii");
+            QI::WriteMagnitudeImage(pad->GetOutput(), "kpad_" + to_string(i) + ".nii");
+            QI::WriteMagnitudeImage(forward->GetOutput(), "kforward_" + to_string(i) + ".nii");
+            QI::WriteMagnitudeImage(k_filter->GetOutput(), "kfilter_" + to_string(i) + ".nii");
+            QI::WriteMagnitudeImage(inverse->GetOutput(), "kinverse_" + to_string(i) + ".nii");
+            QI::WriteMagnitudeImage(caster->GetOutput(), "kcaster_" + to_string(i) + ".nii");
+            QI::WriteMagnitudeImage(paster->GetOutput(), "kpaster_" + to_string(i) + ".nii");
+        }
     }
-    return vols;
     if (verbose) cout << "Finished." << endl;
+    vols = paster->GetOutput();
+    vols->DisconnectPipeline();
+    return vols;
 }
 
 //******************************************************************************
@@ -245,21 +255,29 @@ int main(int argc, char **argv) {
     string in_name(argv[optind++]);
     if (out_name == "")
         out_name = in_name.substr(0, in_name.find(".")) + "_filtered";
-
     TukeyKernel filter_kernel;
     filter_kernel.setAQ(filter_a, filter_q);
-    QI::TimeseriesXF::Pointer vols = run_pipeline(in_name, out_name, verbose, debug, filter_kernel);     
+    
+    QI::TimeseriesXF::Pointer vols;
+    if (is_complex) {
+        cout << "Reading complex file: " << in_name << endl;
+        vols = QI::ReadImage<QI::TimeseriesXF>(in_name);
+    } else {
+        cout << "Reading real file: " << in_name << endl;
+        QI::TimeseriesF::Pointer rvols = QI::ReadImage<QI::TimeseriesF>(in_name);
+        auto cast = itk::CastImageFilter<QI::TimeseriesF, QI::TimeseriesXF>::New();
+        cast->SetInput(rvols);
+        cast->Update();
+        vols = cast->GetOutput();
+        vols->DisconnectPipeline();
+    }
+    vols = run_pipeline(vols, verbose, debug, filter_kernel);     
     if (is_complex) {
         if (verbose) cout << "Data is complex." << endl;
         QI::WriteImage(vols, out_name + QI::OutExt());
     } else {
         if (verbose) cout << "Data is real." << endl;
-        if (verbose) cout << "Writing output:" << out_name + QI::OutExt() << endl;
-        auto mag = itk::ComplexToModulusImageFilter<QI::TimeseriesXF, QI::TimeseriesF>::New();
-        mag->SetInput(vols);
-        mag->Update();
-        QI::WriteImage(mag->GetOutput(), out_name + QI::OutExt());
+        QI::WriteMagnitudeImage(vols, out_name + QI::OutExt());
     }
-
     return EXIT_SUCCESS;
 }
