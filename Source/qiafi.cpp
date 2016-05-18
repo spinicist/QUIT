@@ -12,7 +12,6 @@
 
 #include <iostream>
 #include <string>
-#include <time.h>
 #include <getopt.h>
 
 #include "QI/Types.h"

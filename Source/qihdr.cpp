@@ -10,10 +10,8 @@
  *
  */
 
-#include <time.h>
 #include <getopt.h>
 #include <iostream>
-#include <atomic>
 
 #include "QI/Types.h"
 #include "QI/Util.h"

@@ -10,10 +10,8 @@
  *
  */
 
-#include <time.h>
 #include <getopt.h>
 #include <iostream>
-#include <atomic>
 #include "Eigen/Dense"
 
 #include "itkImageSource.h"

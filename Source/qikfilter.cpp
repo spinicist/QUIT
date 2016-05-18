@@ -9,10 +9,8 @@
  *
  */
 
-#include <time.h>
 #include <getopt.h>
 #include <iostream>
-#include <atomic>
 #include <sstream>
 #include "Eigen/Dense"
 

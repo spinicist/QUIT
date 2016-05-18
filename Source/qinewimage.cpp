@@ -13,7 +13,6 @@
 #include <getopt.h>
 #include <iostream>
 #include <random>
-#include <functional>
 
 #include "itkImage.h"
 #include "itkImageSliceIteratorWithIndex.h"

@@ -9,18 +9,13 @@
  *
  */
 
-#include <time.h>
 #include <getopt.h>
 #include <iostream>
-#include <atomic>
 
 #include <Eigen/Dense>
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
-#include "itkImageFileReader.h"
-
-#include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequence.h"

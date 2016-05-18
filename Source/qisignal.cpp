@@ -13,7 +13,6 @@
 #include <string>
 #include <iostream>
 #include <getopt.h>
-#include <exception>
 #include <Eigen/Dense>
 
 #include "itkImageFileReader.h"

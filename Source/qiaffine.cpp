@@ -11,7 +11,6 @@
 
 #include <getopt.h>
 #include <iostream>
-#include <sstream>
 
 #include "itkImage.h"
 #include "itkVersor.h"

@@ -1,5 +1,5 @@
 /*
- *  qisplit.cpp
+ *  qisplitsubjects.cpp
  *
  *  Copyright (c) 2015 Tobias Wood.
  *
@@ -10,8 +10,6 @@
  */
 
 #include <getopt.h>
-#include <string>
-#include <sstream>
 #include <iostream>
 #include <iomanip>
 #include <array>

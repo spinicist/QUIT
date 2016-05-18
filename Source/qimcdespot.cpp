@@ -12,8 +12,6 @@
 
 #include <iostream>
 #include <getopt.h>
-#include <time.h>
-#include <fstream>
 #include <Eigen/Dense>
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
