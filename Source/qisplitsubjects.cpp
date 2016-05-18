@@ -354,22 +354,22 @@ Alignment/arrangement correction (default is no correction):\n\
 enum class ALIGN { NONE = 0, RING_IN, RING_OUT };
 
 int main(int argc, char **argv) {
-	bool verbose = false;
-	int indexptr = 0, c;
+    bool verbose = false;
+    int indexptr = 0, c;
     int keep = numeric_limits<int>::max(), size_threshold = 1000, output_images = false,
         iterations = 25, angleSteps = 1;
     ALIGN alignment = ALIGN::NONE;
     float intensity_threshold = 0;
     double angleX = 0., angleY = 0., angleZ = 0., angleStep = 30., gridSpacing = 1.0;
 
-	QI::VolumeF::Pointer reference = ITK_NULLPTR;
+    QI::VolumeF::Pointer reference = ITK_NULLPTR;
     TLabelImage::Pointer mask = ITK_NULLPTR;
-	
-	const struct option long_options[] =
-	{
-		{"help", no_argument, 0, 'h'},
-		{"verbose", no_argument, 0, 'v'},
-		{"keep", required_argument, 0, 'k'},
+    
+    const struct option long_options[] =
+    {
+        {"help", no_argument, 0, 'h'},
+        {"verbose", no_argument, 0, 'v'},
+        {"keep", required_argument, 0, 'k'},
         {"size", required_argument, 0, 's'},
         {"thresh", required_argument, 0, 't'},
         {"mask", required_argument, 0, 'm'},
@@ -379,18 +379,18 @@ int main(int argc, char **argv) {
         {"ring", required_argument, 0, 'r'},
         {"angle", required_argument, 0, 'A'},
         {"nangle", required_argument, 0, 'N'},
-		{"rotX", required_argument, 0, 'X'},
-		{"rotY", required_argument, 0, 'Y'},
-		{"rotZ", required_argument, 0, 'Z'},
-		{"oimgs", no_argument, &output_images, true},
-		{0, 0, 0, 0}
-	};
-	const char* short_options = "hvR:G:I:A:N:c:k:s:";
+        {"rotX", required_argument, 0, 'X'},
+        {"rotY", required_argument, 0, 'Y'},
+        {"rotZ", required_argument, 0, 'Z'},
+        {"oimgs", no_argument, &output_images, true},
+        {0, 0, 0, 0}
+    };
+    const char* short_options = "hvR:G:I:A:N:c:k:s:";
 
-	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-		switch (c) {
-		case 'v': verbose = true; break;
-		case 'h':
+    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+        switch (c) {
+        case 'v': verbose = true; break;
+        case 'h':
             cout << QI::GetVersion() << endl << usage << endl;
             return EXIT_SUCCESS;
         case 'm': mask = QI::ReadImage<TLabelImage>(optarg); break;
@@ -414,20 +414,20 @@ int main(int argc, char **argv) {
         case 'X': angleX = stod(optarg)*M_PI/180.; break;
         case 'Y': angleY = stod(optarg)*M_PI/180.; break;
         case 'Z': angleZ = stod(optarg)*M_PI/180.; break;
-		case 0: // longopts flag
-			break;
-		case '?': // getopt will print an error message
-			return EXIT_FAILURE;
-		default:
-			cout << "Unhandled option " << string(1, c) << endl;
-			return EXIT_FAILURE;
-		}
-	}
+        case 0: // longopts flag
+            break;
+        case '?': // getopt will print an error message
+            return EXIT_FAILURE;
+        default:
+            cout << "Unhandled option " << string(1, c) << endl;
+            return EXIT_FAILURE;
+        }
+    }
 
-	if ((argc - optind) != 1) {
-		cout << QI::GetVersion() << endl << usage << endl;
+    if ((argc - optind) != 1) {
+        cout << QI::GetVersion() << endl << usage << endl;
         QI_EXCEPTION("Wrong number of input arguments.");
-	}
+    }
 
     string fname(argv[optind++]);
     QI::VolumeF::Pointer input = QI::ReadImage(fname);
@@ -444,11 +444,11 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Found " << keep << " subjects, saving labels." << endl;
     QI::WriteImage(labels, prefix + "_labels.nii");
 
-	typedef itk::LabelStatisticsImageFilter<QI::VolumeF, TLabelImage> TLabelStats;
-	auto labelStats = TLabelStats::New();
-	labelStats->SetInput(input);
-	labelStats->SetLabelInput(labels);
-	labelStats->Update();
+    typedef itk::LabelStatisticsImageFilter<QI::VolumeF, TLabelImage> TLabelStats;
+    auto labelStats = TLabelStats::New();
+    labelStats->SetInput(input);
+    labelStats->SetLabelInput(labels);
+    labelStats->Update();
 
     TMoments::VectorType refCoG;
     if (reference)
@@ -456,25 +456,25 @@ int main(int argc, char **argv) {
     else
         refCoG.Fill(0);
 
-	for (auto i = 1; i <= keep; i++) {
+    for (auto i = 1; i <= keep; i++) {
         QI::VolumeF::Pointer subject = MaskWithLabel(input, labels, i, true);
-		TMoments::VectorType offset = -refCoG;
-		double rotateAngle = 0.;
-		if (alignment != ALIGN::NONE) {
+        TMoments::VectorType offset = -refCoG;
+        double rotateAngle = 0.;
+        if (alignment != ALIGN::NONE) {
             TMoments::VectorType CoG = GetCoG(subject);
-			if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
-			rotateAngle = atan2(CoG[1], CoG[0]);
-			if (alignment == ALIGN::RING_IN)
-				rotateAngle = (M_PI / 2.) - rotateAngle;
-			else if (alignment == ALIGN::RING_OUT)
-				rotateAngle = (M_PI * 3./2.) - rotateAngle;
-			if (verbose) cout << "Initial rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
-			offset += CoG;
-		}
+            if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
+            rotateAngle = atan2(CoG[1], CoG[0]);
+            if (alignment == ALIGN::RING_IN)
+                rotateAngle = (M_PI / 2.) - rotateAngle;
+            else if (alignment == ALIGN::RING_OUT)
+                rotateAngle = (M_PI * 3./2.) - rotateAngle;
+            if (verbose) cout << "Initial rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
+            offset += CoG;
+        }
 
         TRigid::Pointer tfm = TRigid::New();
-		tfm->SetIdentity();
-		tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
+        tfm->SetIdentity();
+        tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
         tfm->SetOffset(offset);
         
         if (reference) {
@@ -510,8 +510,8 @@ int main(int argc, char **argv) {
             fname = prefix + suffix.str() + "_mask.nii";
             if (verbose) cout << "Writing output mask " << fname << endl;
             QI::WriteImage(rthresh->GetOutput(), fname);
-		}
-	}
-	return EXIT_SUCCESS;
+        }
+    }
+    return EXIT_SUCCESS;
 }
 

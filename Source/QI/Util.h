@@ -52,17 +52,17 @@ auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
 
 template<typename TPixel>
 auto ReadVectorImage(const std::string &fname) -> typename itk::VectorImage<TPixel, 3>::Pointer {
-	typedef itk::Image<TPixel, 4> TSeries;
-	typedef itk::VectorImage<TPixel, 3> TVector;
-	typedef itk::ImageToVectorFilter<TSeries> TToVector;
-	
-	auto img = ReadImage<TSeries>(fname);
-	auto convert = TToVector::New();
-	convert->SetInput(img);
-	convert->Update();
-	typename TVector::Pointer vols = convert->GetOutput();
-	vols->DisconnectPipeline();
-	return vols;
+    typedef itk::Image<TPixel, 4> TSeries;
+    typedef itk::VectorImage<TPixel, 3> TVector;
+    typedef itk::ImageToVectorFilter<TSeries> TToVector;
+    
+    auto img = ReadImage<TSeries>(fname);
+    auto convert = TToVector::New();
+    convert->SetInput(img);
+    convert->Update();
+    typename TVector::Pointer vols = convert->GetOutput();
+    vols->DisconnectPipeline();
+    return vols;
 }
 
 
@@ -97,76 +97,76 @@ void WriteMagnitudeImage(const itk::SmartPointer<TImg> ptr, const std::string pa
 
 class GenericMonitor : public itk::Command {
 public:
-	typedef GenericMonitor            Self;
-	typedef itk::Command            Superclass;
-	typedef itk::SmartPointer<Self> Pointer;
-	itkTypeMacro(GenericMonitor, Superclass);
-	itkNewMacro(Self);
+    typedef GenericMonitor            Self;
+    typedef itk::Command            Superclass;
+    typedef itk::SmartPointer<Self> Pointer;
+    itkTypeMacro(GenericMonitor, Superclass);
+    itkNewMacro(Self);
 protected:
-	GenericMonitor() {}
+    GenericMonitor() {}
 public:
     void Execute(itk::Object *caller, const itk::EventObject &event) override {
         Execute((const itk::Object *)caller, event);
     }
     void Execute(const itk::Object *object, const itk::EventObject &event) override {
-		const itk::ProcessObject *filter = static_cast<const itk::ProcessObject *>(object);
-		if (typeid(event) == typeid(itk::ProgressEvent)) {
-			std::cout << "Progress: " << round(filter->GetProgress()*100) << "% complete" << std::endl;
-		} else {
-			std::cout << "Received event: " << typeid(event).name() << std::endl;
-		}
-	}
+        const itk::ProcessObject *filter = static_cast<const itk::ProcessObject *>(object);
+        if (typeid(event) == typeid(itk::ProgressEvent)) {
+            std::cout << "Progress: " << round(filter->GetProgress()*100) << "% complete" << std::endl;
+        } else {
+            std::cout << "Received event: " << typeid(event).name() << std::endl;
+        }
+    }
 };
 
 template<typename T> bool Read(const std::string &s, T &val) {
-	std::istringstream stream(s);
-	if (!(stream >> val)) {
+    std::istringstream stream(s);
+    if (!(stream >> val)) {
         QI_EXCEPTION("Failed to parse input: " << s);
-	}
-	return true;
+    }
+    return true;
 }
 
 template<typename T> bool Read(std::istream &in, T &val) {
-	std::string line;
-	// Ignore comment lines. Use shell script convention
-	while (in.peek() == '#') {
-		if (!std::getline(in, line))
+    std::string line;
+    // Ignore comment lines. Use shell script convention
+    while (in.peek() == '#') {
+        if (!std::getline(in, line))
             QI_EXCEPTION("Failed to read input.");
-	}
-	if (!std::getline(in, line)) {
+    }
+    if (!std::getline(in, line)) {
         QI_EXCEPTION("Failed to read input. Last line was: " << line);
-	}
-	return Read(line, val);
+    }
+    return Read(line, val);
 }
 
 template<typename Scalar>
 void ReadArray(const std::string &s, Eigen::Array<Scalar, Eigen::Dynamic, 1> &array) {
-	std::istringstream stream(s);
-	std::vector<Scalar> vals;
+    std::istringstream stream(s);
+    std::vector<Scalar> vals;
 
-	Scalar temp;
-	while (stream >> temp) {
-		vals.push_back(temp);
-	}
+    Scalar temp;
+    while (stream >> temp) {
+        vals.push_back(temp);
+    }
 
-	array = Eigen::Array<Scalar, Eigen::Dynamic, 1>(vals.size());
-	for (int i = 0; i < vals.size(); i++) {
-		array[i] = vals[i];
-	}
+    array = Eigen::Array<Scalar, Eigen::Dynamic, 1>(vals.size());
+    for (int i = 0; i < vals.size(); i++) {
+        array[i] = vals[i];
+    }
 }
 
 template<typename Scalar>
 void ReadArray(std::istream &in, Eigen::Array<Scalar, Eigen::Dynamic, 1> &array) {
-	std::string line;
-	// Ignore comment lines. Use shell script convention
-	while (in.peek() == '#') {
-		if (!std::getline(in, line))
+    std::string line;
+    // Ignore comment lines. Use shell script convention
+    while (in.peek() == '#') {
+        if (!std::getline(in, line))
             QI_EXCEPTION("Failed to read input.");
-	}
-	if (!std::getline(in, line)) {
+    }
+    if (!std::getline(in, line)) {
         QI_EXCEPTION("Failed to read input.");
-	}
-	ReadArray(line, array);
+    }
+    ReadArray(line, array);
 }
 
 } // End namespace QUIT

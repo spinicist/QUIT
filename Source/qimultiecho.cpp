@@ -57,19 +57,19 @@ static double thresh = -numeric_limits<double>::infinity();
 static double clamp_lo = -numeric_limits<double>::infinity(), clamp_hi = numeric_limits<double>::infinity();
 static struct option long_options[] =
 {
-	{"help", no_argument, 0, 'h'},
-	{"verbose", no_argument, 0, 'v'},
-	{"no-prompt", no_argument, 0, 'n'},
-	{"out", required_argument, 0, 'o'},
-	{"mask", required_argument, 0, 'm'},
-	{"star", no_argument, 0, 'S'},
-	{"thresh", required_argument, 0, 't'},
-	{"clamp", required_argument, 0, 'c'},
+    {"help", no_argument, 0, 'h'},
+    {"verbose", no_argument, 0, 'v'},
+    {"no-prompt", no_argument, 0, 'n'},
+    {"out", required_argument, 0, 'o'},
+    {"mask", required_argument, 0, 'm'},
+    {"star", no_argument, 0, 'S'},
+    {"thresh", required_argument, 0, 't'},
+    {"clamp", required_argument, 0, 'c'},
     {"reorder", no_argument, 0, 'R'},
-	{"algo", required_argument, 0, 'a'},
-	{"threads", required_argument, 0, 'T'},
-	{"resids", no_argument, 0, 'r'},
-	{0, 0, 0, 0}
+    {"algo", required_argument, 0, 'a'},
+    {"threads", required_argument, 0, 'T'},
+    {"resids", no_argument, 0, 'r'},
+    {0, 0, 0, 0}
 };
 static const char *short_opts = "hvnm:Se:o:b:t:c:Ra:T:r";
 
@@ -78,9 +78,9 @@ static const char *short_opts = "hvnm:Se:o:b:t:c:Ra:T:r";
  */
 class RelaxAlgo : public Algorithm<double> {
 private:
-	const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
+    const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 protected:
-	shared_ptr<QI::MultiEcho> m_sequence;
+    shared_ptr<QI::MultiEcho> m_sequence;
     double m_clampLo = -numeric_limits<double>::infinity();
     double m_clampHi = numeric_limits<double>::infinity();
     double m_thresh = -numeric_limits<double>::infinity();
@@ -99,37 +99,37 @@ protected:
     }
 
 public:
-	void setSequence(shared_ptr<QI::MultiEcho> &s) { m_sequence = s; }
+    void setSequence(shared_ptr<QI::MultiEcho> &s) { m_sequence = s; }
     void setClamp(double lo, double hi) { m_clampLo = lo; m_clampHi = hi; }
     void setThresh(double t) { m_thresh = t; }
     size_t numInputs() const override { return m_sequence->count(); }
-	size_t numConsts() const override { return 1; }
-	size_t numOutputs() const override { return 2; }
-	size_t dataSize() const override { return m_sequence->size(); }
+    size_t numConsts() const override { return 1; }
+    size_t numOutputs() const override { return 2; }
+    size_t dataSize() const override { return m_sequence->size(); }
 
     virtual TArray defaultConsts() override {
-		// B1
-		TArray def = TArray::Ones(2);
-		return def;
-	}
+        // B1
+        TArray def = TArray::Ones(2);
+        return def;
+    }
 };
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-	virtual void apply(const TInput &data, const TArray &inputs,
+    virtual void apply(const TInput &data, const TArray &inputs,
                        TArray &outputs, TArray &resids, TIterations &its) const override
-	{
-			// Set up echo times array
-		MatrixXd X(m_sequence->size(), 2);
-		X.col(0) = m_sequence->m_TE;
-		X.col(1).setOnes();
-		VectorXd Y = data.array().log();
-		VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+    {
+            // Set up echo times array
+        MatrixXd X(m_sequence->size(), 2);
+        X.col(0) = m_sequence->m_TE;
+        X.col(1).setOnes();
+        VectorXd Y = data.array().log();
+        VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         double PD = exp(b[1]);
         double T2 = -1 / b[0];
         clamp_and_treshold(data, outputs, resids, PD, T2);
         its = 1;
-	}
+    }
 };
 
 class ARLOAlgo : public RelaxAlgo {
@@ -153,104 +153,104 @@ public:
 };
 
 class RelaxFunctor : public DenseFunctor<double> {
-	protected:
-		const shared_ptr<QI::SequenceBase> m_sequence;
-		const ArrayXd m_data;
-		const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
+    protected:
+        const shared_ptr<QI::SequenceBase> m_sequence;
+        const ArrayXd m_data;
+        const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
-	public:
-		RelaxFunctor(shared_ptr<QI::SequenceBase> cs, const ArrayXd &data) :
-			DenseFunctor<double>(2, cs->size()),
-			m_sequence(cs), m_data(data)
-		{
-			assert(static_cast<size_t>(m_data.rows()) == values());
-		}
+    public:
+        RelaxFunctor(shared_ptr<QI::SequenceBase> cs, const ArrayXd &data) :
+            DenseFunctor<double>(2, cs->size()),
+            m_sequence(cs), m_data(data)
+        {
+            assert(static_cast<size_t>(m_data.rows()) == values());
+        }
 
-		int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-			eigen_assert(diffs.size() == values());
-			VectorXd fullp(5);
-			fullp << params(0), 0, params(1), 0, 1.0; // Fix B1 to 1.0 for now
-			ArrayXcd s = m_sequence->signal(m_model, fullp);
-			diffs = s.abs() - m_data;
-			return 0;
-		}
+        int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+            eigen_assert(diffs.size() == values());
+            VectorXd fullp(5);
+            fullp << params(0), 0, params(1), 0, 1.0; // Fix B1 to 1.0 for now
+            ArrayXcd s = m_sequence->signal(m_model, fullp);
+            diffs = s.abs() - m_data;
+            return 0;
+        }
 };
 
 class NonLinAlgo : public RelaxAlgo {
 private:
-	size_t m_iterations = 5;
+    size_t m_iterations = 5;
 public:
-	void setIterations(size_t n) { m_iterations = n; }
+    void setIterations(size_t n) { m_iterations = n; }
 
-	virtual void apply(const TInput &data, const TArray &inputs,
+    virtual void apply(const TInput &data, const TArray &inputs,
                        TArray &outputs, TArray &resids, TIterations &its) const override
-	{
-		RelaxFunctor f(m_sequence, data);
-		NumericalDiff<RelaxFunctor> nDiff(f);
-		LevenbergMarquardt<NumericalDiff<RelaxFunctor>> lm(nDiff);
-		lm.setMaxfev(nIterations * (m_sequence->size() + 1));
-		// Just PD & T2 for now
-		// Basic guess of T2=50ms
-		VectorXd p(2); p << data(0), 0.05;
-		lm.minimize(p);
+    {
+        RelaxFunctor f(m_sequence, data);
+        NumericalDiff<RelaxFunctor> nDiff(f);
+        LevenbergMarquardt<NumericalDiff<RelaxFunctor>> lm(nDiff);
+        lm.setMaxfev(nIterations * (m_sequence->size() + 1));
+        // Just PD & T2 for now
+        // Basic guess of T2=50ms
+        VectorXd p(2); p << data(0), 0.05;
+        lm.minimize(p);
         clamp_and_treshold(data, outputs, resids, p[0], p[1]);
         its = lm.iterations();
-	}
+    }
 };
 
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	Eigen::initParallel();
-	QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
-	shared_ptr<RelaxAlgo> algo = make_shared<LogLinAlgo>();
-	int indexptr = 0, c;
-	while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
-		switch (c) {
-			case 'v': verbose = true; break;
-			case 'n': prompt = false; break;
-			case 'm':
-				cout << "Reading mask file " << optarg << endl;
-				mask = QI::ReadImage(optarg);
-				break;
-			case 'o':
-				outPrefix = optarg;
-				cout << "Output prefix will be: " << outPrefix << endl;
-				break;
-			case 'S': suffix = "star"; break;
-			case 't': thresh = atof(optarg); break;
-			case 'c':
-				clamp_lo = 0;
-				clamp_hi = atof(optarg);
-				break;
+    Eigen::initParallel();
+    QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
+    shared_ptr<RelaxAlgo> algo = make_shared<LogLinAlgo>();
+    int indexptr = 0, c;
+    while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
+        switch (c) {
+            case 'v': verbose = true; break;
+            case 'n': prompt = false; break;
+            case 'm':
+                cout << "Reading mask file " << optarg << endl;
+                mask = QI::ReadImage(optarg);
+                break;
+            case 'o':
+                outPrefix = optarg;
+                cout << "Output prefix will be: " << outPrefix << endl;
+                break;
+            case 'S': suffix = "star"; break;
+            case 't': thresh = atof(optarg); break;
+            case 'c':
+                clamp_lo = 0;
+                clamp_hi = atof(optarg);
+                break;
             case 'R': reorder = true; break;
-			case 'a':
-				switch (*optarg) {
-					case 'l': algo = make_shared<LogLinAlgo>(); if (verbose) cout << "LogLin algorithm selected." << endl; break;
-					case 'a': algo = make_shared<ARLOAlgo>(); if (verbose) cout << "ARLO algorithm selected." << endl; break;
-					case 'n': algo = make_shared<NonLinAlgo>(); if (verbose) cout << "Non-linear algorithm (Levenberg Marquardt) selected." << endl; break;
-					default:
-						cout << "Unknown algorithm type " << optarg << endl;
-						return EXIT_FAILURE;
-						break;
-				} break;
-			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-			case 'r': all_residuals = true; break;
-			case 'h':
-				cout << QI::GetVersion() << endl << usage << endl;
-				return EXIT_SUCCESS;
-			case '?': // getopt will print an error message
-				return EXIT_FAILURE;
-			default:
-				cout << "Unhandled option " << string(1, c) << endl;
-				return EXIT_FAILURE;
-		}
-	}
-	if ((argc - optind) != 1) {
-		cout << "Incorrect number of arguments." << endl << usage << endl;
-		return EXIT_FAILURE;
-	}
+            case 'a':
+                switch (*optarg) {
+                    case 'l': algo = make_shared<LogLinAlgo>(); if (verbose) cout << "LogLin algorithm selected." << endl; break;
+                    case 'a': algo = make_shared<ARLOAlgo>(); if (verbose) cout << "ARLO algorithm selected." << endl; break;
+                    case 'n': algo = make_shared<NonLinAlgo>(); if (verbose) cout << "Non-linear algorithm (Levenberg Marquardt) selected." << endl; break;
+                    default:
+                        cout << "Unknown algorithm type " << optarg << endl;
+                        return EXIT_FAILURE;
+                        break;
+                } break;
+            case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+            case 'r': all_residuals = true; break;
+            case 'h':
+                cout << QI::GetVersion() << endl << usage << endl;
+                return EXIT_SUCCESS;
+            case '?': // getopt will print an error message
+                return EXIT_FAILURE;
+            default:
+                cout << "Unhandled option " << string(1, c) << endl;
+                return EXIT_FAILURE;
+        }
+    }
+    if ((argc - optind) != 1) {
+        cout << "Incorrect number of arguments." << endl << usage << endl;
+        return EXIT_FAILURE;
+    }
     if (verbose) {
         cout << "Ouput prefix will be: " << outPrefix << endl;
         cout << "Clamp: " << clamp_lo << " " << clamp_hi << endl;
@@ -307,6 +307,6 @@ int main(int argc, char **argv) {
     QI::WriteImage(T2output->GetOutput(), outPrefix + "T2" + suffix + QI::OutExt());
     //QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 

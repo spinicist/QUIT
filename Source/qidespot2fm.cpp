@@ -57,24 +57,24 @@ class FMFunctor : public DenseFunctor<double> {
 public:
     typedef Array<T, Eigen::Dynamic, 1> TArray;
 
-	const shared_ptr<QI::SequenceBase> m_sequence;
-	shared_ptr<QI::SCD> m_model;
+    const shared_ptr<QI::SequenceBase> m_sequence;
+    shared_ptr<QI::SCD> m_model;
     TArray m_data;
-	const double m_T1, m_B1;
+    const double m_T1, m_B1;
 
     FMFunctor(const shared_ptr<QI::SCD> m, const shared_ptr<QI::SequenceBase> s, const TArray &d, const double T1, const double B1) :
-		DenseFunctor<double>(3, s->size()),
-		m_model(m), m_sequence(s), m_data(d),
-		m_T1(T1), m_B1(B1)
-	{
-		assert(static_cast<size_t>(m_data.rows()) == values());
-	}
+        DenseFunctor<double>(3, s->size()),
+        m_model(m), m_sequence(s), m_data(d),
+        m_T1(T1), m_B1(B1)
+    {
+        assert(static_cast<size_t>(m_data.rows()) == values());
+    }
 
-	const bool constraint(const VectorXd &params) const {
-		Array4d fullparams;
-		fullparams << params(0), m_T1, params(1), params(2);
-		return m_model->ValidParameters(fullparams);
-	}
+    const bool constraint(const VectorXd &params) const {
+        Array4d fullparams;
+        fullparams << params(0), m_T1, params(1), params(2);
+        return m_model->ValidParameters(fullparams);
+    }
 
     int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
         //cout << __PRETTY_FUNCTION__ << endl;
@@ -92,38 +92,38 @@ class FixT2 : public DenseFunctor<double> {
 public:
     typedef Array<T, Eigen::Dynamic, 1> TArray;
 
-	const shared_ptr<QI::SequenceBase> m_sequence;
-	shared_ptr<QI::SCD> m_model;
+    const shared_ptr<QI::SequenceBase> m_sequence;
+    shared_ptr<QI::SCD> m_model;
     TArray m_data;
-	const double m_T1, m_B1;
-	double m_T2;
+    const double m_T1, m_B1;
+    double m_T2;
 
     FixT2(const shared_ptr<QI::SCD> m, const shared_ptr<QI::SequenceBase> s, const TArray &d, const double T1, const double T2, const double B1) :
-		DenseFunctor<double>(2, s->size()),
-		m_model(m), m_sequence(s), m_data(d),
-		m_T1(T1), m_T2(T2), m_B1(B1)
-	{
-		assert(static_cast<size_t>(m_data.rows()) == values());
-	}
+        DenseFunctor<double>(2, s->size()),
+        m_model(m), m_sequence(s), m_data(d),
+        m_T1(T1), m_T2(T2), m_B1(B1)
+    {
+        assert(static_cast<size_t>(m_data.rows()) == values());
+    }
 
-	void setT2(double T2) { m_T2 = T2; }
-	int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+    void setT2(double T2) { m_T2 = T2; }
+    int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
         //cout << __PRETTY_FUNCTION__ << endl;
-		eigen_assert(diffs.size() == values());
+        eigen_assert(diffs.size() == values());
 
-		ArrayXd fullparams(5);
-		fullparams << params(0), m_T1, m_T2, params(1), m_B1;
-		ArrayXcd s = m_sequence->signal(m_model, fullparams);
+        ArrayXd fullparams(5);
+        fullparams << params(0), m_T1, m_T2, params(1), m_B1;
+        ArrayXcd s = m_sequence->signal(m_model, fullparams);
         diffs = DifferenceVector(s, m_data);
-		return 0;
-	}
+        return 0;
+    }
 };
 
 template<typename T>
 class FMAlgo : public Algorithm<T> {
 protected:
-	const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
-	shared_ptr<QI::SSFPSimple> m_sequence;
+    const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
+    shared_ptr<QI::SSFPSimple> m_sequence;
     bool m_symmetric;
 
 public:
@@ -134,16 +134,16 @@ public:
     void setSequence(shared_ptr<QI::SSFPSimple> s) { m_sequence = s; }
     void setSymmetric(const bool b) { m_symmetric = b; }
     
-	size_t numInputs() const override  { return m_sequence->count(); }
-	size_t numConsts() const override  { return 2; }
-	size_t numOutputs() const override { return 3; }
-	size_t dataSize() const override   { return m_sequence->size(); }
+    size_t numInputs() const override  { return m_sequence->count(); }
+    size_t numConsts() const override  { return 2; }
+    size_t numOutputs() const override { return 3; }
+    size_t dataSize() const override   { return m_sequence->size(); }
 
     virtual TArray defaultConsts() override {
-		// T1 & B1
-		TArray def = TArray::Ones(2);
-		return def;
-	}
+        // T1 & B1
+        TArray def = TArray::Ones(2);
+        return def;
+    }
 };
 
 template<typename T>
@@ -545,21 +545,21 @@ int run_main(int argc, char **argv) {
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	Eigen::initParallel();
+    Eigen::initParallel();
 
     // Check for complex, do everything else inside templated function
     bool use_complex = false;
-	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
-		switch (c) {
+    while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
+        switch (c) {
             case 'x': use_complex = true; break;
             case 'h':
                 cout << QI::GetVersion() << endl << usage << endl;
                 return EXIT_SUCCESS;
             case '?': // getopt will print an error message
                 return EXIT_FAILURE;
-			default: break;
-		}
-	}
+            default: break;
+        }
+    }
 
     if (use_complex) {
         return run_main<complex<double>>(argc, argv);

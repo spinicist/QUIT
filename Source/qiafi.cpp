@@ -28,110 +28,110 @@ const string usage{
 "Usage is: qiafi [options] input \n\
 \
 Options:\n\
-	--verbose, -v   : Print more messages\n\
-	--mask, -m file : Mask input with specified file.\n\
-	--out, -o path  : Add a prefix to the output filenames.\n\
-	--flip, -f      : Specify the nominal flip-angle (default 55 degrees)\n\
-	--ratio, -r     : Specify TR2:TR1 ratio (default 5)\n"
+    --verbose, -v   : Print more messages\n\
+    --mask, -m file : Mask input with specified file.\n\
+    --out, -o path  : Add a prefix to the output filenames.\n\
+    --flip, -f      : Specify the nominal flip-angle (default 55 degrees)\n\
+    --ratio, -r     : Specify TR2:TR1 ratio (default 5)\n"
 };
 
 static struct option long_options[] = {
-	{"verbose", required_argument, 0, 'v'},
-	{"mask",    required_argument, 0, 'm'},
-	{"out",     required_argument, 0, 'o'},
-	{"flip",    required_argument, 0, 'f'},
-	{"ratio",   required_argument, 0, 'r'},
-	{0, 0, 0, 0}
+    {"verbose", required_argument, 0, 'v'},
+    {"mask",    required_argument, 0, 'm'},
+    {"out",     required_argument, 0, 'o'},
+    {"flip",    required_argument, 0, 'f'},
+    {"ratio",   required_argument, 0, 'r'},
+    {0, 0, 0, 0}
 };
 static const char *short_options = "vm:o:f:r:T:h";
 
 template<class TPixel> class AFI {
 public:
-	AFI() {}
-	~AFI() {}
-	bool operator!=(const AFI &) const { return false; }
-	bool operator==(const AFI &other) const { return !(*this != other); }
+    AFI() {}
+    ~AFI() {}
+    bool operator!=(const AFI &) const { return false; }
+    bool operator==(const AFI &other) const { return !(*this != other); }
 
-	inline TPixel operator()(const TPixel &r,
-							 const TPixel &n) const
-	{
-		TPixel temp = (r*n - 1.) / (n - r);
-		if (temp > 1.)
-			temp = 1.;
-		if (temp < -1.)
-			temp = -1.;
-		TPixel alpha = acos(temp) * 180. / M_PI;
-		return alpha;
-	}
+    inline TPixel operator()(const TPixel &r,
+                             const TPixel &n) const
+    {
+        TPixel temp = (r*n - 1.) / (n - r);
+        if (temp > 1.)
+            temp = 1.;
+        if (temp < -1.)
+            temp = -1.;
+        TPixel alpha = acos(temp) * 180. / M_PI;
+        return alpha;
+    }
 };
 
 
 int main(int argc, char **argv) {
-	int indexptr = 0, c;
-	string outPrefix = "AFI_";
-	bool verbose = false;
-	double n = 5., nomFlip = 55.;
-	QI::VolumeF::Pointer maskFile = ITK_NULLPTR;
-	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-		switch (c) {
-			case 'v': verbose = true; break;
-			case 'm':
-				cout << "Reading mask." << endl;
-				maskFile = QI::ReadImage(optarg);
-				break;
-			case 'o':
-				outPrefix = optarg;
-				cout << "Output prefix will be: " << outPrefix << endl;
-				break;
-			case 'f': nomFlip = atof(optarg); break;
-			case 'r': n = atof(optarg); break;
-			case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
-			case 'h':
-				cout << QI::GetVersion() << endl << usage << endl;
-				return EXIT_SUCCESS;
-			case '?': // getopt will print an error message
-				return EXIT_FAILURE;
-			default:
-				cout << "Unhandled option " << string(1, c) << endl;
-				return EXIT_FAILURE;
-		}
-	}
-	if ((argc - optind) != 1) {
-		cout << QI::GetVersion() << endl << usage << endl;
-		return EXIT_FAILURE;
-	}
-	if (verbose) cout << "Opening input file " << argv[optind] << endl;
-	auto inFile = QI::ReadImage<QI::SeriesF>(argv[optind]);
-	if (verbose) {
-		cout << "Nominal flip-angle is " << nomFlip << " degrees." << endl;
-		cout << "TR2:TR1 ratio is " << n << endl;
-	}
-	auto volume1 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
-	auto volume2 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
-	auto region = inFile->GetLargestPossibleRegion();
-	region.GetModifiableSize()[3] = 0;
-	region.GetModifiableIndex()[3] = 0;
-	volume1->SetExtractionRegion(region);
-	volume1->SetInput(inFile);
-	volume1->SetDirectionCollapseToSubmatrix();
-	region.GetModifiableIndex()[3] = 1;
-	volume2->SetExtractionRegion(region);
-	volume2->SetInput(inFile);
-	volume2->SetDirectionCollapseToSubmatrix();
+    int indexptr = 0, c;
+    string outPrefix = "AFI_";
+    bool verbose = false;
+    double n = 5., nomFlip = 55.;
+    QI::VolumeF::Pointer maskFile = ITK_NULLPTR;
+    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+        switch (c) {
+            case 'v': verbose = true; break;
+            case 'm':
+                cout << "Reading mask." << endl;
+                maskFile = QI::ReadImage(optarg);
+                break;
+            case 'o':
+                outPrefix = optarg;
+                cout << "Output prefix will be: " << outPrefix << endl;
+                break;
+            case 'f': nomFlip = atof(optarg); break;
+            case 'r': n = atof(optarg); break;
+            case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
+            case 'h':
+                cout << QI::GetVersion() << endl << usage << endl;
+                return EXIT_SUCCESS;
+            case '?': // getopt will print an error message
+                return EXIT_FAILURE;
+            default:
+                cout << "Unhandled option " << string(1, c) << endl;
+                return EXIT_FAILURE;
+        }
+    }
+    if ((argc - optind) != 1) {
+        cout << QI::GetVersion() << endl << usage << endl;
+        return EXIT_FAILURE;
+    }
+    if (verbose) cout << "Opening input file " << argv[optind] << endl;
+    auto inFile = QI::ReadImage<QI::SeriesF>(argv[optind]);
+    if (verbose) {
+        cout << "Nominal flip-angle is " << nomFlip << " degrees." << endl;
+        cout << "TR2:TR1 ratio is " << n << endl;
+    }
+    auto volume1 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
+    auto volume2 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
+    auto region = inFile->GetLargestPossibleRegion();
+    region.GetModifiableSize()[3] = 0;
+    region.GetModifiableIndex()[3] = 0;
+    volume1->SetExtractionRegion(region);
+    volume1->SetInput(inFile);
+    volume1->SetDirectionCollapseToSubmatrix();
+    region.GetModifiableIndex()[3] = 1;
+    volume2->SetExtractionRegion(region);
+    volume2->SetInput(inFile);
+    volume2->SetDirectionCollapseToSubmatrix();
 
-	auto imageRatio = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
-	imageRatio->SetInput(0, volume2->GetOutput());
-	imageRatio->SetInput(1, volume1->GetOutput());
-	auto afi = itk::BinaryFunctorImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF, AFI<float>>::New();
-	afi->SetInput1(imageRatio->GetOutput());
-	afi->SetConstant2(n);
-	auto B1 = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
-	B1->SetInput1(afi->GetOutput());
-	B1->SetConstant2(nomFlip);
-	B1->Update();
+    auto imageRatio = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
+    imageRatio->SetInput(0, volume2->GetOutput());
+    imageRatio->SetInput(1, volume1->GetOutput());
+    auto afi = itk::BinaryFunctorImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF, AFI<float>>::New();
+    afi->SetInput1(imageRatio->GetOutput());
+    afi->SetConstant2(n);
+    auto B1 = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
+    B1->SetInput1(afi->GetOutput());
+    B1->SetConstant2(nomFlip);
+    B1->Update();
     QI::WriteImage(afi->GetOutput(), outPrefix + "angle" + QI::OutExt());
     QI::WriteImage(B1->GetOutput(),  outPrefix + "B1" + QI::OutExt());
-	if (verbose) cout << "Finished." << endl;
-	return EXIT_SUCCESS;
+    if (verbose) cout << "Finished." << endl;
+    return EXIT_SUCCESS;
 }
 

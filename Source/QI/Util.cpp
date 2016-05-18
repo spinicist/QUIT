@@ -27,25 +27,25 @@ const std::string &GetVersion() {
 }
 
 const std::string &OutExt() {
-	static char *env_ext = getenv("QUIT_EXT");
-	static string ext;
-	static bool checked = false;
-	if (!checked) {
-		static map<string, string> valid_ext{
-			{"NIFTI", ".nii"},
-			{"NIFTI_PAIR", ".img"},
-			{"NIFTI_GZ", ".nii.gz"},
-			{"NIFTI_PAIR_GZ", ".img.gz"},
-		};
-		if (!env_ext || (valid_ext.find(env_ext) == valid_ext.end())) {
-			cerr << "Environment variable QUIT_EXT is not valid, defaulting to NIFTI_GZ" << endl;
-			ext = valid_ext["NIFTI_GZ"];
-		} else {
-			ext = valid_ext[env_ext];
-		}
-		checked = true;
-	}
-	return ext;
+    static char *env_ext = getenv("QUIT_EXT");
+    static string ext;
+    static bool checked = false;
+    if (!checked) {
+        static map<string, string> valid_ext{
+            {"NIFTI", ".nii"},
+            {"NIFTI_PAIR", ".img"},
+            {"NIFTI_GZ", ".nii.gz"},
+            {"NIFTI_PAIR_GZ", ".img.gz"},
+        };
+        if (!env_ext || (valid_ext.find(env_ext) == valid_ext.end())) {
+            cerr << "Environment variable QUIT_EXT is not valid, defaulting to NIFTI_GZ" << endl;
+            ext = valid_ext["NIFTI_GZ"];
+        } else {
+            ext = valid_ext[env_ext];
+        }
+        checked = true;
+    }
+    return ext;
 }
 
 std::string StripExt(const std::string &filename) {
@@ -62,25 +62,25 @@ std::string StripExt(const std::string &filename) {
 }
 
 mt19937_64::result_type RandomSeed() {
-	static random_device rd;
-	static mt19937_64 rng;
-	static bool init = false;
-	mutex seed_mtx;
-	if (!init) {
-		rng = mt19937_64(rd());
-	}
-	seed_mtx.lock();
-	mt19937_64::result_type r = rng();
-	seed_mtx.unlock();
-	return r;
+    static random_device rd;
+    static mt19937_64 rng;
+    static bool init = false;
+    mutex seed_mtx;
+    if (!init) {
+        rng = mt19937_64(rd());
+    }
+    seed_mtx.lock();
+    mt19937_64::result_type r = rng();
+    seed_mtx.unlock();
+    return r;
 }
 
 void WriteResiduals(const VectorVolumeF::Pointer img, const string prefix,
                     const bool allResids, const VolumeF::Pointer scaleImage) {
-	auto magFilter = itk::VectorMagnitudeImageFilter<VectorVolumeF, VolumeF>::New();
+    auto magFilter = itk::VectorMagnitudeImageFilter<VectorVolumeF, VolumeF>::New();
     auto scaleFilter = itk::DivideImageFilter<VolumeF, VolumeF, VolumeF>::New();
     auto sqrtNFilter = itk::MultiplyImageFilter<VolumeF>::New();
-	magFilter->SetInput(img);
+    magFilter->SetInput(img);
     if (scaleImage != ITK_NULLPTR) {
         scaleFilter->SetInput1(magFilter->GetOutput());
         scaleFilter->SetInput2(scaleImage);
@@ -91,12 +91,12 @@ void WriteResiduals(const VectorVolumeF::Pointer img, const string prefix,
     sqrtNFilter->SetConstant(1./sqrt(img->GetNumberOfComponentsPerPixel()));
     sqrtNFilter->Update();
     WriteImage(sqrtNFilter->GetOutput(), prefix + "residual.nii");
-	if (allResids) {
-		auto to4D = QI::VectorToSeriesF::New();
-		to4D->SetInput(img);
-		to4D->Update();
-		WriteImage<SeriesF>(to4D->GetOutput(), prefix + "residuals.nii");
-	}
+    if (allResids) {
+        auto to4D = QI::VectorToSeriesF::New();
+        to4D->SetInput(img);
+        to4D->Update();
+        WriteImage<SeriesF>(to4D->GetOutput(), prefix + "residuals.nii");
+    }
 }
 
 

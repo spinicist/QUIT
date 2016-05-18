@@ -66,14 +66,14 @@ int order_phase = false, order_alternate = false, output = OutEnum::GS, do_2pass
 static size_t nPhases = 4;
 static string prefix;
 const struct option long_options[] = {
-	{"help", no_argument, 0, 'h'},
-	{"verbose", no_argument, 0, 'v'},
-	{"out", required_argument, 0, 'o'},
-	{"mask", required_argument, 0, 'm'},
+    {"help", no_argument, 0, 'h'},
+    {"verbose", no_argument, 0, 'v'},
+    {"out", required_argument, 0, 'o'},
+    {"mask", required_argument, 0, 'm'},
     {"alt_order", no_argument, &order_alternate, true},
     {"ph_order", required_argument, &order_phase, true},
     {"ph_incs", required_argument, 0, 'p'},
-	{"threads", required_argument, 0, 'T'},
+    {"threads", required_argument, 0, 'T'},
     {"magnitude", no_argument, 0, 'M'},
     {"magmean", no_argument, &output, OutEnum::MagMean},
     {"rms", no_argument, &output, OutEnum::RMS},
@@ -82,7 +82,7 @@ const struct option long_options[] = {
     {"gs", no_argument, &output, OutEnum::GS},
     {"regularise", required_argument, 0, 'R'},
     {"secondpass", no_argument, &do_2pass, true},
-	{0, 0, 0, 0}
+    {0, 0, 0, 0}
 };
 const char *short_options = "hvo:m:s:p:T:MR:2";
 
@@ -92,15 +92,15 @@ const char *short_options = "hvo:m:s:p:T:MR:2";
 
 // From Knuth, surprised this isn't in STL
 unsigned long long choose(unsigned long long n, unsigned long long k) {
-	if (k > n)
-		return 0;
+    if (k > n)
+        return 0;
 
-	unsigned long long r = 1;
-	for (unsigned long long d = 1; d <= k; ++d) {
-		r *= n--;
-		r /= d;
-	}
-	return r;
+    unsigned long long r = 1;
+    for (unsigned long long d = 1; d <= k; ++d) {
+        r *= n--;
+        r /= d;
+    }
+    return r;
 }
 
 // Complex equivalent of the dot product
@@ -114,10 +114,10 @@ class GSFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image
 public:
     enum class RegEnum { None = 0, Line, Magnitude };
 protected:
-	size_t m_flips, m_lines, m_crossings, m_phases = 0;
+    size_t m_flips, m_lines, m_crossings, m_phases = 0;
     RegEnum m_Regularise = RegEnum::Line;
 public:
-	/** Standard class typedefs. */
+    /** Standard class typedefs. */
     typedef VectorImage<complex<float>, 3> TIn;
     typedef Image<complex<float>, 3>       TOut;
     typedef Image<float, 3>                TMask;
@@ -125,62 +125,62 @@ public:
     typedef ImageToImageFilter<TIn, TOut>  Superclass;
     typedef SmartPointer<Self>             Pointer;
 
-	itkNewMacro(Self); /** Method for creation through the object factory. */
+    itkNewMacro(Self); /** Method for creation through the object factory. */
     itkTypeMacro(GSFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
     itkSetMacro(Regularise, RegEnum);
     itkGetMacro(Regularise, RegEnum);
 
-	void SetPhases(const size_t p) {
-		if (p < 4)
+    void SetPhases(const size_t p) {
+        if (p < 4)
             QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
-		if ((p % 2) != 0)
+        if ((p % 2) != 0)
             QI_EXCEPTION("Number of phases must be even.");
 
-		m_phases = p;
-		m_lines = m_phases / 2;
-		m_crossings = choose(m_lines, 2);
+        m_phases = p;
+        m_lines = m_phases / 2;
+        m_crossings = choose(m_lines, 2);
         this->Modified();
-	}
+    }
     void SetInput(const TIn *img) override { this->SetNthInput(0, const_cast<TIn*>(img)); }
-	void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
+    void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
     typename TIn::ConstPointer GetInput() const { return static_cast<const TIn *>(this->ProcessObject::GetInput(0)); }
-	typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(1)); }
+    typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(1)); }
 
-	virtual void GenerateOutputInformation() override {
-		Superclass::GenerateOutputInformation();
-		if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
+    virtual void GenerateOutputInformation() override {
+        Superclass::GenerateOutputInformation();
+        if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
             QI_EXCEPTION("Input size and number of phases do not match");
-		}
-		m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
-		auto op = this->GetOutput();
-		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
-		op->SetNumberOfComponentsPerPixel(m_flips);
-		op->Allocate();
-	}
+        }
+        m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
+        auto op = this->GetOutput();
+        op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+        op->SetNumberOfComponentsPerPixel(m_flips);
+        op->Allocate();
+    }
 
 protected:
     GSFilter() {
-		this->SetNumberOfRequiredInputs(1);
-		this->SetNumberOfRequiredOutputs(1);
-		this->SetNthOutput(0, this->MakeOutput(0));
-		this->SetPhases(4);
-	}
+        this->SetNumberOfRequiredInputs(1);
+        this->SetNumberOfRequiredOutputs(1);
+        this->SetNthOutput(0, this->MakeOutput(0));
+        this->SetPhases(4);
+    }
     ~GSFilter() {}
 
     virtual void ThreadedGenerateData(const TIn::RegionType &region, ThreadIdType threadId) override {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ImageRegionConstIterator<TIn> inputIter(this->GetInput(), region);
-		auto m = this->GetMask();
-		ImageRegionConstIterator<TMask> maskIter;
-		if (m) {
-			maskIter = ImageRegionConstIterator<TMask>(m, region);
-		}
+        auto m = this->GetMask();
+        ImageRegionConstIterator<TMask> maskIter;
+        if (m) {
+            maskIter = ImageRegionConstIterator<TMask>(m, region);
+        }
         ImageRegionIterator<TOut> outputIter(this->GetOutput(), region);
 
-		while(!inputIter.IsAtEnd()) {
-			if (!m || maskIter.Get()) {
-				VariableLengthVector<complex<float>> inputVector = inputIter.Get();
+        while(!inputIter.IsAtEnd()) {
+            if (!m || maskIter.Get()) {
+                VariableLengthVector<complex<float>> inputVector = inputIter.Get();
                 Map<const ArrayXcf> allInput(inputVector.GetDataPointer(), m_phases);
                 const ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
                 const ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
@@ -218,87 +218,87 @@ protected:
                     }
                 }
                 outputIter.Set(static_cast<complex<float>>(sum / static_cast<double>(m_crossings)));
-			}
-			++inputIter;
-			if (m)
-				++maskIter;
-			++outputIter;
-		}
-	}
+            }
+            ++inputIter;
+            if (m)
+                ++maskIter;
+            ++outputIter;
+        }
+    }
 
 private:
     GSFilter(const Self &); //purposely not implemented
-	void operator=(const Self &);  //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 };
 
 class MinEnergyFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
 {
 protected:
-	size_t m_flips, m_phases, m_lines = 0;
+    size_t m_flips, m_phases, m_lines = 0;
 
 public:
     typedef VectorImage<complex<float>, 3>     TInputImage;
     typedef Image<complex<float>, 3>           TOutputImage;
-	typedef Image<float, 3>                    TMask;
+    typedef Image<float, 3>                    TMask;
     typedef MinEnergyFilter                   Self;
     typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
-	typedef SmartPointer<Self>                 Pointer;
+    typedef SmartPointer<Self>                 Pointer;
 
-	itkNewMacro(Self);
+    itkNewMacro(Self);
     itkTypeMacro(MinEnergyFilter, ImageToImageFilter);
 
-	void SetPhases(const size_t p) {
-		if (p < 4)
+    void SetPhases(const size_t p) {
+        if (p < 4)
             QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
-		if ((p % 2) != 0)
+        if ((p % 2) != 0)
             QI_EXCEPTION("Number of phases must be even.");
-		m_phases = p;
-		m_lines = m_phases / 2;
+        m_phases = p;
+        m_lines = m_phases / 2;
         this->Modified();
-	}
+    }
     void SetInput(const TInputImage *img) override { this->SetNthInput(0, const_cast<TInputImage*>(img)); }
     void SetPass1(const TOutputImage *img) { this->SetNthInput(1, const_cast<TOutputImage*>(img)); }
-	void SetMask(const TMask *mask) { this->SetNthInput(2, const_cast<TMask*>(mask)); }
+    void SetMask(const TMask *mask) { this->SetNthInput(2, const_cast<TMask*>(mask)); }
     typename TInputImage::ConstPointer GetInput() const { return static_cast<const TInputImage *>(this->ProcessObject::GetInput(0)); }
     typename TOutputImage::ConstPointer GetPass1() const { return static_cast<const TOutputImage *>(this->ProcessObject::GetInput(1)); }
-	typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(2)); }
+    typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(2)); }
 
-	virtual void GenerateOutputInformation() override {
-		Superclass::GenerateOutputInformation();
-		if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
+    virtual void GenerateOutputInformation() override {
+        Superclass::GenerateOutputInformation();
+        if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
             QI_EXCEPTION("Input size and number of phases do not match");
-		}
-		m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
-		auto op = this->GetOutput();
-		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
-		op->SetNumberOfComponentsPerPixel(m_flips);
-		op->Allocate();
-	}
+        }
+        m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
+        auto op = this->GetOutput();
+        op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+        op->SetNumberOfComponentsPerPixel(m_flips);
+        op->Allocate();
+    }
 
 protected:
     MinEnergyFilter() {
-		this->SetNumberOfRequiredInputs(2);
-		this->SetNumberOfRequiredOutputs(1);
-		this->SetNthOutput(0, this->MakeOutput(0));
-		this->SetPhases(4);
-	}
+        this->SetNumberOfRequiredInputs(2);
+        this->SetNumberOfRequiredOutputs(1);
+        this->SetNthOutput(0, this->MakeOutput(0));
+        this->SetPhases(4);
+    }
     ~MinEnergyFilter() {}
 
     virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) override {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ConstNeighborhoodIterator<TInputImage>::RadiusType radius;
-		radius.Fill(1);
+        radius.Fill(1);
         ConstNeighborhoodIterator<TInputImage> inputIter(radius, this->GetInput(), region);
         ConstNeighborhoodIterator<TOutputImage> pass1Iter(radius, this->GetPass1(), region);
 
-		auto m = this->GetMask();
-		ImageRegionConstIterator<TMask> maskIter;
-		if (m) {
-			maskIter = ImageRegionConstIterator<TMask>(m, region);
-		}
+        auto m = this->GetMask();
+        ImageRegionConstIterator<TMask> maskIter;
+        if (m) {
+            maskIter = ImageRegionConstIterator<TMask>(m, region);
+        }
         ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
-		while(!inputIter.IsAtEnd()) {
-			if (!m || maskIter.Get()) {
+        while(!inputIter.IsAtEnd()) {
+            if (!m || maskIter.Get()) {
 
                 complex<double> output = 0.;
                 VariableLengthVector<complex<float>> inputVector = inputIter.GetCenterPixel();
@@ -323,19 +323,19 @@ protected:
                     }
                 }
                 outputIter.Set(static_cast<complex<float>>(output / static_cast<double>(m_lines)));
-			}
-			++inputIter;
-			++pass1Iter;
-			if (m)
-				++maskIter;
-			++outputIter;
-		}
-		//std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
-	}
+            }
+            ++inputIter;
+            ++pass1Iter;
+            if (m)
+                ++maskIter;
+            ++outputIter;
+        }
+        //std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+    }
 
 private:
     MinEnergyFilter(const Self &); //purposely not implemented
-	void operator=(const Self &);  //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 };
 
 } // End namespace itk
@@ -404,24 +404,24 @@ public:
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	Eigen::initParallel();
+    Eigen::initParallel();
 
     QI::VolumeF::Pointer mask = ITK_NULLPTR;
     auto gs = itk::GSFilter::New();
-	int indexptr = 0, c;
-	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-		switch (c) {
-			case 'v': verbose = true; break;
+    int indexptr = 0, c;
+    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+        switch (c) {
+            case 'v': verbose = true; break;
             case 'm':
                 if (verbose) cout << "Reading mask file " << optarg << endl;
                 mask = QI::ReadImage(optarg);
                 break;
-			case 'o':
-				prefix = optarg;
-				if (verbose) cout << "Output prefix will be: " << prefix << endl;
-				break;
+            case 'o':
+                prefix = optarg;
+                if (verbose) cout << "Output prefix will be: " << prefix << endl;
+                break;
             case 'F': order_phase = true; break;
-			case 'p': nPhases = atoi(optarg); break;
+            case 'p': nPhases = atoi(optarg); break;
             case 'a': order_alternate = true; break;
             case 'M': output_magnitude = true; break;
             case 'R':
@@ -432,30 +432,30 @@ int main(int argc, char **argv) {
                     default:
                         cerr << "Unknown regularisation strategy: " << *optarg << endl;
                         return EXIT_FAILURE;
-				}
-				break;
+                }
+                break;
             case '2': do_2pass = true; break;
-			case 'T':
-				itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
-				break;
-			case 'h':
-				cout << QI::GetVersion() << endl << usage << endl;
-				return EXIT_SUCCESS;
+            case 'T':
+                itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
+                break;
+            case 'h':
+                cout << QI::GetVersion() << endl << usage << endl;
+                return EXIT_SUCCESS;
             case 0:   // getopt set a flag from the long_opts
                 break;
-			case '?': // getopt will print an error message
-				return EXIT_FAILURE;
-			default:
-				cout << "Unhandled option " << string(1, c) << endl;
-				return EXIT_FAILURE;
-		}
-	}
-	if ((argc - optind) != 1) {
-		cout << "Incorrect number of arguments." << endl << QI::GetVersion() << endl << usage << endl;
-		return EXIT_FAILURE;
-	}
-	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-	string fname(argv[optind++]);
+            case '?': // getopt will print an error message
+                return EXIT_FAILURE;
+            default:
+                cout << "Unhandled option " << string(1, c) << endl;
+                return EXIT_FAILURE;
+        }
+    }
+    if ((argc - optind) != 1) {
+        cout << "Incorrect number of arguments." << endl << QI::GetVersion() << endl << usage << endl;
+        return EXIT_FAILURE;
+    }
+    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
+    string fname(argv[optind++]);
 
     auto inFile = itk::ImageFileReader<QI::SeriesXF>::New();
     auto reorderVolumes = QI::ReorderSeriesXF::New();
@@ -557,5 +557,5 @@ int main(int argc, char **argv) {
         QI::WriteImage<QI::SeriesXF>(output, outname);
     }
     if (verbose) cout << "Finished." << endl;
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }

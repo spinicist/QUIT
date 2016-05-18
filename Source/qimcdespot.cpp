@@ -277,18 +277,18 @@ class SRCAlgo : public MCDAlgo {
 
         size_t numConsts() const override  { return 2; }
         virtual TArray defaultConsts() override {
-			// f0, B1
-			TArray def = TArray::Ones(2);
+            // f0, B1
+            TArray def = TArray::Ones(2);
             def[0] = NAN;
-			return def;
-		}
+            return def;
+        }
 
-		virtual void apply(const TInput &data, const TArray &inputs,
+        virtual void apply(const TInput &data, const TArray &inputs,
                            TArray &outputs, TArray &resids, TIterations &its) const override
-		{
-			ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
-			double f0 = inputs[0];
-			double B1 = inputs[1];
+        {
+            ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
+            double f0 = inputs[0];
+            double B1 = inputs[1];
             ArrayXXd localBounds = m_bounds;
             ArrayXd weights = ArrayXd::Ones(m_sequence->size());
             if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
@@ -303,28 +303,28 @@ class SRCAlgo : public MCDAlgo {
             //outputs(0) = static_cast<int>(rc.status());
             resids = func.residuals(outputs);
             its = rc.contractions();
-		}
+        }
 };
 
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	Eigen::initParallel();
+    Eigen::initParallel();
 
-	auto tesla = QI::FieldStrength::Three;
-	int start_slice = 0, stop_slice = 0;
+    auto tesla = QI::FieldStrength::Three;
+    int start_slice = 0, stop_slice = 0;
     int max_its = 4, num_threads = 4;
-	int verbose = false, prompt = true, all_residuals = false, flipData = false;
+    int verbose = false, prompt = true, all_residuals = false, flipData = false;
     string outPrefix;
     enum class Algos { SRC, GRC, BFGS };
     Algos which_algo = Algos::GRC;
 
-	QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
-	shared_ptr<QI::Model> model = make_shared<QI::MCD3>();
-	typedef itk::VectorImage<float, 2> VectorSliceF;
+    QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
+    shared_ptr<QI::Model> model = make_shared<QI::MCD3>();
+    typedef itk::VectorImage<float, 2> VectorSliceF;
     typedef itk::ApplyAlgorithmFilter<MCDAlgo> TMCDFilter;
-	auto apply = TMCDFilter::New();
+    auto apply = TMCDFilter::New();
     const string usage {
 "Usage is: qimcdespot [options]\n\
 \n\
@@ -359,36 +359,36 @@ Options:\n\
                 u     : User specified boundaries from stdin\n\
     --resids, -r      : Write out per flip-angle residuals\n\
     --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
-	};
+    };
 
-	const struct option long_options[] = {
-		{"help", no_argument, 0, 'h'},
-		{"verbose", no_argument, 0, 'v'},
-		{"mask", required_argument, 0, 'm'},
-		{"out", required_argument, 0, 'o'},
-		{"f0", required_argument, 0, 'f'},
-		{"B1", required_argument, 0, 'b'},
-		{"start", required_argument, 0, 's'},
-		{"stop", required_argument, 0, 'p'},
+    const struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"verbose", no_argument, 0, 'v'},
+        {"mask", required_argument, 0, 'm'},
+        {"out", required_argument, 0, 'o'},
+        {"f0", required_argument, 0, 'f'},
+        {"B1", required_argument, 0, 'b'},
+        {"start", required_argument, 0, 's'},
+        {"stop", required_argument, 0, 'p'},
         {"scale", no_argument, 0, 'S'},
         {"algo", required_argument, 0, 'a'},
         {"iterations", required_argument, 0, 'i'},
         {"flip", no_argument, 0, 'F'},
-		{"tesla", required_argument, 0, 't'},
-		{"resids", no_argument, 0, 'r'},
-		{"threads", required_argument, 0, 'T'},
-		{"no-prompt", no_argument, 0, 'n'},
+        {"tesla", required_argument, 0, 't'},
+        {"resids", no_argument, 0, 'r'},
+        {"threads", required_argument, 0, 'T'},
+        {"no-prompt", no_argument, 0, 'n'},
         {"model", required_argument, 0, 'M'},
-		{0, 0, 0, 0}
-	};
+        {0, 0, 0, 0}
+    };
     const char* short_options = "hvm:o:f:b:s:p:Sa:t:FT:rnM:i:j:";
 
-	// Deal with these options in first pass to ensure the correct model is selected
-	int indexptr = 0, c;
-	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-		switch (c) {
-			case 'v': verbose = true; break;
-			case 'n': prompt = false; break;
+    // Deal with these options in first pass to ensure the correct model is selected
+    int indexptr = 0, c;
+    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+        switch (c) {
+            case 'v': verbose = true; break;
+            case 'n': prompt = false; break;
             case 'M': {
                 string choose_model(optarg);
                 if (choose_model == "1") { model = make_shared<QI::SCD>(); }
@@ -398,33 +398,33 @@ Options:\n\
                 else if (choose_model == "3_f0") { model = make_shared<QI::MCD3_f0>(); }
                 else if (choose_model == "3nex") { model = make_shared<QI::MCD3_NoEx>(); }
             } break;
-			default:
-				break;
-		}
-	}
-	// Now reset and do a second pass
-	optind = 1;
-	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-		switch (c) {
+            default:
+                break;
+        }
+    }
+    // Now reset and do a second pass
+    optind = 1;
+    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+        switch (c) {
             case 'v': case 'n': case 'M': break; // Already handled
-			case 'm':
-				if (verbose) cout << "Reading mask file " << optarg << endl;
-				mask = QI::ReadImage(optarg);
-				break;
-			case 'o':
-				outPrefix = optarg;
-				if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
-				break;
-			case 'f':
-				if (verbose) cout << "Reading f0 file: " << optarg << endl;
-				f0 = QI::ReadImage(optarg);
-				break;
-			case 'b':
-				if (verbose) cout << "Reading B1 file: " << optarg << endl;
-				B1 = QI::ReadImage(optarg);
-				break;
-			case 's': start_slice = atoi(optarg); break;
-			case 'p': stop_slice = atoi(optarg); break;
+            case 'm':
+                if (verbose) cout << "Reading mask file " << optarg << endl;
+                mask = QI::ReadImage(optarg);
+                break;
+            case 'o':
+                outPrefix = optarg;
+                if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
+                break;
+            case 'f':
+                if (verbose) cout << "Reading f0 file: " << optarg << endl;
+                f0 = QI::ReadImage(optarg);
+                break;
+            case 'b':
+                if (verbose) cout << "Reading B1 file: " << optarg << endl;
+                B1 = QI::ReadImage(optarg);
+                break;
+            case 's': start_slice = atoi(optarg); break;
+            case 'p': stop_slice = atoi(optarg); break;
             case 'S':
                 if (verbose) cout << "Mean scaling selected." << endl;
                 model->setScaleToMean(true);
@@ -441,46 +441,46 @@ Options:\n\
                     break;
                 } break;
             case 'F': flipData = true; if (verbose) cout << "Data order is phase, then flip-angle" << endl; break;
-			case 'T': 
+            case 'T': 
                 num_threads = stoi(optarg);
                 if (num_threads == 0)
                     num_threads = std::thread::hardware_concurrency();
                 break;
-			case 't':
-				switch (*optarg) {
-					case '3': tesla = QI::FieldStrength::Three; break;
-					case '7': tesla = QI::FieldStrength::Seven; break;
-					case 'u': tesla = QI::FieldStrength::User; break;
-					default:
-						cerr << "Unknown boundaries type " << *optarg << endl;
-						return EXIT_FAILURE;
-						break;
+            case 't':
+                switch (*optarg) {
+                    case '3': tesla = QI::FieldStrength::Three; break;
+                    case '7': tesla = QI::FieldStrength::Seven; break;
+                    case 'u': tesla = QI::FieldStrength::User; break;
+                    default:
+                        cerr << "Unknown boundaries type " << *optarg << endl;
+                        return EXIT_FAILURE;
+                        break;
                 } break;
             case 'i': max_its = atoi(optarg); break;
-			case 'r': all_residuals = true; break;
-			case 'h':
-				cout << QI::GetVersion() << endl << usage << endl;
-				return EXIT_SUCCESS;
-			case '?': // getopt will print an error message
-				return EXIT_FAILURE;
-			case 0: break; // Just a flag
-			default:
-				cout << "Unhandled option " << string(1, c) << endl;
-				return EXIT_FAILURE;
-		}
-	}
+            case 'r': all_residuals = true; break;
+            case 'h':
+                cout << QI::GetVersion() << endl << usage << endl;
+                return EXIT_SUCCESS;
+            case '?': // getopt will print an error message
+                return EXIT_FAILURE;
+            case 0: break; // Just a flag
+            default:
+                cout << "Unhandled option " << string(1, c) << endl;
+                return EXIT_FAILURE;
+        }
+    }
     if ((argc - optind) != 0) {
-		cerr << usage << endl << "Incorrect number of arguments." << endl;
-		return EXIT_FAILURE;
-	} else if (prompt) {
-		cout << "Starting qimcdespot" << endl;
-		cout << "Run with -h switch to see usage" << endl;
-	}
+        cerr << usage << endl << "Incorrect number of arguments." << endl;
+        return EXIT_FAILURE;
+    } else if (prompt) {
+        cout << "Starting qimcdespot" << endl;
+        cout << "Run with -h switch to see usage" << endl;
+    }
     Array2d f0Bandwidth;
 
-	shared_ptr<QI::SequenceGroup> sequences = make_shared<QI::SequenceGroup>();
-	// Build a Functor here so we can query number of parameters etc.
-	if (verbose) cout << "Using " << model->Name() << " model." << endl;
+    shared_ptr<QI::SequenceGroup> sequences = make_shared<QI::SequenceGroup>();
+    // Build a Functor here so we can query number of parameters etc.
+    if (verbose) cout << "Using " << model->Name() << " model." << endl;
     vector<QI::VectorVolumeF::Pointer> images;
     parseInput(sequences, images, flipData, verbose, prompt);
 
@@ -521,23 +521,23 @@ Options:\n\
     } break;
     }
     apply->SetVerbose(verbose);
-	apply->SetSlices(start_slice, stop_slice);
+    apply->SetSlices(start_slice, stop_slice);
     apply->SetPoolsize(num_threads);
     for (int i = 0; i < images.size(); i++) {
         apply->SetInput(i, images[i]);
     }
-	if (f0) {
-		f0->Update();
-		apply->SetConst(0, f0);
-	}
-	if (B1) {
-		B1->Update();
-		apply->SetConst(1, B1);
-	}
-	if (mask) {
-		mask->Update();
-		apply->SetMask(mask);
-	}
+    if (f0) {
+        f0->Update();
+        apply->SetConst(0, f0);
+    }
+    if (B1) {
+        B1->Update();
+        apply->SetConst(1, B1);
+    }
+    if (mask) {
+        mask->Update();
+        apply->SetMask(mask);
+    }
 
     // Need this here so the bounds.txt file will have the correct prefix
     outPrefix = outPrefix + model->Name() + "_";
@@ -568,11 +568,11 @@ Options:\n\
         cout << "Mean time per voxel was " << apply->GetMeanTime() << "s " << endl;
         cout << "Writing results files." << endl;
     }
-	for (int i = 0; i < model->nParameters(); i++) {
+    for (int i = 0; i < model->nParameters(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
-	}
-	QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
+    }
+    QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
     QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 

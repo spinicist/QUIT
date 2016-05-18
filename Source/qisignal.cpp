@@ -47,76 +47,76 @@ typedef itk::VectorImage<complex<float>, 3> TCVImage;
 
 class SignalsFilter : public itk::ImageToImageFilter<TImage, TCVImage> {
 protected:
-	shared_ptr<SequenceBase> m_sequence;
-	shared_ptr<Model> m_model;
+    shared_ptr<SequenceBase> m_sequence;
+    shared_ptr<Model> m_model;
     double m_sigma = 0.0;
     itk::TimeProbe m_clock;
     itk::RealTimeClock::TimeStampType m_meanTime = 0.0, m_totalTime = 0.0;
     itk::SizeValueType m_evaluations = 0;
 
 public:
-	/** Standard class typedefs. */
-	typedef SignalsFilter                        Self;
-	typedef ImageToImageFilter<TImage, TCVImage> Superclass;
+    /** Standard class typedefs. */
+    typedef SignalsFilter                        Self;
+    typedef ImageToImageFilter<TImage, TCVImage> Superclass;
     typedef itk::SmartPointer<Self>              Pointer;
-	typedef typename TImage::RegionType          TRegion;
+    typedef typename TImage::RegionType          TRegion;
 
-	itkNewMacro(Self); /** Method for creation through the object factory. */
-	itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
+    itkNewMacro(Self); /** Method for creation through the object factory. */
+    itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
-	void SetInput(const size_t i, const TImage *img) {
-		if (i < m_model->nParameters()) {
-			this->SetNthInput(i, const_cast<TImage*>(img));
-		} else {
+    void SetInput(const size_t i, const TImage *img) {
+        if (i < m_model->nParameters()) {
+            this->SetNthInput(i, const_cast<TImage*>(img));
+        } else {
             QI_EXCEPTION("Const input " << i << " out of range");
-		}
-	}
-	void SetMask(const TImage *mask) {
-		this->SetNthInput(m_model->nParameters(), const_cast<TImage*>(mask));
-	}
+        }
+    }
+    void SetMask(const TImage *mask) {
+        this->SetNthInput(m_model->nParameters(), const_cast<TImage*>(mask));
+    }
     
-	typename TImage::ConstPointer GetInput(const size_t i) const {
-		if (i < m_model->nParameters()) {
-			return static_cast<const TImage *> (this->ProcessObject::GetInput(i));
-		} else {
+    typename TImage::ConstPointer GetInput(const size_t i) const {
+        if (i < m_model->nParameters()) {
+            return static_cast<const TImage *> (this->ProcessObject::GetInput(i));
+        } else {
             QI_EXCEPTION("Get Data Input " << i << " out of range.");
-		}
-	}
+        }
+    }
 
-	typename TImage::ConstPointer GetMask() const {
-		return static_cast<const TImage *>(this->ProcessObject::GetInput(m_model->nParameters()));
-	}
+    typename TImage::ConstPointer GetMask() const {
+        return static_cast<const TImage *>(this->ProcessObject::GetInput(m_model->nParameters()));
+    }
 
-	TCVImage *GetOutput() {
-		return dynamic_cast<TCVImage *>(this->ProcessObject::GetOutput(0));
-	}
+    TCVImage *GetOutput() {
+        return dynamic_cast<TCVImage *>(this->ProcessObject::GetOutput(0));
+    }
 
-	void SetSequence(shared_ptr<SequenceBase> s) {
-		m_sequence = s;
-		this->SetNumberOfRequiredOutputs(1);
-		this->SetNthOutput(0, this->MakeOutput(0));
-	}
-	void SetModel(shared_ptr<Model> m) {
-		m_model = m;
+    void SetSequence(shared_ptr<SequenceBase> s) {
+        m_sequence = s;
+        this->SetNumberOfRequiredOutputs(1);
+        this->SetNthOutput(0, this->MakeOutput(0));
+    }
+    void SetModel(shared_ptr<Model> m) {
+        m_model = m;
         this->SetNumberOfRequiredInputs(1);
-	}
-	void SetSigma(const double s) { m_sigma = s; }
+    }
+    void SetSigma(const double s) { m_sigma = s; }
 
     itk::RealTimeClock::TimeStampType GetTotalTime() const { return m_totalTime; }
     itk::RealTimeClock::TimeStampType GetMeanTime() const { return m_meanTime; }
     itk::SizeValueType GetEvaluations() const { return m_evaluations; }
 
-	virtual void GenerateOutputInformation() override {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		Superclass::GenerateOutputInformation();
-		const auto op = this->GetOutput();
-		op->SetRegions(this->GetInput(0)->GetLargestPossibleRegion());
-		op->SetNumberOfComponentsPerPixel(m_sequence->size());
-	}
+    virtual void GenerateOutputInformation() override {
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        Superclass::GenerateOutputInformation();
+        const auto op = this->GetOutput();
+        op->SetRegions(this->GetInput(0)->GetLargestPossibleRegion());
+        op->SetNumberOfComponentsPerPixel(m_sequence->size());
+    }
 
 protected:
-	SignalsFilter() {}
-	~SignalsFilter(){}
+    SignalsFilter() {}
+    ~SignalsFilter(){}
 
     virtual void ThreadedGenerateData(const OutputImageRegionType &region, itk::ThreadIdType threadId) override {
         vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
@@ -125,7 +125,7 @@ protected:
                 inIters[i] = itk::ImageRegionConstIterator<TImage>(this->GetInput(i), region);
         }
         typename TImage::ConstPointer mask = this->GetMask();
-		itk::ImageRegionConstIterator<TImage> maskIter;
+        itk::ImageRegionConstIterator<TImage> maskIter;
         if (mask) {
             maskIter = itk::ImageRegionConstIterator<TImage>(mask, region);
         }
@@ -134,7 +134,7 @@ protected:
         if (threadId == 0)
             m_clock.Reset();
         while(!outputIter.IsAtEnd()) {
-			if (!mask || maskIter.Get()) {
+            if (!mask || maskIter.Get()) {
                 if (threadId == 0) {
                     m_clock.Start();
                 }
@@ -160,38 +160,38 @@ protected:
                     m_clock.Stop();
                 }
             }
-			if (mask)
-				++maskIter;
-			for (size_t i = 0; i < m_model->nParameters(); i++) {
+            if (mask)
+                ++maskIter;
+            for (size_t i = 0; i < m_model->nParameters(); i++) {
                 if (this->GetInput(i))
                     ++inIters[i];
-			}
-			++outputIter;
-		}
+            }
+            ++outputIter;
+        }
         if (threadId == 0) {
             m_evaluations = m_clock.GetNumberOfStops();
             m_meanTime = m_clock.GetMean();
             m_totalTime = m_clock.GetTotal();
         }
-	}
+    }
 
-	itk::DataObject::Pointer MakeOutput(unsigned int idx) {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		itk::DataObject::Pointer output;
-		if (idx < 1) {
-			auto img = TCVImage::New();
-			img->SetNumberOfComponentsPerPixel(m_sequence->size());
-			output = img;
-		} else {
-			std::cerr << "No output " << idx << std::endl;
-			output = NULL;
-		}
-		return output.GetPointer();
-	}
+    itk::DataObject::Pointer MakeOutput(unsigned int idx) {
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        itk::DataObject::Pointer output;
+        if (idx < 1) {
+            auto img = TCVImage::New();
+            img->SetNumberOfComponentsPerPixel(m_sequence->size());
+            output = img;
+        } else {
+            std::cerr << "No output " << idx << std::endl;
+            output = NULL;
+        }
+        return output.GetPointer();
+    }
 
 private:
-	SignalsFilter(const Self &); //purposely not implemented
-	void operator=(const Self &);  //purposely not implemented
+    SignalsFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 };
 
 //******************************************************************************
@@ -224,21 +224,21 @@ bool verbose = false, prompt = true, outputComplex = false;
 string outPrefix = "";
 size_t num_threads = 4;
 const struct option long_opts[] = {
-	{"help", no_argument, 0, 'h'},
-	{"verbose", no_argument, 0, 'v'},
-	{"mask", required_argument, 0, 'm'},
-	{"out", required_argument, 0, 'o'},
-	{"no-prompt", no_argument, 0, 'n'},
-	{"noise", required_argument, 0, 'N'},
+    {"help", no_argument, 0, 'h'},
+    {"verbose", no_argument, 0, 'v'},
+    {"mask", required_argument, 0, 'm'},
+    {"out", required_argument, 0, 'o'},
+    {"no-prompt", no_argument, 0, 'n'},
+    {"noise", required_argument, 0, 'N'},
     {"seed", required_argument, 0, 'S'},
-	{"1", no_argument, 0, '1'},
-	{"2", no_argument, 0, '2'},
-	{"3", no_argument, 0, '3'},
+    {"1", no_argument, 0, '1'},
+    {"2", no_argument, 0, '2'},
+    {"3", no_argument, 0, '3'},
     {"ref", required_argument, 0, 'r'},
     {"clamp", required_argument, 0, 'c'},
-	{"complex", no_argument, 0, 'x'},
-	{"threads", required_argument, 0, 'T'},
-	{0, 0, 0, 0}
+    {"complex", no_argument, 0, 'x'},
+    {"threads", required_argument, 0, 'T'},
+    {0, 0, 0, 0}
 };
 static const char *short_opts = "hvnN:S:m:o:123r:c:xT:";
 //******************************************************************************
@@ -253,62 +253,62 @@ void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
         if (prompt) cout << "Enter sequence type: " << flush;
         Read(cin, type);
         if (type == "SPGR") {
-			cs.push_back(make_shared<SPGRSimple>(prompt));
-		} else if (type == "SPGR_ECHO") {
-			cs.push_back(make_shared<SPGREcho>(prompt));
-		} else if (type == "SPGR_FINITE") {
-			cs.push_back(make_shared<SPGRFinite>(prompt));
-		} else if (type == "SSFP") {
-			cs.push_back(make_shared<SSFPSimple>(prompt));
+            cs.push_back(make_shared<SPGRSimple>(prompt));
+        } else if (type == "SPGR_ECHO") {
+            cs.push_back(make_shared<SPGREcho>(prompt));
+        } else if (type == "SPGR_FINITE") {
+            cs.push_back(make_shared<SPGRFinite>(prompt));
+        } else if (type == "SSFP") {
+            cs.push_back(make_shared<SSFPSimple>(prompt));
         } else if (type == "SSFP_ECHO") {
             cs.push_back(make_shared<SSFPEcho>(prompt));
         } else if (type == "SSFP_ECHO_FLEX") {
             cs.push_back(make_shared<SSFPEchoFlex>(prompt));
         } else if (type == "SSFP_FINITE") {
-			cs.push_back(make_shared<SSFPFinite>(prompt));
-		} else if (type == "SSFP_GS") {
-			cs.push_back(make_shared<SSFP_GS>(prompt));
-		} else if (type == "IRSPGR") {
-			cs.push_back(make_shared<IRSPGR>(prompt));
-		} else if (type == "MPRAGE") {
-			cs.push_back(make_shared<MPRAGE>(prompt));
-		} else if (type == "AFI") {
-			cs.push_back(make_shared<AFI>(prompt));
-		} else if (type == "SPINECHO") {
-			cs.push_back(make_shared<MultiEcho>(prompt));
-		} else {
+            cs.push_back(make_shared<SSFPFinite>(prompt));
+        } else if (type == "SSFP_GS") {
+            cs.push_back(make_shared<SSFP_GS>(prompt));
+        } else if (type == "IRSPGR") {
+            cs.push_back(make_shared<IRSPGR>(prompt));
+        } else if (type == "MPRAGE") {
+            cs.push_back(make_shared<MPRAGE>(prompt));
+        } else if (type == "AFI") {
+            cs.push_back(make_shared<AFI>(prompt));
+        } else if (type == "SPINECHO") {
+            cs.push_back(make_shared<MultiEcho>(prompt));
+        } else {
             QI_EXCEPTION("Unknown sequence type: " << type);
-		}
+        }
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;
-	}
+    }
 }
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv)
 {
-	Eigen::initParallel();
-	QI::VolumeF::Pointer mask = ITK_NULLPTR, reference = ITK_NULLPTR;
+    Eigen::initParallel();
+    QI::VolumeF::Pointer mask = ITK_NULLPTR, reference = ITK_NULLPTR;
     int indexptr = 0, c;
     double sigma = 0., clamp = numeric_limits<double>::infinity();
     int seed = -1;
-	while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
-		switch (c) {
-			case 'v': verbose = true; break;
-			case 'n': prompt = false; break;
+    while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
+        switch (c) {
+            case 'v': verbose = true; break;
+            case 'n': prompt = false; break;
             case 'N': sigma = stod(optarg); break;
             case 'S': seed = stoi(optarg); break;
             case 'm':
                 cout << "Reading mask file " << optarg << endl;
                 mask = QI::ReadImage(optarg);
                 break;
-			case 'o':
-				outPrefix = optarg;
-				cout << "Output prefix will be: " << outPrefix << endl;
-				break;
-			case '1': model = make_shared<SCD>(); break;
-			case '2': model = make_shared<MCD2>(); break;
-			case '3': model = make_shared<MCD3>(); break;
+            case 'o':
+                outPrefix = optarg;
+                cout << "Output prefix will be: " << outPrefix << endl;
+                break;
+            case '1': model = make_shared<SCD>(); break;
+            case '2': model = make_shared<MCD2>(); break;
+            case '3': model = make_shared<MCD3>(); break;
             case 'r':
                 if (verbose) cout << "Reading reference file: " << optarg << endl;
                 reference = QI::ReadImage(optarg);
@@ -317,31 +317,31 @@ int main(int argc, char **argv)
                 clamp = stod(optarg);
                 if (verbose) cout << "Output magnitude will be clamped at " << clamp << endl;
                 break;
-			case 'x': outputComplex = true; break;
-			case 'T':
+            case 'x': outputComplex = true; break;
+            case 'T':
                 num_threads = stoi(optarg);
                 if (num_threads == 0)
                     num_threads = std::thread::hardware_concurrency();
                 break;
                 if (verbose) cout << "Using " << num_threads << " threads" << endl;
-			case 'h':
-				cout << QI::GetVersion() << endl << usage << endl;
-				return EXIT_SUCCESS;
-			case '?': // getopt will print an error message
-				return EXIT_FAILURE;
-			default:
-				cout << "Unhandled option " << string(1, c) << endl;
-				return EXIT_FAILURE;
-		}
-	}
-	if ((argc - optind) != 0) {
-		cerr << usage << endl << "Incorrect number of arguments." << endl;
-		return EXIT_FAILURE;
-	}  else if (prompt) {
-		cout << "Starting qisignal" << endl;
-		cout << "Run with -h switch to see usage" << endl;
-	}
-	if (verbose) cout << "Using " << model->Name() << " model." << endl;
+            case 'h':
+                cout << QI::GetVersion() << endl << usage << endl;
+                return EXIT_SUCCESS;
+            case '?': // getopt will print an error message
+                return EXIT_FAILURE;
+            default:
+                cout << "Unhandled option " << string(1, c) << endl;
+                return EXIT_FAILURE;
+        }
+    }
+    if ((argc - optind) != 0) {
+        cerr << usage << endl << "Incorrect number of arguments." << endl;
+        return EXIT_FAILURE;
+    }  else if (prompt) {
+        cout << "Starting qisignal" << endl;
+        cout << "Run with -h switch to see usage" << endl;
+    }
+    if (verbose) cout << "Using " << model->Name() << " model." << endl;
 
     if (seed == -1) {
         std::srand((unsigned int) time(0));
@@ -349,23 +349,23 @@ int main(int argc, char **argv)
         std::srand(seed);
     }
 
-	/***************************************************************************
-	 * Read in parameter files
-	 **************************************************************************/
-	SignalsFilter::Pointer calcSignal = SignalsFilter::New();
-	calcSignal->SetModel(model);
-	calcSignal->SetSigma(sigma);
+    /***************************************************************************
+     * Read in parameter files
+     **************************************************************************/
+    SignalsFilter::Pointer calcSignal = SignalsFilter::New();
+    calcSignal->SetModel(model);
+    calcSignal->SetSigma(sigma);
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(num_threads);
     calcSignal->SetMask(mask);
     if (verbose) {
         auto monitor = QI::GenericMonitor::New();
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
-	if (prompt) cout << "Loading parameters." << endl;
-	for (size_t i = 0; i < model->nParameters(); i++) {
+    if (prompt) cout << "Loading parameters." << endl;
+    for (size_t i = 0; i < model->nParameters(); i++) {
         if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << flush;
-		string filename;
-		getline(cin, filename);
+        string filename;
+        getline(cin, filename);
         if (filename != "") {
             if (verbose) cout << "Opening " << filename << endl;
             QI::VolumeF::Pointer param = QI::ReadImage(filename);
@@ -390,31 +390,31 @@ int main(int argc, char **argv)
         } else {
             if (verbose) cout << "Using default value: " << model->Default()[i] << endl;
         }
-	}
+    }
 
-	/***************************************************************************
-	 * Set up sequences
-	 **************************************************************************/
-	vector<shared_ptr<SequenceBase>> sequences;
-	vector<string> filenames;
+    /***************************************************************************
+     * Set up sequences
+     **************************************************************************/
+    vector<shared_ptr<SequenceBase>> sequences;
+    vector<string> filenames;
     ParseInput(sequences, filenames);
     
     typedef itk::ClampImageFilter<QI::SeriesF, QI::SeriesF> TClamp;
     TClamp::Pointer clamp_filter = TClamp::New();
     clamp_filter->SetBounds(0, clamp);
-	for (size_t i = 0; i < sequences.size(); i++) {
+    for (size_t i = 0; i < sequences.size(); i++) {
         if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
-		calcSignal->SetSequence(sequences[i]);
+        calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         if (verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
         if (verbose) cout << "Converting to timeseries" << endl;
         QI::VectorToSeriesXF::Pointer vecTo4D = QI::VectorToSeriesXF::New();
         vecTo4D->SetInput(calcSignal->GetOutput());
         if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
-		if (outputComplex) {
-			QI::WriteImage<SeriesXF>(vecTo4D->GetOutput(), filenames[i]);
-		} else {
-			auto abs = itk::ComplexToModulusImageFilter<QI::SeriesXF, QI::SeriesF>::New();
+        if (outputComplex) {
+            QI::WriteImage<SeriesXF>(vecTo4D->GetOutput(), filenames[i]);
+        } else {
+            auto abs = itk::ComplexToModulusImageFilter<QI::SeriesXF, QI::SeriesF>::New();
             abs->SetInput(vecTo4D->GetOutput());
             if (isfinite(clamp)) {
                 clamp_filter->SetInput(abs->GetOutput());
@@ -422,9 +422,9 @@ int main(int argc, char **argv)
             } else {
                 QI::WriteImage<SeriesF>(abs->GetOutput(),filenames[i]);
             }
-		}
-	}
-	if (verbose) cout << "Finished all sequences." << endl;
-	return EXIT_SUCCESS;
+        }
+    }
+    if (verbose) cout << "Finished all sequences." << endl;
+    return EXIT_SUCCESS;
 }
 

@@ -45,65 +45,65 @@ class DiscreteLaplacePhaseFilter : public ImageToImageFilter<QI::VolumeF, QI::Vo
 protected:
 
 public:
-	/** Standard class typedefs. */
+    /** Standard class typedefs. */
     typedef QI::VolumeF     TImage;
 
-	typedef DiscreteLaplacePhaseFilter         Self;
-	typedef ImageToImageFilter<TImage, TImage> Superclass;
-	typedef SmartPointer<Self>                 Pointer;
-	typedef typename TImage::RegionType        RegionType;
+    typedef DiscreteLaplacePhaseFilter         Self;
+    typedef ImageToImageFilter<TImage, TImage> Superclass;
+    typedef SmartPointer<Self>                 Pointer;
+    typedef typename TImage::RegionType        RegionType;
 
-	itkNewMacro(Self);
-	itkTypeMacro(DiscreteLaplacePhaseFilter, DiscreteLaplacePhaseFilter);
+    itkNewMacro(Self);
+    itkTypeMacro(DiscreteLaplacePhaseFilter, DiscreteLaplacePhaseFilter);
 
     void SetInput(const TImage *img) override      { this->SetNthInput(0, const_cast<TImage*>(img)); }
-	typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
+    typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
 
-	virtual void GenerateOutputInformation() override {
-		Superclass::GenerateOutputInformation();
-		auto op = this->GetOutput();
-		op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
-		op->Allocate();
-	}
+    virtual void GenerateOutputInformation() override {
+        Superclass::GenerateOutputInformation();
+        auto op = this->GetOutput();
+        op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
+        op->Allocate();
+    }
 
 protected:
-	DiscreteLaplacePhaseFilter() {
-		this->SetNumberOfRequiredInputs(1);
-		this->SetNumberOfRequiredOutputs(1);
-		this->SetNthOutput(0, this->MakeOutput(0));
-	}
-	~DiscreteLaplacePhaseFilter() {}
+    DiscreteLaplacePhaseFilter() {
+        this->SetNumberOfRequiredInputs(1);
+        this->SetNumberOfRequiredOutputs(1);
+        this->SetNthOutput(0, this->MakeOutput(0));
+    }
+    ~DiscreteLaplacePhaseFilter() {}
 
-	DataObject::Pointer MakeOutput(unsigned int idx) {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		if (idx == 0) {
-			DataObject::Pointer output = (TImage::New()).GetPointer();
-			return output.GetPointer();
-		} else {
-			std::cerr << "No output " << idx << std::endl;
-			return NULL;
-		}
-	}
+    DataObject::Pointer MakeOutput(unsigned int idx) {
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        if (idx == 0) {
+            DataObject::Pointer output = (TImage::New()).GetPointer();
+            return output.GetPointer();
+        } else {
+            std::cerr << "No output " << idx << std::endl;
+            return NULL;
+        }
+    }
 
     virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
-		//std::cout <<  __PRETTY_FUNCTION__ << endl;
-		ConstNeighborhoodIterator<TImage>::RadiusType radius;
-		radius.Fill(1);
-		ConstNeighborhoodIterator<TImage> inputIter(radius, this->GetInput(), region);
-		ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
+        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        ConstNeighborhoodIterator<TImage>::RadiusType radius;
+        radius.Fill(1);
+        ConstNeighborhoodIterator<TImage> inputIter(radius, this->GetInput(), region);
+        ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
 
-		vector<ConstNeighborhoodIterator<TImage>::OffsetType> back, fwrd;
-		back.push_back({{-1, 0, 0}});
-		fwrd.push_back({{ 1, 0, 0}});
-		back.push_back({{ 0,-1, 0}});
-		fwrd.push_back({{ 0, 1, 0}});
-		back.push_back({{ 0, 0,-1}});
-		fwrd.push_back({{ 0, 0, 1}});
+        vector<ConstNeighborhoodIterator<TImage>::OffsetType> back, fwrd;
+        back.push_back({{-1, 0, 0}});
+        fwrd.push_back({{ 1, 0, 0}});
+        back.push_back({{ 0,-1, 0}});
+        fwrd.push_back({{ 0, 1, 0}});
+        back.push_back({{ 0, 0,-1}});
+        fwrd.push_back({{ 0, 0, 1}});
 
-		TImage::SpacingType spacing = this->GetInput()->GetSpacing();
-		TImage::SpacingType s_sqr = spacing * spacing;
-		while(!inputIter.IsAtEnd()) {
-			double sum = 0;
+        TImage::SpacingType spacing = this->GetInput()->GetSpacing();
+        TImage::SpacingType s_sqr = spacing * spacing;
+        while(!inputIter.IsAtEnd()) {
+            double sum = 0;
             double cphase = inputIter.GetCenterPixel();
             complex<double> c = std::polar(1., cphase);
             for (int i = 0; i < fwrd.size(); ++i) {
@@ -114,67 +114,67 @@ protected:
                 sum += std::arg((f*b)/(c*c)) / s_sqr[i];
             }
             outputIter.Set(sum / 7.);
-			++inputIter;
-			++outputIter;
-		}
-	}
+            ++inputIter;
+            ++outputIter;
+        }
+    }
 
 private:
-	DiscreteLaplacePhaseFilter(const Self &); //purposely not implemented
-	void operator=(const Self &);  //purposely not implemented
+    DiscreteLaplacePhaseFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 };
 
 class DiscreteInverseLaplace : public ImageSource<QI::VolumeF> {
 public:
     typedef QI::VolumeF            TImage;
-	typedef DiscreteInverseLaplace Self;
-	typedef ImageSource<TImage>    Superclass;
-	typedef SmartPointer<Self>     Pointer;
+    typedef DiscreteInverseLaplace Self;
+    typedef ImageSource<TImage>    Superclass;
+    typedef SmartPointer<Self>     Pointer;
 
-	itkNewMacro(Self);
-	itkTypeMacro(DiscreteInverseLaplace, ImageSource);
+    itkNewMacro(Self);
+    itkTypeMacro(DiscreteInverseLaplace, ImageSource);
 
     void SetImageProperties(const TImage *img) {
         m_region = img->GetLargestPossibleRegion();
-		m_spacing = img->GetSpacing();
-		m_direction = img->GetDirection();
-		m_origin = img->GetOrigin();
-	}
+        m_spacing = img->GetSpacing();
+        m_direction = img->GetDirection();
+        m_origin = img->GetOrigin();
+    }
 
 protected:
     typename TImage::RegionType    m_region;
-	typename TImage::SpacingType   m_spacing;
-	typename TImage::DirectionType m_direction;
-	typename TImage::PointType     m_origin;
+    typename TImage::SpacingType   m_spacing;
+    typename TImage::DirectionType m_direction;
+    typename TImage::PointType     m_origin;
 
-	DiscreteInverseLaplace(){}
-	~DiscreteInverseLaplace(){}
+    DiscreteInverseLaplace(){}
+    ~DiscreteInverseLaplace(){}
     virtual void GenerateData() override {
-		typename TImage::Pointer output = this->GetOutput();
+        typename TImage::Pointer output = this->GetOutput();
         output->SetRegions(m_region);
-		output->Allocate();
-		output->SetSpacing(m_spacing);
-		output->SetDirection(m_direction);
-		output->SetOrigin(m_origin);
-		itk::ImageRegionIteratorWithIndex<TImage> imageIt(output,output->GetLargestPossibleRegion());
-		imageIt.GoToBegin();
-		imageIt.Set(0.); // There is a pole here
-		++imageIt;
-		while(!imageIt.IsAtEnd()) {
+        output->Allocate();
+        output->SetSpacing(m_spacing);
+        output->SetDirection(m_direction);
+        output->SetOrigin(m_origin);
+        itk::ImageRegionIteratorWithIndex<TImage> imageIt(output,output->GetLargestPossibleRegion());
+        imageIt.GoToBegin();
+        imageIt.Set(0.); // There is a pole here
+        ++imageIt;
+        while(!imageIt.IsAtEnd()) {
             auto index = imageIt.GetIndex() - m_region.GetIndex(); // Might be padded to a negative start
-			double val = 0;
-			for (int i = 0; i < 3; i++) {
+            double val = 0;
+            for (int i = 0; i < 3; i++) {
                 val += 2. - 2. * cos(index[i] * 2. * M_PI / m_region.GetSize()[i]);
             }
             val /= 7.;
-			imageIt.Set(1./val);
-			++imageIt;
-		}
-	}
+            imageIt.Set(1./val);
+            ++imageIt;
+        }
+    }
 
 private:
-	DiscreteInverseLaplace(const Self &);
-	void operator=(const Self &);
+    DiscreteInverseLaplace(const Self &);
+    void operator=(const Self &);
 };
 
 /*
@@ -266,24 +266,24 @@ const string usage {
 Input is a single wrapped phase volume\n\
 \n\
 Options:\n\
-	--help, -h        : Print this message.\n\
-	--verbose, -v     : Print more information.\n\
-	--out, -o path    : Specify an output filename (default image base).\n\
-	--mask, -m file   : Mask input with specified file.\n\
+    --help, -h        : Print this message.\n\
+    --verbose, -v     : Print more information.\n\
+    --out, -o path    : Specify an output filename (default image base).\n\
+    --mask, -m file   : Mask input with specified file.\n\
     --erode, -e N     : Erode mask by N mm (Default 1 mm).\n\
     --debug, -d       : Save all pipeline steps.\n\
     --threads, -T N   : Use N threads (default=hardware limit).\n"
 };
 
 const struct option long_options[] = {
-	{"help", no_argument, 0, 'h'},
-	{"verbose", no_argument, 0, 'v'},
-	{"out", required_argument, 0, 'o'},
-	{"mask", required_argument, 0, 'm'},
+    {"help", no_argument, 0, 'h'},
+    {"verbose", no_argument, 0, 'v'},
+    {"out", required_argument, 0, 'o'},
+    {"mask", required_argument, 0, 'm'},
     {"erode", required_argument, 0, 'e'},
     {"debug", no_argument, 0, 'd'},
-	{"threads", required_argument, 0, 'T'},
-	{0, 0, 0, 0}
+    {"threads", required_argument, 0, 'T'},
+    {0, 0, 0, 0}
 };
 const char *short_options = "hvo:m:e:dT:";
 
@@ -291,16 +291,16 @@ const char *short_options = "hvo:m:e:dT:";
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
-	Eigen::initParallel();
+    Eigen::initParallel();
 
     bool verbose = false, debug = false;
     float erodeRadius = 1;
-	string prefix;
+    string prefix;
     QI::VolumeUC::Pointer mask = ITK_NULLPTR;
-	int indexptr = 0, c;
-	while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-		switch (c) {
-			case 'v': verbose = true; break;
+    int indexptr = 0, c;
+    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
+        switch (c) {
+            case 'v': verbose = true; break;
             case 'm': {
                 if (verbose) cout << "Reading mask file " << optarg << endl;
                 auto maskFile = itk::ImageFileReader<QI::VolumeF>::New();
@@ -314,36 +314,36 @@ int main(int argc, char **argv) {
                 mask->DisconnectPipeline();
             } break;
             case 'e': erodeRadius = atof(optarg); break;
-			case 'o':
-				prefix = optarg;
-				cout << "Output prefix will be: " << prefix << endl;
-				break;
+            case 'o':
+                prefix = optarg;
+                cout << "Output prefix will be: " << prefix << endl;
+                break;
             case 'd': debug = true; break;
-			case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-			case 'h':
-				cout << QI::GetVersion() << endl << usage << endl;
-				return EXIT_SUCCESS;
-			case '?': // getopt will print an error message
-				return EXIT_FAILURE;
-			default:
-				cout << "Unhandled option " << string(1, c) << endl;
-				return EXIT_FAILURE;
-		}
-	}
-	if ((argc - optind) != 1) {
-		cout << "Incorrect number of arguments." << endl << usage << endl;
-		return EXIT_FAILURE;
-	}
-	if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-	string fname(argv[optind++]);
-	if (prefix == "")
-		prefix = fname.substr(0, fname.find(".nii"));
-	string outname = prefix + "_unwrap" + QI::OutExt();
-	if (verbose) cout << "Output filename: " << outname << endl;
+            case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+            case 'h':
+                cout << QI::GetVersion() << endl << usage << endl;
+                return EXIT_SUCCESS;
+            case '?': // getopt will print an error message
+                return EXIT_FAILURE;
+            default:
+                cout << "Unhandled option " << string(1, c) << endl;
+                return EXIT_FAILURE;
+        }
+    }
+    if ((argc - optind) != 1) {
+        cout << "Incorrect number of arguments." << endl << usage << endl;
+        return EXIT_FAILURE;
+    }
+    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
+    string fname(argv[optind++]);
+    if (prefix == "")
+        prefix = fname.substr(0, fname.find(".nii"));
+    string outname = prefix + "_unwrap" + QI::OutExt();
+    if (verbose) cout << "Output filename: " << outname << endl;
 
     auto inFile = QI::ReadImage(fname);
-	auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();
-	calcLaplace->SetInput(inFile);
+    auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();
+    calcLaplace->SetInput(inFile);
     calcLaplace->Update();
     if (debug) QI::WriteImage(calcLaplace->GetOutput(), prefix + "_step1_laplace" + QI::OutExt());
 
@@ -390,23 +390,23 @@ int main(int argc, char **argv) {
         cout << "Calculating Forward FFT." << endl;
     }
     typedef itk::ForwardFFTImageFilter<QI::VolumeF> FFFTType;
-	auto forwardFFT = FFFTType::New();
+    auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
     if (debug) QI::WriteImage(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
-	if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
+    if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
     auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
     if (debug) QI::WriteImage(inverseLaplace->GetOutput(), prefix + "_inverse_laplace_filter" + QI::OutExt());
     if (verbose) cout << "Multiplying." << endl;
     auto mult = itk::MultiplyImageFilter<QI::VolumeXF, QI::VolumeF, QI::VolumeXF>::New();
-	mult->SetInput1(forwardFFT->GetOutput());
-	mult->SetInput2(inverseLaplace->GetOutput());
+    mult->SetInput1(forwardFFT->GetOutput());
+    mult->SetInput2(inverseLaplace->GetOutput());
     if (debug) QI::WriteImage(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
-	if (verbose) cout << "Inverse FFT." << endl;
+    if (verbose) cout << "Inverse FFT." << endl;
     auto inverseFFT = itk::InverseFFTImageFilter<QI::VolumeXF, QI::VolumeF>::New();
-	inverseFFT->SetInput(mult->GetOutput());
+    inverseFFT->SetInput(mult->GetOutput());
     inverseFFT->Update();
     if (debug) QI::WriteImage(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
     if (verbose) cout << "Extracting original size image" << endl;
@@ -426,6 +426,6 @@ int main(int argc, char **argv) {
     } else {
         QI::WriteImage(extract->GetOutput(), outname);
     }
-	if (verbose) cout << "Finished." << endl;
-	return EXIT_SUCCESS;
+    if (verbose) cout << "Finished." << endl;
+    return EXIT_SUCCESS;
 }
