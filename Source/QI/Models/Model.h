@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include "QI/Signals/SignalEquations.h"
 

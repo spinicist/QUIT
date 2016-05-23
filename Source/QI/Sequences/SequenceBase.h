@@ -16,7 +16,7 @@
 #include <iostream>
 #include <vector>
 #include <memory>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include "QI/Macro.h"
 #include "QI/Util.h"

@@ -14,7 +14,7 @@
 
 #include <iostream>
 #include <exception>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <Eigen/Geometry>
 
 namespace QI {

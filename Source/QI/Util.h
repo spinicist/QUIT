@@ -21,7 +21,7 @@
 #include <mutex>
 #include <vector>
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include "itkCommand.h"
 #include "itkImageFileReader.h"
