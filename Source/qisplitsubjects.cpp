@@ -290,12 +290,15 @@ void RegisterImageToReference(const QI::VolumeF::Pointer &image, const QI::Volum
         
         initPars = bestPars;
         reg->SetInitialTransformParameters(initPars);
-        reg->Update(); // The initial registration should not fail, so don't catch exceptions here.
-        initMetric = opt->GetValue();
-        bestMetric = initMetric;
-        bestPars = reg->GetLastTransformParameters();
-        if (verbose) cout << "Initial metric at this level: " << initMetric << endl;
-        
+        try {
+            reg->Update();
+            initMetric = opt->GetValue();
+            bestMetric = initMetric;
+            bestPars = reg->GetLastTransformParameters();
+            if (verbose) cout << "Initial metric at this level: " << initMetric << endl;
+        } catch (itk::ExceptionObject &e) {
+            if (verbose) cout << "Initial registration failed with parameters: " << reg->GetLastTransformParameters() << endl;
+        }
         for (double ax = -searchAngles*pangle; ax <= searchAngles*pangle; ax+=pangle) {
             for (double ay = -searchAngles*pangle; ay <= searchAngles*pangle; ay+=pangle) {
                 for (double az = -searchAngles*pangle; az <= searchAngles*pangle; az+=pangle) {
