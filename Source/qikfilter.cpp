@@ -9,6 +9,7 @@
  *
  */
 
+#include <memory>
 #include <getopt.h>
 #include <iostream>
 #include <sstream>
@@ -35,34 +36,101 @@ using namespace std;
 using namespace Eigen;
 
 class FilterKernel {
+protected:
+    int m_hx = 0, m_hy = 0, m_hz = 0;
+    double radius(const int x, const int y, const int z) const;
+public:
+    static shared_ptr<FilterKernel> Read(std::istream &istr);
     
+    void setSize(const int sx, const int sy, const int sz);
+    virtual void read(std::istream &istr) = 0;
+    virtual void print(std::ostream &ostr) const = 0;
+    virtual double value(const int x, const int y, const int z) const = 0;
 };
 
-class TukeyKernel : FilterKernel {
+std::ostream& operator<<(std::ostream &ostr, const FilterKernel &k) {
+    k.print(ostr);
+    return ostr;
+}
+
+class TukeyKernel : public FilterKernel {
 protected:
     double m_a = 0.75;
     double m_q = 0.25;
-    int m_hx = 0, m_hy = 0, m_hz = 0;
-    
 public:
-    void setSize(const int sx, const int sy, const int sz) {
-        m_hx = sx / 2;  m_hy = sy / 2;  m_hz = sz / 2;
-    }
-    void setAQ(const double a, const double q) {
-        m_a = a;
-        m_q = q;
-    }
-    
-    double operator() (const int x, const int y, const int z) const {
-            const double rx = fmod(static_cast<double>(x)/m_hx + 1.0, 2.0) - 1.0;
-            const double ry = fmod(static_cast<double>(y)/m_hy + 1.0, 2.0) - 1.0;
-            const double rz = fmod(static_cast<double>(z)/m_hz + 1.0, 2.0) - 1.0;
-            const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
-            const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
-            return v;
-    }
+    virtual void read(std::istream &istr) override;
+    virtual void print(std::ostream &ostr) const override;
+    virtual double value(const int x, const int y, const int z) const override;
 };
 
+class HammingKernel : public FilterKernel {
+protected:
+    double m_a = 0.5;
+    double m_b = 0.5;
+public:
+    virtual void read(std::istream &istr) override;
+    virtual void print(std::ostream &ostr) const override;
+    virtual double value(const int x, const int y, const int z) const override;
+};
+
+double FilterKernel::radius(const int x, const int y, const int z) const {
+    const double rx = fmod(static_cast<double>(x)/m_hx + 1.0, 2.0) - 1.0;
+    const double ry = fmod(static_cast<double>(y)/m_hy + 1.0, 2.0) - 1.0;
+    const double rz = fmod(static_cast<double>(z)/m_hz + 1.0, 2.0) - 1.0;
+    const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
+    return r;
+}
+
+void FilterKernel::setSize(const int sx, const int sy, const int sz) {
+    m_hx = sx/2; m_hy = sy/2; m_hz = sz/2;
+}
+
+shared_ptr<FilterKernel> FilterKernel::Read(std::istream &istr) {
+    shared_ptr<FilterKernel> newKernel = nullptr;
+    std::string filterName;
+    std::getline(istr, filterName, ',');
+    if (filterName == "Tukey") {
+        newKernel = make_shared<TukeyKernel>();
+    } else if (filterName == "Hamming") {
+        newKernel = make_shared<HammingKernel>();
+    } else {
+        QI_EXCEPTION("Unknown filter type");
+    }
+    newKernel->read(istr);
+    return newKernel;
+}
+
+void TukeyKernel::read(std::istream &istr) {
+    std::string nextValue;
+    std::getline(istr, nextValue, ',');
+    m_a = stod(nextValue);
+    std::getline(istr, nextValue, ',');
+    m_q = stod(nextValue);
+}
+void TukeyKernel::print(std::ostream &ostr) const {
+    ostr << "Tukey," << m_a << "," << m_q << std::endl;
+}
+double TukeyKernel::value(const int x, const int y, const int z) const {
+    const double r = radius(x, y, z);
+    const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
+    return v;
+}
+
+void HammingKernel::read(std::istream &istr) {
+    std::string nextValue;
+    std::getline(istr, nextValue, ',');
+    m_a = stod(nextValue);
+    std::getline(istr, nextValue, ',');
+    m_b = stod(nextValue);
+}
+void HammingKernel::print(std::ostream &ostr) const {
+    ostr << "Hamming," << m_a << "," << m_b << std::endl;
+}
+double HammingKernel::value(const int x, const int y, const int z) const {
+    const double r = radius(x, y, z);
+    const double v = m_a + m_b*cos(2.*M_PI*r);
+    return v;
+}
 
 namespace itk {
 
@@ -75,7 +143,7 @@ public:
     typedef SmartPointer<Self>                 Pointer;
 
 protected:
-    TukeyKernel m_kernel;
+    shared_ptr<FilterKernel> m_kernel;
     bool m_WriteKernel = false;
 
     KSpaceFilter(){}
@@ -89,10 +157,10 @@ public:
     virtual void GenerateOutputInformation() override {
         Superclass::GenerateOutputInformation();
         typename TImage::SizeType size = this->GetOutput()->GetLargestPossibleRegion().GetSize();
-        m_kernel.setSize(size[0], size[1], size[2]);
+        m_kernel->setSize(size[0], size[1], size[2]);
     }
     
-    void SetKernel(const TukeyKernel &k) { m_kernel = k; }
+    void SetKernel(const shared_ptr<FilterKernel> &k) { m_kernel = k; }
 
 protected:
     virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) override {
@@ -103,7 +171,7 @@ protected:
         outIt.GoToBegin();
         while(!inIt.IsAtEnd()) {
             const auto index = inIt.GetIndex() - startIndex; // Might be padded to a negative start
-            const typename TImage::PixelType::value_type k = m_kernel(index[0], index[1], index[2]);
+            const typename TImage::PixelType::value_type k = m_kernel->value(index[0], index[1], index[2]);
             const typename TImage::PixelType v = inIt.Get();
             if (m_WriteKernel) {
                 outIt.Set(k);
@@ -122,7 +190,7 @@ private:
 
 } // End namespace itk
 
-QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbose, const int debug, const TukeyKernel &kernel) {
+QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbose, const int debug, const shared_ptr<FilterKernel> &kernel) {
     typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXD> TExtract;
     typedef itk::PasteImageFilter<QI::SeriesXF>                 TPaste;
     typedef itk::CastImageFilter<QI::VolumeXD, QI::SeriesXF>    TCast;
@@ -148,6 +216,7 @@ QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbos
     forward->SetInput(pad->GetOutput());
     k_filter->SetInput(forward->GetOutput());
     k_filter->SetKernel(kernel);
+    cout << "Check kernel: " << *kernel << endl;
     inverse->SetInput(k_filter->GetOutput());
     inverse->SetTransformDirection(TFFT::INVERSE);
     caster->SetInput(inverse->GetOutput());
@@ -218,7 +287,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
 
     bool verbose = false, debug = false, is_complex = false;
-    double filter_a = 0.75, filter_q = 0.25;
+    shared_ptr<FilterKernel> kernel = make_shared<TukeyKernel>();
     string out_name;
     int indexptr = 0, c;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -230,7 +299,8 @@ int main(int argc, char **argv) {
                 break;
             case 'f': {
                 stringstream f(optarg);
-                f >> filter_a >> filter_q;
+                kernel = FilterKernel::Read(f);
+                cout << "Kernel is: " << *kernel << endl;
             } break;
             case 'd': debug = true; break;
             case 'x': is_complex = true; break;
@@ -253,8 +323,6 @@ int main(int argc, char **argv) {
     string in_name(argv[optind++]);
     if (out_name == "")
         out_name = in_name.substr(0, in_name.find(".")) + "_filtered";
-    TukeyKernel filter_kernel;
-    filter_kernel.setAQ(filter_a, filter_q);
     
     QI::SeriesXF::Pointer vols;
     if (is_complex) {
@@ -269,7 +337,7 @@ int main(int argc, char **argv) {
         vols = cast->GetOutput();
         vols->DisconnectPipeline();
     }
-    vols = run_pipeline(vols, verbose, debug, filter_kernel);     
+    vols = run_pipeline(vols, verbose, debug, kernel);     
     if (is_complex) {
         if (verbose) cout << "Data is complex." << endl;
         QI::WriteImage(vols, out_name + QI::OutExt());
