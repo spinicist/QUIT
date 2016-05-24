@@ -73,6 +73,15 @@ public:
     virtual double value(const int x, const int y, const int z) const override;
 };
 
+class GaussKernel : public FilterKernel {
+protected:
+    double m_a = 0.5;
+public:
+    virtual void read(std::istream &istr) override;
+    virtual void print(std::ostream &ostr) const override;
+    virtual double value(const int x, const int y, const int z) const override;
+};
+
 double FilterKernel::radius(const int x, const int y, const int z) const {
     const double rx = fmod(static_cast<double>(x)/m_hx + 1.0, 2.0) - 1.0;
     const double ry = fmod(static_cast<double>(y)/m_hy + 1.0, 2.0) - 1.0;
@@ -93,6 +102,8 @@ shared_ptr<FilterKernel> FilterKernel::Read(std::istream &istr) {
         newKernel = make_shared<TukeyKernel>();
     } else if (filterName == "Hamming") {
         newKernel = make_shared<HammingKernel>();
+    } else if (filterName == "Gauss") {
+        newKernel = make_shared<GaussKernel>();
     } else {
         QI_EXCEPTION("Unknown filter type");
     }
@@ -129,6 +140,20 @@ void HammingKernel::print(std::ostream &ostr) const {
 double HammingKernel::value(const int x, const int y, const int z) const {
     const double r = radius(x, y, z);
     const double v = m_a + m_b*cos(2.*M_PI*r);
+    return v;
+}
+
+void GaussKernel::read(std::istream &istr) {
+    std::string nextValue;
+    std::getline(istr, nextValue, ',');
+    m_a = stod(nextValue);
+}
+void GaussKernel::print(std::ostream &ostr) const {
+    ostr << "Gauss," << m_a << std::endl;
+}
+double GaussKernel::value(const int x, const int y, const int z) const {
+    const double r = radius(x, y, z);
+    const double v = exp(-r*r/m_a);
     return v;
 }
 
@@ -216,7 +241,6 @@ QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbos
     forward->SetInput(pad->GetOutput());
     k_filter->SetInput(forward->GetOutput());
     k_filter->SetKernel(kernel);
-    cout << "Check kernel: " << *kernel << endl;
     inverse->SetInput(k_filter->GetOutput());
     inverse->SetTransformDirection(TFFT::INVERSE);
     caster->SetInput(inverse->GetOutput());
@@ -295,12 +319,12 @@ int main(int argc, char **argv) {
             case 'v': verbose = true; break;
             case 'o':
                 out_name = optarg;
-                cout << "Output filename will be: " << out_name << endl;
+                if (verbose) cout << "Output filename will be: " << out_name << endl;
                 break;
             case 'f': {
                 stringstream f(optarg);
                 kernel = FilterKernel::Read(f);
-                cout << "Kernel is: " << *kernel << endl;
+                if (verbose) cout << "Kernel is: " << *kernel << endl;
             } break;
             case 'd': debug = true; break;
             case 'x': is_complex = true; break;
