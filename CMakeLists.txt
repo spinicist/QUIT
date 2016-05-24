@@ -52,6 +52,7 @@ set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask qikfilter qireo
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
              qiafi qissfpbands qiunwrap
              qipolyfit qipolyimg
+             qiesmap
              qimultiecho qimp2rage )
 
 foreach(PROGRAM ${PROGRAMS})
