@@ -29,7 +29,7 @@ using namespace QI;
 // Arguments / Usage
 //******************************************************************************
 const string usage {
-"Usage is: ssfpgs [options] input \n\
+"Usage is: qissfpbands [options] input \n\
 \n\
 Input must be a single complex image with at least two pairs of opposing\n\
 phase-cycles along the 4th dimension.\n\
