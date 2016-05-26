@@ -43,7 +43,6 @@ public:
     static shared_ptr<FilterKernel> Read(std::istream &istr);
     
     void setSize(const int sx, const int sy, const int sz);
-    virtual void read(std::istream &istr) = 0;
     virtual void print(std::ostream &ostr) const = 0;
     virtual double value(const int x, const int y, const int z) const = 0;
 };
@@ -58,7 +57,8 @@ protected:
     double m_a = 0.75;
     double m_q = 0.25;
 public:
-    virtual void read(std::istream &istr) override;
+    TukeyKernel();
+    TukeyKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
     virtual double value(const int x, const int y, const int z) const override;
 };
@@ -68,7 +68,8 @@ protected:
     double m_a = 0.5;
     double m_b = 0.5;
 public:
-    virtual void read(std::istream &istr) override;
+    HammingKernel();
+    HammingKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
     virtual double value(const int x, const int y, const int z) const override;
 };
@@ -77,7 +78,8 @@ class GaussKernel : public FilterKernel {
 protected:
     double m_a = 0.5;
 public:
-    virtual void read(std::istream &istr) override;
+    GaussKernel();
+    GaussKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
     virtual double value(const int x, const int y, const int z) const override;
 };
@@ -99,19 +101,19 @@ shared_ptr<FilterKernel> FilterKernel::Read(std::istream &istr) {
     std::string filterName;
     std::getline(istr, filterName, ',');
     if (filterName == "Tukey") {
-        newKernel = make_shared<TukeyKernel>();
+        newKernel = make_shared<TukeyKernel>(istr);
     } else if (filterName == "Hamming") {
-        newKernel = make_shared<HammingKernel>();
+        newKernel = make_shared<HammingKernel>(istr);
     } else if (filterName == "Gauss") {
-        newKernel = make_shared<GaussKernel>();
+        newKernel = make_shared<GaussKernel>(istr);
     } else {
         QI_EXCEPTION("Unknown filter type");
     }
-    newKernel->read(istr);
     return newKernel;
 }
 
-void TukeyKernel::read(std::istream &istr) {
+TukeyKernel::TukeyKernel() {}
+TukeyKernel::TukeyKernel(std::istream &istr) {
     std::string nextValue;
     std::getline(istr, nextValue, ',');
     m_a = stod(nextValue);
@@ -127,7 +129,8 @@ double TukeyKernel::value(const int x, const int y, const int z) const {
     return v;
 }
 
-void HammingKernel::read(std::istream &istr) {
+HammingKernel::HammingKernel() {}
+HammingKernel::HammingKernel(std::istream &istr) {
     std::string nextValue;
     std::getline(istr, nextValue, ',');
     m_a = stod(nextValue);
@@ -143,7 +146,8 @@ double HammingKernel::value(const int x, const int y, const int z) const {
     return v;
 }
 
-void GaussKernel::read(std::istream &istr) {
+GaussKernel::GaussKernel() {}
+GaussKernel::GaussKernel(std::istream &istr) {
     std::string nextValue;
     std::getline(istr, nextValue, ',');
     m_a = stod(nextValue);
@@ -153,7 +157,7 @@ void GaussKernel::print(std::ostream &ostr) const {
 }
 double GaussKernel::value(const int x, const int y, const int z) const {
     const double r = radius(x, y, z);
-    const double v = exp(-r*r/m_a);
+    const double v = exp(-m_a*r*r);
     return v;
 }
 
