@@ -31,135 +31,10 @@
 
 #include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/Kernels.h"
 
 using namespace std;
 using namespace Eigen;
-
-class FilterKernel {
-protected:
-    int m_hx = 0, m_hy = 0, m_hz = 0;
-    double radius(const int x, const int y, const int z) const;
-public:
-    static shared_ptr<FilterKernel> Read(std::istream &istr);
-    
-    void setSize(const int sx, const int sy, const int sz);
-    virtual void print(std::ostream &ostr) const = 0;
-    virtual double value(const int x, const int y, const int z) const = 0;
-};
-
-std::ostream& operator<<(std::ostream &ostr, const FilterKernel &k) {
-    k.print(ostr);
-    return ostr;
-}
-
-class TukeyKernel : public FilterKernel {
-protected:
-    double m_a = 0.75;
-    double m_q = 0.25;
-public:
-    TukeyKernel();
-    TukeyKernel(std::istream &istr);
-    virtual void print(std::ostream &ostr) const override;
-    virtual double value(const int x, const int y, const int z) const override;
-};
-
-class HammingKernel : public FilterKernel {
-protected:
-    double m_a = 0.5;
-    double m_b = 0.5;
-public:
-    HammingKernel();
-    HammingKernel(std::istream &istr);
-    virtual void print(std::ostream &ostr) const override;
-    virtual double value(const int x, const int y, const int z) const override;
-};
-
-class GaussKernel : public FilterKernel {
-protected:
-    double m_a = 0.5;
-public:
-    GaussKernel();
-    GaussKernel(std::istream &istr);
-    virtual void print(std::ostream &ostr) const override;
-    virtual double value(const int x, const int y, const int z) const override;
-};
-
-double FilterKernel::radius(const int x, const int y, const int z) const {
-    const double rx = fmod(static_cast<double>(x)/m_hx + 1.0, 2.0) - 1.0;
-    const double ry = fmod(static_cast<double>(y)/m_hy + 1.0, 2.0) - 1.0;
-    const double rz = fmod(static_cast<double>(z)/m_hz + 1.0, 2.0) - 1.0;
-    const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
-    return r;
-}
-
-void FilterKernel::setSize(const int sx, const int sy, const int sz) {
-    m_hx = sx/2; m_hy = sy/2; m_hz = sz/2;
-}
-
-shared_ptr<FilterKernel> FilterKernel::Read(std::istream &istr) {
-    shared_ptr<FilterKernel> newKernel = nullptr;
-    std::string filterName;
-    std::getline(istr, filterName, ',');
-    if (filterName == "Tukey") {
-        newKernel = make_shared<TukeyKernel>(istr);
-    } else if (filterName == "Hamming") {
-        newKernel = make_shared<HammingKernel>(istr);
-    } else if (filterName == "Gauss") {
-        newKernel = make_shared<GaussKernel>(istr);
-    } else {
-        QI_EXCEPTION("Unknown filter type");
-    }
-    return newKernel;
-}
-
-TukeyKernel::TukeyKernel() {}
-TukeyKernel::TukeyKernel(std::istream &istr) {
-    std::string nextValue;
-    std::getline(istr, nextValue, ',');
-    m_a = stod(nextValue);
-    std::getline(istr, nextValue, ',');
-    m_q = stod(nextValue);
-}
-void TukeyKernel::print(std::ostream &ostr) const {
-    ostr << "Tukey," << m_a << "," << m_q << std::endl;
-}
-double TukeyKernel::value(const int x, const int y, const int z) const {
-    const double r = radius(x, y, z);
-    const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
-    return v;
-}
-
-HammingKernel::HammingKernel() {}
-HammingKernel::HammingKernel(std::istream &istr) {
-    std::string nextValue;
-    std::getline(istr, nextValue, ',');
-    m_a = stod(nextValue);
-    std::getline(istr, nextValue, ',');
-    m_b = stod(nextValue);
-}
-void HammingKernel::print(std::ostream &ostr) const {
-    ostr << "Hamming," << m_a << "," << m_b << std::endl;
-}
-double HammingKernel::value(const int x, const int y, const int z) const {
-    const double r = radius(x, y, z);
-    const double v = m_a + m_b*cos(2.*M_PI*r);
-    return v;
-}
-
-GaussKernel::GaussKernel() {}
-GaussKernel::GaussKernel(std::istream &istr) {
-    std::string nextValue;
-    std::getline(istr, nextValue, ',');
-    m_a = stod(nextValue);
-}
-void GaussKernel::print(std::ostream &ostr) const {
-    ostr << "Gauss," << m_a << std::endl;
-}
-double GaussKernel::value(const int x, const int y, const int z) const {
-    const double r = radius(x, y, z);
-    const double v = exp(-m_a*r*r);
-    return v;
-}
 
 namespace itk {
 
@@ -172,7 +47,7 @@ public:
     typedef SmartPointer<Self>                 Pointer;
 
 protected:
-    shared_ptr<FilterKernel> m_kernel;
+    shared_ptr<QI::FilterKernel> m_kernel;
     bool m_WriteKernel = false;
 
     KSpaceFilter(){}
@@ -189,7 +64,7 @@ public:
         m_kernel->setSize(size[0], size[1], size[2]);
     }
     
-    void SetKernel(const shared_ptr<FilterKernel> &k) { m_kernel = k; }
+    void SetKernel(const shared_ptr<QI::FilterKernel> &k) { m_kernel = k; }
 
 protected:
     virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) override {
@@ -219,7 +94,7 @@ private:
 
 } // End namespace itk
 
-QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbose, const int debug, const shared_ptr<FilterKernel> &kernel) {
+QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbose, const int debug, const shared_ptr<QI::FilterKernel> &kernel) {
     typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXD> TExtract;
     typedef itk::PasteImageFilter<QI::SeriesXF>                 TPaste;
     typedef itk::CastImageFilter<QI::VolumeXD, QI::SeriesXF>    TCast;
@@ -315,7 +190,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
 
     bool verbose = false, debug = false, is_complex = false;
-    shared_ptr<FilterKernel> kernel = make_shared<TukeyKernel>();
+    shared_ptr<QI::FilterKernel> kernel = make_shared<QI::TukeyKernel>();
     string out_name;
     int indexptr = 0, c;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -327,7 +202,7 @@ int main(int argc, char **argv) {
                 break;
             case 'f': {
                 stringstream f(optarg);
-                kernel = FilterKernel::Read(f);
+                kernel = QI::ReadKernel(f);
                 if (verbose) cout << "Kernel is: " << *kernel << endl;
             } break;
             case 'd': debug = true; break;
