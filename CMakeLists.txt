@@ -33,9 +33,11 @@ set(QIDIR "Source/QI")
 set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Kernels.cpp 
-             ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
+             ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp
+             ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
              ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp
-             ${QIDIR}/Sequences/SequenceBase.cpp ${QIDIR}/Sequences/SteadyStateSequence.cpp ${QIDIR}/Sequences/MPRAGESequence.cpp ${QIDIR}/Sequences/Sequence.cpp )
+             ${QIDIR}/Sequences/SequenceBase.cpp ${QIDIR}/Sequences/Sequences.cpp
+             ${QIDIR}/Sequences/SteadyStateSequence.cpp ${QIDIR}/Sequences/MPRAGESequence.cpp ${QIDIR}/Sequences/Sequence.cpp )
 add_dependencies( ${QI} qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx

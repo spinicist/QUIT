@@ -255,7 +255,7 @@ int main(int argc, char **argv) {
         cout << "Thresh: " << thresh << endl;
     }
     // Gather input data
-    auto multiecho = make_shared<QI::MultiEcho>(prompt);
+    auto multiecho = make_shared<QI::MultiEcho>(cin, prompt);
     algo->setSequence(multiecho);
     auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
     if (mask)

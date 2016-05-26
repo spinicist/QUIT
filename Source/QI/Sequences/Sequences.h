@@ -16,4 +16,8 @@
 #include "QI/Sequences/MPRAGESequence.h"
 #include "QI/Sequences/Sequence.h"
 
+namespace QI {
+    std::shared_ptr<SequenceBase> ReadSequence(std::istream& istr, const bool prompt);
+} // End namespace QI
+
 #endif // SEQUENCES_SEQUENCES_H

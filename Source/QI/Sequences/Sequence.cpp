@@ -26,17 +26,17 @@ MultiEcho::MultiEcho(const ArrayXd &te) :
 	m_TE(te)
 {}
 
-MultiEcho::MultiEcho(const bool prompt) : SequenceBase() {
+MultiEcho::MultiEcho(std::istream& istr, const bool prompt) : SequenceBase() {
 	double TE1;
 	int NE;
     if (prompt) cout << "Enter TR: " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
 	if (prompt) cout << "Enter first echo-time: " << flush;
-	QI::Read(cin, TE1);
-	if (prompt) cout << "Enter echo spacing: " << flush;
-	QI::Read(cin, m_ESP);
+	QI::Read(istr, TE1);
+	if (prompt) cout << "Enter echo spaistrg: " << flush;
+	QI::Read(istr, m_ESP);
 	if (prompt) cout << "Enter number of echos: " << flush;
-	QI::Read(cin, NE);
+	QI::Read(istr, NE);
 	m_TE.resize(NE);
 	m_TE(0) = TE1;
 	for (int i = 1; i < NE; i++) {

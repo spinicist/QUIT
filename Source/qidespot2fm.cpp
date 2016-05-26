@@ -19,7 +19,7 @@
 
 #include "QI/Util.h"
 #include "QI/Models/Models.h"
-#include "QI/Sequences/Sequence.h"
+#include "QI/Sequences/Sequences.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 
 #include "itkLBFGSBOptimizer.h"
@@ -484,12 +484,12 @@ int run_main(int argc, char **argv) {
     shared_ptr<QI::SSFPSimple> ssfpSequence;
     if (fitFinite) {
         cout << "Using finite pulse model." << endl;
-        ssfpSequence = make_shared<QI::SSFPFinite>(prompt);
+        ssfpSequence = make_shared<QI::SSFPFinite>(cin, prompt);
     } else {
         if (flex)
-            ssfpSequence = make_shared<QI::SSFPEchoFlex>(prompt);
+            ssfpSequence = make_shared<QI::SSFPEchoFlex>(cin, prompt);
         else
-            ssfpSequence = make_shared<QI::SSFPEcho>(prompt);
+            ssfpSequence = make_shared<QI::SSFPEcho>(cin, prompt);
     }
     if (verbose) cout << *ssfpSequence << endl;
 

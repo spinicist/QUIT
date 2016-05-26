@@ -27,7 +27,7 @@ class SteadyState : public SequenceBase {
 class SPGRSimple : public SteadyState {
     public:
         SPGRSimple(const Eigen::ArrayXd &flip, const double TR);
-        SPGRSimple(const bool prompt);
+        SPGRSimple(std::istream &istr, const bool prompt);
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream &os) const override;
         std::string name() const override { return "SPGR"; }
@@ -38,7 +38,7 @@ class SPGREcho : public SPGRSimple {
 public:
     double m_TE;
     SPGREcho(const Eigen::ArrayXd &flip, const double TR, const double TE);
-    SPGREcho(const bool prompt);
+    SPGREcho(std::istream &istr, const bool prompt);
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     void write(std::ostream &os) const override;
     std::string name() const override { return "SPGR_Echo"; }
@@ -48,7 +48,7 @@ class SPGRFinite : public SPGRSimple {
     public:
         double m_Trf, m_TE;
         SPGRFinite(const Eigen::ArrayXd &flip, const double TR, const double Trf, const double TE);
-        SPGRFinite(const bool prompt);
+        SPGRFinite(std::istream &istr, const bool prompt);
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream &os) const override;
         std::string name() const override { return "SPGR_Finite"; }
@@ -61,7 +61,7 @@ class SSFPSimple : public SteadyState {
     public:
         SSFPSimple();
         SSFPSimple(const Eigen::ArrayXd &flip, const double TR, const Eigen::ArrayXd &phases);
-        SSFPSimple(const bool prompt);
+        SSFPSimple(std::istream &istr, const bool prompt);
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream& os) const override;
         std::string name() const override { return "SSFP"; }
@@ -72,7 +72,7 @@ class SSFPSimple : public SteadyState {
 class SSFPEcho : public SSFPSimple {
 public:
     SSFPEcho();
-    SSFPEcho(const bool prompt);
+    SSFPEcho(std::istream &istr, const bool prompt);
 
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     std::string name() const override { return "SSFPEcho"; }
@@ -80,14 +80,14 @@ public:
 
 class SSFPEchoFlex : public SSFPEcho {
 public:
-    SSFPEchoFlex(const bool prompt);
+    SSFPEchoFlex(std::istream &istr, const bool prompt);
 };
 
 class SSFPFinite : public SSFPSimple {
     public:
         double m_Trf;
         SSFPFinite(const Eigen::ArrayXd &flip, const double TR, const double Trf, const Eigen::ArrayXd &phases);
-        SSFPFinite(const bool prompt);
+        SSFPFinite(std::istream &istr, const bool prompt);
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream& os) const override;
         std::string name() const override { return "SSFP_Finite"; }
@@ -95,7 +95,7 @@ class SSFPFinite : public SSFPSimple {
 
 class SSFP_GS : public SteadyState {
     public:
-        SSFP_GS(const bool prompt);
+        SSFP_GS(std::istream &istr, const bool prompt);
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream& os) const override;
         std::string name() const override { return "SSFP_Ellipse"; }
@@ -105,7 +105,7 @@ class AFI : public SteadyState {
 protected:
     double m_TR1, m_TR2;
     public:
-        AFI(const bool prompt);
+        AFI(std::istream &istr, const bool prompt);
 
         virtual size_t size() const override { return 2; }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;

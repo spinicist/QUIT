@@ -14,7 +14,6 @@
 #define SEQUENCES_SEQUENCE_H
 
 #include "QI/Sequences/SequenceBase.h"
-#include "QI/Sequences/SteadyStateSequence.h"
 
 namespace QI {
 
@@ -25,7 +24,7 @@ class MultiEcho : public SequenceBase {
 
 		MultiEcho();
         MultiEcho(const Eigen::ArrayXd &te);
-		MultiEcho(const bool prompt);
+		MultiEcho(std::istream &istr, const bool prompt);
 
 		size_t size() const override { return m_TE.rows(); }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;

@@ -25,34 +25,34 @@ MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int 
     }
 }
 
-MPRAGE::MPRAGE(const bool prompt) : SequenceBase() {
+MPRAGE::MPRAGE(std::istream &istr, const bool prompt) : SequenceBase() {
     if (prompt) cout << "Enter read-out flip-angle (degrees): " << flush;
     double inFlip, TRseg;
-    QI::Read(cin, inFlip);
+    QI::Read(istr, inFlip);
     m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
     if (prompt) cout << "Enter segment size: " << flush;
-    QI::Read(cin, m_Nseg);
+    QI::Read(istr, m_Nseg);
     if (prompt) cout << "Enter k0: " << flush;
-    QI::Read(cin, m_Nk0);
+    QI::Read(istr, m_Nk0);
     if (prompt) cout << "Enter inversion times (seconds): " << flush;
-    QI::ReadArray(cin, m_TI);
+    QI::ReadArray(istr, m_TI);
     if (prompt) cout << "Enter relaxation delay times (seconds): " << flush;
-    QI::ReadArray(cin, m_TD);
+    QI::ReadArray(istr, m_TD);
 }
 
-IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
+IRSPGR::IRSPGR(std::istream &istr, const bool prompt) : MPRAGE() {
     if (prompt) cout << "Enter read-out flip-angle (degrees): " << flush;
     double inFlip;
-    QI::Read(cin, inFlip);
+    QI::Read(istr, inFlip);
     m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
 
     int NPE2;
     if (prompt) cout << "Enter number of spatial locations (remember +4): ";
-    QI::Read(cin, NPE2);
+    QI::Read(istr, NPE2);
     if (NPE2 >= 64) {
         m_Nseg = NPE2 / 2;
     } else {
@@ -61,7 +61,7 @@ IRSPGR::IRSPGR(const bool prompt) : MPRAGE() {
     m_Nk0 = 0;
     
     if (prompt) cout << "Enter TIs (seconds): " << flush;
-    QI::ReadArray(cin, m_TI);
+    QI::ReadArray(istr, m_TI);
 
     m_TD = ArrayXd::Zero(m_TI.size()); // For GE IR-SPGR the delay time is zero
 }
@@ -87,20 +87,20 @@ MP2RAGE::MP2RAGE(const Array3d &TD, const double TR, const int N, const Array2d 
     m_flip = flip;
 }
 
-MP2RAGE::MP2RAGE(const bool prompt) : SequenceBase() {
+MP2RAGE::MP2RAGE(std::istream &istr, const bool prompt) : SequenceBase() {
     if (prompt) cout << "Enter read-out flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, m_flip);
+    QI::ReadArray(istr, m_flip);
     if (m_flip.size() != 2) {
         QI_EXCEPTION("Must have 2 flip-angles for MP3RAGE");
     }
     m_flip *= M_PI / 180.;
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
     if (prompt) cout << "Enter segment size: " << flush;
-    QI::Read(cin, m_N);
+    QI::Read(istr, m_N);
     if (prompt) cout << "Enter inversion times (seconds): " << flush;
     ArrayXd m_TI;
-    QI::ReadArray(cin, m_TI);
+    QI::ReadArray(istr, m_TI);
     if (m_TI.size() != 2) {
         QI_EXCEPTION("Must specify 2 TI times for MP3RAGE");
     }
@@ -109,7 +109,7 @@ MP2RAGE::MP2RAGE(const bool prompt) : SequenceBase() {
     m_TD[1] = m_TI[1] - m_TD[0] - m_N*m_TR;
     if (prompt) cout << "Enter overall TR (seconds): " << flush;
     float TRseg;
-    QI::Read(cin, TRseg);
+    QI::Read(istr, TRseg);
     m_TD[2] = TRseg - m_TD[1] - m_N*m_TR;
 }
 
@@ -129,20 +129,20 @@ MP3RAGE::MP3RAGE(const Array4d &TD, const double TR, const int N, const Array3d 
     m_flip = flip;
 }
 
-MP3RAGE::MP3RAGE(const bool prompt) : SequenceBase() {
+MP3RAGE::MP3RAGE(std::istream &istr, const bool prompt) : SequenceBase() {
     if (prompt) cout << "Enter read-out flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, m_flip);
+    QI::ReadArray(istr, m_flip);
     if (m_flip.size() != 3) {
         QI_EXCEPTION("Must have 3 flip-angles for MP3RAGE");
     }
     m_flip *= M_PI / 180.;
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
     if (prompt) cout << "Enter segment size: " << flush;
-    QI::Read(cin, m_N);
+    QI::Read(istr, m_N);
     if (prompt) cout << "Enter inversion times (seconds): " << flush;
     ArrayXd m_TI;
-    QI::ReadArray(cin, m_TI);
+    QI::ReadArray(istr, m_TI);
     if (m_TI.size() != 3) {
         QI_EXCEPTION("Must specify 3 TI times for MP3RAGE");
     }
@@ -152,7 +152,7 @@ MP3RAGE::MP3RAGE(const bool prompt) : SequenceBase() {
     m_TD[2] = m_TI[2] - m_TD[1] - m_N*m_TR;
     if (prompt) cout << "Enter overall TR (seconds): " << flush;
     float TRseg;
-    QI::Read(cin, TRseg);
+    QI::Read(istr, TRseg);
     m_TD[3] = TRseg - m_TD[2] - m_N*m_TR;
 }
 

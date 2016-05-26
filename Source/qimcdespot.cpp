@@ -22,7 +22,7 @@
 
 #include "QI/Util.h"
 #include "QI/Models/Model.h"
-#include "QI/Sequences/Sequence.h"
+#include "QI/Sequences/Sequences.h"
 #include "QI/RegionContraction.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderVectorFilter.h"
@@ -38,30 +38,12 @@ void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorVol
 void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorVolumeF::Pointer> &images,
                 bool flip, bool verbose, bool prompt)
 {
-    string type, path;
+    string path;
     if (prompt) cout << "Enter input filename: " << flush;
     while (QI::Read(cin, path) && (path != "END") && (path != "")) {
         if (verbose) cout << "Reading file: " << path << endl;
         auto image = QI::ReadVectorImage<float>(path);
-        if (prompt) cout << "Enter sequence type (SPGR/SSFP): " << flush;
-        QI::Read(cin, type);
-        if (type == "SPGR") {
-            seq->addSequence(make_shared<QI::SPGRSimple>(prompt));
-        } else if (type == "SPGR_ECHO") {
-            seq->addSequence(make_shared<QI::SPGREcho>(prompt));
-        } else if (type == "SPGR_FINITE") {
-            seq->addSequence(make_shared<QI::SPGRFinite>(prompt));
-        } else if (type == "SSFP") {
-            seq->addSequence(make_shared<QI::SSFPSimple>(prompt));
-        } else if (type == "SSFP_ECHO") {
-            seq->addSequence(make_shared<QI::SSFPEcho>(prompt));
-        } else if (type == "SSFP_ECHO_FLEX") {
-            seq->addSequence(make_shared<QI::SSFPEchoFlex>(prompt));
-        } else if (type == "SSFP_FINITE") {
-            seq->addSequence(make_shared<QI::SSFPFinite>(prompt));
-        } else {
-            QI_EXCEPTION("Unknown sequence type: " << type);
-        }
+        seq->addSequence(QI::ReadSequence(cin, prompt));
         image->DisconnectPipeline(); // This step is really important.
         images.push_back(image);
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;

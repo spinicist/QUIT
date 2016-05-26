@@ -33,12 +33,12 @@ SteadyState::SteadyState(const ArrayXd &flip, const double TR) :
 SPGRSimple::SPGRSimple(const ArrayXd &flip, const double TR) :
     SteadyState(flip, TR)
 {}
-SPGRSimple::SPGRSimple(const bool prompt) : SteadyState() {
+SPGRSimple::SPGRSimple(std::istream &istr, const bool prompt) : SteadyState() {
     if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, m_flip);
+    QI::ReadArray(istr, m_flip);
     m_flip *= M_PI / 180.;
     if (prompt) cout << "Enter TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
 }
 
 void SPGRSimple::write(ostream &os) const {
@@ -60,9 +60,9 @@ SPGREcho::SPGREcho(const ArrayXd &flip, const double TR, const double TE) :
     SPGRSimple(flip, TR), m_TE(TE)
 {}
 
-SPGREcho::SPGREcho(const bool prompt) : SPGRSimple(prompt) {
+SPGREcho::SPGREcho(std::istream &istr, const bool prompt) : SPGRSimple(istr, prompt) {
     if (prompt) cout << "Enter TE (seconds): " << flush;
-    QI::Read(cin, m_TE);
+    QI::Read(istr, m_TE);
 }
 
 void SPGREcho::write(ostream &os) const {
@@ -78,11 +78,11 @@ ArrayXcd SPGREcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
 SPGRFinite::SPGRFinite(const ArrayXd &flip, const double TR, const double Trf, const double TE) :
     SPGRSimple(flip, TR), m_Trf(Trf), m_TE(TE)
 {}
-SPGRFinite::SPGRFinite(const bool prompt) : SPGRSimple(prompt) {
+SPGRFinite::SPGRFinite(std::istream &istr, const bool prompt) : SPGRSimple(istr, prompt) {
     if (prompt) cout << "Enter RF Pulse Length (seconds): " << flush;
-    QI::Read(cin, m_Trf);
+    QI::Read(istr, m_Trf);
     if (prompt) cout << "Enter TE (seconds): " << flush;
-    QI::Read(cin, m_TE);
+    QI::Read(istr, m_TE);
 }
 
 void SPGRFinite::write(ostream &os) const {
@@ -105,14 +105,14 @@ SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phi)
     m_phi(phi * M_PI / 180.)
 {}
 
-SSFPSimple::SSFPSimple(const bool prompt) : SteadyState() {
+SSFPSimple::SSFPSimple(std::istream &istr, const bool prompt) : SteadyState() {
     ArrayXd flip, phi;
 	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, flip);
+    QI::ReadArray(istr, flip);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
-    QI::ReadArray(cin, phi);
+    QI::ReadArray(istr, phi);
 	if (prompt) cout << "Enter TR (seconds): " << flush;
-	QI::Read(cin, m_TR);
+	QI::Read(istr, m_TR);
     m_flip = (flip * M_PI / 180.).replicate(phi.rows(), 1);
     m_phi = ArrayXd::Zero(m_flip.size());
     int start = 0;
@@ -140,22 +140,22 @@ ArrayXcd SSFPSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
 }
 
 SSFPEcho::SSFPEcho() : SSFPSimple() {}
-SSFPEcho::SSFPEcho(const bool prompt) : SSFPSimple(prompt) {}
+SSFPEcho::SSFPEcho(std::istream &istr, const bool prompt) : SSFPSimple(istr, prompt) {}
 
 ArrayXcd SSFPEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->SSFPEcho(p, m_flip, m_TR, m_phi);
 }
 
-SSFPEchoFlex::SSFPEchoFlex(const bool prompt) : SSFPEcho() {
+SSFPEchoFlex::SSFPEchoFlex(std::istream &istr, const bool prompt) : SSFPEcho() {
     if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, m_flip);
+    QI::ReadArray(istr, m_flip);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
-    QI::ReadArray(cin, m_phi);
+    QI::ReadArray(istr, m_phi);
     if (m_flip.size() != m_phi.size()) {
         QI_EXCEPTION("SSFP must have the same number of flip-angles and phase-increments.");
     }
     if (prompt) cout << "Enter TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
     m_flip *= M_PI / 180.;
     m_phi *= M_PI / 180.;
 }
@@ -165,11 +165,10 @@ SSFPFinite::SSFPFinite(const ArrayXd &flip, const double TR, const double Trf, c
     m_Trf(Trf)
 {}
 
-SSFPFinite::SSFPFinite(const bool prompt) :
-    SSFPSimple(prompt)
+SSFPFinite::SSFPFinite(std::istream &istr, const bool prompt) : SSFPSimple(istr, prompt)
 {
     if (prompt) cout << "Enter RF Pulse Length (seconds): " << flush;
-    QI::Read(cin, m_Trf);
+    QI::Read(istr, m_Trf);
 }
 
 void SSFPFinite::write(ostream &os) const {
@@ -182,12 +181,12 @@ ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
     return m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phi);
 }
 
-SSFP_GS::SSFP_GS(const bool prompt) : SteadyState() {
+SSFP_GS::SSFP_GS(std::istream &istr, const bool prompt) : SteadyState() {
     if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(cin, m_flip);
+    QI::ReadArray(istr, m_flip);
     m_flip *= M_PI / 180.;
     if (prompt) cout << "Enter TR (seconds): " << flush;
-    QI::Read(cin, m_TR);
+    QI::Read(istr, m_TR);
 }
 
 void SSFP_GS::write(ostream &os) const {
@@ -204,14 +203,14 @@ ArrayXcd SSFP_GS::signal(shared_ptr<Model> m, const VectorXd &p) const {
  * AFI
  *****************************************************************************/
 
-AFI::AFI(const bool prompt) : SteadyState() {
+AFI::AFI(std::istream &istr, const bool prompt) : SteadyState() {
     if (prompt) cout << "Enter flip-angle (degrees): " << flush;
     double inFlip;
-    QI::Read(cin, inFlip);
+    QI::Read(istr, inFlip);
     m_flip = ArrayXd::Ones(1) * inFlip * M_PI / 180.;
     if (prompt) cout << "Enter TR1 & TR2 (seconds): " << flush;
     ArrayXd temp;
-    QI::ReadArray(cin, temp);
+    QI::ReadArray(istr, temp);
     if (temp.rows() != 2)
         QI_EXCEPTION("Must enter 2 TR values.");
     m_TR1 = temp[0]; m_TR2 = temp[1];

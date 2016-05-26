@@ -249,35 +249,7 @@ void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
     if (prompt) cout << "Enter output filename: " << flush;
     while (Read(cin, path) && (path != "END") && (path != "")) {
         names.push_back(path);
-        if (prompt) cout << "Enter sequence type: " << flush;
-        Read(cin, type);
-        if (type == "SPGR") {
-            cs.push_back(make_shared<SPGRSimple>(prompt));
-        } else if (type == "SPGR_ECHO") {
-            cs.push_back(make_shared<SPGREcho>(prompt));
-        } else if (type == "SPGR_FINITE") {
-            cs.push_back(make_shared<SPGRFinite>(prompt));
-        } else if (type == "SSFP") {
-            cs.push_back(make_shared<SSFPSimple>(prompt));
-        } else if (type == "SSFP_ECHO") {
-            cs.push_back(make_shared<SSFPEcho>(prompt));
-        } else if (type == "SSFP_ECHO_FLEX") {
-            cs.push_back(make_shared<SSFPEchoFlex>(prompt));
-        } else if (type == "SSFP_FINITE") {
-            cs.push_back(make_shared<SSFPFinite>(prompt));
-        } else if (type == "SSFP_GS") {
-            cs.push_back(make_shared<SSFP_GS>(prompt));
-        } else if (type == "IRSPGR") {
-            cs.push_back(make_shared<IRSPGR>(prompt));
-        } else if (type == "MPRAGE") {
-            cs.push_back(make_shared<MPRAGE>(prompt));
-        } else if (type == "AFI") {
-            cs.push_back(make_shared<AFI>(prompt));
-        } else if (type == "SPINECHO") {
-            cs.push_back(make_shared<MultiEcho>(prompt));
-        } else {
-            QI_EXCEPTION("Unknown sequence type: " << type);
-        }
+        cs.push_back(QI::ReadSequence(cin, prompt));
         if (prompt) cout << "Enter next filename (END to finish input): " << flush;
     }
 }

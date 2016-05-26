@@ -20,7 +20,7 @@
 
 #include "itkImageFileReader.h"
 
-#include "QI/Sequences/MPRAGESequence.h"
+#include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
@@ -189,14 +189,14 @@ int main(int argc, char **argv) {
     
     if (verbose) cout << "Opening SPGR file: " << argv[optind] << endl;
     auto spgrImg = QI::ReadVectorImage<float>(argv[optind++]);
-    auto spgrSequence = make_shared<QI::SPGRSimple>(prompt);
+    auto spgrSequence = make_shared<QI::SPGRSimple>(cin, prompt);
     if (verbose) cout << "Opening IR-SPGR file: " << argv[optind] << endl;
     auto irImg = QI::ReadVectorImage<float>(argv[optind++]);
     shared_ptr<QI::SequenceBase> irSequence;
     if (IR) {
-        irSequence = make_shared<QI::IRSPGR>(prompt);
+        irSequence = make_shared<QI::IRSPGR>(cin, prompt);
     } else {
-        irSequence = make_shared<QI::MPRAGE>(prompt);
+        irSequence = make_shared<QI::MPRAGE>(cin, prompt);
     }
     auto combined = make_shared<QI::SequenceGroup>();
     combined->addSequence(spgrSequence);

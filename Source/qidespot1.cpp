@@ -18,7 +18,7 @@
 
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "QI/Models/Models.h"
-#include "QI/Sequences/Sequence.h"
+#include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
 
 using namespace std;
@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
     string inputFilename = argv[optind++];
     if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
     auto data = QI::ReadVectorImage<float>(inputFilename);
-    shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(prompt);
+    shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(cin, prompt);
     if (verbose) cout << *spgrSequence;
     algo->setSequence(spgrSequence);
     auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();

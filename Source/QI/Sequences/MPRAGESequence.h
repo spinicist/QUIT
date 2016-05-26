@@ -22,7 +22,7 @@ class MPRAGE : public SequenceBase {
         int m_Nseg, m_Nk0;
         MPRAGE() : SequenceBase() {}
         MPRAGE(const Eigen::ArrayXd &TI, const Eigen::ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip);
-        MPRAGE(const bool prompt);
+        MPRAGE(std::istream &istr, const bool prompt);
         size_t size() const override { return m_TI.size(); }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream &os) const override;
@@ -32,7 +32,7 @@ class MPRAGE : public SequenceBase {
 // Special class for GE IRSPGR, for backwards compatibility
 class IRSPGR : public MPRAGE {
     public:
-        IRSPGR(const bool prompt);
+        IRSPGR(std::istream &istr, const bool prompt);
         std::string name() const override { return "IRSPGR"; }
 };
 
@@ -42,7 +42,7 @@ class MP2RAGE : public SequenceBase {
         int m_N;
         MP2RAGE() : SequenceBase() {}
         MP2RAGE(const Eigen::Array3d &TD, const double TR, const int N, const Eigen::Array2d flip);
-        MP2RAGE(const bool prompt);
+        MP2RAGE(std::istream &istr, const bool prompt);
         size_t size() const override { return 3; }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override { QI_EXCEPTION("Not implemented"); }
         Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
@@ -56,7 +56,7 @@ class MP3RAGE : public SequenceBase {
         int m_N;
         MP3RAGE() : SequenceBase() {}
         MP3RAGE(const Eigen::Array4d &TD, const double TR, const int N, const Eigen::Array3d flip);
-        MP3RAGE(const bool prompt);
+        MP3RAGE(std::istream &istr, const bool prompt);
         size_t size() const override { return 3; }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override { QI_EXCEPTION("Not implemented"); }
         Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;

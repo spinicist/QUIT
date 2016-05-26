@@ -20,7 +20,7 @@
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "QI/Models/Models.h"
-#include "QI/Sequences/Sequence.h"
+#include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
 #include "itkTimeProbe.h"
 
@@ -326,9 +326,9 @@ int main(int argc, char **argv) {
     auto data = QI::ReadVectorImage<float>(argv[optind++]);
     shared_ptr<QI::SteadyState> ssfp;
     if (elliptical) {
-        ssfp = make_shared<QI::SSFP_GS>(prompt);
+        ssfp = make_shared<QI::SSFP_GS>(cin, prompt);
     } else {
-        ssfp = make_shared<QI::SSFPSimple>(prompt);
+        ssfp = make_shared<QI::SSFPSimple>(cin, prompt);
     }
     if (verbose) cout << *ssfp << endl;
 
