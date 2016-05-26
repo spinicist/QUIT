@@ -1,10 +1,8 @@
 #ifndef APPLYALGOFILTER_H
 #define APPLYALGOFILTER_H
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
-#include "QI/Sequences/Sequence.h"
-#include "QI/Models/Models.h"
 #include "QI/ThreadPool.h"
 
 #include "itkImageToImageFilter.h"

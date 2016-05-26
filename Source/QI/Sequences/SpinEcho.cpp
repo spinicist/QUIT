@@ -1,8 +1,7 @@
 /*
- *  Sequence.cpp
+ *  SpinEcho.cpp
  *
- *  Created by Tobias Wood on 14/11/2012.
- *  Copyright (c) 2013 Tobias Wood.
+ *  Copyright (c) 2016 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,7 +9,7 @@
  *
  */
 
-#include "QI/Sequences/Sequence.h"
+#include "QI/Sequences/SpinEcho.h"
 #include "QI/Util.h"
 
 using namespace std;

@@ -14,7 +14,7 @@
 
 #include "QI/Sequences/SteadyStateSequence.h"
 #include "QI/Sequences/MPRAGESequence.h"
-#include "QI/Sequences/Sequence.h"
+#include "QI/Sequences/SpinEcho.h"
 
 namespace QI {
     std::shared_ptr<SequenceBase> ReadSequence(std::istream& istr, const bool prompt);

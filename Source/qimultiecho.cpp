@@ -12,13 +12,13 @@
 
 #include <getopt.h>
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
 #include "QI/Types.h"
 #include "QI/Util.h"
-#include "QI/Sequences/Sequence.h"
+#include "QI/Sequences/SpinEcho.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderImageFilter.h"
 #include "itkTimeProbe.h"
