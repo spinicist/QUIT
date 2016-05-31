@@ -45,24 +45,71 @@ public:
         const MatrixXd &mS = qz.matrixS();
         const MatrixXd &mT = qz.matrixT();
         const MatrixXd &mZT = qz.matrixZ().transpose();
-        for (int i = 0; i < 6; i++) {
+        Eigen::Index sInd = 0;
+        double sVal = numeric_limits<double>::infinity();
+        for (Eigen::Index i = 0; i < 6; i++) {
             const double a = mS.coeffRef(i,i);
             const double b = mT.coeffRef(i,i);
-            const double l = a / b;
-            if (isfinite(l) && (l < 0)) {
-                v(i) = 1.0;
-                const double a = qz.matrixS().coeffRef(i,i);
-                const double b = qz.matrixT().coeffRef(i,i);
-                for (Index j = i-1; j >= 0; j--) {
-                    const Index st = j+1;
-                    const Index sz = i-j; 
-                    v.coeffRef(j) = -v.segment(st,sz).transpose().cwiseProduct(b*mS.block(j,st,1,sz) - a*mT.block(j,st,1,sz)).sum() / (b*mS.coeffRef(j,j) - a*mT.coeffRef(j,j));
-                }
-                v = (mZT * v).normalized();
-                break;
+            const double l = fabs(a / b);
+            if (l < sVal) {
+                sVal = l;
+                sInd = i;
             }
         }
+        
+        v(sInd) = 1.0;
+        const double a = qz.matrixS().coeffRef(sInd,sInd);
+        const double b = qz.matrixT().coeffRef(sInd,sInd);
+        for (Index j = sInd-1; j >= 0; j--) {
+            const Index st = j+1;
+            const Index sz = sInd-j; 
+            v.coeffRef(j) = -v.segment(st,sz).transpose().cwiseProduct(b*mS.block(j,st,1,sz) - a*mT.block(j,st,1,sz)).sum() / (b*mS.coeffRef(j,j) - a*mT.coeffRef(j,j));
+        }
+        v = (mZT * v).normalized();
         return v;
+    }
+    
+    MatrixXd buildS(const ArrayXd &x, const ArrayXd &y) const {
+        Matrix<double, Dynamic, 6> D(x.rows(), 6);
+        D.col(0) = x*x;
+        D.col(1) = x*y;
+        D.col(2) = y*y;
+        D.col(3) = x;
+        D.col(4) = y;
+        D.col(5).setConstant(1);
+        return D.transpose() * D;
+    }
+    
+    MatrixXd fitzC() const {
+        typedef Matrix<double, 6, 6> Matrix6d;
+        Matrix6d C = Matrix6d::Zero();
+        // Fitzgibbon et al
+        C(0,2) = -2; C(1,1) = 1; C(2,0) = -2;
+        return C;
+    }
+    
+    MatrixXd hyperC(const ArrayXd &x, const ArrayXd &y) const {
+        typedef Matrix<double, 6, 6> Matrix6d;
+        Matrix6d C = Matrix6d::Zero();
+        // Fitzgibbon et al
+        //C(0,2) = -2; C(1,1) = 1; C(2,0) = -2;
+        
+        // Hyper Ellipse
+        const double N = x.cols();
+        const double xc = x.sum() / N;
+        const double yc = y.sum() / N;
+        const double sx = x.square().sum() / N;
+        const double sy = y.square().sum() / N;
+        const double xy = (x * y).sum() / N; 
+        
+        C << 6*sx, 6*xy, sx+sy, 6*xc, 2*yc, 1,
+             6*xy, 4*(sx+sy), 6*xy, 4*yc, 4*xc, 0,
+             sx + sy, 6*xy, 6*sy, 2*xc, 6*yc, 1,
+             6*xc, 4*yc, 2*xc, 4, 0, 0,
+             2*yc, 4*xc, 6*yc, 0, 4, 0,
+             1, 0, 1, 0, 0, 0;
+        
+        return C;
     }
     
     void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids, TIterations &its) const override
@@ -74,16 +121,8 @@ public:
         ArrayXd x = data.real() / scale;
         ArrayXd y = data.imag() / scale;
         
-        Matrix<double, Dynamic, 6> D(data.rows(), 6);
-        D.col(0) = x*x;
-        D.col(1) = x*y;
-        D.col(2) = y*y;
-        D.col(3) = x;
-        D.col(4) = y;
-        D.col(5).setConstant(1);
-        Matrix6d S = D.transpose() * D;
-        Matrix6d C = Matrix6d::Zero();
-        C(0,2) = -2; C(1,1) = 1; C(2,0) = -2;
+        MatrixXd S = buildS(x, y);
+        Matrix6d C = hyperC(x, y);
         ArrayXd Z = solveEig(S, C);
         const double za = Z[0];
         const double zb = Z[1]/2;
