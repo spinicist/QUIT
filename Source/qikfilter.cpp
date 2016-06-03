@@ -154,44 +154,47 @@ QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbos
 }
 
 //******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: qikfilter [options] input \n\
-\n\
-Filter images in k-Space\n\
-\n\
-Options:\n\
-    --help, -h           : Print this message.\n\
-    --verbose, -v        : Print more information.\n\
-    --out, -o path       : Specify an output filename (default image base).\n\
-    --filter, -f \"a q\" : Set Filter a and q values (default 0.75 0.25).\n\
-    --debug, -d          : Save all pipeline steps.\n\
-    --complex, -x        : Output complex data.\n\
-    --threads, -T N      : Use N threads (default=hardware limit).\n"
-};
-
-const struct option long_options[] = {
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"out", required_argument, 0, 'o'},
-    {"filter", required_argument, 0, 'f'},
-    {"debug", no_argument, 0, 'd'},
-    {"complex", no_argument, 0, 'x'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-const char *short_options = "hvo:m:e:dxT:";
-
-//******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
 
-    bool verbose = false, debug = false, is_complex = false;
+    //******************************************************************************
+    // Arguments / Usage
+    //******************************************************************************
+    bool verbose = false, debug = false;
+    int complex_in = false, complex_out = false;
     shared_ptr<QI::FilterKernel> kernel = make_shared<QI::TukeyKernel>();
     string out_name;
+    const string usage {
+    "Usage is: qikfilter [options] input \n\
+    \n\
+    Filter images in k-Space\n\
+    \n\
+    Options:\n\
+        --help, -h           : Print this message.\n\
+        --verbose, -v        : Print more information.\n\
+        --out, -o path       : Specify an output filename (default image base).\n\
+        --filter, -f \"a q\" : Set Filter a and q values (default 0.75 0.25).\n\
+        --debug, -d          : Save all pipeline steps.\n\
+        --complex_in         : Read complex data.\n\
+        --complex_out        : Output complex data.\n\
+        --threads, -T N      : Use N threads (default=hardware limit).\n"
+    };
+
+    const struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"verbose", no_argument, 0, 'v'},
+        {"out", required_argument, 0, 'o'},
+        {"filter", required_argument, 0, 'f'},
+        {"debug", no_argument, 0, 'd'},
+        {"complex_in", no_argument, &complex_in, true},
+        {"complex_out", no_argument, &complex_out, true},
+        {"threads", required_argument, 0, 'T'},
+        {0, 0, 0, 0}
+    };
+    const char *short_options = "hvo:m:e:dT:";
+
     int indexptr = 0, c;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
@@ -206,7 +209,6 @@ int main(int argc, char **argv) {
                 if (verbose) cout << "Kernel is: " << *kernel << endl;
             } break;
             case 'd': debug = true; break;
-            case 'x': is_complex = true; break;
             case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
             case 'h':
                 cout << QI::GetVersion() << endl << usage << endl;
@@ -228,7 +230,7 @@ int main(int argc, char **argv) {
         out_name = in_name.substr(0, in_name.find(".")) + "_filtered";
     
     QI::SeriesXF::Pointer vols;
-    if (is_complex) {
+    if (complex_in) {
         cout << "Reading complex file: " << in_name << endl;
         vols = QI::ReadImage<QI::SeriesXF>(in_name);
     } else {
@@ -241,7 +243,7 @@ int main(int argc, char **argv) {
         vols->DisconnectPipeline();
     }
     vols = run_pipeline(vols, verbose, debug, kernel);     
-    if (is_complex) {
+    if (complex_out) {
         if (verbose) cout << "Data is complex." << endl;
         QI::WriteImage(vols, out_name + QI::OutExt());
     } else {
