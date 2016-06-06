@@ -18,7 +18,7 @@
 #include "cppoptlib/meta.h"
 #include "cppoptlib/problem.h"
 #include "cppoptlib/solver/lbfgsbsolver.h"
-#include "cppoptlib/solver/cmaessolver.h"
+#include "cppoptlib/solver/cmaesbsolver.h"
 #include "QI/Util.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
@@ -52,9 +52,10 @@ public:
     }
 };
 
-class FMCostFunction : public cppoptlib::Problem<double, 3> {
+class FMCostFunction : public cppoptlib::BoundedProblem<double, 3> {
 public:
-    using typename Problem<double, 3>::VectorType;
+    using BoundedProblem<double, 3>::BoundedProblem;
+    using typename Problem<double, 3>::TVector;
     
     Eigen::ArrayXd m_data;
     double m_T1, m_B1;
@@ -67,11 +68,11 @@ public:
         return diff;
     }
 
-    double value(const VectorType &p) {
+    double value(const TVector &p) {
         return residuals(p).square().sum();
     }
     
-    void gradient(const VectorType &p, VectorType &grad) const {
+    void gradient(const TVector &p, TVector &grad) const {
         ArrayXXd deriv = QI::One_SSFP_Echo_Derivs(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
         grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
     }
@@ -157,30 +158,25 @@ public:
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             const auto data = indata / indata.abs().maxCoeff();
-            
-            auto stop = cppoptlib::Criteria<double>::defaults();
-            stop.iterations = 1000;
-            cppoptlib::CMAesSolver<FMCostFunction> solver;
-            solver.setStopCriteria(stop);
-            FMCostFunction cost;
+            cppoptlib::CMAesBSolver<FMCostFunction> solver;
+            // f0 is scaled by TR in the cost function so that scaling is better here
+            Array3d lower; lower << 0., 2.*this->m_sequence->TR(), -0.55;
+            Array3d upper; upper << 20,    T1,                         0.55;
+            if (this->m_symmetric)
+                lower[2] = 0.;
+            FMCostFunction cost(lower, upper);
             cost.m_B1 = B1;
             cost.m_data = data;
             cost.m_sequence = this->m_sequence;
             cost.m_T1 = T1;
-            // f0 is scaled by TR in the cost function so that scaling is better here
-            Array3d lower; lower << 0.001, this->m_sequence->TR(), -0.6;
-            Array3d upper; upper << 1.e3,  T1,                      0.6;
-            if (this->m_symmetric)
-                lower[2] = 0.;
-            cost.setLowerBound(lower);
-            cost.setUpperBound(upper);
             
             Eigen::Vector3d p; p << 5., 0.1 * T1, 0.1; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+            //solver.setDebug(cppoptlib::DebugLevel::Low);
             solver.minimize(cost, p);
             its = solver.criteria().iterations;
             outputs[0] = p[0] * indata.abs().maxCoeff();
             outputs[1] = p[1];
-            outputs[2] = p[2];
+            outputs[2] = p[2] / this->m_sequence->TR();
             resids = cost.residuals(p) * indata.abs().maxCoeff();
         } else {
             outputs.setZero();

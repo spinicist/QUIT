@@ -139,25 +139,26 @@ class T1Functor : public DenseFunctor<double> {
         }
 };
 
-class D1CostFunction : public cppoptlib::Problem<double, 2> {
+class D1CostFunction : public cppoptlib::BoundedProblem<double, 2> {
 public:
-    using typename Problem<double, 2>::VectorType;
+    using BoundedProblem<double, 2>::BoundedProblem;
+    using typename Problem<double, 2>::TVector;
     
     shared_ptr<QI::SequenceBase> m_sequence;
     ArrayXd m_data;
     double m_B1;
 
-    Eigen::ArrayXd residuals(const VectorType &p) const {
+    Eigen::ArrayXd residuals(const TVector &p) const {
         ArrayXd s = QI::One_SPGR_Magnitude(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
         Eigen::ArrayXd diff = s - m_data;
         return diff;
     }
 
-    double value(const VectorType &p) {
+    double value(const TVector &p) {
         return residuals(p).square().sum();
     }
     
-    void gradient(const VectorType &p, VectorType &grad) const {
+    void gradient(const TVector &p, TVector &grad) const {
         ArrayXXd deriv = QI::One_SPGR_Magnitude_Derivs(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
         grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
     }
