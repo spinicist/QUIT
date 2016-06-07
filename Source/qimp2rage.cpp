@@ -86,7 +86,7 @@ public:
     itkNewMacro(Self); /** Method for creation through the object factory. */
     itkTypeMacro(MPRAGELookUpFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
-    void SetInput(const TImage *img) override {
+    void SetInput(const TImage *img) ITK_OVERRIDE {
         this->SetNthInput(0, const_cast<TImage*>(img));
     }
 
@@ -122,7 +122,7 @@ protected:
         }
     }
 
-    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
         ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);

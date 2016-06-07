@@ -434,7 +434,7 @@ int main(int argc, char **argv) {
     QI::VolumeF::Pointer input = QI::ReadImage(fname);
     string prefix = QI::StripExt(fname);
 
-    if (mask == ITK_NULLPTR) {
+    if (!mask) {
         if (intensity_threshold == 0)
             mask = OtsuMask(input);
         else

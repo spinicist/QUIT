@@ -140,12 +140,12 @@ public:
         m_crossings = choose(m_lines, 2);
         this->Modified();
     }
-    void SetInput(const TIn *img) override { this->SetNthInput(0, const_cast<TIn*>(img)); }
+    void SetInput(const TIn *img) ITK_OVERRIDE { this->SetNthInput(0, const_cast<TIn*>(img)); }
     void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
     typename TIn::ConstPointer GetInput() const { return static_cast<const TIn *>(this->ProcessObject::GetInput(0)); }
     typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(1)); }
 
-    virtual void GenerateOutputInformation() override {
+    virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
             QI_EXCEPTION("Input size and number of phases do not match");
@@ -166,7 +166,7 @@ protected:
     }
     ~GSFilter() {}
 
-    virtual void ThreadedGenerateData(const TIn::RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const TIn::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ImageRegionConstIterator<TIn> inputIter(this->GetInput(), region);
         auto m = this->GetMask();
@@ -254,14 +254,14 @@ public:
         m_lines = m_phases / 2;
         this->Modified();
     }
-    void SetInput(const TInputImage *img) override { this->SetNthInput(0, const_cast<TInputImage*>(img)); }
+    void SetInput(const TInputImage *img) ITK_OVERRIDE { this->SetNthInput(0, const_cast<TInputImage*>(img)); }
     void SetPass1(const TOutputImage *img) { this->SetNthInput(1, const_cast<TOutputImage*>(img)); }
     void SetMask(const TMask *mask) { this->SetNthInput(2, const_cast<TMask*>(mask)); }
     typename TInputImage::ConstPointer GetInput() const { return static_cast<const TInputImage *>(this->ProcessObject::GetInput(0)); }
     typename TOutputImage::ConstPointer GetPass1() const { return static_cast<const TOutputImage *>(this->ProcessObject::GetInput(1)); }
     typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(2)); }
 
-    virtual void GenerateOutputInformation() override {
+    virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
             QI_EXCEPTION("Input size and number of phases do not match");
@@ -282,7 +282,7 @@ protected:
     }
     ~MinEnergyFilter() {}
 
-    virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ConstNeighborhoodIterator<TInputImage>::RadiusType radius;
         radius.Fill(1);

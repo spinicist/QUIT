@@ -81,7 +81,7 @@ void WriteResiduals(const VectorVolumeF::Pointer img, const string prefix,
     auto scaleFilter = itk::DivideImageFilter<VolumeF, VolumeF, VolumeF>::New();
     auto sqrtNFilter = itk::MultiplyImageFilter<VolumeF>::New();
     magFilter->SetInput(img);
-    if (scaleImage != ITK_NULLPTR) {
+    if (scaleImage) {
         scaleFilter->SetInput1(magFilter->GetOutput());
         scaleFilter->SetInput2(scaleImage);
         sqrtNFilter->SetInput(scaleFilter->GetOutput());

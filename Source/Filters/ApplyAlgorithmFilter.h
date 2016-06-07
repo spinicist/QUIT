@@ -73,13 +73,13 @@ public:
     RealTimeClock::TimeStampType GetMeanTime() const;
     SizeValueType GetEvaluations() const;
 
-	virtual void GenerateOutputInformation() override;
-    virtual void GenerateData() override;
+	virtual void GenerateOutputInformation() ITK_OVERRIDE;
+    virtual void GenerateData() ITK_OVERRIDE;
 
 protected:
 	ApplyAlgorithmFilter();
 	~ApplyAlgorithmFilter(){}
-	DataObject::Pointer MakeOutput(unsigned int idx);
+	DataObject::Pointer MakeOutput(unsigned int idx) ITK_OVERRIDE;
 
 	std::shared_ptr<TAlgorithm> m_algorithm;
     bool m_scale_to_mean = false, m_verbose = false, m_hasSubregion = false;

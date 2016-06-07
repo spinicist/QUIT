@@ -31,8 +31,8 @@ protected:
     ReorderImageFilter() {}
     ~ReorderImageFilter() {}
 
-    void EnlargeOutputRequestedRegion(DataObject *itkNotUsed(output)) override;
-    virtual void GenerateData() override;
+    void EnlargeOutputRequestedRegion(DataObject *itkNotUsed(output)) ITK_OVERRIDE;
+    virtual void GenerateData() ITK_OVERRIDE;
 
 };
 

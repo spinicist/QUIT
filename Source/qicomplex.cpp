@@ -51,7 +51,7 @@ protected:
     ~FixGEFilter() {}
 
 public:
-    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         typedef typename TImage::PixelType PixelType;
         ImageSliceConstIteratorWithIndex<TImage> inIt(this->GetInput(), region);

@@ -58,7 +58,7 @@ public:
     itkTypeMacro(KSpaceFilter, ImageSource);
     itkSetMacro(WriteKernel, bool);
     
-    virtual void GenerateOutputInformation() override {
+    virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         typename TImage::SizeType size = this->GetOutput()->GetLargestPossibleRegion().GetSize();
         m_kernel->setSize(size[0], size[1], size[2]);
@@ -67,7 +67,7 @@ public:
     void SetKernel(const shared_ptr<QI::FilterKernel> &k) { m_kernel = k; }
 
 protected:
-    virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         typename TImage::IndexType startIndex = this->GetInput()->GetLargestPossibleRegion().GetIndex();
         itk::ImageRegionIterator<TImage> outIt(this->GetOutput(),region);
         itk::ImageRegionConstIteratorWithIndex<TImage> inIt(this->GetInput(),region);

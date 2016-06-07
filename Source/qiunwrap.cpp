@@ -54,10 +54,10 @@ public:
     itkNewMacro(Self);
     itkTypeMacro(DiscreteLaplacePhaseFilter, DiscreteLaplacePhaseFilter);
 
-    void SetInput(const TImage *img) override      { this->SetNthInput(0, const_cast<TImage*>(img)); }
+    void SetInput(const TImage *img) ITK_OVERRIDE      { this->SetNthInput(0, const_cast<TImage*>(img)); }
     typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
 
-    virtual void GenerateOutputInformation() override {
+    virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         auto op = this->GetOutput();
         op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
@@ -83,7 +83,7 @@ protected:
         }
     }
 
-    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) override {
+    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ConstNeighborhoodIterator<TImage>::RadiusType radius;
         radius.Fill(1);
@@ -147,7 +147,7 @@ protected:
 
     DiscreteInverseLaplace(){}
     ~DiscreteInverseLaplace(){}
-    virtual void GenerateData() override {
+    virtual void GenerateData() ITK_OVERRIDE {
         typename TImage::Pointer output = this->GetOutput();
         output->SetRegions(m_region);
         output->Allocate();
@@ -203,7 +203,7 @@ protected:
 
     DiscreteInverseLaplace2(){}
     ~DiscreteInverseLaplace2(){}
-    virtual void GenerateData() override {
+    virtual void GenerateData() ITK_OVERRIDE {
         typename TImage::Pointer output = this->GetOutput();
         output->SetRegions(m_region);
         output->Allocate();
