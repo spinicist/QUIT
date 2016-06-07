@@ -16,8 +16,6 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
-#include "itkParticleSwarmOptimizer.h"
-#include "itkLBFGSBOptimizer.h"
 #include "itkTimeProbe.h"
 
 #include "QI/Util.h"
@@ -50,77 +48,6 @@ void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorVol
     }
 }
 
-namespace itk {
-class MCDCostFunction : public SingleValuedCostFunction
-{
-public:
-    /** Standard class typedefs. */
-    typedef MCDCostFunction           Self;
-    typedef SingleValuedCostFunction  Superclass;
-    typedef SmartPointer<Self>        Pointer;
-    typedef SmartPointer<const Self>  ConstPointer;
-
-    /** Method for creation through the object factory. */
-    itkNewMacro(Self);
-
-    /** Run-time type information (and related methods). */
-    itkTypeMacro(CostFunction, SingleValuedCostfunction);
-
-    shared_ptr<QI::SequenceGroup> m_sequence;
-    ArrayXd m_data, m_weights;
-    shared_ptr<QI::Model> m_model;
-
-    unsigned int GetNumberOfParameters(void) const override { return m_model->nParameters(); } // itk::CostFunction
-
-    ArrayXd residuals(const ParametersType &p1) const {
-        int N = m_model->nParameters();
-        ArrayXd p2(N);
-        for (int i = 0; i < N; i++)
-            p2[i] = p1[i];
-        ArrayXcd s = m_sequence->signal(m_model, p2);
-        return (s.abs() - m_data);
-    }
-
-    MeasureType GetValue(const ParametersType &p1) const override {
-        return (residuals(p1) * m_weights).square().sum();
-    }
-
-    void GetDerivative(const ParametersType &p, DerivativeType &df) const override {
-        using std::sqrt;
-        using std::abs;
-        double eps = sqrt(numeric_limits<double>::epsilon());
-        df.SetSize(p.Size());
-        ParametersType x = p;
-        for (int i = 0; i < p.Size(); ++i) {
-            double h = eps * abs(x[i]);
-            if (h == 0.) {
-                h = eps;
-            }
-            double _x = x[i];
-            x[i] += h;
-            double v2 = GetValue(x);
-            x[i] -= 2*h;
-            double v1 = GetValue(x);
-            df[i] = (v2 - v1)/(2*h);
-            x[i] = _x;
-        }
-        //cout << "p " << p << endl;
-        //cout << "x " << x.transpose() << endl;
-        //cout << "e " << (eps * x).transpose() << endl;
-        //cout << "df " << df << endl;
-        //exit(0);
-    }
-
-    protected:
-    MCDCostFunction(){};
-    ~MCDCostFunction(){};
-
-    private:
-    MCDCostFunction(const Self &); //purposely not implemented
-    void operator = (const Self &); //purposely not implemented
-};
-}
-
 class MCDAlgo : public Algorithm<double> {
 protected:
     ArrayXXd m_bounds;
@@ -143,77 +70,6 @@ public:
     void setSequence(shared_ptr<QI::SequenceGroup> &s) { m_sequence = s; }
     void setBounds(ArrayXXd &b) { m_bounds = b; }
     void setIterations(const int i) { m_iterations = i; }
-};
-
-class BFGSAlgo : public MCDAlgo {
-    using MCDAlgo::MCDAlgo;
-
-private:
-    ArrayXd m_start;
-
-public:
-    void setStart(ArrayXd &s) { m_start = s; }
-
-    size_t numConsts() const override  { return 2; }
-    virtual TArray defaultConsts() override {
-        // f0, B1
-        TArray def(4);
-        def << NAN, 1.;
-        return def;
-    }
-
-    virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
-    {
-        typedef itk::LBFGSBOptimizer TOpt;
-        TOpt::Pointer optimizer = TOpt::New();
-        auto cost = itk::MCDCostFunction::New();
-        double f0 = inputs[0];
-        double B1 = inputs[1];
-        ArrayXXd localBounds = m_bounds;
-        if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
-            localBounds.row(m_model->ParameterIndex("f0")) += f0;
-            cost->m_weights = m_sequence->weights(f0);
-        } else {
-            cost->m_weights = ArrayXd::Ones(m_sequence->size());
-        }
-        localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
-        int N = m_model->nParameters();
-        TOpt::ParametersType start(N);
-        TOpt::BoundSelectionType select(N);
-        TOpt::BoundValueType lower(N), upper(N);
-        for (int i = 0; i < N; i++) {
-            lower[i] = localBounds(i, 0);
-            upper[i] = localBounds(i, 1);
-            select[i] = 2; // Upper and lower bounds
-            start[i] = m_start[i];
-        }
-        cost->m_data = data;
-        cost->m_sequence = m_sequence;
-        cost->m_model = m_model;
-        //optimizer->DebugOn();
-        optimizer->SetCostFunction(cost);
-        optimizer->SetBoundSelection(select);
-        optimizer->SetLowerBound(lower);
-        optimizer->SetUpperBound(upper);
-        optimizer->SetCostFunctionConvergenceFactor(1.e3);
-        optimizer->SetProjectedGradientTolerance(1e-10);
-        optimizer->SetMaximumNumberOfIterations(m_iterations);
-        optimizer->SetMaximumNumberOfEvaluations(999999);
-        optimizer->SetMaximumNumberOfCorrections(20);
-        optimizer->SetInitialPosition(start);
-        //optimizer->SetTrace(true);
-        optimizer->StartOptimization();
-        TOpt::ParametersType final = optimizer->GetCurrentPosition();
-        //outputs[0] = m_PDscale;
-        for (int i = 0; i < m_model->nParameters(); i++) {
-            outputs[i] = final[i];
-        }
-        //outputs[m_model->ParameterIndex("f0")] = f0;
-        //outputs[m_model->ParameterIndex("B1")] = B1;
-        resids = cost->residuals(final);
-        its = optimizer->GetCurrentIteration();
-    }
 };
 
 class MCDSRCFunctor {
@@ -296,7 +152,7 @@ int main(int argc, char **argv) {
     int max_its = 4, num_threads = 4;
     int verbose = false, prompt = true, all_residuals = false, flipData = false;
     string outPrefix;
-    enum class Algos { SRC, GRC, BFGS };
+    enum class Algos { SRC, GRC };
     Algos which_algo = Algos::GRC;
 
     QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
@@ -328,7 +184,6 @@ Options:\n\
     --scale, -S       : Normalise signals to mean\n\
     --algo, -a S      : Use Uniform distribution for Region Contraction\n\
                G      : Use Gaussian distribution for RC (default)\n\
-               b      : Use BFGS algorithm\n\
     --iters, -i N     : Specify maximum number of iterations (default 4)\n\
     --flip, -F        : Data order is phase then flip-angle (default opposite)\n\
     --tesla, -t 3     : Boundaries suitable for 3T (default)\n\
@@ -423,7 +278,6 @@ Options:\n\
                 switch (*optarg) {
                 case 'S': which_algo = Algos::SRC; break;
                 case 'G': which_algo = Algos::GRC; break;
-                case 'b': which_algo = Algos::BFGS; break;
                 default:
                     cerr << "Unknown algorithm type " << *optarg << endl;
                     return EXIT_FAILURE;
@@ -483,10 +337,6 @@ Options:\n\
         if (prompt) cout << "Enter upper bounds" << endl;
         QI::ReadArray(cin, temp);
         bounds.col(1) = temp;
-        if (which_algo == Algos::BFGS) {
-            if (prompt) cout << "Enter start point" << endl;
-            QI::ReadArray(cin, start);
-        }
     }
     switch (which_algo) {
     case Algos::SRC: {
@@ -499,13 +349,6 @@ Options:\n\
         if (verbose) cout << "Using GRC algorithm" << endl;
         shared_ptr<SRCAlgo> algo = make_shared<SRCAlgo>(model, bounds, sequences, max_its);
         algo->setGauss(true);
-        apply->SetAlgorithm(algo);
-    } break;
-    case Algos::BFGS: {
-        if (verbose) cout << "Using BFGS algorithm" << endl;
-        itk::MultiThreader::SetGlobalMaximumNumberOfThreads(1);
-        shared_ptr<BFGSAlgo> algo = make_shared<BFGSAlgo>(model, bounds, sequences, max_its);
-        algo->setStart(start);
         apply->SetAlgorithm(algo);
     } break;
     }
@@ -532,16 +375,12 @@ Options:\n\
     if (verbose) {
         cout << *sequences;
         cout << "Bounds:" << endl <<  bounds.transpose() << endl;
-        if (which_algo == Algos::BFGS)
-            cout << "Start: " << endl << start.transpose() << endl;
         ofstream boundsFile(outPrefix + "bounds.txt");
         boundsFile << "Names: ";
         for (size_t p = 0; p < model->nParameters(); p++) {
             boundsFile << model->ParameterNames()[p] << "\t";
         }
         boundsFile << endl << "Bounds: " << endl << bounds.transpose() << endl;
-        if (which_algo == Algos::BFGS)
-            boundsFile << "Start: " << endl << start.transpose() << endl;
         boundsFile.close();
     }
 

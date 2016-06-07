@@ -77,7 +77,6 @@ compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
 #echo "Tau:   " $( fslstats ${PREFIX}2C_tau_m.nii -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
 }
 
-run "BFGS" " -ff0.nii -ab"
 run "SRC"  " -ff0.nii -aS"
 run "GRC"  " -ff0.nii -aG"
 cd ..
