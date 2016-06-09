@@ -72,44 +72,49 @@ static const char *short_opts = "hvnMm:o:t:c:s:p:i:rT:";
 // HIFI Algorithm - includes optimising B1
 class HIFIFunctor : public DenseFunctor<double> {
     protected:
-        const shared_ptr<QI::SequenceBase> m_sequence;
+        const shared_ptr<QI::SPGRSimple> m_spgr;
+        const shared_ptr<QI::MPRAGE> m_mprage;
         const ArrayXd m_data;
-        const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
     public:
-        HIFIFunctor(const shared_ptr<QI::SequenceBase> cs, const ArrayXd &data) :
-            DenseFunctor<double>(3, cs->size()),
-            m_sequence(cs), m_data(data)
+        HIFIFunctor(const shared_ptr<QI::SPGRSimple> spgr,
+                    const shared_ptr<QI::MPRAGE> mprage,
+                    const ArrayXd &data) :
+            DenseFunctor<double>(3, spgr->size() + mprage->size()),
+            m_spgr(spgr), m_mprage(mprage), m_data(data)
         {
             assert(static_cast<size_t>(m_data.rows()) == values());
         }
 
         int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
             eigen_assert(diffs.size() == values());
-            VectorXd fullpar(5); // Add T2 and f0
-            fullpar << params(0), params(1), 0, 0, params(2);
-            ArrayXcd s = m_sequence->signal(m_model, fullpar);
-            diffs = s.abs() - m_data;
+
+            ArrayXd s(values());
+            s.head(m_spgr->size()) = QI::One_SPGR_Magnitude(m_spgr->flip(), m_spgr->TR(), params[0], params[1], params[2]);
+            s.tail(m_mprage->size()) = QI::One_MPRAGE(m_mprage->flip()[0], m_mprage->TR(), m_mprage->m_Nseg, m_mprage->m_Nk0, m_mprage->m_TI, m_mprage->m_TD,
+                                                      params[0], params[1], params[2], 1.0).cwiseAbs(); 
+            diffs = s - m_data;
             return 0;
         }
 };
 
 class HIFIAlgo : public Algorithm<double> {
     private:
-        shared_ptr<QI::SequenceGroup> m_sequence;
+        shared_ptr<QI::SPGRSimple> m_spgr;
+        shared_ptr<QI::MPRAGE> m_mprage;
         size_t m_iterations = 15; // From tests this seems to be a sensible maximum number
         double m_thresh = -numeric_limits<double>::infinity();
         double m_lo = -numeric_limits<double>::infinity();
         double m_hi = numeric_limits<double>::infinity();
     public:
-        void setSequence(shared_ptr<QI::SequenceGroup> & s) { m_sequence = s; }
+        void setSequences(const shared_ptr<QI::SPGRSimple> &s, const shared_ptr<QI::MPRAGE> &m) { m_spgr = s; m_mprage = m;}
         void setIterations(size_t n) { m_iterations = n; }
         void setThreshold(double t) { m_thresh = t; }
         void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
-        size_t numInputs() const override  { return m_sequence->count(); }
+        size_t numInputs() const override  { return 2; }
         size_t numConsts() const override  { return 0; }
         size_t numOutputs() const override { return 3; }
-        size_t dataSize() const override   { return m_sequence->size(); }
+        size_t dataSize() const override   { return m_spgr->size() + m_mprage->size(); }
 
         virtual TArray defaultConsts() override {
             // No constants for HIFI
@@ -117,23 +122,21 @@ class HIFIAlgo : public Algorithm<double> {
             return def;
         }
 
-        virtual void apply(const TInput &data,
+        virtual void apply(const TInput &indata,
                            const TArray &, //No inputs, remove name to silence compiler warning
                            TArray &outputs, TArray &resids, TIterations &its) const override
         {
-            HIFIFunctor f(m_sequence, data);
+            const auto data = indata / indata.abs().maxCoeff(); // Scale to make parameters roughly equal
+            HIFIFunctor f(m_spgr, m_mprage, data);
             NumericalDiff<HIFIFunctor> nDiff(f);
             LevenbergMarquardt<NumericalDiff<HIFIFunctor>> lm(nDiff);
             // LevenbergMarquardt does not currently have a good interface, have to do things in steps
-            lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
-            VectorXd op(3); op << data.array().abs().maxCoeff() * 10., 1., 1.; // Initial guess
-            lm.minimize(op);
-            outputs = op;
-            // PD, T1, B1
-            VectorXd pfull(5); pfull << outputs[0], outputs[1], 0, 0, outputs[2]; // Build full parameter vector
-            auto model = make_shared<QI::SCD>();
-            ArrayXd theory = m_sequence->signal(model, pfull).abs();
-            resids = (data.array() - theory);
+            lm.setMaxfev(m_iterations * (data.rows() + 1));
+            VectorXd p(3); p << 10., 1., 1.; // Initial guess
+            lm.minimize(p);
+            f(p, resids); // Get the residuals
+            outputs = p;
+            outputs[0] *= indata.abs().maxCoeff();
             if (outputs[0] < m_thresh)
                 outputs.setZero();
             outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
@@ -192,18 +195,15 @@ int main(int argc, char **argv) {
     auto spgrSequence = make_shared<QI::SPGRSimple>(cin, prompt);
     if (verbose) cout << "Opening IR-SPGR file: " << argv[optind] << endl;
     auto irImg = QI::ReadVectorImage<float>(argv[optind++]);
-    shared_ptr<QI::SequenceBase> irSequence;
+    shared_ptr<QI::MPRAGE> irSequence;
     if (IR) {
         irSequence = make_shared<QI::IRSPGR>(cin, prompt);
     } else {
         irSequence = make_shared<QI::MPRAGE>(cin, prompt);
     }
-    auto combined = make_shared<QI::SequenceGroup>();
-    combined->addSequence(spgrSequence);
-    combined->addSequence(irSequence);
-    if (verbose) cout << *combined << endl;
+    if (verbose) cout << *spgrSequence << endl << *irSequence << endl;
     auto apply = itk::ApplyAlgorithmFilter<HIFIAlgo>::New();
-    hifi->setSequence(combined);
+    hifi->setSequences(spgrSequence, irSequence);
     apply->SetAlgorithm(hifi);
     apply->SetPoolsize(num_threads);
     apply->SetInput(0, spgrImg);
@@ -226,6 +226,7 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
     QI::WriteImage(apply->GetOutput(2), outPrefix + "B1.nii");
+    //QI::WriteImage(apply->GetOutput(3), outPrefix + "eff.nii");
     QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
 
     if (verbose) cout << "Finished." << endl;
