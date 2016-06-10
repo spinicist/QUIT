@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Test script for multiecho and similar programs
@@ -37,17 +37,17 @@ SPINECHO
 $SPIN_PAR
 END"
 echo "$MCSIG_INPUT" > qisignal.in
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 --noise 0.04 < qisignal.in
+NOISE="0.002"
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise=$NOISE < qisignal.in
 
 echo "$SPIN_PAR" > multiecho.in
-
 run_test "SPINECHO_LOGLIN" $QUITDIR/qimultiecho $SPIN_FILE -n -v -al -oLL_     < multiecho.in
 run_test "SPINECHO_LEVMAR" $QUITDIR/qimultiecho $SPIN_FILE -n -v -an -oLEVMAR_ < multiecho.in
 run_test "SPINECHO_ARLO"   $QUITDIR/qimultiecho $SPIN_FILE -n -v -aa -oARLO_   < multiecho.in
 
-compare_test "LOGLIN" T2.nii LL_ME_T2.nii     0.005
-compare_test "LEVMAR" T2.nii LEVMAR_ME_T2.nii 0.005
-compare_test "ARLO"   T2.nii ARLO_ME_T2.nii   0.005
+compare_test "LOGLIN" T2.nii LL_ME_T2.nii     $NOISE 50
+compare_test "LEVMAR" T2.nii LEVMAR_ME_T2.nii $NOISE 50
+compare_test "ARLO"   T2.nii ARLO_ME_T2.nii   $NOISE 50
 
 cd ..
 SILENCE_TESTS="0"

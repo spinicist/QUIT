@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Simple test scripts for QUIT programs
@@ -47,8 +47,8 @@ END
 "
 
 echo "$INPUT" > mcd_input.txt
-
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --2 -v << END_SIG
+NOISE="0.002"
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --2 -v --noise=$NOISE<< END_SIG
 PD.nii
 T1_m.nii
 T2_m.nii
@@ -66,7 +66,7 @@ PREFIX="$1"
 OPTS="$2"
 run_test $PREFIX $QUITDIR/qimcdespot $OPTS -M2 -bB1.nii -r -o $PREFIX -v -n < mcd_input.txt
 
-compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii 0.05
+compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii $NOISE 50
 
 #echo "       Mean     Std.     CoV"
 #echo "T1_m:  " $( fslstats ${PREFIX}2C_T1_m.nii  -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )
