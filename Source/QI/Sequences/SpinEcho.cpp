@@ -32,7 +32,7 @@ MultiEcho::MultiEcho(std::istream& istr, const bool prompt) : SequenceBase() {
     QI::Read(istr, m_TR);
 	if (prompt) cout << "Enter first echo-time: " << flush;
 	QI::Read(istr, TE1);
-	if (prompt) cout << "Enter echo spaistrg: " << flush;
+	if (prompt) cout << "Enter echo spacing: " << flush;
 	QI::Read(istr, m_ESP);
 	if (prompt) cout << "Enter number of echos: " << flush;
 	QI::Read(istr, NE);
