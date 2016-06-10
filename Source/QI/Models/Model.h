@@ -53,7 +53,7 @@ public:
 	virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const;
     virtual Eigen::VectorXcd SPGREcho(cvecd &p, carrd& a, cdbl TR, cdbl TE) const;
 	virtual Eigen::VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const;
-    virtual Eigen::VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TD) const;
+    virtual Eigen::VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cdbl eta, cvecd &TI, carrd &TD) const;
 	virtual Eigen::VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const;
     virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
     virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
@@ -79,7 +79,7 @@ class SCD : public Model {
     virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
     virtual Eigen::VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
 	virtual Eigen::VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-    virtual Eigen::VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TD) const override;
+    virtual Eigen::VectorXcd MPRAGE(cvecd &params, cdbl a, cdbl TR, const int Nseg, const int Nk0, cdbl eta, cvecd &TI, carrd &TD) const override;
 	virtual Eigen::VectorXcd AFI(cvecd &params, cdbl a, cdbl TR1, cdbl TR2) const override;
     virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
     virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;

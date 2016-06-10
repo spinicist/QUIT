@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Simple test script for FM, it runs slowly so test
@@ -33,8 +33,8 @@ SSFP_FLIP="$2"
 SSFP_PC="$3"
 PREC="$4"
 ARGS="$5"
-
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise 0.002 << END_SIG
+NOISE="0.002"
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise $NOISE << END_SIG
 PD.nii
 T1.nii
 T2.nii
@@ -53,14 +53,14 @@ $SSFP_PC
 $SSFP_TR" > ${PREFIX}fm_in.txt
 
 run_test "${PREFIX}"     $QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ${PREFIX}${SSFP_FILE}  -o${PREFIX} $ARGS < ${PREFIX}fm_in.txt
-compare_test "${PREFIX}"   T2.nii ${PREFIX}FM_T2.nii  $PREC
+compare_test "${PREFIX}"   T2.nii ${PREFIX}FM_T2.nii $NOISE $PREC
 
 }
 
-run_tests "BFGS2SYM" "12 65" "180 0" "0.01"
-run_tests "BFGS2ASYM" "12 65" "90 270" "0.01" "--asym"
-run_tests "CM2SYM" "12 65" "180 0" "0.025" "-ac"
-run_tests "CM2ASYM" "12 65" "90 270" "0.025" "-ac --asym"
+run_tests "BFGS2SYM" "12 65" "180 0" "50" ""
+run_tests "BFGS2ASYM" "12 65" "90 270" "50" "--asym"
+run_tests "CM2SYM" "12 65" "180 0" "50" "-ac"
+run_tests "CM2ASYM" "12 65" "90 270" "50" "-ac --asym"
 
 cd ..
 SILENCE_TESTS="0"

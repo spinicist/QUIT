@@ -36,28 +36,29 @@ function run_test {
 
 # Use FSL to compare 2 images and check if the average difference is below the tolerance
 function compare_test {
-	# $1 test name
-	# $2 reference, $3 test image, $4 tolerance
+	# $1 test name, $2 reference image,	$3 test image, $4 added noise, $5 tolerance
 	NAME="$1"
-	REF=$2
-	TEST=$3
-	TOL=$4
-	DIFF=${REF%.nii}_${TEST%.nii}
+	REF="$2"
+	TEST="$3"
+	NOISE="$4"
+	TOL="$5"
+	DIFF_SQR=${REF%.nii}_${TEST%.nii}
 	if [ "$HAVE_FSL" -eq "1" ]; then
-        fslmaths $REF -sub $TEST -sqr $DIFF
-        MEAN=$( fslstats $DIFF -M | awk ' { print sqrt($1) } ' )
+        fslmaths $TEST -sub $REF -div $REF -sqr $DIFF_SQR
+		MEAN_SQR=$( fslstats $DIFF_SQR -m )
+        REL_NOISE=$( echo $MEAN_SQR $NOISE | awk ' { print sqrt($1)/$2 } ' )
 		# Check for nan/inf/etc. because on some platforms awk will treat these as 0
 		REGEXP='^-?[0-9]+([.][0-9]+)?(e-?[0-9]+)?$'
-        if ! [[ $MEAN =~ $REGEXP ]] ; then
-            echo "Comparison test $NAME failed, mean diff $MEAN is not a valid number"
+        if ! [[ $REL_NOISE =~ $REGEXP ]] ; then
+            echo "Comparison test $NAME failed, mean diff $REL_NOISE is not a valid number"
             return 1
 		fi
 		# Now do the tolerance test
-        TEST=$(echo "$MEAN $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
+        TEST=$(echo "$REL_NOISE $TOL" | awk ' { if(($1)<=($2)) { print 1 } else { print 0 }}')
 		if [ "$TEST" -eq "1" ]; then
-            echo "Comparison test $NAME passed, accuracy $MEAN (tolerance was $TOL)"
+            echo "Comparison test $NAME passed, merit figure $REL_NOISE (tolerance was $TOL)"
 		else
-            echo "Comparison test $NAME failed, accuracy $MEAN (tolerance was $TOL)"
+            echo "Comparison test $NAME failed, merit figure $REL_NOISE (tolerance was $TOL)"
 		fi
 	else
 		echo "FSL not present, skipping test $NAME"

@@ -16,7 +16,7 @@ using namespace Eigen;
 
 namespace QI {
 
-VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1) {
+VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1, cdbl eta) {
     carrd TIs = TI - TR*Nk0; // Adjust TI for k0
     const double M0 = PD;
     const double T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
@@ -28,14 +28,15 @@ VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &T
     carrd A_3 = M0*(1 - exp(-TIs/T1));
     const double B_1 = exp(-(Nseg*TR)/T1s);
     carrd B_2 = exp(-TD/T1);
-    carrd B_3 = -exp(-TIs/T1);
+    carrd B_3 = -eta*exp(-TIs/T1); // eta is inversion efficency
 
     carrd A = A_3 + A_2*B_3 + A_1*B_2*B_3;
     carrd B = B_1*B_2*B_3;
     carrd M1 = A / (1. - B);
 
-    VectorXcd M(TI.size()); M.setZero();
-    M.real() = (M0s + (M1 - M0s)*exp(-Nk0*TR/T1s)) * sin(flip * B1);
+    VectorXcd M(TI.size());
+    M.real() = (M0s + (M1 - M0s)*exp(-(Nk0*TR)/T1s)) * sin(flip * B1);
+    M.imag().setZero();
     return M;
 }
 

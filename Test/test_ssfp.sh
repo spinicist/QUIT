@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Test script for ssfpbands etc.
@@ -35,7 +35,8 @@ CS_FILE="cs.nii"
 MAG_FILE="mag.nii"
 RMS_FILE="rms.nii"
 MAX_FILE="max.nii"
-run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --1 -n -N 0.001 -x <<END_IN
+NOISE="0.001"
+run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --1 -n --noise=$NOISE -x <<END_IN
 PD.nii
 T1.nii
 T2.nii
@@ -63,11 +64,11 @@ run_test "MAG" $QUITDIR/qissfpbands $SSFP_FILE --magmean --magnitude -o $MAG_FIL
 run_test "RMS" $QUITDIR/qissfpbands $SSFP_FILE --rms     --magnitude -o $RMS_FILE
 run_test "MAX" $QUITDIR/qissfpbands $SSFP_FILE --max     --magnitude -o $MAX_FILE
 
-compare_test "GS"  $GS_FILE  $GS_REF_MAG 0.01
-compare_test "GSM" $GSM_FILE $GS_REF_MAG 0.01
-compare_test "GSL" $GSL_FILE $GS_REF_MAG 0.01
-compare_test "GS2" $GS2_FILE $GS_REF_MAG 0.01
-compare_test "CS"  $CS_FILE  $GS_REF_MAG 0.01
-compare_test "MAG" $MAG_FILE $GS_REF_MAG 0.01
-compare_test "RMS" $RMS_FILE $GS_REF_MAG 0.01
-compare_test "MAX" $MAX_FILE $GS_REF_MAG 0.01
+compare_test "GS"  $GS_FILE  $GS_REF_MAG $NOISE 50
+compare_test "GSM" $GSM_FILE $GS_REF_MAG $NOISE 50
+compare_test "GSL" $GSL_FILE $GS_REF_MAG $NOISE 50
+compare_test "GS2" $GS2_FILE $GS_REF_MAG $NOISE 50
+compare_test "CS"  $CS_FILE  $GS_REF_MAG $NOISE 50
+compare_test "MAG" $MAG_FILE $GS_REF_MAG $NOISE 50
+compare_test "RMS" $RMS_FILE $GS_REF_MAG $NOISE 50
+compare_test "MAX" $MAX_FILE $GS_REF_MAG $NOISE 50

@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Simple test scripts for QUIT programs
@@ -52,8 +52,8 @@ END
 "
 
 echo "$INPUT" > mcd_input.txt
-
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --3 -n -v << END_MCSIG
+NOISE="0.002"
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --3 -n -v --noise=$NOISE<< END_MCSIG
 PD.nii
 T1_m.nii
 T2_m.nii
@@ -73,7 +73,7 @@ function run() {
 PREFIX="$1"
 OPTS="$2"
 run_test $PREFIX $QUITDIR/qimcdespot $OPTS -n -v -bB1.nii -r < mcd_input.txt
-compare_test $PREFIX f_m.nii ${PREFIX}_f_m.nii 0.05
+compare_test $PREFIX f_m.nii ${PREFIX}_f_m.nii $NOISE 50
 }
 
 run "3C" "-ff0.nii -aG -M3"

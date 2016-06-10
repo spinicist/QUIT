@@ -16,7 +16,7 @@
 
 namespace QI {
 
-Eigen::VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1);
+Eigen::VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1, cdbl eta);
 Eigen::Array2cd  One_MP2RAGE(const Eigen::Array2d &alpha, cdbl TR, const int N, const Eigen::Array3d &TD, cdbl M0, cdbl T1, cdbl B1, cdbl eta);
 Eigen::Array3cd  One_MP3RAGE(const Eigen::Array3d &alpha, cdbl TR, const int N, const Eigen::Array4d &TD, cdbl M0, cdbl T1, cdbl B1, cdbl eta);
 

@@ -19,9 +19,10 @@ namespace QI {
 class MPRAGE : public SequenceBase {
     public:
         Eigen::ArrayXd m_TI, m_TD;
+        double m_eta;
         int m_Nseg, m_Nk0;
         MPRAGE() : SequenceBase() {}
-        MPRAGE(const Eigen::ArrayXd &TI, const Eigen::ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip);
+        MPRAGE(const Eigen::ArrayXd &TI, const Eigen::ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip, const double eta);
         MPRAGE(std::istream &istr, const bool prompt);
         size_t size() const override { return m_TI.size(); }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
