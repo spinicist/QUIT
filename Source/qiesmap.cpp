@@ -45,9 +45,9 @@ public:
         const MatrixXd &mS = qz.matrixS();
         const MatrixXd &mT = qz.matrixT();
         const MatrixXd &mZT = qz.matrixZ().transpose();
-        Eigen::Index sInd = 0;
+        int sInd = 0;
         double sVal = numeric_limits<double>::infinity();
-        for (Eigen::Index i = 0; i < 6; i++) {
+        for (int i = 0; i < 6; i++) {
             const double a = mS.coeffRef(i,i);
             const double b = mT.coeffRef(i,i);
             const double l = fabs(a / b);
@@ -60,9 +60,9 @@ public:
         v(sInd) = 1.0;
         const double a = qz.matrixS().coeffRef(sInd,sInd);
         const double b = qz.matrixT().coeffRef(sInd,sInd);
-        for (Index j = sInd-1; j >= 0; j--) {
-            const Index st = j+1;
-            const Index sz = sInd-j; 
+        for (int j = sInd-1; j >= 0; j--) {
+            const int st = j+1;
+            const int sz = sInd-j; 
             v.coeffRef(j) = -v.segment(st,sz).transpose().cwiseProduct(b*mS.block(j,st,1,sz) - a*mT.block(j,st,1,sz)).sum() / (b*mS.coeffRef(j,j) - a*mT.coeffRef(j,j));
         }
         v = (mZT * v).normalized();
