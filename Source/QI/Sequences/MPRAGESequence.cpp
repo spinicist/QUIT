@@ -40,6 +40,9 @@ MPRAGE::MPRAGE(std::istream &istr, const bool prompt) : SequenceBase() {
     QI::ReadArray(istr, m_TI);
     if (prompt) cout << "Enter relaxation delay times (seconds): " << flush;
     QI::ReadArray(istr, m_TD);
+    if (m_TI.rows() != m_TD.rows()) {
+        QI_EXCEPTION("Must have the same number of relaxation delays as inversion times.");
+    }
     if (prompt) cout << "Enter inversion efficiency (<= 1.0): " << flush;
     QI::Read(istr, m_eta);
     if (m_eta > 1.0) {
