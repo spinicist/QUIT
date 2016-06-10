@@ -16,8 +16,8 @@ using namespace Eigen;
 
 namespace QI {
 
-MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip) :
-    SequenceBase(), m_TI(TI), m_TD(TD), m_Nseg(Nseg), m_Nk0(Nk0) {
+MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip, const double eta) :
+    SequenceBase(), m_TI(TI), m_TD(TD), m_Nseg(Nseg), m_Nk0(Nk0), m_eta(eta) {
     m_TR = TR;
     m_flip.resize(1); m_flip[0] = flip;
     if (m_TI.size() != m_TD.size()) {
@@ -40,6 +40,11 @@ MPRAGE::MPRAGE(std::istream &istr, const bool prompt) : SequenceBase() {
     QI::ReadArray(istr, m_TI);
     if (prompt) cout << "Enter relaxation delay times (seconds): " << flush;
     QI::ReadArray(istr, m_TD);
+    if (prompt) cout << "Enter inversion efficiency (<= 1.0): " << flush;
+    QI::Read(istr, m_eta);
+    if (m_eta > 1.0) {
+        QI_EXCEPTION("Inversion-efficiency cannot exceed 1.0");
+    }
 }
 
 IRSPGR::IRSPGR(std::istream &istr, const bool prompt) : MPRAGE() {
@@ -64,10 +69,11 @@ IRSPGR::IRSPGR(std::istream &istr, const bool prompt) : MPRAGE() {
     QI::ReadArray(istr, m_TI);
 
     m_TD = ArrayXd::Zero(m_TI.size()); // For GE IR-SPGR the delay time is zero
+    m_eta = 1.0; // Assume this for now
 }
 
 ArrayXcd MPRAGE::signal(shared_ptr<Model> m, const VectorXd &par) const {
-    return m->MPRAGE(par, m_flip[0], m_TR, m_Nseg, m_Nk0, m_TI, m_TD);
+    return m->MPRAGE(par, m_flip[0], m_TR, m_Nseg, m_Nk0, m_eta, m_TI, m_TD);
 }
 
 void MPRAGE::write(ostream &os) const {

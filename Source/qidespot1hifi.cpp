@@ -92,7 +92,7 @@ class HIFIFunctor : public DenseFunctor<double> {
             ArrayXd s(values());
             s.head(m_spgr->size()) = QI::One_SPGR_Magnitude(m_spgr->flip(), m_spgr->TR(), params[0], params[1], params[2]);
             s.tail(m_mprage->size()) = QI::One_MPRAGE(m_mprage->flip()[0], m_mprage->TR(), m_mprage->m_Nseg, m_mprage->m_Nk0, m_mprage->m_TI, m_mprage->m_TD,
-                                                      params[0], params[1], params[2], 1.0).cwiseAbs(); 
+                                                      params[0], params[1], params[2], m_mprage->m_eta).cwiseAbs(); 
             diffs = s - m_data;
             return 0;
         }

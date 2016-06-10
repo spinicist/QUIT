@@ -68,7 +68,7 @@ VectorXcd Model::MultiEcho(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Functio
 VectorXcd Model::SPGR(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGREcho(cvecd &, carrd &, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGRFinite(cvecd &, carrd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
-VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, const int, cvecd &, carrd &) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, const int, cdbl, cvecd &, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::AFI(cvecd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFP(cvecd &, carrd &a, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFPEcho(cvecd &, carrd &, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
@@ -126,8 +126,8 @@ VectorXcd SCD::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const 
 	return scale(One_SSFP_Finite(a, true, TR, Trf, TE, 0, p[0], p[1], p[2], p[3], p[4]));
 }
 
-VectorXcd SCD::MPRAGE(cvecd &p, cdbl a, cdbl TR, const int Nseg, const int Nk0, cvecd &TI, carrd &TRseg) const {
-    return scale(One_MPRAGE(a, TR, Nseg, Nk0, TI, TRseg, p[0], p[1], p[4], 1.0));
+VectorXcd SCD::MPRAGE(cvecd &p, cdbl a, cdbl TR, const int Nseg, const int Nk0, cdbl eta, cvecd &TI, carrd &TRseg) const {
+    return scale(One_MPRAGE(a, TR, Nseg, Nk0, TI, TRseg, p[0], p[1], p[4], eta));
 }
 
 VectorXcd SCD::AFI(cvecd &p, cdbl a, cdbl TR1, cdbl TR2) const {
