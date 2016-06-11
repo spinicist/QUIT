@@ -38,6 +38,8 @@ std::string StripExt(const std::string &filename);  //!< Remove the extension fr
 std::mt19937_64::result_type RandomSeed();          //!< Thread-safe random seed
 
 void WriteResiduals(const typename VectorVolumeF::Pointer img, const std::string prefix, const bool allResids = false, const typename VolumeF::Pointer scaleImage = ITK_NULLPTR);
+// From Knuth, surprised this isn't in STL
+unsigned long long Choose(unsigned long long n, unsigned long long k);
 
 template<typename TImg = QI::VolumeF>
 auto ReadImage(const std::string &fname) -> typename TImg::Pointer {

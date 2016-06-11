@@ -99,6 +99,17 @@ void WriteResiduals(const VectorVolumeF::Pointer img, const string prefix,
     }
 }
 
+// From Knuth, surprised this isn't in STL
+unsigned long long Choose(unsigned long long n, unsigned long long k) {
+    if (k > n)
+        return 0;
 
+    unsigned long long r = 1;
+    for (unsigned long long d = 1; d <= k; ++d) {
+        r *= n--;
+        r /= d;
+    }
+    return r;
+}
 
 } // End namespace QUIT

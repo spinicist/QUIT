@@ -15,7 +15,6 @@
 #include "Eigen/Dense"
 
 #include "itkImageSource.h"
-#include "itkImageFileReader.h"
 #include "itkConstNeighborhoodIterator.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkMultiplyImageFilter.h"
@@ -52,7 +51,7 @@ public:
     typedef typename TImage::RegionType        RegionType;
 
     itkNewMacro(Self);
-    itkTypeMacro(DiscreteLaplacePhaseFilter, DiscreteLaplacePhaseFilter);
+    itkTypeMacro(Self, Superclass);
 
     void SetInput(const TImage *img) ITK_OVERRIDE      { this->SetNthInput(0, const_cast<TImage*>(img)); }
     typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }

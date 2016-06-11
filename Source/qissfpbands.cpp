@@ -88,19 +88,6 @@ const char *short_options = "hvo:m:s:p:T:MR:2";
  * Helper functions
  */
 
-// From Knuth, surprised this isn't in STL
-unsigned long long choose(unsigned long long n, unsigned long long k) {
-    if (k > n)
-        return 0;
-
-    unsigned long long r = 1;
-    for (unsigned long long d = 1; d <= k; ++d) {
-        r *= n--;
-        r /= d;
-    }
-    return r;
-}
-
 // Complex equivalent of the dot product
 template<typename T> inline T cdot(const complex<T> &a, const complex<T> &b) {
     return real(a * conj(b));
@@ -137,7 +124,7 @@ public:
 
         m_phases = p;
         m_lines = m_phases / 2;
-        m_crossings = choose(m_lines, 2);
+        m_crossings = Choose(m_lines, 2);
         this->Modified();
     }
     void SetInput(const TIn *img) ITK_OVERRIDE { this->SetNthInput(0, const_cast<TIn*>(img)); }
