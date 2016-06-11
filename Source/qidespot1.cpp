@@ -115,7 +115,6 @@ public:
     }
 };
 
-// T1 only Functor
 class T1Functor : public DenseFunctor<double> {
     protected:
         const shared_ptr<QI::SequenceBase> m_sequence;
@@ -134,7 +133,7 @@ class T1Functor : public DenseFunctor<double> {
         int operator()(const Ref<VectorXd> &p, Ref<ArrayXd> diffs) const {
             eigen_assert(diffs.size() == values());
             ArrayXd s = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1).array().abs();
-            diffs = s.abs() - m_data;
+            diffs = s - m_data;
             return 0;
         }
 };
@@ -208,10 +207,11 @@ public:
 
 class D1NLLS : public D1Algo {
 public:
-    virtual void apply(const TInput &data, const TArray &inputs,
+    virtual void apply(const TInput &indata, const TArray &inputs,
                        TArray &outputs, TArray &resids, TIterations &its) const override
     {
         double B1 = inputs[0];
+        const TInput data = indata / indata.maxCoeff();
         T1Functor f(m_sequence, data, B1);
         NumericalDiff<T1Functor> nDiff(f);
         LevenbergMarquardt<NumericalDiff<T1Functor>> lm(nDiff);
@@ -221,7 +221,8 @@ public:
         lm.minimize(p);
         outputs = p;
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
-        resids = data.array() - theory;
+        resids = indata.maxCoeff() * (data.array() - theory);
+        outputs[0] *= indata.maxCoeff();
         if (outputs[0] < m_thresh)
             outputs.setZero();
         outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);

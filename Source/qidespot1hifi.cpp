@@ -136,7 +136,9 @@ class HIFIAlgo : public Algorithm<double> {
             lm.minimize(p);
             f(p, resids); // Get the residuals
             outputs = p;
+            // Scale back
             outputs[0] *= indata.abs().maxCoeff();
+            resids *= indata.abs().maxCoeff();
             if (outputs[0] < m_thresh)
                 outputs.setZero();
             outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
