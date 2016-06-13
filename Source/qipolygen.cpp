@@ -35,45 +35,54 @@ public:
     itkNewMacro(Self);
     itkTypeMacro(Self, ImageSource);
 
-    void SetImageProperties(const TImage *img) {
-        m_region = img->GetLargestPossibleRegion();
-        m_spacing = img->GetSpacing();
-        m_direction = img->GetDirection();
-        m_origin = img->GetOrigin();
+    void SetReferenceImage(const SmartPointer<TImage> img) {
+        m_reference = img;
     }
 
     void SetPolynomial(const QI::Polynomial &p) { m_poly = p; }
-
+    void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
+    typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
+    
     virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         auto output = this->GetOutput();
-        output->SetRegions(m_region);
-        output->SetSpacing(m_spacing);
-        output->SetDirection(m_direction);
-        output->SetOrigin(m_origin);
+        output->SetRegions(m_reference->GetLargestPossibleRegion());
+        output->SetSpacing(m_reference->GetSpacing());
+        output->SetDirection(m_reference->GetDirection());
+        output->SetOrigin(m_reference->GetOrigin());
         output->Allocate();
     }
 
 protected:
-    typename TImage::RegionType    m_region;
-    typename TImage::SpacingType   m_spacing;
-    typename TImage::DirectionType m_direction;
-    typename TImage::PointType     m_origin;
+    SmartPointer<TImage> m_reference;
     QI::Polynomial m_poly;
 
     PolynomialImage(){}
     ~PolynomialImage(){}
     virtual void GenerateData() ITK_OVERRIDE {
         typename TImage::Pointer output = this->GetOutput();
-        itk::ImageRegionIteratorWithIndex<TImage> imageIt(output,output->GetLargestPossibleRegion());
+        itk::ImageRegionIteratorWithIndex<TImage> imageIt(output, output->GetLargestPossibleRegion());
         imageIt.GoToBegin();
-        ++imageIt;
+        const auto mask = this->GetMask();
+        ImageRegionConstIterator<TImage> maskIter;
+        if (mask) {
+            //if (m_verbose) std::cout << "Counting voxels in mask..." << std::endl;
+            maskIter = ImageRegionConstIterator<TImage>(mask, output->GetLargestPossibleRegion());
+            maskIter.GoToBegin();
+        }
         while(!imageIt.IsAtEnd()) {
-            auto index = imageIt.GetIndex();
-            Eigen::Vector3d p(index[0], index[1], index[2]);
-            double val = m_poly.value(p);
-            imageIt.Set(val);
+            if (!mask || maskIter.Get()) {
+                TImage::PointType p;
+                m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), p);
+                Eigen::Vector3d ep(p[0], p[1], p[2]);
+                double val = m_poly.value(ep);
+                imageIt.Set(val);
+            } else {
+                imageIt.Set(0);
+            }
             ++imageIt;
+            if (mask)
+                ++maskIter;
         }
     }
 
@@ -161,8 +170,9 @@ int main(int argc, char **argv) {
 
     if (verbose) cout << "Generating image" << std::endl;
     auto image = itk::PolynomialImage::New();
-    image->SetImageProperties(reference);
+    image->SetReferenceImage(reference);
     image->SetPolynomial(poly);
+    image->SetMask(mask);
     image->Update();
     QI::WriteImage(image->GetOutput(), outname);
     if (verbose) cout << "Finished." << endl;

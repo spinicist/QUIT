@@ -43,6 +43,8 @@ public:
 
     const QI::Polynomial &GetPolynomial() const { return m_poly; } 
     void SetPolynomial(const QI::Polynomial &p) { m_poly = p; }
+    void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
+    typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
     virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         auto op = this->GetOutput();
@@ -60,7 +62,23 @@ protected:
     virtual void GenerateData() ITK_OVERRIDE {
         typename TImage::ConstPointer input = this->GetInput();
         auto region = input->GetLargestPossibleRegion();
-        int N = region.GetNumberOfPixels();
+
+        const auto mask = this->GetMask();
+        ImageRegionConstIterator<TImage> maskIter;
+        int N = 0;
+        if (mask) {
+            //if (m_verbose) std::cout << "Counting voxels in mask..." << std::endl;
+            maskIter = ImageRegionConstIterator<TImage>(mask, region);
+            maskIter.GoToBegin();
+            while (!maskIter.IsAtEnd()) {
+                if (maskIter.Get())
+                    ++N;
+                ++maskIter;
+            }
+            maskIter.GoToBegin(); // Reset
+        } else {
+            N = region.GetNumberOfPixels();
+        }
         Eigen::MatrixXd X(N, m_poly.nterms());
         Eigen::VectorXd Y(N);
         itk::ImageRegionConstIteratorWithIndex<TImage> imageIt(input,region);
@@ -68,12 +86,17 @@ protected:
         ++imageIt;
         int yi = 0;
         while(!imageIt.IsAtEnd()) {
-            auto index = imageIt.GetIndex();
-            Eigen::Vector3d p(index[0], index[1], index[2]);
-            X.row(yi) = m_poly.terms(p);
-            Y[yi] = imageIt.Get();
+            if (!mask || maskIter.Get()) {
+                TImage::PointType p;
+                input->TransformIndexToPhysicalPoint(imageIt.GetIndex(), p);
+                Eigen::Vector3d ep(p[0], p[1], p[2]);
+                X.row(yi) = m_poly.terms(ep);
+                Y[yi] = imageIt.Get();
+                ++yi;
+            }
             ++imageIt;
-            ++yi;
+            if (mask)
+                ++maskIter;
         }
         VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         m_poly.setCoeffs(b);
@@ -152,6 +175,7 @@ int main(int argc, char **argv) {
     QI::Polynomial poly(order);
     fit->SetInput(input);
     fit->SetPolynomial(poly);
+    fit->SetMask(mask);
     fit->Update();
     cout << fit->GetPolynomial().coeffs().transpose() << endl;
     if (verbose) cout << "Finished." << endl;
