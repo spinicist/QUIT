@@ -122,15 +122,18 @@ Options:\n\
     --verbose, -v     : Print more information.\n\
     --mask, -m file   : Mask input with specified file.\n\
     --order, -o N     : Specify the polynomial order (default 2)\n\
+    --print-terms     : Print out the polynomial terms\n\
     --threads, -T N   : Use N threads (default=hardware limit).\n"
 };
 
+int print_terms = false;
 const struct option long_options[] = {
     {"help", no_argument, 0, 'h'},
     {"verbose", no_argument, 0, 'v'},
     {"mask", required_argument, 0, 'm'},
     {"order", required_argument, 0, 'o'},
     {"threads", required_argument, 0, 'T'},
+    {"print-terms", no_argument, &print_terms, true},
     {0, 0, 0, 0}
 };
 const char *short_options = "hvm:o:T:";
@@ -156,6 +159,8 @@ int main(int argc, char **argv) {
                 if (verbose) cout << "Polynomical order is: " << order << endl;
                 break;
             case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
+            case 0: // Just a flag
+                break;
             case 'h':
                 cout << QI::GetVersion() << endl << usage << endl;
                 return EXIT_SUCCESS;
@@ -178,6 +183,8 @@ int main(int argc, char **argv) {
     fit->SetMask(mask);
     fit->Update();
     cout << fit->GetPolynomial().coeffs().transpose() << endl;
+    if (print_terms)
+        fit->GetPolynomial().print();
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

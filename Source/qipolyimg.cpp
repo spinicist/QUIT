@@ -1,5 +1,5 @@
 /*
- *  qipolygen.cpp
+ *  qipolyimg.cpp
  *
  *  Copyright (c) 2016 Tobias Wood.
  *
@@ -166,8 +166,6 @@ int main(int argc, char **argv) {
         QI_EXCEPTION("Require " + to_string(poly.nterms()) + " terms for " + to_string(order) + " order polynomial");
     }
     poly.setCoeffs(coeff);
-    poly.print();
-
     if (verbose) cout << "Generating image" << std::endl;
     auto image = itk::PolynomialImage::New();
     image->SetReferenceImage(reference);

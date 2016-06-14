@@ -50,7 +50,7 @@ add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Sourc
 set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask qikfilter qireorder qisplitsubjects
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
              qiafi qissfpbands qiunwrap
-             qipolygen qipolyfit
+             qipolyfit qipolyimg
              qimultiecho qimp2rage )
 
 foreach(PROGRAM ${PROGRAMS})

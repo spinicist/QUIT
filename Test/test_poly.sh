@@ -1,4 +1,4 @@
-#!/bin/bash -eux
+#!/bin/bash -eu
 
 # Tobias Wood 2016
 # Simple test scripts for QUIT programs
@@ -16,10 +16,10 @@ fi
 SIZE="32 32 32"
 $QUITDIR/qinewimage --size "$SIZE" -f "1" dummy.nii
 
-qipolygen dummy.nii gen.nii --order=2 -v << END_INPUT
+qipolyimg dummy.nii gen.nii --order=2 -v << END_INPUT
 0 1 1 1 1 1 1 1 1 1
 END_INPUT
-qipolyfit gen.nii --order=2 -v
+qipolyfit gen.nii --order=2 --print-terms
 
 cd ..
 SILENCE_TESTS="0"
