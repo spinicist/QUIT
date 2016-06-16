@@ -15,6 +15,7 @@
 #include <Eigen/Eigenvalues>
 
 #include "QI/Util.h"
+#include "QI/Sequences/SteadyStateSequence.cpp"
 #include "Filters/ApplyAlgorithmFilter.h"
 
 using namespace std;
@@ -23,6 +24,7 @@ using namespace Eigen;
 class ESAlgo : public Algorithm<complex<double>> {
 protected:
     size_t m_size = 0;
+    shared_ptr<QI::SSFP_GS> m_sequence = nullptr;
 public:
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
@@ -38,6 +40,7 @@ public:
         TArray def = TArray::Ones(1);
         return def;
     }
+    void SetSequence(const shared_ptr<QI::SSFP_GS> &s) { m_sequence = s;}
     
     ArrayXd solveEig(const MatrixXd &A, const MatrixXd &B) const {
         RealQZ<MatrixXd> qz(A, B);
@@ -145,9 +148,9 @@ public:
         const double b = (-c*A + sqrt(c*c*A*A - (c*c + B*B)*(A*A - B*B)))/(c*c + B*B);
         const double a = B / (b*B + c*sqrt(1-b*b));
         const double M = scale*c*(1-b*b)/(1-a*b);
-        const double TR = 0.0065;
-        const double FA = B1 * (25*M_PI/180.);
-        const double T1 = -TR / log((a*(1+cos(FA)-a*b*cos(FA))-b)/(a*(1+cos(FA)-a*b)-b*cos(FA)));
+        const double TR = m_sequence->TR();
+        const double ca = cos(B1 * m_sequence->flip()[0]);
+        const double T1 = -TR / (log(a*(1.+ca-a*b*ca)-b) - log(a*(1.+ca-a*b)-b*ca));
         const double T2 = -TR / log(a);
         
         outputs[0] = M;
@@ -239,11 +242,14 @@ int main(int argc, char **argv) {
     string inputFilename = argv[optind++];
     if (verbose) cout << "Opening file: " << inputFilename << endl;
     auto data = QI::ReadVectorImage<complex<float>>(inputFilename);
+    shared_ptr<QI::SSFP_GS> seq = make_shared<QI::SSFP_GS>(cin, true);
     auto apply = itk::ApplyAlgorithmFilter<ESAlgo, complex<float>>::New();
     algo->setSize(data->GetNumberOfComponentsPerPixel());
+    algo->SetSequence(seq);
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(num_threads);
     apply->SetInput(0, data);
+    
     if (mask)
         apply->SetMask(mask);
     if (B1)
