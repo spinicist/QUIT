@@ -237,10 +237,10 @@ int main(int argc, char **argv) {
     
     QI::SeriesXF::Pointer vols;
     if (complex_in) {
-        cout << "Reading complex file: " << in_name << endl;
+        if (verbose) cout << "Reading complex file: " << in_name << endl;
         vols = QI::ReadImage<QI::SeriesXF>(in_name);
     } else {
-        cout << "Reading real file: " << in_name << endl;
+        if (verbose) cout << "Reading real file: " << in_name << endl;
         QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(in_name);
         auto cast = itk::CastImageFilter<QI::SeriesF, QI::SeriesXF>::New();
         cast->SetInput(rvols);
