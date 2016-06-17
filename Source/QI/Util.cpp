@@ -75,30 +75,6 @@ mt19937_64::result_type RandomSeed() {
     return r;
 }
 
-void WriteResiduals(const VectorVolumeF::Pointer img, const string prefix,
-                    const bool allResids, const VolumeF::Pointer scaleImage) {
-    auto magFilter = itk::VectorMagnitudeImageFilter<VectorVolumeF, VolumeF>::New();
-    auto scaleFilter = itk::DivideImageFilter<VolumeF, VolumeF, VolumeF>::New();
-    auto sqrtNFilter = itk::MultiplyImageFilter<VolumeF>::New();
-    magFilter->SetInput(img);
-    if (scaleImage) {
-        scaleFilter->SetInput1(magFilter->GetOutput());
-        scaleFilter->SetInput2(scaleImage);
-        sqrtNFilter->SetInput(scaleFilter->GetOutput());
-    } else {
-        sqrtNFilter->SetInput(magFilter->GetOutput());
-    }
-    sqrtNFilter->SetConstant(1./sqrt(img->GetNumberOfComponentsPerPixel()));
-    sqrtNFilter->Update();
-    WriteImage(sqrtNFilter->GetOutput(), prefix + "residual.nii");
-    if (allResids) {
-        auto to4D = QI::VectorToSeriesF::New();
-        to4D->SetInput(img);
-        to4D->Update();
-        WriteImage<SeriesF>(to4D->GetOutput(), prefix + "residuals.nii");
-    }
-}
-
 // From Knuth, surprised this isn't in STL
 unsigned long long Choose(unsigned long long n, unsigned long long k) {
     if (k > n)

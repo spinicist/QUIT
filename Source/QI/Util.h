@@ -27,6 +27,7 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkComplexToModulusImageFilter.h"
+#include "itkDivideImageFilter.h"
 #include "QI/Macro.h"
 #include "QI/Types.h"
 
@@ -36,40 +37,21 @@ const std::string &GetVersion();                    //!< Return the version of t
 const std::string &OutExt();                        //!< Return the extension stored in $QUIT_EXT
 std::string StripExt(const std::string &filename);  //!< Remove the extension from a filename
 std::mt19937_64::result_type RandomSeed();          //!< Thread-safe random seed
-
-void WriteResiduals(const typename VectorVolumeF::Pointer img, const std::string prefix, const bool allResids = false, const typename VolumeF::Pointer scaleImage = ITK_NULLPTR);
-// From Knuth, surprised this isn't in STL
-unsigned long long Choose(unsigned long long n, unsigned long long k);
+unsigned long long Choose(unsigned long long n, unsigned long long k); //!< From Knuth, surprised this isn't in STL
 
 template<typename TImg = QI::VolumeF>
-auto ReadImage(const std::string &fname) -> typename TImg::Pointer {
+auto ReadImage(const std::string &path) -> typename TImg::Pointer {
     typedef itk::ImageFileReader<TImg> TReader;
     typename TReader::Pointer file = TReader::New();
-    file->SetFileName(fname);
+    file->SetFileName(path);
     file->Update();
     typename TImg::Pointer img = file->GetOutput();
     img->DisconnectPipeline();
     return img;
 }
 
-template<typename TPixel>
-auto ReadVectorImage(const std::string &fname) -> typename itk::VectorImage<TPixel, 3>::Pointer {
-    typedef itk::Image<TPixel, 4> TSeries;
-    typedef itk::VectorImage<TPixel, 3> TVector;
-    typedef itk::ImageToVectorFilter<TSeries> TToVector;
-    
-    auto img = ReadImage<TSeries>(fname);
-    auto convert = TToVector::New();
-    convert->SetInput(img);
-    convert->Update();
-    typename TVector::Pointer vols = convert->GetOutput();
-    vols->DisconnectPipeline();
-    return vols;
-}
-
-
 template<typename TImg>
-void WriteImage(const TImg *ptr, const std::string path) {
+void WriteImage(const TImg *ptr, const std::string &path) {
     typedef itk::ImageFileWriter<TImg> TWriter;
     typename TWriter::Pointer file = TWriter::New();
     file->SetFileName(path);
@@ -78,12 +60,12 @@ void WriteImage(const TImg *ptr, const std::string path) {
 }
 
 template<typename TImg>
-void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string path) {
+void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string &path) {
     WriteImage<TImg>(ptr.GetPointer(), path);
 }
 
 template<typename TImg>
-void WriteMagnitudeImage(const TImg *ptr, const std::string path) {
+void WriteMagnitudeImage(const TImg *ptr, const std::string &path) {
     typedef typename TImg::PixelType::value_type TReal;
     typedef itk::Image<TReal, TImg::ImageDimension> TRealImage;
     auto mag = itk::ComplexToModulusImageFilter<TImg, TRealImage>::New();
@@ -93,8 +75,68 @@ void WriteMagnitudeImage(const TImg *ptr, const std::string path) {
 }
 
 template<typename TImg>
-void WriteMagnitudeImage(const itk::SmartPointer<TImg> ptr, const std::string path) {
+void WriteMagnitudeImage(const itk::SmartPointer<TImg> ptr, const std::string &path) {
     QI::WriteMagnitudeImage<TImg>(ptr.GetPointer(), path);
+}
+
+template<typename TImg>
+void WriteScaledImage(const TImg *img, const QI::VolumeF *simg, const std::string &path) {
+    auto scaleFilter = itk::DivideImageFilter<TImg, QI::VolumeF, TImg>::New();
+    scaleFilter->SetInput1(img);
+    scaleFilter->SetInput2(simg);
+    scaleFilter->Update();
+    WriteImage(scaleFilter->GetOutput(), path);
+}
+
+template<typename TImg>
+void WriteScaledImage(const itk::SmartPointer<TImg> &ptr, const itk::SmartPointer<QI::VolumeF> &sptr, const std::string &path) {
+    QI::WriteScaledImage<TImg>(ptr.GetPointer(), sptr.GetPointer(), path);
+}
+
+template<typename TPixel>
+auto ReadVectorImage(const std::string &path) -> typename itk::VectorImage<TPixel, 3>::Pointer {
+    typedef itk::Image<TPixel, 4> TSeries;
+    typedef itk::VectorImage<TPixel, 3> TVector;
+    typedef itk::ImageToVectorFilter<TSeries> TToVector;
+    
+    auto img = ReadImage<TSeries>(path);
+    auto convert = TToVector::New();
+    convert->SetInput(img);
+    convert->Update();
+    typename TVector::Pointer vols = convert->GetOutput();
+    vols->DisconnectPipeline();
+    return vols;
+}
+
+template<typename TVImg>
+void WriteVectorImage(const TVImg *img, const std::string &path) {
+    typedef typename TVImg::PixelType TPixel;
+    typedef itk::Image<TPixel, 4> TSeries;
+    typedef itk::VectorToImageFilter<TVImg> TToSeries;
+
+    auto convert = TToSeries::New();
+    convert->SetInput(img);
+    convert->Update();
+    WriteImage(convert->GetOutput(), path);
+}
+
+template<typename TVImg>
+void WriteVectorImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path) {
+    WriteVectorImage(ptr.GetPointer(), path);
+}
+
+template<typename TVImg>
+void WriteScaledVectorImage(const TVImg *img, const QI::VolumeF *simg, const std::string &path) {
+    auto scaleFilter = itk::DivideImageFilter<TVImg, QI::VolumeF, TVImg>::New();
+    scaleFilter->SetInput1(img);
+    scaleFilter->SetInput2(simg);
+    scaleFilter->Update();
+    WriteVectorImage(scaleFilter->GetOutput(), path);
+}
+
+template<typename TVImg>
+void WriteScaledVectorImage(const itk::SmartPointer<TVImg> &ptr, const itk::SmartPointer<QI::VolumeF> &sptr, const std::string &path) {
+    WriteScaledVectorImage(ptr.GetPointer(), sptr.GetPointer(), path);
 }
 
 class GenericMonitor : public itk::Command {

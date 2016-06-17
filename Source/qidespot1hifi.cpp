@@ -207,6 +207,7 @@ int main(int argc, char **argv) {
     auto apply = itk::ApplyAlgorithmFilter<HIFIAlgo>::New();
     hifi->setSequences(spgrSequence, irSequence);
     apply->SetAlgorithm(hifi);
+    apply->SetOutputAllResiduals(all_residuals);
     apply->SetPoolsize(num_threads);
     apply->SetInput(0, spgrImg);
     apply->SetInput(1, irImg);
@@ -228,9 +229,10 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
     QI::WriteImage(apply->GetOutput(2), outPrefix + "B1.nii");
-    //QI::WriteImage(apply->GetOutput(3), outPrefix + "eff.nii");
-    QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
-
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    if (all_residuals) {
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+    }
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

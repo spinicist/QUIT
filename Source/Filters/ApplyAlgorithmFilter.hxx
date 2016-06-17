@@ -20,7 +20,7 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetAlgorithm(co
 	// Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
     // Only the data inputs are required, the others are optional
     this->SetNumberOfRequiredInputs(a->numInputs());
-    // Outputs go: Residuals, Iterations, Parameter 0, Parameter 1, ...
+    // Outputs go: AllResiduals, Residual, Iterations, Parameter 0, Parameter 1, ...
     size_t totalOutputs = StartOutputs + m_algorithm->numOutputs();
 	this->SetNumberOfRequiredOutputs(totalOutputs);
 	for (size_t i = 0; i < totalOutputs; i++) {
@@ -45,6 +45,9 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetSubregion(co
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetVerbose(const bool v) { m_verbose = v; }
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 RealTimeClock::TimeStampType ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetTotalTime() const { return m_elapsedTime; }
@@ -104,19 +107,22 @@ auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetMask() const
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
 DataObject::Pointer ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::MakeOutput(unsigned int idx) {
-	DataObject::Pointer output;
-    if (idx == ResidualsOutput) {
-		auto img = TScalarVectorImage::New();
-		output = img;
+    DataObject::Pointer output;
+    if (idx == AllResidualsOutput) {
+        auto img = TScalarVectorImage::New();
+        output = img;
+    } else if (idx == ResidualOutput) {
+        auto img = TScalarImage::New();
+        output = img;
     } else if (idx == IterationsOutput) {
         auto img = TIterationsImage::New();
         output = img;
     } else if (idx < (m_algorithm->numOutputs() + StartOutputs)) {
-		output = (TScalarImage::New()).GetPointer();
-	} else {
+        output = (TScalarImage::New()).GetPointer();
+    } else {
         itkExceptionMacro("Attempted to create output " << idx << ", this algorithm only has " << m_algorithm->numOutputs() << "+" << StartOutputs << " outputs.");
-	}
-	return output.GetPointer();
+    }
+    return output.GetPointer();
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
@@ -129,8 +135,13 @@ auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetOutput(const
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
-auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetResidOutput() -> TScalarVectorImage *{
-    return dynamic_cast<TScalarVectorImage *>(this->ProcessObject::GetOutput(ResidualsOutput));
+auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetAllResidualsOutput() -> TScalarVectorImage *{
+    return dynamic_cast<TScalarVectorImage *>(this->ProcessObject::GetOutput(AllResidualsOutput));
+}
+
+template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
+auto ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GetResidualOutput() -> TScalarImage *{
+    return dynamic_cast<TScalarImage *>(this->ProcessObject::GetOutput(ResidualOutput));
 }
 
 template<typename TAlgorithm, typename TData, typename TScalar, unsigned int ImageDim>
@@ -166,13 +177,21 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateOutputI
         op->SetDirection(direction);
         op->Allocate(true);
     }
-    if (m_verbose) std::cout << "Allocating residuals memory" << std::endl;
-    auto r = this->GetResidOutput();
+    if (m_allResiduals) {
+        if (m_verbose) std::cout << "Allocating residuals memory" << std::endl;
+        auto r = this->GetAllResidualsOutput();
+        r->SetRegions(region);
+        r->SetSpacing(spacing);
+        r->SetOrigin(origin);
+        r->SetDirection(direction);
+        r->SetNumberOfComponentsPerPixel(size);
+        r->Allocate(true);
+    }
+    auto r = this->GetResidualOutput();
     r->SetRegions(region);
     r->SetSpacing(spacing);
     r->SetOrigin(origin);
     r->SetDirection(direction);
-    r->SetNumberOfComponentsPerPixel(size);
     r->Allocate(true);
     auto i = this->GetIterationsOutput();
     i->SetRegions(region);
@@ -228,7 +247,11 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
 	for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 		outputIters[i] = ImageRegionIterator<TScalarImage>(this->GetOutput(i), region);
 	}
-	ImageRegionIterator<TScalarVectorImage> residIter(this->GetResidOutput(), region);
+    ImageRegionIterator<TScalarVectorImage> allResidualsIter;
+    if (m_allResiduals) {
+        allResidualsIter = ImageRegionIterator<TScalarVectorImage>(this->GetAllResidualsOutput(), region);
+    }
+    ImageRegionIterator<TScalarImage> residualIter(this->GetResidualOutput(), region);
     ImageRegionIterator<TIterationsImage> iterationsIter(this->GetIterationsOutput(), region);
 	typedef typename TAlgorithm::TArray TArray;
     if (m_verbose) std::cout << "Starting processing" << std::endl;
@@ -266,7 +289,10 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
                 }
                 Eigen::ArrayXf residF = resids.template cast<float>();
                 VariableLengthVector<float> residVector(residF.data(), m_algorithm->dataSize());
-                residIter.Set(residVector);
+                if (m_allResiduals) {
+                    allResidualsIter.Set(residVector);
+                }
+                residualIter.Set(sqrt(resids.square().sum() / m_algorithm->dataSize()));
                 iterationsIter.Set(iterations);
             };
             threadPool.enqueue(task);
@@ -276,7 +302,8 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
                 outputIters[i].Set(0);
             }
             VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
-            residIter.Set(residZeros);
+            allResidualsIter.Set(residZeros);
+            residualIter.Set(0);
             iterationsIter.Set(0);
         }
         
@@ -292,7 +319,9 @@ void ApplyAlgorithmFilter<TAlgorithm, TData, TScalar, ImageDim>::GenerateData() 
 		for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
 			++outputIters[i];
 		}
-		++residIter;
+        if (m_allResiduals)
+            ++allResidualsIter;
+        ++residualIter;
         ++iterationsIter;
     }
     clock.Stop();

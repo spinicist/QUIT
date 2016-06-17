@@ -352,6 +352,7 @@ Options:\n\
         apply->SetAlgorithm(algo);
     } break;
     }
+    apply->SetOutputAllResiduals(all_residuals);
     apply->SetVerbose(verbose);
     apply->SetPoolsize(num_threads);
     for (int i = 0; i < images.size(); i++) {
@@ -398,7 +399,10 @@ Options:\n\
     for (int i = 0; i < model->nParameters(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
     }
-    QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    if (all_residuals) {
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+    }
     QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
     return EXIT_SUCCESS;
 }

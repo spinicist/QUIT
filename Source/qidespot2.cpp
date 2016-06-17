@@ -1,5 +1,5 @@
 /*
- *  despot2_main.cpp
+ *  apply_main.cpp
  *
  *  Created by Tobias Wood on 23/01/2012.
  *  Copyright (c) 2012-2013 Tobias Wood.
@@ -211,7 +211,7 @@ public:
 // Arguments / Usage
 //******************************************************************************
 const string usage {
-"Usage is: qidespot2 [options] T1_map ssfp_file\n\
+"Usage is: qiapply [options] T1_map ssfp_file\n\
 \n\
 Options:\n\
     --help, -h        : Print this message.\n\
@@ -332,35 +332,38 @@ int main(int argc, char **argv) {
     }
     if (verbose) cout << *ssfp << endl;
 
-    auto DESPOT2 = itk::ApplyAlgorithmFilter<D2Algo>::New();
+    auto apply = itk::ApplyAlgorithmFilter<D2Algo>::New();
     algo->setSequence(ssfp);
     algo->setElliptical(elliptical);
-    DESPOT2->SetAlgorithm(algo);
-    DESPOT2->SetPoolsize(num_threads);
-    DESPOT2->SetInput(0, data);
-    DESPOT2->SetConst(0, T1);
+    apply->SetAlgorithm(algo);
+    apply->SetOutputAllResiduals(all_residuals);
+    apply->SetPoolsize(num_threads);
+    apply->SetInput(0, data);
+    apply->SetConst(0, T1);
     if (B1)
-        DESPOT2->SetConst(1, B1);
+        apply->SetConst(1, B1);
     if (mask)
-        DESPOT2->SetMask(mask);
+        apply->SetMask(mask);
 
     if (verbose) {
-        cout << "DESPOT2 setup complete. Processing." << endl;
+        cout << "apply setup complete. Processing." << endl;
         auto monitor = QI::GenericMonitor::New();
-        DESPOT2->AddObserver(itk::ProgressEvent(), monitor);
+        apply->AddObserver(itk::ProgressEvent(), monitor);
     }
-    DESPOT2->Update();
+    apply->Update();
     if (verbose) {
-        cout << "Elapsed time was " << DESPOT2->GetTotalTime() << "s" << endl;
-        cout << "Mean time per voxel was " << DESPOT2->GetMeanTime() << "s" << endl;
+        cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
+        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
         cout << "Writing results files." << endl;
 
     }
     outPrefix = outPrefix + "D2_";
-    QI::WriteImage(DESPOT2->GetOutput(0), outPrefix + "PD.nii");
-    QI::WriteImage(DESPOT2->GetOutput(1), outPrefix + "T2.nii");
-    QI::WriteResiduals(DESPOT2->GetResidOutput(), outPrefix, all_residuals, DESPOT2->GetOutput(0));
-
+    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
+    QI::WriteImage(apply->GetOutput(1), outPrefix + "T2.nii");
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    if (all_residuals) {
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+    }
     if (verbose) cout << "All done." << endl;
     return EXIT_SUCCESS;
 }

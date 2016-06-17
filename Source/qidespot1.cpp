@@ -352,6 +352,7 @@ int main(int argc, char **argv) {
     algo->setSequence(spgrSequence);
     auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();
     apply->SetAlgorithm(algo);
+    apply->SetOutputAllResiduals(all_residuals);
     apply->SetPoolsize(num_threads);
     apply->SetInput(0, data);
     if (mask)
@@ -372,7 +373,10 @@ int main(int argc, char **argv) {
     outPrefix = outPrefix + "D1_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
-    QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    if (all_residuals) {
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+    }
     if (algo->getIterations() != D1Algo::DefaultIterations) {
         QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
     }

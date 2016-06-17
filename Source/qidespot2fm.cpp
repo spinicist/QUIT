@@ -328,6 +328,7 @@ int main(int argc, char **argv) {
     algo->setSymmetric(symmetric);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
+    apply->SetOutputAllResiduals(all_residuals);
     apply->SetPoolsize(num_threads);
     apply->SetInput(0, ssfpData);
     apply->SetConst(0, T1);
@@ -352,6 +353,9 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2.nii");
     QI::WriteImage(apply->GetOutput(2), outPrefix + "f0.nii");
 	QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "its.nii");
-    QI::WriteResiduals(apply->GetResidOutput(), outPrefix, all_residuals, apply->GetOutput(0));
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    if (all_residuals) {
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+    }
     return EXIT_SUCCESS;
 }

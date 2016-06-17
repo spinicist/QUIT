@@ -64,17 +64,16 @@ public:
     void SetPoolsize(const size_t nThreads);
     void SetSubregion(const TRegion &sr); 
     void SetVerbose(const bool v);
+    void SetOutputAllResiduals(const bool r); 
     
     TScalarImage       *GetOutput(const size_t i);
-    TScalarVectorImage *GetResidOutput();
+	TScalarImage       *GetResidualOutput();
+    TScalarVectorImage *GetAllResidualsOutput();
     TIterationsImage   *GetIterationsOutput();
 
     RealTimeClock::TimeStampType GetTotalTime() const;
     RealTimeClock::TimeStampType GetMeanTime() const;
     SizeValueType GetEvaluations() const;
-
-	virtual void GenerateOutputInformation() ITK_OVERRIDE;
-    virtual void GenerateData() ITK_OVERRIDE;
 
 protected:
 	ApplyAlgorithmFilter();
@@ -82,15 +81,19 @@ protected:
 	DataObject::Pointer MakeOutput(unsigned int idx) ITK_OVERRIDE;
 
 	std::shared_ptr<TAlgorithm> m_algorithm;
-    bool m_scale_to_mean = false, m_verbose = false, m_hasSubregion = false;
+    bool m_scale_to_mean = false, m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
     size_t m_poolsize = 1;
     TRegion m_subregion;
 
     RealTimeClock::TimeStampType m_elapsedTime = 0.0;
     SizeValueType m_unmaskedVoxels = 0;
-    static const int ResidualsOutput = 0;
-    static const int IterationsOutput = 1;
-    static const int StartOutputs = 2;
+    static const int AllResidualsOutput = 0;
+	static const int ResidualOutput = 1;
+    static const int IterationsOutput = 2;
+    static const int StartOutputs = 3;
+
+    virtual void GenerateOutputInformation() ITK_OVERRIDE;
+    virtual void GenerateData() ITK_OVERRIDE;
 
 private:
 	ApplyAlgorithmFilter(const Self &); //purposely not implemented
