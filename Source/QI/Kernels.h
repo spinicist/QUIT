@@ -53,10 +53,20 @@ public:
 
 class GaussKernel : public FilterKernel {
 protected:
-    double m_a = 0.5;
+    double m_sigma = 0.5;
 public:
     GaussKernel();
     GaussKernel(std::istream &istr);
+    virtual void print(std::ostream &ostr) const override;
+    virtual double value(const int x, const int y, const int z) const override;
+};
+
+class BlackmanKernel : public FilterKernel {
+protected:
+    double m_alpha, m_a0, m_a1, m_a2;
+public:
+    BlackmanKernel();
+    BlackmanKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
     virtual double value(const int x, const int y, const int z) const override;
 };

@@ -55,7 +55,7 @@ void HammingKernel::print(std::ostream &ostr) const {
 }
 double HammingKernel::value(const int x, const int y, const int z) const {
     const double r = radius(x, y, z);
-    const double v = m_a + m_b*cos(2.*M_PI*r);
+    const double v = m_a - m_b*cos(M_PI*(1.+r));
     return v;
 }
 
@@ -63,14 +63,37 @@ GaussKernel::GaussKernel() {}
 GaussKernel::GaussKernel(std::istream &istr) {
     std::string nextValue;
     std::getline(istr, nextValue, ',');
-    m_a = stod(nextValue);
+    m_sigma = stod(nextValue);
 }
 void GaussKernel::print(std::ostream &ostr) const {
-    ostr << "Gauss," << m_a << std::endl;
+    ostr << "Gauss," << m_sigma << std::endl;
 }
 double GaussKernel::value(const int x, const int y, const int z) const {
     const double r = radius(x, y, z);
-    const double v = exp(-m_a*r*r);
+    const double v = exp(-pow(r/m_sigma,2)/2.);
+    return v;
+}
+
+BlackmanKernel::BlackmanKernel() {
+    m_alpha = 0.16;
+    m_a0 = (1. - m_alpha) / 2.;
+    m_a1 = 1. / 2.;
+    m_a2 = m_alpha / 2.;
+}
+BlackmanKernel::BlackmanKernel(std::istream &istr) {
+    std::string nextValue;
+    std::getline(istr, nextValue, ',');
+    m_alpha = stod(nextValue);
+    m_a0 = (1. - m_alpha) / 2.;
+    m_a1 = 1. / 2.;
+    m_a2 = m_alpha / 2.;
+}
+void BlackmanKernel::print(std::ostream &ostr) const {
+    ostr << "Blackman," << m_alpha << std::endl;
+}
+double BlackmanKernel::value(const int x, const int y, const int z) const {
+    const double r = radius(x, y, z);
+    const double v = m_a0 - m_a1*cos(M_PI*(1.+r)) + m_a2*cos(2.*M_PI*(1.+r));
     return v;
 }
 
@@ -84,6 +107,8 @@ std::shared_ptr<FilterKernel> ReadKernel(std::istream &istr) {
         newKernel = std::make_shared<HammingKernel>(istr);
     } else if (filterName == "Gauss") {
         newKernel = std::make_shared<GaussKernel>(istr);
+    } else if (filterName == "Blackman") {
+        newKernel = std::make_shared<BlackmanKernel>(istr);
     } else {
         QI_EXCEPTION("Unknown filter type");
     }

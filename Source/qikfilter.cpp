@@ -65,7 +65,6 @@ public:
     }
     
     void SetKernel(const shared_ptr<QI::FilterKernel> &k) { m_kernel = k; }
-
 protected:
     virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         typename TImage::IndexType startIndex = this->GetInput()->GetLargestPossibleRegion().GetIndex();
@@ -141,6 +140,9 @@ QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbos
             QI::WriteMagnitudeImage(extract->GetOutput(), "kextract_" + to_string(i) + ".nii");
             QI::WriteMagnitudeImage(pad->GetOutput(), "kpad_" + to_string(i) + ".nii");
             QI::WriteMagnitudeImage(forward->GetOutput(), "kforward_" + to_string(i) + ".nii");
+            QI::WriteMagnitudeImage(k_filter->GetOutput(), "kfiltered_" + to_string(i) + ".nii");
+            k_filter->SetWriteKernel(true);
+            k_filter->Update();
             QI::WriteMagnitudeImage(k_filter->GetOutput(), "kfilter_" + to_string(i) + ".nii");
             QI::WriteMagnitudeImage(inverse->GetOutput(), "kinverse_" + to_string(i) + ".nii");
             QI::WriteMagnitudeImage(caster->GetOutput(), "kcaster_" + to_string(i) + ".nii");
