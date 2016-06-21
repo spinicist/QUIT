@@ -33,7 +33,8 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PRO
 set(QIDIR "Source/QI")
 set(QI "qi")
 add_library( ${QI} STATIC
-             ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Kernels.cpp 
+             ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Option.cpp
+             ${QIDIR}/Kernels.cpp 
              ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp
              ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
              ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp

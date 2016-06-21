@@ -9,7 +9,6 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 
 #include <Eigen/Dense>
@@ -23,6 +22,7 @@
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
+#include "QI/Option.h"
 
 using namespace std;
 using namespace Eigen;
@@ -241,7 +241,7 @@ Options:\n\
     --help, -h        : Print this message\n\
     --verbose, -v     : Print more information\n\
     --no-prompt, -n   : Suppress input prompts\n\
-    --out, -o path    : Add a prefix to the output filenames\n\
+    --out, -o path    : Add a outPrefix to the output filenames\n\
     --mask, -m file   : Mask input with specified file\n\
     --B1, -b file     : B1 Map file (ratio)\n\
     --thresh, -t n    : Threshold maps at PD < n\n\
@@ -255,131 +255,79 @@ Options:\n\
     --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
 };
 
-bool verbose = false, prompt = true, all_residuals = false;
-int num_threads = 4;
-string outPrefix;
-const struct option long_options[] =
-{
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"no-prompt", no_argument, 0, 'n'},
-    {"out", required_argument, 0, 'o'},
-    {"mask", required_argument, 0, 'm'},
-    {"B1", required_argument, 0, 'b'},
-    {"thresh", required_argument, 0, 't'},
-    {"clamp", required_argument, 0, 'c'},
-    {"algo", required_argument, 0, 'a'},
-    {"its", required_argument, 0, 'i'},
-    {"resids", no_argument, 0, 'r'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-static const char *short_opts = "hvnm:o:b:t:c:a:i:rT:";
+QI::Switch verbose('v',"*verbose","Print more information");
+QI::Switch prompt('n',"no-prompt","Suppress input prompts");
+QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals");
+QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)");
+QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)");
+QI::Option<float> thresh(-std::numeric_limits<float>::infinity(),'t',"thresh","Threshold maps at PD < value");
+QI::Option<float> clamp(std::numeric_limits<float>::infinity(),'c',"clamp","Clamp T1 between 0 and value");
+QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output filenames");
+QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file");
+QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)");
+QI::EnumOption algorithm("lwbnb",'l','a',"algo","Choose algorithm (l/w/n/b)");
 
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::VolumeF::Pointer mask = ITK_NULLPTR;
-    QI::VolumeF::Pointer B1   = ITK_NULLPTR;
 
-    shared_ptr<D1Algo> algo = make_shared<D1LLS>();
-    int indexptr = 0, c;
-    while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'n': prompt = false; break;
-            case 'a':
-                switch (*optarg) {
-                    case 'l': algo = make_shared<D1LLS>();  if (verbose) cout << "LLS algorithm selected." << endl; break;
-                    case 'w': algo = make_shared<D1WLLS>(); if (verbose) cout << "WLLS algorithm selected." << endl; break;
-                    case 'n': algo = make_shared<D1NLLS>(); if (verbose) cout << "NLLS algorithm selected." << endl; break;
-                    case 'b': algo = make_shared<D1LBFGSB>(); if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
-                    default:
-                        cerr << "Unknown algorithm type " << optarg << endl;
-                        return EXIT_FAILURE;
-                        break;
-                } break;
-            default: break;
-        }
-    }
-    optind = 1;
-    while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': case 'n': case 'a': break;
-            case 'm':
-                if (verbose) cout << "Opening mask file " << optarg << endl;
-                mask = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                outPrefix = optarg;
-                if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
-                break;
-            case 'b':
-                if (verbose) cout << "Opening B1 file: " << optarg << endl;
-                B1 = QI::ReadImage(optarg);
-                break;
-            case 't': algo->setThreshold(atof(optarg)); break;
-            case 'c': algo->setClamp(0, atof(optarg)); break;
-            case 'i': algo->setIterations(atoi(optarg)); break;
-            case 'r': all_residuals = true; break;
-            case 'T':
-                num_threads = stoi(optarg);
-                if (num_threads == 0)
-                    num_threads = std::thread::hardware_concurrency();
-                break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
+    std::vector<std::string> nonopts;
+    QI::ParseOptions(argc, argv, nonopts);
+    if (nonopts.size() != 1) {
+        cout << nonopts.size() << endl;
         cout << "Incorrect number of arguments." << endl << usage << endl;
         return EXIT_FAILURE;
     }
 
-    string inputFilename = argv[optind++];
-    if (verbose) cout << "Opening SPGR file: " << inputFilename << endl;
+    const std::string &inputFilename = nonopts.front();
+    if (*verbose) cout << "Opening SPGR file: " << inputFilename << endl;
     auto data = QI::ReadVectorImage<float>(inputFilename);
-    shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(cin, prompt);
-    if (verbose) cout << *spgrSequence;
+    shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(cin, *prompt);
+    if (*verbose) cout << *spgrSequence;
+    shared_ptr<D1Algo> algo;
+    switch (*algorithm) {
+        case 'l': algo = make_shared<D1LLS>();  if (*verbose) cout << "LLS algorithm selected." << endl;
+        case 'w': algo = make_shared<D1WLLS>(); if (*verbose) cout << "WLLS algorithm selected." << endl;
+        case 'n': algo = make_shared<D1NLLS>(); if (*verbose) cout << "NLLS algorithm selected." << endl;
+        case 'b': algo = make_shared<D1LBFGSB>(); if (*verbose) cout << "LBFGSB algorithm selected." << endl;
+    }
+    algo->setThreshold(*thresh);
+    algo->setIterations(*its);
+    if (isfinite(*clamp))
+        algo->setClamp(0, *clamp);
     algo->setSequence(spgrSequence);
     auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();
     apply->SetAlgorithm(algo);
-    apply->SetOutputAllResiduals(all_residuals);
-    apply->SetPoolsize(num_threads);
+    apply->SetOutputAllResiduals(*all_residuals);
+    apply->SetPoolsize(*num_threads);
     apply->SetInput(0, data);
-    if (mask)
-        apply->SetMask(mask);
-    if (B1)
-        apply->SetConst(0, B1);
-    if (verbose) {
+    if (*mask)
+        apply->SetMask(*mask);
+    if (*B1)
+        apply->SetConst(0, *B1);
+    if (*verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
+    if (*verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
         cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
-    outPrefix = outPrefix + "D1_";
-    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
-    QI::WriteImage(apply->GetOutput(1), outPrefix + "T1.nii");
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
-    if (all_residuals) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+    *outPrefix += "D1_";
+    QI::WriteImage(apply->GetOutput(0),*outPrefix + "PD.nii");
+    QI::WriteImage(apply->GetOutput(1), *outPrefix + "T1.nii");
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), *outPrefix + "residual.nii");
+    if (*all_residuals) {
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), *outPrefix + "all_residuals.nii");
     }
     if (algo->getIterations() != D1Algo::DefaultIterations) {
-        QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations.nii");
+        QI::WriteImage(apply->GetIterationsOutput(), *outPrefix + "iterations.nii");
     }
-    if (verbose) cout << "Finished." << endl;
+    if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

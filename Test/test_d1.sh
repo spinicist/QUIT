@@ -4,7 +4,7 @@
 # Simple test scripts for QUIT programs
 
 source ./test_common.sh
-SILENCE_TESTS="1"
+SILENCE_TESTS="0"
 
 DATADIR="d1"
 mkdir -p $DATADIR
@@ -77,7 +77,7 @@ function d1_test () {
     FILE="$2"
     ARGS="$3"
     INPUT="$4"
-    run_test "DESPOT1_${TEST}" $QUITDIR/qidespot1 -v -n -bB1.nii $ARGS -o $TEST $FILE < $INPUT
+    run_test "DESPOT1_${TEST}" $QUITDIR/qidespot1 -v -n --B1=B1.nii $ARGS -o $TEST $FILE < $INPUT
     compare_test "DESPOT1_${TEST}" T1.nii ${TEST}D1_T1.nii $NOISE 50
 }
 
