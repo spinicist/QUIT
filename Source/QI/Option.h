@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <iostream>
+#include <iomanip>
 #include <forward_list>
 #include <algorithm>
 #include <string>
@@ -41,6 +42,7 @@ public:
     virtual void setValue() = 0;
     virtual void setArgument(const std::string &a) = 0;
 };
+std::ostream &operator<< (std::ostream &os, const OptionBase &o);
 
 typedef std::forward_list<OptionBase *> OptionList;
 OptionList &GetOptionList();
@@ -126,6 +128,26 @@ public:
             QI_EXCEPTION("Unknown enum value " + std::string{v} + " for option " + this->longOption());
         }
     }
+};
+
+class Help : public OptionBase {
+protected:
+    std::string m_help;
+public:
+    Help(const std::string &help) :
+        OptionBase('h', "help", "Print the help message."),
+        m_help(help)
+    {}
+
+    virtual bool hasArgument() const override { return false; }
+    virtual void setValue() override {
+        std::cout << m_help << std::endl << std::endl << "Options: " << std::endl;
+        for (OptionBase *o : GetOptionList()) {
+            std::cout << *o << std::endl;
+        }
+        exit(EXIT_FAILURE);
+    }
+    virtual void setArgument(const std::string &a) override { QI_EXCEPTION("Help option does not have an argument.") };
 };
 
 } // End namespace QI

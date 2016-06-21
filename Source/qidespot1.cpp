@@ -233,30 +233,6 @@ public:
 //******************************************************************************
 // Arguments / Usage
 //******************************************************************************
-const string usage {
-"Usage is: qidespot1 [options] spgr_input \n\
-\n\
-Options:\n\
-\n\
-    --help, -h        : Print this message\n\
-    --verbose, -v     : Print more information\n\
-    --no-prompt, -n   : Suppress input prompts\n\
-    --out, -o path    : Add a outPrefix to the output filenames\n\
-    --mask, -m file   : Mask input with specified file\n\
-    --B1, -b file     : B1 Map file (ratio)\n\
-    --thresh, -t n    : Threshold maps at PD < n\n\
-    --clamp, -c n     : Clamp T1 between 0 and n\n\
-    --algo, -a l      : LLS algorithm (default)\n\
-               w      : WLLS algorithm\n\
-               n      : NLLS (Levenberg-Marquardt)\n\
-               b      : LBFGSB algorithm\n\
-    --its, -i N       : Max iterations for WLLS/NLLS (default 15)\n\
-    --resids, -r      : Write out per flip-angle residuals\n\
-    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
-};
-
-QI::Switch verbose('v',"*verbose","Print more information");
-QI::Switch prompt('n',"no-prompt","Suppress input prompts");
 QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals");
 QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)");
 QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)");
@@ -266,7 +242,9 @@ QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output file
 QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file");
 QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)");
 QI::EnumOption algorithm("lwbnb",'l','a',"algo","Choose algorithm (l/w/n/b)");
-
+QI::Switch prompt('n',"no-prompt","Suppress input prompts");
+QI::Switch verbose('v',"verbose","Print more information");
+QI::Help help("Usage is: qidespot1 [options] spgr_input");
 //******************************************************************************
 // Main
 //******************************************************************************
@@ -276,9 +254,8 @@ int main(int argc, char **argv) {
     std::vector<std::string> nonopts;
     QI::ParseOptions(argc, argv, nonopts);
     if (nonopts.size() != 1) {
-        cout << nonopts.size() << endl;
-        cout << "Incorrect number of arguments." << endl << usage << endl;
-        return EXIT_FAILURE;
+        cout << "Incorrect number of arguments." << endl;
+        help.setValue();
     }
 
     const std::string &inputFilename = nonopts.front();

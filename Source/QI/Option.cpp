@@ -18,12 +18,18 @@ OptionList &GetOptionList() {
     return s_options;
 }
 
+std::ostream &operator<< (std::ostream &os, const OptionBase &o) {
+    os << "  -" << o.shortOption() << ",--"
+       << std::setw(10) << std::left << o.longOption()
+       << std::setw(0) << " : " << o.usage();
+    return os;
+}
+
 OptionBase::OptionBase(const char s, const std::string &l, const std::string &u) :
     m_short(s), m_long(l), m_usage(u)
 {
     GetOptionList().push_front(this);
 }
-
 
 void ParseOptions (int argc, char *const *argv, std::vector<std::string> &nonopts) {
     int optind = 1;
