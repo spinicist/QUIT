@@ -147,11 +147,11 @@ public:
         const double c = sqrt(xc*xc+yc*yc);
         const double b = (-c*A + sqrt(c*c*A*A - (c*c + B*B)*(A*A - B*B)))/(c*c + B*B);
         const double a = B / (b*B + c*sqrt(1-b*b));
-        const double M = scale*c*(1-b*b)/(1-a*b);
         const double TR = m_sequence->TR();
         const double ca = cos(B1 * m_sequence->flip()[0]);
-        const double T1 = -TR / (log(a*(1.+ca-a*b*ca)-b) - log(a*(1.+ca-a*b)-b*ca));
+        const double T1 = -TR / (log(a-b + (1.-a*b)*a*ca) - log(a*(1.-a*b) + (a-b)*ca));
         const double T2 = -TR / log(a);
+        const double M = (scale/sqrt(a))*c*(1-b*b)/(1-a*b);
         
         outputs[0] = M;
         outputs[1] = T1;
