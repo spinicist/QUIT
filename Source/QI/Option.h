@@ -26,13 +26,18 @@
 
 namespace QI {
 
+// Forward declarations
+class OptionBase;
+class OptionList;
+OptionList &DefaultOptions();
+
 class OptionBase {
 protected:
     const char m_short;
     const std::string m_long, m_usage;
 
 public:
-    OptionBase(const char s, const std::string &l, const std::string &u);
+    OptionBase(const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions());
 
     char shortOption() const { return m_short; }
     const std::string &longOption() const { return m_long; }
@@ -44,32 +49,34 @@ public:
 };
 std::ostream &operator<< (std::ostream &os, const OptionBase &o);
 
-typedef std::forward_list<OptionBase *> OptionList;
-OptionList &GetOptionList();
-void ParseOptions (int argc, char *const *argv, std::vector<std::string> &nonopts);
+class OptionList {
+protected:
+    typedef std::forward_list<OptionBase *> TList;
+    TList m_options;
+public:
+    void add(OptionBase *o);
+    void parse(int argc, char *const *argv, std::vector<std::string> &nonopts);
+    void print(std::ostream & os) const;
+};
+std::ostream &operator<< (std::ostream &os, const OptionList &l);
 
 class Switch : public OptionBase {
 protected:
     bool m_value;
-
 public:
     Switch(const char s, const std::string &l, const std::string &u) :
         OptionBase(s, l, u)
     {}
 
+    bool &operator* () { return m_value; }
     virtual bool hasArgument() const override { return false; }
     virtual void setValue() override { m_value = true; }
-    virtual void setArgument(const std::string &a) override {
-        QI_EXCEPTION("Switches don't have arguments");
-    }
-
-    bool &operator* () { return m_value; }
+    virtual void setArgument(const std::string &a) override { QI_EXCEPTION("Switches don't have arguments"); }
 };
 
 template<typename T> class Option : public OptionBase {
 protected:
     T m_value;
-
 public:
     Option(const T &defval, const char s, const std::string &l, const std::string &u) :
         OptionBase(s, l, u),
@@ -100,9 +107,7 @@ public:
     TPtr &operator* () { return m_ptr; }
     virtual bool hasArgument() const override { return true; }
     virtual void setValue() override { QI_EXCEPTION("ImageOptions must have arguments"); }
-    virtual void setArgument(const std::string &a) override {
-        m_ptr = QI::ReadImage(a);
-    }
+    virtual void setArgument(const std::string &a) override { m_ptr = QI::ReadImage(a); }
 };
 
 class EnumOption : public OptionBase {
@@ -133,6 +138,7 @@ public:
 class Help : public OptionBase {
 protected:
     std::string m_help;
+
 public:
     Help(const std::string &help) :
         OptionBase('h', "help", "Print the help message."),
@@ -142,9 +148,7 @@ public:
     virtual bool hasArgument() const override { return false; }
     virtual void setValue() override {
         std::cout << m_help << std::endl << std::endl << "Options: " << std::endl;
-        for (OptionBase *o : GetOptionList()) {
-            std::cout << *o << std::endl;
-        }
+        std::cout << DefaultOptions() << std::endl;
         exit(EXIT_FAILURE);
     }
     virtual void setArgument(const std::string &a) override { QI_EXCEPTION("Help option does not have an argument.") };

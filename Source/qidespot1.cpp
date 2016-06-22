@@ -252,7 +252,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
 
     std::vector<std::string> nonopts;
-    QI::ParseOptions(argc, argv, nonopts);
+    QI::DefaultOptions().parse(argc, argv, nonopts);
     if (nonopts.size() != 1) {
         cout << "Incorrect number of arguments." << endl;
         help.setValue();

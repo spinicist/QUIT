@@ -13,9 +13,18 @@
 
 namespace QI {
 
-OptionList &GetOptionList() {
+// Global default options
+OptionList &DefaultOptions() {
     static OptionList s_options;
     return s_options;
+}
+
+// OptionBase
+OptionBase::OptionBase(const char s, const std::string &l, const std::string &u,
+                       OptionList &list) :
+    m_short(s), m_long(l), m_usage(u)
+{
+    list.add(this);
 }
 
 std::ostream &operator<< (std::ostream &os, const OptionBase &o) {
@@ -25,18 +34,16 @@ std::ostream &operator<< (std::ostream &os, const OptionBase &o) {
     return os;
 }
 
-OptionBase::OptionBase(const char s, const std::string &l, const std::string &u) :
-    m_short(s), m_long(l), m_usage(u)
-{
-    GetOptionList().push_front(this);
+// OptionList
+void OptionList::add(OptionBase *o) {
+    m_options.push_front(o);
 }
 
-void ParseOptions (int argc, char *const *argv, std::vector<std::string> &nonopts) {
+void OptionList::parse(int argc, char *const *argv, std::vector<std::string> &nonopts) {
     int optind = 1;
-    const OptionList &opts = GetOptionList();
     while (optind < argc) {
         std::string thisopt(argv[optind]);
-        auto it = opts.end();
+        auto it = m_options.end();
         std::string arg;
         if (thisopt == "--") { // Premature end of options
             optind++;
@@ -56,9 +63,9 @@ void ParseOptions (int argc, char *const *argv, std::vector<std::string> &nonopt
             } else {
                 thisopt.erase(0, 2);
             }
-            it = std::find_if(opts.begin(), opts.end(), [&] (OptionBase *const &o) { return o->longOption() == thisopt; });
-            if (it == opts.end()) {
-                QI_EXCEPTION("Unhandled option: " + thisopt);
+            it = std::find_if(m_options.begin(), m_options.end(), [&] (OptionBase *const &o) { return o->longOption() == thisopt; });
+            if (it == m_options.end()) {
+                QI_EXCEPTION("Unhandled long option: " + thisopt);
             }
             if ((*it)->hasArgument()) {
                 (*it)->setArgument(arg);
@@ -67,9 +74,9 @@ void ParseOptions (int argc, char *const *argv, std::vector<std::string> &nonopt
             }
         } else { // Short option
             char sopt = thisopt[1];
-            it = std::find_if(opts.begin(), opts.end(), [&] (OptionBase *const &o) { return o->shortOption() == sopt; });
-            if (it == opts.end()) {
-                QI_EXCEPTION("Unhandled option: " + thisopt);
+            it = std::find_if(m_options.begin(), m_options.end(), [&] (OptionBase *const &o) { return o->shortOption() == sopt; });
+            if (it == m_options.end()) {
+                QI_EXCEPTION("Unhandled short option: " + std::string(thisopt));
             }
             if ((*it)->hasArgument()) {
                 if (thisopt.size() > 2) { // Handle arguments without spaces
@@ -85,6 +92,17 @@ void ParseOptions (int argc, char *const *argv, std::vector<std::string> &nonopt
         }
         optind++;
     }
+}
+
+void OptionList::print(std::ostream &os) const {
+    for (OptionBase *o : m_options) {
+        os << *o << std::endl;
+    }
+}
+
+std::ostream &operator<< (std::ostream &os, const OptionList &o) {
+    o.print(os);
+    return os;
 }
 
 } // End namespace QI
