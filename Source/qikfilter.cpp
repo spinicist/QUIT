@@ -57,24 +57,24 @@ public:
     itkNewMacro(Self);
     itkTypeMacro(KSpaceFilter, ImageSource);
     itkSetMacro(WriteKernel, bool);
-    
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
-        Superclass::GenerateOutputInformation();
-        typename TImage::SizeType size = this->GetOutput()->GetLargestPossibleRegion().GetSize();
-        m_kernel->setSize(size[0], size[1], size[2]);
-    }
-    
+
     void SetKernel(const shared_ptr<QI::FilterKernel> &k) { m_kernel = k; }
 protected:
     virtual void ThreadedGenerateData(const typename TImage::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
-        typename TImage::IndexType startIndex = this->GetInput()->GetLargestPossibleRegion().GetIndex();
+        typename TImage::RegionType fullRegion = this->GetInput()->GetLargestPossibleRegion();
+        typename TImage::IndexType startIndex = fullRegion.GetIndex();
+        typename TImage::SizeType S = fullRegion.GetSize();
         itk::ImageRegionIterator<TImage> outIt(this->GetOutput(),region);
         itk::ImageRegionConstIteratorWithIndex<TImage> inIt(this->GetInput(),region);
         inIt.GoToBegin();
         outIt.GoToBegin();
         while(!inIt.IsAtEnd()) {
-            const auto index = inIt.GetIndex() - startIndex; // Might be padded to a negative start
-            const typename TImage::PixelType::value_type k = m_kernel->value(index[0], index[1], index[2]);
+            const auto I = inIt.GetIndex() - startIndex; // Might be padded to a negative start
+            const double rx = fmod(static_cast<double>(2.*I[0])/S[0] + 1.0, 2.0) - 1.0;
+            const double ry = fmod(static_cast<double>(2.*I[1])/S[1] + 1.0, 2.0) - 1.0;
+            const double rz = fmod(static_cast<double>(2.*I[2])/S[2] + 1.0, 2.0) - 1.0;
+            const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
+            const typename TImage::PixelType::value_type k = m_kernel->value(r);
             const typename TImage::PixelType v = inIt.Get();
             if (m_WriteKernel) {
                 outIt.Set(k);
@@ -95,46 +95,58 @@ private:
 
 QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbose, const int debug, const shared_ptr<QI::FilterKernel> &kernel) {
     typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXD> TExtract;
-    typedef itk::PasteImageFilter<QI::SeriesXF>                 TPaste;
-    typedef itk::CastImageFilter<QI::VolumeXD, QI::SeriesXF>    TCast;
+    typedef itk::TileImageFilter<QI::VolumeXF, QI::SeriesXF>    TTile;
+    typedef itk::CastImageFilter<QI::VolumeXD, QI::VolumeXF>    TCast;
     typedef itk::FFTPadImageFilter<QI::VolumeXD>                TPad;
     typedef itk::ComplexToComplexFFTImageFilter<QI::VolumeXD>   TFFT;
     typedef itk::KSpaceFilter<QI::VolumeXD>                     TFilter;
+    typedef itk::ExtractImageFilter<QI::VolumeXD, QI::VolumeXF> TUnpad;
     
     auto region = vols->GetLargestPossibleRegion();
     const size_t nvols = region.GetSize()[3]; // Save for the loop
-    
+    region.GetModifiableSize()[3] = 0;
+    QI::VolumeXD::RegionType unpad_region;
+    for (int i = 0; i < 3; i++) {
+        unpad_region.GetModifiableSize()[i] = region.GetSize()[i];
+    }
+
+    itk::FixedArray<unsigned int, 4> layout;
+    layout[0] = layout[1] = layout[2] = 1;
+    layout[3] = nvols;
+
     auto extract = TExtract::New();
     auto pad     = TPad::New();
     auto forward = TFFT::New();
-    auto inverse = TFFT::New();
     auto k_filter = TFilter::New();
-    auto caster = TCast::New();
-    auto paster = TPaste::New();
+    // inverse is declared in the loop due to a weird bug
+    auto unpadder = TUnpad::New();
+    auto tile   = TTile::New();
     
     extract->SetInput(vols);
     extract->SetDirectionCollapseToSubmatrix();
-    extract->InPlaceOn();
     pad->SetInput(extract->GetOutput());
     forward->SetInput(pad->GetOutput());
     k_filter->SetInput(forward->GetOutput());
     k_filter->SetKernel(kernel);
-    inverse->SetInput(k_filter->GetOutput());
-    inverse->SetTransformDirection(TFFT::INVERSE);
-    caster->SetInput(inverse->GetOutput());
-    paster->SetSourceImage(caster->GetOutput());
-    region.GetModifiableSize()[3] = 1;
-    paster->SetSourceRegion(region);
-    paster->SetDestinationImage(vols);
-    //paster->InPlaceOn();
-    region.GetModifiableSize()[3] = 0;
+    unpadder->SetDirectionCollapseToSubmatrix();
+    unpadder->SetExtractionRegion(unpad_region);
+    tile->SetLayout(layout);
+    
     for (int i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
         if (verbose) cout << "Processing volume " << i << endl;
+        
         extract->SetExtractionRegion(region);
-        paster->SetDestinationIndex(region.GetIndex());
-        paster->Update();
-        paster->SetDestinationImage(paster->GetOutput());
+        extract->Update();
+        auto inverse = TFFT::New();
+        inverse->SetTransformDirection(TFFT::INVERSE);
+        inverse->SetInput(k_filter->GetOutput());
+        unpadder->SetInput(inverse->GetOutput());
+        inverse->Update(); // Need a separate update to avoid region bug
+        unpadder->Update();
+        QI::VolumeXF::Pointer v = unpadder->GetOutput();
+        tile->SetInput(i, v);
+        v->DisconnectPipeline();
         if (debug) {
             cout << "Writing debug images for volume " << i << endl;
             QI::WriteMagnitudeImage(extract->GetOutput(), "kextract_" + to_string(i) + ".nii");
@@ -145,12 +157,15 @@ QI::SeriesXF::Pointer run_pipeline(QI::SeriesXF::Pointer vols, const bool verbos
             k_filter->Update();
             QI::WriteMagnitudeImage(k_filter->GetOutput(), "kfilter_" + to_string(i) + ".nii");
             QI::WriteMagnitudeImage(inverse->GetOutput(), "kinverse_" + to_string(i) + ".nii");
-            QI::WriteMagnitudeImage(caster->GetOutput(), "kcaster_" + to_string(i) + ".nii");
-            QI::WriteMagnitudeImage(paster->GetOutput(), "kpaster_" + to_string(i) + ".nii");
         }
     }
     if (verbose) cout << "Finished." << endl;
-    vols = paster->GetOutput();
+    tile->Update();
+    auto dir = vols->GetDirection();
+    auto spc = vols->GetSpacing();
+    vols = tile->GetOutput();
+    vols->SetDirection(dir);
+    vols->SetSpacing(spc);
     vols->DisconnectPipeline();
     return vols;
 }

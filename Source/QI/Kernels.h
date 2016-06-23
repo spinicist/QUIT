@@ -20,13 +20,9 @@
 namespace QI {
 
 class FilterKernel {
-protected:
-    int m_hx = 0, m_hy = 0, m_hz = 0;
-    double radius(const int x, const int y, const int z) const;
 public:
-    void setSize(const int sx, const int sy, const int sz);
     virtual void print(std::ostream &ostr) const = 0;
-    virtual double value(const int x, const int y, const int z) const = 0;
+    virtual double value(const double &r) const = 0;
 };
 
 class TukeyKernel : public FilterKernel {
@@ -37,7 +33,7 @@ public:
     TukeyKernel();
     TukeyKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const int x, const int y, const int z) const override;
+    virtual double value(const double &r) const override;
 };
 
 class HammingKernel : public FilterKernel {
@@ -48,7 +44,7 @@ public:
     HammingKernel();
     HammingKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const int x, const int y, const int z) const override;
+    virtual double value(const double &r) const override;
 };
 
 class GaussKernel : public FilterKernel {
@@ -58,7 +54,7 @@ public:
     GaussKernel();
     GaussKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const int x, const int y, const int z) const override;
+    virtual double value(const double &r) const override;
 };
 
 class BlackmanKernel : public FilterKernel {
@@ -68,7 +64,7 @@ public:
     BlackmanKernel();
     BlackmanKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const int x, const int y, const int z) const override;
+    virtual double value(const double &r) const override;
 };
 
 std::shared_ptr<FilterKernel> ReadKernel(std::istream &istr);

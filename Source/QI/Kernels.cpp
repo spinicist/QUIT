@@ -12,19 +12,6 @@
 #include "QI/Kernels.h"
 
 namespace QI {
-
-double FilterKernel::radius(const int x, const int y, const int z) const {
-    const double rx = fmod(static_cast<double>(x)/m_hx + 1.0, 2.0) - 1.0;
-    const double ry = fmod(static_cast<double>(y)/m_hy + 1.0, 2.0) - 1.0;
-    const double rz = fmod(static_cast<double>(z)/m_hz + 1.0, 2.0) - 1.0;
-    const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
-    return r;
-}
-
-void FilterKernel::setSize(const int sx, const int sy, const int sz) {
-    m_hx = sx/2; m_hy = sy/2; m_hz = sz/2;
-}
-
 TukeyKernel::TukeyKernel() {}
 TukeyKernel::TukeyKernel(std::istream &istr) {
     std::string nextValue;
@@ -36,8 +23,7 @@ TukeyKernel::TukeyKernel(std::istream &istr) {
 void TukeyKernel::print(std::ostream &ostr) const {
     ostr << "Tukey," << m_a << "," << m_q << std::endl;
 }
-double TukeyKernel::value(const int x, const int y, const int z) const {
-    const double r = radius(x, y, z);
+double TukeyKernel::value(const double &r) const {
     const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
     return v;
 }
@@ -53,8 +39,7 @@ HammingKernel::HammingKernel(std::istream &istr) {
 void HammingKernel::print(std::ostream &ostr) const {
     ostr << "Hamming," << m_a << "," << m_b << std::endl;
 }
-double HammingKernel::value(const int x, const int y, const int z) const {
-    const double r = radius(x, y, z);
+double HammingKernel::value(const double &r) const {
     const double v = m_a - m_b*cos(M_PI*(1.+r));
     return v;
 }
@@ -68,8 +53,7 @@ GaussKernel::GaussKernel(std::istream &istr) {
 void GaussKernel::print(std::ostream &ostr) const {
     ostr << "Gauss," << m_sigma << std::endl;
 }
-double GaussKernel::value(const int x, const int y, const int z) const {
-    const double r = radius(x, y, z);
+double GaussKernel::value(const double &r) const {
     const double v = exp(-pow(r/m_sigma,2)/2.);
     return v;
 }
@@ -91,8 +75,7 @@ BlackmanKernel::BlackmanKernel(std::istream &istr) {
 void BlackmanKernel::print(std::ostream &ostr) const {
     ostr << "Blackman," << m_alpha << std::endl;
 }
-double BlackmanKernel::value(const int x, const int y, const int z) const {
-    const double r = radius(x, y, z);
+double BlackmanKernel::value(const double &r) const {
     const double v = m_a0 - m_a1*cos(M_PI*(1.+r)) + m_a2*cos(2.*M_PI*(1.+r));
     return v;
 }
