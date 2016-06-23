@@ -37,16 +37,17 @@ protected:
     const shared_ptr<QI::Model> m_model = make_shared<QI::SCD>();
     shared_ptr<QI::SPGRSimple> m_sequence;
     size_t m_iterations = DefaultIterations;
-    double m_thresh = -numeric_limits<double>::infinity();
-    double m_lo = -numeric_limits<double>::infinity();
-    double m_hi = numeric_limits<double>::infinity();
+    double m_loPD = -numeric_limits<double>::infinity();
+    double m_hiPD = numeric_limits<double>::infinity();
+    double m_loT1 = -numeric_limits<double>::infinity();
+    double m_hiT1 = numeric_limits<double>::infinity();
 
 public:
     void setIterations(size_t n) { m_iterations = n; }
     size_t getIterations() { return m_iterations; }
     void setSequence(shared_ptr<QI::SPGRSimple> &s) { m_sequence = s; }
-    void setThreshold(double t) { m_thresh = t; }
-    void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
+    void setClampT1(double lo, double hi) { m_loT1 = lo; m_hiT1 = hi; }
+    void setClampPD(double lo, double hi) { m_loPD = lo; m_hiPD = hi; }
     size_t numInputs() const override { return m_sequence->count(); }
     size_t numConsts() const override { return 1; }
     size_t numOutputs() const override { return 2; }
@@ -71,13 +72,10 @@ public:
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        outputs[1] = -m_sequence->TR() / log(b[0]);
-        outputs[0] = b[1] / (1. - b[0]);
+        outputs[0] = QI::clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
+        outputs[1] = QI::clamp(-m_sequence->TR() / log(b[0]), m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
         resids = (data.array() - theory);
-        if (outputs[0] < m_thresh)
-            outputs.setZero();
-        outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
         its = 1;
     }
 };
@@ -107,11 +105,10 @@ public:
             else
                 outputs = newOutputs;
         }
+        outputs[0] = QI::clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
+        outputs[1] = QI::clamp(-m_sequence->TR() / log(b[0]), m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
         resids = (data.array() - theory);
-        if (outputs[0] < m_thresh)
-            outputs.setZero();
-        outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
     }
 };
 
@@ -190,8 +187,8 @@ public:
         cost.setUpperBound(upper);
         Eigen::Vector2d p; p << 10., 1.0;
         solver.minimize(cost, p);
-        outputs[0] = p[0] * indata.maxCoeff();
-        outputs[1] = p[1];
+        outputs[0] = QI::clamp(p[0] * indata.maxCoeff(), m_loPD, m_hiPD);
+        outputs[1] = QI::clamp(p[1], m_loT1, m_hiT1);
         if (!isfinite(p[1])) {
             cout << "Not finite" << endl;
             cout << indata.transpose() << endl;
@@ -219,61 +216,55 @@ public:
         // PD & T1 - Initial guess of 1s
         VectorXd p(2); p << data.maxCoeff() * 10., 1.;
         lm.minimize(p);
-        outputs = p;
+        outputs[0] = QI::clamp(p[0] * indata.maxCoeff(), m_loPD, m_hiPD);
+        outputs[1] = QI::clamp(p[1], m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
-        resids = indata.maxCoeff() * (data.array() - theory);
-        outputs[0] *= indata.maxCoeff();
-        if (outputs[0] < m_thresh)
-            outputs.setZero();
-        outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
         its = lm.iterations();
     }
 };
 
 //******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals");
-QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)");
-QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)");
-QI::Option<float> thresh(-std::numeric_limits<float>::infinity(),'t',"thresh","Threshold maps at PD < value");
-QI::Option<float> clamp(std::numeric_limits<float>::infinity(),'c',"clamp","Clamp T1 between 0 and value");
-QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output filenames");
-QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file");
-QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)");
-QI::EnumOption algorithm("lwbnb",'l','a',"algo","Choose algorithm (l/w/n/b)");
-QI::Switch prompt('n',"no-prompt","Suppress input prompts");
-QI::Switch verbose('v',"verbose","Print more information");
-QI::Help help("Usage is: qidespot1 [options] spgr_input");
-//******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-
-    std::vector<std::string> nonopts;
-    QI::DefaultOptions().parse(argc, argv, nonopts);
+    QI::DefaultOptions().setHelp("Usage is: qidespot1 [options] spgr_input");
+    QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals");
+    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)");
+    QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)");
+    QI::Option<float> clampPD(std::numeric_limits<float>::infinity(),'p',"clampPD","Clamp PD between 0 and value");
+    QI::Option<float> clampT1(std::numeric_limits<float>::infinity(),'t',"clampT1","Clamp T1 between 0 and value");
+    QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output filenames");
+    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file");
+    QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)");
+    QI::EnumOption algorithm("lwbnb",'l','a',"algo","Choose algorithm (l/w/n/b)");
+    QI::Switch suppress('n',"no-prompt","Suppress input prompts");
+    QI::Switch verbose('v',"verbose","Print more information");
+    QI::Help help;
+    std::vector<std::string> nonopts = QI::DefaultOptions().parse(argc, argv);
     if (nonopts.size() != 1) {
-        cout << "Incorrect number of arguments." << endl;
-        help.setValue();
+        std::cerr << QI::DefaultOptions() << std::endl;
+        std::cerr << "No input filename specified." << std::endl;
+        return EXIT_FAILURE;
     }
 
     const std::string &inputFilename = nonopts.front();
     if (*verbose) cout << "Opening SPGR file: " << inputFilename << endl;
     auto data = QI::ReadVectorImage<float>(inputFilename);
-    shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(cin, *prompt);
+    shared_ptr<QI::SPGRSimple> spgrSequence = make_shared<QI::SPGRSimple>(cin, !(*suppress));
     if (*verbose) cout << *spgrSequence;
     shared_ptr<D1Algo> algo;
     switch (*algorithm) {
-        case 'l': algo = make_shared<D1LLS>();  if (*verbose) cout << "LLS algorithm selected." << endl;
-        case 'w': algo = make_shared<D1WLLS>(); if (*verbose) cout << "WLLS algorithm selected." << endl;
-        case 'n': algo = make_shared<D1NLLS>(); if (*verbose) cout << "NLLS algorithm selected." << endl;
-        case 'b': algo = make_shared<D1LBFGSB>(); if (*verbose) cout << "LBFGSB algorithm selected." << endl;
+        case 'l': algo = make_shared<D1LLS>();  if (*verbose) cout << "LLS algorithm selected." << endl; break;
+        case 'w': algo = make_shared<D1WLLS>(); if (*verbose) cout << "WLLS algorithm selected." << endl; break;
+        case 'n': algo = make_shared<D1NLLS>(); if (*verbose) cout << "NLLS algorithm selected." << endl; break;
+        case 'b': algo = make_shared<D1LBFGSB>(); if (*verbose) cout << "LBFGSB algorithm selected." << endl; break;
     }
-    algo->setThreshold(*thresh);
     algo->setIterations(*its);
-    if (isfinite(*clamp))
-        algo->setClamp(0, *clamp);
+    if (isfinite(*clampPD))
+        algo->setClampPD(0, *clampPD);
+    if (isfinite(*clampT1))
+        algo->setClampT1(0, *clampT1);
     algo->setSequence(spgrSequence);
     auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();
     apply->SetAlgorithm(algo);

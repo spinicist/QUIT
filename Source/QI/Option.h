@@ -53,9 +53,12 @@ class OptionList {
 protected:
     typedef std::forward_list<OptionBase *> TList;
     TList m_options;
+    std::string m_help;
+
 public:
     void add(OptionBase *o);
-    void parse(int argc, char *const *argv, std::vector<std::string> &nonopts);
+    std::vector<std::string> parse(int argc, char *const *argv);
+    void setHelp(const std::string &h);
     void print(std::ostream & os) const;
 };
 std::ostream &operator<< (std::ostream &os, const OptionList &l);
@@ -136,18 +139,13 @@ public:
 };
 
 class Help : public OptionBase {
-protected:
-    std::string m_help;
-
 public:
-    Help(const std::string &help) :
-        OptionBase('h', "help", "Print the help message."),
-        m_help(help)
+    Help() :
+        OptionBase('h', "help", "Print the help message.")
     {}
 
     virtual bool hasArgument() const override { return false; }
     virtual void setValue() override {
-        std::cout << m_help << std::endl << std::endl << "Options: " << std::endl;
         std::cout << DefaultOptions() << std::endl;
         exit(EXIT_FAILURE);
     }
