@@ -21,6 +21,23 @@
 using namespace std;
 using namespace Eigen;
 
+// Helper Functions
+void SemiaxesToHoff(const double A, const double B, const double c,
+                    double &a, double &b) {
+    b = (-c*A + sqrt(c*c*A*A - (c*c + B*B)*(A*A - B*B)))/(c*c + B*B);
+    a = B / (b*B + c*sqrt(1-b*b));
+}
+
+
+void EllipseToMRI(const double a, const double b, const double scale, const double th, const double TR, const double flip,
+                  double &M, double &T1, double &T2, double &df0) {
+    const double ca = cos(flip);
+    T1 = -TR / (log(a-b + (1.-a*b)*a*ca) - log(a*(1.-a*b) + (a-b)*ca));
+    T2 = -TR / log(a);
+    M = (scale/sqrt(a))*(1-b*b)/(1-a*b);
+    df0 = th / (2.*M_PI*TR);
+}
+
 class ESAlgo : public Algorithm<complex<double>> {
 protected:
     size_t m_size = 0;
@@ -45,10 +62,10 @@ public:
     MatrixXd buildS(const ArrayXd &x, const ArrayXd &y) const {
         Matrix<double, Dynamic, 6> D(x.rows(), 6);
         D.col(0) = x*x;
-        D.col(1) = x*y;
+        D.col(1) = 2*x*y;
         D.col(2) = y*y;
-        D.col(3) = x;
-        D.col(4) = y;
+        D.col(3) = 2*x;
+        D.col(4) = 2*y;
         D.col(5).setConstant(1);
         return D.transpose() * D;
     }
@@ -56,7 +73,7 @@ public:
     MatrixXd fitzC() const {
         typedef Matrix<double, 6, 6> Matrix6d;
         Matrix6d C = Matrix6d::Zero();
-        // Fitzgibbon et al
+        // FitZ[5]ibbon et al
         C(0,2) = -2; C(1,1) = 1; C(2,0) = -2;
         return C;
     }
@@ -64,7 +81,7 @@ public:
     MatrixXd hyperC(const ArrayXd &x, const ArrayXd &y) const {
         typedef Matrix<double, 6, 6> Matrix6d;
         Matrix6d C = Matrix6d::Zero();
-        // Fitzgibbon et al
+        // FitZ[5]ibbon et al
         //C(0,2) = -2; C(1,1) = 1; C(2,0) = -2;
         
         // Hyper Ellipse
@@ -105,36 +122,21 @@ public:
         else
             Z = solver.eigenvectors().col(0);
 
-        const double za = Z[0];
-        const double zb = Z[1]/2;
-        const double zc = Z[2];
-        const double zd = Z[3]/2;
-        const double zf = Z[4]/2;
-        const double zg = Z[5];
-        const double dsc=(zb*zb-za*zc);
-        const double xc = (zc*zd-zb*zf)/dsc;
-        const double yc = (za*zf-zb*zd)/dsc;
+        const double dsc=(Z[1]*Z[1]-Z[0]*Z[2]);
+        const double xc = (Z[2]*Z[3]-Z[1]*Z[4])/dsc;
+        const double yc = (Z[0]*Z[4]-Z[1]*Z[3])/dsc;
         const double th = atan2(yc,xc);
-        double A = sqrt((2*(za*(zf*zf)+zc*(zd*zd)+zg*(zb*zb)-2*zb*zd*zf-za*zc*zg))/(dsc*(sqrt((za-zc)*(za-zc) + 4*zb*zb)-(za+zc))));
-        double B = sqrt((2*(za*(zf*zf)+zc*(zd*zd)+zg*(zb*zb)-2*zb*zd*zf-za*zc*zg))/(dsc*(-sqrt((za-zc)*(za-zc) + 4*zb*zb)-(za+zc))));
+        const double num = 2*(Z[0]*(Z[4]*Z[4])+Z[2]*(Z[3]*Z[3])+Z[5]*(Z[1]*Z[1])-2*Z[1]*Z[3]*Z[4]-Z[0]*Z[2]*Z[5]);
+        double A = sqrt(num/(dsc*(sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
+        double B = sqrt(num/(dsc*(-sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
         if (A > B) {
             std::swap(A, B);
         }
-        //cout << "Z " << Z.transpose() << endl;
-        //cout << "dsc " << dsc << " xc " << xc << " yc " << yc << " A " << A << " B " << B << endl;
-        const double c = sqrt(xc*xc+yc*yc);
-        const double b = (-c*A + sqrt(c*c*A*A - (c*c + B*B)*(A*A - B*B)))/(c*c + B*B);
-        const double a = B / (b*B + c*sqrt(1-b*b));
-        const double TR = m_sequence->TR();
-        const double ca = cos(B1 * m_sequence->flip()[0]);
-        const double T1 = -TR / (log(a-b + (1.-a*b)*a*ca) - log(a*(1.-a*b) + (a-b)*ca));
-        const double T2 = -TR / log(a);
-        const double M = (scale/sqrt(a))*c*(1-b*b)/(1-a*b);
-        
-        outputs[0] = M;
-        outputs[1] = T1;
-        outputs[2] = T2;
-        outputs[3] = th;
+        double a, b;
+        double c = sqrt(xc*xc+yc*yc);
+        SemiaxesToHoff(A, B, c, a, b);
+        EllipseToMRI(a, b, c*scale, th, m_sequence->TR(), B1 * m_sequence->flip()[0],
+                     outputs[0], outputs[1], outputs[2], outputs[3]);
         outputs[4] = a;
         outputs[5] = b;
     }
