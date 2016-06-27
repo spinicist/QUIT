@@ -42,36 +42,6 @@ public:
     }
     void SetSequence(const shared_ptr<QI::SSFP_GS> &s) { m_sequence = s;}
     
-    ArrayXd solveEig(const MatrixXd &A, const MatrixXd &B) const {
-        RealQZ<MatrixXd> qz(A, B);
-        VectorXd v = ArrayXd::Zero(A.cols());
-        const MatrixXd &mS = qz.matrixS();
-        const MatrixXd &mT = qz.matrixT();
-        const MatrixXd &mZT = qz.matrixZ().transpose();
-        int sInd = 0;
-        double sVal = numeric_limits<double>::infinity();
-        for (int i = 0; i < 6; i++) {
-            const double a = mS.coeffRef(i,i);
-            const double b = mT.coeffRef(i,i);
-            const double l = fabs(a / b);
-            if (l < sVal) {
-                sVal = l;
-                sInd = i;
-            }
-        }
-        
-        v(sInd) = 1.0;
-        const double a = qz.matrixS().coeffRef(sInd,sInd);
-        const double b = qz.matrixT().coeffRef(sInd,sInd);
-        for (int j = sInd-1; j >= 0; j--) {
-            const int st = j+1;
-            const int sz = sInd-j; 
-            v.coeffRef(j) = -v.segment(st,sz).transpose().cwiseProduct(b*mS.block(j,st,1,sz) - a*mT.block(j,st,1,sz)).sum() / (b*mS.coeffRef(j,j) - a*mT.coeffRef(j,j));
-        }
-        v = (mZT * v).normalized();
-        return v;
-    }
-    
     MatrixXd buildS(const ArrayXd &x, const ArrayXd &y) const {
         Matrix<double, Dynamic, 6> D(x.rows(), 6);
         D.col(0) = x*x;
@@ -126,7 +96,15 @@ public:
         
         MatrixXd S = buildS(x, y);
         Matrix6d C = hyperC(x, y);
-        ArrayXd Z = solveEig(S, C);
+        
+        // Note A and B are swapped so we can use GES
+        GeneralizedSelfAdjointEigenSolver<MatrixXd> solver(C, S);
+        ArrayXd Z;
+        if (fabs(solver.eigenvalues()[5]) > fabs(solver.eigenvalues()[0]))
+            Z = solver.eigenvectors().col(5);
+        else
+            Z = solver.eigenvectors().col(0);
+
         const double za = Z[0];
         const double zb = Z[1]/2;
         const double zc = Z[2];
