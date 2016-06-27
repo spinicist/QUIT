@@ -20,6 +20,7 @@
 
 #include "Filters/ReorderVectorFilter.h"
 #include "QI/Util.h"
+#include "QI/Filters/GeometricSolutionFilter.h"
 
 using namespace std;
 using namespace Eigen;
@@ -84,137 +85,7 @@ const struct option long_options[] = {
 };
 const char *short_options = "hvo:m:s:p:T:MR:2";
 
-/*
- * Helper functions
- */
-
-// Complex equivalent of the dot product
-template<typename T> inline T cdot(const complex<T> &a, const complex<T> &b) {
-    return real(a * conj(b));
-}
-
 namespace itk {
-
-class GSFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>> {
-public:
-    enum class RegEnum { None = 0, Line, Magnitude };
-protected:
-    size_t m_flips, m_lines, m_crossings, m_phases = 0;
-    RegEnum m_Regularise = RegEnum::Line;
-public:
-    /** Standard class typedefs. */
-    typedef VectorImage<complex<float>, 3> TIn;
-    typedef Image<complex<float>, 3>       TOut;
-    typedef Image<float, 3>                TMask;
-    typedef GSFilter                       Self;
-    typedef ImageToImageFilter<TIn, TOut>  Superclass;
-    typedef SmartPointer<Self>             Pointer;
-
-    itkNewMacro(Self); /** Method for creation through the object factory. */
-    itkTypeMacro(GSFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
-
-    void SetRegularise(const RegEnum &r) { m_Regularise = r;};
-    const RegEnum &GetRegularise()       { return m_Regularise; }
-
-    void SetPhases(const size_t p) {
-        if (p < 4)
-            QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
-        if ((p % 2) != 0)
-            QI_EXCEPTION("Number of phases must be even.");
-
-        m_phases = p;
-        m_lines = m_phases / 2;
-        m_crossings = Choose(m_lines, 2);
-        this->Modified();
-    }
-    void SetInput(const TIn *img) ITK_OVERRIDE { this->SetNthInput(0, const_cast<TIn*>(img)); }
-    void SetMask(const TMask *mask) { this->SetNthInput(1, const_cast<TMask*>(mask)); }
-    typename TIn::ConstPointer GetInput() const { return static_cast<const TIn *>(this->ProcessObject::GetInput(0)); }
-    typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(1)); }
-
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
-        Superclass::GenerateOutputInformation();
-        if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
-            QI_EXCEPTION("Input size and number of phases do not match");
-        }
-        m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
-        auto op = this->GetOutput();
-        op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
-        op->SetNumberOfComponentsPerPixel(m_flips);
-        op->Allocate();
-    }
-
-protected:
-    GSFilter() {
-        this->SetNumberOfRequiredInputs(1);
-        this->SetNumberOfRequiredOutputs(1);
-        this->SetNthOutput(0, this->MakeOutput(0));
-        this->SetPhases(4);
-    }
-    ~GSFilter() {}
-
-    virtual void ThreadedGenerateData(const TIn::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
-        //std::cout <<  __PRETTY_FUNCTION__ << endl;
-        ImageRegionConstIterator<TIn> inputIter(this->GetInput(), region);
-        auto m = this->GetMask();
-        ImageRegionConstIterator<TMask> maskIter;
-        if (m) {
-            maskIter = ImageRegionConstIterator<TMask>(m, region);
-        }
-        ImageRegionIterator<TOut> outputIter(this->GetOutput(), region);
-
-        while(!inputIter.IsAtEnd()) {
-            if (!m || maskIter.Get()) {
-                VariableLengthVector<complex<float>> inputVector = inputIter.Get();
-                Map<const ArrayXcf> allInput(inputVector.GetDataPointer(), m_phases);
-                const ArrayXcd a = allInput.head(m_lines).cast<complex<double>>();
-                const ArrayXcd b = allInput.tail(m_lines).cast<complex<double>>();
-
-                complex<double> sum(0., 0.);
-                for (size_t i = 0; i < m_lines; i++) {
-                    for (size_t j = i + 1; j < m_lines; j++) {
-                        const complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
-                        const complex<double> ni(di.imag(), -di.real()), nj(dj.imag(), -dj.real());
-
-                        const double mu = cdot(a[j] - a[i], nj) / cdot(di, nj);
-                        const double nu = cdot(a[i] - a[j], ni) / cdot(dj, ni);
-                        const double xi = 1.0 - pow(cdot(di, dj) / (abs(di)*abs(dj)), 2.0);
-
-                        const complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
-                        const complex<double> gs = a[i] + mu * di;
-
-                        switch (m_Regularise) {
-                        case RegEnum::None: sum += gs; break;
-                        case RegEnum::Magnitude:
-                            if (norm(gs) < max(max(max(norm(a[i]), norm(a[j])), norm(b[i])), norm(b[j]))) {
-                                sum += gs;
-                            } else {
-                                sum += cs;
-                            }
-                            break;
-                        case RegEnum::Line:
-                            if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi)) {
-                                sum += gs;
-                            } else {
-                                sum += cs;
-                            }
-                            break;
-                        }
-                    }
-                }
-                outputIter.Set(static_cast<complex<float>>(sum / static_cast<double>(m_crossings)));
-            }
-            ++inputIter;
-            if (m)
-                ++maskIter;
-            ++outputIter;
-        }
-    }
-
-private:
-    GSFilter(const Self &); //purposely not implemented
-    void operator=(const Self &);  //purposely not implemented
-};
 
 class MinEnergyFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
 {
@@ -392,7 +263,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
 
     QI::VolumeF::Pointer mask = ITK_NULLPTR;
-    auto gs = itk::GSFilter::New();
+    auto gs = QI::GeometricSolutionFilter::New();
     int indexptr = 0, c;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
         switch (c) {
@@ -411,9 +282,9 @@ int main(int argc, char **argv) {
             case 'M': output_magnitude = true; break;
             case 'R':
                 switch(*optarg) {
-                    case 'L': gs->SetRegularise(itk::GSFilter::RegEnum::Line); break;
-                    case 'M': gs->SetRegularise(itk::GSFilter::RegEnum::Magnitude); break;
-                    case 'N': gs->SetRegularise(itk::GSFilter::RegEnum::None); break;
+                    case 'L': gs->SetRegularise(QI::GeometricSolutionFilter::RegEnum::Line); break;
+                    case 'M': gs->SetRegularise(QI::GeometricSolutionFilter::RegEnum::Magnitude); break;
+                    case 'N': gs->SetRegularise(QI::GeometricSolutionFilter::RegEnum::None); break;
                     default:
                         cerr << "Unknown regularisation strategy: " << *optarg << endl;
                         return EXIT_FAILURE;

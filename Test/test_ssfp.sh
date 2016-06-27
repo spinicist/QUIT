@@ -17,9 +17,9 @@ fi
 SIZE="100 101 101"
 $QUITDIR/qinewimage --size "$SIZE" -f "1.0" PD.nii
 $QUITDIR/qinewimage --size "$SIZE" -f "1.0" T1.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "0 0.01 0.25" T2.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "0 0.02 0.25" T2.nii
 $QUITDIR/qinewimage --size "$SIZE" -g "1 -100.0 100.0" f0.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "2 0.0 0.45" B1.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 0.5 1.0" B1.nii
 
 SSFP_FILE="ssfp.nii"
 SSFP_FLIP="100"
