@@ -345,14 +345,15 @@ Masking options (default is generate a mask with Otsu's method):\n\
     --mask, -m F   : Read the mask from file F\n\
     --thresh, -t N : Generate a mask by thresholding input at intensity N\n\
 Alignment/arrangement correction (default is no correction):\n\
-    --ring=IN/OUT  : Center and rotate subjects that were scanned in standard\n\
-                     ring arrangement facing IN or OUT.\n\
+    --align=IN     : Ring arrangement facing IN\n\
+            OUT    : Ring arrangement facing OUT\n\
+            READ   : Read rotation angle from stdin\n\
     --rotX N       : Rotate by N degrees around the X axis.\n\
     --rotY N       : Rotate by N degrees around the Y axis.\n\
     --rotZ N       : Rotate by N degrees around the Z axis.\n\
 "
 };
-enum class ALIGN { NONE = 0, RING_IN, RING_OUT };
+enum class ALIGN { NONE = 0, RING_IN, RING_OUT, READ };
 
 int main(int argc, char **argv) {
     bool verbose = false;
@@ -377,7 +378,7 @@ int main(int argc, char **argv) {
         {"ref", required_argument, 0, 'R'},
         {"grid", required_argument, 0, 'G'},
         {"iters", required_argument, 0, 'I'},
-        {"ring", required_argument, 0, 'r'},
+        {"align", required_argument, 0, 'a'},
         {"angle", required_argument, 0, 'A'},
         {"nangle", required_argument, 0, 'N'},
         {"rotX", required_argument, 0, 'X'},
@@ -395,13 +396,15 @@ int main(int argc, char **argv) {
             cout << QI::GetVersion() << endl << usage << endl;
             return EXIT_SUCCESS;
         case 'm': mask = QI::ReadImage<TLabelImage>(optarg); break;
-        case 'r':
+        case 'a':
             if (string(optarg) == "IN") {
                 alignment = ALIGN::RING_IN;
             } else if (string(optarg) == "OUT") {
                 alignment = ALIGN::RING_OUT;
+            } else if (string(optarg) == "READ") {
+                alignment = ALIGN::READ;
             } else {
-                cerr << "Unrecognised ring alignment specifier: " << string(optarg) << endl;
+                cerr << "Unrecognised alignment specifier: " << string(optarg) << endl;
                 return EXIT_FAILURE;
             } break;
         case 'k': keep = stoi(optarg); break;
@@ -459,18 +462,18 @@ int main(int argc, char **argv) {
 
     for (auto i = 1; i <= keep; i++) {
         QI::VolumeF::Pointer subject = MaskWithLabel(input, labels, i, true);
-        TMoments::VectorType offset = -refCoG;
+        TMoments::VectorType CoG = GetCoG(subject);
+        TMoments::VectorType offset = CoG - refCoG;
+        if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
         double rotateAngle = 0.;
         if (alignment != ALIGN::NONE) {
-            TMoments::VectorType CoG = GetCoG(subject);
-            if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
             rotateAngle = atan2(CoG[1], CoG[0]);
-            if (alignment == ALIGN::RING_IN)
-                rotateAngle = (M_PI / 2.) - rotateAngle;
-            else if (alignment == ALIGN::RING_OUT)
-                rotateAngle = (M_PI * 3./2.) - rotateAngle;
+            switch (alignment) {
+                case ALIGN::RING_IN: rotateAngle = (M_PI / 2.) - rotateAngle; break;
+                case ALIGN::RING_OUT: rotateAngle = (M_PI * 3./2.) - rotateAngle; break;
+                case ALIGN::READ: cin >> rotateAngle; rotateAngle *= (M_PI/180.); break;
+            }
             if (verbose) cout << "Initial rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
-            offset += CoG;
         }
 
         TRigid::Pointer tfm = TRigid::New();
