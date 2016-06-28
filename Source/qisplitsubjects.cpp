@@ -465,20 +465,21 @@ int main(int argc, char **argv) {
         TMoments::VectorType CoG = GetCoG(subject);
         TMoments::VectorType offset = CoG - refCoG;
         if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
-        double rotateAngle = 0.;
-        if (alignment != ALIGN::NONE) {
-            rotateAngle = atan2(CoG[1], CoG[0]);
-            switch (alignment) {
-                case ALIGN::RING_IN: rotateAngle = (M_PI / 2.) - rotateAngle; break;
-                case ALIGN::RING_OUT: rotateAngle = (M_PI * 3./2.) - rotateAngle; break;
-                case ALIGN::READ: cin >> rotateAngle; rotateAngle *= (M_PI/180.); break;
-            }
-            if (verbose) cout << "Initial rotation angle is " << (rotateAngle*180./M_PI) << " degrees" << endl;
+        switch (alignment) {
+            case ALIGN::NONE: break;
+            case ALIGN::RING_IN: angleZ -= (M_PI / 2.) - atan2(CoG[1], CoG[0]); break;
+            case ALIGN::RING_OUT: angleZ -= (M_PI * 3./2.) - atan2(CoG[1], CoG[0]); break;
+            case ALIGN::READ:
+                cin >> angleX; angleX *= (M_PI/180.);
+                cin >> angleY; angleY *= (M_PI/180.);
+                cin >> angleZ; angleZ *= (M_PI/180.);
+                break;
         }
+        if (verbose) cout << "Initial rotation angles are " << (angleX*180./M_PI) << " " << (angleY*180./M_PI) << " " << (angleZ*180./M_PI) << " degrees" << endl;
 
         TRigid::Pointer tfm = TRigid::New();
         tfm->SetIdentity();
-        tfm->SetRotation(angleX, angleY, angleZ - rotateAngle);
+        tfm->SetRotation(angleX, angleY, angleZ);
         tfm->SetOffset(offset);
         
         if (reference) {
