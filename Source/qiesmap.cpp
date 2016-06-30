@@ -223,6 +223,7 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Opening file: " << inputFilename << endl;
     auto data = QI::ReadVectorImage<complex<float>>(inputFilename);
     shared_ptr<QI::SSFP_GS> seq = make_shared<QI::SSFP_GS>(cin, true);
+    if (verbose) cout << *seq;
     auto apply = itk::ApplyAlgorithmFilter<ESAlgo, complex<float>>::New();
     algo->setSize(data->GetNumberOfComponentsPerPixel());
     algo->SetSequence(seq);

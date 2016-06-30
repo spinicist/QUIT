@@ -126,7 +126,7 @@ void SSFPSimple::write(ostream &os) const {
     os << name() << endl;
     os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
     os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
-    os << "TR: " << m_TR << endl;
+    os << "TR:     " << m_TR << endl;
 }
 
 ArrayXd SSFPSimple::weights(const double f0) const {
@@ -177,8 +177,9 @@ SSFPFinite::SSFPFinite(std::istream &istr, const bool prompt) : SSFPSimple(istr,
 
 void SSFPFinite::write(ostream &os) const {
     os << "SSFP Finite" << endl;
-    os << "TR: " << m_TR << "\tTrf: " << m_Trf << "\tPhases: " << (m_phi * 180. / M_PI).transpose() << endl;
     os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
+    os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
+    os << "TR:     " << m_TR << "\tTrf: " << m_Trf << endl;
 }
 
 ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
@@ -195,8 +196,8 @@ SSFP_GS::SSFP_GS(std::istream &istr, const bool prompt) : SteadyState() {
 
 void SSFP_GS::write(ostream &os) const {
     os << "SSFP Geometric Solution" << endl;
-    os << "TR: " << m_TR << endl;
     os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
+    os << "TR:     " << m_TR << endl;
 }
 
 ArrayXcd SSFP_GS::signal(shared_ptr<Model> m, const VectorXd &p) const {
@@ -222,8 +223,8 @@ AFI::AFI(std::istream &istr, const bool prompt) : SteadyState() {
 
 void AFI::write(ostream &os) const {
     os << name() << endl;
-    os << "TR1: " << m_TR1 << " TR2: " << m_TR2 << endl;
     os << "Angle: " << (m_flip * 180. / M_PI).transpose() << endl;
+    os << "TR1: " << m_TR1 << " TR2: " << m_TR2 << endl;
 }
 
 ArrayXcd AFI::signal(shared_ptr<Model> m, const VectorXd &p) const {
