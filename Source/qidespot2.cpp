@@ -198,54 +198,11 @@ public:
 };
 
 //******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: qiapply [options] T1_map ssfp_file\n\
-\n\
-Options:\n\
-    --help, -h        : Print this message.\n\
-    --verbose, -v     : Print slice processing times.\n\
-    --no-prompt, -n   : Suppress input prompts.\n\
-    --mask, -m file   : Mask input with specified file.\n\
-    --out, -o path    : Add a prefix to the output filenames.\n\
-    --B1 file         : B1 Map file.\n\
-    --thresh, -t n    : Threshold maps at PD < n\n\
-    --clamp, -c n     : Clamp T2 between 0 and n\n\
-    --algo, -a l      : LLS algorithm (default)\n\
-               w      : WLLS algorithm\n\
-               n      : NLLS (Levenberg-Marquardt)\n\
-    --its, -i N       : Max iterations for WLLS / NLLS (default 10)\n\
-    --resids, -r      : Write out per flip-angle residuals\n\
-    --threads, -T N   : Use N threads (default=hardware limit)\n\
-    --elliptical, -e  : Input is band-free elliptical data.\n"
-};
-
-int verbose = false, prompt = true, elliptical = false, all_residuals = false, num_threads = 4;
-string outPrefix;
-const struct option long_opts[] = {
-    {"B1", required_argument, 0, 'b'},
-    {"elliptical", no_argument, 0, 'e'},
-    {"help", no_argument, 0, 'h'},
-    {"mask", required_argument, 0, 'm'},
-    {"verbose", no_argument, 0, 'v'},
-    {"no-prompt", no_argument, 0, 'n'},
-    {"thresh", required_argument, 0, 't'},
-    {"clamp", required_argument, 0, 'c'},
-    {"algo", required_argument, 0, 'a'},
-    {"its", required_argument, 0, 'i'},
-    {"threads", required_argument, 0, 'T'},
-    {"resids", no_argument, 0, 'r'},
-    {0, 0, 0, 0}
-};
-const char *short_opts = "hm:o:b:t:c:vna:i:T:er";
-
-//******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts("Usage is: qidespot1 [options] spgr_input");
+    QI::OptionList opts("Usage is: qidespot2 [options] T1_map SSFP_file");
     QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals", opts);
     QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
     QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)", opts);
@@ -280,19 +237,14 @@ int main(int argc, char **argv) {
         algo->setClampT2(0, *clampT2);
     shared_ptr<QI::SteadyState> ssfp;
     if (*elliptical) {
-        ssfp = make_shared<QI::SSFP_GS>(cin, prompt);
+        ssfp = make_shared<QI::SSFP_GS>(cin, !*suppress);
     } else {
-        ssfp = make_shared<QI::SSFPSimple>(cin, prompt);
+        ssfp = make_shared<QI::SSFPSimple>(cin, !*suppress);
     }
     if (*verbose) cout << *ssfp << endl;
     algo->setSequence(ssfp);
     algo->setElliptical(*elliptical);
 
-    if ((argc - optind) != 2) {
-        cout << "Wrong number of arguments. Need a T1 map and SSFP file." << endl;
-        cout << QI::GetVersion() << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
     if (*verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
     auto T1 = QI::ReadImage(argv[optind++]);
 

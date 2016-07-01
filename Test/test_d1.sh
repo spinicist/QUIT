@@ -4,7 +4,7 @@
 # Simple test scripts for QUIT programs
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
 DATADIR="d1"
 mkdir -p $DATADIR
