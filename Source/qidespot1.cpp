@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
     QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output filenames", opts);
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
-    QI::EnumOption algorithm("lwbnb",'l','a',"algo","Choose algorithm (l/w/n/b)", opts);
+    QI::EnumOption algorithm("lwnb",'l','a',"algo","Choose algorithm (l/w/n/b)", opts);
     QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
