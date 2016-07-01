@@ -35,6 +35,11 @@ std::ostream &operator<< (std::ostream &os, const OptionBase &o) {
 }
 
 // OptionList
+OptionList::OptionList() {}
+OptionList::OptionList(const std::string &h) :
+    m_help(h)
+{}
+
 void OptionList::add(OptionBase *o) {
     m_options.push_front(o);
 }
@@ -45,7 +50,7 @@ std::vector<std::string> OptionList::parse(int argc, char *const *argv) {
     while (optind < argc) {
         std::string thisopt(argv[optind]);
         auto it = m_options.end();
-        std::string arg;
+        std::string arg = "";
         if (thisopt == "--") { // Premature end of options
             optind++;
             while (optind < argc) {
@@ -56,23 +61,20 @@ std::vector<std::string> OptionList::parse(int argc, char *const *argv) {
         } else if (thisopt[0] != '-') { // Non-option
             nonopts.push_back(thisopt);
         } else if (thisopt[1] == '-') { // Long option
-            size_t epos = thisopt.find("=");
-            std::string arg;
-            if (epos != std::string::npos) {
-                arg = thisopt.substr(epos + 1);
-                thisopt = thisopt.substr(2, epos - 2);
-            } else {
-                thisopt.erase(0, 2);
-            }
             it = std::find_if(m_options.begin(), m_options.end(), [&] (OptionBase *const &o) { return o->longOption() == thisopt; });
             if (it == m_options.end()) {
                 QI_EXCEPTION("Unhandled long option: " + thisopt);
             }
             if ((*it)->hasArgument()) {
-                (*it)->setArgument(arg);
-            } else {
-                (*it)->setValue();
+                size_t epos = thisopt.find("=");
+                if (epos != std::string::npos) {
+                    arg = thisopt.substr(epos + 1);
+                    thisopt = thisopt.substr(2, epos - 2);
+                } else {
+                    thisopt.erase(0, 2);
+                }
             }
+            (*it)->setOption(arg);
         } else { // Short option
             char sopt = thisopt[1];
             it = std::find_if(m_options.begin(), m_options.end(), [&] (OptionBase *const &o) { return o->shortOption() == sopt; });
@@ -81,15 +83,14 @@ std::vector<std::string> OptionList::parse(int argc, char *const *argv) {
             }
             if ((*it)->hasArgument()) {
                 if (thisopt.size() > 2) { // Handle arguments without spaces
-                    (*it)->setArgument(thisopt.substr(2));
+                    arg = thisopt.substr(2);
                 } else if ((optind+1) == argc) {
                     QI_EXCEPTION("Missing required argument for option " + std::to_string(sopt));
                 } else {
-                    (*it)->setArgument(argv[++optind]);
+                    arg = argv[++optind];
                 }
-            } else {
-                (*it)->setValue();
             }
+            (*it)->setOption(arg);
         }
         optind++;
     }

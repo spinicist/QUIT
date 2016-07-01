@@ -44,8 +44,7 @@ public:
     const std::string &usage() const { return m_usage; }
 
     virtual bool hasArgument() const = 0;
-    virtual void setValue() = 0;
-    virtual void setArgument(const std::string &a) = 0;
+    virtual void setOption(const std::string &a) = 0;
 };
 std::ostream &operator<< (std::ostream &os, const OptionBase &o);
 
@@ -56,6 +55,8 @@ protected:
     std::string m_help;
 
 public:
+    OptionList();
+    OptionList(const std::string &h);
     void add(OptionBase *o);
     std::vector<std::string> parse(int argc, char *const *argv);
     void setHelp(const std::string &h);
@@ -67,29 +68,32 @@ class Switch : public OptionBase {
 protected:
     bool m_value;
 public:
-    Switch(const char s, const std::string &l, const std::string &u) :
-        OptionBase(s, l, u)
+    Switch(const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+        OptionBase(s, l, u, opts)
     {}
 
     bool &operator* () { return m_value; }
     virtual bool hasArgument() const override { return false; }
-    virtual void setValue() override { m_value = true; }
-    virtual void setArgument(const std::string &a) override { QI_EXCEPTION("Switches don't have arguments"); }
+    virtual void setOption(const std::string &a) override {
+        if (a != "") {
+            QI_EXCEPTION("Switches don't have arguments");
+        }
+    }
+
 };
 
 template<typename T> class Option : public OptionBase {
 protected:
     T m_value;
 public:
-    Option(const T &defval, const char s, const std::string &l, const std::string &u) :
-        OptionBase(s, l, u),
+    Option(const T &defval, const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+        OptionBase(s, l, u, opts),
         m_value(defval)
     {}
 
     T &operator* () { return m_value; }
     virtual bool hasArgument() const override { return true; }
-    virtual void setValue() override { QI_EXCEPTION("Options must have arguments"); }
-    virtual void setArgument(const std::string &a) override {
+    virtual void setOption(const std::string &a) override {
         std::istringstream as(a);
         as >> m_value;
     }
@@ -102,15 +106,14 @@ public:
 protected:
     TPtr m_ptr;
 public:
-    ImageOption(const char s, const std::string &l, const std::string &u) :
-        OptionBase(s, l, u),
+    ImageOption(const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+        OptionBase(s, l, u, opts),
         m_ptr(ITK_NULLPTR)
     {}
 
     TPtr &operator* () { return m_ptr; }
     virtual bool hasArgument() const override { return true; }
-    virtual void setValue() override { QI_EXCEPTION("ImageOptions must have arguments"); }
-    virtual void setArgument(const std::string &a) override { m_ptr = QI::ReadImage(a); }
+    virtual void setOption(const std::string &a) override { m_ptr = QI::ReadImage(a); }
 };
 
 class EnumOption : public OptionBase {
@@ -119,16 +122,15 @@ protected:
     std::string m_enumValues;
 public:
     EnumOption(const std::string &e, const char d,
-               const char s, const std::string &l, const std::string &u) :
-        OptionBase(s, l, u),
+               const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+        OptionBase(s, l, u, opts),
         m_enumValues(e),
         m_value(d)
     {}
 
     char &operator* () { return m_value; }
     virtual bool hasArgument() const override { return true; }
-    virtual void setValue() override { QI_EXCEPTION("EnumOptions must have arguments"); }
-    virtual void setArgument(const std::string &a) override {
+    virtual void setOption(const std::string &a) override {
         const char v = a[0];
         if (m_enumValues.find(v) != std::string::npos) {
             m_value = v;
@@ -140,16 +142,15 @@ public:
 
 class Help : public OptionBase {
 public:
-    Help() :
-        OptionBase('h', "help", "Print the help message.")
+    Help(OptionList &opts = DefaultOptions()) :
+        OptionBase('h', "help", "Print the help message.", opts)
     {}
 
     virtual bool hasArgument() const override { return false; }
-    virtual void setValue() override {
+    virtual void setOption(const std::string &a) override {
         std::cout << DefaultOptions() << std::endl;
         exit(EXIT_FAILURE);
     }
-    virtual void setArgument(const std::string &a) override { QI_EXCEPTION("Help option does not have an argument.") };
 };
 
 } // End namespace QI

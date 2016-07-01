@@ -228,22 +228,22 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::DefaultOptions().setHelp("Usage is: qidespot1 [options] spgr_input");
-    QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals");
-    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)");
-    QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)");
-    QI::Option<float> clampPD(std::numeric_limits<float>::infinity(),'p',"clampPD","Clamp PD between 0 and value");
-    QI::Option<float> clampT1(std::numeric_limits<float>::infinity(),'t',"clampT1","Clamp T1 between 0 and value");
-    QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output filenames");
-    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file");
-    QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)");
-    QI::EnumOption algorithm("lwbnb",'l','a',"algo","Choose algorithm (l/w/n/b)");
-    QI::Switch suppress('n',"no-prompt","Suppress input prompts");
-    QI::Switch verbose('v',"verbose","Print more information");
-    QI::Help help;
-    std::vector<std::string> nonopts = QI::DefaultOptions().parse(argc, argv);
+    QI::OptionList opts("Usage is: qidespot1 [options] spgr_input");
+    QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals", opts);
+    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
+    QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)", opts);
+    QI::Option<float> clampPD(std::numeric_limits<float>::infinity(),'p',"clampPD","Clamp PD between 0 and value", opts);
+    QI::Option<float> clampT1(std::numeric_limits<float>::infinity(),'t',"clampT1","Clamp T1 between 0 and value", opts);
+    QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output filenames", opts);
+    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
+    QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
+    QI::EnumOption algorithm("lwbnb",'l','a',"algo","Choose algorithm (l/w/n/b)", opts);
+    QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
+    QI::Switch verbose('v',"verbose","Print more information", opts);
+    QI::Help help(opts);
+    std::vector<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() != 1) {
-        std::cerr << QI::DefaultOptions() << std::endl;
+        std::cerr << opts << std::endl;
         std::cerr << "No input filename specified." << std::endl;
         return EXIT_FAILURE;
     }
