@@ -61,18 +61,16 @@ std::vector<std::string> OptionList::parse(int argc, char *const *argv) {
         } else if (thisopt[0] != '-') { // Non-option
             nonopts.push_back(thisopt);
         } else if (thisopt[1] == '-') { // Long option
+            size_t epos = thisopt.find("=");
+            if (epos != std::string::npos) {
+                arg = thisopt.substr(epos + 1);
+                thisopt = thisopt.substr(2, epos - 2);
+            } else {
+                thisopt.erase(0, 2);
+            }
             it = std::find_if(m_options.begin(), m_options.end(), [&] (OptionBase *const &o) { return o->longOption() == thisopt; });
             if (it == m_options.end()) {
                 QI_EXCEPTION("Unhandled long option: " + thisopt);
-            }
-            if ((*it)->hasArgument()) {
-                size_t epos = thisopt.find("=");
-                if (epos != std::string::npos) {
-                    arg = thisopt.substr(epos + 1);
-                    thisopt = thisopt.substr(2, epos - 2);
-                } else {
-                    thisopt.erase(0, 2);
-                }
             }
             (*it)->setOption(arg);
         } else { // Short option
