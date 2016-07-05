@@ -74,7 +74,7 @@ static const char *short_opts = "hvnm:Se:o:b:t:c:Ra:T:r";
 /*
  * Base class for the 3 different algorithms
  */
-class RelaxAlgo : public Algorithm<double> {
+class RelaxAlgo : public QI::ApplyF::Algorithm {
 private:
     const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 protected:
@@ -83,16 +83,20 @@ protected:
     double m_clampHi = numeric_limits<double>::infinity();
     double m_thresh = -numeric_limits<double>::infinity();
 
-    void clamp_and_treshold(const TInput &data, TArray &outputs, TArray &resids,
+    void clamp_and_threshold(const ArrayXd &data, std::vector<TOutput> &outputs, TConst &residual, TInput &resids,
                             const double PD, const double T2) const {
         if (PD > m_thresh) {
             outputs[0] = PD;
             outputs[1] = QI::clamp(T2, m_clampLo, m_clampHi);
-            ArrayXcd theory = QI::One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2); // T1 isn't modelled, set to 0 for instant recovery
-            resids = data.array() - theory.abs();
+            ArrayXd theory = QI::One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
+            ArrayXf r = (data.array() - theory).cast<float>();
+            residual = sqrt(r.square().sum() / r.rows());
+            resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         } else {
-            outputs.setZero();
-            resids.setZero();
+            outputs[0] = 0.;
+            outputs[1] = 0.;
+            resids = itk::VariableLengthVector<float>(data.rows());
+            resids.Fill(0);
         }
     }
 
@@ -105,19 +109,21 @@ public:
     size_t numOutputs() const override { return 2; }
     size_t dataSize() const override { return m_sequence->size(); }
 
-    virtual TArray defaultConsts() override {
-        // B1
-        TArray def = TArray::Ones(2);
+    virtual std::vector<float> defaultConsts() override {
+        std::vector<float> def(1, 1.0); // B1
         return def;
     }
 };
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-    virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
-            // Set up echo times array
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXd data = indata.cast<double>();
+        // Set up echo times array
         MatrixXd X(m_sequence->size(), 2);
         X.col(0) = m_sequence->m_TE;
         X.col(1).setOnes();
@@ -125,16 +131,19 @@ public:
         VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         double PD = exp(b[1]);
         double T2 = -1 / b[0];
-        clamp_and_treshold(data, outputs, resids, PD, T2);
+        clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
     }
 };
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-    virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXd data = indata.cast<double>();
         const double dTE_3 = (m_sequence->m_ESP / 3);
         double si2sum = 0, sidisum = 0;
         for (int i = 0; i < m_sequence->size() - 2; i++) {
@@ -145,7 +154,7 @@ public:
         }
         double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum);
         double PD = (data.array() / exp(-m_sequence->m_TE / T2)).mean();
-        clamp_and_treshold(data, outputs, resids, PD, T2);
+        clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
     }
 };
@@ -180,9 +189,12 @@ private:
 public:
     void setIterations(size_t n) { m_iterations = n; }
 
-    virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        const ArrayXd data = indata.cast<double>();
         RelaxFunctor f(m_sequence, data);
         NumericalDiff<RelaxFunctor> nDiff(f);
         LevenbergMarquardt<NumericalDiff<RelaxFunctor>> lm(nDiff);
@@ -191,7 +203,7 @@ public:
         // Basic guess of T2=50ms
         VectorXd p(2); p << data(0), 0.05;
         lm.minimize(p);
-        clamp_and_treshold(data, outputs, resids, p[0], p[1]);
+        clamp_and_threshold(data, outputs, residual, resids, p[0], p[1]);
         its = lm.iterations();
     }
 };
@@ -257,7 +269,7 @@ int main(int argc, char **argv) {
     // Gather input data
     auto multiecho = make_shared<QI::MultiEcho>(cin, prompt);
     algo->setSequence(multiecho);
-    auto apply = itk::ApplyAlgorithmFilter<RelaxAlgo>::New();
+    auto apply = QI::ApplyF::New();
     if (mask)
         apply->SetMask(mask);
     if (verbose) cout << "Opening input file: " << argv[optind] << endl;

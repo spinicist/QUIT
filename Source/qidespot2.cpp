@@ -17,7 +17,6 @@
 #include <unsupported/Eigen/NumericalDiff>
  
 #include "Filters/ImageToVectorFilter.h"
-#include "Filters/ApplyAlgorithmFilter.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
@@ -29,7 +28,7 @@ using namespace Eigen;
 //******************************************************************************
 // Algorithm Subclasses
 //******************************************************************************
-class D2Algo : public Algorithm<double> {
+class D2Algo : public QI::ApplyF::Algorithm {
 protected:
     const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
     shared_ptr<QI::SteadyState> m_sequence;
@@ -51,25 +50,26 @@ public:
     size_t numOutputs() const override { return 2; } // PD, T2
     size_t dataSize() const override { return m_sequence->size(); }
 
-    virtual TArray defaultConsts() override {
-        // T1, B1
-        TArray def = TArray::Ones(2);
+    virtual std::vector<float> defaultConsts() override {
+        std::vector<float> def(2, 1.0f); // T1, B1
         return def;
     }
 };
 
 class D2LLS : public D2Algo {
 public:
-    virtual void apply(const TInput &data, const TArray &constants,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
+        const double T1 = consts[0];
+        const double B1 = consts[1];
         const double TR = m_sequence->TR();
-        const double T1 = constants[0];
-        const double B1 = constants[1];
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
         const ArrayXd angles = (m_sequence->flip() * B1);
-
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXd data = indata.cast<double>();
         VectorXd Y = data / angles.sin();
         MatrixXd X(Y.rows(), 2);
         X.col(0) = data / angles.tan();
@@ -86,7 +86,9 @@ public:
         }
         VectorXd p(5); p << PD, T1, T2, 0, B1;
         ArrayXd theory = m_sequence->signal(m_model, p).abs();
-        resids = data.array() - theory;
+        ArrayXf r = (data.array() - theory).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         outputs[0] = QI::clamp(PD, m_loPD, m_hiPD);
         outputs[1] = QI::clamp(T2, m_loT2, m_hiT2);
         its = 1;
@@ -95,16 +97,18 @@ public:
 
 class D2WLLS : public D2Algo {
 public:
-    virtual void apply(const TInput &data, const TArray &constants,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
+        const double T1 = consts[0];
+        const double B1 = consts[1];
         const double TR = m_sequence->TR();
-        const double T1 = constants[0];
-        const double B1 = constants[1];
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
         const ArrayXd angles = (m_sequence->flip() * B1);
-
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXd data = indata.cast<double>();
         VectorXd Y = data / angles.sin();
         MatrixXd X(Y.rows(), 2);
         X.col(0) = data / angles.tan();
@@ -139,7 +143,9 @@ public:
         }
         VectorXd p(5); p << PD, T1, T2, 0, B1;
         ArrayXd theory = m_sequence->signal(m_model, p).abs();
-        resids = data.array() - theory;
+        ArrayXf r = (data.array() - theory).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         outputs[0] = QI::clamp(PD, m_loPD, m_hiPD);
         outputs[1] = QI::clamp(T2, m_loT2, m_hiT2);
         its = m_iterations;
@@ -176,11 +182,14 @@ class D2Functor : public DenseFunctor<double> {
 
 class D2NLLS : public D2Algo {
 public:
-    virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
-        double T1 = inputs[0];
-        double B1 = inputs[1];
+        const double T1 = consts[0];
+        const double B1 = consts[1];
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXd data = indata.cast<double>();
         D2Functor f(T1, m_sequence, data, B1, false, false);
         NumericalDiff<D2Functor> nDiff(f);
         LevenbergMarquardt<NumericalDiff<D2Functor>> lm(nDiff);
@@ -191,7 +200,9 @@ public:
         outputs[1] = QI::clamp(p[1], m_loT2, m_hiT2);
         VectorXd fullp(5); fullp << outputs[0], T1, outputs[1], 0, B1; // Assume on-resonance
         ArrayXd theory = m_sequence->signal(m_model, fullp).abs(); // Sequence will already be elliptical if necessary
-        resids = data.array() - theory;
+        ArrayXf r = (data.array() - theory).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = lm.iterations();
     }
 };

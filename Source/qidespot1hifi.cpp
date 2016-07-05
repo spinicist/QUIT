@@ -98,52 +98,59 @@ class HIFIFunctor : public DenseFunctor<double> {
         }
 };
 
-class HIFIAlgo : public Algorithm<double> {
-    private:
-        shared_ptr<QI::SPGRSimple> m_spgr;
-        shared_ptr<QI::MPRAGE> m_mprage;
-        size_t m_iterations = 15; // From tests this seems to be a sensible maximum number
-        double m_thresh = -numeric_limits<double>::infinity();
-        double m_lo = -numeric_limits<double>::infinity();
-        double m_hi = numeric_limits<double>::infinity();
-    public:
-        void setSequences(const shared_ptr<QI::SPGRSimple> &s, const shared_ptr<QI::MPRAGE> &m) { m_spgr = s; m_mprage = m;}
-        void setIterations(size_t n) { m_iterations = n; }
-        void setThreshold(double t) { m_thresh = t; }
-        void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
-        size_t numInputs() const override  { return 2; }
-        size_t numConsts() const override  { return 0; }
-        size_t numOutputs() const override { return 3; }
-        size_t dataSize() const override   { return m_spgr->size() + m_mprage->size(); }
+class HIFIAlgo : public QI::ApplyF::Algorithm {
+private:
+    shared_ptr<QI::SPGRSimple> m_spgr;
+    shared_ptr<QI::MPRAGE> m_mprage;
+    size_t m_iterations = 15; // From tests this seems to be a sensible maximum number
+    double m_thresh = -numeric_limits<double>::infinity();
+    double m_lo = -numeric_limits<double>::infinity();
+    double m_hi = numeric_limits<double>::infinity();
+public:
+    void setSequences(const shared_ptr<QI::SPGRSimple> &s, const shared_ptr<QI::MPRAGE> &m) { m_spgr = s; m_mprage = m;}
+    void setIterations(size_t n) { m_iterations = n; }
+    void setThreshold(double t) { m_thresh = t; }
+    void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
+    size_t numInputs() const override  { return 2; }
+    size_t numConsts() const override  { return 0; }
+    size_t numOutputs() const override { return 3; }
+    size_t dataSize() const override   { return m_spgr->size() + m_mprage->size(); }
 
-        virtual TArray defaultConsts() override {
-            // No constants for HIFI
-            TArray def = TArray::Zero(0);
-            return def;
-        }
+    virtual std::vector<float> defaultConsts() override {
+        // No constants for HIFI
+        std::vector<float> def(0);
+        return def;
+    }
 
-        virtual void apply(const TInput &indata,
-                           const TArray &, //No inputs, remove name to silence compiler warning
-                           TArray &outputs, TArray &resids, TIterations &its) const override
-        {
-            const auto data = indata / indata.abs().maxCoeff(); // Scale to make parameters roughly equal
-            HIFIFunctor f(m_spgr, m_mprage, data);
-            NumericalDiff<HIFIFunctor> nDiff(f);
-            LevenbergMarquardt<NumericalDiff<HIFIFunctor>> lm(nDiff);
-            // LevenbergMarquardt does not currently have a good interface, have to do things in steps
-            lm.setMaxfev(m_iterations * (data.rows() + 1));
-            VectorXd p(3); p << 10., 1., 1.; // Initial guess
-            lm.minimize(p);
-            f(p, resids); // Get the residuals
-            outputs = p;
-            // Scale back
-            outputs[0] *= indata.abs().maxCoeff();
-            resids *= indata.abs().maxCoeff();
-            if (outputs[0] < m_thresh)
-                outputs.setZero();
-            outputs[1] = QI::clamp(outputs[1], m_lo, m_hi);
-            its = lm.iterations();
-        }
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
+                       std::vector<TOutput> &outputs, TConst &residual,
+                       TInput &resids, TIters &its) const override
+    {
+        Eigen::Map<const ArrayXf> spgr(inputs[0].GetDataPointer(), inputs[0].Size());
+        Eigen::Map<const ArrayXf> irspgr(inputs[1].GetDataPointer(), inputs[1].Size());
+        ArrayXf indata(dataSize()); indata << spgr, irspgr;
+        const ArrayXd data = indata.cast<double>() / indata.abs().maxCoeff(); // Scale to make parameters roughly equal
+        HIFIFunctor f(m_spgr, m_mprage, data);
+        NumericalDiff<HIFIFunctor> nDiff(f);
+        LevenbergMarquardt<NumericalDiff<HIFIFunctor>> lm(nDiff);
+        // LevenbergMarquardt does not currently have a good interface, have to do things in steps
+        lm.setMaxfev(m_iterations * (data.rows() + 1));
+        VectorXd p(3); p << 10., 1., 1.; // Initial guess
+        lm.minimize(p);
+        ArrayXd r(indata.rows());
+        f(p, r); // Get the residuals
+        
+        if (p[0] < m_thresh)
+            p[0] = 0;
+        else
+            outputs[0] = p[0] * indata.abs().maxCoeff();
+        outputs[1] = QI::clamp(p[1], m_lo, m_hi);
+        outputs[2] = p[2];
+        residual = sqrt(r.square().sum() / r.rows());
+        ArrayXf rf = r.cast<float>();
+        resids = itk::VariableLengthVector<float>(rf.data(), rf.rows());
+        its = lm.iterations();
+    }
 };
 
 //******************************************************************************
@@ -204,7 +211,7 @@ int main(int argc, char **argv) {
         irSequence = make_shared<QI::MPRAGE>(cin, prompt);
     }
     if (verbose) cout << *spgrSequence << endl << *irSequence << endl;
-    auto apply = itk::ApplyAlgorithmFilter<HIFIAlgo>::New();
+    auto apply = QI::ApplyF::New();
     hifi->setSequences(spgrSequence, irSequence);
     apply->SetAlgorithm(hifi);
     apply->SetOutputAllResiduals(all_residuals);

@@ -32,7 +32,7 @@ class Model {
 public:
 
 protected:
-	bool m_scale_to_mean = false;
+    bool m_scale_to_mean = false;
     Eigen::ArrayXcd scale(const Eigen::ArrayXcd &signal) const;
     Eigen::ArrayXd  scale_mag(const Eigen::ArrayXd  &signal) const;
 
@@ -45,7 +45,8 @@ public:
     virtual Eigen::ArrayXXd Bounds(const FieldStrength f) const = 0;
     virtual Eigen::ArrayXd Default(const FieldStrength f = FieldStrength::Three) const = 0;
 
-	void setScaleToMean(bool s) { m_scale_to_mean = s; }
+    bool scaleToMean() const { return m_scale_to_mean; }
+    void setScaleToMean(bool s) { m_scale_to_mean = s; }
 
     virtual Eigen::VectorXd SSFPEchoMagnitude(cvecd &params, carrd &a, cdbl TR, carrd &phi) const;
 

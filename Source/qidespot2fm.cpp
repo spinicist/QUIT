@@ -27,16 +27,12 @@
 using namespace std;
 using namespace Eigen;
 
-class FMAlgo : public Algorithm<double> {
+class FMAlgo : public QI::ApplyF::Algorithm {
 protected:
 	shared_ptr<QI::SSFPSimple> m_sequence;
     bool m_asymmetric = false;
 
 public:
-    typedef typename Algorithm<double>::TArray TArray;
-    typedef typename Algorithm<double>::TInput TInput;
-    typedef typename Algorithm<double>::TIterations TIterations;
-
     void setSequence(shared_ptr<QI::SSFPSimple> s) { m_sequence = s; }
     void setAsymmetric(const bool b) { m_asymmetric = b; }
     
@@ -45,9 +41,8 @@ public:
     size_t numOutputs() const override { return 3; }
     size_t dataSize() const override   { return m_sequence->size(); }
 
-    virtual TArray defaultConsts() override {
-        // T1 & B1
-        TArray def = TArray::Ones(2);
+    virtual std::vector<float> defaultConsts() override {
+        std::vector<float> def(2, 1.0f); // T1 & B1
         return def;
     }
 };
@@ -82,19 +77,19 @@ class BFGSAlgo : public FMAlgo {
 protected:
     int m_nstart = 2;
 public:
-    using typename FMAlgo::TArray;
-    using typename FMAlgo::TInput;
-    using typename FMAlgo::TIterations;
+    BFGSAlgo(const int starts) : FMAlgo(), m_nstart(starts) {}
 
-    BFGSAlgo(const int nstart) : FMAlgo(), m_nstart(nstart) {}
-    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
-        double T1 = consts[0];
-        double B1 = consts[1];
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
+    {
+        const double T1 = consts[0];
+        const double B1 = consts[1];
         if (isfinite(T1) && (T1 > 0.001)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
-            const TInput data = indata / indata.maxCoeff();
-            
+            Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+            ArrayXd data = indata.cast<double>() / indata.maxCoeff();
             auto stop = cppoptlib::Criteria<double>::defaults();
             stop.iterations = 100;
             stop.gradNorm = 1e-8;
@@ -142,10 +137,15 @@ public:
             outputs[0] = bestP[0] * indata.abs().maxCoeff();
             outputs[1] = bestP[1];
             outputs[2] = bestP[2] / this->m_sequence->TR();
-            resids = cost.residuals(bestP) * indata.abs().maxCoeff();
+            ArrayXf r = cost.residuals(bestP).cast<float>();
+            residual = sqrt(r.square().sum() / r.rows());
+            resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         } else {
-            outputs.setZero();
-            resids.setZero();
+            outputs[0] = 0.;
+            outputs[1] = 0.;
+            outputs[2] = 0.;
+            residual = 0;
+            resids.Fill(0.);
             its = 0;
         }
     }
@@ -153,17 +153,17 @@ public:
 
 class CMAlgo : public FMAlgo {
 public:
-    using typename FMAlgo::TArray;
-    using typename FMAlgo::TInput;
-    using typename FMAlgo::TIterations;
-
-    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
-        double T1 = consts[0];
-        double B1 = consts[1];
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
+    {
+        const double T1 = consts[0];
+        const double B1 = consts[1];
         if (isfinite(T1) && (T1 > 0.001)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
-            const auto data = indata / indata.abs().maxCoeff();
+            Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+            ArrayXd data = indata.cast<double>() / indata.abs().maxCoeff();
             cppoptlib::CMAesBSolver<FMCostFunction> solver;
             // f0 is scaled by TR in the cost function so that scaling is better here
             Array3d lower; lower << 0., 2.*this->m_sequence->TR(), -0.55;
@@ -183,10 +183,15 @@ public:
             outputs[0] = p[0] * indata.abs().maxCoeff();
             outputs[1] = p[1];
             outputs[2] = p[2] / this->m_sequence->TR();
-            resids = cost.residuals(p) * indata.abs().maxCoeff();
+            ArrayXf rf = cost.residuals(p).cast<float>() * indata.abs().maxCoeff();
+            residual = sqrt(rf.square().sum() / rf.rows());
+            resids = itk::VariableLengthVector<float>(rf.data(), rf.rows());
         } else {
-            outputs.setZero();
-            resids.setZero();
+            outputs[0] = 0.;
+            outputs[1] = 0.;
+            outputs[2] = 0.;
+            residual = 0;
+            resids.Fill(0.);
             its = 0;
         }
     }
@@ -197,11 +202,10 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    typedef itk::ApplyAlgorithmFilter<FMAlgo> TApply;
     QI::OptionList opts("Usage is: qidespot1 [options] spgr_input");
     QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals", opts);
     QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::RegionOption<TApply::TRegion> subregion('s',"subregion","Process subregion starting at voxel I,J,K with size SI,SJ,SK", opts);
+    QI::RegionOption<QI::ApplyF::TRegion> subregion('s',"subregion","Process subregion starting at voxel I,J,K with size SI,SJ,SK", opts);
     QI::Switch flex('f',"flex", "Specify all phase-incs for all flip-angles", opts);
     QI::Option<int> nstart(2, 'F',"off","Number of off-resonance start points", opts);
     QI::Switch asym('A',"asym","Fit +/- off-resonance frequency", opts);
@@ -230,7 +234,7 @@ int main(int argc, char **argv) {
     auto T1 = QI::ReadImage(nonopts[0]);
     if (*verbose) cout << "Opening SSFP file: " << nonopts[1] << endl;
     auto ssfpData = QI::ReadVectorImage<float>(nonopts[1]);
-    auto apply = TApply::New();
+    auto apply = QI::ApplyF::New();
     shared_ptr<FMAlgo> algo;
     switch (*algorithm) {
         case 'b': algo = make_shared<BFGSAlgo>(*nstart); if (*verbose) cout << "LBFGSB algorithm selected." << endl; break;

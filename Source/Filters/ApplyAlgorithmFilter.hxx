@@ -32,12 +32,6 @@ template<typename TI, typename TO, typename TC>
 auto ApplyAlgorithmFilter<TI, TO, TC>::GetAlgorithm() const -> std::shared_ptr<const Algorithm>{ return m_algorithm; }
 
 template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetScaleToMean(const bool s) { m_scale_to_mean = s; }
-
-template<typename TI, typename TO, typename TC>
-bool ApplyAlgorithmFilter<TI, TO, TC>::GetScaleToMean() const { return m_scale_to_mean; }
-
-template<typename TI, typename TO, typename TC>
 void ApplyAlgorithmFilter<TI, TO, TC>::SetPoolsize(const size_t n) { m_poolsize = n; }
 
 template<typename TI, typename TO, typename TC>

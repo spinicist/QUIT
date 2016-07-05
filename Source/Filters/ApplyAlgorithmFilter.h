@@ -1,14 +1,12 @@
 #ifndef APPLYALGOFILTER_H
 #define APPLYALGOFILTER_H
 
-#include <Eigen/Core>
-
-#include "QI/ThreadPool.h"
-
+#include <vector>
 #include "itkImageToImageFilter.h"
 #include "itkVariableLengthVector.h"
 #include "itkVectorImage.h"
 #include "itkTimeProbe.h"
+#include "QI/ThreadPool.h"
 
 namespace itk{
 
@@ -53,8 +51,6 @@ public:
 
 	void SetAlgorithm(const std::shared_ptr<Algorithm> &a);
 	std::shared_ptr<const Algorithm> GetAlgorithm() const;
-	void SetScaleToMean(const bool s);
-	bool GetScaleToMean() const;
 
 	void SetInput(const size_t i, const TInputImage *img);
 	typename TInputImage::ConstPointer GetInput(const size_t i) const;
@@ -83,7 +79,7 @@ protected:
 	DataObject::Pointer MakeOutput(unsigned int idx) ITK_OVERRIDE;
 
 	std::shared_ptr<Algorithm> m_algorithm;
-    bool m_scale_to_mean = false, m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
+    bool m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
     size_t m_poolsize = 1;
     TRegion m_subregion;
 

@@ -30,7 +30,7 @@ void SemiaxesToHoff(const double A, const double B, const double c,
 
 
 void EllipseToMRI(const double a, const double b, const double scale, const double th, const double TR, const double flip,
-                  double &M, double &T1, double &T2, double &df0) {
+                  float &M, float &T1, float &T2, float &df0) {
     const double ca = cos(flip);
     T1 = -TR / (log(a-b + (1.-a*b)*a*ca) - log(a*(1.-a*b) + (a-b)*ca));
     T2 = -TR / log(a);
@@ -38,7 +38,7 @@ void EllipseToMRI(const double a, const double b, const double scale, const doub
     df0 = th / (2.*M_PI*TR);
 }
 
-class ESAlgo : public Algorithm<complex<double>> {
+class ESAlgo : public QI::ApplyXF::Algorithm {
 protected:
     size_t m_size = 0;
     shared_ptr<QI::SSFP_GS> m_sequence = nullptr;
@@ -52,9 +52,8 @@ public:
     }
     size_t dataSize() const override { return m_size; }
     void setSize(const size_t s) { m_size = s; }
-    virtual TArray defaultConsts() override {
-        // B1
-        TArray def = TArray::Ones(1);
+    virtual std::vector<float> defaultConsts() override {
+        std::vector<float> def(1, 1.0f); // B1
         return def;
     }
     void SetSequence(const shared_ptr<QI::SSFP_GS> &s) { m_sequence = s;}
@@ -102,11 +101,15 @@ public:
         return C;
     }
     
-    void apply(const TInput &data, const TArray &inputs, TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                       std::vector<TOutput> &outputs, TConst &residual,
+                       TInput &resids, TIters &its) const override
     {
         typedef Matrix<double, 6, 6> Matrix6d;
         typedef Matrix<double, 6, 1> Vector6d;
-        const double B1 = inputs[0];
+        const double B1 = consts[0];
+        Eigen::Map<const Eigen::ArrayXcf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXcd data = indata.cast<complex<double>>();
         const double scale = data.abs().maxCoeff();
         ArrayXd x = data.real() / scale;
         ArrayXd y = data.imag() / scale;
@@ -224,7 +227,7 @@ int main(int argc, char **argv) {
     auto data = QI::ReadVectorImage<complex<float>>(inputFilename);
     shared_ptr<QI::SSFP_GS> seq = make_shared<QI::SSFP_GS>(cin, true);
     if (verbose) cout << *seq;
-    auto apply = itk::ApplyAlgorithmFilter<ESAlgo, complex<float>>::New();
+    auto apply = QI::ApplyXF::New();
     algo->setSize(data->GetNumberOfComponentsPerPixel());
     algo->SetSequence(seq);
     apply->SetAlgorithm(algo);

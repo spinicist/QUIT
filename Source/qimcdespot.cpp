@@ -48,7 +48,7 @@ void parseInput(shared_ptr<QI::SequenceGroup> seq, vector<typename QI::VectorVol
     }
 }
 
-class MCDAlgo : public Algorithm<double> {
+class MCDAlgo : public QI::ApplyF::Algorithm {
 protected:
     ArrayXXd m_bounds;
     shared_ptr<QI::Model> m_model = nullptr;
@@ -101,44 +101,59 @@ class MCDSRCFunctor {
 };
 
 class SRCAlgo : public MCDAlgo {
-    using MCDAlgo::MCDAlgo;
+using MCDAlgo::MCDAlgo;
 
-    private:
-        size_t m_samples = 5000, m_retain = 50;
-        bool m_gauss = true;
+private:
+    size_t m_samples = 5000, m_retain = 50;
+    bool m_gauss = true;
 
-    public:
-        void setGauss(bool g) { m_gauss = g; }
+public:
+    void setGauss(bool g) { m_gauss = g; }
 
-        size_t numConsts() const override  { return 2; }
-        virtual TArray defaultConsts() override {
-            // f0, B1
-            TArray def = TArray::Ones(2);
-            def[0] = NAN;
-            return def;
-        }
+    size_t numConsts() const override  { return 2; }
+    virtual std::vector<float> defaultConsts() override {
+        std::vector<float> def(2);
+        def[0] = NAN; def[1] = 1.0f; // f0, B1
+        return def;
+    }
 
-        virtual void apply(const TInput &data, const TArray &inputs,
-                           TArray &outputs, TArray &resids, TIterations &its) const override
-        {
-            ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
-            double f0 = inputs[0];
-            double B1 = inputs[1];
-            ArrayXXd localBounds = m_bounds;
-            ArrayXd weights = ArrayXd::Ones(m_sequence->size());
-            if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
-                localBounds.row(m_model->ParameterIndex("f0")) += f0;
-                weights = m_sequence->weights(f0);
+virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                   std::vector<TOutput> &outputs, TConst &residual,
+                   TInput &resids, TIters &its) const override
+    {
+        ArrayXd data(dataSize());
+        int dataIndex = 0;
+        for (int i = 0; i < inputs.size(); i++) {
+            Eigen::Map<const ArrayXf> this_data(inputs[i].GetDataPointer(), inputs[i].Size());
+            if (m_model->scaleToMean()) {
+                data.segment(dataIndex, this_data.rows()) = this_data.cast<double>() / this_data.abs().mean();
+            } else {
+                data.segment(dataIndex, this_data.rows()) = this_data.cast<double>();
             }
-            localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
-            MCDSRCFunctor func(m_model, m_sequence, data, weights);
-            QI::RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
-            rc.optimise(outputs);
-            //outputs(m_model->nParameters() - 1) = rc.contractions();
-            //outputs(0) = static_cast<int>(rc.status());
-            resids = func.residuals(outputs);
-            its = rc.contractions();
+            dataIndex += this_data.rows();
         }
+        ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
+        const double f0 = consts[0];
+        const double B1 = consts[1];
+        ArrayXXd localBounds = m_bounds;
+        ArrayXd weights = ArrayXd::Ones(m_sequence->size());
+        if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
+            localBounds.row(m_model->ParameterIndex("f0")) += f0;
+            weights = m_sequence->weights(f0);
+        }
+        localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
+        MCDSRCFunctor func(m_model, m_sequence, data, weights);
+        QI::RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
+        ArrayXd pars(m_model->nParameters());
+        rc.optimise(pars);
+        for (int i = 0; i < m_model->nParameters(); i++) {
+            outputs[i] = pars[i];
+        }
+        ArrayXf r = func.residuals(pars).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
+        its = rc.contractions();
+    }
 };
 
 //******************************************************************************
@@ -158,8 +173,7 @@ int main(int argc, char **argv) {
     QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
     shared_ptr<QI::Model> model = make_shared<QI::MCD3>();
     typedef itk::VectorImage<float, 2> VectorSliceF;
-    typedef itk::ApplyAlgorithmFilter<MCDAlgo> TMCDFilter;
-    auto apply = TMCDFilter::New();
+    auto apply = QI::ApplyF::New();
     const string usage {
 "Usage is: qimcdespot [options]\n\
 \n\
@@ -260,11 +274,11 @@ Options:\n\
                 if (vals.rows() != 6) {
                     QI_EXCEPTION( "Subregion must have 3 start indices and 3 sizes." );
                 }
-                typename TMCDFilter::TRegion::IndexType start;
-                typename TMCDFilter::TRegion::SizeType size;
+                QI::ApplyF::TRegion::IndexType start;
+                QI::ApplyF::TRegion::SizeType size;
                 start[0] = vals[0]; start[1] = vals[1]; start[2] = vals[2];
                 size[0]  = vals[3]; size[1] =  vals[4]; size[2]  = vals[5];
-                typename TMCDFilter::TRegion subregion;
+                QI::ApplyF::TRegion subregion;
                 subregion.SetIndex(start);
                 subregion.SetSize(size);
                 apply->SetSubregion(subregion);
@@ -272,7 +286,6 @@ Options:\n\
             case 'S':
                 if (verbose) cout << "Mean scaling selected." << endl;
                 model->setScaleToMean(true);
-                apply->SetScaleToMean(true);
                 break;
             case 'a':
                 switch (*optarg) {

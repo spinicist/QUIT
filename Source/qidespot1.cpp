@@ -218,8 +218,8 @@ public:
 class D1NLLS : public D1Algo {
 public:
     virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+                       std::vector<TOutput> &outputs, TConst &residual,
+                       TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         double B1 = consts[0];

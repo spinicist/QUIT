@@ -73,7 +73,7 @@ function run() {
 PREFIX="$1"
 OPTS="$2"
 run_test $PREFIX $QUITDIR/qimcdespot $OPTS -n -v -bB1.nii -r < mcd_input.txt
-compare_test $PREFIX f_m.nii ${PREFIX}_f_m.nii $NOISE 50
+compare_test $PREFIX f_m.nii ${PREFIX}_f_m.nii $NOISE 250
 }
 
 run "3C" "-ff0.nii -aG -M3"

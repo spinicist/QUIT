@@ -66,7 +66,7 @@ PREFIX="$1"
 OPTS="$2"
 run_test $PREFIX $QUITDIR/qimcdespot $OPTS -M2 -bB1.nii -r -o $PREFIX -v -n < mcd_input.txt
 
-compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii $NOISE 50
+compare_test $PREFIX f_m.nii ${PREFIX}2C_f_m.nii $NOISE 250
 
 #echo "       Mean     Std.     CoV"
 #echo "T1_m:  " $( fslstats ${PREFIX}2C_T1_m.nii  -m -s | awk '{if(($1)>(0.)) {print $1, $2, $2/$1} else {print 0}}' )

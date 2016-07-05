@@ -51,7 +51,7 @@ typedef itk::VectorToImageFilter<VectorVolumeXF> VectorToSeriesXF;
 typedef itk::ReorderVectorFilter<VectorVolumeXF>  ReorderVectorXF;
 
 typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VolumeF, VolumeF> ApplyF;
-
+typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VolumeF, VolumeF> ApplyXF;
 } // End namespace QI
 
 #endif // define QUIT_TYPES
