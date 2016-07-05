@@ -34,10 +34,10 @@ set(QIDIR "Source/QI")
 set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Option.cpp
-             ${QIDIR}/Kernels.cpp 
+             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp
              ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp
              ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
-             ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp
+             ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp ${QIDIR}/Models/qMT.cpp
              ${QIDIR}/Sequences/SequenceBase.cpp ${QIDIR}/Sequences/Sequences.cpp
              ${QIDIR}/Sequences/SteadyStateSequence.cpp ${QIDIR}/Sequences/MPRAGESequence.cpp ${QIDIR}/Sequences/SpinEcho.cpp )
 add_dependencies( ${QI} qi_version )

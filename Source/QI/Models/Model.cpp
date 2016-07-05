@@ -68,6 +68,7 @@ VectorXcd Model::MultiEcho(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Functio
 VectorXcd Model::SPGR(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGREcho(cvecd &, carrd &, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGRFinite(cvecd &, carrd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl flip, cdbl TR, cdbl Trf) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, const int, cdbl, cvecd &, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::AFI(cvecd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFP(cvecd &, carrd &a, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }

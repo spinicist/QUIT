@@ -127,4 +127,21 @@ VectorXcd Three_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD,
     return r;
 }
 
+VectorXcd MT_SPGR(carrd &omega_cwpe, carrd &satf0, cdbl TR, cdbl Trf,
+                  const TLineshape &g, cdbl PD, cdbl T1f, cdbl T2f, cdbl T1r, cdbl T2r,
+                  cdbl kf, cdbl F, cdbl f0, cdbl B1) {
+    // This is a mix of Gloor et al and Ramani et al variable names
+    ArrayXd W = omega_cwpe.square()*g(satf0, T2r);
+    cdbl R1f = 1. / T1f;
+    cdbl R1r = 1. / T1r;
+    
+    // F is M0r/M0b
+    cdbl kr = kf/F;
+    carrd S = PD * F * ( R1r*kr/R1f + W + R1r + kr ) /
+                    ( kf*(R1r + W) + (1.0 + (omega_cwpe/(2.*M_PI*satf0)).square()*(T1f/T2f))*(W+R1r+kr));
+    VectorXcd sig(S.size());
+    sig.real() = S;
+    return sig;
+}
+
 } // End namespace QI
