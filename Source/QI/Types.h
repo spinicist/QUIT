@@ -19,6 +19,7 @@
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ReorderImageFilter.h"
 #include "Filters/ReorderVectorFilter.h"
+#include "Filters/ApplyAlgorithmFilter.h"
 
 namespace QI {
 
@@ -48,6 +49,8 @@ typedef itk::ReorderImageFilter<SeriesXF> ReorderSeriesXF;
 typedef itk::ImageToVectorFilter<SeriesXF> SeriesToVectorXF;
 typedef itk::VectorToImageFilter<VectorVolumeXF> VectorToSeriesXF;
 typedef itk::ReorderVectorFilter<VectorVolumeXF>  ReorderVectorXF;
+
+typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VolumeF, VolumeF> ApplyF;
 
 } // End namespace QI
 

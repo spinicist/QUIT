@@ -10,66 +10,68 @@
 #include "itkVectorImage.h"
 #include "itkTimeProbe.h"
 
-template<typename DataType>
-class Algorithm {
-public:
-	typedef DataType TScalar;
-    typedef int      TIterations;
-	typedef Eigen::Array<TScalar, Eigen::Dynamic, 1> TInput;
-	typedef Eigen::ArrayXd TArray;
-	virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
-	virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
-	virtual size_t numOutputs() const = 0; // Number of output parameters/variables
-	virtual size_t dataSize() const = 0;   // The expected size of the concatenated data vector
-    virtual TArray defaultConsts() = 0;    // Give some default constants for when the user does not supply them
-	virtual void apply(const TInput &data,
-					   const TArray &consts,
-					   TArray &outputs,
-                       TArray &resids,
-                       TIterations &iterations) const = 0; // Apply the algorithm to the data from one voxel
-};
-
 namespace itk{
 
-template<typename TAlgorithm , typename TData = float, typename TScalar = float, unsigned int ImageDim = 3>
-class ApplyAlgorithmFilter :
-	public ImageToImageFilter<VectorImage<TData, ImageDim>, VectorImage<TScalar, ImageDim>>
-{
+template<typename TInputImage_, typename TOutputImage_, typename TConstImage_>
+class ApplyAlgorithmFilter : public ImageToImageFilter<TInputImage_, TOutputImage_> {
 public:
-	typedef VectorImage<TData, ImageDim>   TDataVectorImage;
-	typedef VectorImage<TScalar, ImageDim> TScalarVectorImage;
-	typedef Image<TScalar, ImageDim>       TScalarImage;
-    typedef Image<typename TAlgorithm::TIterations, ImageDim> TIterationsImage;
+    typedef TInputImage_  TInputImage;
+    typedef TOutputImage_ TOutputImage;
+    typedef TConstImage_  TConstImage;
 
-	typedef ApplyAlgorithmFilter                                     Self;
-	typedef ImageToImageFilter<TDataVectorImage, TScalarVectorImage> Superclass;
-	typedef SmartPointer<Self>                                       Pointer;
-	typedef typename TScalarImage::RegionType                        TRegion;
+    typedef typename TInputImage::PixelType  TInput;
+    typedef typename TOutputImage::PixelType TOutput;
+    typedef typename TConstImage::PixelType  TConst;
+    typedef unsigned int TIterations;
+    typedef Image<TIterations, TInputImage::ImageDimension> TIterationsImage;
 
-	itkNewMacro(Self); /** Method for creation through the object factory. */
-	itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
+    typedef ApplyAlgorithmFilter                          Self;
+    typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
+    typedef SmartPointer<Self>                            Pointer;
+    typedef typename TInputImage::RegionType              TRegion;
 
-	void SetAlgorithm(const std::shared_ptr<TAlgorithm> &a);
-	std::shared_ptr<const TAlgorithm> GetAlgorithm() const;
+    itkNewMacro(Self); /** Method for creation through the object factory. */
+    itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
+
+    class Algorithm {
+    public:
+        typedef TInput  TInput;
+        typedef TOutput TOutput;
+        typedef TConst  TConst;
+        typedef TIterations  TIters;
+        virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
+        virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
+        virtual size_t numOutputs() const = 0; // Number of output parameters/variables
+        virtual size_t dataSize() const = 0;   // The expected size of the concatenated data vector
+        virtual std::vector<TConst> defaultConsts() = 0;    // Give some default constants for when the user does not supply them
+        virtual void apply(const std::vector<TInput> &inputs,
+                           const std::vector<TConst> &consts,
+                           std::vector<TOutput> &outputs,
+                           TConst &residual, TInput &resids,
+                           TIters &iterations) const = 0; // Apply the algorithm to the data from one voxel
+    };
+
+	void SetAlgorithm(const std::shared_ptr<Algorithm> &a);
+	std::shared_ptr<const Algorithm> GetAlgorithm() const;
 	void SetScaleToMean(const bool s);
 	bool GetScaleToMean() const;
 
-	void SetInput(const size_t i, const TDataVectorImage *img);
-	typename TDataVectorImage::ConstPointer GetInput(const size_t i) const;
-	void SetConst(const size_t i, const TScalarImage *img);
-	typename TScalarImage::ConstPointer GetConst(const size_t i) const;
-	void SetMask(const TScalarImage *mask);
-	typename TScalarImage::ConstPointer GetMask() const;
+	void SetInput(const size_t i, const TInputImage *img);
+	typename TInputImage::ConstPointer GetInput(const size_t i) const;
+	void SetConst(const size_t i, const TConstImage *img);
+	typename TConstImage::ConstPointer GetConst(const size_t i) const;
+	void SetMask(const TConstImage *mask);
+	typename TConstImage::ConstPointer GetMask() const;
 
     void SetPoolsize(const size_t nThreads);
     void SetSubregion(const TRegion &sr); 
     void SetVerbose(const bool v);
     void SetOutputAllResiduals(const bool r); 
     
-    TScalarImage       *GetOutput(const size_t i);
-	TScalarImage       *GetResidualOutput();
-    TScalarVectorImage *GetAllResidualsOutput();
-    TIterationsImage   *GetIterationsOutput();
+    TOutputImage     *GetOutput(const size_t i);
+    TConstImage      *GetResidualOutput();
+    TInputImage      *GetAllResidualsOutput();
+    TIterationsImage *GetIterationsOutput();
 
     RealTimeClock::TimeStampType GetTotalTime() const;
     RealTimeClock::TimeStampType GetMeanTime() const;
@@ -80,7 +82,7 @@ protected:
 	~ApplyAlgorithmFilter(){}
 	DataObject::Pointer MakeOutput(unsigned int idx) ITK_OVERRIDE;
 
-	std::shared_ptr<TAlgorithm> m_algorithm;
+	std::shared_ptr<Algorithm> m_algorithm;
     bool m_scale_to_mean = false, m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
     size_t m_poolsize = 1;
     TRegion m_subregion;
@@ -100,6 +102,7 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 
 };
+
 }
 
 #include "ApplyAlgorithmFilter.hxx"

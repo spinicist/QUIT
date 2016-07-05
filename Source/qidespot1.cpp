@@ -30,7 +30,7 @@ using namespace Eigen;
 //******************************************************************************
 // Algorithm Subclasses
 //******************************************************************************
-class D1Algo : public Algorithm<double> {
+class D1Algo : public QI::ApplyF::Algorithm {
 public:
     static const size_t DefaultIterations = 15;
 protected:
@@ -53,19 +53,22 @@ public:
     size_t numOutputs() const override { return 2; }
     size_t dataSize() const override { return m_sequence->size(); }
 
-    virtual TArray defaultConsts() override {
+    virtual std::vector<float> defaultConsts() override {
         // B1
-        TArray def = TArray::Ones(1);
+        std::vector<float> def(1, 1.0f);
         return def;
     }
 };
 
 class D1LLS : public D1Algo {
 public:
-    virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
-        double B1 = inputs[0];
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXd data = indata.cast<double>();
+        double B1 = consts[0];
         ArrayXd flip = m_sequence->flip() * B1;
         VectorXd Y = data / flip.sin();
         MatrixXd X(Y.rows(), 2);
@@ -75,40 +78,48 @@ public:
         outputs[0] = QI::clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
         outputs[1] = QI::clamp(-m_sequence->TR() / log(b[0]), m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
-        resids = (data.array() - theory);
+        ArrayXf r = (data.array() - theory).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = 1;
     }
 };
 
 class D1WLLS : public D1Algo {
 public:
-    virtual void apply(const TInput &data, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
-        double B1 = inputs[0];
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        ArrayXd data = indata.cast<double>();
+        double B1 = consts[0];
         ArrayXd flip = m_sequence->flip() * B1;
         VectorXd Y = data / flip.sin();
         MatrixXd X(Y.rows(), 2);
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
-        VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        outputs[1] = -m_sequence->TR() / log(b[0]);
-        outputs[0] = b[1] / (1. - b[0]);
+        Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        Array2d out;
+        out[1] = -m_sequence->TR() / log(b[0]);
+        out[0] = b[1] / (1. - b[0]);
         for (its = 0; its < m_iterations; its++) {
             VectorXd W = (flip.sin() / (1. - (exp(-m_sequence->TR()/outputs[1])*flip.cos()))).square();
             b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
-            Array2d newOutputs;
-            newOutputs[1] = -m_sequence->TR() / log(b[0]);
-            newOutputs[0] = b[1] / (1. - b[0]);
-            if (newOutputs.isApprox(outputs))
+            Array2d newOut;
+            newOut[1] = -m_sequence->TR() / log(b[0]);
+            newOut[0] = b[1] / (1. - b[0]);
+            if (newOut.isApprox(out))
                 break;
             else
-                outputs = newOutputs;
+                out = newOut;
         }
-        outputs[0] = QI::clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(-m_sequence->TR() / log(b[0]), m_loT1, m_hiT1);
+        outputs[0] = QI::clamp(out[0], m_loPD, m_hiPD);
+        outputs[1] = QI::clamp(out[1], m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
-        resids = (data.array() - theory);
+        ArrayXf r = (data.array() - theory).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
     }
 };
 
@@ -162,15 +173,15 @@ public:
 
 class D1LBFGSB : public D1Algo {
 public:
-    using typename D1Algo::TArray;
-    using typename D1Algo::TInput;
-    using typename D1Algo::TIterations;
-
-    virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
+    {
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         double B1 = consts[0];
         // Improve scaling by dividing the PD down to something sensible.
         // This gets scaled back up at the end.
-        const TInput data = indata / indata.maxCoeff();
+        const ArrayXd data = indata.cast<double>() / indata.maxCoeff();
         auto stop = cppoptlib::Criteria<double>::defaults();
         stop.iterations = 100;
         stop.gradNorm = 1e-8;
@@ -198,17 +209,21 @@ public:
             Eigen::Vector2d p; p << 10., 1.0;
             solver.minimize(cost, p);
         }
-        resids = cost.residuals(p) * indata.abs().maxCoeff();
+        ArrayXf r = (cost.residuals(p) * indata.abs().maxCoeff()).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
     }
 };
 
 class D1NLLS : public D1Algo {
 public:
-    virtual void apply(const TInput &indata, const TArray &inputs,
-                       TArray &outputs, TArray &resids, TIterations &its) const override
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                  std::vector<TOutput> &outputs, TConst &residual,
+                  TInput &resids, TIters &its) const override
     {
-        double B1 = inputs[0];
-        const TInput data = indata / indata.maxCoeff();
+        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
+        double B1 = consts[0];
+        const ArrayXd data = indata.cast<double>() / indata.maxCoeff();
         T1Functor f(m_sequence, data, B1);
         NumericalDiff<T1Functor> nDiff(f);
         LevenbergMarquardt<NumericalDiff<T1Functor>> lm(nDiff);
@@ -219,6 +234,9 @@ public:
         outputs[0] = QI::clamp(p[0] * indata.maxCoeff(), m_loPD, m_hiPD);
         outputs[1] = QI::clamp(p[1], m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
+        ArrayXf r = (data.array() - theory).cast<float>();
+        residual = sqrt(r.square().sum() / r.rows());
+        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = lm.iterations();
     }
 };
@@ -266,7 +284,7 @@ int main(int argc, char **argv) {
     if (isfinite(*clampT1))
         algo->setClampT1(0, *clampT1);
     algo->setSequence(spgrSequence);
-    auto apply = itk::ApplyAlgorithmFilter<D1Algo>::New();
+    auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(*all_residuals);
     apply->SetPoolsize(*num_threads);
