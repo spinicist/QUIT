@@ -115,6 +115,7 @@ public:
     size_t numConsts() const override  { return 0; }
     size_t numOutputs() const override { return 3; }
     size_t dataSize() const override   { return m_spgr->size() + m_mprage->size(); }
+    const float &zero(const size_t i) const override { static float zero = 0; return zero; }
 
     virtual std::vector<float> defaultConsts() override {
         // No constants for HIFI

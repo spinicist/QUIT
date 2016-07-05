@@ -70,6 +70,7 @@ public:
     void setSequence(shared_ptr<QI::SequenceGroup> &s) { m_sequence = s; }
     void setBounds(ArrayXXd &b) { m_bounds = b; }
     void setIterations(const int i) { m_iterations = i; }
+    const float &zero(const size_t i) const override { static float zero = 0; return zero; }
 };
 
 class MCDSRCFunctor {

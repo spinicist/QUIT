@@ -122,7 +122,7 @@ DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(unsigned int id
 template<typename TI, typename TO, typename TC>
 auto ApplyAlgorithmFilter<TI, TO, TC>::GetOutput(const size_t i) -> TOutputImage *{
     if (i < m_algorithm->numOutputs()) {
-        return dynamic_cast<TConstImage *>(this->ProcessObject::GetOutput(i+StartOutputs));
+        return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(i+StartOutputs));
     } else {
         itkExceptionMacro("Requested output " << std::to_string(i) << " is past maximum (" << std::to_string(m_algorithm->numOutputs()) << ")");
     }
@@ -169,6 +169,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateOutputInformation() {
         op->SetSpacing(spacing);
         op->SetOrigin(origin);
         op->SetDirection(direction);
+        op->SetNumberOfComponentsPerPixel(m_algorithm->outputSize(i));
         op->Allocate(true);
     }
     if (m_allResiduals) {
@@ -237,9 +238,9 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
             constIters[i] = ImageRegionConstIterator<TConstImage>(c, region);
         }
     }
-    std::vector<ImageRegionIterator<TConstImage>> outputIters(m_algorithm->numOutputs());
+    std::vector<ImageRegionIterator<TOutputImage>> outputIters(m_algorithm->numOutputs());
     for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-        outputIters[i] = ImageRegionIterator<TConstImage>(this->GetOutput(i), region);
+        outputIters[i] = ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
     }
     ImageRegionIterator<TInputImage> allResidualsIter;
     if (m_allResiduals) {
@@ -256,6 +257,9 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
             auto task = [=] {
                 std::vector<TInput> inputs(m_algorithm->numInputs());
                 std::vector<TOutput> outputs(m_algorithm->numOutputs());
+                for (size_t i = 0; i < outputs.size(); i++) {
+                    outputs[i] = m_algorithm->zero(i);
+                }
                 std::vector<TConst> constants = m_algorithm->defaultConsts();
                 for (size_t i = 0; i < constIters.size(); i++) {
                     if (this->GetConst(i)) {
@@ -283,7 +287,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
             progress.CompletedPixel(); // We can get away with this because enqueue blocks if the queue is full
         } else {
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-                outputIters[i].Set(0);
+                outputIters[i].Set(m_algorithm->zero(i));
             }
             VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
             allResidualsIter.Set(residZeros);

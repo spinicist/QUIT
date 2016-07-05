@@ -46,6 +46,7 @@ public:
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
     size_t numOutputs() const override { return 6; }
+    const float &zero(const size_t i) const override { static float zero = 0; return zero; }
     const vector<string> & names() const {
         static vector<string> _names = {"M", "T1", "T2", "th", "a", "b"};
         return _names;
