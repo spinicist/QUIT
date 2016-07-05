@@ -71,12 +71,12 @@ void WriteMagnitudeImage(const TImg *ptr, const std::string &path) {
     auto mag = itk::ComplexToModulusImageFilter<TImg, TRealImage>::New();
     mag->SetInput(ptr);
     mag->Update();
-    QI::WriteImage<TRealImage>(mag->GetOutput(), path);
+    WriteImage<TRealImage>(mag->GetOutput(), path);
 }
 
 template<typename TImg>
 void WriteMagnitudeImage(const itk::SmartPointer<TImg> ptr, const std::string &path) {
-    QI::WriteMagnitudeImage<TImg>(ptr.GetPointer(), path);
+    WriteMagnitudeImage<TImg>(ptr.GetPointer(), path);
 }
 
 template<typename TImg>
@@ -90,7 +90,7 @@ void WriteScaledImage(const TImg *img, const QI::VolumeF *simg, const std::strin
 
 template<typename TImg>
 void WriteScaledImage(const itk::SmartPointer<TImg> &ptr, const itk::SmartPointer<QI::VolumeF> &sptr, const std::string &path) {
-    QI::WriteScaledImage<TImg>(ptr.GetPointer(), sptr.GetPointer(), path);
+    WriteScaledImage<TImg>(ptr.GetPointer(), sptr.GetPointer(), path);
 }
 
 template<typename TPixel>
@@ -110,8 +110,6 @@ auto ReadVectorImage(const std::string &path) -> typename itk::VectorImage<TPixe
 
 template<typename TVImg>
 void WriteVectorImage(const TVImg *img, const std::string &path) {
-    typedef typename TVImg::PixelType TPixel;
-    typedef itk::Image<TPixel, 4> TSeries;
     typedef itk::VectorToImageFilter<TVImg> TToSeries;
 
     auto convert = TToSeries::New();
@@ -123,6 +121,27 @@ void WriteVectorImage(const TVImg *img, const std::string &path) {
 template<typename TVImg>
 void WriteVectorImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path) {
     WriteVectorImage(ptr.GetPointer(), path);
+}
+
+template<typename TVImg>
+void WriteVectorMagnitudeImage(const TVImg *img, const std::string &path) {
+    typedef itk::VectorToImageFilter<TVImg> TToSeries;
+    auto convert = TToSeries::New();
+    convert->SetInput(img);
+
+    typedef typename TVImg::InternalPixelType TPixel;
+    typedef typename TPixel::value_type TReal;
+    typedef itk::Image<TPixel, 4> TSeries;
+    typedef itk::Image<TReal, 4> TRealSeries;
+    auto mag = itk::ComplexToModulusImageFilter<TSeries, TRealSeries>::New();
+    mag->SetInput(convert->GetOutput());
+    mag->Update();
+    WriteImage<TRealSeries>(mag->GetOutput(), path);
+}
+
+template<typename TVImg>
+void WriteVectorMagnitudeImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path) {
+    WriteVectorMagnitudeImage(ptr.GetPointer(), path);
 }
 
 template<typename TVImg>
