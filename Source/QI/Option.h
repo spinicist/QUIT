@@ -78,6 +78,7 @@ public:
         if (a != "") {
             QI_EXCEPTION("Switches don't have arguments");
         }
+        m_value = true;
     }
 
 };
