@@ -9,7 +9,6 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 #include "Eigen/Dense"
 
@@ -19,6 +18,7 @@
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/Polynomial.h"
+#include "QI/Option.h"
 
 using namespace std;
 using namespace Eigen;
@@ -109,82 +109,32 @@ private:
 
 } // End namespace itk
 
-//******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: qipolyfit [options] input \n\
-\n\
-Fits a 3D polynomial to a volume and prints the co-efficients to stdout\n\
-\n\
-Options:\n\
-    --help, -h        : Print this message.\n\
-    --verbose, -v     : Print more information.\n\
-    --mask, -m file   : Mask input with specified file.\n\
-    --order, -o N     : Specify the polynomial order (default 2)\n\
-    --print-terms     : Print out the polynomial terms\n\
-    --threads, -T N   : Use N threads (default=hardware limit).\n"
-};
-
-int print_terms = false;
-const struct option long_options[] = {
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"mask", required_argument, 0, 'm'},
-    {"order", required_argument, 0, 'o'},
-    {"threads", required_argument, 0, 'T'},
-    {"print-terms", no_argument, &print_terms, true},
-    {0, 0, 0, 0}
-};
-const char *short_options = "hvm:o:T:";
-
-//******************************************************************************
-// Main
-//******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-
-    bool verbose = false;
-    QI::VolumeF::Pointer mask = ITK_NULLPTR;
-    int indexptr = 0, c, order = 2;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'm':
-                if (verbose) cout << "Reading mask file " << optarg << endl;
-                mask = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                order = stoi(optarg);
-                if (verbose) cout << "Polynomical order is: " << order << endl;
-                break;
-            case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-            case 0: // Just a flag
-                break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
-        cout << "Incorrect number of arguments." << endl << usage << endl;
+    QI::OptionList opts("Usage is: qipolyfit [options] input\n\nFits a 3D polynomial to a volume and prints the co-efficients to stdout.\n");
+    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
+    QI::Switch print_terms('\0',"print-terms","Print out the polynomial terms");
+    QI::Option<int> order(2,'o',"order","Specify the polynomial order (default 2)", opts);
+    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
+    QI::Switch verbose('v',"verbose","Print more information", opts);
+    QI::Help help(opts);
+    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    if (nonopts.size() != 1) {
+        std::cerr << opts << std::endl;
+        std::cerr << "Please specify input filename only." << std::endl;
         return EXIT_FAILURE;
     }
-    QI::VolumeF::Pointer input = QI::ReadImage(argv[optind]);
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(*num_threads);
+    QI::VolumeF::Pointer input = QI::ReadImage(nonopts[0]);
     auto fit = itk::PolynomialFitImageFilter::New();
-    QI::Polynomial poly(order);
+    QI::Polynomial poly(*order);
     fit->SetInput(input);
     fit->SetPolynomial(poly);
-    fit->SetMask(mask);
+    fit->SetMask(*mask);
     fit->Update();
     cout << fit->GetPolynomial().coeffs().transpose() << endl;
-    if (print_terms)
+    if (*print_terms)
         fit->GetPolynomial().print();
-    if (verbose) cout << "Finished." << endl;
+    if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

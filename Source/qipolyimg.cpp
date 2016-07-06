@@ -9,7 +9,6 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 #include "Eigen/Dense"
 
@@ -19,6 +18,7 @@
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/Polynomial.h"
+#include "QI/Option.h"
 
 using namespace std;
 using namespace Eigen;
@@ -93,86 +93,38 @@ private:
 
 } // End namespace itk
 
-//******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: qipolygen [options] reference output \n\
-\n\
-Generates a volume image from a 3D polynomial, which is read from stdin\n\
-\n\
-Options:\n\
-    --help, -h        : Print this message.\n\
-    --verbose, -v     : Print more information.\n\
-    --mask, -m file   : Mask input with specified file.\n\
-    --order, -o N     : Specify the polynomial order (default 2)\n\
-    --threads, -T N   : Use N threads (default=hardware limit).\n"
-};
-
-const struct option long_options[] = {
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"mask", required_argument, 0, 'm'},
-    {"order", required_argument, 0, 'o'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-const char *short_options = "hvm:o:T:";
-
-//******************************************************************************
-// Main
-//******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-
-    bool verbose = false;
-    QI::VolumeF::Pointer mask = ITK_NULLPTR;
-    int indexptr = 0, c, order = 2;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'm':
-                if (verbose) cout << "Reading mask file " << optarg << endl;
-                mask = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                order = stoi(optarg);
-                if (verbose) cout << "Polynomical order is: " << order << endl;
-                break;
-            case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 2) {
-        cout << "Incorrect number of arguments." << endl << usage << endl;
+    QI::OptionList opts("Usage is: qipolyimg [options] reference output\n\nPolynomial coefficients are read from stdin.\n");
+    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
+    QI::Option<int> order(2,'o',"order","Specify the polynomial order (default 2)", opts);
+    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
+    QI::Switch verbose('v',"verbose","Print more information", opts);
+    QI::Help help(opts);
+    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    if (nonopts.size() != 2) {
+        std::cerr << opts << std::endl;
+        std::cerr << "Required inputs are reference image and output filename." << std::endl;
         return EXIT_FAILURE;
     }
-    if (verbose) cout << "Reading image " << argv[optind] << std::endl;
-    QI::VolumeF::Pointer reference = QI::ReadImage(argv[optind++]);
-    string outname(argv[optind]);
-
-    if (verbose) cout << "Building polynomial" << std::endl;
-    QI::Polynomial poly(order);
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(*num_threads);
+    if (*verbose) cout << "Reading image " << argv[optind] << std::endl;
+    QI::VolumeF::Pointer reference = QI::ReadImage(nonopts[0]);
+    if (*verbose) cout << "Building polynomial" << std::endl;
+    QI::Polynomial poly(*order);
     ArrayXd coeff;
     QI::ReadArray(cin, coeff);
     if (coeff.rows() != poly.nterms()) {
-        QI_EXCEPTION("Require " + to_string(poly.nterms()) + " terms for " + to_string(order) + " order polynomial");
+        QI_EXCEPTION("Require " + to_string(poly.nterms()) + " terms for " + to_string(*order) + " order polynomial");
     }
     poly.setCoeffs(coeff);
-    if (verbose) cout << "Generating image" << std::endl;
+    if (*verbose) cout << "Generating image" << std::endl;
     auto image = itk::PolynomialImage::New();
     image->SetReferenceImage(reference);
     image->SetPolynomial(poly);
-    image->SetMask(mask);
+    image->SetMask(*mask);
     image->Update();
-    QI::WriteImage(image->GetOutput(), outname);
-    if (verbose) cout << "Finished." << endl;
+    QI::WriteImage(image->GetOutput(), nonopts[1]);
+    if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
