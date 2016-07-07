@@ -10,7 +10,6 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 #include "Eigen/Dense"
 
@@ -21,81 +20,22 @@
 #include "Filters/ReorderVectorFilter.h"
 #include "QI/Util.h"
 #include "QI/Filters/GeometricSolutionFilter.h"
+#include "QI/Option.h"
 
 using namespace std;
 using namespace Eigen;
-using namespace QI;
 
-//******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: qissfpbands [options] input \n\
-\n\
-Input must be a single complex image with at least two pairs of opposing\n\
-phase-cycles along the 4th dimension.\n\
-\n\
-Options:\n\
-    --help, -h       : Print this message.\n\
-    --verbose, -v    : Print more information.\n\
-    --out, -o path   : Specify an output filename (default image base).\n\
-    --mask, -m file  : Mask input with specified file.\n\
-    --alt_order      : Opposing phase-cycles alternate (default is two blocks).\n\
-    --threads, -T N  : Use N threads (default=hardware limit).\n\
-    --magnitude, -M  : Output a magnitude image (default is complex).\n\
-Output options (mutually exclusive):\n\
-    --magmean        : Output the mean of the magnitudes of the phase increments.\n\
-    --rms            : Output the root mean square.\n\
-    --max            : Output the maximum intensity projection.\n\
-    --cs             : Output the Complex Solution (complex mean).\n\
-    --gs             : Output the Geometric Solution (default).\n\
-Regularisation options for Geometric Solution\n\
-    --regularise, -R M : Use magnitude regularisation (from Xiang and Hoff).\n\
-                     L : Use line regularisation (default).\n\
-                     N : Don't regularise (none).\n\
-    --secondpass, -2   : Use the energy-minimisation scheme from Xiang and Hoff.\n\
-Options for multiple output volumes:\n\
-    --ph_incs, -p N : Number of phase increments (default is 4).\n\
-    --ph_order      : Data order is phase, then flip-angle (default opposite).\n"
-};
-
-enum OutEnum { MagMean = 1, RMS, Max, CS, GS };
-bool verbose = false, output_magnitude = false;
-int order_phase = false, order_alternate = false, output = OutEnum::GS, do_2pass;
-static size_t nPhases = 4;
-static string prefix;
-const struct option long_options[] = {
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"out", required_argument, 0, 'o'},
-    {"mask", required_argument, 0, 'm'},
-    {"alt_order", no_argument, &order_alternate, true},
-    {"ph_order", required_argument, &order_phase, true},
-    {"ph_incs", required_argument, 0, 'p'},
-    {"threads", required_argument, 0, 'T'},
-    {"magnitude", no_argument, 0, 'M'},
-    {"magmean", no_argument, &output, OutEnum::MagMean},
-    {"rms", no_argument, &output, OutEnum::RMS},
-    {"max", no_argument, &output, OutEnum::Max},
-    {"cs", no_argument, &output, OutEnum::CS},
-    {"gs", no_argument, &output, OutEnum::GS},
-    {"regularise", required_argument, 0, 'R'},
-    {"secondpass", no_argument, &do_2pass, true},
-    {0, 0, 0, 0}
-};
-const char *short_options = "hvo:m:s:p:T:MR:2";
-
-class GSAlgo : public QI::ApplyVectorXF::Algorithm {
-public:
-    enum class RegEnum { None = 0, Line, Magnitude };
+class BandAlgo : public QI::ApplyVectorXF::Algorithm {
 protected:
     size_t m_flips, m_lines, m_crossings, m_phases = 4;
     bool m_reorderPhase = false, m_reorderBlock = false;
-    RegEnum m_Regularise = RegEnum::Line;
     TOutput m_zero;
 public:
-    const RegEnum &regularise()       { return m_Regularise; }
-    void setRegularise(const RegEnum &r) { m_Regularise = r;}
+    size_t numInputs() const override { return 1; }
+    size_t numConsts() const override { return 0; }
+    size_t numOutputs() const override { return 1; }
+    size_t dataSize() const override { return m_flips * m_phases; }
+    size_t outputSize(const int i) const override { return m_flips; }
     void setPhases(const size_t p) {
         if (p < 4)
             QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
@@ -103,7 +43,7 @@ public:
             QI_EXCEPTION("Number of phases must be even.");
         m_phases = p;
         m_lines = m_phases / 2;
-        m_crossings = Choose(m_lines, 2);
+        m_crossings = QI::Choose(m_lines, 2);
     }
     void setInputSize(const size_t s) {
         m_flips = s / m_phases;
@@ -112,11 +52,7 @@ public:
     }
     void setReorderPhase(const bool p) { m_reorderPhase = p; }
     void setReorderBlock(const bool b) { m_reorderBlock = b; }
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return 1; }
-    size_t dataSize() const override { return m_flips * m_phases; }
-    size_t outputSize(const int i) const override { return m_flips; }
+
     virtual std::vector<float> defaultConsts() override {
         std::vector<float> def;
         return def;
@@ -124,67 +60,111 @@ public:
     virtual const TOutput &zero(const size_t i) const override {
         return m_zero;
     }
+    virtual complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const = 0;
     virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+                       std::vector<TOutput> &outputs, TConst &residual,
+                       TInput &resids, TIters &its) const override
     {
         size_t phase_stride = 1;
         if (m_reorderPhase)
             phase_stride = m_flips;
         ArrayXcf out;
         for (int f = 0; f < m_flips; f++) {
-            Map<const ArrayXcf, 0, InnerStride<>> allInput(inputs[0].GetDataPointer() + f, inputs[0].GetSize(), InnerStride<>(m_flips));
-
-            Eigen::ArrayXcd a(m_flips / 2);
-            Eigen::ArrayXcd b(m_flips / 2);
-            if (m_reorderBlock) {
-                for (int i = 0; i < m_phases; i++) {
-                    a[i] = static_cast<complex<double>>(allInput[i*2]);
-                    b[i] = static_cast<complex<double>>(allInput[i*2+1]);
-                }
-            } else {
-                a = allInput.head(m_lines).cast<std::complex<double>>();
-                b = allInput.tail(m_lines).cast<std::complex<double>>();
-            }
-
-            std::complex<double> sum(0., 0.);
-            for (size_t i = 0; i < m_lines; i++) {
-                for (size_t j = i + 1; j < m_lines; j++) {
-                    const std::complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
-                    const std::complex<double> ni(di.imag(), -di.real()), nj(dj.imag(), -dj.real());
-
-                    const double mu = cdot(a[j] - a[i], nj) / cdot(di, nj);
-                    const double nu = cdot(a[i] - a[j], ni) / cdot(dj, ni);
-                    const double xi = 1.0 - pow(cdot(di, dj) / (abs(di)*abs(dj)), 2.0);
-
-                    const std::complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
-                    const std::complex<double> gs = a[i] + mu * di;
-
-                    switch (m_Regularise) {
-                    case RegEnum::None: sum += gs; break;
-                    case RegEnum::Magnitude:
-                        if (norm(gs) < std::max({std::norm(a[i]), std::norm(a[j]), std::norm(b[i]), std::norm(b[j])})) {
-                            sum += gs;
-                        } else {
-                            sum += cs;
-                        }
-                        break;
-                    case RegEnum::Line:
-                        if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi)) {
-                            sum += gs;
-                        } else {
-                            sum += cs;
-                        }
-                        break;
-                    }
-                }
-            }
-            outputs[0][f] = static_cast<std::complex<float>>(sum / static_cast<double>(m_crossings));
+            const Map<const ArrayXcf, 0, InnerStride<>> vf(inputs[0].GetDataPointer() + f, inputs[0].GetSize(), InnerStride<>(phase_stride));
+            outputs[0][f] = this->applyFlip(vf);
         }
-}
-
+    }
 };
 
+class CSAlgo : public BandAlgo {
+public:
+    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
+        return vf.mean();
+    }
+};
+
+class MagMeanAlgo : public BandAlgo {
+public:
+    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
+        return vf.abs().mean();
+    }
+};
+
+class RMSAlgo : public BandAlgo {
+public:
+    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
+        float sum = vf.abs().square().sum();
+        return complex<float>(sqrt(sum / vf.rows()), 0.);
+    }
+};
+
+class MaxAlgo : public BandAlgo {
+public:
+    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
+        complex<float> max = std::numeric_limits<complex<float>>::lowest();
+        for (size_t i = 0; i < vf.rows(); i++) {
+            if (std::abs(vf[i]) > std::abs(max)) max = vf[i];
+        }
+        return max;
+    }
+};
+
+class GSAlgo : public BandAlgo {
+public:
+    enum class RegEnum { None = 0, Line, Magnitude };
+protected:
+    RegEnum m_Regularise = RegEnum::Line;
+public:
+    const RegEnum &regularise()       { return m_Regularise; }
+    void setRegularise(const RegEnum &r) { m_Regularise = r;}
+    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
+        Eigen::ArrayXcd a(m_flips / 2);
+        Eigen::ArrayXcd b(m_flips / 2);
+        if (m_reorderBlock) {
+            for (int i = 0; i < m_phases; i++) {
+                a[i] = static_cast<complex<double>>(vf[i*2]);
+                b[i] = static_cast<complex<double>>(vf[i*2+1]);
+            }
+        } else {
+            a = vf.head(m_lines).cast<std::complex<double>>();
+            b = vf.tail(m_lines).cast<std::complex<double>>();
+        }
+
+        std::complex<double> sum(0., 0.);
+        for (size_t i = 0; i < m_lines; i++) {
+            for (size_t j = i + 1; j < m_lines; j++) {
+                const std::complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
+                const std::complex<double> ni(di.imag(), -di.real()), nj(dj.imag(), -dj.real());
+
+                const double mu = QI::cdot(a[j] - a[i], nj) / QI::cdot(di, nj);
+                const double nu = QI::cdot(a[i] - a[j], ni) / QI::cdot(dj, ni);
+                const double xi = 1.0 - pow(QI::cdot(di, dj) / (abs(di)*abs(dj)), 2.0);
+
+                const std::complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
+                const std::complex<double> gs = a[i] + mu * di;
+
+                switch (m_Regularise) {
+                case RegEnum::None: sum += gs; break;
+                case RegEnum::Magnitude:
+                    if (norm(gs) < std::max({std::norm(a[i]), std::norm(a[j]), std::norm(b[i]), std::norm(b[j])})) {
+                        sum += gs;
+                    } else {
+                        sum += cs;
+                    }
+                    break;
+                case RegEnum::Line:
+                    if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi)) {
+                        sum += gs;
+                    } else {
+                        sum += cs;
+                    }
+                    break;
+                }
+            }
+        }
+        return static_cast<std::complex<float>>(sum / static_cast<double>(m_crossings));
+    }
+};
 
 namespace itk {
 
@@ -297,149 +277,75 @@ private:
 
 } // End namespace itk
 
-template<class T> class VectorMean {
-public:
-    VectorMean() {};
-    ~VectorMean() {};
-    bool operator!=( const VectorMean & ) const { return false; }
-    bool operator==( const VectorMean &other ) const { return !(*this != other); }
-    inline T operator()( const itk::VariableLengthVector<T> & v ) const {
-        T sum = T();
-        for (size_t i = 0; i < v.Size(); i++) {
-            sum += v[i];
-        }
-        return sum / static_cast<T>(v.Size());
-    }
-};
-
-template<class T> class VectorMagMean {
-public:
-    VectorMagMean() {};
-    ~VectorMagMean() {};
-    bool operator!=( const VectorMagMean & ) const { return false; }
-    bool operator==( const VectorMagMean &other ) const { return !(*this != other); }
-    inline complex<T> operator()( const itk::VariableLengthVector<complex<T>> & v ) const {
-        T sum = T();
-        for (size_t i = 0; i < v.Size(); i++) {
-            sum += std::abs(v[i]);
-        }
-        return complex<T>(sum / v.Size(), 0.);
-    }
-};
-
-template<class T> class VectorRMS {
-public:
-    VectorRMS() {};
-    ~VectorRMS() {};
-    bool operator!=( const VectorRMS & ) const { return false; }
-    bool operator==( const VectorRMS &other ) const { return !(*this != other); }
-    inline T operator()( const itk::VariableLengthVector<T> & v ) const {
-        T sum = T();
-        for (size_t i = 0; i < v.Size(); i++) {
-            sum += v[i] * v[i];
-        }
-        return std::sqrt(sum / T(v.Size()));
-    }
-};
-
-template<class T> class VectorMax {
-public:
-    VectorMax() {};
-    ~VectorMax() {};
-    bool operator!=( const VectorMax & ) const { return false; }
-    bool operator==( const VectorMax &other ) const { return !(*this != other); }
-    inline T operator()( const itk::VariableLengthVector<T> & v ) const {
-        T max = std::numeric_limits<T>::lowest();
-        for (size_t i = 0; i < v.Size(); i++) {
-            if (std::abs(v[i]) > std::abs(max)) max = v[i];
-        }
-        return max;
-    }
-};
-
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    auto gs = make_shared<GSAlgo>();
-    QI::VolumeF::Pointer mask = ITK_NULLPTR;
-    int indexptr = 0, c;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'm':
-                if (verbose) cout << "Reading mask file " << optarg << endl;
-                mask = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                prefix = optarg;
-                if (verbose) cout << "Output prefix will be: " << prefix << endl;
-                break;
-            case 'F': order_phase = true; break;
-            case 'p': nPhases = atoi(optarg); break;
-            case 'a': order_alternate = true; break;
-            case 'M': output_magnitude = true; break;
-            case 'R':
-                switch(*optarg) {
-                    case 'L': gs->setRegularise(GSAlgo::RegEnum::Line); break;
-                    case 'M': gs->setRegularise(GSAlgo::RegEnum::Magnitude); break;
-                    case 'N': gs->setRegularise(GSAlgo::RegEnum::None); break;
-                    default:
-                        cerr << "Unknown regularisation strategy: " << *optarg << endl;
-                        return EXIT_FAILURE;
-                }
-                break;
-            case '2': do_2pass = true; break;
-            case 'T':
-                itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
-                break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case 0:   // getopt set a flag from the long_opts
-                break;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
-        cout << "Incorrect number of arguments." << endl << QI::GetVersion() << endl << usage << endl;
+    QI::OptionList  opts("Usage is: qissfpbands [options] input\n\nInput must be a single complex image with >2 pairs phase incs\n");
+    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
+    QI::Option<int> ph_incs(4,'\0',"ph_incs","Number of phase increments (default is 4).", opts);
+    QI::Switch      ph_order('\0',"ph_order","Data order is phase, then flip-angle (default opposite).", opts);
+    QI::Switch      two_pass('2',"2pass","Use the energy-minimisation scheme from Xiang and Hoff.", opts);
+    QI::EnumOption  regularise("MLN",'L','R',"regularise","Apply regularisation (magnitude/line/none)", opts);
+    QI::EnumOption  method("GXRMN",'G','M',"method","Choose method GXRMN = GS/CS/RMS/Max/Mag Mean", opts);
+    QI::Switch      magnitude('M',"magnitude","Output a magnitude image (default is complex)", opts);
+    QI::Switch      alt_order('\0',"alt_order","Opposing phase-incs alternate (default is 2 blocks)", opts);
+    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
+    QI::Option<string> prefix("",'o',"out","Specify output filename (default input+_nobands)", opts);
+    QI::Switch      verbose('v',"verbose","Print more information", opts);
+    QI::Help        help(opts);
+    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    if (nonopts.size() != 1) {
+        cerr << opts << endl;
+        cerr << "Incorrect number of arguments." << endl;
         return EXIT_FAILURE;
     }
-    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-    string fname(argv[optind++]);
-
-    auto inFile = QI::ReadVectorImage<complex<float>>(fname);
-    size_t nVols = inFile->GetNumberOfComponentsPerPixel() / nPhases;
-    if (verbose) {
-        cout << "Number of phase increments is " << nPhases << endl;
+    if (*verbose) cout << "Opening input file: " << nonopts[0] << endl;
+    auto inFile = QI::ReadVectorImage<complex<float>>(nonopts[0]);
+    size_t nVols = inFile->GetNumberOfComponentsPerPixel() / *ph_incs;
+    if (*verbose) {
+        cout << "Number of phase increments is " << *ph_incs << endl;
         cout << "Number of volumes to process is " << nVols << endl;
     }
 
-    //typename itk::ImageToImageFilter<QI::VectorVolumeXF, QI::VolumeXF>::Pointer process = ITK_NULLPTR;
+    shared_ptr<BandAlgo> algo = nullptr;
+    string suffix = "";
+    switch (*method) {
+        case 'G': {
+            suffix = "GS";
+            if (*verbose) cout << "Geometric solution selected" << endl;
+            auto g = make_shared<GSAlgo>();
+            g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
+            g->setReorderBlock(*alt_order);
+            switch(*regularise) {
+                case 'L': g->setRegularise(GSAlgo::RegEnum::Line); break;
+                case 'M': g->setRegularise(GSAlgo::RegEnum::Magnitude); break;
+                case 'N': g->setRegularise(GSAlgo::RegEnum::None); break;
+            }
+            algo = g;
+        }   break;
+        case 'X': suffix = "CS"; algo = make_shared<CSAlgo>(); break;
+        case 'R': suffix = "RMS"; algo = make_shared<RMSAlgo>(); break;
+        case 'N': suffix = "MagMean"; algo = make_shared<MagMeanAlgo>(); break;
+        case 'M': suffix = "Max"; algo = make_shared<MaxAlgo>(); break;
+    }
+    if (*verbose) cout << suffix << " method selected." << endl;
+    algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
+    algo->setPhases(*ph_incs);
+    algo->setReorderPhase(*ph_order);
     auto apply = QI::ApplyVectorXF::New();
-    gs->setInputSize(inFile->GetNumberOfComponentsPerPixel());
-    gs->setPhases(nPhases);
-    gs->setReorderPhase(order_phase);
-    gs->setReorderBlock(order_alternate);
-    apply->SetAlgorithm(gs);
-    apply->SetMask(mask);
+    apply->SetAlgorithm(algo);
+    apply->SetMask(*mask);
     apply->SetInput(0, inFile);
+    apply->SetPoolsize(*num_threads);
+    if (*verbose) {
+        cout << "Processing" << endl;
+        auto monitor = QI::GenericMonitor::New();
+        apply->AddObserver(itk::ProgressEvent(), monitor);
+    }
     apply->Update();
-    /*
-    switch (output) {
-    case OutEnum::GS: {
-        gs->setInputSize(inFile->GetNumberOfComponentsPerPixel());
-        gs->setPhases(nPhases);
-        gs->setReorderPhase(order_phase);
-        gs->setReorderBlock(order_alternate);
-        if (mask)
-            gs->SetMask(mask);
-        if (do_2pass) {
+    /*    if (do_2pass) {
             auto p2 = itk::MinEnergyFilter::New();
             p2->SetInput(blockVector->GetOutput());
             p2->SetPass1(gs->GetOutput());
@@ -448,60 +354,18 @@ int main(int argc, char **argv) {
             process = p2;
         } else {
             process = gs;
-        }
-    } break;
-    case OutEnum::CS: {
-        auto cs = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorMean<complex<float>>>::New();
-        cs->SetInput(blockVector->GetOutput());
-        process = cs;
-    } break;
-    case OutEnum::MagMean: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorMagMean<float>>::New();
-        filter->SetInput(blockVector->GetOutput());
-        process = filter;
-    } break;
-    case OutEnum::RMS: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorRMS<complex<float>>>::New();
-        filter->SetInput(blockVector->GetOutput());
-        process = filter;
-    } break;
-    case OutEnum::Max: {
-        auto filter = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VolumeXF, VectorMax<complex<float>>>::New();
-        filter->SetInput(blockVector->GetOutput());
-        process = filter;
-    } break;
-    }
-
-    auto outTiler = itk::TileImageFilter<QI::VolumeXF, QI::SeriesXF>::New();
-    itk::FixedArray<unsigned int, 4> layout;
-    layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
-    outTiler->SetLayout(layout);
-
-    for (size_t i = 0; i < nVols; i++) {
-        if (verbose) cout << "Processing output volume " << i << endl;
-        blockVector->SetBlockStart(i * nPhases);
-        //blockVector->Update();
-        process->Update();
-        auto volume = process->GetOutput();
-        outTiler->SetInput(i, volume);
-        volume->DisconnectPipeline();
-    }
-    outTiler->UpdateLargestPossibleRegion();
-    QI::SeriesXF::Pointer output = outTiler->GetOutput();
-    output->DisconnectPipeline();
-    output->SetDirection(inFile->GetOutput()->GetDirection());
-    output->SetSpacing(inFile->GetOutput()->GetSpacing());
-    */
-    if (prefix == "")
-        prefix = QI::StripExt(fname).append("_nobands");
-    string outname = prefix;
-    outname.append(OutExt());
-    if (verbose) cout << "Output filename: " << outname << endl;
-    if (output_magnitude) {
+        }*/
+    if (*prefix == "")
+        *prefix = QI::StripExt(nonopts[0]) + "_" + suffix;
+    string outname = *prefix;
+    outname.append(QI::OutExt());
+    if (*verbose) cout << "Output filename: " << outname << endl;
+    cout << apply->GetOutput(0)->GetDirection() << endl;
+    if (*magnitude) {
         QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(apply->GetOutput(0), outname);
     } else {
         QI::WriteVectorImage(apply->GetOutput(0), outname);
     }
-    if (verbose) cout << "Finished." << endl;
+    if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
