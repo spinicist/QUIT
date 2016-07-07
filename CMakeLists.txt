@@ -10,7 +10,7 @@ include(CheckCXXCompilerFlag)
 # Prevent undefined lookup errors when building libqi as a shared library with Clang
 message( STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}" )
 if(CMAKE_CXX_COMPILER_ID MATCHES "(C|c?)lang")
-  set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -undefined dynamic_lookup")
+    set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -undefined dynamic_lookup")
 endif()
 
 find_package(ITK 4.10.0 REQUIRED)
@@ -67,9 +67,9 @@ foreach(TEST ${TESTS})
 endforeach(TEST)
 
 set(SCRIPTS_DIR Scripts)
-set(SCRIPTS example_mcd_hifi.sh example_mcd_b1.sh example_mcd_fsl_registration.sh)
+set(SCRIPTS example_mcd_hifi.sh example_mcd_b1.sh)
 foreach(SCRIPT ${SCRIPTS})
-	configure_file(${SCRIPTS_DIR}/${SCRIPT} ${SCRIPTS_DIR}/${SCRIPT} COPYONLY)
+    configure_file(${SCRIPTS_DIR}/${SCRIPT} ${SCRIPTS_DIR}/${SCRIPT} COPYONLY)
 endforeach(SCRIPT)
 
 install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
