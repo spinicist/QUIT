@@ -28,7 +28,12 @@ OptionBase::OptionBase(const char s, const std::string &l, const std::string &u,
 }
 
 std::ostream &operator<< (std::ostream &os, const OptionBase &o) {
-    os << "  -" << o.shortOption() << ",--"
+    if (o.shortOption() != '\0') {
+        os << "  -" << o.shortOption() << ",";
+    } else {
+        os << "     ";
+    }
+    os << "--"
        << std::setw(10) << std::left << o.longOption()
        << std::setw(0) << " : " << o.usage();
     return os;
