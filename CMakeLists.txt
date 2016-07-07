@@ -34,7 +34,7 @@ set(QIDIR "Source/QI")
 set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Option.cpp
-             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp
+             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp ${QIDIR}/Algorithms/Banding.cpp
              ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp
              ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
              ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp ${QIDIR}/Models/qMT.cpp
@@ -46,7 +46,6 @@ add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Sourc
                                       Source/Filters/ApplyAlgorithmFilter.h Source/Filters/ApplyAlgorithmFilter.hxx
                                       Source/Filters/ReorderVectorFilter.h Source/Filters/ReorderVectorFilter.hxx
                                       Source/Filters/ReorderImageFilter.h Source/Filters/ReorderImageFilter.hxx
-                                      Source/QI/Filters/GeometricSolutionFilter.h
                                       ${QIDIR}/RegionContraction.h)
 
 set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask qikfilter qireorder qisplitsubjects

@@ -11,7 +11,6 @@
  */
 
 #include <iostream>
-#include "Eigen/Dense"
 
 #include "itkUnaryFunctorImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
@@ -19,152 +18,11 @@
 
 #include "Filters/ReorderVectorFilter.h"
 #include "QI/Util.h"
-#include "QI/Filters/GeometricSolutionFilter.h"
 #include "QI/Option.h"
+#include "QI/Algorithms/Banding.h"
 
 using namespace std;
 using namespace Eigen;
-
-class BandAlgo : public QI::ApplyVectorXF::Algorithm {
-protected:
-    size_t m_flips, m_lines, m_crossings, m_phases = 4;
-    bool m_reorderPhase = false, m_reorderBlock = false;
-    TOutput m_zero;
-public:
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return 1; }
-    size_t dataSize() const override { return m_flips * m_phases; }
-    size_t outputSize(const int i) const override { return m_flips; }
-    void setPhases(const size_t p) {
-        if (p < 4)
-            QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
-        if ((p % 2) != 0)
-            QI_EXCEPTION("Number of phases must be even.");
-        m_phases = p;
-        m_lines = m_phases / 2;
-        m_crossings = QI::Choose(m_lines, 2);
-    }
-    void setInputSize(const size_t s) {
-        m_flips = s / m_phases;
-        m_zero.SetSize(m_flips);
-        m_zero.Fill(complex<float>(0.));
-    }
-    void setReorderPhase(const bool p) { m_reorderPhase = p; }
-    void setReorderBlock(const bool b) { m_reorderBlock = b; }
-
-    virtual std::vector<float> defaultConsts() override {
-        std::vector<float> def;
-        return def;
-    }
-    virtual const TOutput &zero(const size_t i) const override {
-        return m_zero;
-    }
-    virtual complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const = 0;
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                       std::vector<TOutput> &outputs, TConst &residual,
-                       TInput &resids, TIters &its) const override
-    {
-        size_t phase_stride = 1;
-        if (m_reorderPhase)
-            phase_stride = m_flips;
-        ArrayXcf out;
-        for (int f = 0; f < m_flips; f++) {
-            const Map<const ArrayXcf, 0, InnerStride<>> vf(inputs[0].GetDataPointer() + f, inputs[0].GetSize(), InnerStride<>(phase_stride));
-            outputs[0][f] = this->applyFlip(vf);
-        }
-    }
-};
-
-class CSAlgo : public BandAlgo {
-public:
-    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
-        return vf.mean();
-    }
-};
-
-class MagMeanAlgo : public BandAlgo {
-public:
-    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
-        return vf.abs().mean();
-    }
-};
-
-class RMSAlgo : public BandAlgo {
-public:
-    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
-        float sum = vf.abs().square().sum();
-        return complex<float>(sqrt(sum / vf.rows()), 0.);
-    }
-};
-
-class MaxAlgo : public BandAlgo {
-public:
-    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
-        complex<float> max = std::numeric_limits<complex<float>>::lowest();
-        for (size_t i = 0; i < vf.rows(); i++) {
-            if (std::abs(vf[i]) > std::abs(max)) max = vf[i];
-        }
-        return max;
-    }
-};
-
-class GSAlgo : public BandAlgo {
-public:
-    enum class RegEnum { None = 0, Line, Magnitude };
-protected:
-    RegEnum m_Regularise = RegEnum::Line;
-public:
-    const RegEnum &regularise()       { return m_Regularise; }
-    void setRegularise(const RegEnum &r) { m_Regularise = r;}
-    complex<float> applyFlip(const Map<const ArrayXcf, 0, InnerStride<>> &vf) const override {
-        Eigen::ArrayXcd a(m_flips / 2);
-        Eigen::ArrayXcd b(m_flips / 2);
-        if (m_reorderBlock) {
-            for (int i = 0; i < m_phases; i++) {
-                a[i] = static_cast<complex<double>>(vf[i*2]);
-                b[i] = static_cast<complex<double>>(vf[i*2+1]);
-            }
-        } else {
-            a = vf.head(m_lines).cast<std::complex<double>>();
-            b = vf.tail(m_lines).cast<std::complex<double>>();
-        }
-
-        std::complex<double> sum(0., 0.);
-        for (size_t i = 0; i < m_lines; i++) {
-            for (size_t j = i + 1; j < m_lines; j++) {
-                const std::complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
-                const std::complex<double> ni(di.imag(), -di.real()), nj(dj.imag(), -dj.real());
-
-                const double mu = QI::cdot(a[j] - a[i], nj) / QI::cdot(di, nj);
-                const double nu = QI::cdot(a[i] - a[j], ni) / QI::cdot(dj, ni);
-                const double xi = 1.0 - pow(QI::cdot(di, dj) / (abs(di)*abs(dj)), 2.0);
-
-                const std::complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
-                const std::complex<double> gs = a[i] + mu * di;
-
-                switch (m_Regularise) {
-                case RegEnum::None: sum += gs; break;
-                case RegEnum::Magnitude:
-                    if (norm(gs) < std::max({std::norm(a[i]), std::norm(a[j]), std::norm(b[i]), std::norm(b[j])})) {
-                        sum += gs;
-                    } else {
-                        sum += cs;
-                    }
-                    break;
-                case RegEnum::Line:
-                    if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi)) {
-                        sum += gs;
-                    } else {
-                        sum += cs;
-                    }
-                    break;
-                }
-            }
-        }
-        return static_cast<std::complex<float>>(sum / static_cast<double>(m_crossings));
-    }
-};
 
 namespace itk {
 
@@ -309,26 +167,26 @@ int main(int argc, char **argv) {
         cout << "Number of volumes to process is " << nVols << endl;
     }
 
-    shared_ptr<BandAlgo> algo = nullptr;
+    shared_ptr<QI::BandAlgo> algo = nullptr;
     string suffix = "";
     switch (*method) {
         case 'G': {
             suffix = "GS";
             if (*verbose) cout << "Geometric solution selected" << endl;
-            auto g = make_shared<GSAlgo>();
+            auto g = make_shared<QI::GSAlgo>();
             g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
             g->setReorderBlock(*alt_order);
             switch(*regularise) {
-                case 'L': g->setRegularise(GSAlgo::RegEnum::Line); break;
-                case 'M': g->setRegularise(GSAlgo::RegEnum::Magnitude); break;
-                case 'N': g->setRegularise(GSAlgo::RegEnum::None); break;
+                case 'L': g->setRegularise(QI::GSAlgo::RegEnum::Line); break;
+                case 'M': g->setRegularise(QI::GSAlgo::RegEnum::Magnitude); break;
+                case 'N': g->setRegularise(QI::GSAlgo::RegEnum::None); break;
             }
             algo = g;
         }   break;
-        case 'X': suffix = "CS"; algo = make_shared<CSAlgo>(); break;
-        case 'R': suffix = "RMS"; algo = make_shared<RMSAlgo>(); break;
-        case 'N': suffix = "MagMean"; algo = make_shared<MagMeanAlgo>(); break;
-        case 'M': suffix = "Max"; algo = make_shared<MaxAlgo>(); break;
+        case 'X': suffix = "CS"; algo = make_shared<QI::CSAlgo>(); break;
+        case 'R': suffix = "RMS"; algo = make_shared<QI::RMSAlgo>(); break;
+        case 'N': suffix = "MagMean"; algo = make_shared<QI::MagMeanAlgo>(); break;
+        case 'M': suffix = "Max"; algo = make_shared<QI::MaxAlgo>(); break;
     }
     if (*verbose) cout << suffix << " method selected." << endl;
     algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
@@ -360,7 +218,6 @@ int main(int argc, char **argv) {
     string outname = *prefix;
     outname.append(QI::OutExt());
     if (*verbose) cout << "Output filename: " << outname << endl;
-    cout << apply->GetOutput(0)->GetDirection() << endl;
     if (*magnitude) {
         QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(apply->GetOutput(0), outname);
     } else {
