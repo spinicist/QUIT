@@ -112,7 +112,7 @@ public:
     void setGauss(bool g) { m_gauss = g; }
 
     size_t numConsts() const override  { return 2; }
-    virtual std::vector<float> defaultConsts() override {
+    virtual std::vector<float> defaultConsts() const override {
         std::vector<float> def(2);
         def[0] = NAN; def[1] = 1.0f; // f0, B1
         return def;

@@ -42,7 +42,7 @@ public:
         virtual size_t numOutputs() const = 0; // Number of output parameters/variables
         virtual size_t outputSize(const int i) const { return 1; }; // Size of each output, overload for vector outputs
         virtual size_t dataSize() const = 0;   // The expected size of the concatenated input
-        virtual std::vector<TConst> defaultConsts() = 0;    // Give some default constants for when the user does not supply them
+        virtual std::vector<TConst> defaultConsts() const = 0;    // Give some default constants for when the user does not supply them
         virtual void apply(const std::vector<TInput> &inputs,
                            const std::vector<TConst> &consts,
                            std::vector<TOutput> &outputs,

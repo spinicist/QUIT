@@ -53,7 +53,7 @@ public:
     size_t numOutputs() const override { return 2; }
     size_t dataSize() const override { return m_sequence->size(); }
     const float &zero(const size_t i) const override { static float zero = 0; return zero; }
-    virtual std::vector<float> defaultConsts() override {
+    virtual std::vector<float> defaultConsts() const override {
         // B1
         std::vector<float> def(1, 1.0f);
         return def;

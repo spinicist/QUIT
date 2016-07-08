@@ -51,7 +51,7 @@ public:
     size_t dataSize() const override { return m_sequence->size(); }
     const float &zero(const size_t i) const override { static float zero = 0; return zero; }
 
-    virtual std::vector<float> defaultConsts() override {
+    virtual std::vector<float> defaultConsts() const override {
         std::vector<float> def(2, 1.0f); // T1, B1
         return def;
     }

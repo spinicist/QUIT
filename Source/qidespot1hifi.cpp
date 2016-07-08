@@ -117,7 +117,7 @@ public:
     size_t dataSize() const override   { return m_spgr->size() + m_mprage->size(); }
     const float &zero(const size_t i) const override { static float zero = 0; return zero; }
 
-    virtual std::vector<float> defaultConsts() override {
+    virtual std::vector<float> defaultConsts() const override {
         // No constants for HIFI
         std::vector<float> def(0);
         return def;

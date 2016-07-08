@@ -53,7 +53,7 @@ public:
     }
     size_t dataSize() const override { return m_size; }
     void setSize(const size_t s) { m_size = s; }
-    virtual std::vector<float> defaultConsts() override {
+    virtual std::vector<float> defaultConsts() const override {
         std::vector<float> def(1, 1.0f); // B1
         return def;
     }
