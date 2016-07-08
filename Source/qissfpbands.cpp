@@ -26,22 +26,25 @@ using namespace Eigen;
 
 namespace itk {
 
-class MinEnergyFilter : public ImageToImageFilter<VectorImage<complex<float>, 3>, Image<complex<float>, 3>>
+class MinEnergyFilter : public ImageToImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF>
 {
 protected:
     size_t m_flips, m_phases, m_lines = 0;
+    bool m_reorderPhase = false, m_reorderBlock = false;
 
 public:
-    typedef VectorImage<complex<float>, 3>     TInputImage;
-    typedef Image<complex<float>, 3>           TOutputImage;
-    typedef Image<float, 3>                    TMask;
-    typedef MinEnergyFilter                   Self;
+    typedef QI::VectorVolumeXF TInputImage;
+    typedef QI::VectorVolumeXF TOutputImage;
+    typedef QI::VolumeF        TMask;
+    typedef MinEnergyFilter    Self;
     typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
-    typedef SmartPointer<Self>                 Pointer;
+    typedef SmartPointer<Self> Pointer;
 
     itkNewMacro(Self);
     itkTypeMacro(MinEnergyFilter, ImageToImageFilter);
 
+    void setReorderPhase(const bool p) { m_reorderPhase = p; }
+    void setReorderBlock(const bool b) { m_reorderBlock = b; }
     void SetPhases(const size_t p) {
         if (p < 4)
             QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
@@ -61,7 +64,7 @@ public:
     virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
-            QI_EXCEPTION("Input size and number of phases do not match");
+            QI_EXCEPTION("Input size " << this->GetInput()->GetNumberOfComponentsPerPixel() << " and number of phases " << m_phases << " do not match");
         }
         m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
         auto op = this->GetOutput();
@@ -85,45 +88,73 @@ protected:
         radius.Fill(1);
         ConstNeighborhoodIterator<TInputImage> inputIter(radius, this->GetInput(), region);
         ConstNeighborhoodIterator<TOutputImage> pass1Iter(radius, this->GetPass1(), region);
-
         auto m = this->GetMask();
         ImageRegionConstIterator<TMask> maskIter;
         if (m) {
             maskIter = ImageRegionConstIterator<TMask>(m, region);
         }
         ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
+        ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
+        VariableLengthVector<complex<float>> output(m_flips);
+        size_t phase_stride = 1;
+        if (m_reorderPhase)
+            phase_stride = m_flips;
+        Eigen::ArrayXcd a_center(m_flips / 2);
+        Eigen::ArrayXcd b_center(m_flips / 2);
+        Eigen::ArrayXcd a_pixel(m_flips / 2);
+        Eigen::ArrayXcd b_pixel(m_flips / 2);
         while(!inputIter.IsAtEnd()) {
             if (!m || maskIter.Get()) {
-
-                complex<double> output = 0.;
-                VariableLengthVector<complex<float>> inputVector = inputIter.GetCenterPixel();
-                Map<const ArrayXcf> allInput(inputVector.GetDataPointer(), m_phases);
-                ArrayXcd a_center = allInput.head(m_lines).cast<complex<double>>();
-                ArrayXcd b_center = allInput.tail(m_lines).cast<complex<double>>();
-                for (int i = 0; i < m_lines; i++) {
-                    double num = 0., den = 0.;
-                    for (int p = 0; p < inputIter.Size(); ++p) {
-                        const complex<double> Id = static_cast<complex<double>>(pass1Iter.GetPixel(p));
-                        VariableLengthVector<complex<float>> inputVector = inputIter.GetPixel(p);
-                        Map<const VectorXcf> allInput(inputVector.GetDataPointer(), m_phases);
-                        const ArrayXcd a_pixel = allInput.head(m_lines).cast<complex<double>>();
-                        const ArrayXcd b_pixel = allInput.tail(m_lines).cast<complex<double>>();
-
-                        num += real(conj(b_pixel[i] - Id)*(b_pixel[i] - a_pixel[i]) + conj(b_pixel[i] - a_pixel[i])*(b_pixel[i] - Id));
-                        den += real(conj(a_pixel[i] - b_pixel[i])*(a_pixel[i] - b_pixel[i]));
+                VariableLengthVector<complex<float>> input_center = inputIter.GetCenterPixel();
+                for (int f = 0; f < m_flips; f++) {
+                    const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> phases_center(input_center.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride));
+                    if (m_reorderBlock) {
+                        for (int i = 0; i < m_phases; i++) {
+                            a_center[i] = static_cast<std::complex<double>>(phases_center[i*2]);
+                            b_center[i] = static_cast<std::complex<double>>(phases_center[i*2+1]);
+                        }
+                    } else {
+                        a_center = phases_center.head(m_lines).cast<std::complex<double>>();
+                        b_center = phases_center.tail(m_lines).cast<std::complex<double>>();
                     }
-                    double w = num / (2. * den);
-                    if (isfinite(w)) {
-                        output += w*a_center[i] + (1. - w)*b_center[i];
+                    complex<double> sum(0.0,0.0);
+                    for (int i = 0; i < m_lines; i++) {
+                        double num = 0., den = 0.;
+                        for (int p = 0; p < inputIter.Size(); ++p) {
+                            VariableLengthVector<complex<float>> pass1_pixel = pass1Iter.GetPixel(p);
+                            const complex<double> Id = pass1_pixel[f];
+                            VariableLengthVector<complex<float>> input_pixel = inputIter.GetPixel(p);
+                            const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> phases_pixel(input_pixel.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride));
+                            if (m_reorderBlock) {
+                                for (int i = 0; i < m_phases; i++) {
+                                    a_pixel[i] = static_cast<std::complex<double>>(phases_pixel[i*2]);
+                                    b_pixel[i] = static_cast<std::complex<double>>(phases_pixel[i*2+1]);
+                                }
+                            } else {
+                                a_pixel = phases_center.head(m_lines).cast<std::complex<double>>();
+                                b_pixel = phases_center.tail(m_lines).cast<std::complex<double>>();
+                            }
+                            num += real(conj(b_pixel[i] - Id)*(b_pixel[i] - a_pixel[i]) + conj(b_pixel[i] - a_pixel[i])*(b_pixel[i] - Id));
+                            den += real(conj(a_pixel[i] - b_pixel[i])*(a_pixel[i] - b_pixel[i]));
+                        }
+                        double w = num / (2. * den);
+                        if (isfinite(w)) {
+                            sum += w*a_center[i] + (1. - w)*b_center[i];
+                        }
                     }
+                    output[f] = static_cast<complex<float>>(sum / static_cast<double>(m_lines));
                 }
-                outputIter.Set(static_cast<complex<float>>(output / static_cast<double>(m_lines)));
+            } else {
+                output.Fill(complex<float>(0.f,0.f));
             }
+            outputIter.Set(output);
             ++inputIter;
             ++pass1Iter;
             if (m)
                 ++maskIter;
             ++outputIter;
+            if (threadId == 0)
+                progress.CompletedPixel(); // We can get away with this because enqueue blocks if the queue is full
         }
         //std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
     }
@@ -177,8 +208,8 @@ int main(int argc, char **argv) {
             g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
             g->setReorderBlock(*alt_order);
             switch(*regularise) {
-                case 'L': g->setRegularise(QI::GSAlgo::RegEnum::Line); break;
-                case 'M': g->setRegularise(QI::GSAlgo::RegEnum::Magnitude); break;
+                case 'L': suffix += "L"; g->setRegularise(QI::GSAlgo::RegEnum::Line); break;
+                case 'M': suffix += "M"; g->setRegularise(QI::GSAlgo::RegEnum::Magnitude); break;
                 case 'N': g->setRegularise(QI::GSAlgo::RegEnum::None); break;
             }
             algo = g;
@@ -198,30 +229,40 @@ int main(int argc, char **argv) {
     apply->SetInput(0, inFile);
     apply->SetPoolsize(*num_threads);
     if (*verbose) {
-        cout << "Processing" << endl;
+        cout << "1st pass" << endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    /*    if (do_2pass) {
-            auto p2 = itk::MinEnergyFilter::New();
-            p2->SetInput(blockVector->GetOutput());
-            p2->SetPass1(gs->GetOutput());
-            if (mask)
-                p2->SetMask(mask);
-            process = p2;
-        } else {
-            process = gs;
-        }*/
+    QI::VectorVolumeXF::Pointer output = apply->GetOutput(0);
+    output->DisconnectPipeline();
+    if (*two_pass) {
+        suffix += "2";
+        auto p2 = itk::MinEnergyFilter::New();
+        p2->SetPhases(*ph_incs);
+        p2->setReorderBlock(*alt_order);
+        p2->setReorderPhase(*ph_order);
+        p2->SetInput(inFile);
+        p2->SetPass1(output);
+        p2->SetMask(*mask);
+        if (*verbose) {
+            cout << "2nd pass" << endl;
+            auto monitor = QI::GenericMonitor::New();
+            p2->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        p2->Update();
+        output = p2->GetOutput();
+        output->DisconnectPipeline();
+    }
     if (*prefix == "")
         *prefix = QI::StripExt(nonopts[0]) + "_" + suffix;
     string outname = *prefix;
     outname.append(QI::OutExt());
     if (*verbose) cout << "Output filename: " << outname << endl;
     if (*magnitude) {
-        QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(apply->GetOutput(0), outname);
+        QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(output, outname);
     } else {
-        QI::WriteVectorImage(apply->GetOutput(0), outname);
+        QI::WriteVectorImage(output, outname);
     }
     if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
