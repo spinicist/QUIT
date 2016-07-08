@@ -42,17 +42,18 @@ void BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
                      TInput &resids, TIters &its) const
 {
     size_t phase_stride = 1;
+    size_t flip_stride = m_flips;
     if (m_reorderPhase)
-        phase_stride = m_flips;
+        std::swap(phase_stride, flip_stride);
     for (int f = 0; f < m_flips; f++) {
-        const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride));
+        const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride));
         outputs[0][f] = this->applyFlip(vf);
     }
 }
 
 std::complex<float> GSAlgo::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
-    Eigen::ArrayXcd a(m_flips / 2);
-    Eigen::ArrayXcd b(m_flips / 2);
+    Eigen::ArrayXcd a(m_lines);
+    Eigen::ArrayXcd b(m_lines);
     SplitBlocks(vf, a, b, m_reorderBlock);
 
     std::complex<double> sum(0., 0.);

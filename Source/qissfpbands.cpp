@@ -97,26 +97,19 @@ protected:
         ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
         VariableLengthVector<complex<float>> output(m_flips);
         size_t phase_stride = 1;
+        size_t flip_stride = m_flips;
         if (m_reorderPhase)
-            phase_stride = m_flips;
-        Eigen::ArrayXcd a_center(m_flips / 2);
-        Eigen::ArrayXcd b_center(m_flips / 2);
-        Eigen::ArrayXcd a_pixel(m_flips / 2);
-        Eigen::ArrayXcd b_pixel(m_flips / 2);
+            std::swap(flip_stride, phase_stride);
+        Eigen::ArrayXcd a_center(m_lines);
+        Eigen::ArrayXcd b_center(m_lines);
+        Eigen::ArrayXcd a_pixel(m_lines);
+        Eigen::ArrayXcd b_pixel(m_lines);
         while(!inputIter.IsAtEnd()) {
             if (!m || maskIter.Get()) {
                 VariableLengthVector<complex<float>> input_center = inputIter.GetCenterPixel();
                 for (int f = 0; f < m_flips; f++) {
                     const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> phases_center(input_center.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride));
-                    if (m_reorderBlock) {
-                        for (int i = 0; i < m_phases; i++) {
-                            a_center[i] = static_cast<std::complex<double>>(phases_center[i*2]);
-                            b_center[i] = static_cast<std::complex<double>>(phases_center[i*2+1]);
-                        }
-                    } else {
-                        a_center = phases_center.head(m_lines).cast<std::complex<double>>();
-                        b_center = phases_center.tail(m_lines).cast<std::complex<double>>();
-                    }
+                    QI::SplitBlocks(phases_center, a_center, b_center, m_reorderBlock);
                     complex<double> sum(0.0,0.0);
                     for (int i = 0; i < m_lines; i++) {
                         double num = 0., den = 0.;
@@ -125,15 +118,7 @@ protected:
                             const complex<double> Id = pass1_pixel[f];
                             VariableLengthVector<complex<float>> input_pixel = inputIter.GetPixel(p);
                             const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> phases_pixel(input_pixel.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride));
-                            if (m_reorderBlock) {
-                                for (int i = 0; i < m_phases; i++) {
-                                    a_pixel[i] = static_cast<std::complex<double>>(phases_pixel[i*2]);
-                                    b_pixel[i] = static_cast<std::complex<double>>(phases_pixel[i*2+1]);
-                                }
-                            } else {
-                                a_pixel = phases_center.head(m_lines).cast<std::complex<double>>();
-                                b_pixel = phases_center.tail(m_lines).cast<std::complex<double>>();
-                            }
+                            QI::SplitBlocks(phases_pixel, a_pixel, b_pixel, m_reorderBlock);
                             num += real(conj(b_pixel[i] - Id)*(b_pixel[i] - a_pixel[i]) + conj(b_pixel[i] - a_pixel[i])*(b_pixel[i] - Id));
                             den += real(conj(a_pixel[i] - b_pixel[i])*(a_pixel[i] - b_pixel[i]));
                         }

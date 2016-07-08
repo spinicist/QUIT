@@ -36,8 +36,8 @@ void SplitBlocks(const Eigen::Map<const Derived1, 0, Eigen::InnerStride<>> &full
             b[i] = static_cast<std::complex<double>>(full[i*2+1]);
         }
     } else {
-        a = full.head(a.rows()/2).template cast<std::complex<double>>();
-        b = full.tail(b.rows()/2).template cast<std::complex<double>>();
+        a = full.head(a.rows()).template cast<std::complex<double>>();
+        b = full.tail(b.rows()).template cast<std::complex<double>>();
     }
 }
 
