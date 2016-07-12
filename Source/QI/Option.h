@@ -37,7 +37,7 @@ protected:
     const std::string m_long, m_usage;
 
 public:
-    OptionBase(const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions());
+    OptionBase(const char s, const std::string &l, const std::string &u, OptionList &opts);
 
     char shortOption() const { return m_short; }
     const std::string &longOption() const { return m_long; }
@@ -68,7 +68,7 @@ class Switch : public OptionBase {
 protected:
     bool m_value;
 public:
-    Switch(const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+    Switch(const char s, const std::string &l, const std::string &u, OptionList &opts) :
         OptionBase(s, l, u, opts)
     {}
 
@@ -87,7 +87,7 @@ template<typename T> class Option : public OptionBase {
 protected:
     T m_value;
 public:
-    Option(const T &defval, const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+    Option(const T &defval, const char s, const std::string &l, const std::string &u, OptionList &opts) :
         OptionBase(s, l, u, opts),
         m_value(defval)
     {}
@@ -107,7 +107,7 @@ public:
 protected:
     TPtr m_ptr;
 public:
-    ImageOption(const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+    ImageOption(const char s, const std::string &l, const std::string &u, OptionList &opts) :
         OptionBase(s, l, u, opts),
         m_ptr(ITK_NULLPTR)
     {}
@@ -123,7 +123,7 @@ protected:
     std::string m_enumValues;
 public:
     EnumOption(const std::string &e, const char d,
-               const char s, const std::string &l, const std::string &u, OptionList &opts = DefaultOptions()) :
+               const char s, const std::string &l, const std::string &u, OptionList &opts) :
         OptionBase(s, l, u, opts),
         m_enumValues(e),
         m_value(d)
@@ -143,7 +143,7 @@ public:
 
 class Help : public OptionBase {
 public:
-    Help(OptionList &opts = DefaultOptions()) :
+    Help(OptionList &opts) :
         OptionBase('h', "help", "Print the help message.", opts)
     {}
 
