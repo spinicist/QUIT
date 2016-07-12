@@ -60,11 +60,6 @@ public:
             }
         };
         orderLoop(1, 0, 0);
-        /*std::cout << p.transpose() << std::endl;
-        std::cout << ts.transpose() << std::endl;
-        std::cout << m_coeffs.transpose() << std::endl;
-        std::cout << (m_coeffs * ts).transpose() << std::endl;
-        std::cout << (m_coeffs * ts).sum() << std::endl;*/
         return ts;
     }
 
@@ -76,7 +71,7 @@ public:
         return values(p).sum();
     }
 
-    void print() const {
+    void print_terms() const {
         std::vector<std::string> t(m_coeffs.rows(), "a");
         std::string list = "1xyz";
         int it = 0, startx = 0, starty = 0, startz = 0;
@@ -91,7 +86,6 @@ public:
             }
         };
         orderLoop(std::string(""), 0, 0);
-        std::cout << m_coeffs.transpose() << std::endl;
         std::cout << t[0];
         for (int i = 1; i < m_coeffs.rows(); i++) {
             std::cout << " + " << t[i]; 

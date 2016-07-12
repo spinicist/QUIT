@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     QI::OptionList opts("Usage is: qipolyfit [options] input\n\nFits a 3D polynomial to a volume and prints the co-efficients to stdout.\n");
     QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::Switch print_terms('\0',"print-terms","Print out the polynomial terms");
+    QI::Switch print_terms('\0',"print-terms","Print out the polynomial terms", opts);
     QI::Option<int> order(2,'o',"order","Specify the polynomial order (default 2)", opts);
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
     fit->Update();
     cout << fit->GetPolynomial().coeffs().transpose() << endl;
     if (*print_terms)
-        fit->GetPolynomial().print();
+        fit->GetPolynomial().print_terms();
     if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
