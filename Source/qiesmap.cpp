@@ -9,12 +9,12 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 
 #include "QI/Util.h"
+#include "QI/Option.h"
 #include "QI/Sequences/SteadyStateSequence.cpp"
 #include "Filters/ApplyAlgorithmFilter.h"
 
@@ -31,10 +31,13 @@ void SemiaxesToHoff(const double A, const double B, const double c,
 
 void EllipseToMRI(const double a, const double b, const double scale, const double th, const double TR, const double flip,
                   float &M, float &T1, float &T2, float &df0) {
-    const double ca = cos(flip);
-    T1 = -TR / (log(a-b + (1.-a*b)*a*ca) - log(a*(1.-a*b) + (a-b)*ca));
-    T2 = -TR / log(a);
-    M = (scale/sqrt(a))*(1-b*b)/(1-a*b);
+    const double cosf = cos(flip);
+    const double upper = exp(-TR / 4.3);
+    const double clampa = QI::clamp(a, 0.0, upper);
+    T2 = -TR / log(clampa);
+    T1 = -TR / (log(clampa-b + (1.-clampa*b)*clampa*cosf) - log(clampa*(1.-clampa*b) + (clampa-b)*cosf));
+    
+    M = (scale/sqrt(clampa))*(1-b*b)/(1-clampa*b);
     df0 = th / (2.*M_PI*TR);
 }
 
@@ -146,115 +149,52 @@ public:
     }
 };
 
-//******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: qiesmap [options] input \n\
-\n\
-A utility for calculating T1,T2,PD and f0 maps from SSFP data.\n\
-Input must be a single complex image with at least 6 phase increments.\n\
-\n\
-Options:\n\
-    --help, -h       : Print this message.\n\
-    --verbose, -v    : Print more information.\n\
-    --out, -o path   : Specify an output prefix.\n\
-    --mask, -m file  : Mask input with specified file.\n\
-    --B1, -b file    : B1 Map file (ratio)\n\
-    --threads, -T N  : Use N threads (default=hardware limit).\n"
-};
-
-bool verbose = false;
-static size_t num_threads = 4;
-static string outPrefix;
-const struct option long_opts[] = {
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"out", required_argument, 0, 'o'},
-    {"mask", required_argument, 0, 'm'},
-    {"B1", required_argument, 0, 'b'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-const char *short_opts = "hvo:m:b:T:";
-
-//******************************************************************************
-// Main
-//******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::VolumeF::Pointer mask = ITK_NULLPTR;
-    QI::VolumeF::Pointer B1   = ITK_NULLPTR;
-
-    shared_ptr<ESAlgo> algo = make_shared<ESAlgo>();
-    int indexptr = 0, c;
-    while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'm':
-                if (verbose) cout << "Opening mask file " << optarg << endl;
-                mask = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                outPrefix = optarg;
-                if (verbose) cout << "Output prefix will be: " << outPrefix << endl;
-                break;
-            case 'b':
-                if (verbose) cout << "Opening B1 file: " << optarg << endl;
-                B1 = QI::ReadImage(optarg);
-                break;
-            case 'T':
-                num_threads = stoi(optarg);
-                if (num_threads == 0)
-                    num_threads = std::thread::hardware_concurrency();
-                break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
-        cout << "Incorrect number of arguments." << endl << usage << endl;
+    QI::OptionList opts("Usage is: qiesmap [options] input_file\n\nA utility for calculating T1,T2,PD and f0 maps from SSFP data.\nInput must be a single complex image with at least 6 phase increments.");
+    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
+    QI::Option<std::string> outPrefix("", 'o', "out","Prefix output filenames", opts);
+    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
+    QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
+    QI::EnumOption algorithm("lwnb",'l','a',"algo","Choose algorithm (f/h/c)", opts);
+    QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
+    QI::Switch verbose('v',"verbose","Print more information", opts);
+    QI::Help help(opts);
+    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    if (nonopts.size() != 1) {
+        std::cerr << opts << std::endl;
+        std::cerr << "No input filename specified." << std::endl;
         return EXIT_FAILURE;
     }
-
-    string inputFilename = argv[optind++];
-    if (verbose) cout << "Opening file: " << inputFilename << endl;
-    auto data = QI::ReadVectorImage<complex<float>>(inputFilename);
-    shared_ptr<QI::SSFP_GS> seq = make_shared<QI::SSFP_GS>(cin, true);
-    if (verbose) cout << *seq;
+    shared_ptr<ESAlgo> algo = make_shared<ESAlgo>();
+    if (*verbose) cout << "Opening file: " << nonopts[0] << endl;
+    auto data = QI::ReadVectorImage<complex<float>>(nonopts[0]);
+    shared_ptr<QI::SSFP_GS> seq = make_shared<QI::SSFP_GS>(cin, !*suppress);
+    if (*verbose) cout << *seq;
     auto apply = QI::ApplyXF::New();
     algo->setSize(data->GetNumberOfComponentsPerPixel());
     algo->SetSequence(seq);
     apply->SetAlgorithm(algo);
-    apply->SetPoolsize(num_threads);
+    apply->SetPoolsize(*num_threads);
     apply->SetInput(0, data);
-    
-    if (mask)
-        apply->SetMask(mask);
-    if (B1)
-        apply->SetConst(0, B1);
-    if (verbose) {
+    apply->SetMask(*mask);
+    apply->SetConst(0, *B1);
+    if (*verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
+    if (*verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
         cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
-    outPrefix = outPrefix + "ES_";
+    *outPrefix = *outPrefix + "ES_";
     for (int i = 0; i < algo->numOutputs(); i++) {
-        QI::WriteImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
+        QI::WriteImage(apply->GetOutput(i), *outPrefix + algo->names().at(i) + QI::OutExt());
     }
     
-    if (verbose) cout << "Finished." << endl;
+    if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }
