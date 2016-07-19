@@ -136,7 +136,7 @@ TMoments::VectorType GetCoG(const QI::VolumeF::Pointer &img) {
     auto moments = TMoments::New();
     moments->SetImage(img);
     moments->Compute();
-    return moments->GetCenterOfGravity();
+    return -moments->GetCenterOfGravity(); // ITK seems to put a negative sign on the CoG
 }
 
 typedef itk::Euler3DTransform<double> TRigid;
@@ -463,12 +463,13 @@ int main(int argc, char **argv) {
     for (auto i = 1; i <= keep; i++) {
         QI::VolumeF::Pointer subject = MaskWithLabel(input, labels, i, true);
         TMoments::VectorType CoG = GetCoG(subject);
-        TMoments::VectorType offset = CoG - refCoG;
-        if (verbose) cout << "Subject " << i << " CoG is " << CoG << endl;
+        TMoments::VectorType offset = refCoG - CoG;
+        if (verbose) cout << "Subject " << i << " CoG is " << CoG << ", angle is " << (180./M_PI)*atan2(CoG[1], CoG[0]) << endl;
+        double rotZ = 0.;        
         switch (alignment) {
             case ALIGN::NONE: break;
-            case ALIGN::RING_IN: angleZ -= (M_PI / 2.) - atan2(CoG[1], CoG[0]); break;
-            case ALIGN::RING_OUT: angleZ -= (M_PI * 3./2.) - atan2(CoG[1], CoG[0]); break;
+            case ALIGN::RING_IN: rotZ = (M_PI/2. + atan2(CoG[1], CoG[0])); break;
+            case ALIGN::RING_OUT: rotZ = (-M_PI/2. + atan2(CoG[1], CoG[0])); break;
             case ALIGN::READ:
                 cin >> angleX; angleX *= (M_PI/180.);
                 cin >> angleY; angleY *= (M_PI/180.);
@@ -479,7 +480,7 @@ int main(int argc, char **argv) {
 
         TRigid::Pointer tfm = TRigid::New();
         tfm->SetIdentity();
-        tfm->SetRotation(angleX, angleY, angleZ);
+        tfm->SetRotation(angleX, angleY, angleZ + rotZ);
         tfm->SetOffset(offset);
         
         if (reference) {
