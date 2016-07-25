@@ -29,7 +29,7 @@ rm ${EIGEN_DIR}.tar.gz
 
 # CppSolvers
 SOLVERS_DIR="CppNumericalSolvers"
-SOLVERS_URL="http://github.com/spinicist/CppNumericalSolvers/archive/cmaes_rewrite.tar.gz"
+SOLVERS_URL="http://github.com/spinicist/CppNumericalSolvers/archive/cmaes_rebase.tar.gz"
 curl --location $SOLVERS_URL > ${SOLVERS_DIR}.tar.gz
 mkdir -p ${SOLVERS_DIR}
 tar --extract --file=${SOLVERS_DIR}.tar.gz --strip-components=1 --directory=${SOLVERS_DIR}
