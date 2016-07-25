@@ -66,7 +66,7 @@ std::ostream &operator<< (std::ostream &os, const OptionList &l);
 
 class Switch : public OptionBase {
 protected:
-    bool m_value;
+    bool m_value = false;
 public:
     Switch(const char s, const std::string &l, const std::string &u, OptionList &opts) :
         OptionBase(s, l, u, opts)
