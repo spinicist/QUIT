@@ -16,7 +16,7 @@
 #include <Eigen/Dense>
 
 #include "cppoptlib/meta.h"
-#include "cppoptlib/problem.h"
+#include "cppoptlib/boundedproblem.h"
 #include "cppoptlib/solver/lbfgsbsolver.h"
 #include "cppoptlib/solver/cmaesbsolver.h"
 #include "QI/Util.h"

@@ -15,7 +15,7 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
-#include "cppoptlib/problem.h"
+#include "cppoptlib/boundedproblem.h"
 #include "cppoptlib/solver/lbfgsbsolver.h"
 #include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
