@@ -67,15 +67,18 @@ int main(int argc, char **argv) {
     itk::Versor<double> rotate;
     if (*rotX != 0.0) {
         if (*verbose) cout << "Rotating image by " << string(optarg) << " around X axis." << endl;
-        rotate.SetRotationAroundX(*rotX * M_PI / 180.0);
+        itk::Versor<double> temp; temp.SetRotationAroundX(*rotX * M_PI / 180.0);
+        rotate *= temp;
     }
     if (*rotY != 0.0) {
         if (*verbose) cout << "Rotating image by " << string(optarg) << " around X axis." << endl;
-        rotate.SetRotationAroundY(*rotY * M_PI / 180.0);
+        itk::Versor<double> temp; temp.SetRotationAroundY(*rotY * M_PI / 180.0);
+        rotate *= temp;
     }
     if (*rotZ != 0.0) {
         if (*verbose) cout << "Rotating image by " << string(optarg) << " around X axis." << endl;
-        rotate.SetRotationAroundZ(*rotZ * M_PI / 180.0);
+        itk::Versor<double> temp; temp.SetRotationAroundZ(*rotZ * M_PI / 180.0);
+        rotate *= temp;
     }
     direction = rotate.GetMatrix() * direction;
     origin = rotate.GetMatrix() * origin;
