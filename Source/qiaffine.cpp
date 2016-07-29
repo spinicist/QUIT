@@ -14,6 +14,7 @@
 #include "itkImage.h"
 #include "itkVersor.h"
 #include "itkVersorTransform.h"
+#include "itkEuler3DTransform.h"
 #include "itkTransformFileWriter.h"
 #include "itkChangeInformationImageFilter.h"
 
@@ -98,9 +99,9 @@ int main(int argc, char **argv) {
     */
 
     if (*tfmFile != "") { // Only output the transform file
-        auto tfm = itk::VersorTransform<double>::New();
+        itk::Euler3DTransform<double>::Pointer tfm = itk::Euler3DTransform<double>::New();
         tfm->SetCenter(origin);
-        tfm->SetRotation(rotate);
+        tfm->SetRotation((*rotX)*M_PI/180.,(*rotY)*M_PI/180.,(*rotZ)*M_PI/180.);
         tfm->SetOffset(offset);
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
