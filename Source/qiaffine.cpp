@@ -28,8 +28,11 @@ int main(int argc, char **argv) {
     QI::OptionList opts("Usage is: qiaffine input [output] [transforms]\n\nApplies simple affine transformations to images by manipulating the header\ntransforms. If an output file is not specified, the input file will be\noverwritten.");
     QI::Option<float> scale(1,'\0',"scale","Scale axes by a factor of S", opts);
     QI::Option<float> rotX(0,'\0',"rotX","Rotate about X axis by N degrees", opts);
-    QI::Option<float> rotY(0,'\0',"rotY","Rotate about X axis by N degrees", opts);
-    QI::Option<float> rotZ(0,'\0',"rotZ","Rotate about X axis by N degrees", opts);
+    QI::Option<float> rotY(0,'\0',"rotY","Rotate about Y axis by N degrees", opts);
+    QI::Option<float> rotZ(0,'\0',"rotZ","Rotate about Z axis by N degrees", opts);
+    QI::Option<float> offX(0,'\0',"offX","Offset X", opts);
+    QI::Option<float> offY(0,'\0',"offY","Offset Y", opts);
+    QI::Option<float> offZ(0,'\0',"offZ","Offset Z", opts);
     QI::Option<std::string> tfmFile("", 't', "tfm","Save ITK transform file", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
@@ -80,6 +83,10 @@ int main(int argc, char **argv) {
         itk::Versor<double> temp; temp.SetRotationAroundZ(*rotZ * M_PI / 180.0);
         rotate *= temp;
     }
+    itk::Versor<double>::VectorType offset;
+    offset[0] = *offX;
+    offset[1] = *offY;
+    offset[2] = *offZ;
     direction = rotate.GetMatrix() * direction;
     origin = rotate.GetMatrix() * origin;
     
@@ -94,6 +101,7 @@ int main(int argc, char **argv) {
         auto tfm = itk::VersorTransform<double>::New();
         tfm->SetCenter(origin);
         tfm->SetRotation(rotate);
+        tfm->SetOffset(offset);
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
         writer->SetFileName(*tfmFile);
