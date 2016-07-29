@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
 
     if (*tfmFile != "") { // Only output the transform file
         auto tfm = itk::VersorTransform<double>::New();
+        tfm->SetCenter(origin);
         tfm->SetRotation(rotate);
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
