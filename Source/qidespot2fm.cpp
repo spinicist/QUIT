@@ -79,11 +79,14 @@ public:
 };
 
 class BFGSAlgo : public FMAlgo {
+protected:
+    int m_nstart = 2;
 public:
     using typename FMAlgo::TArray;
     using typename FMAlgo::TInput;
     using typename FMAlgo::TIterations;
 
+    BFGSAlgo(const int nstart) : FMAlgo(), m_nstart(nstart) {}
     virtual void apply(const TInput &indata, const TArray &consts, TArray &outputs, TArray &resids, TIterations &its) const override {
         double T1 = consts[0];
         double B1 = consts[1];
@@ -111,15 +114,18 @@ public:
             cost.setUpperBound(upper);
             
             // f0 is scaled by TR in the cost function so that scaling is better here
-            vector<double> f0_starts;
-            if (!this->m_asymmetric) {
-                f0_starts.push_back(0.01);
-                f0_starts.push_back(0.25);
+            vector<double> f0_starts(m_nstart);
+            if (this->m_asymmetric) {
+                double step = (upper[2] - lower[2]) / (m_nstart+1);
+                for (int i = 0; i < m_nstart; i++) {
+                    f0_starts[i] = lower[2] + (i+1)*step;
+                }
             } else {
-                f0_starts.push_back(0.);
-                f0_starts.push_back( 0.25);
-                f0_starts.push_back(-0.25);
+                for (int i = 0; i < m_nstart; i++) {
+                    f0_starts[i] = 0.001 + upper[2]*(static_cast<double>(i) / static_cast<double>(m_nstart));
+                }
             }
+
             double best = numeric_limits<double>::infinity();
             Eigen::Array3d bestP;
             its = 0;
@@ -197,6 +203,7 @@ int main(int argc, char **argv) {
     QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
     QI::RegionOption<TApply::TRegion> subregion('s',"subregion","Process subregion starting at voxel I,J,K with size SI,SJ,SK", opts);
     QI::Switch flex('f',"flex", "Specify all phase-incs for all flip-angles", opts);
+    QI::Option<int> nstart(2, 'F',"off","Number of off-resonance start points", opts);
     QI::Switch asym('A',"asym","Fit +/- off-resonance frequency", opts);
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
@@ -226,7 +233,7 @@ int main(int argc, char **argv) {
     auto apply = TApply::New();
     shared_ptr<FMAlgo> algo;
     switch (*algorithm) {
-        case 'b': algo = make_shared<BFGSAlgo>(); if (*verbose) cout << "LBFGSB algorithm selected." << endl; break;
+        case 'b': algo = make_shared<BFGSAlgo>(*nstart); if (*verbose) cout << "LBFGSB algorithm selected." << endl; break;
         case 'c': algo = make_shared<CMAlgo>(); if (*verbose) cout << "CM algorithm selected." << endl; break;
         default: throw(std::runtime_error("Invalid algorithm: " + std::to_string(*algorithm)));
     }
@@ -242,6 +249,7 @@ int main(int argc, char **argv) {
     apply->SetConst(1, *B1);
     apply->SetMask(*mask);
     if (subregion.set()) {
+        if (*verbose) cout << "Setting subregion: " << *subregion << endl;
         apply->SetSubregion(*subregion);
     }
     if (*verbose) {
