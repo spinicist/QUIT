@@ -35,6 +35,7 @@ class OptionBase {
 protected:
     const char m_short;
     const std::string m_long, m_usage;
+    bool m_set = false;
 
 public:
     OptionBase(const char s, const std::string &l, const std::string &u, OptionList &opts);
@@ -45,6 +46,7 @@ public:
 
     virtual bool hasArgument() const = 0;
     virtual void setOption(const std::string &a) = 0;
+    bool set() { return m_set; } 
 };
 std::ostream &operator<< (std::ostream &os, const OptionBase &o);
 
@@ -97,6 +99,58 @@ public:
     virtual void setOption(const std::string &a) override {
         std::istringstream as(a);
         as >> m_value;
+        m_set = true;
+    }
+};
+
+template<typename Scalar, int ArraySize>
+class ArrayOption : public OptionBase {
+public:
+    typedef Eigen::Array<Scalar, ArraySize, 1> TArray;
+protected:
+    TArray m_value;
+public:
+    ArrayOption(const char s, const std::string &l, const std::string &u, OptionList &opts) :
+        OptionBase(s, l, u, opts),
+        m_value(TArray::Zero())
+    {}
+
+    TArray &operator* () { return m_value; }
+    virtual bool hasArgument() const override { return true; }
+    virtual void setOption(const std::string &a) override {
+        std::istringstream as(a);
+        for (int i = 0; i < m_value.rows(); i++) {
+            as >> m_value[i];
+        }
+        m_set = true;
+    }
+};
+
+template<typename TRegion>
+class RegionOption : public OptionBase {
+protected:
+    TRegion m_region;
+public:
+    RegionOption(const char s, const std::string &l, const std::string &u, OptionList &opts) :
+        OptionBase(s, l, u, opts)
+    {}
+
+    TRegion &operator* () { return m_region; }
+    virtual bool hasArgument() const override { return true; }
+    virtual void setOption(const std::string &a) override {
+        std::istringstream as(a);
+
+        typename TRegion::IndexType start;
+        typename TRegion::SizeType size;
+        for (int i = 0; i < TRegion::ImageDimension; i++) {
+            as >> start[i];
+        }
+        for (int i = 0; i < TRegion::ImageDimension; i++) {
+            as >> size[i];
+        }
+        m_region.SetIndex(start);
+        m_region.SetSize(size);
+        m_set = true;
     }
 };
 
@@ -114,7 +168,7 @@ public:
 
     TPtr &operator* () { return m_ptr; }
     virtual bool hasArgument() const override { return true; }
-    virtual void setOption(const std::string &a) override { m_ptr = QI::ReadImage(a); }
+    virtual void setOption(const std::string &a) override { m_ptr = QI::ReadImage(a); m_set = true; }
 };
 
 class EnumOption : public OptionBase {
@@ -138,6 +192,7 @@ public:
         } else {
             QI_EXCEPTION("Unknown enum value " + std::string{v} + " for option " + this->longOption());
         }
+        m_set = true;
     }
 };
 

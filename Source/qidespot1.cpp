@@ -234,10 +234,10 @@ int main(int argc, char **argv) {
     QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)", opts);
     QI::Option<float> clampPD(std::numeric_limits<float>::infinity(),'p',"clampPD","Clamp PD between 0 and value", opts);
     QI::Option<float> clampT1(std::numeric_limits<float>::infinity(),'t',"clampT1","Clamp T1 between 0 and value", opts);
-    QI::Option<std::string> outPrefix("", 'o', "out","Add a outPrefix to output filenames", opts);
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
     QI::EnumOption algorithm("lwnb",'l','a',"algo","Choose algorithm (l/w/n/b)", opts);
+    QI::Option<std::string> outPrefix("", 'o', "out","Add a prefix to output filenames", opts);
     QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
@@ -271,10 +271,8 @@ int main(int argc, char **argv) {
     apply->SetOutputAllResiduals(*all_residuals);
     apply->SetPoolsize(*num_threads);
     apply->SetInput(0, data);
-    if (*mask)
-        apply->SetMask(*mask);
-    if (*B1)
-        apply->SetConst(0, *B1);
+    apply->SetMask(*mask);
+    apply->SetConst(0, *B1);
     if (*verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();
