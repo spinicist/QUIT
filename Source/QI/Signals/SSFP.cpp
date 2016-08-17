@@ -27,7 +27,7 @@ VectorXcd One_SSFP_GS(carrd &flip, cdbl TR, cdbl PD, cdbl T1, cdbl T2, cdbl f0, 
     const double psi = 2. * M_PI * f0 * TR;
     const ArrayXd alpha = flip * B1;
     const ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
-    const ArrayXcd G = -PD*sqrt(E2)*polar(1., psi/2)* (1 - E1)*sin(alpha)/d;
+    const ArrayXcd G = PD*sqrt(E2)*polar(1., psi/2)*(1 - E1)*sin(alpha)/d;
     return G;
 }
 
@@ -60,7 +60,7 @@ VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR,
     const ArrayXd  alpha = flip * B1;
     const ArrayXd  theta = phi + psi;
     const ArrayXd  d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
-    const ArrayXcd G = -PD*sqrt(E2)*polar(1., psi/2.)*(1 - E1)*sin(alpha)/d;
+    const ArrayXcd G = PD*sqrt(E2)*polar(1., psi/2.)*(1 - E1)*sin(alpha)/d;
     const ArrayXd  b = E2*(1. - E1)*(1.+cos(alpha))/d;
     ArrayXcd et(theta.size());
     et.real() = cos(-theta);

@@ -38,7 +38,7 @@ void EllipseToMRI(const double a, const double b, const double scale, const doub
     T1 = -TR / (log(clampa-b + (1.-clampa*b)*clampa*cosf) - log(clampa*(1.-clampa*b) + (clampa-b)*cosf));
     
     M = (scale/sqrt(clampa))*(1-b*b)/(1-clampa*b);
-    df0 = th / (2.*M_PI*TR);
+    df0 = th / (M_PI*TR); // Missing factor of 2 due to TE not TR
 }
 
 class ESAlgo : public QI::ApplyXF::Algorithm {
@@ -51,7 +51,7 @@ public:
     size_t numOutputs() const override { return 6; }
     const float &zero(const size_t i) const override { static float zero = 0; return zero; }
     const vector<string> & names() const {
-        static vector<string> _names = {"M", "T1", "T2", "th", "a", "b"};
+        static vector<string> _names = {"M", "T1", "T2", "f0", "a", "b"};
         return _names;
     }
     size_t dataSize() const override { return m_size; }
