@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <array>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
 
@@ -32,35 +33,41 @@ void SemiaxesToHoff(const double A, const double B, const double c,
 void EllipseToMRI(const double a, const double b, const double scale, const double th, const double TR, const double flip,
                   float &M, float &T1, float &T2, float &df0) {
     const double cosf = cos(flip);
-    const double upper = exp(-TR / 4.3);
-    const double clampa = QI::clamp(a, 0.0, upper);
-    T2 = -TR / log(clampa);
-    T1 = -TR / (log(clampa-b + (1.-clampa*b)*clampa*cosf) - log(clampa*(1.-clampa*b) + (clampa-b)*cosf));
-    
-    M = (scale/sqrt(clampa))*(1-b*b)/(1-clampa*b);
+    T2 = -TR / log(a);
+    T1 = -TR / (log(a-b + a*cosf*(1.-a*b)) - log(a*(1.-a*b) + (a-b)*cosf));
+    //cout << "TR " << TR << " a " << a << " cla " << clampa << " b " << b << " T1 " << T1 << endl;
+    M = (scale/sqrt(a))*(1-b*b)/(1-a*b);
     df0 = th / (M_PI*TR); // Missing factor of 2 due to TE not TR
 }
 
-class ESAlgo : public QI::ApplyXF::Algorithm {
+class ESAlgo : public QI::ApplyVectorXFVectorF::Algorithm {
 protected:
-    size_t m_size = 0;
+    bool m_reorderPhase = false;
     shared_ptr<QI::SSFP_GS> m_sequence = nullptr;
+    size_t m_pincs = 6;
+    TOutput m_zero;
 public:
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
     size_t numOutputs() const override { return 6; }
-    const float &zero(const size_t i) const override { static float zero = 0; return zero; }
-    const vector<string> & names() const {
-        static vector<string> _names = {"M", "T1", "T2", "f0", "a", "b"};
-        return _names;
+    size_t dataSize() const override { return m_sequence->size() * m_pincs; }
+    size_t outputSize(const int i) const override { return m_sequence->flip().rows(); }
+    void setReorderPhase(const bool p) { m_reorderPhase = p; }
+    void SetSequence(const shared_ptr<QI::SSFP_GS> &s, const size_t pincs) {
+        m_sequence = s;
+        m_pincs = pincs;
+        m_zero = TOutput(m_sequence->flip().rows());
+        m_zero.Fill(0.);
     }
-    size_t dataSize() const override { return m_size; }
-    void setSize(const size_t s) { m_size = s; }
     virtual std::vector<float> defaultConsts() const override {
         std::vector<float> def(1, 1.0f); // B1
         return def;
     }
-    void SetSequence(const shared_ptr<QI::SSFP_GS> &s) { m_sequence = s;}
+    virtual const TOutput &zero(const size_t i) const override { return m_zero; }
+    const vector<string> & names() const {
+        static vector<string> _names = {"M", "T1", "T2", "f0", "a", "b"};
+        return _names;
+    }
     
     MatrixXd buildS(const ArrayXd &x, const ArrayXd &y) const {
         Matrix<double, Dynamic, 6> D(x.rows(), 6);
@@ -104,15 +111,10 @@ public:
         
         return C;
     }
-    
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                       std::vector<TOutput> &outputs, TConst &residual,
-                       TInput &resids, TIters &its) const override
-    {
+
+    std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double B1) const {
         typedef Matrix<double, 6, 6> Matrix6d;
         typedef Matrix<double, 6, 1> Vector6d;
-        const double B1 = consts[0];
-        Eigen::Map<const Eigen::ArrayXcf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         ArrayXcd data = indata.cast<complex<double>>();
         const double scale = data.abs().maxCoeff();
         ArrayXd x = data.real() / scale;
@@ -142,10 +144,30 @@ public:
         double a, b;
         double c = sqrt(xc*xc+yc*yc);
         SemiaxesToHoff(A, B, c, a, b);
+        std::array<float, 6> outputs;
         EllipseToMRI(a, b, c*scale, th, m_sequence->TR(), B1 * m_sequence->flip()[0],
                      outputs[0], outputs[1], outputs[2], outputs[3]);
         outputs[4] = a;
         outputs[5] = b;
+        return outputs;
+    }
+
+    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                       std::vector<TOutput> &outputs, TConst &residual,
+                       TInput &resids, TIters &its) const override
+    {
+        const double B1 = consts[0];
+        size_t phase_stride = 1;
+        size_t flip_stride = m_sequence->flip().rows();
+        if (m_reorderPhase)
+            std::swap(phase_stride, flip_stride);
+        for (int f = 0; f < m_sequence->flip().rows(); f++) {
+            const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_pincs, Eigen::InnerStride<>(phase_stride));
+            std::array<float, 6> tempOutputs = this->applyFlip(vf, B1);
+            for (int o = 0; o < 6; o++) {
+                outputs[o][f] = tempOutputs[o];
+            }
+        }
     }
 };
 
@@ -153,10 +175,12 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     QI::OptionList opts("Usage is: qiesmap [options] input_file\n\nA utility for calculating T1,T2,PD and f0 maps from SSFP data.\nInput must be a single complex image with at least 6 phase increments.");
     QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::Option<std::string> outPrefix("", 'o', "out","Prefix output filenames", opts);
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
+    QI::Option<int> ph_incs(6,'\0',"ph_incs","Number of phase increments (default is 6).", opts);
+    QI::Switch ph_order('\0',"ph_order","Data order is phase, then flip-angle (default opposite).", opts);
     QI::EnumOption algorithm("lwnb",'l','a',"algo","Choose algorithm (f/h/c)", opts);
+    QI::Option<std::string> outPrefix("", 'o', "out","Prefix output filenames", opts);
     QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
@@ -171,9 +195,9 @@ int main(int argc, char **argv) {
     auto data = QI::ReadVectorImage<complex<float>>(nonopts[0]);
     shared_ptr<QI::SSFP_GS> seq = make_shared<QI::SSFP_GS>(cin, !*suppress);
     if (*verbose) cout << *seq;
-    auto apply = QI::ApplyXF::New();
-    algo->setSize(data->GetNumberOfComponentsPerPixel());
-    algo->SetSequence(seq);
+    auto apply = QI::ApplyVectorXFVectorF::New();
+    algo->SetSequence(seq, *ph_incs);
+    algo->setReorderPhase(*ph_order);
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(*num_threads);
     apply->SetInput(0, data);
@@ -192,7 +216,7 @@ int main(int argc, char **argv) {
     }
     *outPrefix = *outPrefix + "ES_";
     for (int i = 0; i < algo->numOutputs(); i++) {
-        QI::WriteImage(apply->GetOutput(i), *outPrefix + algo->names().at(i) + QI::OutExt());
+        QI::WriteVectorImage(apply->GetOutput(i), *outPrefix + algo->names().at(i) + QI::OutExt());
     }
     
     if (*verbose) cout << "Finished." << endl;

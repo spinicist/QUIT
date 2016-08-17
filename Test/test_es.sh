@@ -15,7 +15,7 @@ fi
 
 # First, create input data
 SIZE="32 32 35"
-$QUITDIR/qinewimage PD.nii --size "$SIZE" -f 1.0
+$QUITDIR/qinewimage PD.nii --size "$SIZE" -g "2 0.9 1.1"
 $QUITDIR/qinewimage T1.nii --size "$SIZE" -g "0 0.5 2.0"
 $QUITDIR/qinewimage T2.nii --size "$SIZE" -g "1 0.01 0.25"
 $QUITDIR/qinewimage f0.nii --size "$SIZE" -g "2 -150.0 150.0"
@@ -24,7 +24,7 @@ $QUITDIR/qinewimage B1.nii --size "$SIZE" -f 1.0
 # Setup parameters
 SSFP_FILE="ssfp.nii"
 SSFP_TR="0.005"
-SSFP_FLIP="15"
+SSFP_FLIP="10 20 30"
 SSFP_PC4="0 90 180 270"
 SSFP_PC6="0 60 120 180 240 300"
 
@@ -58,7 +58,7 @@ compare_test "${PREFIX}PD" PD.nii ${PREFIX}ES_M.nii $NOISE $PREC
 compare_test "${PREFIX}f0" f0.nii ${PREFIX}ES_f0.nii $NOISE $PREC
 }
 
-run_tests "HYPER6" "$SSFP_PC6" "50" "-T1"
+run_tests "HYPER6" "$SSFP_PC6" "50" "--ph_order"
 
 cd ..
 SILENCE_TESTS="0"
