@@ -28,18 +28,21 @@ template<typename T> inline T cdot(const std::complex<T> &a, const std::complex<
     return real(a * conj(b));
 }
 
-template<typename Derived1, typename Derived2>
-void SplitBlocks(const Eigen::Map<const Derived1, 0, Eigen::InnerStride<>> &full, Eigen::ArrayBase<Derived2> &a, Eigen::ArrayBase<Derived2> &b, const bool reorder) {
+template<typename Derived>
+void SplitBlocks(const Eigen::ArrayBase<Derived> &full, Eigen::ArrayBase<Derived> &a, Eigen::ArrayBase<Derived> &b, const bool reorder) {
     if (reorder) {
         for (int i = 0; i < a.rows(); i++) {
             a[i] = static_cast<std::complex<double>>(full[i*2]);
             b[i] = static_cast<std::complex<double>>(full[i*2+1]);
         }
     } else {
-        a = full.head(a.rows()).template cast<std::complex<double>>();
-        b = full.tail(b.rows()).template cast<std::complex<double>>();
+        a = full.head(a.rows());
+        b = full.tail(b.rows());
     }
 }
+
+enum class RegEnum { None = 0, Line, Magnitude };
+std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::ArrayXcd &b, RegEnum r);
 
 class BandAlgo : public ApplyVectorXF::Algorithm {
 protected:
@@ -98,8 +101,6 @@ public:
 };
 
 class GSAlgo : public BandAlgo {
-public:
-    enum class RegEnum { None = 0, Line, Magnitude };
 protected:
     RegEnum m_Regularise = RegEnum::Line;
 public:

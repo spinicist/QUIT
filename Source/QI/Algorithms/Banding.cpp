@@ -19,8 +19,7 @@ void BandAlgo::setPhases(const size_t p) {
     if ((p % 2) != 0)
         QI_EXCEPTION("Number of phases must be even.");
     m_phases = p;
-    m_lines = m_phases / 2;
-    m_crossings = QI::Choose(m_lines, 2);
+    m_lines = m_phases / 2;;
 }
 
 void BandAlgo::setInputSize(const size_t s) {
@@ -51,14 +50,12 @@ void BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
     }
 }
 
-std::complex<float> GSAlgo::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
-    Eigen::ArrayXcd a(m_lines);
-    Eigen::ArrayXcd b(m_lines);
-    SplitBlocks(vf, a, b, m_reorderBlock);
-
+std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::ArrayXcd &b, RegEnum regularise) {
+    eigen_assert(a.rows() == b.rows());
     std::complex<double> sum(0., 0.);
-    for (size_t i = 0; i < m_lines; i++) {
-        for (size_t j = i + 1; j < m_lines; j++) {
+    double N = 0;
+    for (size_t i = 0; i < a.rows(); i++) {
+        for (size_t j = i + 1; j < a.rows(); j++) {
             const std::complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
             const std::complex<double> ni(di.imag(), -di.real()), nj(dj.imag(), -dj.real());
 
@@ -69,7 +66,7 @@ std::complex<float> GSAlgo::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0,
             const std::complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
             const std::complex<double> gs = a[i] + mu * di;
 
-            switch (m_Regularise) {
+            switch (regularise) {
             case RegEnum::None: sum += gs; break;
             case RegEnum::Magnitude:
                 if (norm(gs) < std::max({std::norm(a[i]), std::norm(a[j]), std::norm(b[i]), std::norm(b[j])})) {
@@ -86,9 +83,18 @@ std::complex<float> GSAlgo::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0,
                 }
                 break;
             }
+            N += 1;
         }
     }
-    return static_cast<std::complex<float>>(sum / static_cast<double>(m_crossings));
+    return static_cast<std::complex<float>>(sum / N);
+}
+
+std::complex<float> GSAlgo::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    Eigen::ArrayXcd a(m_lines);
+    Eigen::ArrayXcd b(m_lines);
+    Eigen::ArrayXcd full = vf.cast<std::complex<double>>();
+    SplitBlocks(full, a, b, m_reorderBlock);
+    return GeometricSolution(a, b, m_Regularise);
 }
 
 } // End namespace QI

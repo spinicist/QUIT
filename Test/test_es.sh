@@ -58,7 +58,7 @@ compare_test "${PREFIX}PD" PD.nii ${PREFIX}ES_M.nii $NOISE $PREC
 compare_test "${PREFIX}f0" f0.nii ${PREFIX}ES_f0.nii $NOISE $PREC
 }
 
-run_tests "HYPER6" "$SSFP_PC6" "50" "--ph_order"
+run_tests "HYPER6" "$SSFP_PC6" "50" "--ph_order -T1"
 
 cd ..
 SILENCE_TESTS="0"

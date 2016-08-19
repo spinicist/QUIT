@@ -108,7 +108,7 @@ protected:
             if (!m || maskIter.Get()) {
                 VariableLengthVector<complex<float>> input_center = inputIter.GetCenterPixel();
                 for (int f = 0; f < m_flips; f++) {
-                    const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> phases_center(input_center.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride));
+                    const ArrayXcd phases_center = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(input_center.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
                     QI::SplitBlocks(phases_center, a_center, b_center, m_reorderBlock);
                     complex<double> sum(0.0,0.0);
                     for (int i = 0; i < m_lines; i++) {
@@ -117,7 +117,7 @@ protected:
                             VariableLengthVector<complex<float>> pass1_pixel = pass1Iter.GetPixel(p);
                             const complex<double> Id = pass1_pixel[f];
                             VariableLengthVector<complex<float>> input_pixel = inputIter.GetPixel(p);
-                            const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> phases_pixel(input_pixel.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride));
+                            const ArrayXcd phases_pixel = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(input_pixel.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
                             QI::SplitBlocks(phases_pixel, a_pixel, b_pixel, m_reorderBlock);
                             num += real(conj(b_pixel[i] - Id)*(b_pixel[i] - a_pixel[i]) + conj(b_pixel[i] - a_pixel[i])*(b_pixel[i] - Id));
                             den += real(conj(a_pixel[i] - b_pixel[i])*(a_pixel[i] - b_pixel[i]));
@@ -193,9 +193,9 @@ int main(int argc, char **argv) {
             g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
             g->setReorderBlock(*alt_order);
             switch(*regularise) {
-                case 'L': suffix += "L"; g->setRegularise(QI::GSAlgo::RegEnum::Line); break;
-                case 'M': suffix += "M"; g->setRegularise(QI::GSAlgo::RegEnum::Magnitude); break;
-                case 'N': g->setRegularise(QI::GSAlgo::RegEnum::None); break;
+                case 'L': suffix += "L"; g->setRegularise(QI::RegEnum::Line); break;
+                case 'M': suffix += "M"; g->setRegularise(QI::RegEnum::Magnitude); break;
+                case 'N': g->setRegularise(QI::RegEnum::None); break;
             }
             algo = g;
         }   break;
