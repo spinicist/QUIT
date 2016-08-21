@@ -205,8 +205,8 @@ int main(int argc, char **argv) {
         case 'M': suffix = "Max"; algo = make_shared<QI::MaxAlgo>(); break;
     }
     if (*verbose) cout << suffix << " method selected." << endl;
-    algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
     algo->setPhases(*ph_incs);
+    algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
     algo->setReorderPhase(*ph_order);
     auto apply = QI::ApplyVectorXF::New();
     apply->SetAlgorithm(algo);
