@@ -31,13 +31,16 @@ void SemiaxesToHoff(const double A, const double B, const double c,
 }
 
 
-void EllipseToMRI(const double a, const double b, const double scale, const double th, const double TR, const double flip,
-                  float &M, float &T1, float &T2, float &df0) {
+void EllipseToMRI(const double a, const double b, const double c, const double th, const double TR, const double flip,
+                  float &M0, float &T1, float &T2, float &df0) {
     const double cosf = cos(flip);
     T2 = -TR / log(a);
     T1 = -TR / (log(a-b + a*cosf*(1.-a*b)) - log(a*(1.-a*b) + (a-b)*cosf));
     //cout << "TR " << TR << " a " << a << " cla " << clampa << " b " << b << " T1 " << T1 << endl;
-    M = (scale/sqrt(a))*(1-b*b)/(1-a*b);
+    const double E1 = exp(-TR/T1);
+    const double &E2 = a;
+    const double M = (c/sqrt(a))*(1-b*b)/(1-a*b);
+    M0 = M * (1. - E1*cosf - E2*E2*(E1-cosf)) / ((1-E1)*sin(flip));
     df0 = th / (M_PI*TR); // Missing factor of 2 due to TE not TR
 }
 
@@ -48,6 +51,13 @@ protected:
     size_t m_pincs = 6;
     TOutput m_zero;
 public:
+    ESAlgo(shared_ptr<QI::SSFP_GS> &seq, size_t incs, bool phase) :
+        m_sequence(seq), m_pincs(incs), m_reorderPhase(phase)
+    {
+        m_zero = TOutput(m_sequence->flip().rows());
+        m_zero.Fill(0.);
+    }
+
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
     size_t numOutputs() const override { return 6; }
@@ -69,7 +79,7 @@ public:
         static vector<string> _names = {"M", "T1", "T2", "f0", "a", "b"};
         return _names;
     }
-    virtual std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double B1) const = 0;
+    virtual std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double TR, const double flip) const = 0;
     virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override
@@ -81,7 +91,7 @@ public:
             std::swap(phase_stride, flip_stride);
         for (int f = 0; f < m_sequence->flip().rows(); f++) {
             const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_pincs, Eigen::InnerStride<>(phase_stride));
-            std::array<float, 6> tempOutputs = this->applyFlip(vf, B1);
+            std::array<float, 6> tempOutputs = this->applyFlip(vf, m_sequence->TR(), B1 * m_sequence->flip()[f]);
             for (int o = 0; o < 6; o++) {
                 outputs[o][f] = tempOutputs[o];
             }
@@ -90,6 +100,11 @@ public:
 };
 
 class HyperEllipse : public ESAlgo {
+public:
+    HyperEllipse(shared_ptr<QI::SSFP_GS> &seq, size_t incs, bool phase) :
+        ESAlgo(seq, incs, phase)
+    {}
+
 protected:
     MatrixXd buildS(const ArrayXd &x, const ArrayXd &y) const {
         Matrix<double, Dynamic, 6> D(x.rows(), 6);
@@ -134,7 +149,8 @@ protected:
         return C;
     }
 
-    std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double B1) const {
+    std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+                                   const double TR, const double flip) const {
         typedef Matrix<double, 6, 6> Matrix6d;
         typedef Matrix<double, 6, 1> Vector6d;
         ArrayXcd data = indata.cast<complex<double>>();
@@ -145,7 +161,7 @@ protected:
         MatrixXd S = buildS(x, y);
         Matrix6d C = hyperC(x, y);
         
-        // Note A and B are swapped so we can use GES
+        // Note S and C are swapped so we can use GES
         GeneralizedSelfAdjointEigenSolver<MatrixXd> solver(C, S);
         ArrayXd Z;
         if (fabs(solver.eigenvalues()[5]) > fabs(solver.eigenvalues()[0]))
@@ -167,26 +183,35 @@ protected:
         double c = sqrt(xc*xc+yc*yc);
         SemiaxesToHoff(A, B, c, a, b);
         std::array<float, 6> outputs;
-        EllipseToMRI(a, b, c*scale, th, m_sequence->TR(), B1 * m_sequence->flip()[0],
+        EllipseToMRI(a, b, c*scale, th, TR, flip,
                      outputs[0], outputs[1], outputs[2], outputs[3]);
-        outputs[4] = a;
-        outputs[5] = b;
+        outputs[4] = A;
+        outputs[5] = B;
+        /*outputs[0] = Z[0];
+        outputs[1] = Z[1];
+        outputs[2] = Z[2];
+        outputs[3] = Z[3];
+        outputs[4] = Z[4];
+        outputs[5] = Z[5];*/
         return outputs;
     }
 };
 
 class Constrained : public ESAlgo {
 public:
-    void setReorderBlock(bool b) { m_reorderBlock = b; }
+    Constrained(shared_ptr<QI::SSFP_GS> &seq, size_t incs, bool phase, bool block) :
+        ESAlgo(seq, incs, phase), m_reorderBlock(block)
+    {}
+
 protected:
     bool m_reorderBlock;
 
     double goldenSectionSearch(std::function<double(double)> f, double a, double b, const double tol) const {
-        cout << "goldenSection" << endl;
+        //cout << "goldenSection" << endl;
         const double gr = (sqrt(5.0) + 1.0) / 2.0;
         double c = b -  (b - a) / gr;
         double d = a + (b - a) / gr;
-        cout << "c " << c << " d " << d << endl;
+        //cout << "c " << c << " d " << d << endl;
         while (fabs(c - d) > tol) {
             if (f(c) < f(d)) {
                 b = d;
@@ -195,7 +220,7 @@ protected:
             }
             c = b - (b - a) / gr;
             d = a + (b - a) / gr;
-            cout << "c " << c << " d " << d << endl;
+            //cout << "c " << c << " d " << d << endl;
         }
         return (b + a) / 2.0;
     }
@@ -226,11 +251,12 @@ protected:
         };
 
         bool isGlobalMinimumFound = false;
+        int its = 0;
         while (!isGlobalMinimumFound) {
             // GetLamdaOfGamma
             double gamma = goldenSectionSearch(getLambdaOfGamma, gammaBound[0], gammaBound[1], epsFmin);
             double lambda = getLambdaOfGamma(gamma);
-            cout << "gamma " << gamma << " lambda " << lambda << endl;
+            //cout << "gamma " << gamma << " lambda " << lambda << endl;
             Eigen::Matrix3d P; P << 1, 0, q[1]*q[1],
                                     0, 1, -2*q[0]*q[1],
                                     0, 0, q[0]*q[0];
@@ -248,62 +274,128 @@ protected:
                                               Eigen::Matrix2d::Zero(), -C2b;
             Eigen::GeneralizedEigenSolver<Eigen::Matrix4d> roots(rootsA, rootsB);
             Eigen::Vector4cd rootsVec = roots.eigenvalues();
-            auto rootsIdx = (rootsVec.imag().array().abs() < epsRootsImag) && ((rootsVec.array().abs() - gamma) > epsRootsMin);
-            cout << "rootsIdx " << rootsIdx.transpose() << endl;
-            if (!(rootsIdx.any())) {
+            //cout << "rootsVec " << rootsVec.transpose() << endl;
+            auto realRootsIdx = (rootsVec.imag().array().abs() < epsRootsImag) && ((rootsVec.array() - gamma).abs() > epsRootsMin);
+            //cout << "realRootsIdx " << realRootsIdx.transpose() << endl;
+            std::vector<double> realRoots; for (int i = 0; i < 4; i++) { if (realRootsIdx[i]) realRoots.push_back(real(rootsVec[i])); }
+            std::sort(realRoots.begin(), realRoots.end());
+            // cout << realRoots.size() << " : "; for (int i = 0; i < realRoots.size(); i++) { cout << realRoots[i] << " "; } cout << endl;
+            if (realRoots.size() == 0) {
                 isGlobalMinimumFound = true;
-            } else {
-                double min = std::numeric_limits<double>::max();
-                double max = -std::numeric_limits<double>::max();
-                for (int i = 0; i < rootsIdx.rows(); i++) {
-                    if (rootsIdx[i]) {
-                        if (real(rootsVec[i]) < min) min = real(rootsVec[i]);
-                        else if (real(rootsVec[i]) > max) max = real(rootsVec[i]);
+            } else if (realRoots.size() == 1) {
+                // 1 real root. Global minimum is outside the given search range
+                if (realRoots[0] < gammaBound[0]) {
+                    gammaBound[1] = gammaBound[0]; gammaBound[0] = realRoots[0];
+                } else {
+                    gammaBound[0] = gammaBound[1]; gammaBound[1] = realRoots[0];
+                }
+            } else if (realRoots.size() == 2) {
+                if (((realRoots[0] < gammaBound[0]) && (realRoots[1] > gammaBound[1])) || // 2 roots outside bounds
+                    ((realRoots[0] > gammaBound[0]) && (realRoots[1] < gammaBound[1]))) { // 2 roots inside bounds
+                    gammaBound[0] = realRoots[0]; gammaBound[1] = realRoots[1];
+                } else if (realRoots[0] < gammaBound[0]) { // 1 root below bounds
+                    gammaBound[1] = realRoots[1];
+                } else {
+                    gammaBound[0] = realRoots[0];
+                }
+                if (gamma > gammaBound[0] && gamma < gammaBound[1]) {
+                    // This shouldn't happen, but might due to noise. In which case claim it is the global minimum
+                    isGlobalMinimumFound = true;
+                }
+            } else { // 3 roots
+                bool allOutside = true;
+                std::vector<float> newBounds;
+                for (int i = 0; i < 3; i++) {
+                    if (realRoots[i] > gammaBound[0] && realRoots[i] < gammaBound[1]) {
+                        allOutside = false;
+                        newBounds.push_back(realRoots[i]);
                     }
                 }
-                gammaBound[0] = min;
-                gammaBound[1] = max;
+                if (allOutside) {
+                    isGlobalMinimumFound = true;
+                } else {
+                    gammaBound[0] = std::min(newBounds[0], newBounds[1]);
+                    gammaBound[1] = std::max(newBounds[0], newBounds[1]);
+                }
             }
+            if (gammaBound[0] == gammaBound[1])
+                isGlobalMinimumFound = true;
+            //cout << "new gammaBound " << gammaBound.transpose() << endl;
             Eigen::Matrix3d M = BC0 + gamma*BC1 + gamma*gamma*BC2;
             Eigen::EigenSolver<Eigen::Matrix3d> eig(M);
             int eigIdx; eig.eigenvalues().real().maxCoeff(&eigIdx);
+            //cout << "M eigenvalues " << eig.eigenvalues().transpose() << " idx " << eigIdx << endl;
             Eigen::Vector3d theta = eig.eigenvectors().col(eigIdx).real();
             // First part is a hacked sign function
+            //cout << "theta " << theta.transpose() << endl;
             theta = ((theta[0] > 0) - (theta[0] < 0))*theta/sqrt(theta.transpose()*B*theta); // Normalization
+            //cout << "theta n" << theta.transpose() << endl;
             double h_opt = (-1.0/n * Eigen::VectorXd::Ones(n).transpose()) * (D0 - gamma*D1)*theta;
             A << theta[0], theta[1]/2,
                  theta[1]/2, theta[2];
             x_c = p + gamma*q;
             g = h_opt - gamma*gamma*q.transpose()*A*q;
+            its++;
+            if (its > 10)
+                break;
         }
     }
 
-    std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double B1) const {
+    std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+                                   const double TR, const double flip) const {
         ArrayXcd data = indata.cast<complex<double>>();
-
+        const double scale = data.abs().maxCoeff();
+        data /= scale;
         ArrayXcd a(data.rows() / 2);
         ArrayXcd b(data.rows() / 2);
         QI::SplitBlocks(data, a, b, m_reorderBlock);
         const complex<double> gs = QI::GeometricSolution(a, b, QI::RegEnum::Line);
-        const double scale = data.abs().maxCoeff();
-        ArrayXd x = data.real() / scale;
-        ArrayXd y = data.imag() / scale;
-
+        ArrayXd x = data.real();
+        ArrayXd y = data.imag();
         Vector2d p = Vector2d::Zero();
         Vector2d q; q << real(gs), imag(gs);
-        Vector2d gammaBound; gammaBound << 0.5, 5.0;
+        Vector2d gammaBound; gammaBound << 0.25, 1.5;
         Matrix2d A; Vector2d xc; double g;
+        /*cout << "a " << a.transpose() << endl
+             << "b " << b.transpose() << endl
+             << "data " << data.transpose() << endl
+             << "gs " << gs << endl
+             << "x " << x.transpose() << endl
+             << "y " << y.transpose() << endl
+             << "p " << p.transpose() << " q " << q.transpose() << endl;*/
         fit(x, y, p, q, gammaBound, A, xc, g);
-
-        std::array<float, 6> outputs;
-        //EllipseToMRI(a, b, c*scale, th, m_sequence->TR(), B1 * m_sequence->flip()[0],
-        //             outputs[0], outputs[1], outputs[2], outputs[3]);
+        //cout << "A" << endl << A << "xc " << xc.transpose() << " g " << g << endl;
+        typedef Matrix<double, 6, 1> Vector6d;
+        Vector6d Z;
+        {
+            double a = A.coeffRef(0,0);
+            double b = A.coeffRef(1,0)+A.coeffRef(0,1);
+            double c = A.coeffRef(1,1);
+            Z << a, b/2, c, -(2*a*xc[0] + b*xc[1])/2, -(2*c*xc[1] + b*xc[0])/2,
+                 a*xc[0]*xc[0] + b*xc[0]*xc[1] + c*xc[1]*xc[1] + g;
+        }
+        const double dsc=(Z[1]*Z[1]-Z[0]*Z[2]);
         const double th = atan2(xc[1],xc[0]);
-        outputs[0] = A.coeffRef(0,0);
-        outputs[1] = A.coeffRef(1,1);
-        outputs[3] = th;
-        outputs[4] = A.coeffRef(1,0);
-        outputs[5] = g;
+        const double num = 2*(Z[0]*(Z[4]*Z[4])+Z[2]*(Z[3]*Z[3])+Z[5]*(Z[1]*Z[1])-2*Z[1]*Z[3]*Z[4]-Z[0]*Z[2]*Z[5]);
+        double sA = sqrt(num/(dsc*(sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
+        double sB = sqrt(num/(dsc*(-sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
+        if (sA > sB) {
+            std::swap(sA, sB);
+        }
+        double ea, eb;
+        double c = sqrt(xc[0]*xc[0]+xc[1]*xc[1]);
+        SemiaxesToHoff(sA, sB, c, ea, eb);
+        std::array<float, 6> outputs;
+        EllipseToMRI(ea, eb, c*scale, th, TR, flip,
+                     outputs[0], outputs[1], outputs[2], outputs[3]);
+        outputs[4] = sA;
+        outputs[5] = sB;
+        /*outputs[0] = Z[0];
+        outputs[1] = Z[1];
+        outputs[2] = Z[2];
+        outputs[3] = Z[3];
+        outputs[4] = Z[4];
+        outputs[5] = Z[5];*/
         return outputs;
     }
 };
@@ -318,7 +410,7 @@ int main(int argc, char **argv) {
     QI::Option<int> ph_incs(6,'\0',"ph_incs","Number of phase increments (default is 6).", opts);
     QI::Switch ph_order('\0',"ph_order","Data order is phase, then flip-angle (default opposite).", opts);
     QI::Switch alt_order('\0',"alt_order","Opposing phase-incs alternate (default is 2 blocks)", opts);
-    QI::EnumOption algorithm("lwnb",'l','a',"algo","Choose algorithm (f/h/c)", opts);
+    QI::EnumOption algorithm("hc",'h','a',"algo","Choose algorithm (h/c)", opts);
     QI::Option<std::string> outPrefix("", 'o', "out","Prefix output filenames", opts);
     QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
@@ -329,15 +421,17 @@ int main(int argc, char **argv) {
         std::cerr << "No input filename specified." << std::endl;
         return EXIT_FAILURE;
     }
-    shared_ptr<Constrained> algo = make_shared<Constrained>();
     if (*verbose) cout << "Opening file: " << nonopts[0] << endl;
     auto data = QI::ReadVectorImage<complex<float>>(nonopts[0]);
     shared_ptr<QI::SSFP_GS> seq = make_shared<QI::SSFP_GS>(cin, !*suppress);
     if (*verbose) cout << *seq;
+    shared_ptr<ESAlgo> algo;
+    if (*algorithm == 'h') {
+        algo = make_shared<HyperEllipse>(seq, *ph_incs, *ph_order);
+    } else {
+        algo = make_shared<Constrained>(seq, *ph_incs, *ph_order, *alt_order);
+    }
     auto apply = QI::ApplyVectorXFVectorF::New();
-    algo->SetSequence(seq, *ph_incs);
-    algo->setReorderPhase(*ph_order);
-    algo->setReorderBlock(*alt_order);
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(*num_threads);
     apply->SetInput(0, data);
