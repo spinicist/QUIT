@@ -1,5 +1,5 @@
 /*
- *  Banding.h
+ *  Banding.cpp
  *
  *  Copyright (c) 2016 Tobias Wood.
  *

@@ -1,10 +1,10 @@
-#!/bin/bash -eux
+#!/bin/bash -eu
 
 # Tobias Wood 2015
 # Simple test script for elliptical parameter mapping
 
 source ./test_common.sh
-SILENCE_TESTS="0"
+SILENCE_TESTS="1"
 
 DATADIR="es"
 mkdir -p $DATADIR
@@ -24,7 +24,7 @@ $QUITDIR/qinewimage B1.nii --size "$SIZE" -f 1.0
 # Setup parameters
 SSFP_FILE="ssfp.nii"
 SSFP_TR="0.005"
-SSFP_FLIP="10 20 30"
+SSFP_FLIP="20"
 #SSFP_PC4="0 90 180 270"
 SSFP_PC="0 30 60 90 120 150 180 210 240 270 300 330"
 
@@ -53,10 +53,10 @@ ARGS="$3"
 
 run_test "${PREFIX}"     $QUITDIR/qiesmap -n -v -bB1.nii ${SSFP_FILE}  -o${PREFIX} $ARGS < es_in.txt
 
-#compare_test "${PREFIX}T1" T1.nii ${PREFIX}ES_T1.nii $NOISE $PREC
-#compare_test "${PREFIX}T2" T2.nii ${PREFIX}ES_T2.nii $NOISE $PREC
-#compare_test "${PREFIX}PD" PD.nii ${PREFIX}ES_M.nii $NOISE $PREC
-#compare_test "${PREFIX}f0" f0.nii ${PREFIX}ES_f0.nii $NOISE $PREC
+compare_test "${PREFIX}T1" T1.nii ${PREFIX}ES_T1.nii $NOISE $PREC
+compare_test "${PREFIX}T2" T2.nii ${PREFIX}ES_T2.nii $NOISE $PREC
+compare_test "${PREFIX}PD" PD.nii ${PREFIX}ES_M.nii $NOISE $PREC
+compare_test "${PREFIX}f0" f0.nii ${PREFIX}ES_f0.nii $NOISE $PREC
 
 }
 

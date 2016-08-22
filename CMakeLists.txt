@@ -35,6 +35,7 @@ set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Option.cpp
              ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp ${QIDIR}/Algorithms/Banding.cpp
+             ${QIDIR}/Algorithms/Ellipse.cpp ${QIDIR}/Algorithms/EllipseHelpers.cpp ${QIDIR}/GoldenSection.cpp
              ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp
              ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
              ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp ${QIDIR}/Models/qMT.cpp
