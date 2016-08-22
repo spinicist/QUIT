@@ -57,6 +57,7 @@ class SPGRFinite : public SPGRSimple {
 class SSFPSimple : public SteadyState {
     protected:
         Eigen::ArrayXd m_phi;
+        Eigen::ArrayXd m_flip2, m_phi2; // These store just 1 set of flips/phase-incs
     
     public:
         SSFPSimple();
@@ -82,6 +83,8 @@ public:
 class SSFPEchoFlex : public SSFPEcho {
 public:
     SSFPEchoFlex(std::istream &istr, const bool prompt);
+    void write(std::ostream& os) const override;
+    std::string name() const override { return "SSFPEchoFlex"; }
 };
 
 class SSFPFinite : public SSFPSimple {

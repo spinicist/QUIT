@@ -106,26 +106,27 @@ SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phi)
 {}
 
 SSFPSimple::SSFPSimple(std::istream &istr, const bool prompt) : SteadyState() {
-    ArrayXd flip, phi;
 	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(istr, flip);
+    QI::ReadArray(istr, m_flip2);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
-    QI::ReadArray(istr, phi);
+    QI::ReadArray(istr, m_phi2);
 	if (prompt) cout << "Enter TR (seconds): " << flush;
 	QI::Read(istr, m_TR);
-    m_flip = (flip * M_PI / 180.).replicate(phi.rows(), 1);
+    m_flip2 *= M_PI / 180.;
+    m_phi2 *= M_PI / 180.;
+    m_flip = (m_flip2 * M_PI / 180.).replicate(m_phi2.rows(), 1);
     m_phi = ArrayXd::Zero(m_flip.size());
     int start = 0;
-    for (int i = 0; i < phi.size(); i++) {
-        m_phi.segment(start, flip.size()).setConstant(phi[i] * M_PI / 180.);
-        start += flip.size();
+    for (int i = 0; i < m_phi2.size(); i++) {
+        m_phi.segment(start, m_flip2.size()).setConstant(m_phi2[i]);
+        start += m_flip2.size();
     }
 }
 
 void SSFPSimple::write(ostream &os) const {
     os << name() << endl;
-    os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
-    os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
+    os << "Angles: " << (m_flip2 * 180. / M_PI).transpose() << endl;
+    os << "Phases: " << (m_phi2 * 180. / M_PI).transpose() << endl;
     os << "TR:     " << m_TR << endl;
 }
 
@@ -164,6 +165,13 @@ SSFPEchoFlex::SSFPEchoFlex(std::istream &istr, const bool prompt) : SSFPEcho() {
     m_phi *= M_PI / 180.;
 }
 
+void SSFPEchoFlex::write(ostream &os) const {
+    os << name() << endl;
+    os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
+    os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
+    os << "TR:     " << m_TR << endl;
+}
+
 SSFPFinite::SSFPFinite(const ArrayXd &flip, const double TR, const double Trf, const ArrayXd &phases) :
     SSFPSimple(flip, TR, phases),
     m_Trf(Trf)
@@ -176,7 +184,7 @@ SSFPFinite::SSFPFinite(std::istream &istr, const bool prompt) : SSFPSimple(istr,
 }
 
 void SSFPFinite::write(ostream &os) const {
-    os << "SSFP Finite" << endl;
+    os << name() << endl;
     os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
     os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
     os << "TR:     " << m_TR << "\tTrf: " << m_Trf << endl;
