@@ -40,9 +40,9 @@ void BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
                      std::vector<TOutput> &outputs, TConst &residual,
                      TInput &resids, TIters &its) const
 {
-    size_t phase_stride = 1;
-    size_t flip_stride = m_flips;
-    if (m_reorderPhase)
+    size_t phase_stride = m_flips;
+    size_t flip_stride = 1;
+    if (m_phaseFirst)
         std::swap(phase_stride, flip_stride);
     for (int f = 0; f < m_flips; f++) {
         const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride));
