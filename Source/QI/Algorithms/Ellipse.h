@@ -28,16 +28,16 @@ namespace QI {
 
 class ESAlgo : public QI::ApplyVectorXFVectorF::Algorithm {
 protected:
-    bool m_reorderPhase = false;
+    bool m_phaseFirst = false;
     std::shared_ptr<QI::SSFP_GS> m_sequence = nullptr;
     size_t m_pincs = 6;
     TOutput m_zero;
 public:
     typedef Eigen::Matrix<double, 6, 6> Matrix6d;
     typedef Eigen::Matrix<double, 6, 1> Vector6d;
-    
+
     ESAlgo(std::shared_ptr<QI::SSFP_GS> &seq, size_t incs, bool phase) :
-        m_sequence(seq), m_pincs(incs), m_reorderPhase(phase)
+        m_sequence(seq), m_pincs(incs), m_phaseFirst(phase)
     {
         m_zero = TOutput(m_sequence->flip().rows());
         m_zero.Fill(0.);
@@ -48,7 +48,7 @@ public:
     size_t numOutputs() const override { return 6; }
     size_t dataSize() const override { return m_sequence->size() * m_pincs; }
     size_t outputSize(const int i) const override { return m_sequence->flip().rows(); }
-    void setReorderPhase(const bool p) { m_reorderPhase = p; }
+    void setReorderPhase(const bool p) { m_phaseFirst = p; }
     void SetSequence(const std::shared_ptr<QI::SSFP_GS> &s, const size_t pincs) {
         m_sequence = s;
         m_pincs = pincs;
@@ -70,9 +70,9 @@ public:
                        TInput &resids, TIters &its) const override
     {
         const double B1 = consts[0];
-        size_t phase_stride = 1;
-        size_t flip_stride = m_sequence->flip().rows();
-        if (m_reorderPhase)
+        size_t phase_stride = m_sequence->flip().rows();
+        size_t flip_stride = 1;
+        if (m_phaseFirst)
             std::swap(phase_stride, flip_stride);
         for (int f = 0; f < m_sequence->flip().rows(); f++) {
             const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_pincs, Eigen::InnerStride<>(phase_stride));

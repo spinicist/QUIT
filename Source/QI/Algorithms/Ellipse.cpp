@@ -44,11 +44,11 @@ Eigen::MatrixXd HyperEllipse::hyperC(const Eigen::ArrayXd &x, const Eigen::Array
     const double sy = y.square().sum() / N;
     const double xy = (x * y).sum() / N; 
     C << 6*sx, 6*xy, sx+sy, 6*xc, 2*yc, 1,
-            6*xy, 4*(sx+sy), 6*xy, 4*yc, 4*xc, 0,
-            sx + sy, 6*xy, 6*sy, 2*xc, 6*yc, 1,
-            6*xc, 4*yc, 2*xc, 4, 0, 0,
-            2*yc, 4*xc, 6*yc, 0, 4, 0,
-            1, 0, 1, 0, 0, 0;
+         6*xy, 4*(sx+sy), 6*xy, 4*yc, 4*xc, 0,
+         sx + sy, 6*xy, 6*sy, 2*xc, 6*yc, 1,
+         6*xc, 4*yc, 2*xc, 4, 0, 0,
+         2*yc, 4*xc, 6*yc, 0, 4, 0,
+         1, 0, 1, 0, 0, 0;
     return C;
 }
 
