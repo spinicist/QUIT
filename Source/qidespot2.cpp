@@ -10,7 +10,6 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 
 #include <Eigen/Dense>
@@ -245,11 +244,11 @@ int main(int argc, char **argv) {
     algo->setSequence(ssfp);
     algo->setElliptical(*elliptical);
 
-    if (*verbose) cout << "Reading T1 Map from: " << argv[optind] << endl;
-    auto T1 = QI::ReadImage(argv[optind++]);
+    if (*verbose) cout << "Reading T1 Map from: " << nonopts[0] << endl;
+    auto T1 = QI::ReadImage(nonopts[0]);
 
-    if (*verbose) cout << "Opening SSFP file: " << argv[optind] << endl;
-    auto data = QI::ReadVectorImage<float>(argv[optind++]);
+    if (*verbose) cout << "Opening SSFP file: " << nonopts[1] << endl;
+    auto data = QI::ReadVectorImage<float>(nonopts[1]);
     auto apply = itk::ApplyAlgorithmFilter<D2Algo>::New();
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(*all_residuals);
