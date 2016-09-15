@@ -86,14 +86,8 @@ std::array<float, 6> HyperEllipse::applyFlip(const Eigen::Map<const Eigen::Array
     std::array<float, 6> outputs;
     EllipseToMRI(a, b, c*scale, th, TR, flip,
                     outputs[0], outputs[1], outputs[2], outputs[3]);
-    outputs[4] = A;
-    outputs[5] = B;
-    /*outputs[0] = Z[0];
-    outputs[1] = Z[1];
-    outputs[2] = Z[2];
-    outputs[3] = Z[3];
-    outputs[4] = Z[4];
-    outputs[5] = Z[5];*/
+    outputs[4] = a;
+    outputs[5] = b;
     return outputs;
 }
 
@@ -251,14 +245,8 @@ std::array<float, 6> ConstrainedEllipse::applyFlip(const Eigen::Map<const Eigen:
     std::array<float, 6> outputs;
     EllipseToMRI(ea, eb, c*scale, th, TR, flip,
                  outputs[0], outputs[1], outputs[2], outputs[3]);
-    outputs[4] = sA;
-    outputs[5] = sB;
-    /*outputs[0] = Z[0];
-    outputs[1] = Z[1];
-    outputs[2] = Z[2];
-    outputs[3] = Z[3];
-    outputs[4] = Z[4];
-    outputs[5] = Z[5];*/
+    outputs[4] = ea;
+    outputs[5] = eb;
     return outputs;
 }
 
