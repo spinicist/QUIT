@@ -34,8 +34,8 @@ set(QIDIR "Source/QI")
 set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Option.cpp
-             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp ${QIDIR}/Algorithms/Banding.cpp
-             ${QIDIR}/Algorithms/Ellipse.cpp ${QIDIR}/Algorithms/EllipseHelpers.cpp ${QIDIR}/GoldenSection.cpp
+             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp
+             ${QIDIR}/GoldenSection.cpp
              ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp
              ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
              ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp ${QIDIR}/Models/qMT.cpp
@@ -51,15 +51,23 @@ add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Sourc
 
 set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask qikfilter qireorder qisplitsubjects
              qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
-             qiafi qissfpbands qiunwrap
+             qiafi qiunwrap
              qipolyfit qipolyimg
-             qiesmap
              qimultiecho qimp2rage )
 
 foreach(PROGRAM ${PROGRAMS})
-	add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-	target_link_libraries(${PROGRAM} ${QI} ${ITK_LIBRARIES})
+    add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
+    target_link_libraries(${PROGRAM} ${QI} ${ITK_LIBRARIES})
 endforeach(PROGRAM)
+
+add_executable(qissfpbands Source/qissfpbands.cpp
+                           Source/QI/Algorithms/Banding.cpp)
+target_link_libraries(qissfpbands ${QI} ${ITK_LIBRARIES})
+add_executable(qiesmap Source/qiesmap.cpp
+                       Source/QI/Algorithms/Banding.cpp
+                       Source/QI/Algorithms/EllipseHelpers.cpp
+                       Source/QI/Algorithms/Ellipse.cpp)
+target_link_libraries(qiesmap ${QI} ${ITK_LIBRARIES})
 
 set(TESTS_DIR Test)
 set(TESTS test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_es.sh
