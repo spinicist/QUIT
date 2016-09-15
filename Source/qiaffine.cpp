@@ -16,7 +16,6 @@
 #include "itkVersorTransform.h"
 #include "itkEuler3DTransform.h"
 #include "itkTransformFileWriter.h"
-#include "itkChangeInformationImageFilter.h"
 
 #include "QI/Util.h"
 #include "QI/Types.h"
@@ -34,6 +33,7 @@ int main(int argc, char **argv) {
     QI::Option<float> offX(0,'\0',"offX","Offset X", opts);
     QI::Option<float> offY(0,'\0',"offY","Offset Y", opts);
     QI::Option<float> offZ(0,'\0',"offZ","Offset Z", opts);
+    QI::Switch center('c',"center","Set the origin to the center of the image", opts);
     QI::Option<std::string> tfmFile("", 't', "tfm","Save ITK transform file", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
@@ -53,15 +53,18 @@ int main(int argc, char **argv) {
     QI::SeriesF::DirectionType fullDir = image->GetDirection();
     QI::SeriesF::SpacingType fullSpacing = image->GetSpacing();
     QI::SeriesF::PointType fullOrigin = image->GetOrigin();
+    QI::SeriesF::SizeType fullSize = image->GetLargestPossibleRegion().GetSize();
     QI::VolumeF::DirectionType direction;
     QI::VolumeF::SpacingType spacing;
     QI::VolumeF::PointType origin;
+    QI::VolumeF::SizeType size;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             direction[i][j] = fullDir[i][j];
         }
         origin[i] = fullOrigin[i];
         spacing[i] = fullSpacing[i];
+        size[i] = fullSize[i];
     }
     
     if (*scale != 1.0) {
@@ -84,13 +87,20 @@ int main(int argc, char **argv) {
         itk::Versor<double> temp; temp.SetRotationAroundZ(*rotZ * M_PI / 180.0);
         rotate *= temp;
     }
-    itk::Versor<double>::VectorType offset;
-    offset[0] = *offX;
-    offset[1] = *offY;
-    offset[2] = *offZ;
     direction = rotate.GetMatrix() * direction;
-    origin = rotate.GetMatrix() * origin;
-    
+    itk::Versor<double>::VectorType offset;
+    if (*center) {
+        for (int i = 0; i < 3; i++) {
+            origin[i] = -spacing[i]*size[i] / 2;
+        }
+        origin = direction*origin;
+    } else {
+        offset[0] = *offX;
+        offset[1] = *offY;
+        offset[2] = *offZ;
+        origin = rotate.GetMatrix() * origin;
+    }
+
     /*
         string option(optarg);
         if (verbose) cout << "Setting origin to " << option << endl;
@@ -108,7 +118,6 @@ int main(int argc, char **argv) {
         writer->SetFileName(*tfmFile);
         writer->Update();
     } else { // Write out the edited file
-        auto changeInfo = itk::ChangeInformationImageFilter<QI::SeriesF>::New();
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 fullDir[i][j] = direction[i][j];
@@ -116,17 +125,13 @@ int main(int argc, char **argv) {
             fullOrigin[i] = origin[i];
             fullSpacing[i] = spacing[i];
         }
-        changeInfo->SetOutputDirection(fullDir);
-        changeInfo->SetOutputOrigin(fullOrigin);
-        changeInfo->SetOutputSpacing(fullSpacing);
-        changeInfo->ChangeDirectionOn();
-        changeInfo->ChangeOriginOn();
-        changeInfo->ChangeSpacingOn();
-        changeInfo->SetInput(image);
+        image->SetDirection(fullDir);
+        image->SetOrigin(fullOrigin);
+        image->SetSpacing(fullSpacing);
         if (nonopts.size() == 2) {
-            QI::WriteImage(changeInfo->GetOutput(), nonopts[1]);
+            QI::WriteImage(image, nonopts[1]);
         } else {
-            QI::WriteImage(changeInfo->GetOutput(), nonopts[0]);
+            QI::WriteImage(image, nonopts[0]);
         }
     }
     return EXIT_SUCCESS;
