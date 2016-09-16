@@ -35,12 +35,7 @@ set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp ${QIDIR}/Option.cpp
              ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp
-             ${QIDIR}/GoldenSection.cpp
-             ${QIDIR}/Signals/Common.cpp ${QIDIR}/Signals/SignalEquations.cpp
-             ${QIDIR}/Signals/SPGR.cpp ${QIDIR}/Signals/SSFP.cpp ${QIDIR}/Signals/MPRAGE.cpp
-             ${QIDIR}/Models/Model.cpp ${QIDIR}/Models/DESPOT_2C.cpp ${QIDIR}/Models/DESPOT_3C.cpp ${QIDIR}/Models/qMT.cpp
-             ${QIDIR}/Sequences/SequenceBase.cpp ${QIDIR}/Sequences/Sequences.cpp
-             ${QIDIR}/Sequences/SteadyStateSequence.cpp ${QIDIR}/Sequences/MPRAGESequence.cpp ${QIDIR}/Sequences/SpinEcho.cpp )
+             ${QIDIR}/GoldenSection.cpp )
 add_dependencies( ${QI} qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
@@ -49,25 +44,47 @@ add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Sourc
                                       Source/Filters/ReorderImageFilter.h Source/Filters/ReorderImageFilter.hxx
                                       ${QIDIR}/RegionContraction.h)
 
-set(PROGRAMS qihdr qinewimage qicomplex qisignal qiaffine qimask qikfilter qireorder qisplitsubjects
-             qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot
-             qiafi qiunwrap
-             qipolyfit qipolyimg
-             qimultiecho qimp2rage )
+set( SIGDIR ${QIDIR}/Signals )
+set( SIGLIB "qisig" )
+add_library( ${SIGLIB} STATIC
+             ${SIGDIR}/Common.cpp ${SIGDIR}/SignalEquations.cpp
+             ${SIGDIR}/SPGR.cpp ${SIGDIR}/SSFP.cpp ${SIGDIR}/MPRAGE.cpp )
 
-foreach(PROGRAM ${PROGRAMS})
+set( SEQDIR ${QIDIR}/Sequences )
+set( SEQLIB "qiseq" )
+add_library( ${SEQLIB} STATIC
+             ${SEQDIR}/SequenceBase.cpp ${SEQDIR}/Sequences.cpp
+             ${SEQDIR}/SteadyStateSequence.cpp ${SEQDIR}/MPRAGESequence.cpp ${SEQDIR}/SpinEcho.cpp )
+
+set( MDLDIR ${QIDIR}/Models )
+set( MDLLIB "qimdl" )
+add_library( ${MDLLIB} STATIC
+             ${MDLDIR}/Model.cpp ${MDLDIR}/DESPOT_2C.cpp ${MDLDIR}/DESPOT_3C.cpp ${MDLDIR}/qMT.cpp )
+
+set( ALGDIR ${QIDIR}/Algorithms )
+set( ALGLIB "qialg" )
+add_library( ${ALGLIB} STATIC
+             ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp )
+
+set( UTILS qihdr qinewimage qicomplex qiaffine qimask qikfilter qireorder
+           qisplitsubjects qiunwrap qipolyfit qipolyimg)
+set( QUANT qisignal qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot qiafi qimultiecho qimp2rage )
+set( ELLIPSE qissfpbands qiesmap )
+
+foreach(PROGRAM ${UTILS})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
     target_link_libraries(${PROGRAM} ${QI} ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
-add_executable(qissfpbands Source/qissfpbands.cpp
-                           Source/QI/Algorithms/Banding.cpp)
-target_link_libraries(qissfpbands ${QI} ${ITK_LIBRARIES})
-add_executable(qiesmap Source/qiesmap.cpp
-                       Source/QI/Algorithms/Banding.cpp
-                       Source/QI/Algorithms/EllipseHelpers.cpp
-                       Source/QI/Algorithms/Ellipse.cpp)
-target_link_libraries(qiesmap ${QI} ${ITK_LIBRARIES})
+foreach(PROGRAM ${QUANT})
+    add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
+    target_link_libraries(${PROGRAM} ${QI} ${SIGLIB} ${SEQLIB} ${MDLLIB} ${ITK_LIBRARIES})
+endforeach(PROGRAM)
+
+foreach(PROGRAM ${ELLIPSE})
+    add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
+    target_link_libraries(${PROGRAM} ${QI} ${SIGLIB} ${SEQLIB} ${ALGLIB} ${ITK_LIBRARIES})
+endforeach(PROGRAM)
 
 set(TESTS_DIR Test)
 set(TESTS test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_es.sh
@@ -82,4 +99,5 @@ foreach(SCRIPT ${SCRIPTS})
     configure_file(${SCRIPTS_DIR}/${SCRIPT} ${SCRIPTS_DIR}/${SCRIPT} COPYONLY)
 endforeach(SCRIPT)
 
+set(PROGRAMS ${UTILS} ${QUANT} ${ELLIPSE} )
 install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
