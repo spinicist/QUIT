@@ -261,7 +261,7 @@ int main(int argc, char **argv) {
 
     if (*verbose) cout << "Opening SSFP file: " << nonopts[1] << endl;
     auto data = QI::ReadVectorImage<float>(nonopts[1]);
-    auto apply = itk::ApplyAlgorithmFilter<D2Algo>::New();
+    auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(*all_residuals);
     apply->SetPoolsize(*num_threads);
