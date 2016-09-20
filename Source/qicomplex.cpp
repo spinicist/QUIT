@@ -63,7 +63,7 @@ public:
         outIt.SetSecondDirection(1);
         inIt.GoToBegin();
         outIt.GoToBegin();
-        PixelType mult(-1, 0);
+        PixelType mult(1, 0);
         while(!inIt.IsAtEnd()) {
             while (!inIt.IsAtEndOfSlice()) {
                 while (!inIt.IsAtEndOfLine()) {
