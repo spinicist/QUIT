@@ -383,7 +383,7 @@ int main(int argc, char **argv)
         vecTo4D->SetInput(calcSignal->GetOutput());
         if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
         if (outputComplex) {
-            QI::WriteImage<SeriesXF>(vecTo4D->GetOutput(), filenames[i]);
+            QI::WriteImage<SeriesXF>(vecTo4D->GetOutput(), outPrefix + filenames[i]);
         } else {
             auto abs = itk::ComplexToModulusImageFilter<QI::SeriesXF, QI::SeriesF>::New();
             abs->SetInput(vecTo4D->GetOutput());
@@ -391,7 +391,7 @@ int main(int argc, char **argv)
                 clamp_filter->SetInput(abs->GetOutput());
                 QI::WriteImage<SeriesF>(clamp_filter->GetOutput(),filenames[i]);
             } else {
-                QI::WriteImage<SeriesF>(abs->GetOutput(),filenames[i]);
+                QI::WriteImage<SeriesF>(abs->GetOutput(), outPrefix + filenames[i]);
             }
         }
     }
