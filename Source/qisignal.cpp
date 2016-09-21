@@ -12,7 +12,6 @@
 
 #include <string>
 #include <iostream>
-#include <getopt.h>
 #include <Eigen/Dense>
 
 #include "itkImageFileReader.h"
@@ -32,6 +31,7 @@
 #include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
 #include "QI/ThreadPool.h"
+#include "QI/Option.h"
 
 using namespace std;
 using namespace Eigen;
@@ -193,131 +193,64 @@ private:
     void operator=(const Self &);  //purposely not implemented
 };
 
-//******************************************************************************
-// Arguments / Usage
-//******************************************************************************
 const string usage {
 "Usage is: qisignal [options]\n\
 \n\
 Calculates multi-component DESPOT signals (mainly for testing purposes).\n\
-The program will prompt for input (unless --no-prompt specified)\n\
+The program will !*suppress for input (unless --no-!*suppress specified)\n\
 \n\
 All times (TR) are in SECONDS. All angles are in degrees.\n\
-\n\
-Options:\n\
-    --help, -h        : Print this message.\n\
-    --verbose, -v     : Print extra information.\n\
-    --mask, -m file   : Only calculate inside the mask.\n\
-    --out, -o path    : Add a prefix to the output filenames\n\
-    --no-prompt, -n   : Don't print prompts for input.\n\
-    --noise, -N val   : Add complex noise with std=val.\n\
-    --seed, -S val    : Specify seed for noise.\n\
-    --1, --2, --3     : Use 1, 2 or 3 component sequences (default 3).\n\
-    --ref, -r FILE    : Output images in space defined by reference file.\n\
-    --clamp, -c M     : Clamp output to be between 0 and M.\n\
-    --complex, -x     : Output complex-valued signal.\n\
-    --threads, -T N   : Use N threads (default=4, 0=hardware limit)\n"
+\n\""
 };
-shared_ptr<Model> model = make_shared<SCD>();
-bool verbose = false, prompt = true, outputComplex = false;
-string outPrefix = "";
-size_t num_threads = 4;
-const struct option long_opts[] = {
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"mask", required_argument, 0, 'm'},
-    {"out", required_argument, 0, 'o'},
-    {"no-prompt", no_argument, 0, 'n'},
-    {"noise", required_argument, 0, 'N'},
-    {"seed", required_argument, 0, 'S'},
-    {"1", no_argument, 0, '1'},
-    {"2", no_argument, 0, '2'},
-    {"3", no_argument, 0, '3'},
-    {"ref", required_argument, 0, 'r'},
-    {"clamp", required_argument, 0, 'c'},
-    {"complex", no_argument, 0, 'x'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-static const char *short_opts = "hvnN:S:m:o:123r:c:xT:";
-//******************************************************************************
-#pragma mark Read in all required files and data from cin
-//******************************************************************************
-void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names);
-void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names) {
+
+//Read in all required files and data from cin
+void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names, bool suppress);
+void ParseInput(vector<shared_ptr<SequenceBase>> &cs, vector<string> &names, bool suppress) {
     string type, path;
-    if (prompt) cout << "Enter output filename: " << flush;
+    if (!suppress) cout << "Enter output filename: " << flush;
     while (Read(cin, path) && (path != "END") && (path != "")) {
         names.push_back(path);
-        cs.push_back(QI::ReadSequence(cin, prompt));
-        if (prompt) cout << "Enter next filename (END to finish input): " << flush;
+        cs.push_back(QI::ReadSequence(cin, !suppress));
+        if (!suppress) cout << "Enter next filename (END to finish input): " << flush;
     }
 }
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::VolumeF::Pointer mask = ITK_NULLPTR, reference = ITK_NULLPTR;
-    int indexptr = 0, c;
-    double sigma = 0., clamp = numeric_limits<double>::infinity();
-    int seed = -1;
-    while ((c = getopt_long(argc, argv, short_opts, long_opts, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'n': prompt = false; break;
-            case 'N': sigma = stod(optarg); break;
-            case 'S': seed = stoi(optarg); break;
-            case 'm':
-                cout << "Reading mask file " << optarg << endl;
-                mask = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                outPrefix = optarg;
-                cout << "Output prefix will be: " << outPrefix << endl;
-                break;
-            case '1': model = make_shared<SCD>(); break;
-            case '2': model = make_shared<MCD2>(); break;
-            case '3': model = make_shared<MCD3>(); break;
-            case 'r':
-                if (verbose) cout << "Reading reference file: " << optarg << endl;
-                reference = QI::ReadImage(optarg);
-                break;
-            case 'c':
-                clamp = stod(optarg);
-                if (verbose) cout << "Output magnitude will be clamped at " << clamp << endl;
-                break;
-            case 'x': outputComplex = true; break;
-            case 'T':
-                num_threads = stoi(optarg);
-                if (num_threads == 0)
-                    num_threads = std::thread::hardware_concurrency();
-                break;
-                if (verbose) cout << "Using " << num_threads << " threads" << endl;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 0) {
-        cerr << usage << endl << "Incorrect number of arguments." << endl;
+    QI::OptionList opts(usage);
+    QI::Option<int>    num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
+    QI::Switch         complex('x',"complex","Output complex valued signals", opts);
+    QI::Option<float>  clamp(0.0,'c',"clamp","Clamp output between 0 and value", opts);
+    QI::EnumOption     modelOpt("123",'1','M',"model","Choose number of components (1/2/3)", opts);
+    QI::Option<int>    seed(-1,'s',"seed","Seed noise RNG with specific value", opts);
+    QI::Option<float>  noise(0.0,'N',"noise","Add complex noise with std=value", opts);
+    QI::ImageOption<QI::VolumeF> reference('r',"ref","Output space defined by reference volume", opts);
+    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
+    QI::Option<string> outPrefix("", 'o', "out","Add a prefix to output filenames", opts);
+    QI::Switch         suppress('n',"no-prompt","Suppress input prompts", opts);
+    QI::Switch         verbose('v',"verbose","Print more information", opts);
+    QI::Help help(opts);
+    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    if (nonopts.size() != 0) {
+        std::cerr << opts << std::endl;
+        std::cerr << "Extraneous input argument provided." << std::endl;
         return EXIT_FAILURE;
-    }  else if (prompt) {
-        cout << "Starting qisignal" << endl;
-        cout << "Run with -h switch to see usage" << endl;
     }
-    if (verbose) cout << "Using " << model->Name() << " model." << endl;
 
-    if (seed == -1) {
-        std::srand((unsigned int) time(0));
+    std::shared_ptr<Model> model = nullptr;
+    switch (*modelOpt) {
+        case '1': model = make_shared<SCD>(); break;
+        case '2': model = make_shared<MCD2>(); break;
+        case '3': model = make_shared<MCD3>(); break;
+    }
+    if (*verbose) cout << "Using " << model->Name() << " model." << endl;
+
+    if (seed.set()) {
+        std::srand(*seed);
     } else {
-        std::srand(seed);
+        std::srand((unsigned int) time(0));
     }
 
     /***************************************************************************
@@ -325,23 +258,23 @@ int main(int argc, char **argv)
      **************************************************************************/
     SignalsFilter::Pointer calcSignal = SignalsFilter::New();
     calcSignal->SetModel(model);
-    calcSignal->SetSigma(sigma);
-    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(num_threads);
-    calcSignal->SetMask(mask);
-    if (verbose) {
+    calcSignal->SetSigma(*noise);
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(*num_threads);
+    calcSignal->SetMask(*mask);
+    if (*verbose) {
         auto monitor = QI::GenericMonitor::New();
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
-    if (prompt) cout << "Loading parameters." << endl;
+    if (!*suppress) cout << "Loading parameters." << endl;
     for (size_t i = 0; i < model->nParameters(); i++) {
-        if (prompt) cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << flush;
+        if (!*suppress) cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << flush;
         string filename;
         getline(cin, filename);
         if (filename != "") {
-            if (verbose) cout << "Opening " << filename << endl;
+            if (*verbose) cout << "Opening " << filename << endl;
             QI::VolumeF::Pointer param = QI::ReadImage(filename);
-            if (reference) {
-                if (verbose) cout << "Resampling to reference" << endl;
+            if (reference.set()) {
+                if (*verbose) cout << "Resampling to reference" << endl;
                 typedef itk::ResampleImageFilter<QI::VolumeF, QI::VolumeF, double> TResampler;
                 typedef itk::LinearInterpolateImageFunction<QI::VolumeF, double> TInterp;
                 typename TInterp::Pointer interp = TInterp::New();
@@ -350,7 +283,7 @@ int main(int argc, char **argv)
                 resamp->SetInput(param);
                 resamp->SetInterpolator(interp);
                 resamp->SetDefaultPixelValue(0.);
-                resamp->SetOutputParametersFromImage(reference);
+                resamp->SetOutputParametersFromImage(*reference);
                 resamp->Update();
                 QI::VolumeF::Pointer rparam = resamp->GetOutput();
                 rparam->DisconnectPipeline();   
@@ -359,7 +292,7 @@ int main(int argc, char **argv)
                 calcSignal->SetInput(i, param);
             }
         } else {
-            if (verbose) cout << "Using default value: " << model->Default()[i] << endl;
+            if (*verbose) cout << "Using default value: " << model->Default()[i] << endl;
         }
     }
 
@@ -368,34 +301,36 @@ int main(int argc, char **argv)
      **************************************************************************/
     vector<shared_ptr<SequenceBase>> sequences;
     vector<string> filenames;
-    ParseInput(sequences, filenames);
+    ParseInput(sequences, filenames, *suppress);
     
     typedef itk::ClampImageFilter<QI::SeriesF, QI::SeriesF> TClamp;
     TClamp::Pointer clamp_filter = TClamp::New();
-    clamp_filter->SetBounds(0, clamp);
+    if (clamp.set()) {
+        clamp_filter->SetBounds(0, *clamp);
+    }
     for (size_t i = 0; i < sequences.size(); i++) {
-        if (verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
+        if (*verbose) cout << "Generating sequence: " << endl << *(sequences[i]);
         calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
-        if (verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
-        if (verbose) cout << "Converting to timeseries" << endl;
+        if (*verbose) cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << endl;
+        if (*verbose) cout << "Converting to timeseries" << endl;
         QI::VectorToSeriesXF::Pointer vecTo4D = QI::VectorToSeriesXF::New();
         vecTo4D->SetInput(calcSignal->GetOutput());
-        if (verbose) cout << "Saving to filename: " << filenames[i] << endl;
-        if (outputComplex) {
-            QI::WriteImage<SeriesXF>(vecTo4D->GetOutput(), outPrefix + filenames[i]);
+        if (*verbose) cout << "Saving to filename: " << filenames[i] << endl;
+        if (*complex) {
+            QI::WriteImage<SeriesXF>(vecTo4D->GetOutput(), *outPrefix + filenames[i]);
         } else {
             auto abs = itk::ComplexToModulusImageFilter<QI::SeriesXF, QI::SeriesF>::New();
             abs->SetInput(vecTo4D->GetOutput());
-            if (isfinite(clamp)) {
+            if (clamp.set()) {
                 clamp_filter->SetInput(abs->GetOutput());
                 QI::WriteImage<SeriesF>(clamp_filter->GetOutput(),filenames[i]);
             } else {
-                QI::WriteImage<SeriesF>(abs->GetOutput(), outPrefix + filenames[i]);
+                QI::WriteImage<SeriesF>(abs->GetOutput(), *outPrefix + filenames[i]);
             }
         }
     }
-    if (verbose) cout << "Finished all sequences." << endl;
+    if (*verbose) cout << "Finished all sequences." << endl;
     return EXIT_SUCCESS;
 }
 
