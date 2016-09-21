@@ -15,6 +15,7 @@
 
 #include "QI/Signals/SPGR.h"
 #include "QI/Signals/SSFP.h"
+#include "QI/Signals/SSFP_MC.h"
 #include "QI/Signals/MPRAGE.h"
 
 namespace QI {
