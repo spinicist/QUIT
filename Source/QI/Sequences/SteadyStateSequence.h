@@ -56,17 +56,19 @@ class SPGRFinite : public SPGRSimple {
 
 class SSFPSimple : public SteadyState {
     protected:
-        Eigen::ArrayXd m_phi;
-        Eigen::ArrayXd m_flip2, m_phi2; // These store just 1 set of flips/phase-incs
-    
+        Eigen::ArrayXd m_phi;               // These store just 1 set of flips/phase-incs
+        Eigen::ArrayXd m_allFlip, m_allPhi; // These store the full set of flips/phase-incs
+        void setupAll();
+
     public:
         SSFPSimple();
         SSFPSimple(const Eigen::ArrayXd &flip, const double TR, const Eigen::ArrayXd &phases);
         SSFPSimple(std::istream &istr, const bool prompt);
+        virtual size_t size() const override { return m_allFlip.rows(); }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream& os) const override;
         std::string name() const override { return "SSFP"; }
-        const Eigen::ArrayXd & phase_incs() const { return m_phi; }
+        virtual const Eigen::ArrayXd &phase_incs() const { return m_phi; }
         Eigen::ArrayXd weights(const double f0) const override;
 };
 
@@ -83,8 +85,9 @@ public:
 class SSFPEchoFlex : public SSFPEcho {
 public:
     SSFPEchoFlex(std::istream &istr, const bool prompt);
-    void write(std::ostream& os) const override;
     std::string name() const override { return "SSFPEchoFlex"; }
+    const Eigen::ArrayXd &flip() const override { return m_allFlip; }
+    const Eigen::ArrayXd &phase_incs() const override { return m_allPhi; }
 };
 
 class SSFPFinite : public SSFPSimple {

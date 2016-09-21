@@ -42,7 +42,7 @@ class SequenceBase {
         virtual size_t count() const { return 1; }
         double TR() const { return m_TR; }
         void setTR(const double TR) { m_TR = TR; }
-        const Eigen::ArrayXd & flip() const { return m_flip; }
+        virtual const Eigen::ArrayXd & flip() const { return m_flip; }
         void setFlip(const Eigen::ArrayXd &f) { m_flip = f; }
         virtual Eigen::ArrayXd weights(double f0 = 0.0) const { return Eigen::ArrayXd::Ones(size()); }        
 };

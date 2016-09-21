@@ -103,73 +103,72 @@ SSFPSimple::SSFPSimple() : SteadyState() {}
 SSFPSimple::SSFPSimple(const ArrayXd &flip, const double TR, const ArrayXd &phi) :
     SteadyState(flip, TR),
     m_phi(phi * M_PI / 180.)
-{}
+{
+    setupAll();
+}
 
 SSFPSimple::SSFPSimple(std::istream &istr, const bool prompt) : SteadyState() {
-	if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(istr, m_flip2);
+    if (prompt) cout << "Enter flip-angles (degrees): " << flush;
+    QI::ReadArray(istr, m_flip);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
-    QI::ReadArray(istr, m_phi2);
-	if (prompt) cout << "Enter TR (seconds): " << flush;
-	QI::Read(istr, m_TR);
-    m_flip2 *= M_PI / 180.;
-    m_phi2 *= M_PI / 180.;
-    m_flip = (m_flip2 * M_PI / 180.).replicate(m_phi2.rows(), 1);
-    m_phi = ArrayXd::Zero(m_flip.size());
+    QI::ReadArray(istr, m_phi);
+    if (prompt) cout << "Enter TR (seconds): " << flush;
+    QI::Read(istr, m_TR);
+    m_flip *= M_PI / 180.;
+    m_phi *= M_PI / 180.;
+    setupAll();
+}
+
+void SSFPSimple::setupAll() {
+    m_allFlip = m_flip.replicate(m_phi.rows(), 1);
+    m_allPhi = ArrayXd::Zero(m_allFlip.size());
     int start = 0;
-    for (int i = 0; i < m_phi2.size(); i++) {
-        m_phi.segment(start, m_flip2.size()).setConstant(m_phi2[i]);
-        start += m_flip2.size();
+    for (int i = 0; i < m_phi.size(); i++) {
+        m_allPhi.segment(start, m_flip.size()).setConstant(m_phi[i]);
+        start += m_flip.size();
     }
 }
 
 void SSFPSimple::write(ostream &os) const {
     os << name() << endl;
-    os << "Angles: " << (m_flip2 * 180. / M_PI).transpose() << endl;
-    os << "Phases: " << (m_phi2 * 180. / M_PI).transpose() << endl;
+    os << "Angles: " << (flip() * 180. / M_PI).transpose() << endl;
+    os << "Phases: " << (phase_incs() * 180. / M_PI).transpose() << endl;
     os << "TR:     " << m_TR << endl;
 }
 
 ArrayXd SSFPSimple::weights(const double f0) const {
-    ArrayXd offset = m_phi + 2.*M_PI*f0*m_TR;
+    ArrayXd offset = m_allPhi + 2.*M_PI*f0*m_TR;
     ArrayXd weights = 0.75 * (offset / 2).sin().square();
     return weights;
 }
 
 ArrayXcd SSFPSimple::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFP(p, m_flip, m_TR, m_phi);
+    return m->SSFP(p, m_allFlip, m_TR, m_allPhi);
 }
 
 SSFPEcho::SSFPEcho() : SSFPSimple() {}
 SSFPEcho::SSFPEcho(std::istream &istr, const bool prompt) : SSFPSimple(istr, prompt) {}
 
 ArrayXcd SSFPEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFPEcho(p, m_flip, m_TR, m_phi);
+    return m->SSFPEcho(p, m_allFlip, m_TR, m_allPhi);
 }
 
 ArrayXd  SSFPEcho::signal_magnitude(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFPEchoMagnitude(p, m_flip, m_TR, m_phi);
+    return m->SSFPEchoMagnitude(p, m_allFlip, m_TR, m_allPhi);
 }
 
 SSFPEchoFlex::SSFPEchoFlex(std::istream &istr, const bool prompt) : SSFPEcho() {
     if (prompt) cout << "Enter flip-angles (degrees): " << flush;
-    QI::ReadArray(istr, m_flip);
+    QI::ReadArray(istr, m_allFlip);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
-    QI::ReadArray(istr, m_phi);
-    if (m_flip.size() != m_phi.size()) {
+    QI::ReadArray(istr, m_allPhi);
+    if (m_flip.size() != m_allPhi.size()) {
         QI_EXCEPTION("SSFP must have the same number of flip-angles and phase-increments.");
     }
     if (prompt) cout << "Enter TR (seconds): " << flush;
     QI::Read(istr, m_TR);
     m_flip *= M_PI / 180.;
     m_phi *= M_PI / 180.;
-}
-
-void SSFPEchoFlex::write(ostream &os) const {
-    os << name() << endl;
-    os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
-    os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
-    os << "TR:     " << m_TR << endl;
 }
 
 SSFPFinite::SSFPFinite(const ArrayXd &flip, const double TR, const double Trf, const ArrayXd &phases) :
@@ -185,13 +184,13 @@ SSFPFinite::SSFPFinite(std::istream &istr, const bool prompt) : SSFPSimple(istr,
 
 void SSFPFinite::write(ostream &os) const {
     os << name() << endl;
-    os << "Angles: " << (m_flip * 180. / M_PI).transpose() << endl;
-    os << "Phases: " << (m_phi * 180. / M_PI).transpose() << endl;
+    os << "Angles: " << (flip() * 180. / M_PI).transpose() << endl;
+    os << "Phases: " << (phase_incs() * 180. / M_PI).transpose() << endl;
     os << "TR:     " << m_TR << "\tTrf: " << m_Trf << endl;
 }
 
 ArrayXcd SSFPFinite::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->SSFPFinite(p, m_flip, m_TR, m_Trf, m_phi);
+    return m->SSFPFinite(p, m_allFlip, m_TR, m_Trf, m_allPhi);
 }
 
 SSFP_GS::SSFP_GS(std::istream &istr, const bool prompt) : SteadyState() {
