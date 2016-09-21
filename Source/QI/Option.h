@@ -197,14 +197,18 @@ public:
 };
 
 class Help : public OptionBase {
+private:
+    const OptionList &m_opts;
+
 public:
     Help(OptionList &opts) :
-        OptionBase('h', "help", "Print the help message.", opts)
+        OptionBase('h', "help", "Print the help message.", opts),
+        m_opts{opts}
     {}
 
     virtual bool hasArgument() const override { return false; }
     virtual void setOption(const std::string &a) override {
-        std::cout << DefaultOptions() << std::endl;
+        std::cout << m_opts << std::endl;
         exit(EXIT_FAILURE);
     }
 };
