@@ -55,7 +55,6 @@ public:
     Eigen::ArrayXd m_data;
     double m_T1, m_B1;
     shared_ptr<QI::SSFPSimple> m_sequence;
-    const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
 
     Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
         ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->flip(), m_sequence->phase_incs(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
