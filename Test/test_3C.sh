@@ -53,7 +53,7 @@ END
 
 echo "$INPUT" > mcd_input.txt
 NOISE="0.002"
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --3 -n -v --noise=$NOISE<< END_MCSIG
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --model=3 -n -v --noise=$NOISE<< END_MCSIG
 PD.nii
 T1_m.nii
 T2_m.nii

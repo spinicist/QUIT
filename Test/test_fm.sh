@@ -34,7 +34,7 @@ SSFP_PC="$3"
 PREC="$4"
 ARGS="$5"
 NOISE="0.002"
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise $NOISE << END_SIG
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --model=1 -n -v --noise=$NOISE << END_SIG
 PD.nii
 T1.nii
 T2.nii

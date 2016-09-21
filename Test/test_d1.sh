@@ -38,7 +38,7 @@ AFI_PAR="55.
 0.02 0.1"
 # Create input for Single Component
 NOISE="0.002"
-run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --1 -v -n --noise=$NOISE <<END_SIGNALS
+run_test "CREATE_REAL_SIGNALS" $QUITDIR/qisignal --model=1 -v -n --noise=$NOISE <<END_SIGNALS
 PD.nii
 T1.nii
 T2.nii

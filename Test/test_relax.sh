@@ -38,7 +38,7 @@ $SPIN_PAR
 END"
 echo "$MCSIG_INPUT" > qisignal.in
 NOISE="0.002"
-run_test "CREATE_SIGNALS" $QUITDIR/qisignal --1 -n -v --noise=$NOISE < qisignal.in
+run_test "CREATE_SIGNALS" $QUITDIR/qisignal --model=1 -n -v --noise=$NOISE < qisignal.in
 
 echo "$SPIN_PAR" > multiecho.in
 run_test "SPINECHO_LOGLIN" $QUITDIR/qimultiecho $SPIN_FILE -n -v -al -oLL_     < multiecho.in

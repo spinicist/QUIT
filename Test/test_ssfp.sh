@@ -36,7 +36,7 @@ MAG_FILE="mag.nii"
 RMS_FILE="rms.nii"
 MAX_FILE="max.nii"
 NOISE="0.001"
-run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --1 -n --noise=$NOISE -x <<END_IN
+run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --model=1 -n --noise=$NOISE -x <<END_IN
 PD.nii
 T1.nii
 T2.nii
