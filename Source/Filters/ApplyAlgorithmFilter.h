@@ -87,10 +87,10 @@ protected:
 
     RealTimeClock::TimeStampType m_elapsedTime = 0.0;
     SizeValueType m_unmaskedVoxels = 0;
-    static const int AllResidualsOutput = 0;
-	static const int ResidualOutput = 1;
-    static const int IterationsOutput = 2;
-    static const int StartOutputs = 3;
+    static const int AllResidualsOutputOffset = 0;
+	static const int ResidualOutputOffset = 1;
+    static const int IterationsOutputOffset = 2;
+    static const int ExtraOutputs = 3;
 
     virtual void GenerateOutputInformation() ITK_OVERRIDE;
     virtual void GenerateData() ITK_OVERRIDE;

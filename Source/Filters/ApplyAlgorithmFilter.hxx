@@ -20,10 +20,10 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetAlgorithm(const std::shared_ptr<Algori
     // Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
     // Only the data inputs are required, the others are optional
     this->SetNumberOfRequiredInputs(a->numInputs());
-    // Outputs go: AllResiduals, Residual, Iterations, Parameter 0, Parameter 1, ...
-    size_t totalOutputs = StartOutputs + m_algorithm->numOutputs();
-    this->SetNumberOfRequiredOutputs(totalOutputs);
-    for (size_t i = 0; i < totalOutputs; i++) {
+    // Outputs go: Parameter 0, Parameter 1, ..., AllResiduals, Residual, Iterations
+    // Need to be this way because at some ITK assumes 1st output is of TOutput
+    this->SetNumberOfRequiredOutputs(m_algorithm->numOutputs()+ExtraOutputs);
+    for (size_t i = 0; i < (m_algorithm->numOutputs()+ExtraOutputs); i++) {
         this->SetNthOutput(i, this->MakeOutput(i));
     }
 }
@@ -102,19 +102,19 @@ auto ApplyAlgorithmFilter<TI, TO, TC>::GetMask() const -> typename TConstImage::
 template<typename TI, typename TO, typename TC>
 DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(unsigned int idx) {
     DataObject::Pointer output;
-    if (idx == AllResidualsOutput) {
+    if (idx < m_algorithm->numOutputs()) {
+        output = (TOutputImage::New()).GetPointer();
+    } else if (idx == (m_algorithm->numOutputs() + AllResidualsOutputOffset)) {
         auto img = TInputImage::New();
         output = img;
-    } else if (idx == ResidualOutput) {
+    } else if (idx == (m_algorithm->numOutputs() + ResidualOutputOffset)) {
         auto img = TConstImage::New();
         output = img;
-    } else if (idx == IterationsOutput) {
+    } else if (idx == (m_algorithm->numOutputs() + IterationsOutputOffset)) {
         auto img = TIterationsImage::New();
         output = img;
-    } else if (idx < (m_algorithm->numOutputs() + StartOutputs)) {
-        output = (TOutputImage::New()).GetPointer();
     } else {
-        itkExceptionMacro("Attempted to create output " << idx << ", this algorithm only has " << m_algorithm->numOutputs() << "+" << StartOutputs << " outputs.");
+        itkExceptionMacro("Attempted to create output " << idx << ", index too high");
     }
     return output.GetPointer();
 }
@@ -122,7 +122,7 @@ DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(unsigned int id
 template<typename TI, typename TO, typename TC>
 auto ApplyAlgorithmFilter<TI, TO, TC>::GetOutput(const size_t i) -> TOutputImage *{
     if (i < m_algorithm->numOutputs()) {
-        return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(i+StartOutputs));
+        return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(i));
     } else {
         itkExceptionMacro("Requested output " << std::to_string(i) << " is past maximum (" << std::to_string(m_algorithm->numOutputs()) << ")");
     }
@@ -130,17 +130,17 @@ auto ApplyAlgorithmFilter<TI, TO, TC>::GetOutput(const size_t i) -> TOutputImage
 
 template<typename TI, typename TO, typename TC>
 auto ApplyAlgorithmFilter<TI, TO, TC>::GetAllResidualsOutput() -> TInputImage *{
-    return dynamic_cast<TInputImage *>(this->ProcessObject::GetOutput(AllResidualsOutput));
+    return dynamic_cast<TInputImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+AllResidualsOutputOffset));
 }
 
 template<typename TI, typename TO, typename TC>
 auto ApplyAlgorithmFilter<TI, TO, TC>::GetResidualOutput() -> TConstImage *{
-    return dynamic_cast<TConstImage *>(this->ProcessObject::GetOutput(ResidualOutput));
+    return dynamic_cast<TConstImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+ResidualOutputOffset));
 }
 
 template<typename TI, typename TO, typename TC>
 auto ApplyAlgorithmFilter<TI, TO, TC>::GetIterationsOutput() -> TIterationsImage *{
-    return dynamic_cast<TIterationsImage *>(this->ProcessObject::GetOutput(IterationsOutput));
+    return dynamic_cast<TIterationsImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+IterationsOutputOffset));
 }
 
 template<typename TI, typename TO, typename TC>
@@ -220,10 +220,10 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
             ++maskIter;
         }
         maskIter.GoToBegin(); // Reset
-        if (m_verbose) std::cout << "Found " << m_unmaskedVoxels << " unmasked voxels." << std::endl;
     } else {
         m_unmaskedVoxels = region.GetNumberOfPixels();
     }
+    if (m_verbose) std::cout << "Found " << m_unmaskedVoxels << " voxels to process." << std::endl;
     ProgressReporter progress(this, 0, m_unmaskedVoxels, 10);
 
     std::vector<ImageRegionConstIterator<TInputImage>> dataIters(m_algorithm->numInputs());
