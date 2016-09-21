@@ -48,7 +48,7 @@ set( SIGDIR ${QIDIR}/Signals )
 set( SIGLIB "qisig" )
 add_library( ${SIGLIB} STATIC
              ${SIGDIR}/Common.cpp ${SIGDIR}/SignalEquations.cpp
-             ${SIGDIR}/SPGR.cpp ${SIGDIR}/SSFP.cpp ${SIGDIR}/MPRAGE.cpp )
+             ${SIGDIR}/SPGR.cpp ${SIGDIR}/SSFP.cpp ${SIGDIR}/SSFP_MC.cpp ${SIGDIR}/MPRAGE.cpp )
 
 set( SEQDIR ${QIDIR}/Sequences )
 set( SEQLIB "qiseq" )
@@ -64,7 +64,7 @@ add_library( ${MDLLIB} STATIC
 set( ALGDIR ${QIDIR}/Algorithms )
 set( ALGLIB "qialg" )
 add_library( ${ALGLIB} STATIC
-             ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp )
+             ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp ${ALGDIR}/EllipseFit.cpp )
 
 set( UTILS qihdr qinewimage qicomplex qiaffine qimask qikfilter qireorder
            qisplitsubjects qiunwrap qipolyfit qipolyimg)
