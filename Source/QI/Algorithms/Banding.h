@@ -25,7 +25,7 @@ namespace QI {
  * Helper Functions
  */
 template<typename T> inline T cdot(const std::complex<T> &a, const std::complex<T> &b) {
-    return real(a * conj(b));
+    return real(a)*real(b) + imag(a)*imag(b);
 }
 
 template<typename Derived>

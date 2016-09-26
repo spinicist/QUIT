@@ -57,7 +57,7 @@ std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::Arr
     for (size_t i = 0; i < a.rows(); i++) {
         for (size_t j = i + 1; j < a.rows(); j++) {
             const std::complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
-            const std::complex<double> ni(di.imag(), -di.real()), nj(dj.imag(), -dj.real());
+            const std::complex<double> ni(-di.imag(), di.real()), nj(-dj.imag(), dj.real());
 
             const double mu = QI::cdot(a[j] - a[i], nj) / QI::cdot(di, nj);
             const double nu = QI::cdot(a[i] - a[j], ni) / QI::cdot(dj, ni);
