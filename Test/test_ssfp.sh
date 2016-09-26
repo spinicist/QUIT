@@ -1,10 +1,10 @@
-#!/bin/bash -eu
+#!/bin/bash -eux
 
 # Tobias Wood 2015
 # Test script for ssfpbands etc.
 
 source ./test_common.sh
-SILENCE_TESTS="1"
+SILENCE_TESTS="0"
 
 # First, create input data
 DATADIR="ssfp"
@@ -14,16 +14,16 @@ if [ "$(ls -A ./)" ]; then
     rm *
 fi
 
-SIZE="100 101 101"
+SIZE="25 25 51"
 $QUITDIR/qinewimage --size "$SIZE" -f "1.0" PD.nii
 $QUITDIR/qinewimage --size "$SIZE" -f "1.0" T1.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "0 0.02 0.25" T2.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "1 -100.0 100.0" f0.nii
-$QUITDIR/qinewimage --size "$SIZE" -g "2 0.5 1.0" B1.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "0.1" T2.nii #-g "0 0.02 0.25" T2.nii
+$QUITDIR/qinewimage --size "$SIZE" -g "2 -300.0 300.0" f0.nii
+$QUITDIR/qinewimage --size "$SIZE" -f "1.0" B1.nii #-g "2 0.5 1.0"
 
 SSFP_FILE="ssfp.nii"
-SSFP_FLIP="100"
-SSFP_PINC="0 90 180 270"
+SSFP_FLIP="20 60"
+SSFP_PINC="180 0 90 270"
 SSFP_TR="0.005"
 GS_REF_FILE="gs_ref.nii"
 GS_REF_MAG="gs_ref_mag.nii"
@@ -43,7 +43,7 @@ T2.nii
 f0.nii
 B1.nii
 $SSFP_FILE
-SSFP
+SSFP_ECHO
 $SSFP_FLIP
 $SSFP_PINC
 $SSFP_TR
@@ -53,22 +53,33 @@ $SSFP_FLIP
 $SSFP_TR
 END
 END_IN
-$QUITDIR/qicomplex -x $GS_REF_FILE -M $GS_REF_MAG
+$QUITDIR/qicomplex -x $GS_REF_FILE -M $GS_REF_MAG -P gs_ref_ph.nii
+fslmaths gs_ref_ph -div 3.141592 -div $SSFP_TR gs_ref_f0.nii
 
-run_test "GS"  $QUITDIR/qissfpbands $SSFP_FILE -R N      --magnitude -o $GS_FILE
-run_test "GSM" $QUITDIR/qissfpbands $SSFP_FILE -R M      --magnitude -o $GSM_FILE
-run_test "GSL" $QUITDIR/qissfpbands $SSFP_FILE -R L      --magnitude -o $GSL_FILE
-run_test "GS2" $QUITDIR/qissfpbands $SSFP_FILE -R L -2   --magnitude -o $GS2_FILE
-run_test "CS"  $QUITDIR/qissfpbands $SSFP_FILE --cs      --magnitude -o $CS_FILE
-run_test "MAG" $QUITDIR/qissfpbands $SSFP_FILE --magmean --magnitude -o $MAG_FILE
-run_test "RMS" $QUITDIR/qissfpbands $SSFP_FILE --rms     --magnitude -o $RMS_FILE
-run_test "MAX" $QUITDIR/qissfpbands $SSFP_FILE --max     --magnitude -o $MAX_FILE
+$QUITDIR/qicomplex -x $SSFP_FILE -M ssfp_mag.nii -P ssfp_ph.nii
+run_test "GS"  $QUITDIR/qissfpbands $SSFP_FILE -R N -o $GS_FILE --alt_order
+$QUITDIR/qicomplex -x $GS_FILE -M gs_mag.nii -P gs_ph.nii
+fslmaths gs_ph -div 3.141592 -div $SSFP_TR gs_f0.nii
 
-compare_test "GS"  $GS_FILE  $GS_REF_MAG $NOISE 50
-compare_test "GSM" $GSM_FILE $GS_REF_MAG $NOISE 50
-compare_test "GSL" $GSL_FILE $GS_REF_MAG $NOISE 50
-compare_test "GS2" $GS2_FILE $GS_REF_MAG $NOISE 50
-compare_test "CS"  $CS_FILE  $GS_REF_MAG $NOISE 50
-compare_test "MAG" $MAG_FILE $GS_REF_MAG $NOISE 50
-compare_test "RMS" $RMS_FILE $GS_REF_MAG $NOISE 50
-compare_test "MAX" $MAX_FILE $GS_REF_MAG $NOISE 50
+$QUITDIR/qidespot2fm -n -v -bB1.nii T1.nii ssfp_mag.nii --asym <<END_IN
+$SSFP_FLIP
+$SSFP_PINC
+$SSFP_TR
+END_IN
+
+#run_test "GSM" $QUITDIR/qissfpbands $SSFP_FILE -R M      --magnitude -o $GSM_FILE
+#run_test "GSL" $QUITDIR/qissfpbands $SSFP_FILE -R L      --magnitude -o $GSL_FILE
+#run_test "GS2" $QUITDIR/qissfpbands $SSFP_FILE -R L -2   --magnitude -o $GS2_FILE
+#run_test "CS"  $QUITDIR/qissfpbands $SSFP_FILE --cs      --magnitude -o $CS_FILE
+#run_test "MAG" $QUITDIR/qissfpbands $SSFP_FILE --magmean --magnitude -o $MAG_FILE
+#run_test "RMS" $QUITDIR/qissfpbands $SSFP_FILE --rms     --magnitude -o $RMS_FILE
+#run_test "MAX" $QUITDIR/qissfpbands $SSFP_FILE --max     --magnitude -o $MAX_FILE
+
+#compare_test "GS"  $GS_FILE  $GS_REF_MAG $NOISE 50
+#compare_test "GSM" $GSM_FILE $GS_REF_MAG $NOISE 50
+#compare_test "GSL" $GSL_FILE $GS_REF_MAG $NOISE 50
+#compare_test "GS2" $GS2_FILE $GS_REF_MAG $NOISE 50
+#compare_test "CS"  $CS_FILE  $GS_REF_MAG $NOISE 50
+#compare_test "MAG" $MAG_FILE $GS_REF_MAG $NOISE 50
+#compare_test "RMS" $RMS_FILE $GS_REF_MAG $NOISE 50
+#compare_test "MAX" $MAX_FILE $GS_REF_MAG $NOISE 50
