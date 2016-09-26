@@ -69,6 +69,8 @@ class SSFPSimple : public SteadyState {
         void write(std::ostream& os) const override;
         std::string name() const override { return "SSFP"; }
         virtual const Eigen::ArrayXd &phase_incs() const { return m_phi; }
+        virtual const Eigen::ArrayXd &allFlip() const { return m_allFlip; }
+        virtual const Eigen::ArrayXd &allPhi() const { return m_allPhi; }
         Eigen::ArrayXd weights(const double f0) const override;
 };
 
