@@ -21,7 +21,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetAlgorithm(const std::shared_ptr<Algori
     // Only the data inputs are required, the others are optional
     this->SetNumberOfRequiredInputs(a->numInputs());
     // Outputs go: Parameter 0, Parameter 1, ..., AllResiduals, Residual, Iterations
-    // Need to be this way because at some ITK assumes 1st output is of TOutput
+    // Need to be this way because at some ITK assumes 1st output is of TOutputImage
     this->SetNumberOfRequiredOutputs(m_algorithm->numOutputs()+ExtraOutputs);
     for (size_t i = 0; i < (m_algorithm->numOutputs()+ExtraOutputs); i++) {
         this->SetNthOutput(i, this->MakeOutput(i));
@@ -255,19 +255,19 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
     while(!dataIters[0].IsAtEnd()) {
         if (!mask || maskIter.Get()) {
             auto task = [=] {
-                std::vector<TInput> inputs(m_algorithm->numInputs());
-                std::vector<TOutput> outputs(m_algorithm->numOutputs());
+                std::vector<TInputPixel> inputs(m_algorithm->numInputs());
+                std::vector<TOutputPixel> outputs(m_algorithm->numOutputs());
                 for (size_t i = 0; i < outputs.size(); i++) {
                     outputs[i] = m_algorithm->zero(i);
                 }
-                std::vector<TConst> constants = m_algorithm->defaultConsts();
+                std::vector<TConstPixel> constants = m_algorithm->defaultConsts();
                 for (size_t i = 0; i < constIters.size(); i++) {
                     if (this->GetConst(i)) {
                         constants[i] = constIters[i].Get();
                     }
                 }
-                TConst residual;
-                TInput resids;
+                TConstPixel residual;
+                TInputPixel resids;
                 TIterations iterations{0};
 
                 for (size_t i = 0; i < m_algorithm->numInputs(); i++) {

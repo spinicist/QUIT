@@ -17,9 +17,9 @@ public:
     typedef TOutputImage_ TOutputImage;
     typedef TConstImage_  TConstImage;
 
-    typedef typename TInputImage::PixelType  TInput;
-    typedef typename TOutputImage::PixelType TOutput;
-    typedef typename TConstImage::PixelType  TConst;
+    typedef typename TInputImage::PixelType  TInputPixel;
+    typedef typename TOutputImage::PixelType TOutputPixel;
+    typedef typename TConstImage::PixelType  TConstPixel;
     typedef unsigned int TIterations;
     typedef Image<TIterations, TInputImage::ImageDimension> TIterationsImage;
 
@@ -33,9 +33,9 @@ public:
 
     class Algorithm {
     public:
-        typedef TInput  TInput;
-        typedef TOutput TOutput;
-        typedef TConst  TConst;
+        using TInput = TInputPixel;
+        using TOutput = TOutputPixel;
+        using TConst = TConstPixel;
         typedef TIterations  TIters;
         virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
         virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
