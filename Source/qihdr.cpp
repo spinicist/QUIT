@@ -37,6 +37,7 @@ int main(int argc, char **argv) {
     QI::Switch print_origin('o', "origin", "Print the the origin", opts);
     QI::Switch print_spacings('S',"spacings", "Print the voxel spacings/sizes", opts);
     QI::Option<int> print_spacing(0, 'P',"spacing", "Print a specific spacing/size", opts);
+    QI::Switch print_voxvol('v',"voxvol","Calculate and print the volume of one voxel", opts);
     QI::Switch print_sizes('s',"sizes", "Print the dimension/matrix sizes", opts);
     QI::Switch print_type('T',"dtype", "Print the data type", opts);
     QI::Switch print_dims('D',"dims","Print the number of dimensions", opts);
@@ -49,7 +50,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
     bool print_all = !(*print_direction || *print_origin || *print_spacings || *print_spacing ||
-                       *print_sizes || *print_type || *print_dims);
+                       *print_sizes || *print_type || *print_dims || *print_voxvol );
     for (const string& fname : nonopts) {
         itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(fname.c_str(), itk::ImageIOFactory::ReadMode);
         if (!imageIO) {
@@ -67,10 +68,11 @@ int main(int argc, char **argv) {
                  << imageIO->GetComponentTypeAsString(imageIO->GetComponentType()) << endl;
         }
         if (*dim3 && dims > 3) dims = 3;
-        if (print_all) cout << "Size:        "; if (print_all || *print_sizes)    { for (int i = 0; i < dims; i++) cout << imageIO->GetDimensions(i) << "\t"; cout << endl; }
-        if (print_all) cout << "Spacing:     "; if (print_all || *print_spacings) { for (int i = 0; i < dims; i++) cout << imageIO->GetSpacing(i) << "\t"; cout << endl; }
-        if (print_all) cout << "Origin:      "; if (print_all || *print_origin)   { for (int i = 0; i < dims; i++) cout << imageIO->GetOrigin(i) << "\t"; cout << endl; }
-        if (print_all) cout << "Direction:   " << endl;
+        if (print_all) cout << "Size:         "; if (print_all || *print_sizes)    { for (int i = 0; i < dims; i++) cout << imageIO->GetDimensions(i) << "\t"; cout << endl; }
+        if (print_all) cout << "Voxel volume: "; if (print_all || *print_voxvol)   { double vol = imageIO->GetSpacing(0); for (int i = 1; i < dims; i++) vol *= imageIO->GetSpacing(i); cout << vol << endl; }
+        if (print_all) cout << "Spacing:      "; if (print_all || *print_spacings) { for (int i = 0; i < dims; i++) cout << imageIO->GetSpacing(i) << "\t"; cout << endl; }
+        if (print_all) cout << "Origin:       "; if (print_all || *print_origin)   { for (int i = 0; i < dims; i++) cout << imageIO->GetOrigin(i) << "\t"; cout << endl; }
+        if (print_all) cout << "Direction:    " << endl;
         if (print_all | *print_direction) {
             for (int i = 0; i < dims; i++) {
                 std::vector<double> dir = imageIO->GetDirection(i);
