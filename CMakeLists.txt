@@ -80,7 +80,7 @@ endforeach(PROGRAM)
 
 foreach(PROGRAM ${QUANT})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-    target_link_libraries(${PROGRAM} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} ${ITK_LIBRARIES})
+    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
 foreach(PROGRAM ${ELLIPSE})

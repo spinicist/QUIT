@@ -39,9 +39,11 @@ int main(int argc, char **argv) {
     }
     if (*verbose) cout << "Opening file: " << nonopts[0] << endl;
     auto data = QI::ReadVectorImage<float>(nonopts[0]);
-    shared_ptr<QI::CESTAlgo> algo = make_shared<QI::CESTAlgo>;
-    auto seq = make_shared<QI::SPGR_CEST>(cin, !*suppress);
-    if (*verbose) cout << *seq;
+
+    Eigen::ArrayXf ifrqs; QI::ReadArray(cin, ifrqs);
+    Eigen::ArrayXf ofrqs; QI::ReadArray(cin, ofrqs);
+    shared_ptr<QI::CESTAlgo> algo = make_shared<QI::CESTAlgo>(ifrqs, ofrqs);
+
     auto apply = QI::ApplyVectorF::New();
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(*num_threads);

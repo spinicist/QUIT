@@ -29,22 +29,23 @@ namespace QI {
 
 class CESTAlgo : public QI::ApplyVectorF::Algorithm {
 protected:
-    std::shared_ptr<QI::SPGR_CEST> m_sequence = nullptr;
+    Eigen::ArrayXf m_ifrqs, m_ofrqs;
     size_t m_half;
     TOutput m_zero;
 public:
-    CESTAlgo(std::shared_ptr<QI::SPGR_CEST> &seq) :
-        m_sequence(seq)
+    CESTAlgo(const Eigen::ArrayXf &ifrqs, const Eigen::ArrayXf &ofrqs) :
+        m_ifrqs(ifrqs),
+        m_ofrqs(ofrqs)
     {
-        m_half = (m_sequence->freq().rows() - 1) / 2;
+        m_half = (m_ifrqs.rows() - 1) / 2;
         m_zero = TOutput(m_half);
         m_zero.Fill(0.);
     }
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 0; }
     size_t numOutputs() const override { return 1; }
-    size_t dataSize() const override { return m_sequence->size(); }
-    size_t outputSize(const int i) const override { return m_sequence->flip().rows(); }
+    size_t dataSize() const override { return m_ifrqs.rows(); }
+    size_t outputSize(const int i) const override { return m_half; }
     virtual std::vector<float> defaultConsts() const override {
         std::vector<float> def(0, 1.0f);
         return def;
@@ -54,7 +55,6 @@ public:
         static std::vector<std::string> _names = {"asym"};
         return _names;
     }
-    virtual std::array<float, 1> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double TR, const double flip) const = 0;
     virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override;
