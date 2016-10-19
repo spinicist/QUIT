@@ -29,17 +29,20 @@ namespace QI {
 
 class CESTAlgo : public QI::ApplyVectorF::Algorithm {
 protected:
-    Eigen::ArrayXf m_ifrqs, m_ofrqs;
+    Eigen::ArrayXf m_ifrqs, m_ofrqs, m_afrqs;
     size_t m_half;
     TOutput m_zero1, m_zero2, m_zero3;
 public:
-    CESTAlgo(const Eigen::ArrayXf &ifrqs, const Eigen::ArrayXf &ofrqs) :
+    CESTAlgo(const Eigen::ArrayXf &ifrqs,
+             const Eigen::ArrayXf &ofrqs,
+             const Eigen::ArrayXf &afrqs) :
         m_ifrqs(ifrqs),
-        m_ofrqs(ofrqs)
+        m_ofrqs(ofrqs),
+        m_afrqs(afrqs)
     {
         m_half = (m_ifrqs.rows() - 1) / 2;
-        m_zero1 = TOutput(m_ifrqs.rows()); m_zero1.Fill(0.);
-        m_zero2 = TOutput(m_ofrqs.rows()); m_zero2.Fill(0.);
+        m_zero1 = TOutput(m_ofrqs.rows()); m_zero2.Fill(0.);
+        m_zero2 = TOutput(m_afrqs.rows()); m_zero3.Fill(0.);
         m_zero3 = TOutput(1); m_zero3.Fill(0.);
     }
     size_t numInputs() const override { return 1; }
@@ -48,8 +51,8 @@ public:
     size_t dataSize() const override { return m_ifrqs.rows(); }
     size_t outputSize(const int i) const override {
         switch (i) {
-            case 0: return m_ifrqs.rows();
-            case 1: return m_ofrqs.rows();
+            case 0: return m_ofrqs.rows();
+            case 1: return m_afrqs.rows();
             case 2: return 1;
             default: QI_EXCEPTION("Requested invalid output " << i);
         }

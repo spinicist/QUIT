@@ -42,7 +42,8 @@ int main(int argc, char **argv) {
 
     Eigen::ArrayXf ifrqs; QI::ReadArray(cin, ifrqs);
     Eigen::ArrayXf ofrqs; QI::ReadArray(cin, ofrqs);
-    shared_ptr<QI::CESTAlgo> algo = make_shared<QI::CESTAlgo>(ifrqs, ofrqs);
+    Eigen::ArrayXf afrqs; QI::ReadArray(cin, afrqs); // Asymmetry output
+    shared_ptr<QI::CESTAlgo> algo = make_shared<QI::CESTAlgo>(ifrqs, ofrqs, afrqs);
 
     auto apply = QI::ApplyVectorF::New();
     apply->SetAlgorithm(algo);
