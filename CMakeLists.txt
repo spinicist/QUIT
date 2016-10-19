@@ -67,7 +67,8 @@ add_library( ${ALGLIB} STATIC
              ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp ${ALGDIR}/EllipseFit.cpp )
 
 set( UTILS qihdr qinewimage qicomplex qiaffine qimask qikfilter qireorder
-           qisplitsubjects qiunwrap qipolyfit qipolyimg)
+           qisplitsubjects qiunwrap qipolyfit qipolyimg
+           qirois )
 set( QUANT qisignal qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot qiafi qimultiecho qimp2rage )
 set( ELLIPSE qissfpbands qiesmap )
 
