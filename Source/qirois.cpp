@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <fstream>
 #include <string>
 
 #include "QI/Types.h"
@@ -28,7 +29,8 @@ Calculates volumes of all ROI labels in a file. Uses itkLabelGeometryImageFilter
 int main(int argc, char **argv) {
     Eigen::initParallel();
     QI::OptionList opts(usage);
-    QI::Switch print_labels('l',"labels","Print out label/ROI numbers first", opts);
+    QI::Option<std::string> label_list("",'l',"labels","Specify labels to search for", opts);
+    QI::Switch print_labels('p',"print_labels","Print out label/ROI numbers first", opts);
     QI::Help help(opts);
     std::vector<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() != 1) {
@@ -45,8 +47,20 @@ int main(int argc, char **argv) {
     label_filter->CalculateOrientedLabelRegionsOff();
     label_filter->Update();
 
-    typename TLblGeoFilter::LabelsType labels = label_filter->GetLabels();
-    std::sort( labels.begin(), labels.end() );
+    typename TLblGeoFilter::LabelsType labels;
+    if (label_list.set()) {
+        std::ifstream file(*label_list);
+        std::string line;
+        while (std::getline(file, line)) {
+            std::stringstream linestream(line);
+            int label;
+            linestream >> label;
+            labels.push_back(label);
+        }
+    } else {
+        labels = label_filter->GetLabels();
+        std::sort(labels.begin(), labels.end());
+    }
     for(auto it = labels.begin(); it != labels.end(); it++) {
         if (*print_labels) std::cout << *it << ",";
         std::cout << (voxvol * label_filter->GetVolume(*it)) << std::endl;
