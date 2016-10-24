@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
     QI::OptionList opts(usage);
     QI::Switch sort('s',"sort","Sort groups (and design matrix) in ascending order", opts);
     QI::Option<std::string> covars_path("",'C',"covars","Path to covariates file (added to design matrix)", opts);
+    QI::Option<std::string> ftests_path("",'f',"ftests","Generate and save F-tests", opts);
     QI::Option<std::string> contrasts_path("",'c',"contrasts","Generate and save contrasts", opts);
     QI::Option<std::string> design_path("",'d',"design","Path to save design matrix", opts);
     QI::Option<std::string> output_path("",'o',"out","Path for output merged file", opts);
@@ -150,17 +151,13 @@ int main(int argc, char **argv) {
             }
         }
     }
+    int n_covars = covars_path.set() ? covars.front().front().size() : 0;
     if (contrasts_path.set()) {
         if (*verbose) std::cout << "Generating contrasts" << std::endl;
-        int n_covars = covars_path.set() ? covars.front().front().size() : 0;
         std::ofstream con_file(*contrasts_path);
         for (int g = 0; g < n_groups-1; g++) {
             for (int g2 = 0; g2 < n_groups-1; g2++) {
-                if (g2 == g) {
-                    con_file << "1\t-1\t";
-                } else {
-                    con_file << "0\t";
-                }
+                con_file << (g2 == g ? "1\t-1\t" : "0\t");
             }
             for (int c = 0; c < n_covars; c++) {
                 con_file << "0\t";
@@ -173,16 +170,34 @@ int main(int argc, char **argv) {
             }
             for (int c2 = 0; c2 < n_covars; c2++) {
                 if ((c/2) == c2) {
-                    if (c % 2 == 0) {
-                        con_file << "1\t";
-                    } else {
-                        con_file << "-1\t";
-                    }
+                    con_file << ((c % 2 == 0) ? "1\t" : "-1\t");
                 } else {
                     con_file << "0\t";
                 }
             }
             con_file << std::endl;
+        }
+    }
+    if (ftests_path.set()) {
+        if (*verbose) std::cout << "Generating F-tests" << std::endl;
+        std::ofstream fts_file(*ftests_path);
+        if (n_groups > 2) { // Main effect of model
+            for (int g = 0; g < (n_groups - 1); g++) {
+                fts_file << "1\t";
+            }
+            for (int c = 0; c < 2*n_covars; c++) {
+                fts_file << "0\t";
+            }
+            fts_file << std::endl;
+        }
+        for (int g = 0; g < (n_groups - 1); g++) { // Individual group comparisons
+            for (int g2 = 0; g2 < (n_groups - 1); g2++) {
+                fts_file << ((g2 == g) ? "1\t" : "0\t");
+            }
+            for (int c = 0; c < 2*n_covars; c++) {
+                fts_file << "0\t";
+            }
+            fts_file << std::endl;
         }
     }
     if (*verbose) std::cout << "Writing merged file: " << *output_path << std::endl;
