@@ -35,10 +35,13 @@ int main(int argc, char **argv) {
     QI::OptionList opts(usage);
     QI::Option<std::string> group_path("",'g',"groups","File to read group numbers from", opts);
     QI::Option<std::string> output_path("",'o',"out","Path for output merged file", opts);
+    QI::Option<std::string> design_path("",'d',"design","Path to save design matrix", opts);
+
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
     std::vector<std::string> file_paths = opts.parse(argc, argv);
     if (!group_path.set()) {
+        std::cerr << opts << std::endl;
         std::cerr << "Group file must be set with --groups option" << std::endl;
         return EXIT_FAILURE;
     }
@@ -67,6 +70,11 @@ int main(int argc, char **argv) {
     auto tiler = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
     tiler->SetLayout(layout);
 
+    std::ofstream design_file;
+    if (design_path.set()) {
+        if (*verbose) std::cout << "Design matrix will be saved to: " << *design_path << std::endl;
+        design_file = std::ofstream(*design_path);
+    }
     int out_index = 0;
     for (int i = 0; i < group_list.size(); i++) {
         const int group = group_list.at(i);
@@ -76,6 +84,16 @@ int main(int argc, char **argv) {
             groups.at(group - 1).push_back(ptr);
             tiler->SetInput(out_index, ptr);
             out_index++;
+            if (design_path.set()) {
+                for (int g = 1; g <= n_groups; g++) {
+                    if (g == group) {
+                        design_file << "1\t";
+                    } else {
+                        design_file << "0\t";
+                    }
+                }
+                design_file << std::endl;
+            }
         } else {
             if (*verbose) std::cout << "Ignoring file: " << file_paths.at(i) << std::endl;
         }
