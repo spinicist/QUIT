@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
     QI::Option<std::string> group_path("",'g',"groups","File to read group numbers from", opts);
     QI::Option<std::string> output_path("",'o',"out","Path for output merged file", opts);
     QI::Option<std::string> design_path("",'d',"design","Path to save design matrix", opts);
+    QI::Option<std::string> covars_path("",'c',"covars","Path to covariates file (added to design matrix)", opts);
 
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
@@ -75,6 +76,18 @@ int main(int argc, char **argv) {
         if (*verbose) std::cout << "Design matrix will be saved to: " << *design_path << std::endl;
         design_file = std::ofstream(*design_path);
     }
+    std::vector<std::string> covars;
+    if (covars_path.set()) {
+        std::ifstream covars_file(*covars_path);
+        std::string line;
+        while (std::getline(covars_file, line)) {
+            covars.push_back(line);
+        }
+        if (covars.size() != group_list.size()) {
+            std::cerr << "Covariate size does not match group size" << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
     int out_index = 0;
     for (int i = 0; i < group_list.size(); i++) {
         const int group = group_list.at(i);
@@ -91,6 +104,9 @@ int main(int argc, char **argv) {
                     } else {
                         design_file << "0\t";
                     }
+                }
+                if (covars_path.set()) {
+                    design_file << covars.at(i);
                 }
                 design_file << std::endl;
             }
