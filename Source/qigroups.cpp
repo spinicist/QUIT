@@ -16,6 +16,7 @@
 
 #include "itkTileImageFilter.h"
 #include "itkSubtractImageFilter.h"
+#include "itkDivideImageFilter.h"
 #include "Filters/MeanImageFilter.h"
 
 #include "QI/Types.h"
@@ -36,6 +37,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     QI::OptionList opts(usage);
     QI::Switch sort('s',"sort","Sort merged file (and design matrix) in ascending group order", opts);
+    QI::Switch pdiffs('F',"fracdiffs","Output fractional group mean diffs", opts);
     QI::Switch diffs('D',"diffs","Output group mean diffs", opts);
     QI::Switch means('m',"means","Output group means", opts);
     QI::Option<std::string> covars_path("",'C',"covars","Path to covariates file (added to design matrix)", opts);
@@ -204,7 +206,7 @@ int main(int argc, char **argv) {
             fts_file << std::endl;
         }
     }
-    if (*means | *diffs) {
+    if (*means | *diffs | *pdiffs) {
         std::vector<QI::VolumeF::Pointer> mean_imgs(n_groups, ITK_NULLPTR);
         for (int g = 0; g < n_groups; g++) {
             auto mean = itk::MeanImageFilter<QI::VolumeF>::New();
@@ -218,14 +220,24 @@ int main(int argc, char **argv) {
                 if (*verbose) std::cout << "Writing mean " << std::to_string(g+1) << std::endl;
                 QI::WriteImage(mean_imgs.at(g), QI::StripExt(*output_path) + "_mean" + std::to_string(g+1) + ".nii");
             }
-            if (*diffs && g > 0) {
+            if ((*diffs || *pdiffs) && g > 0) {
                 auto diff = itk::SubtractImageFilter<QI::VolumeF, QI::VolumeF>::New();
                 diff->SetInput1(mean_imgs.at(g));
                 for (int g2 = 0; g2 < g; g2++) {
                     diff->SetInput2(mean_imgs.at(g2));
                     diff->Update();
-                    if (*verbose) std::cout << "Writing difference " << std::to_string(g+1) << " - " << std::to_string(g2+1) << std::endl;
-                    QI::WriteImage(diff->GetOutput(), QI::StripExt(*output_path) + "_diff" + std::to_string(g+1) + "_" + std::to_string(g2+1) + ".nii");
+                    if (*diffs) {
+                        if (*verbose) std::cout << "Writing difference " << std::to_string(g+1) << " - " << std::to_string(g2+1) << std::endl;
+                        QI::WriteImage(diff->GetOutput(), QI::StripExt(*output_path) + "_diff" + std::to_string(g+1) + "_" + std::to_string(g2+1) + ".nii");
+                    }
+                    if (*pdiffs) {
+                        auto frac = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
+                        frac->SetInput1(diff->GetOutput());
+                        frac->SetInput2(mean_imgs.at(g));
+                        frac->Update();
+                        if (*verbose) std::cout << "Writing fractional difference " << std::to_string(g+1) << " - " << std::to_string(g2+1) << std::endl;
+                        QI::WriteImage(frac->GetOutput(), QI::StripExt(*output_path) + "_fdiff" + std::to_string(g+1) + "_" + std::to_string(g2 + 1) + ".nii");
+                    }
                 }
             }
         }
