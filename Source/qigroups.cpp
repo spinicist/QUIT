@@ -93,23 +93,22 @@ int main(int argc, char **argv) {
     for (int i = 0; i < group_list.size(); i++) {
         const int group = group_list.at(i);
         if (group > 0) { // Ignore entries with a 0
-            if (*verbose) std::cout << "Reading file: " << file_paths.at(i) << " for group " << group << std::endl;
+            if (*verbose) std::cout << "File: " << file_paths.at(i) << " Group: " << group << std::flush;
             QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.at(i));
             groups.at(group - 1).push_back(ptr);
             std::vector<double> covar;
             if (covars_path.set()) {
-                if (*verbose) std::cout << "Reading co-variate" << std::endl;
                 std::string covar_line;
                 std::getline(covars_file, covar_line);
                 std::stringstream css(covar_line);
                 double c;
                 while (css >> c) {
                     covar.push_back(c);
-                }
-                std::cout << "covar " << covar.size() << std::endl; 
+                } 
                 covars.at(group - 1).push_back(covar);
+                if (*verbose) std::cout << ", read covariates.";
             }
-            
+            if (*verbose) std::cout << std::endl;
             if (!*sort) {
                 tiler->SetInput(out_index, ptr);
                 out_index++;
