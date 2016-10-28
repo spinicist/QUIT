@@ -30,6 +30,7 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     QI::OptionList opts(usage);
     QI::Option<std::string> label_list("",'l',"labels","Specify labels to search for", opts);
+    QI::Switch ignore_zero('z',"ignore_zero","Ignore 0 labels (background)", opts);
     QI::Switch print_labels('p',"print_labels","Print out label/ROI numbers first", opts);
     QI::Help help(opts);
     std::vector<std::string> nonopts = opts.parse(argc, argv);
@@ -62,6 +63,9 @@ int main(int argc, char **argv) {
         std::sort(labels.begin(), labels.end());
     }
     for(auto it = labels.begin(); it != labels.end(); it++) {
+        if (*ignore_zero && (*it == 0)) {
+            continue;
+        }
         if (*print_labels) std::cout << *it << ",";
         std::cout << (voxvol * label_filter->GetVolume(*it)) << std::endl;
     }
