@@ -55,8 +55,12 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    if (*verbose) std::cout << "Reading group file" << std::endl;
     std::ifstream group_file(*group_path);
+    if (!group_file) {
+        std::cerr << "Group file: " << *group_path << " does not exist" << std::endl;
+        return EXIT_FAILURE;
+    }
+    if (*verbose) std::cout << "Reading group file" << std::endl;
     std::vector<int> group_list;
     int temp;
     while (group_file >> temp) {
@@ -160,9 +164,15 @@ int main(int argc, char **argv) {
     if (contrasts_path.set()) {
         if (*verbose) std::cout << "Generating contrasts" << std::endl;
         std::ofstream con_file(*contrasts_path);
-        for (int g = 0; g < n_groups-1; g++) {
-            for (int g2 = 0; g2 < n_groups-1; g2++) {
-                con_file << (g2 == g ? "1\t-1\t" : "0\t");
+        for (int g = 0; g < n_groups; g++) {
+            for (int g2 = 0; g2 < n_groups; g2++) {
+                if (g2 == g) {
+                    con_file << "1\t";
+                } else if (g2 == ((g+1) % (n_groups))) {
+                    con_file << "-1\t";
+                } else {
+                    con_file << "0\t";
+                }
             }
             for (int c = 0; c < n_covars; c++) {
                 con_file << "0\t";
@@ -190,13 +200,14 @@ int main(int argc, char **argv) {
             for (int g = 0; g < (n_groups - 1); g++) {
                 fts_file << "1\t";
             }
+            fts_file << "0\t";
             for (int c = 0; c < 2*n_covars; c++) {
                 fts_file << "0\t";
             }
             fts_file << std::endl;
         }
-        for (int g = 0; g < (n_groups - 1); g++) { // Individual group comparisons
-            for (int g2 = 0; g2 < (n_groups - 1); g2++) {
+        for (int g = 0; g < n_groups; g++) { // Individual group comparisons
+            for (int g2 = 0; g2 < n_groups; g2++) {
                 fts_file << ((g2 == g) ? "1\t" : "0\t");
             }
             for (int c = 0; c < 2*n_covars; c++) {
