@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
     QI::Option<float> offY(0,'\0',"offY","Offset Y", opts);
     QI::Option<float> offZ(0,'\0',"offZ","Offset Z", opts);
     QI::Switch center('c',"center","Set the origin to the center of the image", opts);
-    QI::Option<std::string> tfmFile("", 't', "tfm","Save ITK transform file", opts);
+    QI::Option<std::string> tfmFile("", 't', "tfm","Save ITK transform file to specified file", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
     std::vector<std::string> nonopts = opts.parse(argc, argv);
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
         optstream >> origin;
     */
 
-    if (*tfmFile != "") { // Only output the transform file
+    if (*tfmFile != "") { // Output the transform file
         itk::Euler3DTransform<double>::Pointer tfm = itk::Euler3DTransform<double>::New();
         tfm->SetCenter(origin);
         tfm->SetRotation((*rotX)*M_PI/180.,(*rotY)*M_PI/180.,(*rotZ)*M_PI/180.);
@@ -117,22 +117,22 @@ int main(int argc, char **argv) {
         writer->SetInput(tfm);
         writer->SetFileName(*tfmFile);
         writer->Update();
-    } else { // Write out the edited file
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                fullDir[i][j] = direction[i][j];
-            }
-            fullOrigin[i] = origin[i];
-            fullSpacing[i] = spacing[i];
+    } 
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            fullDir[i][j] = direction[i][j];
         }
-        image->SetDirection(fullDir);
-        image->SetOrigin(fullOrigin);
-        image->SetSpacing(fullSpacing);
-        if (nonopts.size() == 2) {
-            QI::WriteImage(image, nonopts[1]);
-        } else {
-            QI::WriteImage(image, nonopts[0]);
-        }
+        fullOrigin[i] = origin[i];
+        fullSpacing[i] = spacing[i];
+    }
+    image->SetDirection(fullDir);
+    image->SetOrigin(fullOrigin);
+    image->SetSpacing(fullSpacing);
+    // Write out the edited file
+    if (nonopts.size() == 2) {
+        QI::WriteImage(image, nonopts[1]);
+    } else {
+        QI::WriteImage(image, nonopts[0]);
     }
     return EXIT_SUCCESS;
 }
