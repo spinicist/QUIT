@@ -13,8 +13,8 @@
 
 #include "itkImage.h"
 #include "itkVersor.h"
-#include "itkVersorTransform.h"
-#include "itkEuler3DTransform.h"
+#include "itkVersorRigid3DTransform.h"
+#include "itkCenteredAffineTransform.h"
 #include "itkTransformFileWriter.h"
 
 #include "QI/Util.h"
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
     QI::SeriesF::SizeType fullSize = image->GetLargestPossibleRegion().GetSize();
     QI::VolumeF::DirectionType direction;
     QI::VolumeF::SpacingType spacing;
-    QI::VolumeF::PointType origin;
+    itk::CenteredAffineTransform<double, 3>::OutputVectorType origin;
     QI::VolumeF::SizeType size;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -66,64 +66,65 @@ int main(int argc, char **argv) {
         spacing[i] = fullSpacing[i];
         size[i] = fullSize[i];
     }
-    
+    auto tfm = itk::CenteredAffineTransform<double, 3>::New();
+    itk::Versor<double> vd; vd.Set(direction);
+    auto vt = itk::VersorRigid3DTransform<double>::New();
+    vt->SetRotation(vd);
+    tfm->Compose(vt);
+    tfm->Scale(spacing);
+    tfm->Translate(origin);
+
     if (*scale != 1.0) {
         if (*verbose) cout << "Scaling by factor " << *scale << endl;
-        spacing = spacing * (*scale);
+        tfm->Scale(*scale);
     }
     itk::Versor<double> rotate;
     if (*rotX != 0.0) {
-        if (*verbose) cout << "Rotating image by " << string(optarg) << " around X axis." << endl;
-        itk::Versor<double> temp; temp.SetRotationAroundX(*rotX * M_PI / 180.0);
-        rotate *= temp;
+        if (*verbose) cout << "Rotating image by " << *rotX << " around X axis." << endl;
+        tfm->Rotate(1,2,*rotX * M_PI / 180.0);
     }
     if (*rotY != 0.0) {
-        if (*verbose) cout << "Rotating image by " << string(optarg) << " around X axis." << endl;
-        itk::Versor<double> temp; temp.SetRotationAroundY(*rotY * M_PI / 180.0);
-        rotate *= temp;
+        if (*verbose) cout << "Rotating image by " << *rotY << " around X axis." << endl;
+        tfm->Rotate(2,0,*rotY * M_PI / 180.0);
     }
     if (*rotZ != 0.0) {
-        if (*verbose) cout << "Rotating image by " << string(optarg) << " around X axis." << endl;
-        itk::Versor<double> temp; temp.SetRotationAroundZ(*rotZ * M_PI / 180.0);
-        rotate *= temp;
+        if (*verbose) cout << "Rotating image by " << *rotZ << " around X axis." << endl;
+        tfm->Rotate(0,1,*rotZ * M_PI / 180.0);
     }
-    direction = rotate.GetMatrix() * direction;
     itk::Versor<double>::VectorType offset;
     if (*center) {
         for (int i = 0; i < 3; i++) {
-            origin[i] = -spacing[i]*size[i] / 2;
+            offset[i] = origin[i]-spacing[i]*size[i] / 2;
         }
-        origin = direction*origin;
     } else {
         offset[0] = *offX;
         offset[1] = *offY;
         offset[2] = *offZ;
-        origin = rotate.GetMatrix() * origin;
     }
-
-    /*
-        string option(optarg);
-        if (verbose) cout << "Setting origin to " << option << endl;
-        stringstream optstream(option);
-        optstream >> origin;
-    */
+    tfm->Translate(offset);
 
     if (*tfmFile != "") { // Output the transform file
-        itk::Euler3DTransform<double>::Pointer tfm = itk::Euler3DTransform<double>::New();
-        tfm->SetCenter(origin);
-        tfm->SetRotation((*rotX)*M_PI/180.,(*rotY)*M_PI/180.,(*rotZ)*M_PI/180.);
-        tfm->SetOffset(offset);
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
         writer->SetFileName(*tfmFile);
         writer->Update();
-    } 
+    }
+
+    itk::CenteredAffineTransform<double, 3>::MatrixType fmat = tfm->GetMatrix();
     for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            fullDir[i][j] = direction[i][j];
+        fullOrigin[i] = tfm->GetOffset()[i];
+    }
+    for (int j = 0; j < 3; j++) {
+        double scale = 0.;
+        for (int i = 0; i < 3; i++) {
+            scale += fmat[i][j]*fmat[i][j];
         }
-        fullOrigin[i] = origin[i];
-        fullSpacing[i] = spacing[i];
+        scale = sqrt(scale);
+        
+        fullSpacing[j] = scale;
+        for (int i = 0; i < 3; i++) {
+            fullDir[i][j] = fmat[i][j] / scale;
+        }
     }
     image->SetDirection(fullDir);
     image->SetOrigin(fullOrigin);
