@@ -56,7 +56,9 @@ int main(int argc, char **argv) {
     QI::SeriesF::SizeType fullSize = image->GetLargestPossibleRegion().GetSize();
     QI::VolumeF::DirectionType direction;
     QI::VolumeF::SpacingType spacing;
-    itk::CenteredAffineTransform<double, 3>::OutputVectorType origin;
+
+    typedef itk::CenteredAffineTransform<double, 3> TAffine; 
+    TAffine::OutputVectorType origin;
     QI::VolumeF::SizeType size;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -66,19 +68,19 @@ int main(int argc, char **argv) {
         spacing[i] = fullSpacing[i];
         size[i] = fullSize[i];
     }
-    auto tfm = itk::CenteredAffineTransform<double, 3>::New();
+    auto img_tfm = TAffine::New();
     itk::Versor<double> vd; vd.Set(direction);
     auto vt = itk::VersorRigid3DTransform<double>::New();
     vt->SetRotation(vd);
-    tfm->Compose(vt);
-    tfm->Scale(spacing);
-    tfm->Translate(origin);
+    img_tfm->Compose(vt);
+    img_tfm->Scale(spacing);
+    img_tfm->Translate(origin);
 
+    auto tfm = TAffine::New();
     if (*scale != 1.0) {
         if (*verbose) cout << "Scaling by factor " << *scale << endl;
         tfm->Scale(*scale);
     }
-    itk::Versor<double> rotate;
     if (*rotX != 0.0) {
         if (*verbose) cout << "Rotating image by " << *rotX << " around X axis." << endl;
         tfm->Rotate(1,2,*rotX * M_PI / 180.0);
@@ -110,9 +112,10 @@ int main(int argc, char **argv) {
         writer->Update();
     }
 
-    itk::CenteredAffineTransform<double, 3>::MatrixType fmat = tfm->GetMatrix();
+    img_tfm->Compose(tfm);
+    itk::CenteredAffineTransform<double, 3>::MatrixType fmat = img_tfm->GetMatrix();
     for (int i = 0; i < 3; i++) {
-        fullOrigin[i] = tfm->GetOffset()[i];
+        fullOrigin[i] = img_tfm->GetOffset()[i];
     }
     for (int j = 0; j < 3; j++) {
         double scale = 0.;
