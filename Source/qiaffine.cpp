@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
         offset[1] = *offY;
         offset[2] = *offZ;
     }
-    tfm->Translate(offset);
+    tfm->Translate(-offset);
 
     if (*tfmFile != "") { // Output the transform file
         auto writer = itk::TransformFileWriterTemplate<double>::New();
