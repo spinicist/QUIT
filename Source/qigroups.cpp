@@ -196,20 +196,20 @@ int main(int argc, char **argv) {
     if (ftests_path.set()) {
         if (*verbose) std::cout << "Generating F-tests" << std::endl;
         std::ofstream fts_file(*ftests_path);
-        if (n_groups > 2) { // Main effect of model
-            for (int g = 0; g < (n_groups - 1); g++) {
-                fts_file << "1\t";
+        for (int g = 0; g < n_groups; g++) { // Individual group comparisons
+            for (int g2 = 0; g2 < n_groups; g2++) {
+                fts_file << ((g2 == g) ? "1\t" : "0\t");
             }
-            fts_file << "0\t";
             for (int c = 0; c < 2*n_covars; c++) {
                 fts_file << "0\t";
             }
             fts_file << std::endl;
         }
-        for (int g = 0; g < n_groups; g++) { // Individual group comparisons
-            for (int g2 = 0; g2 < n_groups; g2++) {
-                fts_file << ((g2 == g) ? "1\t" : "0\t");
+        if (n_groups > 2) { // Main effect
+            for (int g = 0; g < (n_groups - 1); g++) {
+                fts_file << "1\t";
             }
+            fts_file << "0\t";
             for (int c = 0; c < 2*n_covars; c++) {
                 fts_file << "0\t";
             }
