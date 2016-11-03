@@ -254,7 +254,26 @@ int main(int argc, char **argv) {
     }
     if (*verbose) std::cout << "Writing merged file: " << *output_path << std::endl;
     tiler->UpdateLargestPossibleRegion();
-    QI::WriteImage<QI::SeriesF>(tiler->GetOutput(), *output_path);
+    // Reset space information because tiler messes it up
+    QI::SeriesF::Pointer output = tiler->GetOutput();
+    output->DisconnectPipeline();
+    auto spacing    = output->GetSpacing();
+    auto origin     = output->GetOrigin();
+    auto direction  = output->GetDirection();
+    spacing.Fill(1);
+    origin.Fill(0);
+    direction.SetIdentity();
+    for (int i = 0; i < 3; i++) {
+        spacing[i] = groups.at(0).at(0)->GetSpacing()[i];
+        origin[i] =  groups.at(0).at(0)->GetOrigin()[i];
+        for (int j = 0; j < 3; j++) {
+            direction[i][j] = groups.at(0).at(0)->GetDirection()[i][j];
+        }
+    }
+    output->SetSpacing(spacing);
+    output->SetOrigin(origin);
+    output->SetDirection(direction);
+    QI::WriteImage<QI::SeriesF>(output, *output_path);
     return EXIT_SUCCESS;
 }
 
