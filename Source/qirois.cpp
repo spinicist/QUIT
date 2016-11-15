@@ -21,10 +21,17 @@
 typedef itk::LabelGeometryImageFilter<QI::VolumeI, QI::VolumeF> TLblGeoFilter;
 
 const std::string usage{
-"Usage is: qirois [options] labelfile\n\
+"Usage is: qirois [options] file1 file2 ... fileN \n\
 \n\
 Calculates volumes of all ROI labels in a file. Uses itkLabelGeometryImageFilter\n"
 };
+
+double VoxelVolume(QI::VolumeI::Pointer img) {
+    double vox_volume = img->GetSpacing()[0];
+    for (int v = 1; v < 3; v++)
+        vox_volume *= img->GetSpacing()[v];
+    return vox_volume;
+}
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
@@ -32,22 +39,22 @@ int main(int argc, char **argv) {
     QI::Option<std::string> label_list("",'l',"labels","Specify labels to search for", opts);
     QI::Switch ignore_zero('z',"ignore_zero","Ignore 0 labels (background)", opts);
     QI::Switch print_labels('p',"print_labels","Print out label/ROI numbers first", opts);
+    QI::Switch rows('r',"rows","Print comma-separated rows instead of columns", opts);
     QI::Help help(opts);
     std::vector<std::string> nonopts = opts.parse(argc, argv);
-    if (nonopts.size() != 1) {
+    if (nonopts.size() < 1) {
         std::cerr << opts << std::endl;
         std::cerr << "No input filename specified." << std::endl;
         return EXIT_FAILURE;
     }
-    QI::VolumeI::Pointer label_image = QI::ReadImage<QI::VolumeI>(nonopts[0]);
-    double voxvol = label_image->GetSpacing()[0]; for (int i = 1; i < 3; i++) voxvol *= label_image->GetSpacing()[i];
-    TLblGeoFilter::Pointer label_filter = TLblGeoFilter::New();
-    label_filter->SetInput(label_image);
-    label_filter->CalculatePixelIndicesOff();
-    label_filter->CalculateOrientedBoundingBoxOff();
-    label_filter->CalculateOrientedLabelRegionsOff();
-    label_filter->Update();
-
+    
+    TLblGeoFilter::Pointer filter = TLblGeoFilter::New();
+    filter->CalculatePixelIndicesOff();
+    filter->CalculateOrientedBoundingBoxOff();
+    filter->CalculateOrientedLabelRegionsOff();
+    QI::VolumeI::Pointer img = QI::ReadImage<QI::VolumeI>(nonopts.at(0));
+    filter->SetInput(img);
+    filter->Update();
     typename TLblGeoFilter::LabelsType labels;
     if (label_list.set()) {
         std::ifstream file(*label_list);
@@ -59,15 +66,59 @@ int main(int argc, char **argv) {
             labels.push_back(label);
         }
     } else {
-        labels = label_filter->GetLabels();
+        labels = filter->GetLabels();
         std::sort(labels.begin(), labels.end());
     }
-    for(auto it = labels.begin(); it != labels.end(); it++) {
-        if (*ignore_zero && (*it == 0)) {
-            continue;
+    if (*ignore_zero) {
+        std::remove(labels.begin(), labels.end(), 0);
+    }
+
+    double vox_volume = VoxelVolume(img);
+    std::vector<std::vector<double>> volumes(nonopts.size(), std::vector<double>(labels.size()));
+
+    for (int i = 0; i < labels.size(); i++) {
+        volumes.at(0).at(i) = vox_volume * filter->GetVolume(labels.at(i));
+    }
+
+    for (int f = 1; f < nonopts.size(); f++) {
+        img = QI::ReadImage<QI::VolumeI>(nonopts.at(f));
+        filter->SetInput(img);
+        filter->Update();
+        vox_volume = VoxelVolume(img);
+        for (int i = 0; i < labels.size(); i++) {
+            volumes.at(f).at(i) = vox_volume * filter->GetVolume(labels.at(i));
         }
-        if (*print_labels) std::cout << *it << ",";
-        std::cout << (voxvol * label_filter->GetVolume(*it)) << std::endl;
+    }
+
+    if (*rows) {
+        if (*print_labels) {
+            auto it = labels.begin();
+            std::cout << *it;
+            for (++it; it != labels.end(); ++it) {
+                std::cout << "," << *it;
+            }
+            std::cout << std::endl;
+        }
+        for (auto f = volumes.begin(); f != volumes.end(); ++f){
+            auto v = f->begin();
+            std::cout << *v;
+            for (++v; v != f->end(); ++v) {
+                std::cout << "," << *v;
+            }
+            std::cout << std::endl;
+        }
+    } else {
+        for (int l = 0; l < labels.size(); ++l) {
+            if (*print_labels)
+                std::cout << labels.at(l) << ",";
+            
+            auto f = volumes.begin();
+            std::cout << f->at(l);
+            for (++f; f != volumes.end(); ++f) {
+                std::cout << "," << f->at(l);
+            }
+            std::cout << std::endl;
+        }
     }
     return EXIT_SUCCESS;
 }
