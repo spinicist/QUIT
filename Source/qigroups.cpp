@@ -134,6 +134,11 @@ int main(int argc, char **argv) {
             }
         } else {
             if (*verbose) std::cout << "Ignoring file: " << file_paths.at(i) << std::endl;
+            // Eat a line in the covariates file as well
+            if (covars_path.set()) {
+                std::string covar_line;
+                std::getline(covars_file, covar_line);
+            }
         }
     }
     if (*sort) {
