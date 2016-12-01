@@ -14,6 +14,8 @@
 #include <string>
 #include <algorithm>
 
+#include <Eigen/Dense>
+
 #include "itkTileImageFilter.h"
 #include "itkSubtractImageFilter.h"
 #include "itkDivideImageFilter.h"
@@ -25,18 +27,19 @@
 
 class ContrastsAlgorithm : public QI::ApplyF::Algorithm {
 protected:
-    Eigen::MatrixXd m_design;
-    Eigen::MatrixXd m_contrasts;
+    Eigen::MatrixXd m_mat;
     bool m_scale;
 public:
     ContrastsAlgorithm(const Eigen::MatrixXd &d, const Eigen::MatrixXd &c, const bool s = false) :
-        m_design(d), m_contrasts(c), m_scale(s)
-    {}
+        m_scale(s)
+    {
+        m_mat = c * ((d.transpose() * d).inverse()) * d.transpose();
+    }
 
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return m_contrasts.rows(); }
-    size_t dataSize() const override { return m_design.rows(); }
+    size_t numOutputs() const override { return m_mat.rows(); }
+    size_t dataSize() const override { return m_mat.cols(); }
     const float &zero(const size_t i) const override { static float zero = 0; return zero; }
     virtual std::vector<float> defaultConsts() const override {
         std::vector<float> def;
@@ -47,11 +50,11 @@ public:
                   TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::VectorXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::VectorXd c = m_contrasts * m_design.transpose() * indata.cast<double>() / m_design.rows();
+        Eigen::VectorXd c = m_mat * indata.cast<double>();
         if (m_scale) {
             c /= indata.mean();
         }
-        for (int i = 0; i < m_contrasts.rows(); i++) {
+        for (int i = 0; i < m_mat.rows(); i++) {
             outputs[i] = c[i];
         }
         residual = 0;
@@ -108,7 +111,7 @@ int main(int argc, char **argv) {
     apply->Update();
     for (int c = 0; c < contrasts.rows(); c++) {
         if (*verbose) std::cout << "Writing contrast " << c << std::endl;
-        QI::WriteImage(apply->GetOutput(c), *outPrefix + "con" + std::to_string(c) + ".nii");
+        QI::WriteImage(apply->GetOutput(c), *outPrefix + "con" + std::to_string(c+1) + ".nii");
     }
 }
 
