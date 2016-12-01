@@ -1,5 +1,5 @@
 /*
- *  qigroups.cpp
+ *  qi_glmsetup.cpp
  *
  *  Copyright (c) 2016 Tobias Wood.
  *
@@ -24,22 +24,20 @@
 #include "QI/Option.h"
 
 const std::string usage{
-"Usage is: qigroups [options] output_file\n\
+"Usage is: qi_glmsetup [options] files\n\
 \n\
 A utility for setting up merged 4D files for use with FSL randomise etc.\n\
-The list of files to be merged is read from stdin, one per line.\n\
-A list of groups must be passed in with the --groups option. This\n\
-file should contain a single number per line, indicating the group each\n\
-matching line of stdin corresponds to. Group 0 is ignore.\n"
-};
+Input individual files as arguments.\n\
+The group for each input file must be specified with --groups (one per line)\n\
+A value of 0 means ignore this file.\n\
+An output file must be specified with --out.\n\
+\n\
+Additionally, simple GLM including co-variates can be generated.\n"};
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
     QI::OptionList opts(usage);
-    QI::Switch sort('s',"sort","Sort merged file (and design matrix) in ascending group order", opts);
-    QI::Switch pdiffs('F',"fracdiffs","Output fractional group mean diffs", opts);
-    QI::Switch diffs('D',"diffs","Output group mean diffs", opts);
-    QI::Switch means('m',"means","Output group means", opts);
+    QI::Switch sort('s',"sort","Sort merged file and GLM in ascending group order", opts);
     QI::Option<std::string> covars_path("",'C',"covars","Path to covariates file (added to design matrix)", opts);
     QI::Option<std::string> ftests_path("",'f',"ftests","Generate and save F-tests", opts);
     QI::Option<std::string> contrasts_path("",'c',"contrasts","Generate and save contrasts", opts);
@@ -52,6 +50,11 @@ int main(int argc, char **argv) {
     if (!group_path.set()) {
         std::cerr << opts << std::endl;
         std::cerr << "Group file must be set with --groups option" << std::endl;
+        return EXIT_FAILURE;
+    }
+    if (!output_path.set()) {
+        std::cerr << opts << std::endl;
+        std::cerr << "Output file must be set with --out option" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -219,42 +222,6 @@ int main(int argc, char **argv) {
                 fts_file << "0\t";
             }
             fts_file << std::endl;
-        }
-    }
-    if (*means | *diffs | *pdiffs) {
-        std::vector<QI::VolumeF::Pointer> mean_imgs(n_groups, ITK_NULLPTR);
-        for (int g = 0; g < n_groups; g++) {
-            auto mean = itk::MeanImageFilter<QI::VolumeF>::New();
-            for (int i = 0; i < groups.at(g).size(); i++) {
-                mean->SetInput(i, groups.at(g).at(i));
-            }
-            mean->Update();
-            mean_imgs.at(g) = mean->GetOutput();
-            mean_imgs.at(g)->DisconnectPipeline();
-            if (*means) {
-                if (*verbose) std::cout << "Writing mean " << std::to_string(g+1) << std::endl;
-                QI::WriteImage(mean_imgs.at(g), QI::StripExt(*output_path) + "_mean" + std::to_string(g+1) + ".nii");
-            }
-            if ((*diffs || *pdiffs) && g > 0) {
-                auto diff = itk::SubtractImageFilter<QI::VolumeF, QI::VolumeF>::New();
-                diff->SetInput1(mean_imgs.at(g));
-                for (int g2 = 0; g2 < g; g2++) {
-                    diff->SetInput2(mean_imgs.at(g2));
-                    diff->Update();
-                    if (*diffs) {
-                        if (*verbose) std::cout << "Writing difference " << std::to_string(g+1) << " - " << std::to_string(g2+1) << std::endl;
-                        QI::WriteImage(diff->GetOutput(), QI::StripExt(*output_path) + "_diff" + std::to_string(g+1) + "_" + std::to_string(g2+1) + ".nii");
-                    }
-                    if (*pdiffs) {
-                        auto frac = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
-                        frac->SetInput1(diff->GetOutput());
-                        frac->SetInput2(mean_imgs.at(g));
-                        frac->Update();
-                        if (*verbose) std::cout << "Writing fractional difference " << std::to_string(g+1) << " - " << std::to_string(g2+1) << std::endl;
-                        QI::WriteImage(frac->GetOutput(), QI::StripExt(*output_path) + "_fdiff" + std::to_string(g+1) + "_" + std::to_string(g2 + 1) + ".nii");
-                    }
-                }
-            }
         }
     }
     if (*verbose) std::cout << "Writing merged file: " << *output_path << std::endl;

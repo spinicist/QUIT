@@ -232,6 +232,47 @@ void ReadArray(std::istream &in, Eigen::Array<Scalar, Eigen::Dynamic, 1> &array)
     ReadArray(line, array);
 }
 
+template<typename Scalar>
+void ReadArray(const std::string &s, Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dynamic> &array) {
+    std::istringstream stream(s);
+    std::vector<Scalar> vals;
+
+    Scalar temp;
+    while (stream >> temp) {
+        vals.push_back(temp);
+    }
+
+    array = Eigen::Array<Scalar, Eigen::Dynamic, 1>(vals.size());
+    for (int i = 0; i < vals.size(); i++) {
+        array[i] = vals[i];
+    }
+}
+
+template<typename Scalar>
+void ReadArray(std::istream &in, Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dynamic> &array) {
+    std::vector<Eigen::Array<Scalar, Eigen::Dynamic, 1>> rows;
+    std::string line;
+    
+    Eigen::Array<Scalar, Eigen::Dynamic, 1> row;
+    std::getline(in, line);
+
+    while (line != "") {
+        ReadArray(line, row);
+        rows.push_back(row);
+        std::getline(in, line);
+    }
+    
+    array = Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dynamic>(rows.size(), rows.at(0).size());
+    for (int i = 0; i < rows.size(); i++) {
+        if (rows.at(i).size() == array.cols()) {
+            array.row(i) = rows.at(i);
+        } else {
+            QI_EXCEPTION("Inconsistent row sizes in input");
+        }
+    }
+}
+
+
 } // End namespace QUIT
 
 #endif // QUIT_UTIL_H
