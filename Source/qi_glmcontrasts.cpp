@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
     QI::Option<std::string> outPrefix("", 'o', "out","Add a prefix to output filenames", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
-    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    std::deque<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() != 3) {
         std::cerr << opts << std::endl;
         std::cerr << "Must specify input, design_matrix and contrasts" << std::endl;

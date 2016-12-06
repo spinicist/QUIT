@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
     QI::Switch         suppress('n',"no-prompt","Suppress input prompts", opts);
     QI::Switch         verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
-    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    std::deque<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() != 0) {
         std::cerr << opts << std::endl;
         std::cerr << "Extraneous input argument provided." << std::endl;

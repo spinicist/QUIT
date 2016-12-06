@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     QI::Option<std::string> tfmFile("", 't', "tfm","Save ITK transform file to specified file", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
-    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    std::deque<std::string> nonopts = opts.parse(argc, argv);
     if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
         std::cerr << opts << std::endl;
         std::cerr << "Incorrect number of arguments" << std::endl;

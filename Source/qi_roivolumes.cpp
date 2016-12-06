@@ -1,5 +1,5 @@
 /*
- *  qirois.cpp
+ *  qi_roivolumes.cpp
  *
  *  Copyright (c) 2016 Tobias Wood.
  *
@@ -21,9 +21,9 @@
 typedef itk::LabelGeometryImageFilter<QI::VolumeI, QI::VolumeF> TLblGeoFilter;
 
 const std::string usage{
-"Usage is: qirois [options] file1 file2 ... fileN \n\
+"Usage is: qi_roivolumes [options] label_image1 [ ... label_imageN] \n\
 \n\
-Calculates volumes of all ROI labels in a file. Uses itkLabelGeometryImageFilter\n"
+Calculates volumes of ROI labels in files. Uses itkLabelGeometryImageFilter\n"
 };
 
 double VoxelVolume(QI::VolumeI::Pointer img) {
@@ -36,12 +36,12 @@ double VoxelVolume(QI::VolumeI::Pointer img) {
 int main(int argc, char **argv) {
     Eigen::initParallel();
     QI::OptionList opts(usage);
-    QI::Option<std::string> label_list("",'l',"labels","Specify labels to search for", opts);
-    QI::Switch ignore_zero('z',"ignore_zero","Ignore 0 labels (background)", opts);
+    QI::Option<std::string> label_list("",'l',"labels","Specify labels to use in text file", opts);
+    QI::Switch ignore_zero('z',"ignore_zero","Ignore 0 label (background)", opts);
     QI::Switch print_labels('p',"print_labels","Print out label/ROI numbers first", opts);
     QI::Switch rows('r',"rows","Print comma-separated rows instead of columns", opts);
     QI::Help help(opts);
-    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    std::deque<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() < 1) {
         std::cerr << opts << std::endl;
         std::cerr << "No input filename specified." << std::endl;

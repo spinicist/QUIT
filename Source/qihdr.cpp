@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     QI::Switch print_dims('D',"dims","Print the number of dimensions", opts);
     QI::Switch dim3('3',"3D","Treat input as 3D (discard higher dimensions)", opts);
     QI::Help help(opts);
-    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    std::deque<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() < 1) {
         std::cerr << opts << std::endl;
         std::cerr << "No input filename specified." << std::endl;

@@ -49,9 +49,9 @@ void OptionList::add(OptionBase *o) {
     m_options.push_front(o);
 }
 
-std::vector<std::string> OptionList::parse(int argc, char *const *argv) {
+std::deque<std::string> OptionList::parse(int argc, char *const *argv) {
     int optind = 1;
-    std::vector<std::string> nonopts;
+    std::deque<std::string> nonopts;
     while (optind < argc) {
         std::string thisopt(argv[optind]);
         auto it = m_options.end();

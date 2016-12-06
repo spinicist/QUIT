@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
     QI::Option<string> prefix("",'o',"out","Specify output filename (default input+_nobands)", opts);
     QI::Switch      verbose('v',"verbose","Print more information", opts);
     QI::Help        help(opts);
-    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    std::deque<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() != 1) {
         cerr << opts << endl;
         cerr << "Incorrect number of arguments." << endl;

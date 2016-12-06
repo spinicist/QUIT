@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
-    std::vector<std::string> nonopts = opts.parse(argc, argv);
+    std::deque<std::string> nonopts = opts.parse(argc, argv);
     if (nonopts.size() != 1) {
         std::cerr << opts << std::endl;
         std::cerr << "Please specify input filename only." << std::endl;

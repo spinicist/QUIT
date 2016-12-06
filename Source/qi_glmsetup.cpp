@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     QI::Option<std::string> group_path("",'g',"groups","File to read group numbers from", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
     QI::Help help(opts);
-    std::vector<std::string> file_paths = opts.parse(argc, argv);
+    std::deque<std::string> file_paths = opts.parse(argc, argv);
     if (!group_path.set()) {
         std::cerr << opts << std::endl;
         std::cerr << "Group file must be set with --groups option" << std::endl;

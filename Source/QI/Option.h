@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <string>
 #include <sstream>
+#include <deque>
 
 #include "QI/Macro.h"
 #include "QI/Types.h"
@@ -60,7 +61,7 @@ public:
     OptionList();
     OptionList(const std::string &h);
     void add(OptionBase *o);
-    std::vector<std::string> parse(int argc, char *const *argv);
+    std::deque<std::string> parse(int argc, char *const *argv);
     void setHelp(const std::string &h);
     void print(std::ostream & os) const;
 };
