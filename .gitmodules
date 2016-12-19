@@ -4,3 +4,6 @@
 [submodule "External/CppNumericalSolvers"]
 	path = External/CppNumericalSolvers
 	url = https://github.com/spinicist/CppNumericalSolvers
+[submodule "External/bats"]
+	path = External/bats
+	url = https://github.com/sstephenson/bats.git

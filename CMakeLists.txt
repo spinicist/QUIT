@@ -91,11 +91,15 @@ foreach(PROGRAM ${ELLIPSE})
 endforeach(PROGRAM)
 
 set(TESTS_DIR Test)
-set(TESTS test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_es.sh
+set(TESTS despot1.bats test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_es.sh
           test_relax.sh test_ssfp.sh test_poly.sh test_all.sh)
 foreach(TEST ${TESTS})
 	configure_file(${TESTS_DIR}/${TEST} ${TESTS_DIR}/${TEST} COPYONLY)
 endforeach(TEST)
+
+enable_testing()
+add_test( NAME DESPOT1 WORKING_DIRECTORY ${TESTS_DIR} 
+          COMMAND ${PROJECT_SOURCE_DIR}/External/bats/bin/bats despot1.bats )
 
 set(SCRIPTS_DIR Scripts)
 set(SCRIPTS example_mcd_hifi.sh example_mcd_b1.sh)
