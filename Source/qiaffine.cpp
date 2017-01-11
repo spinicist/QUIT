@@ -19,28 +19,46 @@
 
 #include "QI/Util.h"
 #include "QI/Types.h"
-#include "QI/Option.h"
+#include "QI/Args.h"
 
 using namespace std;
 
+const std::string usage{
+"Usage is: qiaffine input [output] [transforms]\n\
+Applies simple affine transformations to images by manipulating the header\n\
+transforms. If an output file is not specified, the input file will be\n\
+overwritten."};
+const std::vector<const QI::TOption> opts = {
+    {"help", 'h', "Display the help message and quit", false},
+    {"verbose", 'v', "Print more information", false},
+    {"center", 'c', "Set the origin to the center of the image", false},
+    {"scale", 's', "Scale image by a factor of S", true},
+    {"offX", '\0', "Translate origin by D in X direction", true},
+    {"offY", '\0', "Translate origin by D in Y direction", true},
+    {"offZ", '\0', "Translate origin by D in Z direction", true},
+    {"rotX", '\0', "Rotate about X axis by N degrees", true},
+    {"rotY", '\0', "Rotate about Y axis by N degrees", true},
+    {"rotZ", '\0', "Rotate about Z axis by N degrees", true},
+};
+
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts("Usage is: qiaffine input [output] [transforms]\n\nApplies simple affine transformations to images by manipulating the header\ntransforms. If an output file is not specified, the input file will be\noverwritten.");
-    QI::Option<float> scale(1,'\0',"scale","Scale axes by a factor of S", opts);
-    QI::Option<float> rotX(0,'\0',"rotX","Rotate about X axis by N degrees", opts);
-    QI::Option<float> rotY(0,'\0',"rotY","Rotate about Y axis by N degrees", opts);
-    QI::Option<float> rotZ(0,'\0',"rotZ","Rotate about Z axis by N degrees", opts);
-    QI::Option<float> offX(0,'\0',"offX","Offset X", opts);
-    QI::Option<float> offY(0,'\0',"offY","Offset Y", opts);
-    QI::Option<float> offZ(0,'\0',"offZ","Offset Z", opts);
-    QI::Switch center('c',"center","Set the origin to the center of the image", opts);
-    QI::Option<std::string> tfmFile("", 't', "tfm","Save ITK transform file to specified file", opts);
-    QI::Switch verbose('v',"verbose","Print more information", opts);
-    QI::Help help(opts);
-    std::deque<std::string> nonopts = opts.parse(argc, argv);
+    QI::ArgParser args(argc, argv, opts);
+    QI::Help(args, usage);
+
+    bool verbose = QI::From_Switch("verbose", args);
+    float scale = QI::From_Option("scale", 1.0, args);
+    float rotX = QI::From_Option("rotX", 0.0, args);
+    float rotY = QI::From_Option("rotY", 0.0, args);
+    float rotZ = QI::From_Option("rotZ", 0.0, args);
+    float offX = QI::From_Option("offX", 0.0, args);
+    float offY = QI::From_Option("offY", 0.0, args);
+    float offZ = QI::From_Option("offZ", 0.0, args);
+    bool center = QI::From_Switch("center", args);
+    std::string tfmFile = QI::From_Option("tfm", std::string{""}, args);
+    std::deque<const std::string> nonopts = args.nonoptions();
     if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
-        std::cerr << opts << std::endl;
-        std::cerr << "Incorrect number of arguments" << std::endl;
+        std::cerr << "Incorrect number of arguments, use -h to see usage." << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -77,38 +95,38 @@ int main(int argc, char **argv) {
     img_tfm->Translate(origin);
 
     auto tfm = TAffine::New();
-    if (*scale != 1.0) {
-        if (*verbose) cout << "Scaling by factor " << *scale << endl;
-        tfm->Scale(*scale);
+    if (scale != 1.0) {
+        if (verbose) cout << "Scaling by factor " << scale << endl;
+        tfm->Scale(scale);
     }
-    if (*rotX != 0.0) {
-        if (*verbose) cout << "Rotating image by " << *rotX << " around X axis." << endl;
-        tfm->Rotate(1,2,*rotX * M_PI / 180.0);
+    if (rotX != 0.0) {
+        if (verbose) cout << "Rotating image by " << rotX << " around X axis." << endl;
+        tfm->Rotate(1,2,rotX * M_PI / 180.0);
     }
-    if (*rotY != 0.0) {
-        if (*verbose) cout << "Rotating image by " << *rotY << " around X axis." << endl;
-        tfm->Rotate(2,0,*rotY * M_PI / 180.0);
+    if (rotY != 0.0) {
+        if (verbose) cout << "Rotating image by " << rotY << " around X axis." << endl;
+        tfm->Rotate(2,0,rotY * M_PI / 180.0);
     }
-    if (*rotZ != 0.0) {
-        if (*verbose) cout << "Rotating image by " << *rotZ << " around X axis." << endl;
-        tfm->Rotate(0,1,*rotZ * M_PI / 180.0);
+    if (rotZ != 0.0) {
+        if (verbose) cout << "Rotating image by " << rotZ << " around X axis." << endl;
+        tfm->Rotate(0,1,rotZ * M_PI / 180.0);
     }
     itk::Versor<double>::VectorType offset;
-    if (*center) {
+    if (center) {
         for (int i = 0; i < 3; i++) {
             offset[i] = origin[i]-spacing[i]*size[i] / 2;
         }
     } else {
-        offset[0] = *offX;
-        offset[1] = *offY;
-        offset[2] = *offZ;
+        offset[0] = offX;
+        offset[1] = offY;
+        offset[2] = offZ;
     }
     tfm->Translate(-offset);
 
-    if (*tfmFile != "") { // Output the transform file
+    if (tfmFile != "") { // Output the transform file
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
-        writer->SetFileName(*tfmFile);
+        writer->SetFileName(tfmFile);
         writer->Update();
     }
 
