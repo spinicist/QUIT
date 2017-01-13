@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
         std::sort(labels.begin(), labels.end());
     }
     if (*ignore_zero) {
-        std::remove(labels.begin(), labels.end(), 0);
+        labels.erase(std::remove(labels.begin(), labels.end(), 0), labels.end());
     }
 
     std::vector<std::vector<double>> mean_values(image_list.size(), std::vector<double>(labels.size()));

@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
         std::sort(labels.begin(), labels.end());
     }
     if (*ignore_zero) {
-        std::remove(labels.begin(), labels.end(), 0);
+        labels.erase(std::remove(labels.begin(), labels.end(), 0), labels.end());
     }
 
     double vox_volume = VoxelVolume(img);
