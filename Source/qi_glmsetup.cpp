@@ -94,7 +94,11 @@ int main(int argc, char **argv) {
     std::vector<std::vector<std::vector<double>>> covars(n_groups);
     std::ifstream covars_file;
     if (covars_path.set()) {
-        covars_file = std::ifstream(*covars_path);
+        covars_file.open(*covars_path);
+        if (!covars_file) {
+            std::cerr << "Failed to open covariate file: " << *covars_path << std::endl;
+            return EXIT_FAILURE;
+        }
     }
     int out_index = 0;
     for (int i = 0; i < group_list.size(); i++) {
