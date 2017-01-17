@@ -6,6 +6,7 @@ set(CMAKE_CXX_FLAGS -fpermissive)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
+include(CMakeToolsHelpers OPTIONAL)
 
 # Prevent undefined lookup errors when building libqi as a shared library with Clang
 message( STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}" )
@@ -64,13 +65,14 @@ add_library( ${MDLLIB} STATIC
 set( ALGDIR ${QIDIR}/Algorithms )
 set( ALGLIB "qialg" )
 add_library( ${ALGLIB} STATIC
-             ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp ${ALGDIR}/EllipseFit.cpp )
+             ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp ${ALGDIR}/EllipseFit.cpp
+             ${ALGDIR}/CEST.cpp )
 
 set( UTILS qihdr qinewimage qicomplex qiaffine qimask qikfilter qireorder
            qisplitsubjects qiunwrap qipolyfit qipolyimg
            qi_roivolumes qi_roivalues
            qi_glmsetup qi_glmcontrasts )
-set( QUANT qisignal qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot qiafi qimultiecho qimp2rage )
+set( QUANT qisignal qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot qiafi qimultiecho qimp2rage qicest )
 set( ELLIPSE qissfpbands qiesmap )
 
 foreach(PROGRAM ${UTILS})
@@ -80,7 +82,7 @@ endforeach(PROGRAM)
 
 foreach(PROGRAM ${QUANT})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-    target_link_libraries(${PROGRAM} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} ${ITK_LIBRARIES})
+    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} ${ITK_LIBRARIES})
 endforeach(PROGRAM)
 
 foreach(PROGRAM ${ELLIPSE})
