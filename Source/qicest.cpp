@@ -40,8 +40,11 @@ int main(int argc, char **argv) {
     if (*verbose) cout << "Opening file: " << nonopts[0] << endl;
     auto data = QI::ReadVectorImage<float>(nonopts[0]);
 
+    if (!*suppress) cout << "Enter input frequencies: " << endl;
     Eigen::ArrayXf ifrqs; QI::ReadArray(cin, ifrqs);
+    if (!*suppress) cout << "Enter output spectrum frequencies: " << endl;
     Eigen::ArrayXf ofrqs; QI::ReadArray(cin, ofrqs);
+    if (!*suppress) cout << "Enter output asymmetry frequencies: " << endl;
     Eigen::ArrayXf afrqs; QI::ReadArray(cin, afrqs); // Asymmetry output
     shared_ptr<QI::CESTAlgo> algo = make_shared<QI::CESTAlgo>(ifrqs, ofrqs, afrqs);
 
