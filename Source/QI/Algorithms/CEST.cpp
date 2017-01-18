@@ -57,9 +57,23 @@ void CESTAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
     stop.gradNorm = 1e-8;
     cppoptlib::LbfgsbSolver<ZCost> solver;
     solver.setStopCriteria(stop);
-    Eigen::Array4d lower; lower << 0.0, m_ifrqs.minCoeff(), 0.001;
-    Eigen::Array4d upper; upper << 1.0, m_ifrqs.maxCoeff(), (m_ifrqs.maxCoeff() - m_ifrqs.minCoeff());
-    ZCost cost(m_ifrqs.segment(10,20).cast<double>(), z_spec.segment(10,20).cast<double>() / z_spec.maxCoeff(), lower, upper);
+
+    // Find closest indices to -2/+2 PPM and only fit Lorentzian between them
+    Eigen::ArrayXf::Index indP2, indM2;
+    (m_ifrqs + 2.0).abs().minCoeff(&indM2);
+    (m_ifrqs - 2.0).abs().minCoeff(&indP2);
+    //std::cout << "ind " << indM2 << " " << indP2 << std::endl;
+    if (indM2 > indP2)
+        std::swap(indM2, indP2);
+    //std::cout << "ind " << indM2 << " " << indP2 << std::endl;
+    Eigen::ArrayXf::Index sz = indP2 - indM2;
+    Eigen::Array3d lower; lower << 0.0, -2.0, 0.001;
+    Eigen::Array3d upper; upper << 1.0,  2.0, 4.0;
+
+    /*std::cout << "seg " << m_ifrqs.segment(indM2, sz).transpose() << std::endl;
+    std::cout << "zpc " << z_spec.segment(indM2,sz).transpose() << std::endl;
+    std::cout << "lower " << lower.transpose() << " upper " << upper.transpose() << std::endl;*/
+    ZCost cost(m_ifrqs.segment(indM2,sz).cast<double>(), z_spec.segment(indM2,sz).cast<double>() / z_spec.segment(indM2,sz).maxCoeff(), lower, upper);
 
     Eigen::Vector3d p; p << 0.5, 0.0, 1.0;
     //std::cout << "p start: " << p.transpose() << std::endl;
@@ -77,12 +91,20 @@ void CESTAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
     const float w = maxfrq - minfrq;
     const Eigen::ArrayXf scaledfrqs = (m_ifrqs - minfrq) / w;
     Eigen::DenseIndex degree = std::min<int>(m_ifrqs.rows() - 1, 3);
-    TSpline spline = TFit::Interpolate(z_spec.transpose(), degree, scaledfrqs);
+    /*std::cout << "sFreqs " << scaledfrqs.transpose() << std::endl;
+    std::cout << "z_spec " << z_spec.transpose() << std::endl;
+    std::cout << "degree " << degree << std::endl;*/
+    TSpline spline;
+    if (scaledfrqs[0] > 0)
+        spline = TFit::Interpolate(z_spec.reverse().transpose(), degree, scaledfrqs.reverse());
+    else
+        spline = TFit::Interpolate(z_spec.transpose(), degree, scaledfrqs);
     const float ref = z_spec.maxCoeff();
     for (int f = 0; f < m_ofrqs.rows(); f++) {
         const float frq = (m_ofrqs.coeffRef(f) + f0 - minfrq)/w;
         const TSpline::PointType val = spline(frq);
         outputs.at(0)[f] = val[0];
+        //std::cout << "f " << f << " frq " << frq << " val " << val.transpose() << std::endl;
     }
     for (int f = 0; f < m_afrqs.rows(); f++) {
         const float pfrq = (f0 + m_afrqs.coeffRef(f) - minfrq)/w;
