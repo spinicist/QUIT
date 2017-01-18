@@ -92,12 +92,18 @@ int main(int argc, char **argv) {
         design_file = std::ofstream(*design_path);
     }
     std::vector<std::vector<std::vector<double>>> covars(n_groups);
-    std::ifstream covars_file;
+    std::vector<std::ifstream> covars_files;
     if (covars_path.set()) {
-        covars_file.open(*covars_path);
-        if (!covars_file) {
-            std::cerr << "Failed to open covariate file: " << *covars_path << std::endl;
-            return EXIT_FAILURE;
+        std::istringstream stream_covars(*covars_path);
+        while (!stream_covars.eof()) {
+            std::string path;
+            getline(stream_covars, path, ',');
+            std::ifstream covars_file(path);
+            if (!covars_file) {
+                std::cerr << "Failed to open covariate file: " << path << std::endl;
+                return EXIT_FAILURE;
+            }
+            covars_files.push_back(std::move(covars_file));
         }
     }
     int out_index = 0;
@@ -109,13 +115,11 @@ int main(int argc, char **argv) {
             groups.at(group - 1).push_back(ptr);
             std::vector<double> covar;
             if (covars_path.set()) {
-                std::string covar_line;
-                std::getline(covars_file, covar_line);
-                std::stringstream css(covar_line);
-                double c;
-                while (css >> c) {
+                for (auto &f : covars_files) {
+                    double c;
+                    f >> c;
                     covar.push_back(c);
-                } 
+                }
                 covars.at(group - 1).push_back(covar);
                 if (*verbose) std::cout << ", read covariates.";
             }
@@ -141,10 +145,10 @@ int main(int argc, char **argv) {
             }
         } else {
             if (*verbose) std::cout << "Ignoring file: " << file_paths.at(i) << std::endl;
-            // Eat a line in the covariates file as well
-            if (covars_path.set()) {
-                std::string covar_line;
-                std::getline(covars_file, covar_line);
+            // Eat a value in the covariates files as well
+            for (auto &f : covars_files) {
+                double c;
+                f >> c;
             }
         }
     }
