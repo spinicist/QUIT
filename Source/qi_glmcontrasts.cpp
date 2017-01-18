@@ -89,10 +89,18 @@ int main(int argc, char **argv) {
     QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(nonopts.at(0));
     if (*verbose) std::cout << "Reading design matrix" << std::endl;
     std::ifstream design_matrix_file(nonopts.at(1));
+    if (!design_matrix_file) {
+        std::cerr << "Failed to open design matrix: " << nonopts.at(2) << std::endl;
+        return EXIT_FAILURE;
+    }
     Eigen::ArrayXXd design_matrix;
     QI::ReadArray(design_matrix_file, design_matrix);
     if (*verbose) std::cout << "Reading contrasts file" << std::endl;
     std::ifstream contrasts_file(nonopts.at(2));
+    if (!contrasts_file) {
+        std::cerr << "Failed to open contrasts: " << nonopts.at(2) << std::endl;
+        return EXIT_FAILURE;
+    }
     Eigen::ArrayXXd contrasts;
     QI::ReadArray(contrasts_file, contrasts);
 
