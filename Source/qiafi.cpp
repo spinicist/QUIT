@@ -16,6 +16,7 @@
 
 #include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/IO.h"
 
 #include "itkExtractImageFilter.h"
 #include "itkDivideImageFilter.h"

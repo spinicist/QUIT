@@ -10,6 +10,7 @@
  */
 
 #include "QI/Sequences/Sequences.h"
+#include "QI/IO.h"
 
 namespace QI {
 

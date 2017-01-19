@@ -10,6 +10,7 @@
  */
 
 #include "QI/Sequences/MPRAGESequence.h"
+#include "QI/IO.h"
 
 using namespace std;
 using namespace Eigen;

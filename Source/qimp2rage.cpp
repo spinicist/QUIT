@@ -20,6 +20,7 @@
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/IO.h"
 #include "QI/Sequences/MPRAGESequence.h"
 
 using namespace std;

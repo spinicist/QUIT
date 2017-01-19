@@ -88,25 +88,17 @@ int main(int argc, char **argv) {
     if (*verbose) std::cout << "Reading input file" << std::endl;
     QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(nonopts.at(0));
     if (*verbose) std::cout << "Reading design matrix" << std::endl;
-    std::ifstream design_matrix_file(nonopts.at(1));
-    if (!design_matrix_file) {
-        std::cerr << "Failed to open design matrix: " << nonopts.at(2) << std::endl;
-        return EXIT_FAILURE;
-    }
-    Eigen::ArrayXXd design_matrix;
-    QI::ReadArray(design_matrix_file, design_matrix);
+    Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(nonopts.at(1));
     if (*verbose) std::cout << "Reading contrasts file" << std::endl;
-    std::ifstream contrasts_file(nonopts.at(2));
-    if (!contrasts_file) {
-        std::cerr << "Failed to open contrasts: " << nonopts.at(2) << std::endl;
-        return EXIT_FAILURE;
-    }
-    Eigen::ArrayXXd contrasts;
-    QI::ReadArray(contrasts_file, contrasts);
-
+    Eigen::ArrayXXd contrasts     = QI::ReadArrayFile(nonopts.at(2));
     if (design_matrix.rows() != merged->GetNumberOfComponentsPerPixel()) {
         std::cerr << "Number of rows in design matrix (" << design_matrix.rows()
                   << ") does not match number of volumes in image (" << merged->GetNumberOfComponentsPerPixel() << ")" << std::endl;
+        return EXIT_FAILURE;
+    }
+    if (design_matrix.cols() != contrasts.cols()) {
+        std::cerr << "Number of columns in design matrix (" << design_matrix.cols()
+                  << ") does not match contrasts (" << contrasts.cols() << ")" << std::endl;
         return EXIT_FAILURE;
     }
 

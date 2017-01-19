@@ -18,7 +18,9 @@
 
 #include "itkTimeProbe.h"
 
+#include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/IO.h"
 #include "QI/Models/Model.h"
 #include "QI/Sequences/Sequences.h"
 #include "QI/RegionContraction.h"

@@ -21,6 +21,7 @@
 
 #include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/IO.h"
 
 using namespace std;
 

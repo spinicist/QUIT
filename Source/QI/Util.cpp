@@ -17,6 +17,7 @@ using namespace std;
 #include "itkDivideImageFilter.h"
 
 #include "QI/Util.h"
+#include "QI/IO.h"
 
 namespace QI {
 
@@ -86,6 +87,32 @@ unsigned long long Choose(unsigned long long n, unsigned long long k) {
         r /= d;
     }
     return r;
+}
+
+// Utility function to read a file into an array, ignoring comment lines
+Eigen::ArrayXXd ReadArrayFile(const std::string &path) {
+    std::ifstream matrix_file(path);
+    if (!matrix_file) {
+        QI_EXCEPTION("Failed to open design matrix: " << path << std::endl);
+    }
+    while (matrix_file && (matrix_file.peek() == '/')) {
+        matrix_file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+    Eigen::ArrayXXd matrix;
+    QI::ReadArray(matrix_file, matrix);
+    return matrix;
+}
+
+void GenericMonitor::Execute(itk::Object *caller, const itk::EventObject &event) {
+    Execute((const itk::Object *)caller, event);
+}
+void GenericMonitor::Execute(const itk::Object *object, const itk::EventObject &event) {
+    const itk::ProcessObject *filter = static_cast<const itk::ProcessObject *>(object);
+    if (typeid(event) == typeid(itk::ProgressEvent)) {
+        std::cout << "Progress: " << round(filter->GetProgress()*100) << "% complete" << std::endl;
+    } else {
+        std::cout << "Received event: " << typeid(event).name() << std::endl;
+    }
 }
 
 } // End namespace QUIT

@@ -32,6 +32,7 @@
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/Kernels.h"
+#include "QI/IO.h"
 
 using namespace std;
 using namespace Eigen;

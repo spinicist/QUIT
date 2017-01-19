@@ -18,6 +18,7 @@
 
 #include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/IO.h"
 #include "QI/Sequences/SpinEcho.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "Filters/ReorderImageFilter.h"

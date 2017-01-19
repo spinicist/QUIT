@@ -16,6 +16,7 @@
 
 #include "QI/Util.h"
 #include "QI/Types.h"
+#include "QI/IO.h"
 
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkThresholdImageFilter.h"

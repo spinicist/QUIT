@@ -22,7 +22,7 @@
 
 #include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
-#include "Filters/ImageToVectorFilter.h"
+#include "QI/IO.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 
 using namespace std;

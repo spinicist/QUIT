@@ -24,6 +24,7 @@
 #include "QI/Macro.h"
 #include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/IO.h"
 
 namespace QI {
 
