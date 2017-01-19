@@ -110,8 +110,8 @@ int main(int argc, char **argv) {
     if (*verbose) std::cout << "Calculating contrasts" << std::endl;
     apply->Update();
     for (int c = 0; c < contrasts.rows(); c++) {
-        if (*verbose) std::cout << "Writing contrast " << c << std::endl;
-        QI::WriteImage(apply->GetOutput(c), *outPrefix + "con" + std::to_string(c+1) + ".nii");
+        if (*verbose) std::cout << "Writing contrast " << (c + 1) << std::endl;
+        QI::WriteImage(apply->GetOutput(c), *outPrefix + "con" + std::to_string(c + 1) + ".nii");
     }
 }
 
