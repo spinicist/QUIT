@@ -162,13 +162,17 @@ SSFPEchoFlex::SSFPEchoFlex(std::istream &istr, const bool prompt) : SSFPEcho() {
     QI::ReadArray(istr, m_allFlip);
     if (prompt) cout << "Enter phase-increments (degrees): " << flush;
     QI::ReadArray(istr, m_allPhi);
-    if (m_flip.size() != m_allPhi.size()) {
-        QI_EXCEPTION("SSFP must have the same number of flip-angles and phase-increments.");
+    if (m_allFlip.size() != m_allPhi.size()) {
+        QI_EXCEPTION("SSFP must have the same number of flip-angles and phase-increments." << std::endl <<
+                     "Input flip-angles: " << m_allFlip.transpose() << std::endl <<
+                     "Input phase-incs:  " << m_allPhi.transpose());
     }
     if (prompt) cout << "Enter TR (seconds): " << flush;
     QI::Read(istr, m_TR);
-    m_flip *= M_PI / 180.;
-    m_phi *= M_PI / 180.;
+    m_allFlip *= M_PI / 180.;
+    m_allPhi *= M_PI / 180.;
+    m_flip = m_allFlip;
+    m_phi = m_allPhi;
 }
 
 SSFPFinite::SSFPFinite(const ArrayXd &flip, const double TR, const double Trf, const ArrayXd &phases) :
