@@ -254,12 +254,9 @@ void ReadArray(std::istream &in, Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dyn
     std::string line;
     
     Eigen::Array<Scalar, Eigen::Dynamic, 1> row;
-    std::getline(in, line);
-
-    while (line != "") {
+    while (std::getline(in, line) && line != "") {
         ReadArray(line, row);
         rows.push_back(row);
-        std::getline(in, line);
     }
     
     array = Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dynamic>(rows.size(), rows.at(0).size());
