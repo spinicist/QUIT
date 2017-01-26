@@ -69,7 +69,8 @@ add_library( ${ALGLIB} STATIC
              ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp ${ALGDIR}/EllipseFit.cpp
              ${ALGDIR}/CEST.cpp )
 
-set( UTILS qihdr qinewimage qicomplex qiaffine qimask qikfilter qireorder
+set( UTILS qihdr qinewimage qidiff 
+           qicomplex qiaffine qimask qikfilter qireorder
            qisplitsubjects qiunwrap qipolyfit qipolyimg
            qi_roivolumes qi_roivalues
            qi_glmsetup qi_glmcontrasts )
