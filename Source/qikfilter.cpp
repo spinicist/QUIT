@@ -60,12 +60,12 @@ protected:
     SpacingType   m_Spacing;
     DirectionType m_Direction;
     PointType     m_Origin;
-    shared_ptr<QI::FilterKernel> m_kernel;
+    std::vector<std::shared_ptr<QI::FilterKernel>> m_kernels;
 
 public:
     itkNewMacro(Self);
     itkTypeMacro(Self, ImageSource);
-    void SetKernel(const shared_ptr<QI::FilterKernel> &k) { m_kernel = k; }
+    void SetKernels(const std::vector<std::shared_ptr<QI::FilterKernel>> &k) { m_kernels = k; }
     itkSetMacro(Region, RegionType);
     itkSetMacro(Spacing, SpacingType);
     itkSetMacro(Direction, DirectionType);
@@ -83,17 +83,21 @@ protected:
     virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         const auto startIndex = m_Region.GetIndex();
         const Eigen::Array3d sz{m_Region.GetSize()[0], m_Region.GetSize()[1], m_Region.GetSize()[2]};
+        const Eigen::Array3d hsz = sz / 2;
         const Eigen::Array3d sp{m_Spacing[0], m_Spacing[1], m_Spacing[2]};
         itk::ImageRegionIterator<ImageType> outIt(this->GetOutput(), m_Region);
         outIt.GoToBegin();
         while(!outIt.IsAtEnd()) {
             const auto I = outIt.GetIndex() - startIndex; // Might be padded to a negative start
-            const double x = fmod(static_cast<double>(2.*I[0]) + sz[0], 2.0*sz[0]) - sz[0];
-            const double y = fmod(static_cast<double>(2.*I[1]) + sz[1], 2.0*sz[1]) - sz[1];
-            const double z = fmod(static_cast<double>(2.*I[2]) + sz[2], 2.0*sz[2]) - sz[2];
+            const double x = fmod(static_cast<double>(I[0]) + hsz[0], sz[0]) - hsz[0];
+            const double y = fmod(static_cast<double>(I[1]) + hsz[1], sz[1]) - hsz[1];
+            const double z = fmod(static_cast<double>(I[2]) + hsz[2], sz[2]) - hsz[2];
             const Eigen::Array3d p{x, y, z};
-            const auto k = m_kernel->value(p, sz, sp);
-            outIt.Set(k);
+            typename ImageType::PixelType val = 1;
+            for (const auto &kernel : m_kernels) {
+                val *= kernel->value(p, hsz, sp);
+            }
+            outIt.Set(val);
             ++outIt;
         }
     }
@@ -137,7 +141,7 @@ int main(int argc, char **argv) {
     //******************************************************************************
     bool verbose = false, save_kernel = false;
     int complex_in = false, complex_out = false;
-    shared_ptr<QI::FilterKernel> kernel = make_shared<QI::TukeyKernel>();
+    std::vector<shared_ptr<QI::FilterKernel>> kernels;
     string out_name;
     const struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -162,8 +166,8 @@ int main(int argc, char **argv) {
                 break;
             case 'f': {
                 stringstream f(optarg);
-                kernel = QI::ReadKernel(f);
-                if (verbose) cout << "Kernel is: " << *kernel << endl;
+                kernels.push_back(QI::ReadKernel(f));
+                if (verbose) cout << "Read kernel: " << *kernels.back() << endl;
             } break;
             case 'k': save_kernel = true; break;
             case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
@@ -238,7 +242,10 @@ int main(int argc, char **argv) {
     pad->SetSizeGreatestPrimeFactor(5); // This is the largest the VNL FFT supports
     pad->SetInput(extract->GetOutput());
     forward->SetInput(pad->GetOutput());
-    tkernel->SetKernel(kernel);
+    if (kernels.size() == 0) {
+        kernels.push_back(std::make_shared<QI::TukeyKernel>());
+    }
+    tkernel->SetKernels(kernels);
     mult->SetInput1(forward->GetOutput());
     mult->SetInput2(tkernel->GetOutput());
     unpadder->SetDirectionCollapseToSubmatrix();

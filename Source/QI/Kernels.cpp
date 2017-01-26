@@ -14,29 +14,32 @@
 namespace QI {
 TukeyKernel::TukeyKernel() {}
 TukeyKernel::TukeyKernel(std::istream &istr) {
-    std::string nextValue;
-    std::getline(istr, nextValue, ',');
-    m_a = stod(nextValue);
-    std::getline(istr, nextValue, ',');
-    m_q = stod(nextValue);
+    if (!istr.eof()) {
+        std::string nextValue;
+        std::getline(istr, nextValue, ',');
+        m_a = stod(nextValue);
+        std::getline(istr, nextValue, ',');
+        m_q = stod(nextValue);
+    }
 }
 void TukeyKernel::print(std::ostream &ostr) const {
     ostr << "Tukey," << m_a << "," << m_q << std::endl;
 }
 double TukeyKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
-    static const Eigen::Array3d twos = 2.0*Eigen::Array3d::Ones();
     const double r = sqrt(((pos / sz).square() / 3).sum());
-    const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
+    const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos(M_PI*(r - (1 - m_a))/m_a));
     return v;
 }
 
 HammingKernel::HammingKernel() {}
 HammingKernel::HammingKernel(std::istream &istr) {
-    std::string nextValue;
-    std::getline(istr, nextValue, ',');
-    m_a = stod(nextValue);
-    std::getline(istr, nextValue, ',');
-    m_b = stod(nextValue);
+    if (!istr.eof()) {
+        std::string nextValue;
+        std::getline(istr, nextValue, ',');
+        m_a = stod(nextValue);
+        std::getline(istr, nextValue, ',');
+        m_b = stod(nextValue);
+    }
 }
 void HammingKernel::print(std::ostream &ostr) const {
     ostr << "Hamming," << m_a << "," << m_b << std::endl;
@@ -49,16 +52,18 @@ double HammingKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
 
 GaussKernel::GaussKernel() {}
 GaussKernel::GaussKernel(std::istream &istr) {
-    std::string nextValue;
-    std::getline(istr, nextValue, ',');
-    if (istr) { // Still more values
-        m_fwhm[0] = stod(nextValue);
+    if (!istr.eof()) {
+        std::string nextValue;
         std::getline(istr, nextValue, ',');
-        m_fwhm[1] = stod(nextValue);
-        std::getline(istr, nextValue, ',');
-        m_fwhm[2] = stod(nextValue);
-    } else {
-        m_fwhm = Eigen::Array3d::Ones() * stod(nextValue);
+        if (istr) { // Still more values
+            m_fwhm[0] = stod(nextValue);
+            std::getline(istr, nextValue, ',');
+            m_fwhm[1] = stod(nextValue);
+            std::getline(istr, nextValue, ',');
+            m_fwhm[2] = stod(nextValue);
+        } else {
+            m_fwhm = Eigen::Array3d::Ones() * stod(nextValue);
+        }
     }
 }
 void GaussKernel::print(std::ostream &ostr) const {
@@ -70,10 +75,6 @@ double GaussKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, c
     const Eigen::Array3d sigma_k = M * sz * sp / m_fwhm;
     const double r2 = (pos/sigma_k).square().sum();
     const double v = exp(-r2/2.);
-    // std::cout << "M " << M << " sigma/sp " << (m_sigma / sp).transpose() << std::endl;
-    // std::cout << "sigma_i " << m_sigma.transpose() << " sigma_k " << sigma_k.transpose() << std::endl;
-    // std::cout << "pos/sz " << (pos / sz).transpose() << " /sigma_k " << ((pos/sz)/sigma_k).transpose() << std::endl;
-    // std::cout << "r2 " << r2 << " v " << v << std::endl;
     return v;
 }
 
@@ -84,12 +85,14 @@ BlackmanKernel::BlackmanKernel() {
     m_a2 = m_alpha / 2.;
 }
 BlackmanKernel::BlackmanKernel(std::istream &istr) {
-    std::string nextValue;
-    std::getline(istr, nextValue, ',');
-    m_alpha = stod(nextValue);
-    m_a0 = (1. - m_alpha) / 2.;
-    m_a1 = 1. / 2.;
-    m_a2 = m_alpha / 2.;
+    if (!istr.eof()) {
+        std::string nextValue;
+        std::getline(istr, nextValue, ',');
+        m_alpha = stod(nextValue);
+        m_a0 = (1. - m_alpha) / 2.;
+        m_a1 = 1. / 2.;
+        m_a2 = m_alpha / 2.;
+    }
 }
 void BlackmanKernel::print(std::ostream &ostr) const {
     ostr << "Blackman," << m_alpha << std::endl;
