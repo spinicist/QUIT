@@ -15,60 +15,72 @@
 #include <memory>
 #include <iostream>
 
+#include "Eigen/Core"
 #include "QI/Util.h"
 
-namespace QI {
+namespace QI
+{
 
 class FilterKernel {
+protected:
+
 public:
     virtual void print(std::ostream &ostr) const = 0;
-    virtual double value(const double &r) const = 0;
+    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const = 0;
 };
 
-class TukeyKernel : public FilterKernel {
-protected:
+class TukeyKernel : public FilterKernel
+{
+  protected:
     double m_a = 0.75;
     double m_q = 0.25;
-public:
+
+  public:
     TukeyKernel();
     TukeyKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const double &r) const override;
+    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const override;
 };
 
-class HammingKernel : public FilterKernel {
-protected:
+class HammingKernel : public FilterKernel
+{
+  protected:
     double m_a = 0.5;
     double m_b = 0.5;
-public:
+
+  public:
     HammingKernel();
     HammingKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const double &r) const override;
+    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const override;
 };
 
-class GaussKernel : public FilterKernel {
-protected:
-    double m_sigma = 0.5;
-public:
+class GaussKernel : public FilterKernel
+{
+  protected:
+    Eigen::Array3d m_fwhm;
+
+  public:
     GaussKernel();
     GaussKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const double &r) const override;
+    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const override;
 };
 
-class BlackmanKernel : public FilterKernel {
-protected:
+class BlackmanKernel : public FilterKernel
+{
+  protected:
     double m_alpha, m_a0, m_a1, m_a2;
-public:
+
+  public:
     BlackmanKernel();
     BlackmanKernel(std::istream &istr);
     virtual void print(std::ostream &ostr) const override;
-    virtual double value(const double &r) const override;
+    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const override;
 };
 
 std::shared_ptr<FilterKernel> ReadKernel(std::istream &istr);
-std::ostream& operator<<(std::ostream &ostr, const FilterKernel &k);
+std::ostream &operator<<(std::ostream &ostr, const FilterKernel &k);
 
 } // End namespace QI
 

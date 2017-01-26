@@ -81,17 +81,18 @@ protected:
     }
 
     virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
-        IndexType startIndex = m_Region.GetIndex();
-        SizeType S = m_Region.GetSize();
-        itk::ImageRegionIterator<TImage> outIt(this->GetOutput(),region);
+        const auto startIndex = m_Region.GetIndex();
+        const Eigen::Array3d sz{m_Region.GetSize()[0], m_Region.GetSize()[1], m_Region.GetSize()[2]};
+        const Eigen::Array3d sp{m_Spacing[0], m_Spacing[1], m_Spacing[2]};
+        itk::ImageRegionIterator<ImageType> outIt(this->GetOutput(), m_Region);
         outIt.GoToBegin();
         while(!outIt.IsAtEnd()) {
             const auto I = outIt.GetIndex() - startIndex; // Might be padded to a negative start
-            const double rx = fmod(static_cast<double>(2.*I[0])/S[0] + 1.0, 2.0) - 1.0;
-            const double ry = fmod(static_cast<double>(2.*I[1])/S[1] + 1.0, 2.0) - 1.0;
-            const double rz = fmod(static_cast<double>(2.*I[2])/S[2] + 1.0, 2.0) - 1.0;
-            const double r = sqrt((rx*rx + ry*ry + rz*rz) / 3);
-            const typename ImageType::PixelType k = m_kernel->value(r);
+            const double x = fmod(static_cast<double>(2.*I[0]) + sz[0], 2.0*sz[0]) - sz[0];
+            const double y = fmod(static_cast<double>(2.*I[1]) + sz[1], 2.0*sz[1]) - sz[1];
+            const double z = fmod(static_cast<double>(2.*I[2]) + sz[2], 2.0*sz[2]) - sz[2];
+            const Eigen::Array3d p{x, y, z};
+            const auto k = m_kernel->value(p, sz, sp);
             outIt.Set(k);
             ++outIt;
         }
@@ -234,6 +235,7 @@ int main(int argc, char **argv) {
     
     extract->SetInput(vols);
     extract->SetDirectionCollapseToSubmatrix();
+    pad->SetSizeGreatestPrimeFactor(5); // This is the largest the VNL FFT supports
     pad->SetInput(extract->GetOutput());
     forward->SetInput(pad->GetOutput());
     tkernel->SetKernel(kernel);
@@ -249,15 +251,16 @@ int main(int argc, char **argv) {
         
         extract->SetExtractionRegion(region);
         extract->Update();
-
+        pad->Update();
         if (i == 0) { // For first image we need to update the kernel
-            tkernel->SetRegion(extract->GetOutput()->GetLargestPossibleRegion());
-            tkernel->SetSpacing(extract->GetOutput()->GetSpacing());
-            tkernel->SetOrigin(extract->GetOutput()->GetOrigin());
-            tkernel->SetDirection(extract->GetOutput()->GetDirection());
+            tkernel->SetRegion(pad->GetOutput()->GetLargestPossibleRegion());
+            tkernel->SetSpacing(pad->GetOutput()->GetSpacing());
+            tkernel->SetOrigin(pad->GetOutput()->GetOrigin());
+            tkernel->SetDirection(pad->GetOutput()->GetDirection());
             tkernel->Update();
+            if (verbose) std::cout << "Built kernel" << std::endl;
         }
-
+        mult->Update();
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
         inverse->SetInput(mult->GetOutput());

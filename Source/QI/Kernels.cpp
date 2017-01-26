@@ -23,7 +23,9 @@ TukeyKernel::TukeyKernel(std::istream &istr) {
 void TukeyKernel::print(std::ostream &ostr) const {
     ostr << "Tukey," << m_a << "," << m_q << std::endl;
 }
-double TukeyKernel::value(const double &r) const {
+double TukeyKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
+    static const Eigen::Array3d twos = 2.0*Eigen::Array3d::Ones();
+    const double r = sqrt(((pos / sz).square() / 3).sum());
     const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos((M_PI/m_a)*(r - 1 + m_a)));
     return v;
 }
@@ -39,7 +41,8 @@ HammingKernel::HammingKernel(std::istream &istr) {
 void HammingKernel::print(std::ostream &ostr) const {
     ostr << "Hamming," << m_a << "," << m_b << std::endl;
 }
-double HammingKernel::value(const double &r) const {
+double HammingKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
+    const double r = sqrt(((pos / sz).square() / 3).sum());
     const double v = m_a - m_b*cos(M_PI*(1.+r));
     return v;
 }
@@ -48,13 +51,29 @@ GaussKernel::GaussKernel() {}
 GaussKernel::GaussKernel(std::istream &istr) {
     std::string nextValue;
     std::getline(istr, nextValue, ',');
-    m_sigma = stod(nextValue);
+    if (istr) { // Still more values
+        m_fwhm[0] = stod(nextValue);
+        std::getline(istr, nextValue, ',');
+        m_fwhm[1] = stod(nextValue);
+        std::getline(istr, nextValue, ',');
+        m_fwhm[2] = stod(nextValue);
+    } else {
+        m_fwhm = Eigen::Array3d::Ones() * stod(nextValue);
+    }
 }
 void GaussKernel::print(std::ostream &ostr) const {
-    ostr << "Gauss," << m_sigma << std::endl;
+    ostr << "Gauss," << m_fwhm.transpose() << std::endl;
 }
-double GaussKernel::value(const double &r) const {
-    const double v = exp(-pow(r/m_sigma,2)/2.);
+
+double GaussKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
+    static const double M = 2. * sqrt(2.*log(2.)) / M_PI;
+    const Eigen::Array3d sigma_k = M * sz * sp / m_fwhm;
+    const double r2 = (pos/sigma_k).square().sum();
+    const double v = exp(-r2/2.);
+    // std::cout << "M " << M << " sigma/sp " << (m_sigma / sp).transpose() << std::endl;
+    // std::cout << "sigma_i " << m_sigma.transpose() << " sigma_k " << sigma_k.transpose() << std::endl;
+    // std::cout << "pos/sz " << (pos / sz).transpose() << " /sigma_k " << ((pos/sz)/sigma_k).transpose() << std::endl;
+    // std::cout << "r2 " << r2 << " v " << v << std::endl;
     return v;
 }
 
@@ -75,7 +94,8 @@ BlackmanKernel::BlackmanKernel(std::istream &istr) {
 void BlackmanKernel::print(std::ostream &ostr) const {
     ostr << "Blackman," << m_alpha << std::endl;
 }
-double BlackmanKernel::value(const double &r) const {
+double BlackmanKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
+    const double r = sqrt(((pos / sz).square() / 3).sum());
     const double v = m_a0 - m_a1*cos(M_PI*(1.+r)) + m_a2*cos(2.*M_PI*(1.+r));
     return v;
 }
