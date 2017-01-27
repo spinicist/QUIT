@@ -17,6 +17,8 @@
 #ifndef QI_MACRO_H
 #define QI_MACRO_H
 
+#include <sstream>
+
 #if defined( _WIN32 ) && !defined( __MINGW32__ )
     #define QI_LOCATION __FUNCSIG__
 #elif defined( __GNUC__ )
