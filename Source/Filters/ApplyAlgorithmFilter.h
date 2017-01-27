@@ -77,8 +77,8 @@ public:
 
 protected:
 	ApplyAlgorithmFilter();
-	~ApplyAlgorithmFilter(){}
-	DataObject::Pointer MakeOutput(unsigned int idx) ITK_OVERRIDE;
+    virtual ~ApplyAlgorithmFilter() {}
+	DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) ITK_OVERRIDE;
 
 	std::shared_ptr<Algorithm> m_algorithm;
     bool m_verbose = false, m_hasSubregion = false, m_allResiduals = false;

@@ -100,7 +100,7 @@ auto ApplyAlgorithmFilter<TI, TO, TC>::GetMask() const -> typename TConstImage::
 }
 
 template<typename TI, typename TO, typename TC>
-DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(unsigned int idx) {
+DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) {
     DataObject::Pointer output;
     if (idx < m_algorithm->numOutputs()) {
         output = (TOutputImage::New()).GetPointer();
