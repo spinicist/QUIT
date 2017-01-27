@@ -5,6 +5,7 @@
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkProgressReporter.h"
+#include "itkImageRegionSplitterSlowDimension.h"
 
 namespace itk {
 
@@ -32,7 +33,16 @@ template<typename TI, typename TO, typename TC>
 auto ApplyAlgorithmFilter<TI, TO, TC>::GetAlgorithm() const -> std::shared_ptr<const Algorithm>{ return m_algorithm; }
 
 template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetPoolsize(const size_t n) { m_poolsize = n; }
+void ApplyAlgorithmFilter<TI, TO, TC>::SetPoolsize(const size_t n) {
+    if (n > 0) {
+        m_poolsize = n;
+    } else {
+        m_poolsize = std::thread::hardware_concurrency();
+    }
+}
+
+template<typename TI, typename TO, typename TC>
+void ApplyAlgorithmFilter<TI, TO, TC>::SetSplitsPerThread(const size_t n) { m_splitsPerThread = n; }
 
 template<typename TI, typename TO, typename TC>
 void ApplyAlgorithmFilter<TI, TO, TC>::SetSubregion(const TRegion &sr) { m_subregion = sr; m_hasSubregion = true; }
@@ -45,12 +55,6 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetOutputAllResiduals(const bool r) { m_a
 
 template<typename TI, typename TO, typename TC>
 RealTimeClock::TimeStampType ApplyAlgorithmFilter<TI, TO, TC>::GetTotalTime() const { return m_elapsedTime; }
-
-template<typename TI, typename TO, typename TC>
-RealTimeClock::TimeStampType ApplyAlgorithmFilter<TI, TO, TC>::GetMeanTime() const { return m_elapsedTime / m_unmaskedVoxels; }
-
-template<typename TI, typename TO, typename TC>
-SizeValueType ApplyAlgorithmFilter<TI, TO, TC>::GetEvaluations() const { return m_unmaskedVoxels; }
 
 template<typename TI, typename TO, typename TC>
 void ApplyAlgorithmFilter<TI, TO, TC>::SetInput(const size_t i, const TInputImage *image) {
@@ -199,33 +203,45 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateOutputInformation() {
 template<typename TI, typename TO, typename TC>
 void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
     const unsigned int LastDim = TInputImage::ImageDimension - 1;
-    TRegion region = this->GetInput(0)->GetLargestPossibleRegion();
+    auto fullRegion = this->GetInput(0)->GetLargestPossibleRegion();
     if (m_hasSubregion) {
-        if (region.IsInside(m_subregion)) {
-            region = m_subregion;
+        if (fullRegion.IsInside(m_subregion)) {
+            fullRegion = m_subregion;
         } else {
             itkExceptionMacro("Specified subregion is not entirely inside image.");
         }
     }
+
+    auto splitter = ImageRegionSplitterSlowDimension::New();
+    auto splits = splitter->GetNumberOfSplits(fullRegion, m_poolsize * m_splitsPerThread);
+    if (m_verbose) std::cout << "Number of splits: " << splits << std::endl;
+    TimeProbe clock;
+    clock.Start();
+    {   // Use scope-based instantiation to wait for the threadpool to stop
+        QI::ThreadPool threadPool(m_poolsize);
+        for (auto split = 0; split < splits; split++) {
+            auto task = [=] {
+                auto thread_region = fullRegion;
+                splitter->GetSplit(split, splits, thread_region);
+                this->ThreadedGenerateData(thread_region, split);
+            };
+            threadPool.enqueue(task);
+            if (m_verbose) std::cout << "Starting split " << split << std::endl;
+        }
+    }
+    clock.Stop();
+    m_elapsedTime = clock.GetTotal();
+    if (m_verbose) std::cout << "Finished all splits" << std::endl;
+}
+
+template<typename TI, typename TO, typename TC>
+void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
     ImageRegionConstIterator<TConstImage> maskIter;
     const auto mask = this->GetMask();
     if (mask) {
-        if (m_verbose) std::cout << "Counting voxels in mask..." << std::endl;
-        m_unmaskedVoxels = 0;
         maskIter = ImageRegionConstIterator<TConstImage>(mask, region);
-        maskIter.GoToBegin();
-        while (!maskIter.IsAtEnd()) {
-            if (maskIter.Get())
-                ++m_unmaskedVoxels;
-            ++maskIter;
-        }
-        maskIter.GoToBegin(); // Reset
-    } else {
-        m_unmaskedVoxels = region.GetNumberOfPixels();
     }
-    if (m_verbose) std::cout << "Found " << m_unmaskedVoxels << " voxels to process." << std::endl;
-    ProgressReporter progress(this, 0, m_unmaskedVoxels, 10);
-
+    
     std::vector<ImageRegionConstIterator<TInputImage>> dataIters(m_algorithm->numInputs());
     for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
         dataIters[i] = ImageRegionConstIterator<TInputImage>(this->GetInput(i), region);
@@ -248,43 +264,36 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
     }
     ImageRegionIterator<TConstImage> residualIter(this->GetResidualOutput(), region);
     ImageRegionIterator<TIterationsImage> iterationsIter(this->GetIterationsOutput(), region);
-    if (m_verbose) std::cout << "Starting processing" << std::endl;
-    QI::ThreadPool threadPool(m_poolsize);
-    TimeProbe clock;
-    clock.Start();
+
     while(!dataIters[0].IsAtEnd()) {
         if (!mask || maskIter.Get()) {
-            auto task = [=] {
-                std::vector<TInputPixel> inputs(m_algorithm->numInputs());
-                std::vector<TOutputPixel> outputs(m_algorithm->numOutputs());
-                for (size_t i = 0; i < outputs.size(); i++) {
-                    outputs[i] = m_algorithm->zero(i);
+            std::vector<TInputPixel> inputs(m_algorithm->numInputs());
+            std::vector<TOutputPixel> outputs(m_algorithm->numOutputs());
+            for (size_t i = 0; i < outputs.size(); i++) {
+                outputs[i] = m_algorithm->zero(i);
+            }
+            std::vector<TConstPixel> constants = m_algorithm->defaultConsts();
+            for (size_t i = 0; i < constIters.size(); i++) {
+                if (this->GetConst(i)) {
+                    constants[i] = constIters[i].Get();
                 }
-                std::vector<TConstPixel> constants = m_algorithm->defaultConsts();
-                for (size_t i = 0; i < constIters.size(); i++) {
-                    if (this->GetConst(i)) {
-                        constants[i] = constIters[i].Get();
-                    }
-                }
-                TConstPixel residual;
-                TInputPixel resids;
-                TIterations iterations{0};
+            }
+            TConstPixel residual;
+            TInputPixel resids;
+            TIterations iterations{0};
 
-                for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
-                    inputs[i] = dataIters[i].Get();
-                }
-                m_algorithm->apply(inputs, constants, outputs, residual, resids, iterations);
-                for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-                    outputIters[i].Set(outputs[i]);
-                }
-                residualIter.Set(residual);
-                if (m_allResiduals) {
-                    allResidualsIter.Set(resids);
-                }
-                iterationsIter.Set(iterations);
-            };
-            threadPool.enqueue(task);
-            progress.CompletedPixel(); // We can get away with this because enqueue blocks if the queue is full
+            for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
+                inputs[i] = dataIters[i].Get();
+            }
+            m_algorithm->apply(inputs, constants, outputs, residual, resids, iterations);
+            for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
+                outputIters[i].Set(outputs[i]);
+            }
+            residualIter.Set(residual);
+            if (m_allResiduals) {
+                allResidualsIter.Set(resids);
+            }
+            iterationsIter.Set(iterations);
         } else {
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
                 outputIters[i].Set(m_algorithm->zero(i));
@@ -312,8 +321,6 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
         ++residualIter;
         ++iterationsIter;
     }
-    clock.Stop();
-    m_elapsedTime = clock.GetTotal();
 }
 } // namespace ITK
 

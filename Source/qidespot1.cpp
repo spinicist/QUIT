@@ -285,6 +285,7 @@ int main(int argc, char **argv) {
         algo->setClampT1(0, *clampT1);
     algo->setSequence(spgrSequence);
     auto apply = QI::ApplyF::New();
+    apply->SetVerbose(*verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(*all_residuals);
     apply->SetPoolsize(*num_threads);
@@ -299,7 +300,6 @@ int main(int argc, char **argv) {
     apply->Update();
     if (*verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
-        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
     *outPrefix += "D1_";

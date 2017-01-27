@@ -247,6 +247,7 @@ int main(int argc, char **argv) {
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(*all_residuals);
     apply->SetPoolsize(*num_threads);
+    apply->SetSplitsPerThread(*num_threads); // Fairly unbalanced algorithm
     apply->SetInput(0, ssfpData);
     apply->SetConst(0, T1);
     apply->SetConst(1, *B1);
@@ -263,7 +264,6 @@ int main(int argc, char **argv) {
     apply->Update();
     if (*verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
-        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
     *outPrefix = *outPrefix + "FM_";

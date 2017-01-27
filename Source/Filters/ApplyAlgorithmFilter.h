@@ -62,6 +62,7 @@ public:
 	typename TConstImage::ConstPointer GetMask() const;
 
     void SetPoolsize(const size_t nThreads);
+    void SetSplitsPerThread(const size_t nSplits);
     void SetSubregion(const TRegion &sr); 
     void SetVerbose(const bool v);
     void SetOutputAllResiduals(const bool r); 
@@ -72,8 +73,6 @@ public:
     TIterationsImage *GetIterationsOutput();
 
     RealTimeClock::TimeStampType GetTotalTime() const;
-    RealTimeClock::TimeStampType GetMeanTime() const;
-    SizeValueType GetEvaluations() const;
 
 protected:
 	ApplyAlgorithmFilter();
@@ -82,18 +81,19 @@ protected:
 
 	std::shared_ptr<Algorithm> m_algorithm;
     bool m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
-    size_t m_poolsize = 1;
+    size_t m_poolsize = 1, m_splitsPerThread = 1;
     TRegion m_subregion;
 
     RealTimeClock::TimeStampType m_elapsedTime = 0.0;
-    SizeValueType m_unmaskedVoxels = 0;
     static const int AllResidualsOutputOffset = 0;
 	static const int ResidualOutputOffset = 1;
     static const int IterationsOutputOffset = 2;
     static const int ExtraOutputs = 3;
 
-    virtual void GenerateOutputInformation() ITK_OVERRIDE;
     virtual void GenerateData() ITK_OVERRIDE;
+    /* Doing my own threading so override both of these */
+    virtual void GenerateOutputInformation() ITK_OVERRIDE;
+    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE;
 
 private:
 	ApplyAlgorithmFilter(const Self &); //purposely not implemented

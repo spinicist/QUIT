@@ -213,6 +213,8 @@ int main(int argc, char **argv) {
     apply->SetMask(*mask);
     apply->SetInput(0, inFile);
     apply->SetPoolsize(*num_threads);
+    apply->SetSplitsPerThread(*num_threads); // Unbalanced algorithm
+    apply->SetVerbose(*verbose);
     if (*verbose) {
         cout << "1st pass" << endl;
         auto monitor = QI::GenericMonitor::New();

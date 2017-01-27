@@ -57,10 +57,10 @@ int main(int argc, char **argv) {
     auto apply = QI::ApplyVectorXFVectorF::New();
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(*num_threads);
+    apply->SetSplitsPerThread(*num_threads);
     apply->SetInput(0, data);
     apply->SetMask(*mask);
     apply->SetConst(0, *B1);
-    cout << subregion.set() << endl;
     if (subregion.set()) {
         if (*verbose) cout << "Setting subregion: " << *subregion << endl;
         apply->SetSubregion(*subregion);
@@ -73,7 +73,6 @@ int main(int argc, char **argv) {
     apply->Update();
     if (*verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
-        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
     *outPrefix = *outPrefix + "ES_";

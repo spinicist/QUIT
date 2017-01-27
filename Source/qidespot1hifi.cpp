@@ -229,7 +229,6 @@ int main(int argc, char **argv) {
     apply->Update();
     if (verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
-        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
     outPrefix = outPrefix + "HIFI_";

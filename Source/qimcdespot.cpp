@@ -371,6 +371,7 @@ Options:\n\
     apply->SetOutputAllResiduals(all_residuals);
     apply->SetVerbose(verbose);
     apply->SetPoolsize(num_threads);
+    apply->SetSplitsPerThread(num_threads); // mcdespot with a mask & threads is a very unbalanced algorithm
     for (int i = 0; i < images.size(); i++) {
         apply->SetInput(i, images[i]);
     }
@@ -409,7 +410,6 @@ Options:\n\
     apply->Update();
     if (verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
-        cout << "Mean time per voxel was " << apply->GetMeanTime() << "s " << endl;
         cout << "Writing results files." << endl;
     }
     for (int i = 0; i < model->nParameters(); i++) {
