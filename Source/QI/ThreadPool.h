@@ -31,7 +31,7 @@ private:
     std::mutex m_tasksMutex;
     std::condition_variable m_queueCondition, m_threadCondition;
     bool m_stopping, m_debug;
-    int  m_maxQueueMultiple = 2;
+    int  m_maxQueueMultiple = 1;
     
     void invokeThread();
     

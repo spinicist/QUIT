@@ -9,17 +9,21 @@
  *
  *  Adapted from http://alexagafonov.com/2015/05/05/thread-pool-implementation-in-c-11/
  */
- 
- #include "ThreadPool.h"
- 
- namespace QI {
-     
+
+#include "ThreadPool.h"
+#include "QI/Macro.h"
+
+namespace QI {
+    
     ThreadPool::ThreadPool(const size_t nThreads, const bool d) : m_stopping(false), m_debug(d) {
+        if (nThreads < 1) {
+            QI_EXCEPTION("Cannot construct a thread pool with 0 threads");
+        }
+        if (m_debug) std::cout << "Constructing thread pool with " << nThreads << " threads" << std::endl;
         for (size_t i = 0; i < nThreads; i++) {
             m_threads.emplace_back(std::thread(&ThreadPool::invokeThread, this));
             if (m_debug) std::cout << "Emplaced thread " << m_threads.back().get_id() << std::endl;
         }
-        if (m_debug) std::cout << "Constructed thread pool with " << nThreads << " threads" << std::endl;
     }
     
     ThreadPool::~ThreadPool() {
@@ -49,14 +53,13 @@
             }
             m_queueCondition.wait(tLock, [this]{ return m_tasks.size() < m_maxQueueMultiple * m_threads.size(); });
             m_tasks.push(f);
-            if (m_debug) std::cout << "Pushed task" << &f << std::endl;
+            if (m_debug) std::cout << "Pushed task " << &f << std::endl;
         }
         m_threadCondition.notify_one(); // Wake up a thread
     }
     
     void ThreadPool::invokeThread() {
         TFunc task;
-        if (m_debug) std::cout << "Thread started" << std::endl;
         while (true) {
             { // Lock will exist in this scope
                 std::unique_lock<std::mutex> lock(m_tasksMutex);
@@ -70,7 +73,6 @@
                 if (m_debug) std::cout << "Starting task " << &task << std::endl;
             }
             task();
-            
         }
         if (m_debug) std::cout << "Thread stopped" << std::endl;
     }
