@@ -25,6 +25,7 @@
 #include "itkFFTShiftImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkFFTPadImageFilter.h"
+#include "itkConstantPadImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkPasteImageFilter.h"
 #include "itkCastImageFilter.h"
@@ -122,6 +123,7 @@ Options:\n\
     --verbose, -v        : Print more information.\n\
     --out, -o path       : Specify an output filename (default image base).\n\
     --filter, -f F       : Choose a filter (see below).\n\
+    --zeropad, -z Z      : Zero-pad by Z voxels.\n\
     --save_kernel, -k    : Save all pipeline steps.\n\
     --complex_in         : Read complex data.\n\
     --complex_out        : Output complex data.\n\
@@ -140,7 +142,7 @@ int main(int argc, char **argv) {
     // Arguments / Usage
     //******************************************************************************
     bool verbose = false, save_kernel = false;
-    int complex_in = false, complex_out = false;
+    int complex_in = false, complex_out = false, zero_padding = 0;
     std::vector<shared_ptr<QI::FilterKernel>> kernels;
     string out_name;
     const struct option long_options[] = {
@@ -148,13 +150,14 @@ int main(int argc, char **argv) {
         {"verbose", no_argument, 0, 'v'},
         {"out", required_argument, 0, 'o'},
         {"filter", required_argument, 0, 'f'},
+        {"zeropad", required_argument, 0, 'z'},
         {"save_kernel", no_argument, 0, 'k'},
         {"complex_in", no_argument, &complex_in, true},
         {"complex_out", no_argument, &complex_out, true},
         {"threads", required_argument, 0, 'T'},
         {0, 0, 0, 0}
     };
-    const char *short_options = "hvo:m:e:kT:";
+    const char *short_options = "hvo:m:e:z:kT:";
 
     int indexptr = 0, c;
     while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
@@ -169,6 +172,7 @@ int main(int argc, char **argv) {
                 kernels.push_back(QI::ReadKernel(f));
                 if (verbose) cout << "Read kernel: " << *kernels.back() << endl;
             } break;
+            case 'z': zero_padding = atoi(optarg); break;
             case 'k': save_kernel = true; break;
             case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
             case 'h':
@@ -209,7 +213,8 @@ int main(int argc, char **argv) {
     typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXD> TExtract;
     typedef itk::TileImageFilter<QI::VolumeXF, QI::SeriesXF>    TTile;
     typedef itk::CastImageFilter<QI::VolumeXD, QI::VolumeXF>    TCast;
-    typedef itk::FFTPadImageFilter<QI::VolumeXD>                TPad;
+    typedef itk::ConstantPadImageFilter<QI::VolumeXD, QI::VolumeXD> TZeroPad;
+    typedef itk::FFTPadImageFilter<QI::VolumeXD>                TFFTPad;
     typedef itk::ComplexToComplexFFTImageFilter<QI::VolumeXD>   TFFT;
     typedef itk::MultiplyImageFilter<QI::VolumeXD, QI::VolumeD, QI::VolumeXD> TMult;
     typedef itk::KernelSource<QI::VolumeD>                      TKernel;
@@ -228,7 +233,8 @@ int main(int argc, char **argv) {
     layout[3] = nvols;
 
     auto extract = TExtract::New();
-    auto pad     = TPad::New();
+    auto zero_pad = TZeroPad::New();
+    auto fft_pad = TFFTPad::New();
     auto forward = TFFT::New();
     auto tkernel = TKernel::New();
     auto mult    = TMult::New();
@@ -239,9 +245,19 @@ int main(int argc, char **argv) {
     
     extract->SetInput(vols);
     extract->SetDirectionCollapseToSubmatrix();
-    pad->SetSizeGreatestPrimeFactor(5); // This is the largest the VNL FFT supports
-    pad->SetInput(extract->GetOutput());
-    forward->SetInput(pad->GetOutput());
+    if (zero_padding > 0) {
+        QI::VolumeXD::SizeType padding;
+        padding.Fill(zero_padding);
+        zero_pad->SetInput(extract->GetOutput());
+        zero_pad->SetPadLowerBound(padding);
+        zero_pad->SetPadUpperBound(padding);
+        zero_pad->SetConstant(0);
+        fft_pad->SetInput(zero_pad->GetOutput());
+    } else {
+        fft_pad->SetInput(extract->GetOutput());
+    }
+    fft_pad->SetSizeGreatestPrimeFactor(5); // This is the largest the VNL FFT supports
+    forward->SetInput(fft_pad->GetOutput());
     if (kernels.size() == 0) {
         kernels.push_back(std::make_shared<QI::TukeyKernel>());
     }
@@ -258,12 +274,12 @@ int main(int argc, char **argv) {
         
         extract->SetExtractionRegion(region);
         extract->Update();
-        pad->Update();
+        fft_pad->Update();
         if (i == 0) { // For first image we need to update the kernel
-            tkernel->SetRegion(pad->GetOutput()->GetLargestPossibleRegion());
-            tkernel->SetSpacing(pad->GetOutput()->GetSpacing());
-            tkernel->SetOrigin(pad->GetOutput()->GetOrigin());
-            tkernel->SetDirection(pad->GetOutput()->GetDirection());
+            tkernel->SetRegion(fft_pad->GetOutput()->GetLargestPossibleRegion());
+            tkernel->SetSpacing(fft_pad->GetOutput()->GetSpacing());
+            tkernel->SetOrigin(fft_pad->GetOutput()->GetOrigin());
+            tkernel->SetDirection(fft_pad->GetOutput()->GetDirection());
             tkernel->Update();
             if (verbose) std::cout << "Built kernel" << std::endl;
         }
