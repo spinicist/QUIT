@@ -34,7 +34,7 @@ std::ostream &operator<< (std::ostream &os, const TOption &o);
 class ArgParser {
 protected:
     std::vector<const TOption> m_opts;
-    std::deque<std::pair<std::string, std::string>> m_found;
+    std::deque<std::pair<std::string, std::string>> m_args;
     std::deque<const std::string> m_nonopts;
 
 public:
@@ -44,21 +44,21 @@ public:
     std::deque<const std::string> &nonoptions() { return m_nonopts; }
     bool found(const std::string &name);
     std::pair<bool, const std::string> consume(const std::string &name);
-};
 
-template<typename T>
-T From_Option(const std::string &name, const T &def_value, ArgParser &a) {
-    auto o = a.consume(name);
-    if (o.first) {
-        std::stringstream ss(o.second);
-        T temp;
-        ss >> temp;
-        return temp;
-    } else {
-        return def_value;
+    template<typename T>
+    T consume(const std::string &name, const T &def_value) {
+        auto it = std::find_if(m_args.cbegin(), m_args.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
+        if (it == m_args.cend()) {
+            return def_value;
+        } else {
+            std::stringstream ss(it->second);
+            T temp;
+            ss >> temp;
+            m_args.erase(it);
+            return temp;
+        }
     }
-}
-bool From_Switch(const std::string &name, ArgParser &a);
+};
 
 void Help(ArgParser &a, const std::string &usage);
 

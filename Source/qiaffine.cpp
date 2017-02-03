@@ -18,7 +18,7 @@
 #include "itkTransformFileWriter.h"
 
 #include "QI/Util.h"
-#include "QI/Types.h"
+#include "QI/IO.h"
 #include "QI/Args.h"
 
 using namespace std;
@@ -46,27 +46,23 @@ int main(int argc, char **argv) {
     QI::ArgParser args(argc, argv, opts);
     QI::Help(args, usage);
 
-    bool verbose = QI::From_Switch("verbose", args);
-    float scale = QI::From_Option("scale", 1.0, args);
-    float rotX = QI::From_Option("rotX", 0.0, args);
-    float rotY = QI::From_Option("rotY", 0.0, args);
-    float rotZ = QI::From_Option("rotZ", 0.0, args);
-    float offX = QI::From_Option("offX", 0.0, args);
-    float offY = QI::From_Option("offY", 0.0, args);
-    float offZ = QI::From_Option("offZ", 0.0, args);
-    bool center = QI::From_Switch("center", args);
-    std::string tfmFile = QI::From_Option("tfm", std::string{""}, args);
+    bool verbose = args.consume("verbose", false);
+    float scale = args.consume("scale", 1.0);
+    float rotX = args.consume("rotX", 0.0);
+    float rotY = args.consume("rotY", 0.0);
+    float rotZ = args.consume("rotZ", 0.0);
+    float offX = args.consume("offX", 0.0);
+    float offY = args.consume("offY", 0.0);
+    float offZ = args.consume("offZ", 0.0);
+    bool center = args.consume("center", false);
+    std::string tfmFile = args.consume("tfm", std::string{""});
     std::deque<const std::string> nonopts = args.nonoptions();
     if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
         std::cerr << "Incorrect number of arguments, use -h to see usage." << std::endl;
         return EXIT_FAILURE;
     }
 
-    // Now read in the input image
-    auto reader = itk::ImageFileReader<QI::SeriesF>::New();
-    reader->SetFileName(nonopts[0]);
-    reader->Update();
-    auto image = reader->GetOutput();
+    auto image = QI::ReadImage<QI::SeriesF>(nonopts[0]);
 
     QI::SeriesF::DirectionType fullDir = image->GetDirection();
     QI::SeriesF::SpacingType fullSpacing = image->GetSpacing();

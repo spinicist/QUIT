@@ -53,7 +53,7 @@ ArgParser::ArgParser(int argc, char **argv, std::vector<const TOption> opts) :
             if (it == m_opts.end()) {
                 QI_EXCEPTION("Unhandled long TOption: " + thisopt);
             }
-            m_found.push_back({it->long_name, arg});
+            m_args.push_back({it->long_name, arg});
         } else { // Short TOption
             char sopt = thisopt[1];
             it = std::find_if(m_opts.begin(), m_opts.end(), [&] (const TOption &o) { return o.short_name == sopt; });
@@ -69,39 +69,19 @@ ArgParser::ArgParser(int argc, char **argv, std::vector<const TOption> opts) :
                     arg = argv[++optind];
                 }
             }
-            m_found.push_back({it->long_name, arg});
+            m_args.push_back({it->long_name, arg});
         }
         optind++;
     }
 }
 
 bool ArgParser::found(const std::string &name) {
-    auto it = std::find_if(m_found.cbegin(), m_found.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
-    if (it == m_found.cend()) {
+    auto it = std::find_if(m_args.cbegin(), m_args.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
+    if (it == m_args.cend()) {
         return false;
     } else {
         const std::string value = it->second;
         return true;
-    }
-}
-
-std::pair<bool, const std::string> ArgParser::consume(const std::string &name) {
-    auto it = std::find_if(m_found.cbegin(), m_found.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
-    if (it == m_found.cend()) {
-        return {false, ""};
-    } else {
-        const std::string value = it->second;
-        m_found.erase(it);
-        return {true, value};
-    }
-}
-
-bool From_Switch(const std::string &name, ArgParser &a) {
-    auto o = a.consume(name);
-    if (o.first) {
-        return true;
-    } else {
-        return false;
     }
 }
 
