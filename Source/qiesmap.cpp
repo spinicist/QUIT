@@ -61,6 +61,7 @@ int main(int argc, char **argv) {
     apply->SetInput(0, data);
     apply->SetMask(*mask);
     apply->SetConst(0, *B1);
+    apply->SetVerbose(*verbose);
     if (subregion.set()) {
         if (*verbose) cout << "Setting subregion: " << *subregion << endl;
         apply->SetSubregion(*subregion);
