@@ -25,7 +25,8 @@ std::ostream &operator<< (std::ostream &os, const TOption &o) {
     return os;
 }
 
-ArgParser::ArgParser(int argc, char **argv, std::vector<const TOption> opts) :
+ArgParser::ArgParser(int argc, char **argv, const std::string &usage, 
+                     const std::vector<const TOption> &opts) :
     m_opts(opts)
 {
     int optind = 1;
@@ -73,25 +74,22 @@ ArgParser::ArgParser(int argc, char **argv, std::vector<const TOption> opts) :
         }
         optind++;
     }
+    if (option_present("help")) {
+        std::cout << usage << std::endl << std::endl;
+        for (auto &o : m_opts) {
+            std::cout << o << std::endl;
+        }
+        exit(EXIT_SUCCESS);
+    }
 }
 
-bool ArgParser::found(const std::string &name) {
+bool ArgParser::option_present(const std::string &name) {
     auto it = std::find_if(m_args.cbegin(), m_args.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
     if (it == m_args.cend()) {
         return false;
     } else {
         const std::string value = it->second;
         return true;
-    }
-}
-
-void Help(ArgParser &a, const std::string &usage) {
-    if (a.found("help")) {
-        std::cout << usage << std::endl << std::endl;
-        for (auto &o : a.options()) {
-            std::cout << o << std::endl;
-        }
-        exit(EXIT_SUCCESS);
     }
 }
 

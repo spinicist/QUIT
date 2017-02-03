@@ -23,39 +23,35 @@
 
 using namespace std;
 
-const std::string usage{
-"Usage is: qiaffine input [output] [transforms]\n\
-Applies simple affine transformations to images by manipulating the header\n\
-transforms. If an output file is not specified, the input file will be\n\
-overwritten."};
-const std::vector<const QI::TOption> opts = {
-    {"help", 'h', "Display the help message and quit", false},
-    {"verbose", 'v', "Print more information", false},
-    {"center", 'c', "Set the origin to the center of the image", false},
-    {"scale", 's', "Scale image by a factor of S", true},
-    {"offX", '\0', "Translate origin by D in X direction", true},
-    {"offY", '\0', "Translate origin by D in Y direction", true},
-    {"offZ", '\0', "Translate origin by D in Z direction", true},
-    {"rotX", '\0', "Rotate about X axis by N degrees", true},
-    {"rotY", '\0', "Rotate about Y axis by N degrees", true},
-    {"rotZ", '\0', "Rotate about Z axis by N degrees", true},
-};
-
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::ArgParser args(argc, argv, opts);
-    QI::Help(args, usage);
+    QI::ArgParser args{argc, argv,
+        "Usage is: qiaffine input [output] [transforms]\n"
+        "Applies simple affine transformations to images by manipulating the header\n"
+        "transforms. If an output file is not specified, the input file will be\n"
+        "overwritten.",
+        {{"help", 'h', "Display the help message and quit", false},
+         {"verbose", 'v', "Print more information", false},
+         {"center", 'c', "Set the origin to the center of the image", false},
+         {"scale", 's', "Scale image by a factor of S", true},
+         {"offX", '\0', "Translate origin by D in X direction", true},
+         {"offY", '\0', "Translate origin by D in Y direction", true},
+         {"offZ", '\0', "Translate origin by D in Z direction", true},
+         {"rotX", '\0', "Rotate about X axis by N degrees", true},
+         {"rotY", '\0', "Rotate about Y axis by N degrees", true},
+         {"rotZ", '\0', "Rotate about Z axis by N degrees", true}}
+    };
 
-    bool verbose = args.consume("verbose", false);
-    float scale = args.consume("scale", 1.0);
-    float rotX = args.consume("rotX", 0.0);
-    float rotY = args.consume("rotY", 0.0);
-    float rotZ = args.consume("rotZ", 0.0);
-    float offX = args.consume("offX", 0.0);
-    float offY = args.consume("offY", 0.0);
-    float offZ = args.consume("offZ", 0.0);
-    bool center = args.consume("center", false);
-    std::string tfmFile = args.consume("tfm", std::string{""});
+    bool verbose = args.option_present("verbose");
+    bool center = args.option_present("center");
+    float scale = args.option_value("scale", 1.0);
+    float rotX = args.option_value("rotX", 0.0);
+    float rotY = args.option_value("rotY", 0.0);
+    float rotZ = args.option_value("rotZ", 0.0);
+    float offX = args.option_value("offX", 0.0);
+    float offY = args.option_value("offY", 0.0);
+    float offZ = args.option_value("offZ", 0.0);
+    std::string tfmFile = args.option_value("tfm", std::string{""});
     std::deque<const std::string> nonopts = args.nonoptions();
     if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
         std::cerr << "Incorrect number of arguments, use -h to see usage." << std::endl;
