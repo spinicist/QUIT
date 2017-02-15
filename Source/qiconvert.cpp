@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
         "Converts input to specified format",
         {{"help", 'h', "Display the help message and quit", false},
          {"verbose", 'v', "Print more information", false},
+         {"prefix", 'p', "Prefix output path", true},
          {"rename", 'r', "Rename using specified header field", true}}
     };
 
@@ -51,16 +52,26 @@ int main(int argc, char **argv) {
     imageIO->ReadImageInformation();
     size_t dims = imageIO->GetNumberOfDimensions();
     auto PixelType = imageIO->GetPixelType();
-    
-    std::string output;
+
+    std::string output = args.option_value<string>("prefix","");
     if (args.option_present("rename")) {
         std::string rename_field = args.option_value<string>("rename","");
-        std::vector<std::string> rename_value;
+        std::vector<std::string> string_array_value;
+        std::string string_value;
+        double double_value;
+
         auto dict = imageIO->GetMetaDataDictionary();
-        ExposeMetaData(dict, rename_field, rename_value);
-        output = rename_value[0] + nonopts[1];
+        if (ExposeMetaData(dict, rename_field, string_array_value)) {
+            output += string_array_value[0] + nonopts[1];
+        } else if (ExposeMetaData(dict, rename_field, string_value)) {
+            output += string_value + nonopts[1];
+        } else if (ExposeMetaData(dict, rename_field, double_value)) {
+            output += std::to_string(double_value) + nonopts[1];
+        } else {
+            QI_EXCEPTION("Could not determine type of rename header field");
+        }
     } else {
-        output = QI::StripExt(input) + nonopts[1];
+        output += QI::StripExt(input) + nonopts[1];
     }
 
     #define DIM_SWITCH( N ) \
