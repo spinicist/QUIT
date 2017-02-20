@@ -83,7 +83,9 @@ protected:
 
     virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         const auto startIndex = m_Region.GetIndex();
-        const Eigen::Array3d sz{m_Region.GetSize()[0], m_Region.GetSize()[1], m_Region.GetSize()[2]};
+        const Eigen::Array3d sz{static_cast<double>(m_Region.GetSize()[0]),
+                                static_cast<double>(m_Region.GetSize()[1]),
+                                static_cast<double>(m_Region.GetSize()[2])};
         const Eigen::Array3d hsz = sz / 2;
         const Eigen::Array3d sp{m_Spacing[0], m_Spacing[1], m_Spacing[2]};
         itk::ImageRegionIterator<ImageType> outIt(this->GetOutput(), m_Region);
