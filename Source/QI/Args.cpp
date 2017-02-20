@@ -11,6 +11,10 @@
 
 #include "Args.h"
 
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+
 namespace QI {
 
 std::ostream &operator<< (std::ostream &os, const TOption &o) {
@@ -26,7 +30,7 @@ std::ostream &operator<< (std::ostream &os, const TOption &o) {
 }
 
 ArgParser::ArgParser(int argc, char **argv, const std::string &usage, 
-                     const std::vector<const TOption> &opts) :
+                     const std::vector<TOption> &opts) :
     m_opts(opts)
 {
     int optind = 1;
@@ -52,20 +56,20 @@ ArgParser::ArgParser(int argc, char **argv, const std::string &usage,
             }
             it = std::find_if(m_opts.begin(), m_opts.end(), [&] (const TOption &o) { return o.long_name == thisopt; });
             if (it == m_opts.end()) {
-                QI_EXCEPTION("Unhandled long TOption: " + thisopt);
+                QI_EXCEPTION("Unknown long option '" << thisopt << "' given on command-line.");
             }
             m_args.push_back({it->long_name, arg});
         } else { // Short TOption
             char sopt = thisopt[1];
             it = std::find_if(m_opts.begin(), m_opts.end(), [&] (const TOption &o) { return o.short_name == sopt; });
             if (it == m_opts.end()) {
-                QI_EXCEPTION("Unhandled short TOption: " + std::string(thisopt));
+                QI_EXCEPTION("Unknown short option '" << std::string(thisopt) << "' given on command-line.");
             }
             if (it->has_arg) {
                 if (thisopt.size() > 2) { // Handle ArgParser without spaces
                     arg = thisopt.substr(2);
                 } else if ((optind+1) == argc) {
-                    QI_EXCEPTION("Missing required argument for TOption " + std::to_string(sopt));
+                    QI_EXCEPTION("Missing required argument '" << std::to_string(sopt) << "'");
                 } else {
                     arg = argv[++optind];
                 }

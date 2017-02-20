@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     float offY = args.option_value("offY", 0.0);
     float offZ = args.option_value("offZ", 0.0);
     std::string tfmFile = args.option_value("tfm", std::string{""});
-    std::deque<const std::string> nonopts = args.nonoptions();
+    std::deque<std::string> nonopts = args.nonoptions();
     if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
         std::cerr << "Incorrect number of arguments, use -h to see usage." << std::endl;
         return EXIT_FAILURE;

@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     };
 
     bool verbose = args.option_present("verbose");
-    std::deque<const std::string> nonopts = args.nonoptions();
+    std::deque<std::string> nonopts = args.nonoptions();
     if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
         std::cerr << "Incorrect number of arguments, use -h to see usage." << std::endl;
         return EXIT_FAILURE;
@@ -61,6 +61,9 @@ int main(int argc, char **argv) {
         double double_value;
 
         auto dict = imageIO->GetMetaDataDictionary();
+        if (!dict.HasKey(rename_field)) {
+            QI_EXCEPTION("Rename field '" << rename_field << "' not found in header.");
+        }
         if (ExposeMetaData(dict, rename_field, string_array_value)) {
             output += string_array_value[0] + nonopts[1];
         } else if (ExposeMetaData(dict, rename_field, string_value)) {
