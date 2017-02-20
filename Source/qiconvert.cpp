@@ -55,28 +55,35 @@ int main(int argc, char **argv) {
 
     std::string output = args.option_value<string>("prefix","");
     if (args.option_present("rename")) {
-        std::string rename_field = args.option_value<string>("rename","");
-        std::vector<std::string> string_array_value;
-        std::string string_value;
-        double double_value;
+        while (args.option_present("rename")) {
+            std::string rename_field = args.option_value<string>("rename","");
+            std::vector<std::string> string_array_value;
+            std::string string_value;
+            double double_value;
 
-        auto dict = imageIO->GetMetaDataDictionary();
-        if (!dict.HasKey(rename_field)) {
-            QI_EXCEPTION("Rename field '" << rename_field << "' not found in header.");
-        }
-        if (ExposeMetaData(dict, rename_field, string_array_value)) {
-            output += string_array_value[0] + nonopts[1];
-        } else if (ExposeMetaData(dict, rename_field, string_value)) {
-            output += string_value + nonopts[1];
-        } else if (ExposeMetaData(dict, rename_field, double_value)) {
-            output += std::to_string(double_value) + nonopts[1];
-        } else {
-            QI_EXCEPTION("Could not determine type of rename header field");
+            auto dict = imageIO->GetMetaDataDictionary();
+            if (!dict.HasKey(rename_field)) {
+                QI_EXCEPTION("Rename field '" << rename_field << "' not found in header.");
+            }
+            if (ExposeMetaData(dict, rename_field, string_array_value)) {
+                output.append(string_array_value[0]);
+            } else if (ExposeMetaData(dict, rename_field, string_value)) {
+                output.append(string_value);
+            } else if (ExposeMetaData(dict, rename_field, double_value)) {
+                std::ostringstream formatted;
+                formatted << double_value;
+                output.append(formatted.str());
+            } else {
+                QI_EXCEPTION("Could not determine type of rename header field:" << rename_field);
+            }
+            if (args.option_present("rename")) {
+                output.append("_");
+            }
         }
     } else {
-        output += QI::StripExt(input) + nonopts[1];
+        output.append(QI::Basename(input));
     }
-
+    output.append(nonopts[1]);
     #define DIM_SWITCH( N ) \
     case N:\
         switch (PixelType) {\

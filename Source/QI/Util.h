@@ -32,6 +32,7 @@ namespace QI {
 const std::string &GetVersion();                    //!< Return the version of the QI library
 const std::string &OutExt();                        //!< Return the extension stored in $QUIT_EXT
 std::string StripExt(const std::string &filename);  //!< Remove the extension from a filename
+std::string Basename(const std::string &path);      //!< Return only the filename part of a path
 std::mt19937_64::result_type RandomSeed();          //!< Thread-safe random seed
 unsigned long long Choose(unsigned long long n, unsigned long long k); //!< From Knuth, surprised this isn't in STL
 Eigen::ArrayXXd ReadArrayFile(const std::string &path);

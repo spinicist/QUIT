@@ -62,6 +62,13 @@ std::string StripExt(const std::string &filename) {
     }
 }
 
+std::string Basename(const std::string &path) {
+    std::size_t slash = path.find_last_of("/");
+    if (slash != std::string::npos) {
+        return StripExt(path.substr(slash));
+    }
+}
+
 mt19937_64::result_type RandomSeed() {
     static random_device rd;
     static mt19937_64 rng;
