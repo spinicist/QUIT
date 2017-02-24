@@ -66,6 +66,8 @@ std::string Basename(const std::string &path) {
     std::size_t slash = path.find_last_of("/");
     if (slash != std::string::npos) {
         return StripExt(path.substr(slash));
+    } else {
+        QI_EXCEPTION("No / found in path: " << path);
     }
 }
 
