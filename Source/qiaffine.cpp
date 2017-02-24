@@ -39,7 +39,8 @@ int main(int argc, char **argv) {
          {"offZ", '\0', "Translate origin by D in Z direction", true},
          {"rotX", '\0', "Rotate about X axis by N degrees", true},
          {"rotY", '\0', "Rotate about Y axis by N degrees", true},
-         {"rotZ", '\0', "Rotate about Z axis by N degrees", true}}
+         {"rotZ", '\0', "Rotate about Z axis by N degrees", true},
+         {"tfm", 't', "Write out the transformation to file", true}}
     };
 
     bool verbose = args.option_present("verbose");
