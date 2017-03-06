@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
-    std::string outPrefix = args.option_value("out") + "FM_";
+    std::string outPrefix = args.string_value("out", "") + "FM_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2.nii");
     QI::WriteImage(apply->GetOutput(2), outPrefix + "f0.nii");

@@ -41,7 +41,7 @@ auto ReadImage(const std::string &path) -> typename TImg::Pointer {
 
 template<typename TImg = QI::VolumeF>
 auto ReadOptImage(const std::string &option, ArgParser &args) -> typename TImg::Pointer {
-    std::string path = args.option_value(option);
+    std::string path = args.string_value(option, "");
     if (path != "") {
         return ReadImage<TImg>(path);
     } else {

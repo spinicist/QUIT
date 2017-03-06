@@ -97,4 +97,15 @@ bool ArgParser::option_present(const std::string &name) {
     }
 }
 
+std::string ArgParser::string_value(const std::string &name,
+                                    const std::string &def_value)
+{
+    auto it = std::find_if(m_args.cbegin(), m_args.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
+    if (it == m_args.cend()) {
+        return def_value;
+    } else {
+        return it->second;
+    }
+}
+
 }

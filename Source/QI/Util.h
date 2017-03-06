@@ -55,8 +55,7 @@ public:
 
 template<typename TRegion = typename QI::VolumeF::RegionType>
 TRegion RegionOpt(const std::string &a, ArgParser &args) {
-    std::istringstream iss(args.option_value(a));
-    std::cout << "iss.str() " << iss.str() << std::endl;
+    std::istringstream iss(args.string_value(a, ""));
     typename TRegion::IndexType start;
     typename TRegion::SizeType size;
     for (int i = 0; i < TRegion::ImageDimension; i++) {
