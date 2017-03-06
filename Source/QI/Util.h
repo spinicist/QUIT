@@ -26,6 +26,8 @@
 #include "itkCommand.h"
 
 #include "QI/Macro.h"
+#include "QI/Args.h"
+#include "QI/Types.h"
 
 namespace QI {
 
@@ -50,6 +52,24 @@ public:
     void Execute(itk::Object *caller, const itk::EventObject &event) ITK_OVERRIDE;
     void Execute(const itk::Object *object, const itk::EventObject &event) ITK_OVERRIDE;
 };
+
+template<typename TRegion = typename QI::VolumeF::RegionType>
+TRegion RegionOpt(const std::string &a, ArgParser &args) {
+    std::istringstream iss(args.option_value(a));
+    std::cout << "iss.str() " << iss.str() << std::endl;
+    typename TRegion::IndexType start;
+    typename TRegion::SizeType size;
+    for (int i = 0; i < TRegion::ImageDimension; i++) {
+        iss >> start[i];
+    }
+    for (int i = 0; i < TRegion::ImageDimension; i++) {
+        iss >> size[i];
+    }
+    TRegion r;
+    r.SetIndex(start);
+    r.SetSize(size);
+    return r;
+}
 
 } // End namespace QUIT
 

@@ -24,6 +24,7 @@
 
 #include "QI/Types.h"
 #include "QI/Macro.h"
+#include "QI/Args.h"
 
 namespace QI {
 
@@ -36,6 +37,16 @@ auto ReadImage(const std::string &path) -> typename TImg::Pointer {
     typename TImg::Pointer img = file->GetOutput();
     img->DisconnectPipeline();
     return img;
+}
+
+template<typename TImg = QI::VolumeF>
+auto ReadOptImage(const std::string &option, ArgParser &args) -> typename TImg::Pointer {
+    std::string path = args.option_value(option);
+    if (path != "") {
+        return ReadImage<TImg>(path);
+    } else {
+        return ITK_NULLPTR;
+    }
 }
 
 template<typename TImg>

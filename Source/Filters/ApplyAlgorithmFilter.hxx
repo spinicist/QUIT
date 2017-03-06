@@ -45,7 +45,11 @@ template<typename TI, typename TO, typename TC>
 void ApplyAlgorithmFilter<TI, TO, TC>::SetSplitsPerThread(const size_t n) { m_splitsPerThread = n; }
 
 template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetSubregion(const TRegion &sr) { m_subregion = sr; m_hasSubregion = true; }
+void ApplyAlgorithmFilter<TI, TO, TC>::SetSubregion(const TRegion &sr) {
+    if (m_verbose) std::cout << "Setting subregion to: " << std::endl << sr << std::endl;
+    m_subregion = sr;
+    m_hasSubregion = true;
+}
 
 template<typename TI, typename TO, typename TC>
 void ApplyAlgorithmFilter<TI, TO, TC>::SetVerbose(const bool v) { m_verbose = v; }

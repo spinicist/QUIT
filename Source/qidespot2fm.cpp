@@ -19,7 +19,8 @@
 #include "cppoptlib/solver/lbfgsbsolver.h"
 #include "cppoptlib/solver/cmaesbsolver.h"
 #include "QI/Util.h"
-#include "QI/Option.h"
+#include "QI/Args.h"
+#include "QI/IO.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
 #include "Filters/ApplyAlgorithmFilter.h"
@@ -201,79 +202,87 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts("Usage is: qidespot1 [options] spgr_input");
-    QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals", opts);
-    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::RegionOption<QI::ApplyF::TRegion> subregion('s',"subregion","Process subregion starting at voxel I,J,K with size SI,SJ,SK", opts);
-    QI::Switch flex('f',"flex", "Specify all phase-incs for all flip-angles", opts);
-    QI::Option<int> nstart(2, 'F',"off","Number of off-resonance start points", opts);
-    QI::Switch asym('A',"asym","Fit +/- off-resonance frequency", opts);
-    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
-    QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
-    QI::EnumOption algorithm("bc",'b','a',"algo","Choose algorithm (b/c)", opts);
-    QI::Option<std::string> outPrefix("", 'o', "out","Add a prefix to output filenames", opts);
-    QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
-    QI::Switch verbose('v',"verbose","Print more information", opts);
-    QI::Help help(opts);
-    std::deque<std::string> nonopts = opts.parse(argc, argv);
+
+    QI::ArgParser args{argc, argv,
+        "Usage is: qidespot2fm t1_map ssfp_input [options]\n"
+        "Calculates a T2 map from SSFP data and a T1 map.",
+        {{"help",       'h', "Display the help message and quit", false},
+         {"verbose",    'v', "Print more information", false},
+         {"no-prompot", 'n', "Suppress input prompts", false},
+         {"threads",    'T', "Use N threads (default=4, 0=hardware limit)", true},
+         {"out",        'o', "Add a prefix to output filenames", true},
+         {"rename",     'r', "Rename using specified header field", true},
+         {"algo",       'a', "Choose algorithm (b/c)", true},
+         {"B1",         'b', "B1 Map file (ratio)", true},
+         {"mask",       'm', "Only process within mask file", true},
+         {"asym",       'A', "Fit +/- off-resonance frequency", false},
+         {"off",        'F', "Number of off-resonance start points", true},
+         {"flex",       'f', "Flexible input (do not expand incs)", false},
+         {"subregion",  's', "Process subregion starting at voxel I,J,K with size SI,SJ,SK", false},
+         {"resids",     'r', "Write out residuals for each data-point", false}}
+    };
+
+    bool verbose = args.option_present("verbose");
+    bool prompt  = !args.option_present("suppress");
+
+    std::deque<std::string> nonopts = args.nonoptions();
     if (nonopts.size() != 2) {
-        std::cerr << opts << std::endl;
         std::cerr << "Wrong number of arguments. Need a T1 map and one SSFP file." << std::endl;
         return EXIT_FAILURE;
     }
 
     shared_ptr<QI::SSFPSimple> ssfpSequence;
-    if (*flex)
-        ssfpSequence = make_shared<QI::SSFPEchoFlex>(cin, !(*suppress));
+    if (args.option_present("flex"))
+        ssfpSequence = make_shared<QI::SSFPEchoFlex>(cin, prompt);
     else
-        ssfpSequence = make_shared<QI::SSFPEcho>(cin, !(*suppress));
-    if (*verbose) cout << *ssfpSequence << endl;
+        ssfpSequence = make_shared<QI::SSFPEcho>(cin, prompt);
+    if (verbose) cout << *ssfpSequence << endl;
 
-    if (*verbose) cout << "Reading T1 Map from: " << nonopts[0] << endl;
+    if (verbose) cout << "Reading T1 Map from: " << nonopts[0] << endl;
     auto T1 = QI::ReadImage(nonopts[0]);
-    if (*verbose) cout << "Opening SSFP file: " << nonopts[1] << endl;
+    if (verbose) cout << "Opening SSFP file: " << nonopts[1] << endl;
     auto ssfpData = QI::ReadVectorImage<float>(nonopts[1]);
     auto apply = QI::ApplyF::New();
     shared_ptr<FMAlgo> algo;
-    switch (*algorithm) {
-        case 'b': algo = make_shared<BFGSAlgo>(*nstart); if (*verbose) cout << "LBFGSB algorithm selected." << endl; break;
-        case 'c': algo = make_shared<CMAlgo>(); if (*verbose) cout << "CM algorithm selected." << endl; break;
-        default: throw(std::runtime_error("Invalid algorithm: " + std::to_string(*algorithm)));
+    switch (args.option_value("algo", 'b')) {
+        case 'b': algo = make_shared<BFGSAlgo>(args.option_value("off", 2)); if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
+        case 'c': algo = make_shared<CMAlgo>(); if (verbose) cout << "CM algorithm selected." << endl; break;
+        default: throw(std::runtime_error("Invalid algorithm specified"));
     }
 
     algo->setSequence(ssfpSequence);
-    algo->setAsymmetric(*asym);
-    apply->SetVerbose(*verbose);
+    algo->setAsymmetric(args.option_present("asym"));
+    apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
-    apply->SetOutputAllResiduals(*all_residuals);
-    apply->SetPoolsize(*num_threads);
-    apply->SetSplitsPerThread(*num_threads); // Fairly unbalanced algorithm
+    apply->SetOutputAllResiduals(args.option_present("resids"));
+    const int nthreads = args.option_value("num_threads", 4);
+    apply->SetPoolsize(nthreads);
+    apply->SetSplitsPerThread(nthreads); // Fairly unbalanced algorithm
     apply->SetInput(0, ssfpData);
     apply->SetConst(0, T1);
-    apply->SetConst(1, *B1);
-    apply->SetMask(*mask);
-    if (subregion.set()) {
-        if (*verbose) cout << "Setting subregion: " << *subregion << endl;
-        apply->SetSubregion(*subregion);
+    apply->SetConst(1, QI::ReadOptImage("B1", args));
+    apply->SetMask(QI::ReadOptImage("mask", args));
+    if (args.option_present("subregion")) {
+        apply->SetSubregion(QI::RegionOpt("subregion", args));
     }
-    if (*verbose) {
+    if (verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (*verbose) {
+    if (verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
-    *outPrefix = *outPrefix + "FM_";
-    QI::WriteImage(apply->GetOutput(0), *outPrefix + "PD.nii");
-    QI::WriteImage(apply->GetOutput(1), *outPrefix + "T2.nii");
-    QI::WriteImage(apply->GetOutput(2), *outPrefix + "f0.nii");
-    QI::WriteImage(apply->GetIterationsOutput(), *outPrefix + "its.nii");
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), *outPrefix + "residual.nii");
-    if (*all_residuals) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), *outPrefix + "all_residuals.nii");
+    std::string outPrefix = args.option_value("out") + "FM_";
+    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
+    QI::WriteImage(apply->GetOutput(1), outPrefix + "T2.nii");
+    QI::WriteImage(apply->GetOutput(2), outPrefix + "f0.nii");
+    QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "its.nii");
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    if (args.option_present("resids")) {
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
     }
     return EXIT_SUCCESS;
 }

@@ -44,8 +44,8 @@ public:
     bool option_present(const std::string &name);
     std::pair<bool, std::string> consume(const std::string &name);
 
-    template<typename T>
-    T option_value(const std::string &name, const T &def_value) {
+    template<typename T = std::string>
+    T option_value(const std::string &name, const T &def_value = "") {
         auto it = std::find_if(m_args.cbegin(), m_args.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
         if (it == m_args.cend()) {
             return def_value;
