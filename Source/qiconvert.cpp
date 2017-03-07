@@ -47,6 +47,7 @@ int main(int argc, char **argv) {
     itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(input.c_str(), itk::ImageIOFactory::ReadMode);
     if (!imageIO) {
         cerr << "Could not open: " << input << endl;
+        return EXIT_FAILURE;
     }
     imageIO->SetFileName(input);
     imageIO->ReadImageInformation();
