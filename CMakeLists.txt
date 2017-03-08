@@ -74,7 +74,11 @@ set( UTILS qihdr qinewimage qidiff qiconvert
            qisplitsubjects qiunwrap qipolyfit qipolyimg
            qi_roivolumes qi_roivalues
            qi_glmsetup qi_glmcontrasts )
-set( QUANT qisignal qidespot1 qidespot2 qidespot1hifi qidespot2fm qimcdespot qiafi qimultiecho qimp2rage qicest )
+set( QUANT qisignal
+           qiafi qidream
+           qidespot1 qidespot2 qidespot1hifi qidespot2fm
+           qimcdespot 
+           qimultiecho qimp2rage qicest )
 set( ELLIPSE qissfpbands qiesmap )
 
 foreach(PROGRAM ${UTILS})
