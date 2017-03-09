@@ -89,20 +89,21 @@ public:
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-            ArrayXd data = indata.cast<double>() / indata.maxCoeff();
+            ArrayXd data = indata.cast<double>() / indata.abs().maxCoeff();
             auto stop = cppoptlib::Criteria<double>::defaults();
-            stop.iterations = 100;
+            stop.iterations = 200;
             stop.gradNorm = 1e-8;
-            
+            stop.xDelta   = 1e-5;
             cppoptlib::LbfgsbSolver<FMCostFunction> solver;
             solver.setStopCriteria(stop);
+            // solver.setDebug(cppoptlib::DebugLevel::High);
             FMCostFunction cost;
             cost.m_B1 = B1;
             cost.m_data = data;
             cost.m_sequence = this->m_sequence;
             cost.m_T1 = T1;
-            Array3d lower; lower << 0., 2.*this->m_sequence->TR(), -0.55;
-            Array3d upper; upper << 20,    T1,                         0.55;
+            Array3d lower; lower << 0., 2.*this->m_sequence->TR(), -1;
+            Array3d upper; upper << 20,    T1,                      1;
             if (!this->m_asymmetric)
                 lower[2] = 0.;
             cost.setLowerBound(lower);
@@ -126,12 +127,16 @@ public:
             its = 0;
             for (const double &f0 : f0_starts) {
                 Eigen::Vector3d p; p << 5., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                // std::cout << "Start point: " << p.transpose() << std::endl;
                 solver.minimize(cost, p);
+                // std::cout << "End point:   " << p.transpose() << std::endl;
                 double r = cost(p);
+                // std::cout << "Residual:    " << r << std::endl;
                 if (r < best) {
                     best = r;
                     bestP = p;
                     its = solver.criteria().iterations;
+                    // std::cout << "Chose as best: " << bestP.transpose() << std::endl;
                 }
             }
             outputs[0] = bestP[0] * indata.abs().maxCoeff();
@@ -206,20 +211,20 @@ int main(int argc, char **argv) {
     QI::ArgParser args{argc, argv,
         "Usage is: qidespot2fm t1_map ssfp_input [options]\n"
         "Calculates a T2 map from SSFP data and a T1 map.",
-        {{"help",       'h', "Display the help message and quit", false},
-         {"verbose",    'v', "Print more information", false},
-         {"no-prompot", 'n', "Suppress input prompts", false},
-         {"threads",    'T', "Use N threads (default=4, 0=hardware limit)", true},
-         {"out",        'o', "Add a prefix to output filenames", true},
-         {"rename",     'r', "Rename using specified header field", true},
-         {"algo",       'a', "Choose algorithm (b/c)", true},
-         {"B1",         'b', "B1 Map file (ratio)", true},
-         {"mask",       'm', "Only process within mask file", true},
-         {"asym",       'A', "Fit +/- off-resonance frequency", false},
-         {"off",        'F', "Number of off-resonance start points", true},
-         {"flex",       'f', "Flexible input (do not expand incs)", false},
-         {"subregion",  's', "Process subregion starting at voxel I,J,K with size SI,SJ,SK", false},
-         {"resids",     'r', "Write out residuals for each data-point", false}}
+        {{"help",      'h', "Display the help message and quit", false},
+         {"verbose",   'v', "Print more information", false},
+         {"no-prompt", 'n', "Suppress input prompts", false},
+         {"threads",   'T', "Use N threads (default=4, 0=hardware limit)", true},
+         {"out",       'o', "Add a prefix to output filenames", true},
+         {"rename",    'r', "Rename using specified header field", true},
+         {"algo",      'a', "Choose algorithm (b/c)", true},
+         {"B1",        'b', "B1 Map file (ratio)", true},
+         {"mask",      'm', "Only process within mask file", true},
+         {"asym",      'A', "Fit +/- off-resonance frequency", false},
+         {"off",       'F', "Number of off-resonance start points", true},
+         {"flex",      'f', "Flexible input (do not expand incs)", false},
+         {"subregion", 's', "Process subregion starting at voxel I,J,K with size SI,SJ,SK", false},
+         {"resids",    'r', "Write out residuals for each data-point", false}}
     };
 
     bool verbose = args.option_present("verbose");
@@ -255,7 +260,8 @@ int main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(args.option_present("resids"));
-    const int nthreads = args.option_value("num_threads", 4);
+    const int nthreads = args.option_value("threads", 4);
+    std::cout << "Using " << nthreads << " threads" << std::endl;
     apply->SetPoolsize(nthreads);
     apply->SetSplitsPerThread(nthreads); // Fairly unbalanced algorithm
     apply->SetInput(0, ssfpData);
