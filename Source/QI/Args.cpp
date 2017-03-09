@@ -30,7 +30,7 @@ std::ostream &operator<< (std::ostream &os, const TOption &o) {
 }
 
 ArgParser::ArgParser(int argc, char **argv, const std::string &usage, 
-                     const std::vector<TOption> &opts) :
+                     const std::vector<TOption> &&opts) :
     m_opts(opts)
 {
     int optind = 1;

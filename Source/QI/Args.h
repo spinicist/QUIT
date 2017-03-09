@@ -16,6 +16,7 @@
 #include <deque>
 #include <string>
 #include <algorithm>
+#include <iostream>
 
 #include "QI/Macro.h"
 
@@ -31,13 +32,13 @@ std::ostream &operator<< (std::ostream &os, const TOption &o);
 
 class ArgParser {
 protected:
-    const std::vector<TOption> &m_opts;
+    const std::vector<TOption> m_opts;
     std::deque<std::pair<std::string, std::string>> m_args;
     std::deque< std::string> m_nonopts;
 
 public:
     ArgParser(int argc, char **argv, const std::string &usage,
-              const std::vector<TOption> &opts);
+              const std::vector<TOption> &&opts);
 
     const std::vector<TOption> &options() { return m_opts; }
     const std::deque<std::string> &nonoptions() { return m_nonopts; }
@@ -46,6 +47,10 @@ public:
 
     template<typename T>
     T option_value(const std::string &name, const T &def_value) {
+        auto check_it = std::find_if(m_opts.cbegin(), m_opts.cend(), [&] (const TOption &o) { return o.long_name == name; });
+        if (check_it == m_opts.cend()) {
+            QI_EXCEPTION("Requested option " << name << " is not in option list");
+        }
         auto it = std::find_if(m_args.cbegin(), m_args.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
         if (it == m_args.cend()) {
             return def_value;
