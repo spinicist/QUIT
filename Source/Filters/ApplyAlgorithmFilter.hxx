@@ -284,6 +284,11 @@ void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &regio
             }
             TConstPixel residual;
             TInputPixel resids;
+            if (m_allResiduals) {
+                resids.SetSize(this->GetAllResidualsOutput()->GetNumberOfComponentsPerPixel());
+            } else {
+                resids.SetSize(0);
+            }
             TIterations iterations{0};
 
             for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
