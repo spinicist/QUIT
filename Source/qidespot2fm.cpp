@@ -61,35 +61,21 @@ public:
     }
 
     Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
-        // std::cout << "residuals" << std::endl;
-        ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
+        ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
         Eigen::ArrayXd diff = s - m_data;
-        // std::cout << "p: " << p.transpose() << std::endl;
-        // std::cout << diff.transpose() << std::endl;
         return diff;
-    }
-
-    double value(const Eigen::Array3d &p) {
-        return residuals(p).square().sum();
-    }
-    
-    void gradient(const Eigen::Array3d &p, Eigen::Array3d &grad) const {
-        // std::cout << "gradient" << std::endl;
-        ArrayXXd deriv = QI::One_SSFP_Echo_Derivs(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
-        grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
     }
 
     virtual bool Evaluate(double const* const* parameters,
                         double* resids,
                         double** jacobians) const override
     {
-        // std::cout << "Evaluate" << std::endl;
         Eigen::Map<const Eigen::Array3d> p(parameters[0]);
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
         r = residuals(p);
         if (jacobians && jacobians[0]) {
             Eigen::Map<Eigen::Matrix<double, -1, -1, RowMajor>> j(jacobians[0], m_data.size(), 3);
-            j = QI::One_SSFP_Echo_Derivs(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
+            j = QI::One_SSFP_Echo_Derivs(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
         }
         return true;
     }
@@ -112,57 +98,51 @@ public:
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-            ArrayXd data = indata.cast<double>() / indata.abs().maxCoeff();
+            ArrayXd data = indata.cast<double>() / indata.maxCoeff();
 
-            // f0 is scaled by TR in the cost function so that scaling is better here
-            vector<double> f0_starts = {0};
-            // if (this->m_asymmetric) {
-            //     double step = 1. / (m_nstart+1);
-            //     f0_starts[0] = -0.5;
-            //     for (int i = 1; i < m_nstart; i++) {
-            //         f0_starts[i] = f0_starts[i - 1] + step;
-            //     }
-            // } else {
-            //     for (int i = 0; i < m_nstart; i++) {
-            //         f0_starts[i] = 0.001 + 0.5*(static_cast<double>(i) / static_cast<double>(m_nstart));
-            //     }
-            // }
+            vector<double> f0_starts = {0, 0.4/m_sequence->TR()};
+            if (this->m_asymmetric)
+                f0_starts.push_back(-0.4/m_sequence->TR());
 
             double best = numeric_limits<double>::infinity();
-            Eigen::Array3d bestP;
-            its = 0;
+            Eigen::Array3d p, bestP;
+            ceres::Problem problem;
+            problem.AddResidualBlock(new FMCost(data, m_sequence, T1, B1), NULL, p.data());
+            problem.SetParameterLowerBound(p.data(), 0, 1.);
+            problem.SetParameterLowerBound(p.data(), 1, m_sequence->TR());
+            problem.SetParameterUpperBound(p.data(), 1, T1);
+            problem.SetParameterLowerBound(p.data(), 2, -1./(2.*m_sequence->TR()));
+            problem.SetParameterUpperBound(p.data(), 2,  1./(2.*m_sequence->TR()));
+            ceres::Solver::Options options;
+            ceres::Solver::Summary summary;
+            options.max_num_iterations = 50;
+            options.function_tolerance = 1e-5;
+            options.gradient_tolerance = 1e-6;
+            options.parameter_tolerance = 1e-4;
+            options.logging_type = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                double p[] = {10., 0.05 * T1, f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
-                // std::cout << "Start point: " << p[2] << std::endl;
-                ceres::Problem problem;
-                problem.AddResidualBlock(new FMCost(data, m_sequence, T1, B1), NULL, p);
-                // problem.SetParameterLowerBound(p, 0, 1.);
-                problem.SetParameterLowerBound(p, 1, m_sequence->TR());
-                // problem.SetParameterUpperBound(p, 1, T1);
-                ceres::Solver::Options options;
-                ceres::Solver::Summary summary;
-                options.max_num_iterations = 25;
-                options.function_tolerance = 1e-5;
-                options.gradient_tolerance = 1e-6;
-                options.parameter_tolerance = 1e-4;
-                options.logging_type = ceres::SILENT;
+                p = {10., 0.1 * T1, f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
-                // std::cout << "End point:   " << p[2] << std::endl;
                 double r = summary.final_cost;
-                // std::cout << "Residual:    " << r << std::endl;
                 if (r < best) {
                     best = r;
-                    bestP = Eigen::Map<Eigen::Vector3d>(p);
-                    its = f0 / 0.5;
-                    // std::cout << "Chose as best: " << bestP.transpose() << std::endl;
+                    bestP = p;
+                    its = summary.iterations.size();
                 }
             }
-            outputs[0] = bestP[0];
+            outputs[0] = bestP[0] * indata.maxCoeff();
             outputs[1] = bestP[1];
             outputs[2] = bestP[2];
-            ArrayXf r;// = cost.residuals(bestP).cast<float>();
+            
             residual = best;
-            resids = itk::VariableLengthVector<float>(r.data(), r.rows());
+            if (resids.Size() > 0) {
+                assert(resids.Size() == data.size());
+                vector<double> r_temp(data.size());
+                p = bestP; // Make sure the correct parameters are in the block
+                problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
+                for (int i = 0; i < r_temp.size(); i++)
+                    resids[i] = r_temp[i];
+            }
         } else {
             outputs[0] = 0.;
             outputs[1] = 0.;
