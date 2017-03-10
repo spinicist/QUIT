@@ -11,13 +11,10 @@
  */
 
 #include <iostream>
- 
+
 #include <Eigen/Dense>
 
-#include "cppoptlib/meta.h"
-#include "cppoptlib/boundedproblem.h"
-#include "cppoptlib/solver/lbfgsbsolver.h"
-#include "cppoptlib/solver/cmaesbsolver.h"
+#include "ceres/ceres.h"
 #include "QI/Util.h"
 #include "QI/Args.h"
 #include "QI/IO.h"
@@ -48,29 +45,55 @@ public:
     }
 };
 
-class FMCostFunction : public cppoptlib::BoundedProblem<double, 3> {
-public:
-    using BoundedProblem<double, 3>::BoundedProblem;
-    using typename Problem<double, 3>::TVector;
-    
-    Eigen::ArrayXd m_data;
+class FMCost : public ceres::CostFunction {
+private:
+    const Eigen::ArrayXd &m_data;
     double m_T1, m_B1;
     shared_ptr<QI::SSFPSimple> m_sequence;
 
+public:
+    FMCost(const Eigen::ArrayXd &d, shared_ptr<QI::SSFPSimple> s,
+           const double T1, const double B1) :
+        m_data(d), m_sequence(s), m_T1(T1), m_B1(B1)
+    {
+        mutable_parameter_block_sizes()->push_back(3);
+        set_num_residuals(d.size());
+    }
+
     Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
+        // std::cout << "residuals" << std::endl;
         ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
         Eigen::ArrayXd diff = s - m_data;
+        // std::cout << "p: " << p.transpose() << std::endl;
+        // std::cout << diff.transpose() << std::endl;
         return diff;
     }
 
-    double value(const TVector &p) {
+    double value(const Eigen::Array3d &p) {
         return residuals(p).square().sum();
     }
     
-    void gradient(const TVector &p, TVector &grad) const {
+    void gradient(const Eigen::Array3d &p, Eigen::Array3d &grad) const {
+        // std::cout << "gradient" << std::endl;
         ArrayXXd deriv = QI::One_SSFP_Echo_Derivs(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
         grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
     }
+
+    virtual bool Evaluate(double const* const* parameters,
+                        double* resids,
+                        double** jacobians) const override
+    {
+        // std::cout << "Evaluate" << std::endl;
+        Eigen::Map<const Eigen::Array3d> p(parameters[0]);
+        Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
+        r = residuals(p);
+        if (jacobians && jacobians[0]) {
+            Eigen::Map<Eigen::Matrix<double, -1, -1, RowMajor>> j(jacobians[0], m_data.size(), 3);
+            j = QI::One_SSFP_Echo_Derivs(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2]/m_sequence->TR(), m_B1);
+        }
+        return true;
+    }
+
 };
 
 class BFGSAlgo : public FMAlgo {
@@ -90,60 +113,55 @@ public:
             // This gets scaled back up at the end.
             Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
             ArrayXd data = indata.cast<double>() / indata.abs().maxCoeff();
-            auto stop = cppoptlib::Criteria<double>::defaults();
-            stop.iterations = 200;
-            stop.gradNorm = 1e-8;
-            stop.xDelta   = 1e-5;
-            cppoptlib::LbfgsbSolver<FMCostFunction> solver;
-            solver.setStopCriteria(stop);
-            // solver.setDebug(cppoptlib::DebugLevel::High);
-            FMCostFunction cost;
-            cost.m_B1 = B1;
-            cost.m_data = data;
-            cost.m_sequence = this->m_sequence;
-            cost.m_T1 = T1;
-            Array3d lower; lower << 0., 2.*this->m_sequence->TR(), -1;
-            Array3d upper; upper << 20,    T1,                      1;
-            if (!this->m_asymmetric)
-                lower[2] = 0.;
-            cost.setLowerBound(lower);
-            cost.setUpperBound(upper);
-            
+
             // f0 is scaled by TR in the cost function so that scaling is better here
-            vector<double> f0_starts(m_nstart);
-            if (this->m_asymmetric) {
-                double step = (upper[2] - lower[2]) / (m_nstart+1);
-                for (int i = 0; i < m_nstart; i++) {
-                    f0_starts[i] = lower[2] + (i+1)*step;
-                }
-            } else {
-                for (int i = 0; i < m_nstart; i++) {
-                    f0_starts[i] = 0.001 + upper[2]*(static_cast<double>(i) / static_cast<double>(m_nstart));
-                }
-            }
+            vector<double> f0_starts = {0};
+            // if (this->m_asymmetric) {
+            //     double step = 1. / (m_nstart+1);
+            //     f0_starts[0] = -0.5;
+            //     for (int i = 1; i < m_nstart; i++) {
+            //         f0_starts[i] = f0_starts[i - 1] + step;
+            //     }
+            // } else {
+            //     for (int i = 0; i < m_nstart; i++) {
+            //         f0_starts[i] = 0.001 + 0.5*(static_cast<double>(i) / static_cast<double>(m_nstart));
+            //     }
+            // }
 
             double best = numeric_limits<double>::infinity();
             Eigen::Array3d bestP;
             its = 0;
             for (const double &f0 : f0_starts) {
-                Eigen::Vector3d p; p << 5., 0.1 * T1, f0; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
-                // std::cout << "Start point: " << p.transpose() << std::endl;
-                solver.minimize(cost, p);
-                // std::cout << "End point:   " << p.transpose() << std::endl;
-                double r = cost(p);
+                double p[] = {10., 0.05 * T1, f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                // std::cout << "Start point: " << p[2] << std::endl;
+                ceres::Problem problem;
+                problem.AddResidualBlock(new FMCost(data, m_sequence, T1, B1), NULL, p);
+                // problem.SetParameterLowerBound(p, 0, 1.);
+                problem.SetParameterLowerBound(p, 1, m_sequence->TR());
+                // problem.SetParameterUpperBound(p, 1, T1);
+                ceres::Solver::Options options;
+                ceres::Solver::Summary summary;
+                options.max_num_iterations = 25;
+                options.function_tolerance = 1e-5;
+                options.gradient_tolerance = 1e-6;
+                options.parameter_tolerance = 1e-4;
+                options.logging_type = ceres::SILENT;
+                ceres::Solve(options, &problem, &summary);
+                // std::cout << "End point:   " << p[2] << std::endl;
+                double r = summary.final_cost;
                 // std::cout << "Residual:    " << r << std::endl;
                 if (r < best) {
                     best = r;
-                    bestP = p;
-                    its = solver.criteria().iterations;
+                    bestP = Eigen::Map<Eigen::Vector3d>(p);
+                    its = f0 / 0.5;
                     // std::cout << "Chose as best: " << bestP.transpose() << std::endl;
                 }
             }
-            outputs[0] = bestP[0] * indata.abs().maxCoeff();
+            outputs[0] = bestP[0];
             outputs[1] = bestP[1];
-            outputs[2] = bestP[2] / this->m_sequence->TR();
-            ArrayXf r = cost.residuals(bestP).cast<float>();
-            residual = sqrt(r.square().sum() / r.rows());
+            outputs[2] = bestP[2];
+            ArrayXf r;// = cost.residuals(bestP).cast<float>();
+            residual = best;
             resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         } else {
             outputs[0] = 0.;
@@ -156,7 +174,7 @@ public:
     }
 };
 
-class CMAlgo : public FMAlgo {
+/*class CMAlgo : public FMAlgo {
 public:
     virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
@@ -200,7 +218,7 @@ public:
             its = 0;
         }
     }
-};
+};*/
 
 //******************************************************************************
 // Main
@@ -251,7 +269,7 @@ int main(int argc, char **argv) {
     shared_ptr<FMAlgo> algo;
     switch (args.option_value("algo", 'b')) {
         case 'b': algo = make_shared<BFGSAlgo>(args.option_value("off", 2)); if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
-        case 'c': algo = make_shared<CMAlgo>(); if (verbose) cout << "CM algorithm selected." << endl; break;
+        // case 'c': algo = make_shared<CMAlgo>(); if (verbose) cout << "CM algorithm selected." << endl; break;
         default: throw(std::runtime_error("Invalid algorithm specified"));
     }
 

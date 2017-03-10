@@ -82,15 +82,14 @@ VectorXd One_SSFP_Echo_Magnitude(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl
     const ArrayXd al = flip * B1;
     const ArrayXd th = phi + psi;
     const ArrayXd d = (1. - E1*cos(al))*(1. - E2*cos(th)) - E2*(E1-cos(al))*(E2-cos(th));
-    const ArrayXd rtn = (E2*(E2*E2-2*E2*cos(th)+1.)).sqrt();
+    const ArrayXd rtn = (E2*(1. + E2*(E2-2.*cos(th)))).sqrt();
     const ArrayXd Mxy = M0*(1.-E1)*rtn*sin(al)/d;
     return Mxy;
 }
 
 /*
  * For DESPOT2-FM, only includes M0, T2, f0/th derivs for now
- * Note that the f0 deriv is scaled in terms of f0/TR, i.e. there is no multiply by TR
- * This is to match the scaling of that parameter in DESPOT2-FM which improves fitting
+ * Note that col 2 is the derivative with respect to psi, as that is what we optimise against (improves scaling)
  */
 MatrixXd One_SSFP_Echo_Derivs(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1, cdbl T2, cdbl f0, cdbl B1) {
     eigen_assert(flip.size() == phi.size());
@@ -106,13 +105,13 @@ MatrixXd One_SSFP_Echo_Derivs(carrd &flip, carrd &phi, cdbl TR, cdbl M0, cdbl T1
     const ArrayXd cth = cos(th);
     const ArrayXd d = (1. - E1*ca)*(1. - E2*cth) - E2*(E1-ca)*(E2-cth);
     const ArrayXd dd = (d*d*(E2sqr - 2*E2*cth + 1)); // Denom for dT2, dth
-    const ArrayXd n = E2*(E2sqr-2*E2*cth+1.);
+    const ArrayXd n = E2*(1. + E2*(E2 - 2.*cth));
     const ArrayXd rtna = n.sqrt()*(1. - E1)*sa;
     
     MatrixXd drv(flip.size(), 3);
     drv.col(0) = rtna/d;
-    drv.col(1) = M0*TR*rtna*(2.*n*(E2*(E1 - ca) + (E1 - ca)*(E2 - cth) - (E1*ca - 1.)*cth) - (E2*(E1 - ca)*(E2 - cth) - (E1*ca - 1.)*(E2*cth - 1.))*(3.*E2sqr - 4.*E2*cth + 1.))/(2.*T2*T2*dd);
-    drv.col(2) = 2.*M_PI*E2*M0*rtna*sth*(d + (E2sqr - 2.*E2*cth + 1.)*(E1*ca + E1 - ca - 1.))/dd;
+    drv.col(1) = (M0*TR*rtna/(2.*T2*T2*dd))*(2.*n*(E2*(E1 - ca) + (E1 - ca)*(E2 - cth) - (E1*ca - 1.)*cth) - (E2*(E1 - ca)*(E2 - cth) - (E1*ca - 1.)*(E2*cth - 1.))*(3.*E2sqr - 4.*E2*cth + 1.));
+    drv.col(2) = (E2*M0*rtna*sth/dd)*(d + (E2sqr - 2.*E2*cth + 1.)*(E1*ca + E1 - ca - 1.));
     return drv;
 }
 VectorXcd One_SSFP_Finite(carrd &flip, const bool spoil, cdbl TR, cdbl Trf, cdbl inTE, cdbl phase,
