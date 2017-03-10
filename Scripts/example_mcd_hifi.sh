@@ -63,8 +63,8 @@ IR_SPGR_DELAY="0.0"
 IR_SPGR_EFF="1.0"
 
 SSFP_TR="0.004208"
-SSFP_FLIP="12 16 21 27 33 40 51 68 "
-SSFP_PHASE="180 0"
+SSFP_FLIP="12 12 16 16 21 21 27 27 33 33 40 40 51 51 68 68"
+SSFP_PHASE="180 0 90 270 180 0 90 270 180 0 90 270 180 0 90 270"
 
 # Motion correction
 # First register the SSFP to the average volume (to approximately remove bands)
@@ -76,7 +76,7 @@ SSFP_MCF="${SSFP_ROOT}_mcf.nii"
 
 mcflirt -in $SSFP_FILE -cost mutualinfo -meanvol -stages 4
 mcflirt -in $SPGR_FILE -cost mutualinfo -reffile ${SSFP_ROOT}_mcf_mean_reg -stages 4
-flirt -in $IRSPGR_FILE -ref $SSFP_MCF -cost mutualinfo -searchcost mutualinfo -interp sinc -out $IRSPGR_MCF
+flirt -in $IRSPGR_FILE -ref $SPGR_MCF -dof 6 -interp sinc -out $IRSPGR_MCF
 
 # Generate an approximate mask
 
@@ -116,7 +116,7 @@ END_D1
 # FM is automatically clamped between 0.001 and T1 seconds
 
 echo "Processing FM"
-qidespot2fm -n -v -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
+qidespot2fm -n -v --flex --asym -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
 $SSFP_FLIP
 $SSFP_PHASE
 $SSFP_TR
