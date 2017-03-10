@@ -21,7 +21,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories( ${PROJECT_SOURCE_DIR}/Source )
-include_directories( ${PROJECT_SOURCE_DIR}/External/CppNumericalSolvers/include )
+include_directories( ${PROJECT_SOURCE_DIR}/External/args )
 find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
 include_directories( ${CERES_INCLUDE_DIRS} )
 

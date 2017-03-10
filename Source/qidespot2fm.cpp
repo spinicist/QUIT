@@ -11,12 +11,11 @@
  */
 
 #include <iostream>
-
 #include <Eigen/Dense>
+#include "args.hxx"
 #include "ceres/ceres.h"
 
 #include "QI/Util.h"
-#include "QI/Args.h"
 #include "QI/IO.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
@@ -159,61 +158,67 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-
-    QI::ArgParser args{argc, argv,
-        "Usage is: qidespot2fm t1_map ssfp_input [options]\n"
-        "Calculates a T2 map from SSFP data and a T1 map.",
-        {{"help",      'h', "Display the help message and quit", false},
-         {"verbose",   'v', "Print more information", false},
-         {"no-prompt", 'n', "Suppress input prompts", false},
-         {"threads",   'T', "Use N threads (default=4, 0=hardware limit)", true},
-         {"out",       'o', "Add a prefix to output filenames", true},
-         {"rename",    'r', "Rename using specified header field", true},
-         {"B1",        'b', "B1 Map file (ratio)", true},
-         {"mask",      'm', "Only process within mask file", true},
-         {"asym",      'A', "Fit +/- off-resonance frequency", false},
-         {"flex",      'f', "Flexible input (do not expand incs)", false},
-         {"subregion", 's', "Process subregion starting at voxel I,J,K with size SI,SJ,SK", false},
-         {"resids",    'r', "Write out residuals for each data-point", false}}
-    };
-    bool verbose = args.option_present("verbose");
-    bool prompt  = !args.option_present("suppress");
-
-    std::deque<std::string> nonopts = args.nonoptions();
-    if (nonopts.size() != 2) {
-        std::cerr << "Wrong number of arguments. Need a T1 map and one SSFP file." << std::endl;
+    args::ArgumentParser parser("Calculates a T2 map from SSFP data and a T1 map. Usage is: qidespot2fm t1_map ssfp_input [options]", "tobias.wood@kcl.ac.uk");
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag     prompt(parser, "PROMPT", "Suppress input prompts", {'n', "no-prompt"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::Flag asym(parser, "ASYM", "Fit +/- off-resonance frequency", {'A', "asym"});
+    args::Flag flex(parser, "FLEX", "Flexible input (do not tile flip-angles/phase-incs)", {'f', "flex"});
+    args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
+    args::PositionalList<std::string> files(parser, "FILES", "Input files - T1 map and SSFP");
+    try {
+        parser.ParseCLI(argc, argv);
+    } catch (args::Help) {
+        std::cout << parser;
+        return EXIT_SUCCESS;
+    } catch (args::ParseError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return EXIT_FAILURE;
+    } catch (args::ValidationError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return EXIT_FAILURE;
+    }
+    auto filelist = args::get(files);
+    if (filelist.size() != 2) {
+        std::cerr << "Wrong number of positional arguments." << std::endl;
         return EXIT_FAILURE;
     }
 
     shared_ptr<QI::SSFPSimple> ssfpSequence;
-    if (args.option_present("flex"))
+    if (flex)
         ssfpSequence = make_shared<QI::SSFPEchoFlex>(cin, prompt);
     else
         ssfpSequence = make_shared<QI::SSFPEcho>(cin, prompt);
     if (verbose) cout << *ssfpSequence << endl;
 
-    if (verbose) cout << "Reading T1 Map from: " << nonopts[0] << endl;
-    auto T1 = QI::ReadImage(nonopts[0]);
-    if (verbose) cout << "Opening SSFP file: " << nonopts[1] << endl;
-    auto ssfpData = QI::ReadVectorImage<float>(nonopts[1]);
+    if (verbose) cout << "Reading T1 Map from: " << filelist[0] << endl;
+    auto T1 = QI::ReadImage(filelist[0]);
+    if (verbose) cout << "Opening SSFP file: " << filelist[1] << endl;
+    auto ssfpData = QI::ReadVectorImage<float>(filelist[1]);
     auto apply = QI::ApplyF::New();
     shared_ptr<FMAlgo> algo = make_shared<LM_FM>();
 
     algo->setSequence(ssfpSequence);
-    algo->setAsymmetric(args.option_present("asym"));
+    algo->setAsymmetric(asym);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
-    apply->SetOutputAllResiduals(args.option_present("resids"));
-    const int nthreads = args.option_value("threads", 4);
-    std::cout << "Using " << nthreads << " threads" << std::endl;
-    apply->SetPoolsize(nthreads);
-    apply->SetSplitsPerThread(nthreads); // Fairly unbalanced algorithm
+    apply->SetOutputAllResiduals(resids);
+    if (verbose) std::cout << "Using " << args::get(threads) << " threads" << std::endl;
+    apply->SetPoolsize(args::get(threads));
+    apply->SetSplitsPerThread(args::get(threads)); // Fairly unbalanced algorithm
     apply->SetInput(0, ssfpData);
     apply->SetConst(0, T1);
-    apply->SetConst(1, QI::ReadOptImage("B1", args));
-    apply->SetMask(QI::ReadOptImage("mask", args));
-    if (args.option_present("subregion")) {
-        apply->SetSubregion(QI::RegionOpt("subregion", args));
+    apply->SetConst(1, QI::ReadImage(args::get(B1)));
+    apply->SetMask(QI::ReadImage(args::get(mask)));
+    if (subregion) {
+        apply->SetSubregion(QI::RegionOpt(args::get(subregion)));
     }
     if (verbose) {
         cout << "Processing" << endl;
@@ -225,13 +230,13 @@ int main(int argc, char **argv) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
-    std::string outPrefix = args.string_value("out", "") + "FM_";
+    std::string outPrefix = args::get(outarg) + "FM_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2.nii");
     QI::WriteImage(apply->GetOutput(2), outPrefix + "f0.nii");
     QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "its.nii");
     QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
-    if (args.option_present("resids")) {
+    if (resids) {
         QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
     }
     return EXIT_SUCCESS;
