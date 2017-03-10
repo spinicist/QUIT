@@ -11,7 +11,7 @@
 
 #include <unsupported/Eigen/Splines>
 #include "QI/Algorithms/CEST.h"
-#include "cppoptlib/solver/lbfgsbsolver.h"
+#include "ceres/ceres.h"
 
 namespace QI {
 
@@ -20,27 +20,20 @@ Eigen::ArrayXd Lorentzian(const double A, const double f0, const double w, const
     return s;
 }
 
-class ZCost : public cppoptlib::BoundedProblem<double, 3> {
-public:
-    using BoundedProblem<double, 3>::BoundedProblem;
-    using typename Problem<double, 3>::TVector;
+class ZCost {
+private:
     Eigen::ArrayXd m_frqs, m_zspec;
+public:
 
-    ZCost(const Eigen::ArrayXd &f, const Eigen::ArrayXd &z,
-          const Eigen::ArrayXd &l, const Eigen::ArrayXd &u) :
-          BoundedProblem(l, u),
+    ZCost(const Eigen::ArrayXd &f, const Eigen::ArrayXd &z) :
           m_frqs(f), m_zspec(z)
     {}
 
-    Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
-        Eigen::ArrayXd s = Lorentzian(p[0], p[1], p[2], m_frqs);
-        Eigen::ArrayXd diff = (s - m_zspec);
-        Eigen::IOFormat sFormat(3);
-        return diff;
-    }
-
-    double value(const TVector &p) {
-        return residuals(p).square().sum();
+    bool operator() (double const* const* p, double* resids) const {
+        Eigen::ArrayXd s = Lorentzian(p[0][0], p[0][1], p[0][2], m_frqs);
+        Eigen::Map<Eigen::ArrayXd> r(resids, m_frqs.size());
+        r = (s - m_zspec);
+        return true;
     }
 };
 
@@ -52,36 +45,35 @@ void CESTAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
     size_t full = m_half*2+1;
     const Eigen::Map<const Eigen::ArrayXf> z_spec(inputs[0].GetDataPointer(), full);
 
-    auto stop = cppoptlib::Criteria<double>::defaults();
-    stop.iterations = 100;
-    stop.gradNorm = 1e-8;
-    cppoptlib::LbfgsbSolver<ZCost> solver;
-    solver.setStopCriteria(stop);
-
     // Find closest indices to -2/+2 PPM and only fit Lorentzian between them
     Eigen::ArrayXf::Index indP2, indM2;
     (m_ifrqs + 2.0).abs().minCoeff(&indM2);
     (m_ifrqs - 2.0).abs().minCoeff(&indP2);
-    //std::cout << "ind " << indM2 << " " << indP2 << std::endl;
     if (indM2 > indP2)
         std::swap(indM2, indP2);
-    //std::cout << "ind " << indM2 << " " << indP2 << std::endl;
     Eigen::ArrayXf::Index sz = indP2 - indM2;
-    Eigen::Array3d lower; lower << 0.0, -2.0, 0.001;
-    Eigen::Array3d upper; upper << 1.0,  2.0, 4.0;
 
-    /*std::cout << "seg " << m_ifrqs.segment(indM2, sz).transpose() << std::endl;
-    std::cout << "zpc " << z_spec.segment(indM2,sz).transpose() << std::endl;
-    std::cout << "lower " << lower.transpose() << " upper " << upper.transpose() << std::endl;*/
-    ZCost cost(m_ifrqs.segment(indM2,sz).cast<double>(), z_spec.segment(indM2,sz).cast<double>() / z_spec.segment(indM2,sz).maxCoeff(), lower, upper);
+    auto *cost = new ceres::DynamicNumericDiffCostFunction<ZCost>(new ZCost(m_ifrqs.segment(indM2,sz).cast<double>(), z_spec.segment(indM2,sz).cast<double>() / z_spec.segment(indM2,sz).maxCoeff()));
+    cost->AddParameterBlock(3);
+    cost->SetNumResiduals(sz);
+    Eigen::Array3d p{0.5, 0.0, 1.0};
+    ceres::Problem problem;
+    problem.AddResidualBlock(cost, NULL, p.data());
+    problem.SetParameterLowerBound(p.data(), 0, 0.);
+    problem.SetParameterLowerBound(p.data(), 0, 1.);
+    problem.SetParameterLowerBound(p.data(), 1, -2.0);
+    problem.SetParameterUpperBound(p.data(), 1, 2.0);
+    problem.SetParameterLowerBound(p.data(), 2, 0.001);
+    problem.SetParameterUpperBound(p.data(), 2, 4.3);
+    ceres::Solver::Options options;
+    ceres::Solver::Summary summary;
+    options.max_num_iterations = 50;
+    options.function_tolerance = 1e-5;
+    options.gradient_tolerance = 1e-6;
+    options.parameter_tolerance = 1e-4;
+    ceres::Solve(options, &problem, &summary);
 
-    Eigen::Vector3d p; p << 0.5, 0.0, 1.0;
-    //std::cout << "p start: " << p.transpose() << std::endl;
-    solver.minimize(cost, p);
-    //std::cout << "p end: " << p.transpose() << std::endl;
-    //std::cout << "Status " << solver.status() << " current " << solver.criteria().iterations << std::endl << " stop " << stop << std::endl;
     const float f0 = p[1];
-    //std::cout << "Min f0: " << f0 << " fitted f0: " << p[1] << std::endl;
     outputs.at(2)[0] = f0;
 
     typedef Eigen::Spline<float, 1> TSpline;
