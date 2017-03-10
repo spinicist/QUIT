@@ -22,6 +22,8 @@ find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories( ${PROJECT_SOURCE_DIR}/Source )
 include_directories( ${PROJECT_SOURCE_DIR}/External/CppNumericalSolvers/include )
+find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
+include_directories( ${CERES_INCLUDE_DIRS} )
 
 # Setup version
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file
@@ -88,7 +90,8 @@ endforeach(PROGRAM)
 
 foreach(PROGRAM ${QUANT})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} ${ITK_LIBRARIES})
+    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} 
+                          ${ITK_LIBRARIES} ${CERES_LIBRARIES})
 endforeach(PROGRAM)
 
 foreach(PROGRAM ${ELLIPSE})
