@@ -82,11 +82,11 @@ public:
 
 };
 
-class BFGSAlgo : public FMAlgo {
+class LM_FM : public FMAlgo {
 protected:
-    int m_nstart = 2;
+
 public:
-    BFGSAlgo(const int starts) : FMAlgo(), m_nstart(starts) {}
+    LM_FM() : FMAlgo() {}
 
     virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
@@ -154,52 +154,6 @@ public:
     }
 };
 
-/*class CMAlgo : public FMAlgo {
-public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
-    {
-        const double T1 = consts[0];
-        const double B1 = consts[1];
-        if (isfinite(T1) && (T1 > 0.001)) {
-            // Improve scaling by dividing the PD down to something sensible.
-            // This gets scaled back up at the end.
-            Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-            ArrayXd data = indata.cast<double>() / indata.abs().maxCoeff();
-            cppoptlib::CMAesBSolver<FMCostFunction> solver;
-            // f0 is scaled by TR in the cost function so that scaling is better here
-            Array3d lower; lower << 0., 2.*this->m_sequence->TR(), -0.55;
-            Array3d upper; upper << 20,    T1,                         0.55;
-            if (!this->m_asymmetric)
-                lower[2] = 0.;
-            FMCostFunction cost(lower, upper);
-            cost.m_B1 = B1;
-            cost.m_data = data;
-            cost.m_sequence = this->m_sequence;
-            cost.m_T1 = T1;
-            
-            Eigen::Vector3d p; p << 5., 0.1 * T1, 0.1; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
-            //solver.setDebug(cppoptlib::DebugLevel::Low);
-            solver.minimize(cost, p);
-            its = solver.criteria().iterations;
-            outputs[0] = p[0] * indata.abs().maxCoeff();
-            outputs[1] = p[1];
-            outputs[2] = p[2] / this->m_sequence->TR();
-            ArrayXf rf = cost.residuals(p).cast<float>() * indata.abs().maxCoeff();
-            residual = sqrt(rf.square().sum() / rf.rows());
-            resids = itk::VariableLengthVector<float>(rf.data(), rf.rows());
-        } else {
-            outputs[0] = 0.;
-            outputs[1] = 0.;
-            outputs[2] = 0.;
-            residual = 0;
-            resids.Fill(0.);
-            its = 0;
-        }
-    }
-};*/
-
 //******************************************************************************
 // Main
 //******************************************************************************
@@ -215,16 +169,13 @@ int main(int argc, char **argv) {
          {"threads",   'T', "Use N threads (default=4, 0=hardware limit)", true},
          {"out",       'o', "Add a prefix to output filenames", true},
          {"rename",    'r', "Rename using specified header field", true},
-         {"algo",      'a', "Choose algorithm (b/c)", true},
          {"B1",        'b', "B1 Map file (ratio)", true},
          {"mask",      'm', "Only process within mask file", true},
          {"asym",      'A', "Fit +/- off-resonance frequency", false},
-         {"off",       'F', "Number of off-resonance start points", true},
          {"flex",      'f', "Flexible input (do not expand incs)", false},
          {"subregion", 's', "Process subregion starting at voxel I,J,K with size SI,SJ,SK", false},
          {"resids",    'r', "Write out residuals for each data-point", false}}
     };
-
     bool verbose = args.option_present("verbose");
     bool prompt  = !args.option_present("suppress");
 
@@ -246,12 +197,7 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Opening SSFP file: " << nonopts[1] << endl;
     auto ssfpData = QI::ReadVectorImage<float>(nonopts[1]);
     auto apply = QI::ApplyF::New();
-    shared_ptr<FMAlgo> algo;
-    switch (args.option_value("algo", 'b')) {
-        case 'b': algo = make_shared<BFGSAlgo>(args.option_value("off", 2)); if (verbose) cout << "LBFGSB algorithm selected." << endl; break;
-        // case 'c': algo = make_shared<CMAlgo>(); if (verbose) cout << "CM algorithm selected." << endl; break;
-        default: throw(std::runtime_error("Invalid algorithm specified"));
-    }
+    shared_ptr<FMAlgo> algo = make_shared<LM_FM>();
 
     algo->setSequence(ssfpSequence);
     algo->setAsymmetric(args.option_present("asym"));
