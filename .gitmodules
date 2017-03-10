@@ -7,3 +7,6 @@
 [submodule "External/bats"]
 	path = External/bats
 	url = https://github.com/sstephenson/bats.git
+[submodule "External/ceres-solver"]
+	path = External/ceres-solver
+	url = https://ceres-solver.googlesource.com/ceres-solver
