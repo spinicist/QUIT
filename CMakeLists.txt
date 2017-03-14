@@ -96,7 +96,8 @@ endforeach(PROGRAM)
 
 foreach(PROGRAM ${ELLIPSE})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} ${ITK_LIBRARIES})
+    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI}
+                          ${ITK_LIBRARIES} ${CERES_LIBRARIES})
 endforeach(PROGRAM)
 
 set(TESTS_DIR Test)
