@@ -12,12 +12,8 @@
 #include <iostream>
 
 #include <Eigen/Dense>
-#include <unsupported/Eigen/LevenbergMarquardt>
-#include <unsupported/Eigen/NumericalDiff>
+#include "ceres/ceres.h"
 
-#include "cppoptlib/boundedproblem.h"
-#include "cppoptlib/solver/lbfgsbsolver.h"
-#include "Filters/ImageToVectorFilter.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
@@ -123,96 +119,41 @@ public:
     }
 };
 
-class T1Functor : public DenseFunctor<double> {
-    protected:
-        const shared_ptr<QI::SequenceBase> m_sequence;
-        const ArrayXd m_data;
-        const double m_B1;
-        const shared_ptr<QI::SCD> m_model;
+class T1Cost : public ceres::CostFunction {
+protected:
+    const shared_ptr<QI::SequenceBase> m_seq;
+    const ArrayXd m_data;
+    const double m_B1;
 
-    public:
-        T1Functor(const shared_ptr<QI::SequenceBase> cs, const ArrayXd &data, const double B1) :
-            DenseFunctor<double>(2, cs->size()),
-            m_sequence(cs), m_data(data), m_B1(B1)
-        {
-            assert(static_cast<size_t>(m_data.rows()) == values());
-        }
-
-        int operator()(const Ref<VectorXd> &p, Ref<ArrayXd> diffs) const {
-            eigen_assert(diffs.size() == values());
-            ArrayXd s = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1).array().abs();
-            diffs = s - m_data;
-            return 0;
-        }
-};
-
-class D1CostFunction : public cppoptlib::BoundedProblem<double, 2> {
 public:
-    using BoundedProblem<double, 2>::BoundedProblem;
-    using typename Problem<double, 2>::TVector;
-    
-    shared_ptr<QI::SequenceBase> m_sequence;
-    ArrayXd m_data;
-    double m_B1;
-
-    Eigen::ArrayXd residuals(const TVector &p) const {
-        ArrayXd s = QI::One_SPGR_Magnitude(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
-        Eigen::ArrayXd diff = s - m_data;
-        return diff;
-    }
-
-    double value(const TVector &p) {
-        return residuals(p).square().sum();
-    }
-    
-    void gradient(const TVector &p, TVector &grad) const {
-        ArrayXXd deriv = QI::One_SPGR_Magnitude_Derivs(m_sequence->flip(), m_sequence->TR(), p[0], p[1], m_B1);
-        grad = 2*(deriv.colwise()*(residuals(p))).colwise().sum();
-    }
-};
-
-class D1LBFGSB : public D1Algo {
-public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    T1Cost(const shared_ptr<QI::SequenceBase> cs, const ArrayXd &data, const double B1) :
+        m_seq(cs), m_data(data), m_B1(B1)
     {
-        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        double B1 = consts[0];
-        // Improve scaling by dividing the PD down to something sensible.
-        // This gets scaled back up at the end.
-        const ArrayXd data = indata.cast<double>() / indata.maxCoeff();
-        auto stop = cppoptlib::Criteria<double>::defaults();
-        stop.iterations = 100;
-        stop.gradNorm = 1e-8;
-        
-        cppoptlib::LbfgsbSolver<D1CostFunction> solver;
-        solver.setStopCriteria(stop);
-        D1CostFunction cost;
-        cost.m_B1 = B1;
-        cost.m_data = data;
-        cost.m_sequence = this->m_sequence;
-        Array2d lower; lower << 0.001, 0.1;
-        Array2d upper; upper << 50, 5.0;
-        cost.setLowerBound(lower);
-        cost.setUpperBound(upper);
-        Eigen::Vector2d p; p << 10., 1.0;
-        solver.minimize(cost, p);
-        outputs[0] = QI::clamp(p[0] * indata.maxCoeff(), m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(p[1], m_loT1, m_hiT1);
-        if (!isfinite(p[1])) {
-            cout << "Not finite" << endl;
-            cout << indata.transpose() << endl;
-            cout << data.transpose() << endl;
-            cout << p.transpose() << endl << B1 << " " << indata.abs().maxCoeff() << endl;
-            solver.setDebug(cppoptlib::DebugLevel::High);
-            Eigen::Vector2d p; p << 10., 1.0;
-            solver.minimize(cost, p);
-        }
-        ArrayXf r = (cost.residuals(p) * indata.abs().maxCoeff()).cast<float>();
-        residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
+        mutable_parameter_block_sizes()->push_back(2);
+        set_num_residuals(data.size());
     }
+
+    virtual bool Evaluate(double const* const* parameters,
+                          double* resids,
+                          double** jacobians) const override
+    {
+        Eigen::Map<const Eigen::Array2d> p(parameters[0]);
+        Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
+        ArrayXd s = QI::One_SPGR(m_seq->flip(), m_seq->TR(), p[0], p[1], m_B1).array().abs();
+        r = s - m_data;
+        // std::cout << "p: " << p.transpose() << std::endl;
+        // std::cout << "s: " << s.transpose() << std::endl;
+        // std::cout << "d: " << m_data.transpose() << std::endl;
+        // std::cout << "r: " << r.transpose() << std::endl;
+        if (jacobians && jacobians[0]) {
+            Eigen::Map<Eigen::Matrix<double, -1, -1, RowMajor>> j(jacobians[0], m_data.size(), p.size());
+            j = QI::One_SPGR_Magnitude_Derivs(m_seq->flip(), m_seq->TR(), p[0], p[1], m_B1);
+            // std::cout << "j" << std::endl << j << std::endl;
+        }
+        return true;
+    }
+
+
 };
 
 class D1NLLS : public D1Algo {
@@ -224,20 +165,38 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         double B1 = consts[0];
         const ArrayXd data = indata.cast<double>() / indata.maxCoeff();
-        T1Functor f(m_sequence, data, B1);
-        NumericalDiff<T1Functor> nDiff(f);
-        LevenbergMarquardt<NumericalDiff<T1Functor>> lm(nDiff);
-        lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
-        // PD & T1 - Initial guess of 1s
-        VectorXd p(2); p << data.maxCoeff() * 10., 1.;
-        lm.minimize(p);
-        outputs[0] = QI::clamp(p[0] * indata.maxCoeff(), m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(p[1], m_loT1, m_hiT1);
-        ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
-        ArrayXf r = (data.array() - theory).cast<float>();
-        residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        its = lm.iterations();
+        Eigen::Array2d p;
+        ceres::Problem problem;
+        problem.AddResidualBlock(new T1Cost(m_sequence, data, B1), NULL, p.data());
+        problem.SetParameterLowerBound(p.data(), 0, 1.);
+        problem.SetParameterLowerBound(p.data(), 1, 0.001);
+        problem.SetParameterUpperBound(p.data(), 1, m_hiT1);
+        ceres::Solver::Options options;
+        ceres::Solver::Summary summary;
+        options.max_num_iterations = 50;
+        options.function_tolerance = 1e-5;
+        options.gradient_tolerance = 1e-6;
+        options.parameter_tolerance = 1e-4;
+        // options.check_gradients = true;
+        options.logging_type = ceres::SILENT;
+        p << 10., 1.;
+        // std::cout << "START P: " << p.transpose() << std::endl;
+        ceres::Solve(options, &problem, &summary);
+        
+        outputs[0] = p[0] * indata.maxCoeff();
+        outputs[1] = p[1];
+        if (!summary.IsSolutionUsable()) {
+            std::cout << summary.FullReport() << std::endl;
+        }
+        its = summary.iterations.size();
+        residual = summary.final_cost * indata.maxCoeff();
+        if (resids.Size() > 0) {
+            assert(resids.Size() == data.size());
+            vector<double> r_temp(data.size());
+            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
+            for (int i = 0; i < r_temp.size(); i++)
+                resids[i] = r_temp[i];
+        }
     }
 };
 
@@ -254,7 +213,7 @@ int main(int argc, char **argv) {
     QI::Option<float> clampT1(std::numeric_limits<float>::infinity(),'t',"clampT1","Clamp T1 between 0 and value", opts);
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
-    QI::EnumOption algorithm("lwnb",'l','a',"algo","Choose algorithm (l/w/n/b)", opts);
+    QI::EnumOption algorithm("lwn",'l','a',"algo","Choose algorithm (l/w/n)", opts);
     QI::Option<std::string> outPrefix("", 'o', "out","Add a prefix to output filenames", opts);
     QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
     QI::Switch verbose('v',"verbose","Print more information", opts);
@@ -276,7 +235,6 @@ int main(int argc, char **argv) {
         case 'l': algo = make_shared<D1LLS>();  if (*verbose) cout << "LLS algorithm selected." << endl; break;
         case 'w': algo = make_shared<D1WLLS>(); if (*verbose) cout << "WLLS algorithm selected." << endl; break;
         case 'n': algo = make_shared<D1NLLS>(); if (*verbose) cout << "NLLS algorithm selected." << endl; break;
-        case 'b': algo = make_shared<D1LBFGSB>(); if (*verbose) cout << "LBFGSB algorithm selected." << endl; break;
     }
     algo->setIterations(*its);
     if (isfinite(*clampPD))

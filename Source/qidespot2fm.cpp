@@ -13,8 +13,8 @@
 #include <iostream>
 
 #include <Eigen/Dense>
-
 #include "ceres/ceres.h"
+
 #include "QI/Util.h"
 #include "QI/Args.h"
 #include "QI/IO.h"
@@ -74,7 +74,7 @@ public:
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
         r = residuals(p);
         if (jacobians && jacobians[0]) {
-            Eigen::Map<Eigen::Matrix<double, -1, -1, RowMajor>> j(jacobians[0], m_data.size(), 3);
+            Eigen::Map<Eigen::Matrix<double, -1, -1, RowMajor>> j(jacobians[0], m_data.size(), p.size());
             j = QI::One_SSFP_Echo_Derivs(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
         }
         return true;
@@ -134,7 +134,7 @@ public:
             outputs[1] = bestP[1];
             outputs[2] = bestP[2];
             
-            residual = best;
+            residual = best * indata.maxCoeff();
             if (resids.Size() > 0) {
                 assert(resids.Size() == data.size());
                 vector<double> r_temp(data.size());
