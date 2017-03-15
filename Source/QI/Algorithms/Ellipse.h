@@ -29,15 +29,15 @@ namespace QI {
 
 class ESAlgo : public QI::ApplyVectorXFVectorF::Algorithm {
 protected:
-    bool m_phaseFirst = false;
+    bool m_phaseFirst = false, m_debug = false;
     std::shared_ptr<QI::SSFPEcho> m_sequence = nullptr;
     TOutput m_zero;
 public:
     typedef Eigen::Matrix<double, 6, 6> Matrix6d;
     typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
-    ESAlgo(std::shared_ptr<QI::SSFPEcho> &seq, bool phase) :
-        m_sequence(seq), m_phaseFirst(phase)
+    ESAlgo(std::shared_ptr<QI::SSFPEcho> &seq, bool debug, bool phase) :
+        m_sequence(seq), m_debug(debug), m_phaseFirst(phase)
     {
         m_zero = TOutput(m_sequence->flip().rows());
         m_zero.Fill(0.);
@@ -70,6 +70,9 @@ public:
             std::swap(phase_stride, flip_stride);
         for (int f = 0; f < m_sequence->flip().rows(); f++) {
             const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_sequence->phase_incs().rows(), Eigen::InnerStride<>(phase_stride));
+            if (m_debug) {
+                std::cout << "Flip: " << m_sequence->flip() << " B1: " << B1 << " B1*flip: " << B1*m_sequence->flip() << std::endl;
+            }
             std::array<float, 6> tempOutputs = this->applyFlip(vf, m_sequence->TR(), B1 * m_sequence->flip()[f]);
             for (int o = 0; o < 6; o++) {
                 outputs[o][f] = tempOutputs[o];
@@ -80,8 +83,8 @@ public:
 
 class HyperEllipse : public ESAlgo {
 public:
-    HyperEllipse(std::shared_ptr<QI::SSFPEcho> &seq, bool phase) :
-        ESAlgo(seq, phase)
+    HyperEllipse(std::shared_ptr<QI::SSFPEcho> &seq, bool debug, bool phase) :
+        ESAlgo(seq, debug, phase)
     {}
 
 protected:
@@ -95,8 +98,8 @@ protected:
 
 class ConstrainedEllipse : public ESAlgo {
 public:
-    ConstrainedEllipse(std::shared_ptr<QI::SSFPEcho> &seq, bool phase, bool block) :
-        ESAlgo(seq, phase), m_reorderBlock(block)
+    ConstrainedEllipse(std::shared_ptr<QI::SSFPEcho> &seq, bool debug, bool phase, bool block) :
+        ESAlgo(seq, debug, phase), m_reorderBlock(block)
     {}
 
 protected:

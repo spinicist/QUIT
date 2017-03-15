@@ -85,7 +85,7 @@ std::array<float, 6> HyperEllipse::applyFlip(const Eigen::Map<const Eigen::Array
     SemiaxesToHoff(A, B, c, a, b);
     std::array<float, 6> outputs;
     EllipseToMRI(a, b, c*scale, th, TR, flip,
-                    outputs[0], outputs[1], outputs[2], outputs[3]);
+                 outputs[0], outputs[1], outputs[2], outputs[3], m_debug);
     outputs[4] = a;
     outputs[5] = b;
     return outputs;
@@ -244,7 +244,7 @@ std::array<float, 6> ConstrainedEllipse::applyFlip(const Eigen::Map<const Eigen:
     SemiaxesToHoff(sA, sB, c, ea, eb);
     std::array<float, 6> outputs;
     EllipseToMRI(ea, eb, c*scale, th, TR, flip,
-                 outputs[0], outputs[1], outputs[2], outputs[3]);
+                 outputs[0], outputs[1], outputs[2], outputs[3], m_debug);
     outputs[4] = ea;
     outputs[5] = eb;
     return outputs;

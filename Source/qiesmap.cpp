@@ -12,9 +12,11 @@
 #include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
+#include "args.hxx"
 
 #include "QI/Util.h"
-#include "QI/Option.h"
+#include "QI/IO.h"
+#include "QI/ArgUtils.h"
 #include "QI/Algorithms/Banding.h"
 #include "QI/Algorithms/Ellipse.h"
 #include "QI/Algorithms/EllipseFit.h"
@@ -25,62 +27,67 @@ using namespace Eigen;
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts("Usage is: qiesmap [options] input_file\n\nA utility for calculating T1,T2,PD and f0 maps from SSFP data.\nInput must be a single complex image with at least 6 phase increments.");
-    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::RegionOption<QI::ApplyF::TRegion> subregion('s',"subregion","Process subregion starting at voxel I,J,K with size SI,SJ,SK", opts);
-    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
-    QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
-    QI::Option<int> ph_incs(6,'\0',"ph_incs","Number of phase increments (default is 6).", opts);
-    QI::Switch ph_order('\0',"ph_order","Data order is phase, then flip-angle (default opposite).", opts);
-    QI::Switch alt_order('\0',"alt_order","Opposing phase-incs alternate (default is 2 blocks)", opts);
-    QI::EnumOption algorithm("hcf",'h','a',"algo","Choose algorithm (h/c/f)", opts);
-    QI::Option<std::string> outPrefix("", 'o', "out","Prefix output filenames", opts);
-    QI::Switch suppress('n',"no-prompt","Suppress input prompts", opts);
-    QI::Switch verbose('v',"verbose","Print more information", opts);
-    QI::Help help(opts);
-    std::deque<std::string> nonopts = opts.parse(argc, argv);
-    if (nonopts.size() != 1) {
-        std::cerr << opts << std::endl;
-        std::cerr << "No input filename specified." << std::endl;
-        return EXIT_FAILURE;
-    }
-    if (*verbose) cout << "Opening file: " << nonopts[0] << endl;
-    auto data = QI::ReadVectorImage<complex<float>>(nonopts[0]);
+    args::ArgumentParser parser("A utility for calculating T1,T2,PD and f0 maps from SSFP data.\nInput must be a single complex image with at least 6 phase increments.\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
+    args::Flag     noprompt(parser, "PROMPT", "Suppress input prompts", {'n', "no-prompt"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h/c/f)", {'a', "algo"}, 'h');
+    args::ValueFlag<int> ph_incs(parser, "INCS", "Number of phase increments (default is 6).", {"ph_incs"}, 6);
+    args::Flag ph_order(parser, "PH_FIRST", "Data order is phase, then flip-angle (default opposite).", {"ph_order"});
+    args::Flag alt_order(parser, "ALTERNATE", "Opposing phase-incs alternate (default is 2 blocks)", {"alternate"});
+    QI::ParseArgs(parser, argc, argv);
+    bool prompt = !noprompt;
+    if (verbose) cout << "Opening file: " << QI::CheckPos(ssfp_path) << endl;
+    auto data = QI::ReadVectorImage<complex<float>>(QI::CheckPos(ssfp_path));
+    auto seq = make_shared<QI::SSFPEcho>(cin, prompt);
+    if (verbose) cout << *seq;
     shared_ptr<QI::ESAlgo> algo;
-    auto seq = make_shared<QI::SSFPEcho>(cin, !*suppress);
-    if (*verbose) cout << *seq;
-    switch (*algorithm) {
-    case 'h': algo = make_shared<QI::HyperEllipse>(seq, *ph_order); break;
-    case 'c': algo = make_shared<QI::ConstrainedEllipse>(seq, *ph_order, *alt_order); break;
-    case 'f': algo = make_shared<QI::FitEllipse>(seq, *ph_order, *alt_order); break;
+    switch (algorithm.Get()) {
+    case 'h': algo = make_shared<QI::HyperEllipse>(seq, debug, ph_order); break;
+    case 'c': algo = make_shared<QI::ConstrainedEllipse>(seq, debug, ph_order, alt_order); break;
+    case 'f': algo = make_shared<QI::FitEllipse>(seq, debug, ph_order, alt_order); break;
     }
     auto apply = QI::ApplyVectorXFVectorF::New();
     apply->SetAlgorithm(algo);
-    apply->SetPoolsize(*num_threads);
-    apply->SetSplitsPerThread(*num_threads);
+    apply->SetPoolsize(threads.Get());
+    apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, data);
-    apply->SetMask(*mask);
-    apply->SetConst(0, *B1);
-    apply->SetVerbose(*verbose);
-    if (subregion.set()) {
-        if (*verbose) cout << "Setting subregion: " << *subregion << endl;
-        apply->SetSubregion(*subregion);
+    if (mask) {
+        if (verbose) std::cout << "Reading mask: " << mask.Get() << std::endl;
+        apply->SetMask(QI::ReadImage(mask.Get()));
     }
-    if (*verbose) {
+    if (B1) {
+        if (verbose) std::cout << "Reading B1 map: " << B1.Get() << std::endl;
+        apply->SetConst(0, QI::ReadImage(B1.Get()));
+    }
+    apply->SetVerbose(verbose);
+    if (subregion) {
+        apply->SetSubregion(QI::RegionOpt(args::get(subregion)));
+    }
+    if (verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (*verbose) {
+    if (verbose) {
         cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
         cout << "Writing results files." << endl;
     }
-    *outPrefix = *outPrefix + "ES_";
+    std::string outPrefix = args::get(outarg) + "ES_";
     for (int i = 0; i < algo->numOutputs(); i++) {
-        QI::WriteVectorImage(apply->GetOutput(i), *outPrefix + algo->names().at(i) + QI::OutExt());
+        std::string outName = outPrefix + algo->names().at(i) + QI::OutExt();
+        if (verbose) std::cout << "Writing: " << outName << std::endl;
+        QI::WriteVectorImage(apply->GetOutput(i), outName);
     }
     
-    if (*verbose) cout << "Finished." << endl;
+    if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

@@ -22,16 +22,19 @@ void SemiaxesToHoff(const double A, const double B, const double c,
 
 
 void EllipseToMRI(const double a, const double b, const double c, const double th, const double TR, const double flip,
-                  float &M0, float &T1, float &T2, float &df0) {
+                  float &M0, float &T1, float &T2, float &df0, const bool debug) {
     const double cosf = cos(flip);
     T2 = -TR / log(a);
     T1 = -TR / (log(a-b + a*cosf*(1.-a*b)) - log(a*(1.-a*b) + (a-b)*cosf));
-    //cout << "TR " << TR << " a " << a << " cla " << clampa << " b " << b << " T1 " << T1 << endl;
     const double E1 = exp(-TR/T1);
     const double &E2 = a;
     const double M = (c/sqrt(a))*(1-b*b)/(1-a*b);
     M0 = M * (1. - E1*cosf - E2*E2*(E1-cosf)) / ((1-E1)*sin(flip));
     df0 = th / (M_PI*TR); // Missing factor of 2 due to TE not TR
+    if (debug) {
+        std::cout << "a: " << a << " b: " << b << " c: " << c << " th: " << th << " TR: " << TR << " flip: " << flip << std::endl;
+        std::cout << "M0: " << M0 << " T1: " << T1 << " T2: " << T2 << " df0: " << df0 << std::endl;
+    }
 }
 
 } // End namespace QI

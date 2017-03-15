@@ -18,8 +18,8 @@ namespace QI {
 
 class FitEllipse : public ESAlgo {
 public:
-    FitEllipse(std::shared_ptr<QI::SSFPEcho> &seq, bool phase, bool block) :
-        ESAlgo(seq, phase), m_reorderBlock(block)
+    FitEllipse(std::shared_ptr<QI::SSFPEcho> &seq, bool debug, bool phase, bool block) :
+        ESAlgo(seq, debug, phase), m_reorderBlock(block)
     {}
 
 protected:
