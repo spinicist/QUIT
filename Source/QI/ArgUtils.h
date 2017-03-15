@@ -14,6 +14,23 @@
 
 namespace QI {
 
+void ParseArgs(args::ArgumentParser &parser, int argc, char **argv) {
+    try {
+        parser.ParseCLI(argc, argv);
+    } catch (args::Help) {
+        std::cout << parser;
+        exit(EXIT_SUCCESS);
+    } catch (args::ParseError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        exit(EXIT_FAILURE);
+    } catch (args::ValidationError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        exit(EXIT_FAILURE);
+    }
+}
+
 template<typename T>
 T CheckPos(args::Positional<T> &a) {
     if (a) {

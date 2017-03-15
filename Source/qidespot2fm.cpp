@@ -170,20 +170,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    try {
-        parser.ParseCLI(argc, argv);
-    } catch (args::Help) {
-        std::cout << parser;
-        return EXIT_SUCCESS;
-    } catch (args::ParseError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        return EXIT_FAILURE;
-    } catch (args::ValidationError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        return EXIT_FAILURE;
-    }
+    QI::ParseArgs(parser, argc, argv);
     bool prompt = !noprompt;
 
     if (verbose) cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << endl;
@@ -204,13 +191,13 @@ int main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);
-    if (verbose) std::cout << "Using " << args::get(threads) << " threads" << std::endl;
-    apply->SetPoolsize(args::get(threads));
-    apply->SetSplitsPerThread(args::get(threads)); // Fairly unbalanced algorithm
+    if (verbose) std::cout << "Using " << threads.Get() << " threads" << std::endl;
+    apply->SetPoolsize(threads.Get());
+    apply->SetSplitsPerThread(threads.Get()); // Fairly unbalanced algorithm
     apply->SetInput(0, ssfpData);
     apply->SetConst(0, T1);
-    apply->SetConst(1, QI::ReadImage(args::get(B1)));
-    apply->SetMask(QI::ReadImage(args::get(mask)));
+    apply->SetConst(1, QI::ReadImage(B1.Get()));
+    apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) {
         apply->SetSubregion(QI::RegionOpt(args::get(subregion)));
     }
