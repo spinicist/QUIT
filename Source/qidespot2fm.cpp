@@ -17,32 +17,13 @@
 
 #include "QI/Util.h"
 #include "QI/IO.h"
+#include "QI/ArgUtils.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 
 using namespace std;
 using namespace Eigen;
-
-class FMAlgo : public QI::ApplyF::Algorithm {
-protected:
-	shared_ptr<QI::SSFPSimple> m_sequence;
-    bool m_asymmetric = false;
-
-public:
-    void setSequence(shared_ptr<QI::SSFPSimple> s) { m_sequence = s; }
-    void setAsymmetric(const bool b) { m_asymmetric = b; }
-    
-    size_t numInputs() const override  { return m_sequence->count(); }
-    size_t numConsts() const override  { return 2; }
-    size_t numOutputs() const override { return 3; }
-    size_t dataSize() const override   { return m_sequence->size(); }
-    const float &zero(const size_t i) const override { static float zero = 0; return zero; }
-    virtual std::vector<float> defaultConsts() const override {
-        std::vector<float> def(2, 1.0f); // T1 & B1
-        return def;
-    }
-};
 
 class FMCost : public ceres::CostFunction {
 private:
@@ -81,11 +62,24 @@ public:
 
 };
 
-class LM_FM : public FMAlgo {
+class LM_FM : public QI::ApplyF::Algorithm {
 protected:
-
+    shared_ptr<QI::SSFPSimple> m_sequence = nullptr;
+    bool m_asymmetric = false, m_debug = false;
 public:
-    LM_FM() : FMAlgo() {}
+    LM_FM(shared_ptr<QI::SSFPSimple> s, const bool a, const bool d) :
+        m_sequence(s), m_asymmetric(a), m_debug(d)
+    {}
+
+    size_t numInputs() const override  { return m_sequence->count(); }
+    size_t numConsts() const override  { return 2; }
+    size_t numOutputs() const override { return 3; }
+    size_t dataSize() const override   { return m_sequence->size(); }
+    const float &zero(const size_t i) const override { static float zero = 0; return zero; }
+    virtual std::vector<float> defaultConsts() const override {
+        std::vector<float> def(2, 1.0f); // T1 & B1
+        return def;
+    }
 
     virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
@@ -110,17 +104,17 @@ public:
             problem.SetParameterLowerBound(p.data(), 0, 1.);
             problem.SetParameterLowerBound(p.data(), 1, m_sequence->TR());
             problem.SetParameterUpperBound(p.data(), 1, T1);
-            problem.SetParameterLowerBound(p.data(), 2, -1./(2.*m_sequence->TR()));
-            problem.SetParameterUpperBound(p.data(), 2,  1./(2.*m_sequence->TR()));
+            problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence->TR());
+            problem.SetParameterUpperBound(p.data(), 2,  0.5/m_sequence->TR());
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;
-            options.max_num_iterations = 50;
-            options.function_tolerance = 1e-5;
-            options.gradient_tolerance = 1e-6;
-            options.parameter_tolerance = 1e-4;
-            options.logging_type = ceres::SILENT;
+            options.max_num_iterations = 75;
+            options.function_tolerance = 1e-6;
+            options.gradient_tolerance = 1e-7;
+            options.parameter_tolerance = 1e-5;
+            if (!m_debug) options.logging_type = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                p = {10., 0.1 * T1, f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                p = {5., 0.1 * T1, f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 double r = summary.final_cost;
                 if (r < best) {
@@ -129,6 +123,7 @@ public:
                     its = summary.iterations.size();
                 }
             }
+            if (m_debug) std::cout << summary.FullReport() << std::endl;
             outputs[0] = bestP[0] * indata.maxCoeff();
             outputs[1] = bestP[1];
             outputs[2] = bestP[2];
@@ -158,10 +153,14 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    args::ArgumentParser parser("Calculates a T2 map from SSFP data and a T1 map. Usage is: qidespot2fm t1_map ssfp_input [options]", "tobias.wood@kcl.ac.uk");
+    args::ArgumentParser parser("Calculates a T2 map from SSFP data and a T1 map. \nhttp://github.com/spinicist/QUIT");
+    
+    args::Positional<std::string> t1_path(parser, "T1_MAP", "Input T1 map");
+    args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
+    
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     prompt(parser, "PROMPT", "Suppress input prompts", {'n', "no-prompt"});
+    args::Flag     noprompt(parser, "PROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
@@ -169,8 +168,8 @@ int main(int argc, char **argv) {
     args::Flag asym(parser, "ASYM", "Fit +/- off-resonance frequency", {'A', "asym"});
     args::Flag flex(parser, "FLEX", "Flexible input (do not tile flip-angles/phase-incs)", {'f', "flex"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::PositionalList<std::string> files(parser, "FILES", "Input files - T1 map and SSFP");
     try {
         parser.ParseCLI(argc, argv);
     } catch (args::Help) {
@@ -185,11 +184,12 @@ int main(int argc, char **argv) {
         std::cerr << parser;
         return EXIT_FAILURE;
     }
-    auto filelist = args::get(files);
-    if (filelist.size() != 2) {
-        std::cerr << "Wrong number of positional arguments." << std::endl;
-        return EXIT_FAILURE;
-    }
+    bool prompt = !noprompt;
+
+    if (verbose) cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << endl;
+    auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
+    if (verbose) cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << endl;
+    auto ssfpData = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
 
     shared_ptr<QI::SSFPSimple> ssfpSequence;
     if (flex)
@@ -198,15 +198,9 @@ int main(int argc, char **argv) {
         ssfpSequence = make_shared<QI::SSFPEcho>(cin, prompt);
     if (verbose) cout << *ssfpSequence << endl;
 
-    if (verbose) cout << "Reading T1 Map from: " << filelist[0] << endl;
-    auto T1 = QI::ReadImage(filelist[0]);
-    if (verbose) cout << "Opening SSFP file: " << filelist[1] << endl;
-    auto ssfpData = QI::ReadVectorImage<float>(filelist[1]);
     auto apply = QI::ApplyF::New();
-    shared_ptr<FMAlgo> algo = make_shared<LM_FM>();
+    shared_ptr<LM_FM> algo = make_shared<LM_FM>(ssfpSequence, asym, debug);
 
-    algo->setSequence(ssfpSequence);
-    algo->setAsymmetric(asym);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);

@@ -53,23 +53,6 @@ public:
     void Execute(const itk::Object *object, const itk::EventObject &event) ITK_OVERRIDE;
 };
 
-template<typename TRegion = typename QI::VolumeF::RegionType>
-TRegion RegionOpt(const std::string &a) {
-    std::istringstream iss(a);
-    typename TRegion::IndexType start;
-    typename TRegion::SizeType size;
-    for (int i = 0; i < TRegion::ImageDimension; i++) {
-        iss >> start[i];
-    }
-    for (int i = 0; i < TRegion::ImageDimension; i++) {
-        iss >> size[i];
-    }
-    TRegion r;
-    r.SetIndex(start);
-    r.SetSize(size);
-    return r;
-}
-
 } // End namespace QUIT
 
 #endif // QUIT_UTIL_H
