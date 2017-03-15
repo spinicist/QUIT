@@ -42,7 +42,13 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetPoolsize(const size_t n) {
 }
 
 template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetSplitsPerThread(const size_t n) { m_splitsPerThread = n; }
+void ApplyAlgorithmFilter<TI, TO, TC>::SetSplitsPerThread(const size_t n) {
+    if (n > 0) {
+        m_splitsPerThread = n;
+    } else {
+        m_splitsPerThread = m_poolsize;
+    }
+}
 
 template<typename TI, typename TO, typename TC>
 void ApplyAlgorithmFilter<TI, TO, TC>::SetSubregion(const TRegion &sr) {
