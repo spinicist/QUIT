@@ -29,10 +29,10 @@ public:
     bool operator!=(const DREAM &) const { return false; }
     bool operator==(const DREAM &other) const { return !(*this != other); }
 
-    inline TPixel operator()(const TPixel &p1,
-                             const TPixel &p2) const
+    inline TPixel operator()(const TPixel &fid,
+                             const TPixel &ste) const
     {
-        TPixel alpha = atan(sqrt(2.*p1/p2)) * 180. / M_PI;
+        TPixel alpha = atan(sqrt(2.*ste/fid)) * 180. / M_PI;
         return alpha;
     }
 };
@@ -61,8 +61,8 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Opening input file " << args.nonoptions()[0] << std::endl;
     auto inFile = QI::ReadImage<QI::SeriesF>(args.nonoptions()[0]);
 
-    auto volume1 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
-    auto volume2 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
+    auto fid_volume = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
+    auto ste_volume = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto region = inFile->GetLargestPossibleRegion();
     region.GetModifiableSize()[3] = 0;
     switch (args.option_value("order", 'f')) {
@@ -70,21 +70,21 @@ int main(int argc, char **argv) {
     case 's':
     case 'v': region.GetModifiableIndex()[3] = 1; break;
     }
-    volume1->SetExtractionRegion(region);
-    volume1->SetInput(inFile);
-    volume1->SetDirectionCollapseToSubmatrix();
+    fid_volume->SetExtractionRegion(region);
+    fid_volume->SetInput(inFile);
+    fid_volume->SetDirectionCollapseToSubmatrix();
     // Swap to other volume
     region.GetModifiableIndex()[3] = (region.GetIndex()[3] + 1) % 2;
-    volume2->SetExtractionRegion(region);
-    volume2->SetInput(inFile);
-    volume2->SetDirectionCollapseToSubmatrix();
+    ste_volume->SetExtractionRegion(region);
+    ste_volume->SetInput(inFile);
+    ste_volume->SetDirectionCollapseToSubmatrix();
 
     auto dream = itk::BinaryFunctorImageFilter<QI::VolumeF,
                                                QI::VolumeF,
                                                QI::VolumeF,
                                                DREAM<float>>::New();
-    dream->SetInput1(volume1->GetOutput());
-    dream->SetInput2(volume2->GetOutput());
+    dream->SetInput1(fid_volume->GetOutput());
+    dream->SetInput2(ste_volume->GetOutput());
 
     auto B1 = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
     B1->SetInput1(dream->GetOutput());
