@@ -17,7 +17,7 @@
 
 #include "QI/Util.h"
 #include "QI/IO.h"
-#include "QI/ArgUtils.h"
+#include "QI/Args.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
 #include "Filters/ApplyAlgorithmFilter.h"
@@ -153,14 +153,14 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    args::ArgumentParser parser("Calculates a T2 map from SSFP data and a T1 map. \nhttp://github.com/spinicist/QUIT");
+    args::ArgumentParser parser("Calculates a T2 map from SSFP data and a T1 map.\nhttp://github.com/spinicist/QUIT");
     
     args::Positional<std::string> t1_path(parser, "T1_MAP", "Input T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
     
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "PROMPT", "Suppress input prompts", {'n', "no-prompt"});
+    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});

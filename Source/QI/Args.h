@@ -12,59 +12,54 @@
 #ifndef QI_ARGS_H
 #define QI_ARGS_H
 
-#include <vector>
-#include <deque>
-#include <string>
-#include <algorithm>
-#include <iostream>
-
-#include "QI/Macro.h"
+#include "args.hxx"
+#include "QI/Types.h"
 
 namespace QI {
 
-struct TOption {
-    const std::string long_name;
-    const char short_name;
-    const std::string usage;
-    const bool has_arg;
-};
-std::ostream &operator<< (std::ostream &os, const TOption &o);
-
-class ArgParser {
-protected:
-    const std::vector<TOption> m_opts;
-    std::deque<std::pair<std::string, std::string>> m_args;
-    std::deque< std::string> m_nonopts;
-
-public:
-    ArgParser(int argc, char **argv, const std::string &usage,
-              const std::vector<TOption> &&opts);
-
-    const std::vector<TOption> &options() { return m_opts; }
-    const std::deque<std::string> &nonoptions() { return m_nonopts; }
-    bool option_present(const std::string &name);
-    std::pair<bool, std::string> consume(const std::string &name);
-
-    template<typename T>
-    T option_value(const std::string &name, const T &def_value) {
-        auto check_it = std::find_if(m_opts.cbegin(), m_opts.cend(), [&] (const TOption &o) { return o.long_name == name; });
-        if (check_it == m_opts.cend()) {
-            QI_EXCEPTION("Requested option " << name << " is not in option list");
-        }
-        auto it = std::find_if(m_args.cbegin(), m_args.cend(), [&] (const std::pair<std::string, std::string> &p) { return p.first == name; });
-        if (it == m_args.cend()) {
-            return def_value;
-        } else {
-            std::stringstream ss(it->second);
-            T temp;
-            ss >> temp;
-            m_args.erase(it);
-            return temp;
-        }
+void ParseArgs(args::ArgumentParser &parser, int argc, char **argv) {
+    try {
+        parser.ParseCLI(argc, argv);
+    } catch (args::Help) {
+        std::cout << parser;
+        exit(EXIT_SUCCESS);
+    } catch (args::ParseError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        exit(EXIT_FAILURE);
+    } catch (args::ValidationError e) {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        exit(EXIT_FAILURE);
     }
+}
 
-    std::string string_value(const std::string &name, const std::string &def);
-};
+template<typename T>
+T CheckPos(args::Positional<T> &a) {
+    if (a) {
+        return a.Get();
+    } else {
+        std::cerr << a.Name() << " was not specified. Use --help to see usage." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+template<typename TRegion = typename QI::VolumeF::RegionType>
+TRegion RegionOpt(const std::string &a) {
+    std::istringstream iss(a);
+    typename TRegion::IndexType start;
+    typename TRegion::SizeType size;
+    for (int i = 0; i < TRegion::ImageDimension; i++) {
+        iss >> start[i];
+    }
+    for (int i = 0; i < TRegion::ImageDimension; i++) {
+        iss >> size[i];
+    }
+    TRegion r;
+    r.SetIndex(start);
+    r.SetSize(size);
+    return r;
+}
 
 } // End namespace QI
 

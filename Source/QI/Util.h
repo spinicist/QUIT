@@ -26,7 +26,6 @@
 #include "itkCommand.h"
 
 #include "QI/Macro.h"
-#include "QI/Args.h"
 #include "QI/Types.h"
 
 namespace QI {

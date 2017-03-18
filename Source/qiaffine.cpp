@@ -25,41 +25,30 @@ using namespace std;
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::ArgParser args{argc, argv,
-        "Usage is: qiaffine input [output] [transforms]\n"
-        "Applies simple affine transformations to images by manipulating the header\n"
+
+    args::ArgumentParser parser("Applies simple affine transformations to images by manipulating the header\n"
         "transforms. If an output file is not specified, the input file will be\n"
-        "overwritten.",
-        {{"help", 'h', "Display the help message and quit", false},
-         {"verbose", 'v', "Print more information", false},
-         {"center", 'c', "Set the origin to the center of the image", false},
-         {"scale", 's', "Scale image by a factor of S", true},
-         {"offX", '\0', "Translate origin by D in X direction", true},
-         {"offY", '\0', "Translate origin by D in Y direction", true},
-         {"offZ", '\0', "Translate origin by D in Z direction", true},
-         {"rotX", '\0', "Rotate about X axis by N degrees", true},
-         {"rotY", '\0', "Rotate about Y axis by N degrees", true},
-         {"rotZ", '\0', "Rotate about Z axis by N degrees", true},
-         {"tfm", 't', "Write out the transformation to file", true}}
-    };
+        "overwritten.\n"
+        "http://github.com/spinicist/QUIT");
 
-    bool verbose = args.option_present("verbose");
-    bool center = args.option_present("center");
-    float scale = args.option_value("scale", 1.0);
-    float rotX = args.option_value("rotX", 0.0);
-    float rotY = args.option_value("rotY", 0.0);
-    float rotZ = args.option_value("rotZ", 0.0);
-    float offX = args.option_value("offX", 0.0);
-    float offY = args.option_value("offY", 0.0);
-    float offZ = args.option_value("offZ", 0.0);
-    std::string tfmFile = args.option_value("tfm", std::string{""});
-    std::deque<std::string> nonopts = args.nonoptions();
-    if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
-        std::cerr << "Incorrect number of arguments, use -h to see usage." << std::endl;
-        return EXIT_FAILURE;
-    }
+    args::Positional<std::string> source_path(parser, "SOURCE", "Source file");
+    args::Positional<std::string> dest_path(parser, "DEST", "Destination file");
 
-    auto image = QI::ReadImage<QI::SeriesF>(nonopts[0]);
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag     center(parser, "CENTER", "Set the origin to the center of the image", {'c', "center"});
+    args::ValueFlag<std::string> tfm_path(parser, "TFM", "Write out the transformation to a file", {'t', "tfm"});
+    args::ValueFlag<double> scale(parser, "SCALE", "Scale by a constant", {'s', "scale"});
+    args::ValueFlag<double> offX(parser, "OFF_X", "Translate origin in X direction", {"offX"});
+    args::ValueFlag<double> offY(parser, "OFF_Y", "Translate origin in Y direction", {"offY"});
+    args::ValueFlag<double> offZ(parser, "OFF_Z", "Translate origin in Z direction", {"offZ"});
+    args::ValueFlag<double> rotX(parser, "ROT_X", "Rotate about X-axis by angle (degrees)", {"rotX"});
+    args::ValueFlag<double> rotY(parser, "ROT_Y", "Rotate about Y-axis by angle (degrees)", {"rotY"});
+    args::ValueFlag<double> rotZ(parser, "ROT_Z", "Rotate about Z-axis by angle (degrees)", {"rotZ"});
+
+    QI::ParseArgs(parser, argc, argv);
+
+    auto image = QI::ReadImage<QI::SeriesF>(QI::CheckPos(source_path));
 
     QI::SeriesF::DirectionType fullDir = image->GetDirection();
     QI::SeriesF::SpacingType fullSpacing = image->GetSpacing();
@@ -116,10 +105,10 @@ int main(int argc, char **argv) {
     }
     tfm->Translate(-offset);
 
-    if (tfmFile != "") { // Output the transform file
+    if (tfm_path) { // Output the transform file
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
-        writer->SetFileName(tfmFile);
+        writer->SetFileName(tfm_path.Get());
         writer->Update();
     }
 
@@ -144,10 +133,10 @@ int main(int argc, char **argv) {
     image->SetOrigin(fullOrigin);
     image->SetSpacing(fullSpacing);
     // Write out the edited file
-    if (nonopts.size() == 2) {
-        QI::WriteImage(image, nonopts[1]);
+    if (dest_path) {
+        QI::WriteImage(image, dest_path.Get());
     } else {
-        QI::WriteImage(image, nonopts[0]);
+        QI::WriteImage(image, source_path.Get());
     }
     return EXIT_SUCCESS;
 }

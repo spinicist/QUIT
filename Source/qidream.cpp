@@ -12,11 +12,11 @@
 
 #include <iostream>
 #include <string>
-#include <getopt.h>
 
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/IO.h"
+#include "QI/Args.h"
 
 #include "itkExtractImageFilter.h"
 #include "itkDivideImageFilter.h"
@@ -38,34 +38,32 @@ public:
 };
 
 int main(int argc, char **argv) {
-    QI::ArgParser args{argc, argv,
-        "Usage is: qidream input [options]\n"
-        "Calculates a B1 (flip-angle) map from DREAM data. Input must have 2 volumes.",
-        {{"help",      'h', "Display the help message and quit", false},
-         {"verbose",   'v', "Print more information", false},
-         {"no-prompt", 'n', "Suppress input prompts", false},
-         {"threads",   'T', "Use N threads (default=4, 0=hardware limit)", true},
-         {"out",       'o', "Add a prefix to output filenames", true},
-         {"order",     'O', "Volume order - f/s/v - fid/ste/vst first", true},
-         {"alpha",     'a', "Reference flip-angle (default 55)", true},
-         {"subregion", 's', "Process subregion starting at voxel I,J,K with size SI,SJ,SK", false}}
-    };
+    args::ArgumentParser parser("Calculates a B1 (flip-angle) map from DREAM data.\nhttp://github.com/spinicist/QUIT");
 
-    bool verbose = args.option_present("verbose");
-    std::string outPrefix = args.string_value("out","") + "DREAM_";
-    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(args.option_value("threads",4));
-    if (args.nonoptions().size() != 1) {
-        std::cerr << "Must specify one input file with two volumes." << std::endl;
-        return EXIT_FAILURE;
-    }
-    if (verbose) std::cout << "Opening input file " << args.nonoptions()[0] << std::endl;
-    auto inFile = QI::ReadImage<QI::SeriesF>(args.nonoptions()[0]);
+    args::Positional<std::string> input_file(parser, "DREAM_FILE", "Input file. Must have 2 volumes (FID and STE)");
+
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<char> order(parser, "ORDER", "Volume order - f/s/v - fid/ste/vst first", {'O', "order"}, 'f');
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<double> alpha(parser, "ALPHA", "Nominal flip-angle (default 55)", {'a', "alpha"}, 55);
+    args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    QI::ParseArgs(parser, argc, argv);
+    bool prompt = !noprompt;
+
+    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
+
+    if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_file) << std::endl;
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file));
 
     auto fid_volume = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto ste_volume = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto region = inFile->GetLargestPossibleRegion();
     region.GetModifiableSize()[3] = 0;
-    switch (args.option_value("order", 'f')) {
+    switch (order.Get()) {
     case 'f': region.GetModifiableIndex()[3] = 0; break;
     case 's':
     case 'v': region.GetModifiableIndex()[3] = 1; break;
@@ -88,10 +86,10 @@ int main(int argc, char **argv) {
 
     auto B1 = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
     B1->SetInput1(dream->GetOutput());
-    B1->SetConstant2(args.option_value("alpha", 55));
+    B1->SetConstant2(alpha.Get());
     B1->Update();
-    QI::WriteImage(dream->GetOutput(), outPrefix + "angle" + QI::OutExt());
-    QI::WriteImage(B1->GetOutput(),  outPrefix + "B1" + QI::OutExt());
+    QI::WriteImage(dream->GetOutput(), out_prefix.Get() + "DREAM_angle" + QI::OutExt());
+    QI::WriteImage(B1->GetOutput(),  out_prefix.Get() + "DREAM_B1" + QI::OutExt());
     if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }

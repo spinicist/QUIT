@@ -26,24 +26,18 @@ void Convert(const std::string &input, const std::string &output) {
 }
 
 int main(int argc, char **argv) {
-    Eigen::initParallel();
-    QI::ArgParser args{argc, argv,
-        "Usage is: qiconvert input output_format [options]\n"
-        "Converts input to specified format",
-        {{"help", 'h', "Display the help message and quit", false},
-         {"verbose", 'v', "Print more information", false},
-         {"prefix", 'p', "Prefix output path", true},
-         {"rename", 'r', "Rename using specified header field", true}}
-    };
+    args::ArgumentParser parser("Converts images between formats\nhttp://github.com/spinicist/QUIT");
 
-    bool verbose = args.option_present("verbose");
-    std::deque<std::string> nonopts = args.nonoptions();
-    if ((nonopts.size() == 0) || (nonopts.size() > 2)) {
-        std::cerr << "Incorrect number of arguments, use -h to see usage." << std::endl;
-        return EXIT_FAILURE;
-    }
+    args::Positional<std::string> input_file(parser, "INPUT", "Input file.");
+    args::Positional<std::string> output_file(parser, "OUTPUT", "Output file.");
 
-    const std::string input = nonopts[0];
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlagList<std::string> rename(parser, "RENAME", "Rename using specified header fields", {'r', "rename"});
+    QI::ParseArgs(parser, argc, argv);
+
+    const std::string input = QI::CheckPos(input_file);
     itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(input.c_str(), itk::ImageIOFactory::ReadMode);
     if (!imageIO) {
         cerr << "Could not open: " << input << endl;
@@ -54,10 +48,9 @@ int main(int argc, char **argv) {
     size_t dims = imageIO->GetNumberOfDimensions();
     auto PixelType = imageIO->GetPixelType();
 
-    std::string output = args.option_value<string>("prefix","");
-    if (args.option_present("rename")) {
-        while (args.option_present("rename")) {
-            std::string rename_field = args.option_value<string>("rename","");
+    std::string output = out_prefix.Get();
+    if (rename) {
+        for (const auto rename_field: args::get(rename)) {
             std::vector<std::string> string_array_value;
             std::string string_value;
             double double_value;
@@ -77,14 +70,12 @@ int main(int argc, char **argv) {
             } else {
                 QI_EXCEPTION("Could not determine type of rename header field:" << rename_field);
             }
-            if (args.option_present("rename")) {
-                output.append("_");
-            }
+            output.append("_");
         }
     } else {
         output.append(QI::Basename(input));
     }
-    output.append(nonopts[1]);
+    output.append(QI::CheckPos(output_file));
     #define DIM_SWITCH( N ) \
     case N:\
         switch (PixelType) {\

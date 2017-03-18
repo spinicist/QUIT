@@ -37,7 +37,7 @@ set(QIDIR "Source/QI")
 set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp
-             ${QIDIR}/Option.cpp ${QIDIR}/Args.cpp
+             ${QIDIR}/Option.cpp
              ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp
              ${QIDIR}/GoldenSection.cpp )
 add_dependencies( ${QI} qi_version )
