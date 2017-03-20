@@ -53,8 +53,8 @@ std::string StripExt(const std::string &filename) {
     std::size_t dot = filename.find_last_of(".");
     if (dot != std::string::npos) {
         /* Deal with .nii.gz files */
-        if (filename.substr(dot) == "gz") {
-            dot = filename.find_last_of(".", dot);
+        if (filename.substr(dot) == ".gz") {
+            dot = filename.find_last_of(".", dot - 1);
         }
         return filename.substr(0, dot);
     } else {
@@ -67,7 +67,7 @@ std::string Basename(const std::string &path) {
     if (slash != std::string::npos) {
         return StripExt(path.substr(slash));
     } else {
-        QI_EXCEPTION("No / found in path: " << path);
+        return StripExt(path);
     }
 }
 
