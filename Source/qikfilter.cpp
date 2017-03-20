@@ -10,7 +10,6 @@
  */
 
 #include <memory>
-#include <getopt.h>
 #include <iostream>
 #include <sstream>
 #include "Eigen/Dense"
@@ -34,6 +33,7 @@
 #include "QI/Util.h"
 #include "QI/Kernels.h"
 #include "QI/IO.h"
+#include "QI/Args.h"
 
 using namespace std;
 using namespace Eigen;
@@ -66,7 +66,15 @@ protected:
 public:
     itkNewMacro(Self);
     itkTypeMacro(Self, ImageSource);
-    void SetKernels(const std::vector<std::shared_ptr<QI::FilterKernel>> &k) { m_kernels = k; }
+    void SetKernel(const std::shared_ptr<QI::FilterKernel> &k) {
+        m_kernels.clear();
+        m_kernels.push_back(k);
+        this->Modified();
+    }
+    void SetKernels(const std::vector<std::shared_ptr<QI::FilterKernel>> &k) {
+        m_kernels = k;
+        this->Modified();
+    }
     itkSetMacro(Region, RegionType);
     itkSetMacro(Spacing, SpacingType);
     itkSetMacro(Direction, DirectionType);
@@ -140,67 +148,40 @@ Valid filters are:\n\
 int main(int argc, char **argv) {
     Eigen::initParallel();
 
-    //******************************************************************************
-    // Arguments / Usage
-    //******************************************************************************
-    bool verbose = false, save_kernel = false;
-    int complex_in = false, complex_out = false, zero_padding = 0;
-    std::vector<shared_ptr<QI::FilterKernel>> kernels;
-    string out_name;
-    const struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {"verbose", no_argument, 0, 'v'},
-        {"out", required_argument, 0, 'o'},
-        {"filter", required_argument, 0, 'f'},
-        {"zeropad", required_argument, 0, 'z'},
-        {"save_kernel", no_argument, 0, 'k'},
-        {"complex_in", no_argument, &complex_in, true},
-        {"complex_out", no_argument, &complex_out, true},
-        {"threads", required_argument, 0, 'T'},
-        {0, 0, 0, 0}
-    };
-    const char *short_options = "hvo:m:e:z:kT:";
+    args::ArgumentParser parser("Filters/smooths images in k-space\nhttp://github.com/spinicist/QUIT",
+        "Va");
 
-    int indexptr = 0, c;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'o':
-                out_name = optarg;
-                if (verbose) cout << "Output filename will be: " << out_name << endl;
-                break;
-            case 'f': {
-                stringstream f(optarg);
-                kernels.push_back(QI::ReadKernel(f));
-                if (verbose) cout << "Read kernel: " << *kernels.back() << endl;
-            } break;
-            case 'z': zero_padding = atoi(optarg); break;
-            case 'k': save_kernel = true; break;
-            case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case 0: break; // Just a flag
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
+    args::Positional<std::string> in_path(parser, "INPUT", "Input file.");
+
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<int> zero_padding(parser, "ZEROPAD", "Zero-pad volume by N voxels in each direction", {'z', "zero_pad"}, 0);
+    args::Flag complex_in(parser, "COMPLEX_IN", "Input data is complex", {"complex_in"});
+    args::Flag complex_out(parser, "COMPLEX_OUT", "Write complex output", {"complex_out"});
+    args::Flag save_kernel(parser, "KERNEL", "Save kernels as images", {"save_kernel"});
+    args::Flag filter_per_volume(parser, "FILTER_PER_VOL", "Instead of concatenating multiple filters, use one per volume", {"filter_per_volume"});
+    args::ValueFlagList<std::string> filters(parser, "FILTER", "Specify a filter to use (can be multiple)", {'f', "filter"});
+    QI::ParseArgs(parser, argc, argv);
+    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
+
+    std::vector<shared_ptr<QI::FilterKernel>> kernels;
+    if (filters) {
+        for (const auto &f: filters.Get()) {
+            kernels.push_back(QI::ReadKernel(f));
         }
+    } else {
+        kernels.push_back(std::make_shared<QI::TukeyKernel>());
     }
-    if ((argc - optind) != 1) {
-        cout << "Incorrect number of arguments." << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-    string in_name(argv[optind++]);
 
     QI::SeriesXF::Pointer vols;
     if (complex_in) {
-        if (verbose) cout << "Reading complex file: " << in_name << endl;
-        vols = QI::ReadImage<QI::SeriesXF>(in_name);
+        if (verbose) cout << "Reading complex file: " << QI::CheckPos(in_path) << endl;
+        vols = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(in_path));
     } else {
-        if (verbose) cout << "Reading real file: " << in_name << endl;
-        QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(in_name);
+        if (verbose) cout << "Reading real file: " << QI::CheckPos(in_path) << endl;
+        QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(in_path));
         auto cast = itk::CastImageFilter<QI::SeriesF, QI::SeriesXF>::New();
         cast->SetInput(rvols);
         cast->Update();
@@ -224,6 +205,10 @@ int main(int argc, char **argv) {
     
     auto region = vols->GetLargestPossibleRegion();
     const size_t nvols = region.GetSize()[3]; // Save for the loop
+    if (filter_per_volume && nvols != kernels.size()) {
+        std::cerr << "Number of volumes and kernels do not match for filter_per_volume option" << std::endl;
+        return EXIT_FAILURE;
+    }
     region.GetModifiableSize()[3] = 0;
     QI::VolumeXD::RegionType unpad_region;
     for (int i = 0; i < 3; i++) {
@@ -260,10 +245,12 @@ int main(int argc, char **argv) {
     }
     fft_pad->SetSizeGreatestPrimeFactor(5); // This is the largest the VNL FFT supports
     forward->SetInput(fft_pad->GetOutput());
-    if (kernels.size() == 0) {
-        kernels.push_back(std::make_shared<QI::TukeyKernel>());
+    if (!filter_per_volume) {
+        tkernel->SetKernels(kernels);
+        for (const auto &k : kernels) {
+            if (verbose) std::cout << "Adding kernel: " << *k << std::endl;
+        }
     }
-    tkernel->SetKernels(kernels);
     mult->SetInput1(forward->GetOutput());
     mult->SetInput2(tkernel->GetOutput());
     unpadder->SetDirectionCollapseToSubmatrix();
@@ -282,9 +269,12 @@ int main(int argc, char **argv) {
             tkernel->SetSpacing(fft_pad->GetOutput()->GetSpacing());
             tkernel->SetOrigin(fft_pad->GetOutput()->GetOrigin());
             tkernel->SetDirection(fft_pad->GetOutput()->GetDirection());
-            tkernel->Update();
-            if (verbose) std::cout << "Built kernel" << std::endl;
         }
+        if (filter_per_volume) {
+            tkernel->SetKernel(kernels.at(i));
+            if (verbose) std::cout << "Setting kernel to: " << *kernels.at(i) << std::endl;
+        }
+        tkernel->Update();
         mult->Update();
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
@@ -305,9 +295,8 @@ int main(int argc, char **argv) {
     vols->SetSpacing(spc);
     vols->DisconnectPipeline();
 
-    if (out_name == "")
-        out_name = in_name.substr(0, in_name.find("."));
-    const std::string out_path = out_name + "_filtered" + QI::OutExt();
+    std::string out_base = out_prefix.Get() + QI::Basename(in_path.Get());
+    const std::string out_path = out_base + "_filtered" + QI::OutExt();
     if (complex_out) {
         if (verbose) cout << "Saving complex output file: " << out_path << endl;
         QI::WriteImage(vols, out_path);
@@ -316,7 +305,7 @@ int main(int argc, char **argv) {
         QI::WriteMagnitudeImage(vols, out_path);
     }
     if (save_kernel) {
-        const string kernel_path = out_name + "_kernel" + QI::OutExt();
+        const string kernel_path = out_base + "_kernel" + QI::OutExt();
         if (verbose) cout << "Saving filter kernel to: " << kernel_path << endl;
         QI::WriteImage(tkernel->GetOutput(), kernel_path);
     }
