@@ -70,7 +70,8 @@ class GaussKernel : public FilterKernel
 class BlackmanKernel : public FilterKernel
 {
   protected:
-    double m_alpha, m_a0, m_a1, m_a2;
+    double m_alpha = 0.16, m_a0, m_a1, m_a2;
+    void calc_constants(); // Helper function for constructors
 
   public:
     BlackmanKernel();
@@ -79,7 +80,7 @@ class BlackmanKernel : public FilterKernel
     virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const override;
 };
 
-std::shared_ptr<FilterKernel> ReadKernel(std::istream &istr);
+std::shared_ptr<FilterKernel> ReadKernel(const std::string &str);
 std::ostream &operator<<(std::ostream &ostr, const FilterKernel &k);
 
 } // End namespace QI

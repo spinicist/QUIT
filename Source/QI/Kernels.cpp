@@ -79,20 +79,20 @@ double GaussKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, c
 }
 
 BlackmanKernel::BlackmanKernel() {
-    m_alpha = 0.16;
-    m_a0 = (1. - m_alpha) / 2.;
-    m_a1 = 1. / 2.;
-    m_a2 = m_alpha / 2.;
+    calc_constants();
 }
 BlackmanKernel::BlackmanKernel(std::istream &istr) {
     if (!istr.eof()) {
         std::string nextValue;
         std::getline(istr, nextValue, ',');
         m_alpha = stod(nextValue);
-        m_a0 = (1. - m_alpha) / 2.;
-        m_a1 = 1. / 2.;
-        m_a2 = m_alpha / 2.;
     }
+    calc_constants();
+}
+void BlackmanKernel::calc_constants() {
+    m_a0 = (1. - m_alpha) / 2.;
+    m_a1 = 1. / 2.;
+    m_a2 = m_alpha / 2.;
 }
 void BlackmanKernel::print(std::ostream &ostr) const {
     ostr << "Blackman," << m_alpha << std::endl;
@@ -103,18 +103,19 @@ double BlackmanKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz
     return v;
 }
 
-std::shared_ptr<FilterKernel> ReadKernel(std::istream &istr) {
+std::shared_ptr<FilterKernel> ReadKernel(const std::string &str) {
     std::shared_ptr<FilterKernel> newKernel = nullptr;
+    std::istringstream iss(str);
     std::string filterName;
-    std::getline(istr, filterName, ',');
+    std::getline(iss, filterName, ',');
     if (filterName == "Tukey") {
-        newKernel = std::make_shared<TukeyKernel>(istr);
+        newKernel = std::make_shared<TukeyKernel>(iss);
     } else if (filterName == "Hamming") {
-        newKernel = std::make_shared<HammingKernel>(istr);
+        newKernel = std::make_shared<HammingKernel>(iss);
     } else if (filterName == "Gauss") {
-        newKernel = std::make_shared<GaussKernel>(istr);
+        newKernel = std::make_shared<GaussKernel>(iss);
     } else if (filterName == "Blackman") {
-        newKernel = std::make_shared<BlackmanKernel>(istr);
+        newKernel = std::make_shared<BlackmanKernel>(iss);
     } else {
         QI_EXCEPTION("Unknown filter type");
     }
