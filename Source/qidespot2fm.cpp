@@ -81,7 +81,7 @@ public:
         return def;
     }
 
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -116,6 +116,12 @@ public:
             for (const double &f0 : f0_starts) {
                 p = {5., 0.1 * T1, f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
+                if (!summary.IsSolutionUsable()) {
+                    std::cerr << summary.FullReport() << std::endl;
+                    std::cerr << "Parameters: " << p.transpose() << std::endl;
+                    std::cerr << "Data: " << indata.transpose() << std::endl;
+                    return false;
+                }
                 double r = summary.final_cost;
                 if (r < best) {
                     best = r;
@@ -145,6 +151,7 @@ public:
             resids.Fill(0.);
             its = 0;
         }
+        return true;
     }
 };
 

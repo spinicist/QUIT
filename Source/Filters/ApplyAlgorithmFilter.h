@@ -43,11 +43,11 @@ public:
         virtual size_t outputSize(const int i) const { return 1; }; // Size of each output, overload for vector outputs
         virtual size_t dataSize() const = 0;   // The expected size of the concatenated input
         virtual std::vector<TConst> defaultConsts() const = 0;    // Give some default constants for when the user does not supply them
-        virtual void apply(const std::vector<TInput> &inputs,
+        virtual bool apply(const std::vector<TInput> &inputs,
                            const std::vector<TConst> &consts,
                            std::vector<TOutput> &outputs,
                            TConst &residual, TInput &resids,
-                           TIters &iterations) const = 0; // Apply the algorithm to the data from one voxel
+                           TIters &iterations) const = 0; // Apply the algorithm to the data from one voxel. Return false to indicate algorithm failed.
         virtual const TOutput &zero(const size_t i) const = 0; // Hack, to supply a zero for masked voxels
     };
 

@@ -59,7 +59,7 @@ public:
 
 class D2LLS : public D2Algo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -93,12 +93,13 @@ public:
         outputs[0] = QI::clamp(PD, m_loPD, m_hiPD);
         outputs[1] = QI::clamp(T2, m_loT2, m_hiT2);
         its = 1;
+        return true;
     }
 };
 
 class D2WLLS : public D2Algo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -150,6 +151,7 @@ public:
         outputs[0] = QI::clamp(PD, m_loPD, m_hiPD);
         outputs[1] = QI::clamp(T2, m_loT2, m_hiT2);
         its = m_iterations;
+        return true;
     }
 };
 
@@ -183,7 +185,7 @@ class D2Functor : public DenseFunctor<double> {
 
 class D2NLLS : public D2Algo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -205,6 +207,7 @@ public:
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = lm.iterations();
+        return true;
     }
 };
 

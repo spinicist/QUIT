@@ -50,11 +50,16 @@ int main(int argc, char **argv) {
 
     std::string output = out_prefix.Get();
     if (rename) {
+        bool first = true;
         for (const auto rename_field: args::get(rename)) {
             std::vector<std::string> string_array_value;
             std::string string_value;
             double double_value;
-
+            if (first) {
+                first = false;
+            } else {
+                output.append("_");
+            }
             auto dict = imageIO->GetMetaDataDictionary();
             if (!dict.HasKey(rename_field)) {
                 QI_EXCEPTION("Rename field '" << rename_field << "' not found in header.");
@@ -70,7 +75,6 @@ int main(int argc, char **argv) {
             } else {
                 QI_EXCEPTION("Could not determine type of rename header field:" << rename_field);
             }
-            output.append("_");
         }
     } else {
         output.append(QI::Basename(input));

@@ -73,7 +73,7 @@ public:
         static std::vector<std::string> _names = {"centered","asym", "f0"};
         return _names;
     }
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override;
 };

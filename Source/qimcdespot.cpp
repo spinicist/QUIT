@@ -120,7 +120,7 @@ public:
         return def;
     }
 
-virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                    std::vector<TOutput> &outputs, TConst &residual,
                    TInput &resids, TIters &its) const override
     {
@@ -156,6 +156,7 @@ virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> 
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = rc.contractions();
+        return true;
     }
 };
 

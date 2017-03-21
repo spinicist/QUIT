@@ -45,7 +45,7 @@ public:
         std::vector<float> def;
         return def;
     }
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -59,6 +59,7 @@ public:
         }
         residual = 0;
         its = 0;
+        return true;
     }
 };
 

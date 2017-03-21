@@ -38,7 +38,7 @@ public:
 };
 
 
-void CESTAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+bool CESTAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                      std::vector<TOutput> &outputs, TConst &residual,
                      TInput &resids, TIters &its) const
 {
@@ -105,6 +105,7 @@ void CESTAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
         const float neg = spline(nfrq)[0];
         outputs.at(1)[f] = ((pos - neg)/ref);
     }
+    return true;
 }
 
 } // End namespace QI

@@ -58,7 +58,7 @@ public:
 
 class D1LLS : public D1Algo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -78,12 +78,13 @@ public:
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = 1;
+        return true;
     }
 };
 
 class D1WLLS : public D1Algo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -116,6 +117,7 @@ public:
         ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
+        return true;
     }
 };
 
@@ -158,7 +160,7 @@ public:
 
 class D1NLLS : public D1Algo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override
     {
@@ -197,6 +199,7 @@ public:
             for (int i = 0; i < r_temp.size(); i++)
                 resids[i] = r_temp[i];
         }
+        return true;
     }
 };
 

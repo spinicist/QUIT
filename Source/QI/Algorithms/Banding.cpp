@@ -36,7 +36,7 @@ const BandAlgo::TOutput &BandAlgo::zero(const size_t i) const {
     return m_zero;
 }
 
-void BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+bool BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                      std::vector<TOutput> &outputs, TConst &residual,
                      TInput &resids, TIters &its) const
 {
@@ -48,6 +48,7 @@ void BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst
         const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride));
         outputs[0][f] = this->applyFlip(vf);
     }
+    return true;
 }
 
 std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::ArrayXcd &b, RegEnum regularise) {

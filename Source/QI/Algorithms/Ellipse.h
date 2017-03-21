@@ -59,7 +59,7 @@ public:
         return _names;
     }
     virtual std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double TR, const double flip) const = 0;
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override
     {
@@ -78,6 +78,7 @@ public:
                 outputs[o][f] = tempOutputs[o];
             }
         }
+        return true;
     }
 };
 

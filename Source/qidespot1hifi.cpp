@@ -123,7 +123,7 @@ public:
         return def;
     }
 
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override
     {
@@ -151,6 +151,7 @@ public:
         ArrayXf rf = r.cast<float>();
         resids = itk::VariableLengthVector<float>(rf.data(), rf.rows());
         its = lm.iterations();
+        return true;
     }
 };
 

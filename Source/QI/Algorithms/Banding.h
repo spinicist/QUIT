@@ -62,7 +62,7 @@ public:
     virtual std::vector<float> defaultConsts() const override;
     virtual const TOutput &zero(const size_t i) const override;
     virtual std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const = 0;
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override;
 };

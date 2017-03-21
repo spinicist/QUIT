@@ -119,7 +119,7 @@ public:
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -135,12 +135,13 @@ public:
         double T2 = -1 / b[0];
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
+        return true;
     }
 };
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -158,6 +159,7 @@ public:
         double PD = (data.array() / exp(-m_sequence->m_TE / T2)).mean();
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
+        return true;
     }
 };
 
@@ -191,7 +193,7 @@ private:
 public:
     void setIterations(size_t n) { m_iterations = n; }
 
-    virtual void apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                   std::vector<TOutput> &outputs, TConst &residual,
                   TInput &resids, TIters &its) const override
     {
@@ -207,6 +209,7 @@ public:
         lm.minimize(p);
         clamp_and_threshold(data, outputs, residual, resids, p[0], p[1]);
         its = lm.iterations();
+        return true;
     }
 };
 
