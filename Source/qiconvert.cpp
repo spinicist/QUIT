@@ -50,19 +50,20 @@ int main(int argc, char **argv) {
 
     std::string output = out_prefix.Get();
     if (rename) {
-        bool first = true;
+        bool append_delim = false;
         for (const auto rename_field: args::get(rename)) {
             std::vector<std::string> string_array_value;
             std::string string_value;
             double double_value;
-            if (first) {
-                first = false;
-            } else {
-                output.append("_");
-            }
             auto dict = imageIO->GetMetaDataDictionary();
             if (!dict.HasKey(rename_field)) {
-                QI_EXCEPTION("Rename field '" << rename_field << "' not found in header.");
+                std::cout << "Rename field '" << rename_field << "' not found in header. Ignoring" << std::endl;
+                continue;
+            }
+            if (append_delim) {
+                output.append("_");
+            } else {
+                append_delim = true;
             }
             if (ExposeMetaData(dict, rename_field, string_array_value)) {
                 output.append(string_array_value[0]);
