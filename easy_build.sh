@@ -15,7 +15,7 @@
 WD=$PWD
 # First download Eigen & ITK
 EXTERNAL="$WD/External"
-cd $EXT_DIR
+cd $EXTERNAL
 git submodule init && git submodule update
 
 # Eigen and Args are header only, no building required
