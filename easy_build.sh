@@ -20,7 +20,7 @@ git submodule init && git submodule update
 
 # Eigen and Args are header only, no building required
 EIGEN_DIR="$EXTERNAL/eigen"
-ARGS_DIR="$EXTERNAL/Args"
+ARGS_DIR="$EXTERNAL/args"
 
 # Ceres
 CERES_DIR="$EXTERNAL/ceres-solver"
