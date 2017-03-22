@@ -18,8 +18,9 @@ EXTERNAL="$WD/External"
 cd $EXT_DIR
 git submodule init && git submodule update
 
-# Eigen is header only, no building required
+# Eigen and Args are header only, no building required
 EIGEN_DIR="$EXTERNAL/eigen"
+ARGS_DIR="$EXTERNAL/Args"
 
 # Ceres
 CERES_DIR="$EXTERNAL/ceres-solver"
@@ -53,8 +54,8 @@ cd $WD
 # Now build QUIT
 QUIT_BLD_DIR="build"
 QUIT_OPTS="-DCMAKE_BUILD_TYPE=Release\
-    -DITK_DIR=$ITK_BUILD_DIR -DEIGEN3_INCLUDE_DIR=$EIGEN_DIR\
-    -DCeres_DIR=$CERES_BUILD_DIR"
+    -DEIGEN3_INCLUDE_DIR=$EIGEN_DIR -DCeres_DIR=$CERES_BUILD_DIR\
+    -DITK_DIR=$ITK_BUILD_DIR -DArgs_DIR=$ARGS_DIR"
 mkdir -p $QUIT_BLD_DIR
 cd $QUIT_BLD_DIR
 cmake $WD $QUIT_OPTS

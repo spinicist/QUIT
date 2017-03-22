@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 project(QUIT CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
-set(CMAKE_CXX_FLAGS -fpermissive)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 include(CMakeToolsHelpers OPTIONAL)
@@ -14,16 +12,18 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "(C|c?)lang")
     set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -undefined dynamic_lookup")
 endif()
 
-find_package(ITK 4.10.0 REQUIRED)
-include(${ITK_USE_FILE})
-
+set( Args_DIR "${PROJECT_SOURCE_DIR}/External/Args"
+     CACHE PATH "Path to Args library (usually External/Args" )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
-include_directories( ${PROJECT_SOURCE_DIR}/Source )
-include_directories( ${PROJECT_SOURCE_DIR}/External/args )
 find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
+find_package(ITK 4.10.0 REQUIRED)
+
+include_directories( ${PROJECT_SOURCE_DIR}/Source )
+include_directories( ${EIGEN3_INCLUDE_DIR} )
 include_directories( ${CERES_INCLUDE_DIRS} )
+include( ${ITK_USE_FILE} )
+include_directories( ${Args_DIR} )
 
 # Setup version
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file
@@ -80,8 +80,8 @@ set( QUANT qisignal
            qiafi qidream
            qidespot1 qidespot2 qidespot1hifi qidespot2fm
            qimcdespot 
-           qimultiecho qimp2rage qicest )
-set( ELLIPSE qissfpbands qiesmap )
+           qimultiecho qimp2rage )
+set( ELLIPSE qissfpbands qiesmap qicest )
 
 foreach(PROGRAM ${UTILS})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
@@ -90,7 +90,7 @@ endforeach(PROGRAM)
 
 foreach(PROGRAM ${QUANT})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} 
+    target_link_libraries(${PROGRAM} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI} 
                           ${ITK_LIBRARIES} ${CERES_LIBRARIES})
 endforeach(PROGRAM)
 
