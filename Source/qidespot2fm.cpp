@@ -87,7 +87,7 @@ public:
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
-        if (isfinite(T1) && (T1 > 0.001)) {
+        if (isfinite(T1) && (T1 > m_sequence->TR())) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
@@ -114,10 +114,11 @@ public:
             options.parameter_tolerance = 1e-5;
             if (!m_debug) options.logging_type = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                p = {5., 0.1 * T1, f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                p = {5., std::max(0.1 * T1, 1.5*m_sequence->TR()), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
                     std::cerr << summary.FullReport() << std::endl;
+                    std::cerr << "T1: " << T1 << " B1: " << B1 << std::endl;
                     std::cerr << "Parameters: " << p.transpose() << std::endl;
                     std::cerr << "Data: " << indata.transpose() << std::endl;
                     return false;
