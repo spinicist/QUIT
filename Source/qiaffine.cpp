@@ -77,33 +77,36 @@ int main(int argc, char **argv) {
     img_tfm->Translate(origin);
 
     auto tfm = TAffine::New();
-    if (scale != 1.0) {
-        if (verbose) cout << "Scaling by factor " << scale << endl;
-        tfm->Scale(scale);
+    if (scale) {
+        if (verbose) cout << "Scaling by factor " << scale.Get() << endl;
+        tfm->Scale(scale.Get());
     }
     if (rotX != 0.0) {
-        if (verbose) cout << "Rotating image by " << rotX << " around X axis." << endl;
-        tfm->Rotate(1,2,rotX * M_PI / 180.0);
+        if (verbose) cout << "Rotating image by " << rotX.Get() << " around X axis." << endl;
+        tfm->Rotate(1,2,rotX.Get() * M_PI / 180.0);
     }
     if (rotY != 0.0) {
-        if (verbose) cout << "Rotating image by " << rotY << " around X axis." << endl;
-        tfm->Rotate(2,0,rotY * M_PI / 180.0);
+        if (verbose) cout << "Rotating image by " << rotY.Get() << " around X axis." << endl;
+        tfm->Rotate(2,0,rotY.Get() * M_PI / 180.0);
     }
     if (rotZ != 0.0) {
-        if (verbose) cout << "Rotating image by " << rotZ << " around X axis." << endl;
-        tfm->Rotate(0,1,rotZ * M_PI / 180.0);
+        if (verbose) cout << "Rotating image by " << rotZ.Get() << " around X axis." << endl;
+        tfm->Rotate(0,1,rotZ.Get() * M_PI / 180.0);
     }
-    itk::Versor<double>::VectorType offset;
+    itk::Versor<double>::VectorType offset; offset.Fill(0);
     if (center) {
         for (int i = 0; i < 3; i++) {
             offset[i] = origin[i]-spacing[i]*size[i] / 2;
         }
-    } else {
-        offset[0] = offX;
-        offset[1] = offY;
-        offset[2] = offZ;
+        if (verbose) std::cout << "Centering image" << std::endl;
+        tfm->Translate(-offset);
+    } else if (offX || offY || offZ) {
+        offset[0] = offX.Get();
+        offset[1] = offY.Get();
+        offset[2] = offZ.Get();
+        if (verbose) std::cout << "Translating by: " << offset << std::endl;
+        tfm->Translate(-offset);
     }
-    tfm->Translate(-offset);
 
     if (tfm_path) { // Output the transform file
         auto writer = itk::TransformFileWriterTemplate<double>::New();
