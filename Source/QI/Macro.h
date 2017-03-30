@@ -36,4 +36,10 @@
     throw(std::runtime_error(message.str()));                 \
 }
 
+#define QI_FAIL( x )             \
+{                                \
+    std::cerr << x << std::endl; \
+    exit(EXIT_FAILURE);          \
+}
+
 #endif // QI_MACRO_H
