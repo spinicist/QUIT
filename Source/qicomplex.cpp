@@ -9,7 +9,6 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 
 #include "itkImage.h"
@@ -24,35 +23,39 @@
 #include "itkComplexToImaginaryImageFilter.h"
 #include "itkComposeImageFilter.h"
 #include "itkMagnitudeAndPhaseToComplexImageFilter.h"
+#include "itkRegionOfInterestImageFilter.h"
 
 #include "QI/Util.h"
-
-using namespace std;
+#include "QI/IO.h"
+#include "QI/Args.h"
 
 namespace itk {
 template<typename TImage>
-class FixGEFilter : public InPlaceImageFilter<TImage> {
+class NegateFilter : public InPlaceImageFilter<TImage> {
 public:
-    typedef FixGEFilter                 Self;
+    typedef NegateFilter                Self;
     typedef InPlaceImageFilter<TImage>  Superclass;
     typedef SmartPointer<Self>          Pointer;
     typedef typename TImage::RegionType        TRegion;
     typedef typename TImage::InternalPixelType TPixel;
 
     itkNewMacro(Self);
-    itkTypeMacro(FixGEFilter, InPlaceImageFilter);
+    itkTypeMacro(NegateFilter, InPlaceImageFilter);
 
 private:
-    FixGEFilter(const Self &); //purposely not implemented
+    NegateFilter(const Self &); //purposely not implemented
     void operator=(const Self &);  //purposely not implemented
-
+    bool m_all = false, m_alternate = false;
 protected:
-    FixGEFilter() {}
-    ~FixGEFilter() {}
+    NegateFilter() {}
+    ~NegateFilter() {}
 
 public:
+    void SetNegate(const bool all, const bool alternate) {
+        m_all = all;
+        m_alternate = all;
+    }
     virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
-        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         typedef typename TImage::PixelType PixelType;
         ImageSliceConstIteratorWithIndex<TImage> inIt(this->GetInput(), region);
         ImageSliceIteratorWithIndex<TImage>      outIt(this->GetOutput(), region);
@@ -63,7 +66,7 @@ public:
         outIt.SetSecondDirection(1);
         inIt.GoToBegin();
         outIt.GoToBegin();
-        PixelType mult(1, 0);
+        PixelType mult(m_all ? -1 : 1, 0);
         while(!inIt.IsAtEnd()) {
             while (!inIt.IsAtEndOfSlice()) {
                 while (!inIt.IsAtEndOfLine()) {
@@ -74,57 +77,48 @@ public:
                 inIt.NextLine();
                 outIt.NextLine();
             }
-            mult = mult * PixelType(-1, 0);
+            if (m_alternate) {
+                mult = mult * PixelType(-1, 0);
+            }
             inIt.NextSlice();
             outIt.NextSlice();
         }
-        // std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+        // std::std::cout << "End " << __PRETTY_FUNCTION__ << std::std::endl;
     }
 };
 
 } // End namespace itk
 
-const string usage {
-"Usage is: qcomplex [input options] [output options] [other options] \n\
-\n\
-Input is specified with lower case letters. One of the following\n\
-combinations must be specified:\n\
-    -m mag_image -p phase_image\n\
-    -r real_image -i imaginary_image\n\
-    -x complex_image\n\
-\n\
-Output is specified with upper case letters. One or more of the\n\
-following can be specified:\n\
-    -M : Output a magnitude image\n\
-    -P : Output a phase image\n\
-    -R : Output a real image\n\
-    -I : Output an imaginary image\n\
-    -X : Output a complex image\n\
-\n\
-Other options:\n\
-    --negate : Multiply everything by -1 before output.\n\
-    --double : Use double precision instead of float\n\
-    --fixge  : Fix alternate slice problem with GE data.\n\
-\n\
-Example:\n\
-    qicomplex -m mag.nii -p phase.nii -R real.nii -I imag.nii\n"
-};
-int verbose = false, use_double = false, fixge = false, do_negate = false;
-const struct option long_options[] =
-{
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"double", no_argument, &use_double, 1},
-    {"fixge", no_argument, &fixge, 1},
-    {"negate", no_argument, &do_negate, 1},
-    {0, 0, 0, 0}
-};
-const char* short_options = "hvm:M:p:P:r:R:i:I:x:X:";
-int c, index_ptr = 0;
+/* Arguments defined here so they are available in the templated run function */
+args::ArgumentParser parser(
+    "Input is specified with lower case letters. A valid combination of inputs "
+    " must be specified, e.g. real & imaginary or magnitude & phase.\n"
+    "Output is specified with upper case letters. Any combination can be given\n"
+    "http://github.com/spinicist/QUIT");
 
-template<typename TPixel> void Run(int argc, char **argv) {
+args::ValueFlag<std::string> in_mag(parser, "IN_MAG", "Input magnitude file", {'m', "mag"});
+args::ValueFlag<std::string> in_pha(parser, "IN_PHA", "Input phase file", {'p', "pha"});
+args::ValueFlag<std::string> in_real(parser, "IN_REAL", "Input real file", {'r', "real"});
+args::ValueFlag<std::string> in_imag(parser, "IN_IMAG", "Input imaginary file", {'i', "imag"});
+args::ValueFlag<std::string> in_complex(parser, "IN_CPLX", "Input complex file", {'x', "complex"});
+args::ValueFlag<std::string> in_realimag(parser, "IN_REALIMAG", "Input real & imaginary file", {'l', "realimag"});
+
+args::ValueFlag<std::string> out_mag(parser, "OUT_MAG", "Output magnitude file", {'M', "MAG"});
+args::ValueFlag<std::string> out_pha(parser, "OUT_PHA", "Output phase file", {'P', "PHA"});
+args::ValueFlag<std::string> out_real(parser, "OUT_REAL", "Output real file", {'R', "REAL"});
+args::ValueFlag<std::string> out_imag(parser, "OUT_IMAG", "Output imaginary file", {'I', "IMAG"});
+args::ValueFlag<std::string> out_complex(parser, "OUT_CPLX", "Output complex file", {'X', "COMPLEX"});
+
+args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+args::Flag     use_double(parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
+args::Flag     fixge(parser, "FIX_GE", "Negate alternate slices (fixes lack of FFT shift)", {"fixge"});
+args::Flag     negate(parser, "NEGATE", "Negate entire volume", {"negate"});
+
+template<typename TPixel>
+void Run() {
     typedef itk::Image<TPixel, 4>          TImage;
-    typedef itk::Image<complex<TPixel>, 4> TXImage;
+    typedef itk::Image<std::complex<TPixel>, 4> TXImage;
     typedef itk::ImageFileReader<TImage>   TReader;
     typedef itk::ImageFileReader<TXImage>  TXReader;
     typedef itk::ImageFileWriter<TImage>   TWriter;
@@ -133,162 +127,121 @@ template<typename TPixel> void Run(int argc, char **argv) {
     typename TImage::Pointer img1 = ITK_NULLPTR, img2 = ITK_NULLPTR;
     typename TXImage::Pointer imgX = ITK_NULLPTR;
 
-    if (verbose) cout << "Reading input files" << endl;
-    bool ri = false, x = false;
-    optind = 1;
-    while ((c = getopt_long(argc, argv, short_options,  long_options, &index_ptr)) != -1) {
-        switch (c) {
-            case 'r':
-                ri = true;
-            case 'm': {
-                auto read = TReader::New();
-                read->SetFileName(optarg);
-                read->Update();
-                img1 = read->GetOutput();
-            } break;
-            case 'i':
-                ri = true;
-            case 'p': {
-                auto read = TReader::New();
-                read->SetFileName(optarg);
-                read->Update();
-                img2 = read->GetOutput();
-            } break;
-            case 'x': {
-                x = true;
-                typename TXReader::Pointer readX = TXReader::New();
-                readX->SetFileName(optarg);
-                readX->Update();
-                imgX = readX->GetOutput();
-            } break;
-            default: break;
+    if (in_real) {
+        if (verbose) std::cout << "Reading real file: " << in_real.Get() << std::endl;
+        auto img1 = QI::ReadImage<TImage>(in_real.Get());
+        if (in_imag) {
+            if (verbose) std::cout << "Reading imaginary file: " << in_imag.Get() << std::endl;
+            auto img2 = QI::ReadImage<TImage>(in_imag.Get());
+        } else {
+            QI_FAIL("Must set real and imaginary inputs together");
         }
-    }
-
-    if (x) {
-        // Nothing to see here
-    } else if (ri) {
-        if (!(img1 && img2)) {
-            QI_EXCEPTION("Must set real and imaginary inputs");
-        }
-        if (verbose) cout << "Combining real and imaginary input" << endl;
         auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
         compose->SetInput(0, img1);
         compose->SetInput(1, img2);
         compose->Update();
         imgX = compose->GetOutput();
-    } else {
-        if (!(img1 && img2)) {
-            QI_EXCEPTION("Must set magnitude and phase inputs");
+        imgX->DisconnectPipeline();
+    } else if (in_mag) {
+        if (verbose) std::cout << "Reading magnitude file: " << in_mag.Get() << std::endl;
+        img1 = QI::ReadImage<TImage>(in_mag.Get());
+        if (in_pha) {
+            if (verbose) std::cout << "Reading phase file: " << in_pha.Get() << std::endl;
+            img2 = QI::ReadImage<TImage>(in_pha.Get());
+        } else {
+            QI_FAIL("Must set magnitude and phase inputs together");
         }
-        if (verbose) cout << "Combining magnitude and phase input" << endl;
         auto compose = itk::MagnitudeAndPhaseToComplexImageFilter<TImage, TImage, TXImage>::New();
         compose->SetInput(0, img1);
         compose->SetInput(1, img2);
         compose->Update();
         imgX = compose->GetOutput();
+        imgX->DisconnectPipeline();
+    } else if (in_complex) {
+        if (verbose) std::cout << "Reading complex file: " << in_complex.Get() << std::endl;
+        imgX = QI::ReadImage<TXImage>(in_complex.Get());
+    } else if (in_realimag) {
+        if (verbose) std::cout << "Reading real/imaginary file: " << in_realimag.Get() << std::endl;
+        auto img_both = QI::ReadImage<TImage>(in_realimag.Get());
+        auto real_region = img_both->GetLargestPossibleRegion();
+        auto imag_region = img_both->GetLargestPossibleRegion();
+        real_region.GetModifiableSize()[3] = real_region.GetSize()[3] / 2;
+        imag_region.GetModifiableSize()[3] = real_region.GetSize()[3];
+        imag_region.GetModifiableIndex()[3] = real_region.GetSize()[3];
+        auto extract_real = itk::RegionOfInterestImageFilter<TImage, TImage>::New();
+        extract_real->SetRegionOfInterest(real_region);
+        extract_real->SetInput(img_both);
+        extract_real->Update();
+        auto extract_imag = itk::RegionOfInterestImageFilter<TImage, TImage>::New();
+        extract_imag->SetRegionOfInterest(imag_region);
+        extract_imag->SetInput(img_both);
+        extract_imag->Update();
+        /* Hack round ITK changing the origin */
+        extract_imag->GetOutput()->SetOrigin(extract_real->GetOutput()->GetOrigin());
+        auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
+        compose->SetInput(0, extract_real->GetOutput());
+        compose->SetInput(1, extract_imag->GetOutput());
+        compose->Update();
+        imgX = compose->GetOutput();
+        imgX->DisconnectPipeline();
+    } else {
+        QI_FAIL("No input files specified, use --help to see usage");
     }
 
-    if (fixge) {
-        if (verbose) cout << "Fixing GE phase bug" << endl;
-        auto fix = itk::FixGEFilter<TXImage>::New();
+    if (fixge || negate) {
+        if (verbose) std::cout << "Negating values" << std::endl;
+        auto fix = itk::NegateFilter<TXImage>::New();
         fix->SetInput(imgX);
+        fix->SetNegate(negate, fixge);
         fix->Update();
         imgX = fix->GetOutput();
     }
 
-    if (do_negate) {
-        if (verbose) cout << "Negating values" << endl;
-        auto neg = itk::MultiplyImageFilter<TXImage, TXImage, TXImage>::New();
-        neg->SetInput(imgX);
-        neg->SetConstant(complex<TPixel>(-1.0, 0.0));
-        neg->Update();
-        imgX = neg->GetOutput();
-    }
-    if (verbose) cout << "Writing output files" << endl;
+    if (verbose) std::cout << "Writing output files" << std::endl;
     typename TWriter::Pointer write = TWriter::New();
-    optind = 1;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &index_ptr)) != -1) {
-        switch (c) {
-            case 'M': {
-                auto o = itk::ComplexToModulusImageFilter<TXImage, TImage>::New();
-                o->SetInput(imgX);
-                write->SetFileName(optarg);
-                write->SetInput(o->GetOutput());
-                write->Update();
-                if (verbose) cout << "Wrote magnitude image " + string(optarg) << endl;
-            } break;
-            case 'P': {
-                auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
-                o->SetInput(imgX);
-                write->SetFileName(optarg);
-                write->SetInput(o->GetOutput());
-                write->Update();
-                if (verbose) cout << "Wrote phase image " + string(optarg) << endl;
-            } break;
-            case 'R': {
-                auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
-                o->SetInput(imgX);
-                write->SetFileName(optarg);
-                write->SetInput(o->GetOutput());
-                write->Update();
-                if (verbose) cout << "Wrote real image " + string(optarg) << endl;
-            } break;
-            case 'I': {
-                auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
-                o->SetInput(imgX);
-                write->SetFileName(optarg);
-                write->SetInput(o->GetOutput());
-                write->Update();
-                if (verbose) cout << "Wrote imaginary image " + string(optarg) << endl;
-            } break;
-            case 'X': {
-                auto writeX = TXWriter::New();
-                writeX->SetFileName(optarg);
-                writeX->SetInput(imgX);
-                writeX->Update();
-                if (verbose) cout << "Wrote complex image " + string(optarg) << endl;
-            } break;
-            default: break;
-        }
+
+    if (out_mag) {
+        auto o = itk::ComplexToModulusImageFilter<TXImage, TImage>::New();
+        o->SetInput(imgX);
+        o->Update();
+        QI::WriteImage(o->GetOutput(), out_mag.Get());
+        if (verbose) std::cout << "Wrote magnitude image " << out_mag.Get() << std::endl;
+    }
+    if (out_pha) {
+        auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
+        o->SetInput(imgX);
+        o->Update();
+        QI::WriteImage(o->GetOutput(), out_pha.Get());
+        if (verbose) std::cout << "Wrote phase image " << out_pha.Get() << std::endl;
+    }
+    if (out_real) {
+        auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
+        o->SetInput(imgX);
+        o->Update();
+        QI::WriteImage(o->GetOutput(), out_real.Get());
+        if (verbose) std::cout << "Wrote real image " << out_real.Get() << std::endl;
+    }
+    if (out_imag) {
+        auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
+        o->SetInput(imgX);
+        o->Update();
+        QI::WriteImage(o->GetOutput(), out_imag.Get());
+        if (verbose) std::cout << "Wrote imaginary image " << out_imag.Get() << std::endl;
+    }
+    if (out_complex) {
+        QI::WriteImage(imgX, out_complex.Get());
+        if (verbose) std::cout << "Wrote complex image " << out_complex.Get() << std::endl;
     }
 }
 
 int main(int argc, char **argv) {
-    // Do one pass for the general options
-    bool have_some_options = false;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &index_ptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case 0: break; // A flag
-            case 'm': case 'M': case 'p': case 'P':
-            case 'r': case 'R': case 'i': case 'I':
-            case 'x': case 'X':
-                have_some_options = true;
-                break;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-            cout << "Unhandled option " << string(1, c) << endl;
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (!have_some_options) {
-        cout << QI::GetVersion() << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-
+    QI::ParseArgs(parser, argc, argv);
     if (use_double) {
-        if (verbose) cout << "Using double precision" << endl;
-        Run<double>(argc, argv);
+        if (verbose) std::cout << "Using double precision" << std::endl;
+        Run<double>();
     } else {
-        if (verbose) cout << "Using float precision" << endl;
-        Run<float>(argc, argv);
+        if (verbose) std::cout << "Using float precision" << std::endl;
+        Run<float>();
     }
-
     return EXIT_SUCCESS;
 }
