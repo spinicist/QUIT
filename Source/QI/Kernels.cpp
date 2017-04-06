@@ -59,7 +59,7 @@ GaussKernel::GaussKernel(std::istream &istr) {
             m_fwhm[0] = stod(nextValue);
             std::getline(istr, nextValue, ',');
             m_fwhm[1] = stod(nextValue);
-            std::getline(istr, nextValue, ',');
+            std::getline(istr, nextValue);
             m_fwhm[2] = stod(nextValue);
         } else {
             m_fwhm = Eigen::Array3d::Ones() * stod(nextValue);
@@ -103,6 +103,32 @@ double BlackmanKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz
     return v;
 }
 
+FixFSEKernel::FixFSEKernel() {}
+FixFSEKernel::FixFSEKernel(std::istream &istr) {
+    if (!istr.eof()) {
+        std::string nextValue;
+        std::getline(istr, nextValue, ',');
+        m_dim = stoi(nextValue);
+        std::getline(istr, nextValue, ',');
+        m_step_index = stoi(nextValue);
+        std::getline(istr, nextValue);
+        m_step_size = stod(nextValue);
+    }
+    if (m_dim > 2) {
+        QI_EXCEPTION("Dimension for FixFSE filter must be less than 3");
+    }
+}
+void FixFSEKernel::print(std::ostream &ostr) const {
+    ostr << "FixFSE," << m_dim << "," << m_step_index << "," << m_step_size << std::endl;
+}
+double FixFSEKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
+    if (fabs(pos[m_dim]) > m_step_index) {
+        return 1.0;
+    } else {
+        return m_step_size;
+    }
+}
+
 std::shared_ptr<FilterKernel> ReadKernel(const std::string &str) {
     std::shared_ptr<FilterKernel> newKernel = nullptr;
     std::istringstream iss(str);
@@ -116,6 +142,8 @@ std::shared_ptr<FilterKernel> ReadKernel(const std::string &str) {
         newKernel = std::make_shared<GaussKernel>(iss);
     } else if (filterName == "Blackman") {
         newKernel = std::make_shared<BlackmanKernel>(iss);
+    } else if (filterName == "FixFSE") {
+        newKernel = std::make_shared<FixFSEKernel>(iss);
     } else {
         QI_EXCEPTION("Unknown filter type");
     }

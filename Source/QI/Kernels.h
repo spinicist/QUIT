@@ -80,6 +80,20 @@ class BlackmanKernel : public FilterKernel
     virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const override;
 };
 
+class FixFSEKernel : public FilterKernel {
+protected:
+    int m_dim = 0, m_step_index = 16;
+    double m_step_size = 0.5;
+  
+public:
+    FixFSEKernel();
+    FixFSEKernel(std::istream &istr);
+    virtual void print(std::ostream &ostr) const override;
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
+                         const Eigen::Array3d &sp) const override;
+};
+
 std::shared_ptr<FilterKernel> ReadKernel(const std::string &str);
 std::ostream &operator<<(std::ostream &ostr, const FilterKernel &k);
 

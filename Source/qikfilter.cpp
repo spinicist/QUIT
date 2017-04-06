@@ -161,6 +161,7 @@ int main(int argc, char **argv) {
     args::Flag complex_in(parser, "COMPLEX_IN", "Input data is complex", {"complex_in"});
     args::Flag complex_out(parser, "COMPLEX_OUT", "Write complex output", {"complex_out"});
     args::Flag save_kernel(parser, "KERNEL", "Save kernels as images", {"save_kernel"});
+    args::Flag save_kspace(parser, "KSPACE", "Save k-space before & after filtering", {"save_kspace"});
     args::Flag filter_per_volume(parser, "FILTER_PER_VOL", "Instead of concatenating multiple filters, use one per volume", {"filter_per_volume"});
     args::ValueFlagList<std::string> filters(parser, "FILTER", "Specify a filter to use (can be multiple)", {'f', "filter"});
     QI::ParseArgs(parser, argc, argv);
@@ -188,7 +189,7 @@ int main(int argc, char **argv) {
         vols = cast->GetOutput();
         vols->DisconnectPipeline();
     }
-
+    std::string out_base = out_prefix.Get() + QI::Basename(in_path.Get());
     /*
      * Main calculation starts hear.
      * First a lot of typedefs.
@@ -198,6 +199,7 @@ int main(int argc, char **argv) {
     typedef itk::CastImageFilter<QI::VolumeXD, QI::VolumeXF>    TCast;
     typedef itk::ConstantPadImageFilter<QI::VolumeXD, QI::VolumeXD> TZeroPad;
     typedef itk::FFTPadImageFilter<QI::VolumeXD>                TFFTPad;
+    typedef itk::FFTShiftImageFilter<QI::VolumeXD, QI::VolumeXD> TFFTShift;
     typedef itk::ComplexToComplexFFTImageFilter<QI::VolumeXD>   TFFT;
     typedef itk::MultiplyImageFilter<QI::VolumeXD, QI::VolumeD, QI::VolumeXD> TMult;
     typedef itk::KernelSource<QI::VolumeD>                      TKernel;
@@ -276,6 +278,15 @@ int main(int argc, char **argv) {
         }
         tkernel->Update();
         mult->Update();
+        if (save_kspace) {
+            auto shift_filter = TFFTShift::New();
+            shift_filter->SetInput(forward->GetOutput());
+            shift_filter->Update();
+            QI::WriteImage(shift_filter->GetOutput(), out_base + "_kspace_before.nii" + QI::OutExt());
+            shift_filter->SetInput(mult->GetOutput());
+            shift_filter->Update();
+            QI::WriteImage(shift_filter->GetOutput(), out_base + "_kspace_after.nii" + QI::OutExt());
+        }
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
         inverse->SetInput(mult->GetOutput());
@@ -295,7 +306,6 @@ int main(int argc, char **argv) {
     vols->SetSpacing(spc);
     vols->DisconnectPipeline();
 
-    std::string out_base = out_prefix.Get() + QI::Basename(in_path.Get());
     const std::string out_path = out_base + "_filtered" + QI::OutExt();
     if (complex_out) {
         if (verbose) cout << "Saving complex output file: " << out_path << endl;
@@ -307,7 +317,9 @@ int main(int argc, char **argv) {
     if (save_kernel) {
         const string kernel_path = out_base + "_kernel" + QI::OutExt();
         if (verbose) cout << "Saving filter kernel to: " << kernel_path << endl;
-        QI::WriteImage(tkernel->GetOutput(), kernel_path);
+        auto shift_filter = itk::FFTShiftImageFilter<QI::VolumeD, QI::VolumeD>::New();
+        shift_filter->SetInput(tkernel->GetOutput());
+        QI::WriteImage(shift_filter->GetOutput(), kernel_path);
     }
     return EXIT_SUCCESS;
 }
