@@ -23,7 +23,7 @@ TukeyKernel::TukeyKernel(std::istream &istr) {
     }
 }
 void TukeyKernel::print(std::ostream &ostr) const {
-    ostr << "Tukey," << m_a << "," << m_q << std::endl;
+    ostr << "Tukey," << m_a << "," << m_q;
 }
 double TukeyKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
     const double r = sqrt(((pos / sz).square() / 3).sum());
@@ -42,7 +42,7 @@ HammingKernel::HammingKernel(std::istream &istr) {
     }
 }
 void HammingKernel::print(std::ostream &ostr) const {
-    ostr << "Hamming," << m_a << "," << m_b << std::endl;
+    ostr << "Hamming," << m_a << "," << m_b;
 }
 double HammingKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
     const double r = sqrt(((pos / sz).square() / 3).sum());
@@ -67,7 +67,7 @@ GaussKernel::GaussKernel(std::istream &istr) {
     }
 }
 void GaussKernel::print(std::ostream &ostr) const {
-    ostr << "Gauss," << m_fwhm.transpose() << std::endl;
+    ostr << "Gauss," << m_fwhm.transpose();
 }
 
 double GaussKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
@@ -95,7 +95,7 @@ void BlackmanKernel::calc_constants() {
     m_a2 = m_alpha / 2.;
 }
 void BlackmanKernel::print(std::ostream &ostr) const {
-    ostr << "Blackman," << m_alpha << std::endl;
+    ostr << "Blackman," << m_alpha;
 }
 double BlackmanKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
     const double r = sqrt(((pos / sz).square() / 3).sum());
@@ -103,30 +103,61 @@ double BlackmanKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz
     return v;
 }
 
-FixFSEKernel::FixFSEKernel() {}
+RectKernel::RectKernel() {}
+RectKernel::RectKernel(std::istream &istr) {
+    if (!istr.eof()) {
+        std::string nextValue;
+        std::getline(istr, nextValue, ','); m_dim = stoi(nextValue);
+        std::getline(istr, nextValue, ','); m_width = stoi(nextValue);
+        std::getline(istr, nextValue, ','); m_val_inside = stod(nextValue);
+        std::getline(istr, nextValue); m_val_outside = stod(nextValue);
+    }
+    if (m_dim > 2) {
+        QI_EXCEPTION("Dimension for Rectangular filter must be less than 3");
+    }
+}
+void RectKernel::print(std::ostream &ostr) const {
+    ostr << "FixFSE," << m_dim << "," << m_width << "," << m_val_inside << "," << m_val_outside;
+}
+double RectKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
+    if (fabs(pos[m_dim]) > m_width) {
+        return m_val_outside;
+    } else {
+        return m_val_inside;
+    }
+}
+
+FixFSEKernel::FixFSEKernel() {
+}
 FixFSEKernel::FixFSEKernel(std::istream &istr) {
     if (!istr.eof()) {
         std::string nextValue;
-        std::getline(istr, nextValue, ',');
-        m_dim = stoi(nextValue);
-        std::getline(istr, nextValue, ',');
-        m_step_index = stoi(nextValue);
-        std::getline(istr, nextValue);
-        m_step_size = stod(nextValue);
+        std::getline(istr, nextValue, ','); m_dim = stoi(nextValue);
+        std::getline(istr, nextValue, ','); m_etl = stoi(nextValue);
+        std::getline(istr, nextValue, ','); m_kzero = stoi(nextValue);
+        std::getline(istr, nextValue, ','); m_te1 = stod(nextValue);
+        std::getline(istr, nextValue, ','); m_esp = stod(nextValue);
+        std::getline(istr, nextValue); m_T2 = stod(nextValue);
     }
     if (m_dim > 2) {
         QI_EXCEPTION("Dimension for FixFSE filter must be less than 3");
     }
 }
 void FixFSEKernel::print(std::ostream &ostr) const {
-    ostr << "FixFSE," << m_dim << "," << m_step_index << "," << m_step_size << std::endl;
+    ostr << "FixFSE," << m_dim << "," << m_etl << "," << m_kzero
+         << "," << m_te1 << "," << m_esp << "," << m_T2;
 }
 double FixFSEKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
-    if (fabs(pos[m_dim]) > m_step_index) {
-        return 1.0;
-    } else {
-        return m_step_size;
-    }
+    const int dim = abs(m_dim);
+    const int dir = m_dim > 0 ? 1 : -1;
+    const int n_trains = 2 * sz[dim] / m_etl;
+    const int n_echo = floor((dir*pos[dim] + sz[dim] - (m_etl / 2) + 2) / n_trains);
+    // At this point, center of kspace is at m_etl / 2. Shift to make it kzero
+    const int n_shifted = n_echo - (m_etl / 2) + m_kzero;
+    // Wrap negative echoes to end of train
+    const int n_final = (n_shifted < 0) ? n_shifted + m_etl : n_shifted;
+    const double E2 = exp((m_te1 + n_final*m_esp)/m_T2);
+    return E2;
 }
 
 std::shared_ptr<FilterKernel> ReadKernel(const std::string &str) {
@@ -142,6 +173,8 @@ std::shared_ptr<FilterKernel> ReadKernel(const std::string &str) {
         newKernel = std::make_shared<GaussKernel>(iss);
     } else if (filterName == "Blackman") {
         newKernel = std::make_shared<BlackmanKernel>(iss);
+    } else if (filterName == "Rectangle") {
+        newKernel = std::make_shared<RectKernel>(iss);
     } else if (filterName == "FixFSE") {
         newKernel = std::make_shared<FixFSEKernel>(iss);
     } else {

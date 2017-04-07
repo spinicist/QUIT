@@ -80,10 +80,24 @@ class BlackmanKernel : public FilterKernel
     virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const override;
 };
 
+class RectKernel : public FilterKernel {
+protected:
+    int m_dim = 0, m_width = 8;
+    double m_val_inside = 1, m_val_outside = 0;
+  
+public:
+    RectKernel();
+    RectKernel(std::istream &istr);
+    virtual void print(std::ostream &ostr) const override;
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
+                         const Eigen::Array3d &sp) const override;
+};
+
 class FixFSEKernel : public FilterKernel {
 protected:
-    int m_dim = 0, m_step_index = 16;
-    double m_step_size = 0.5;
+    int m_dim = 0, m_etl = 16, m_kzero = 6;
+    double m_te1 = 0, m_esp = 8, m_T2 = 40;
   
 public:
     FixFSEKernel();
