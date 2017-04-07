@@ -123,27 +123,6 @@ private:
 //******************************************************************************
 // Main
 //******************************************************************************
-const string usage {
-"Usage is: qikfilter [options] input \n\
-\n\
-Filter images in k-Space\n\
-\n\
-Options:\n\
-    --help, -h           : Print this message.\n\
-    --verbose, -v        : Print more information.\n\
-    --out, -o path       : Specify an output filename (default image base).\n\
-    --filter, -f F       : Choose a filter (see below).\n\
-    --zeropad, -z Z      : Zero-pad by Z voxels.\n\
-    --save_kernel, -k    : Save all pipeline steps.\n\
-    --complex_in         : Read complex data.\n\
-    --complex_out        : Output complex data.\n\
-    --threads, -T N      : Use N threads (default=hardware limit).\n\
-\n\
-Valid filters are:\n\
-    Tukey,a,q   - Tukey filter with parameters a & q\n\
-    Hamming,a,b - Hamming filter with parameters a & b\n\
-    Gauss,a     - Gaussian with width a (in k-space)\n"
-};
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
@@ -282,10 +261,10 @@ int main(int argc, char **argv) {
             auto shift_filter = TFFTShift::New();
             shift_filter->SetInput(forward->GetOutput());
             shift_filter->Update();
-            QI::WriteImage(shift_filter->GetOutput(), out_base + "_kspace_before.nii" + QI::OutExt());
+            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_before.nii" + QI::OutExt());
             shift_filter->SetInput(mult->GetOutput());
             shift_filter->Update();
-            QI::WriteImage(shift_filter->GetOutput(), out_base + "_kspace_after.nii" + QI::OutExt());
+            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_after.nii" + QI::OutExt());
         }
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
