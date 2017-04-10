@@ -127,11 +127,8 @@ private:
 int main(int argc, char **argv) {
     Eigen::initParallel();
 
-    args::ArgumentParser parser("Filters/smooths images in k-space\nhttp://github.com/spinicist/QUIT",
-        "Va");
-
+    args::ArgumentParser parser("Filters/smooths images in k-space\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> in_path(parser, "INPUT", "Input file.");
-
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
