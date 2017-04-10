@@ -74,8 +74,7 @@ add_library( ${ALGLIB} STATIC
 set( UTILS qihdr qinewimage qidiff qiconvert
            qicomplex qiaffine qimask qikfilter qireorder
            qisplitsubjects qiunwrap qipolyfit qipolyimg
-           qi_roivolumes qi_roivalues
-           qi_glmsetup qi_glmcontrasts )
+           qi_rois qi_glmsetup qi_glmcontrasts )
 set( QUANT qisignal
            qiafi qidream
            qidespot1 qidespot2 qidespot1hifi qidespot2fm
