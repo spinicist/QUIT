@@ -30,8 +30,8 @@ args::PositionalList<std::string> in_paths(parser, "INPUT", "Input file paths.")
 args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag     verbose(parser, "VERBOSE", "Print more information (will mess up output, for test runs only)", {'v', "verbose"});
 args::Flag     volumes(parser, "VOLUMES", "Output ROI volumes, not average values (does not require value images)", {'V', "volumes"});
-args::ValueFlag<std::string> label_list_path(parser, "LABEL_NUMBERS", "Specify labels to use in text file (one per line, default is all)", {'l', "labels"});
-args::ValueFlag<std::string> label_names_path(parser, "LABEL_NAMES", "Specify label names and print in first column (LABEL_NUMBERS must be specified)", {'n', "names"});
+args::ValueFlag<std::string> label_list_path(parser, "LABELS", "Specify labels and names to use in text file 'label number, label name' one per line", {'l', "labels"});
+args::Flag     print_names(parser, "PRINT_NAMES", "Print label names in first column/row (LABEL_NUMBERS must be specified)", {'n', "print_names"});
 args::Flag     transpose(parser, "TRANSPOSE", "Transpose output table (values go in rows instead of columns", {'t', "transpose"});
 args::Flag     ignore_zero(parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
 args::ValueFlagList<std::string> header_paths(parser, "HEADER", "Add a header (can be specified multiple times)", {'H', "header"});
@@ -49,26 +49,15 @@ double VoxelVolume(QI::VolumeI::Pointer img) {
 /*
  * Helper function to work out the label list
  */
-void GetLabelList(TLblGeoFilter::LabelsType &labels, std::vector<std::string> &label_names) {
+void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::string> &label_names) {
     if (label_list_path) {
-        if (verbose) std::cout << "Opening label numbers: " << label_list_path.Get() << std::endl;
+        if (verbose) std::cout << "Opening label list file: " << label_list_path.Get() << std::endl;
         std::ifstream file(label_list_path.Get());
-        std::string line;
-        while (std::getline(file, line)) {
-            std::stringstream linestream(line);
-            int label;
-            linestream >> label;
-            labels.push_back(label);
-        }
-        if (label_names_path) {
-            if (verbose) std::cout << "Opening label names: " << label_names_path.Get() << std::endl;
-            std::ifstream name_file(label_names_path.Get());
-            while (std::getline(name_file, line)) {
-                label_names.push_back(line);
-            }
-            if (label_names.size() != labels.size()) {
-                QI_EXCEPTION("Number of labels and names does not match");
-            }
+        std::string temp;
+        while (std::getline(file, temp, ',')) {
+            label_numbers.push_back(stoi(temp));
+            std::getline(file, temp);
+            label_names.push_back(temp);
         }
     } else {
         if (verbose) std::cout << "Reading first label file to determine labels: " << QI::CheckList(in_paths).at(0) << std::endl;
@@ -79,12 +68,12 @@ void GetLabelList(TLblGeoFilter::LabelsType &labels, std::vector<std::string> &l
         QI::VolumeI::Pointer img = QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0));
         label_filter->SetInput(img);
         label_filter->Update();
-        labels = label_filter->GetLabels();
-        std::sort(labels.begin(), labels.end());
+        label_numbers = label_filter->GetLabels();
+        std::sort(label_numbers.begin(), label_numbers.end());
     }
     if (ignore_zero) {
         if (verbose) std::cout << "Removing zero from label list." << std::endl;
-        labels.erase(std::remove(labels.begin(), labels.end(), 0), labels.end());
+        label_numbers.erase(std::remove(label_numbers.begin(), label_numbers.end(), 0), label_numbers.end());
     }
 }
 
@@ -176,7 +165,7 @@ int main(int argc, char **argv) {
 
     if (verbose) std::cout << "Writing CSV: " << std::endl;
     if (transpose) {
-        if (label_names_path) {
+        if (print_names) {
             for (int i = 0; i < headers.size(); ++i) {
                 std::cout << ",";
             }
@@ -200,7 +189,7 @@ int main(int argc, char **argv) {
         }
     } else {
         for (auto hdr = headers.begin(); hdr != headers.end(); ++hdr) {
-            if (label_names_path) std::cout << ",";
+            if (print_names) std::cout << ",";
             auto h_el = hdr->begin();
             std::cout << *h_el;
             for (++h_el; h_el != hdr->end(); ++h_el) {
@@ -209,7 +198,7 @@ int main(int argc, char **argv) {
             std::cout << std::endl;
         }
         for (int l = 0; l < labels.size(); ++l) {
-            if (label_names_path)
+            if (print_names)
                 std::cout << label_names.at(l) << ",";
             
             auto values_col_it = values_table.begin();
