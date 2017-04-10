@@ -44,6 +44,16 @@ T CheckPos(args::Positional<T> &a) {
     }
 }
 
+template<typename T>
+std::vector<T> CheckList(args::PositionalList<T> &a) {
+    if (a) {
+        return a.Get();
+    } else {
+        std::cerr << "No values of " << a.Name() << " specified. Use --help to see usage." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
 template<typename TRegion = typename QI::VolumeF::RegionType>
 TRegion RegionOpt(const std::string &a) {
     std::istringstream iss(a);
