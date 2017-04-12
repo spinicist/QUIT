@@ -34,6 +34,7 @@ args::ValueFlag<std::string> label_list_path(parser, "LABELS", "Specify labels a
 args::Flag     print_names(parser, "PRINT_NAMES", "Print label names in first column/row (LABEL_NUMBERS must be specified)", {'n', "print_names"});
 args::Flag     transpose(parser, "TRANSPOSE", "Transpose output table (values go in rows instead of columns", {'t', "transpose"});
 args::Flag     ignore_zero(parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
+args::ValueFlag<std::string> delim(parser, "DELIMITER", "Specify delimiter to use between entries (default ,)", {'d',"delim"}, ",");
 args::ValueFlagList<std::string> header_paths(parser, "HEADER", "Add a header (can be specified multiple times)", {'H', "header"});
 
 /*
@@ -167,44 +168,44 @@ int main(int argc, char **argv) {
     if (transpose) {
         if (print_names) {
             for (int i = 0; i < headers.size(); ++i) {
-                std::cout << ",";
+                std::cout << delim.Get();
             }
             auto it = label_names.begin();
             std::cout << *it;
             for (++it; it != label_names.end(); ++it) {
-                std::cout << "," << *it;
+                std::cout << delim.Get() << *it;
             }
             std::cout << std::endl;
         }
         for (int row = 0; row < values_table.size(); ++row){
             for (auto h = headers.begin(); h != headers.end(); h++) {
-                std::cout << h->at(row) << ",";
+                std::cout << h->at(row) << delim.Get();
             }
             auto values_row_it = values_table.at(row).begin();
             std::cout << *values_row_it;
             for (++values_row_it; values_row_it != values_table.at(row).end(); ++values_row_it) {
-                std::cout << "," << *values_row_it;
+                std::cout << delim.Get() << *values_row_it;
             }
             std::cout << std::endl;
         }
     } else {
         for (auto hdr = headers.begin(); hdr != headers.end(); ++hdr) {
-            if (print_names) std::cout << ",";
+            if (print_names) std::cout << delim.Get();
             auto h_el = hdr->begin();
             std::cout << *h_el;
             for (++h_el; h_el != hdr->end(); ++h_el) {
-                std::cout << "," << *h_el;
+                std::cout << delim.Get() << *h_el;
             }
             std::cout << std::endl;
         }
         for (int l = 0; l < labels.size(); ++l) {
             if (print_names)
-                std::cout << label_names.at(l) << ",";
+                std::cout << label_names.at(l) << delim.Get();
             
             auto values_col_it = values_table.begin();
             std::cout << values_col_it->at(l);
             for (++values_col_it; values_col_it != values_table.end(); ++values_col_it) {
-                std::cout << "," << values_col_it->at(l);
+                std::cout << delim.Get() << values_col_it->at(l);
             }
             std::cout << std::endl;
         }

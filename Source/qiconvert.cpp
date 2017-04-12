@@ -29,11 +29,11 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser("Converts images between formats\nhttp://github.com/spinicist/QUIT");
 
     args::Positional<std::string> input_file(parser, "INPUT", "Input file.");
-    args::Positional<std::string> output_file(parser, "OUTPUT", "Output file.");
+    args::Positional<std::string> output_suffix(parser, "OUTPUT", "Output suffix, must include extension.");
 
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> output_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlagList<std::string> rename(parser, "RENAME", "Rename using specified header fields", {'r', "rename"});
     QI::ParseArgs(parser, argc, argv);
 
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     size_t dims = imageIO->GetNumberOfDimensions();
     auto PixelType = imageIO->GetPixelType();
 
-    std::string output = out_prefix.Get();
+    std::string output = output_prefix.Get();
     if (rename) {
         bool append_delim = false;
         for (const auto rename_field: args::get(rename)) {
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
             double double_value;
             auto dict = imageIO->GetMetaDataDictionary();
             if (!dict.HasKey(rename_field)) {
-                std::cout << "Rename field '" << rename_field << "' not found in header. Ignoring" << std::endl;
+                if (verbose) std::cout << "Rename field '" << rename_field << "' not found in header. Ignoring" << std::endl;
                 continue;
             }
             if (append_delim) {
@@ -80,7 +80,9 @@ int main(int argc, char **argv) {
     } else {
         output.append(QI::Basename(input));
     }
-    output.append(QI::CheckPos(output_file));
+    output.append(QI::CheckPos(output_suffix));
+    std::cout << output << std::endl;
+
     #define DIM_SWITCH( N ) \
     case N:\
         switch (PixelType) {\
