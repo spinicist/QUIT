@@ -167,8 +167,8 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Writing CSV: " << std::endl;
     if (transpose) {
         if (print_names) {
-            for (int i = 0; i < headers.size(); ++i) {
-                std::cout << delim.Get();
+            for (int h = 0; h < headers.size(); ++h) {
+                std::cout << header_paths.Get().at(h) << delim.Get();
             }
             auto it = label_names.begin();
             std::cout << *it;
@@ -189,11 +189,11 @@ int main(int argc, char **argv) {
             std::cout << std::endl;
         }
     } else {
-        for (auto hdr = headers.begin(); hdr != headers.end(); ++hdr) {
-            if (print_names) std::cout << delim.Get();
-            auto h_el = hdr->begin();
+        for (int h = 0; h < headers.size(); h++) {
+            if (print_names) std::cout << header_paths.Get().at(h) << delim.Get();
+            auto h_el = headers.at(h).begin();
             std::cout << *h_el;
-            for (++h_el; h_el != hdr->end(); ++h_el) {
+            for (++h_el; h_el != headers.at(h).end(); ++h_el) {
                 std::cout << delim.Get() << *h_el;
             }
             std::cout << std::endl;
