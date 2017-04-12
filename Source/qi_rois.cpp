@@ -104,7 +104,7 @@ std::vector<std::vector<std::string>> GetHeaders(int n_files) {
  * Helper function to actually work out all the values
  */
 std::vector<std::vector<double>> GetValues(const int n_files, const TLblGeoFilter::LabelsType &labels) {
-    std::vector<std::vector<double>> values(in_paths.Get().size(), std::vector<double>(labels.size()));
+    std::vector<std::vector<double>> values(n_files, std::vector<double>(labels.size()));
     TLblGeoFilter::Pointer label_filter = TLblGeoFilter::New();
     QI::VolumeI::Pointer label_img = ITK_NULLPTR;
     QI::VolumeF::Pointer value_img = ITK_NULLPTR;
