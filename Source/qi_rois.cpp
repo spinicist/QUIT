@@ -123,12 +123,12 @@ std::vector<std::vector<double>> GetValues(const int n_files, const TLblGeoFilte
         label_filter->SetInput(label_img);
         label_filter->Update();
         for (int i = 0; i < labels.size(); i++) {
-            const double volume = vox_volume * label_filter->GetVolume(labels.at(i));
+            const double n_voxels = label_filter->GetVolume(labels.at(i)); // This is the count of pixels
             if (volumes) {
-                values.at(f).at(i) = volume;
+                values.at(f).at(i) = vox_volume * n_voxels;
             } else {
                 const double integrated = label_filter->GetIntegratedIntensity(labels.at(i));
-                values.at(f).at(i) = integrated / volume;
+                values.at(f).at(i) = integrated / n_voxels;
             }
         }
     }
