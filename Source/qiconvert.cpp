@@ -25,6 +25,49 @@ void Convert(const std::string &input, const std::string &output) {
     QI::WriteImage<TImage>(image, output);
 }
 
+template<int D, typename T>
+void ConvertPixel(const std::string &input, const std::string &output,
+                  const itk::ImageIOBase::IOPixelType &pix)
+{
+    switch (pix) {
+        case itk::ImageIOBase::SCALAR: Convert<itk::Image<T, D>>(input, output); break;
+        case itk::ImageIOBase::COMPLEX: Convert<itk::Image<std::complex<T>, D>>(input, output); break;
+        default: QI_FAIL("Unsupported pixel type in image " << input);
+    }
+}
+
+template<int D>
+void ConvertComponent(const std::string &input, const std::string &output,
+                      const itk::ImageIOBase::IOComponentType &component,
+                      const itk::ImageIOBase::IOPixelType &pix)
+{
+    switch (component) {
+        case itk::ImageIOBase::UNKNOWNCOMPONENTTYPE: QI_FAIL("Unknown component type in image " << input);
+        case itk::ImageIOBase::UCHAR:  ConvertPixel<D, unsigned char>(input, output, pix); break;
+        case itk::ImageIOBase::CHAR:   ConvertPixel<D, char>(input, output, pix); break;
+        case itk::ImageIOBase::USHORT: ConvertPixel<D, unsigned short>(input, output, pix); break;
+        case itk::ImageIOBase::SHORT:  ConvertPixel<D, short>(input, output, pix); break;
+        case itk::ImageIOBase::UINT:   ConvertPixel<D, unsigned int>(input, output, pix); break;
+        case itk::ImageIOBase::INT:    ConvertPixel<D, int>(input, output, pix); break;
+        case itk::ImageIOBase::ULONG:  ConvertPixel<D, unsigned long>(input, output, pix); break;
+        case itk::ImageIOBase::LONG:   ConvertPixel<D, long>(input, output, pix); break;
+        case itk::ImageIOBase::FLOAT:  ConvertPixel<D, float>(input, output, pix); break;
+        case itk::ImageIOBase::DOUBLE: ConvertPixel<D, double>(input, output, pix); break;
+    }
+}
+
+void ConvertDims(const std::string &input, const std::string &output, const int D,
+                 const itk::ImageIOBase::IOComponentType &component,
+                 const itk::ImageIOBase::IOPixelType &pix)
+{
+    switch (D) {
+        case 2: ConvertComponent<2>(input, output, component, pix); break;
+        case 3: ConvertComponent<3>(input, output, component, pix); break;
+        case 4: ConvertComponent<4>(input, output, component, pix); break;
+        default: QI_FAIL("Unsupported dimension: " << D);
+    }
+}
+
 int main(int argc, char **argv) {
     args::ArgumentParser parser("Converts images between formats\nhttp://github.com/spinicist/QUIT");
 
@@ -38,16 +81,12 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv);
 
     const std::string input = QI::CheckPos(input_file);
-    itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(input.c_str(), itk::ImageIOFactory::ReadMode);
-    if (!imageIO) {
-        cerr << "Could not open: " << input << endl;
-        return EXIT_FAILURE;
-    }
-    imageIO->SetFileName(input);
-    imageIO->ReadImageInformation();
-    size_t dims = imageIO->GetNumberOfDimensions();
-    auto PixelType = imageIO->GetPixelType();
+    itk::ImageIOBase::Pointer header = itk::ImageIOFactory::CreateImageIO(input.c_str(), itk::ImageIOFactory::ReadMode);
+    if (!header) QI_FAIL("Could not open: " << input);
+    header->SetFileName(input);
+    header->ReadImageInformation();
 
+    /* Deal with renaming */
     std::string output = output_prefix.Get();
     if (rename) {
         bool append_delim = false;
@@ -55,7 +94,7 @@ int main(int argc, char **argv) {
             std::vector<std::string> string_array_value;
             std::string string_value;
             double double_value;
-            auto dict = imageIO->GetMetaDataDictionary();
+            auto dict = header->GetMetaDataDictionary();
             if (!dict.HasKey(rename_field)) {
                 if (verbose) std::cout << "Rename field '" << rename_field << "' not found in header. Ignoring" << std::endl;
                 continue;
@@ -83,22 +122,11 @@ int main(int argc, char **argv) {
     output.append(QI::CheckPos(output_suffix));
     std::cout << output << std::endl;
 
-    #define DIM_SWITCH( N ) \
-    case N:\
-        switch (PixelType) {\
-        case itk::ImageIOBase::SCALAR: Convert<itk::Image<float, N>>(input, output); break;\
-        case itk::ImageIOBase::COMPLEX: Convert<itk::Image<std::complex<float>, N>>(input, output); break;\
-        default: std::cerr << "Unsupported PixelType: " << PixelType << std::endl; return EXIT_FAILURE;\
-        }\
-    break;
+    auto dims = header->GetNumberOfDimensions();
+    auto pixel_type = header->GetPixelType();
+    auto component_type = header->GetComponentType();
 
-    switch (dims) {
-    DIM_SWITCH( 2 )
-    DIM_SWITCH( 3 )
-    DIM_SWITCH( 4 )
-    }
-    
-    #undef DIM_SWITCH
+    ConvertDims(input, output, dims, component_type, pixel_type);
 
     return EXIT_SUCCESS;
 }
