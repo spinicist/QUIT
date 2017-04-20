@@ -11,7 +11,7 @@
  */
 
 #include <iostream>
-
+#include "itkMetaDataObject.h"
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/Option.h"
@@ -37,6 +37,7 @@ int main(int argc, char **argv) {
     QI::Switch print_origin('o', "origin", "Print the the origin", opts);
     QI::Switch print_spacings('S',"spacings", "Print the voxel spacings/sizes", opts);
     QI::Option<int> print_spacing(0, 'P',"spacing", "Print a specific spacing/size", opts);
+    QI::Option<string> header_field("", 'h', "header", "Print a header field", opts);
     QI::Switch print_voxvol('v',"voxvol","Calculate and print the volume of one voxel", opts);
     QI::Switch print_sizes('s',"sizes", "Print the dimension/matrix sizes", opts);
     QI::Switch print_type('T',"dtype", "Print the data type", opts);
@@ -82,10 +83,36 @@ int main(int argc, char **argv) {
             }
         }
         if (print_spacing.set()) {
+
             if (*print_spacing > -1 && *print_spacing < dims) {
                 cout << imageIO->GetSpacing(*print_spacing) << endl;
             } else {
                 cerr << "Invalid dimension " << *print_spacing << " for image " << fname << endl;
+            }
+        }
+        if (header_field.set()) {
+            auto header = imageIO->GetMetaDataDictionary();
+            if (header.HasKey(*header_field)) {
+                std::vector<std::string> string_array_value;
+                std::vector<double> double_array_value;
+                std::string string_value;
+                double double_value;
+                std::cout << *header_field << ": ";
+                if (ExposeMetaData(header, *header_field, string_array_value)) {
+                    for (const auto &v : string_array_value) std::cout << v << ",";
+                    std::cout << std::endl;
+                } else if (ExposeMetaData(header, *header_field, double_array_value)) {
+                    for (const auto &v : double_array_value) std::cout << v << ",";
+                    std::cout << std::endl;
+                } else if (ExposeMetaData(header, *header_field, string_value)) {
+                   std::cout << string_value << std::endl;
+                } else if (ExposeMetaData(header, *header_field, double_value)) {
+                    std::cout << double_value << std::endl;
+                } else {
+                    QI_EXCEPTION("Could not determine type of rename header field:" << *header_field);
+                }
+            } else {
+                std::cout << "Header field not found: " << *header_field << std::endl;
             }
         }
     }
