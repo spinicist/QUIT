@@ -62,6 +62,19 @@ std::string StripExt(const std::string &filename) {
     }
 }
 
+std::string GetExt(const std::string &filename) {
+    std::size_t dot = filename.find_last_of(".");
+    if (dot != std::string::npos) {
+        /* Deal with .nii.gz files */
+        if (filename.substr(dot) == ".gz") {
+            dot = filename.find_last_of(".", dot - 1);
+        }
+        return filename.substr(dot);
+    } else {
+        QI_EXCEPTION("No extension found in string: " << filename);
+    }
+}
+
 std::string Basename(const std::string &path) {
     std::size_t slash = path.find_last_of("/");
     if (slash != std::string::npos) {
