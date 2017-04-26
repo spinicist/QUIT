@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <algorithm>
 
 #include "itkMetaDataObject.h"
 
@@ -83,6 +84,17 @@ void ConvertDims(const std::string &input, const std::string &output, const int 
 }
 
 /*
+ * Helper function to sanitise meta-data to be suitable for a filename
+ */
+std::string SanitiseString(const std::string &s) {
+    const std::string forbidden = " \\/:?\"<>|*+-=";
+    std::string out(s.size(), ' ');
+    std::transform(s.begin(), s.end(), out.begin(),
+                   [&forbidden](char c) { return forbidden.find(c) != std::string::npos ? '_' : c; });
+    return out;
+}
+
+/*
  * Helper function to work out the name of the output file
  */
 std::string RenameFromHeader(const itk::MetaDataDictionary &header) {
@@ -102,9 +114,9 @@ std::string RenameFromHeader(const itk::MetaDataDictionary &header) {
             append_delim = true;
         }
         if (ExposeMetaData(header, rename_field, string_array_value)) {
-            output.append(string_array_value[0]);
+            output.append(SanitiseString(string_array_value[0]));
         } else if (ExposeMetaData(header, rename_field, string_value)) {
-            output.append(string_value);
+            output.append(SanitiseString(string_value));
         } else if (ExposeMetaData(header, rename_field, double_value)) {
             std::ostringstream formatted;
             formatted << double_value;
