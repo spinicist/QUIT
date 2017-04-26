@@ -57,13 +57,16 @@ std::vector<T> CheckList(args::PositionalList<T> &a) {
 template<typename TRegion = typename QI::VolumeF::RegionType>
 TRegion RegionOpt(const std::string &a) {
     std::istringstream iss(a);
+    std::string el;
     typename TRegion::IndexType start;
     typename TRegion::SizeType size;
     for (int i = 0; i < TRegion::ImageDimension; i++) {
-        iss >> start[i];
+        std::getline(iss, el, ',');
+        start[i] = std::stoi(el);
     }
     for (int i = 0; i < TRegion::ImageDimension; i++) {
-        iss >> size[i];
+        std::getline(iss, el, ',');
+        size[i] = std::stoi(el);
     }
     TRegion r;
     r.SetIndex(start);
