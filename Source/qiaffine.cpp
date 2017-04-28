@@ -54,6 +54,54 @@ template<typename TImage>
 int Pipeline() {
     auto image = QI::ReadImage<TImage>(QI::CheckPos(source_path));
 
+    // Permute if required
+    if (permute) {
+        auto permute_filter = itk::PermuteAxesImageFilter<TImage>::New();
+        itk::FixedArray<unsigned int, TImage::ImageDimension> permute_order;
+        std::istringstream iss(permute.Get());
+        std::string el;
+        for (int i = 0; i < 3; i++) {
+            std::getline(iss, el, ',');
+            permute_order[i] = std::stoi(el);
+        }
+        for (int i = 3; i < TImage::ImageDimension; i++) {
+            permute_order[i] = i;
+        }
+        if (!iss)
+            QI_FAIL("Failed to read permutation order: " << permute.Get());
+
+        permute_filter->SetInput(image);
+        permute_filter->SetOrder(permute_order);
+        permute_filter->Update();
+        image = permute_filter->GetOutput();
+        image->DisconnectPipeline();
+    }
+
+    // Flip if required
+    if (flip) {
+        auto flip_filter = itk::FlipImageFilter<TImage>::New();
+        itk::FixedArray<bool, TImage::ImageDimension> flip_axes; // Save this
+        std::istringstream iss(flip.Get());
+        std::string el;
+        for (int i = 0; i < 3; i++) {
+            std::getline(iss, el, ',');
+            flip_axes[i] = (std::stoi(el) > 0);
+        }
+        for (int i = 3; i < TImage::ImageDimension; i++) {
+            flip_axes[i] = false;
+        }
+        if (!iss)
+            QI_FAIL("Failed to read flip: " << flip.Get());
+        if (verbose) std::cout << "Flipping: " << flip_axes << std::endl;
+        flip_filter->SetInput(image);
+        flip_filter->SetFlipAxes(flip_axes);
+        flip_filter->SetFlipAboutOrigin(false);
+        flip_filter->Update();
+        image = flip_filter->GetOutput();
+        image->DisconnectPipeline();
+    }
+
+
     typename TImage::DirectionType fullDir = image->GetDirection();
     typename TImage::SpacingType fullSpacing = image->GetSpacing();
     typename TImage::PointType fullOrigin = image->GetOrigin();
@@ -138,52 +186,6 @@ int Pipeline() {
     image->SetDirection(fullDir);
     image->SetOrigin(fullOrigin);
     image->SetSpacing(fullSpacing);
-    
-    // Permute if required
-    if (permute) {
-        auto permute_filter = itk::PermuteAxesImageFilter<TImage>::New();
-        itk::FixedArray<unsigned int, TImage::ImageDimension> permute_order;
-        std::istringstream iss(permute.Get());
-        std::string el;
-        for (int i = 0; i < 3; i++) {
-            std::getline(iss, el, ',');
-            permute_order[i] = std::stoi(el);
-        }
-        for (int i = 3; i < TImage::ImageDimension; i++) {
-            permute_order[i] = i;
-        }
-        if (!iss)
-            QI_FAIL("Failed to read permutation order: " << permute.Get());
-
-        permute_filter->SetInput(image);
-        permute_filter->SetOrder(permute_order);
-        permute_filter->Update();
-        image = permute_filter->GetOutput();
-        image->DisconnectPipeline();
-    }
-
-    // Flip if required
-    if (flip) {
-        auto flip_filter = itk::FlipImageFilter<TImage>::New();
-        itk::FixedArray<bool, TImage::ImageDimension> flip_axes;
-        std::istringstream iss(flip.Get());
-        std::string el;
-        for (int i = 0; i < 3; i++) {
-            std::getline(iss, el, ',');
-            flip_axes[i] = std::stoi(el) > 0;
-        }
-        for (int i = 3; i < TImage::ImageDimension; i++) {
-            flip_axes[i] = false;
-        }
-        if (!iss)
-            QI_FAIL("Failed to read flip: " << flip.Get());
-
-        flip_filter->SetInput(image);
-        flip_filter->SetFlipAxes(flip_axes);
-        flip_filter->Update();
-        image = flip_filter->GetOutput();
-        image->DisconnectPipeline();
-    }
 
     // Write out the edited file
     if (dest_path) {
