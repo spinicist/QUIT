@@ -58,7 +58,9 @@ void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::str
         while (std::getline(file, temp, ',')) {
             label_numbers.push_back(stoi(temp));
             std::getline(file, temp);
+            temp.erase(std::remove(temp.begin(), temp.end(), '\r'), temp.end()); // Deal with rogue ^M characters
             label_names.push_back(temp);
+            if (verbose) std::cout << "Read label: " << label_numbers.back() << ", name: " << label_names.back() << std::endl;
         }
     } else {
         if (verbose) std::cout << "Reading first label file to determine labels: " << QI::CheckList(in_paths).at(0) << std::endl;
@@ -71,6 +73,10 @@ void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::str
         label_filter->Update();
         label_numbers = label_filter->GetLabels();
         std::sort(label_numbers.begin(), label_numbers.end());
+        if (verbose) {
+            std::cout << "Found the following labels:" << std::endl;
+            for (auto &l : label_numbers) std::cout << l << std::endl;
+        }
     }
     if (ignore_zero) {
         if (verbose) std::cout << "Removing zero from label list." << std::endl;
@@ -199,9 +205,10 @@ int main(int argc, char **argv) {
             std::cout << std::endl;
         }
         for (int l = 0; l < labels.size(); ++l) {
-            if (print_names)
-                std::cout << label_names.at(l) << delim.Get();
-            
+            if (print_names) {
+                std::cout << label_names.at(l) << std::flush << delim.Get();
+            }
+
             auto values_col_it = values_table.begin();
             std::cout << values_col_it->at(l);
             for (++values_col_it; values_col_it != values_table.end(); ++values_col_it) {
