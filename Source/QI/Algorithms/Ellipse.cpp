@@ -52,7 +52,7 @@ Eigen::MatrixXd HyperEllipse::hyperC(const Eigen::ArrayXd &x, const Eigen::Array
     return C;
 }
 
-std::array<float, 6> HyperEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+std::array<float, 7> HyperEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
                                              const double TR, const double flip) const {
     Eigen::ArrayXcd data = indata.cast<std::complex<double>>();
     const double scale = data.abs().maxCoeff();
@@ -73,7 +73,7 @@ std::array<float, 6> HyperEllipse::applyFlip(const Eigen::Map<const Eigen::Array
     const double dsc=(Z[1]*Z[1]-Z[0]*Z[2]);
     const double xc = (Z[2]*Z[3]-Z[1]*Z[4])/dsc;
     const double yc = (Z[0]*Z[4]-Z[1]*Z[3])/dsc;
-    const double th = atan2(yc,xc);
+    const double theta_te = atan2(yc,xc);
     const double num = 2*(Z[0]*(Z[4]*Z[4])+Z[2]*(Z[3]*Z[3])+Z[5]*(Z[1]*Z[1])-2*Z[1]*Z[3]*Z[4]-Z[0]*Z[2]*Z[5]);
     double A = sqrt(num/(dsc*(sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
     double B = sqrt(num/(dsc*(-sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
@@ -83,11 +83,23 @@ std::array<float, 6> HyperEllipse::applyFlip(const Eigen::Map<const Eigen::Array
     double a, b;
     double c = sqrt(xc*xc+yc*yc);
     SemiaxesToHoff(A, B, c, a, b);
-    std::array<float, 6> outputs;
-    EllipseToMRI(a, b, c*scale, th, TR, flip,
+
+    /* Calculate theta_tr, i.e. drop RF phase, eddy currents etc. */
+    /* First, center, rotate back to vertical and get 't' parameter */
+    const Eigen::ArrayXcd vert = data / std::polar(1., theta_te);
+    const Eigen::ArrayXd ct = (vert.real() - c) / A;
+    const Eigen::VectorXd rhs = (ct - b) / (b*ct - 1);
+    Eigen::MatrixXd lhs(rhs.rows(), 2);
+    lhs.col(0) = cos(m_sequence->allPhi());
+    lhs.col(1) = sin(m_sequence->allPhi());
+    const Eigen::VectorXd K = (lhs.transpose() * lhs).partialPivLu().solve(lhs.transpose() * rhs);
+    const double theta_0 = atan2(K[1], K[0]);
+    std::array<float, NumOutputs> outputs;
+    EllipseToMRI(a, b, c*scale, theta_0, TR, flip,
                  outputs[0], outputs[1], outputs[2], outputs[3], m_debug);
     outputs[4] = a;
     outputs[5] = b;
+    outputs[6] = std::arg(std::polar(1.,theta_te) / std::polar(1.,theta_0/2));
     return outputs;
 }
 
@@ -207,7 +219,7 @@ void ConstrainedEllipse::fit(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y, c
     }
 }
 
-std::array<float, 6> ConstrainedEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+std::array<float, 7> ConstrainedEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
                                             const double TR, const double flip) const {
     Eigen::ArrayXcd data = indata.cast<std::complex<double>>();
     const double scale = data.abs().maxCoeff();
@@ -242,7 +254,7 @@ std::array<float, 6> ConstrainedEllipse::applyFlip(const Eigen::Map<const Eigen:
     double ea, eb;
     double c = sqrt(xc[0]*xc[0]+xc[1]*xc[1]);
     SemiaxesToHoff(sA, sB, c, ea, eb);
-    std::array<float, 6> outputs;
+    std::array<float, NumOutputs> outputs;
     EllipseToMRI(ea, eb, c*scale, th, TR, flip,
                  outputs[0], outputs[1], outputs[2], outputs[3], m_debug);
     outputs[4] = ea;

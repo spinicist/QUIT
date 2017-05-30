@@ -32,6 +32,7 @@ protected:
     bool m_phaseFirst = false, m_debug = false;
     std::shared_ptr<QI::SSFPEcho> m_sequence = nullptr;
     TOutput m_zero;
+    const static size_t NumOutputs = 7;
 public:
     typedef Eigen::Matrix<double, 6, 6> Matrix6d;
     typedef Eigen::Matrix<double, 6, 1> Vector6d;
@@ -45,7 +46,7 @@ public:
 
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
-    size_t numOutputs() const override { return 6; }
+    size_t numOutputs() const override { return NumOutputs; }
     size_t dataSize() const override { return m_sequence->size(); }
     size_t outputSize(const int i) const override { return m_sequence->flip().rows(); }
     void setReorderPhase(const bool p) { m_phaseFirst = p; }
@@ -55,10 +56,10 @@ public:
     }
     virtual const TOutput &zero(const size_t i) const override { return m_zero; }
     const std::vector<std::string> & names() const {
-        static std::vector<std::string> _names = {"M", "T1", "T2", "f0", "a", "b"};
+        static std::vector<std::string> _names = {"M", "T1", "T2", "f0", "a", "b", "phi_rf"};
         return _names;
     }
-    virtual std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double TR, const double flip) const = 0;
+    virtual std::array<float, NumOutputs> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata, const double TR, const double flip) const = 0;
     virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override
@@ -73,8 +74,8 @@ public:
             if (m_debug) {
                 std::cout << "Flip: " << m_sequence->flip() << " B1: " << B1 << " B1*flip: " << B1*m_sequence->flip() << std::endl;
             }
-            std::array<float, 6> tempOutputs = this->applyFlip(vf, m_sequence->TR(), B1 * m_sequence->flip()[f]);
-            for (int o = 0; o < 6; o++) {
+            std::array<float, NumOutputs> tempOutputs = this->applyFlip(vf, m_sequence->TR(), B1 * m_sequence->flip()[f]);
+            for (int o = 0; o < NumOutputs; o++) {
                 outputs[o][f] = tempOutputs[o];
             }
         }
@@ -93,7 +94,7 @@ protected:
     Eigen::MatrixXd fitzC() const;
     Eigen::MatrixXd hyperC(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y) const;
 
-    virtual std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+    virtual std::array<float, NumOutputs> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
                                            const double TR, const double flip) const;
 };
 
@@ -109,7 +110,7 @@ protected:
     virtual void fit(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y, const Eigen::Vector2d p, const Eigen::Vector2d q, 
                      Eigen::Vector2d gammaBound, Eigen::Matrix2d &A, Eigen::Vector2d &x_c, double &g) const;
 
-    virtual std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+    virtual std::array<float, NumOutputs> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
                                            const double TR, const double flip) const;
 };
 

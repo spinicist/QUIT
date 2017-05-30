@@ -30,7 +30,7 @@ void EllipseToMRI(const double a, const double b, const double c, const double t
     const double &E2 = a;
     const double M = (c/sqrt(a))*(1-b*b)/(1-a*b);
     M0 = M * (1. - E1*cosf - E2*E2*(E1-cosf)) / ((1-E1)*sin(flip));
-    df0 = th / (M_PI*TR); // Missing factor of 2 due to TE not TR
+    df0 = th / (2*M_PI*TR);
     if (debug) {
         std::cout << "a: " << a << " b: " << b << " c: " << c << " th: " << th << " TR: " << TR << " flip: " << flip << std::endl;
         std::cout << "M0: " << M0 << " T1: " << T1 << " T2: " << T2 << " df0: " << df0 << std::endl;

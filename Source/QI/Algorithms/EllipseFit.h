@@ -25,7 +25,7 @@ public:
 protected:
     bool m_reorderBlock;
 
-    virtual std::array<float, 6> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+    virtual std::array<float, NumOutputs> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
                                            const double TR, const double flip) const;
 };
 

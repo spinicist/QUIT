@@ -32,7 +32,7 @@ public:
     }
 };
 
-std::array<float, 6> FitEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
+std::array<float, 7> FitEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
                                            const double TR, const double flip) const {
     Eigen::ArrayXcd data = indata.cast<std::complex<double>>();
     const double scale = data.abs().maxCoeff();
@@ -64,7 +64,7 @@ std::array<float, 6> FitEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXc
     options.gradient_tolerance = 1e-6;
     options.parameter_tolerance = 1e-4;
     ceres::Solve(options, &problem, &summary);
-    std::array<float, 6> outputs;
+    std::array<float, NumOutputs> outputs;
     outputs[0] = p[0] * scale;
     outputs[1] = p[1];
     outputs[2] = p[2];
