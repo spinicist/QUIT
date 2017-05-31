@@ -76,20 +76,21 @@ public:
 
 int main(int argc, char **argv) {
     args::ArgumentParser parser(
-        "An implementation of COMPOSER Robinson et al MRM 2017\n"
+        "An implementation of the coil-combine step from COMPOSER Robinson et al MRM 2017\n"
         "http://github.com/spinicist/QUIT");
 
-    args::Positional<std::string> ser_path(parser, "REFERENCE", "Short Echo Time reference file");
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file to coil-combine");
+    args::Positional<std::string> ser_path(parser, "REFERENCE", "Short Echo Time reference file");
+    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
 
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     QI::ParseArgs(parser, argc, argv);
 
-    if (verbose) std::cout << "Reading reference image: " << QI::CheckPos(ser_path) << std::endl;
-    auto ser_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ser_path));
     if (verbose) std::cout << "Reading input image: " << QI::CheckPos(input_path) << std::endl;
     auto input_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
+    if (verbose) std::cout << "Reading reference image: " << QI::CheckPos(ser_path) << std::endl;
+    auto ser_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ser_path));
 
     /*typedef itk::LinearInterpolateImageFunction<QI::SeriesXF, std::complex<double>> TInterp;
     if (verbose) std::cout << "Resampling reference image" << std::endl;
@@ -125,7 +126,8 @@ int main(int argc, char **argv) {
     combined->SetInput(1, ser_image);
     combined->Update();
     if (verbose) std::cout << "Writing output file " << std::endl;
-    QI::WriteImage(combined->GetOutput(0), "composer_out.nii");
+    std::string out_name = args::get(outarg) + "combined.nii";
+    QI::WriteImage(combined->GetOutput(0), out_name);
 
     return EXIT_SUCCESS;
 }

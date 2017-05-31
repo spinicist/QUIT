@@ -74,7 +74,7 @@ add_library( ${ALGLIB} STATIC
 set( UTILS qihdr qinewimage qidiff qiconvert
            qicomplex qiaffine qimask qikfilter qireorder
            qisplitsubjects qiunwrap qipolyfit qipolyimg
-           qicomposer
+           qi_coil_combine
            qi_rois qi_glmsetup qi_glmcontrasts )
 set( QUANT qisignal
            qiafi qidream
@@ -112,9 +112,12 @@ add_test( NAME DESPOT1 WORKING_DIRECTORY ${TESTS_DIR}
           COMMAND ${PROJECT_SOURCE_DIR}/External/bats/bin/bats despot1.bats )
 
 set(SCRIPTS_DIR Scripts)
-set(SCRIPTS example_mcd_hifi.sh example_mcd_b1.sh)
+set(SCRIPTS qi_composer.sh)
 foreach(SCRIPT ${SCRIPTS})
-    configure_file(${SCRIPTS_DIR}/${SCRIPT} ${SCRIPTS_DIR}/${SCRIPT} COPYONLY)
+    INSTALL( FILES ${SCRIPTS_DIR}/${SCRIPT} 
+             DESTINATION bin 
+             PERMISSIONS OWNER_READ GROUP_READ WORLD_READ
+                         OWNER_EXECUTE GROUP_EXECUTE WORLD_EXECUTE )
 endforeach(SCRIPT)
 
 set(PROGRAMS ${UTILS} ${QUANT} ${ELLIPSE} )
