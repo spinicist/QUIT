@@ -41,6 +41,18 @@ auto ReadImage(const std::string &path) -> typename TImg::Pointer {
     return img;
 }
 
+template<typename TImg = QI::VolumeF>
+auto ReadMagnitudeImage(const std::string &path) -> typename TImg::Pointer {
+    typedef itk::Image<std::complex<typename TImg::PixelType>, TImg::ImageDimension> TComplex;
+    auto x_img = QI::ReadImage<TComplex>(path);
+    auto magFilter = itk::ComplexToModulusImageFilter<TComplex, TImg>::New();
+    magFilter->SetInput(x_img);
+    magFilter->Update();
+    auto img = magFilter->GetOutput();
+    img->DisconnectPipeline();
+    return img;
+}
+
 template<typename TImg>
 void WriteImage(const TImg *ptr, const std::string &path) {
     typedef itk::ImageFileWriter<TImg> TWriter;

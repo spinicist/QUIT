@@ -13,122 +13,87 @@
 #include <iostream>
 #include <string>
 #include <complex>
-#include <getopt.h>
 
 #include "itkComplexToModulusImageFilter.h"
 #include "itkOtsuThresholdImageFilter.h"
 #include "itkVotingBinaryIterativeHoleFillingImageFilter.h"
 
+#include "QI/Args.h"
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/IO.h"
 
-using namespace std;
-
-const string usage{
-"A tool to generate an image mask using an Otsu filter followed by hole-filling.\n\
-This is a simple wrapper around itkOtsuThresholdImageFilter.\n\
-Usage is: qimask [options] input \n\
-\
-For multi-volume input the first volume is used by default.\n\
-Complex data can be used with -x (will take magnitude first).\n\
-Output will be an image called [input]_mask.\n\
-Options:\n\
-    --verbose, -v     : Print more messages.\n\
-    --out, -o path    : Change the output prefix.\n\
-    --vol, -V N       : Use volume N. -1 will select the last volume\n\
-    --complex, -x     : Input data is complex, take magnitude first\n\
-    --fillh, -F N     : Fill with radius N\n\
-    --threads, -T N   : Use a maximum of N threads.\n"
-};
-
-static struct option long_options[] = {
-    {"verbose", required_argument, 0, 'v'},
-    {"out",     required_argument, 0, 'o'},
-    {"vol",     required_argument, 0, 'V'},
-    {"complex", no_argument, 0,'x'},
-    {"fillh",   required_argument, 0, 'F'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-static const char *short_options = "vo:V:xF:T:h";
-
 int main(int argc, char **argv) {
-    int indexptr = 0, c, volume = 0, fillh_radius = 0;
-    string outName = "";
-    bool verbose = false, is_complex = false;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-        case 'v': verbose = true; break;
-        case 'o': outName = optarg; break;
-        case 'V': volume = atoi(optarg); break;
-        case 'x': is_complex = true; break;
-        case 'F': fillh_radius = stoi(optarg); break;
-        case 'T': {
-            int numThreads = stoi(optarg);
-            if (numThreads > 0)
-                itk::MultiThreader::SetGlobalDefaultNumberOfThreads(numThreads);
-        } break;
-        case 'h':
-            cout << QI::GetVersion() << endl << usage << endl;
-            return EXIT_SUCCESS;
-        case '?': // getopt will print an error message
-            return EXIT_FAILURE;
-        default:
-            cout << "Unhandled option " << string(1, c) << endl;
-            return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
-        cout << QI::GetVersion() << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-    string fname(argv[optind]);
-    if (verbose) cout << "Opening input file " << fname << endl;
-    if (outName == "")
-        outName = fname.substr(0, fname.find(".nii")) + "_mask";
+    args::ArgumentParser parser(
+    "Generates masks in stages.\n"
+    "Stage 1 - Otsu thresholding to generate binary mask\n"
+    "Stage 2 - Fill holes (optional)\n"
+    "http://github.com/spinicist/QUIT"
+    );
+
+    args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file");
+
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<std::string> outarg(parser, "OUTPUT FILE", "Set output filename, default is input + _mask", {'o', "out"});
+    args::ValueFlag<int> volume(parser, "VOLUME", "Choose volume to mask in multi-volume file. Default 1, -1 selects last volume", {'v', "volume"}, 0);
+    args::Flag     is_complex(parser, "COMPLEX", "Input data is complex, take magnitude first", {'x', "complex"});
+    args::ValueFlag<int> fillh_radius(parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
+    args::Flag     run_bet(parser, "RUN BET", "Run the Brain Extraction Tool stage", {'B', "bet"});
+
+    QI::ParseArgs(parser, argc, argv);
+
+    if (verbose) std::cout << "Reading input image: " << QI::CheckPos(input_path) << std::endl;
     QI::SeriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {
-        auto inFile = QI::ReadImage<QI::SeriesXF>(fname);
-        auto magFilter = itk::ComplexToModulusImageFilter<QI::SeriesXF, QI::SeriesF>::New();
-        magFilter->SetInput(inFile);
-        magFilter->Update();
-        vols = magFilter->GetOutput();
-        vols->DisconnectPipeline();
+        vols = QI::ReadMagnitudeImage<QI::SeriesF>(QI::CheckPos(input_path));
     } else {
-        vols = QI::ReadImage<QI::SeriesF>(fname);
+        vols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
+    }
+
+    std::string out_path;
+    std::cout << "outarg is: " << outarg.Get() << std::endl;
+    if (outarg.Get() == "") {
+        out_path = QI::StripExt(input_path.Get()) + "_mask" + QI::OutExt();
+    } else {
+        out_path = outarg.Get();
     }
 
     // Extract one volume to process
-    auto vol = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto region = vols->GetLargestPossibleRegion();
-    if (volume == -1) {
-        volume = region.GetSize()[3] - 1;
-    } else if (volume >= region.GetSize()[3]) {
-        cerr << "Specified volume was past end of image, using first." << endl;
-        volume = 0;
+    if (std::abs(volume.Get()) < region.GetSize()[3]) {
+        region.GetModifiableIndex()[3] = (region.GetSize()[3] + volume.Get()) % region.GetSize()[3];
+        if (verbose) std::cout << "Using volume " << region.GetIndex()[3] << " out of " << region.GetSize()[3] << std::endl;
+    } else {
+        std::cerr << "Specified volume was invalid: " << volume.Get() << std::endl;
+        return EXIT_FAILURE;
     }
     region.GetModifiableSize()[3] = 0;
-    region.GetModifiableIndex()[3] = volume;
+    auto vol = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     vol->SetExtractionRegion(region);
     vol->SetInput(vols);
     vol->SetDirectionCollapseToSubmatrix();
 
-
+    /*
+     *  Stage 1 - Otsu or Threshold
+     */
     // Use an Otsu Threshold filter to generate the mask
-    if (verbose) cout << "Generating Otsu mask" << endl;
+    if (verbose) std::cout << "Generating Otsu mask" << std::endl;
     auto otsuFilter = itk::OtsuThresholdImageFilter<QI::VolumeF, QI::VolumeF>::New();
     otsuFilter->SetInput(vol->GetOutput());
     otsuFilter->SetOutsideValue(1);
     otsuFilter->SetInsideValue(0);
     otsuFilter->Update();
     
+    /*
+     *  Stage 2 - Hole Filling
+     */
     QI::VolumeF::Pointer finalMask = ITK_NULLPTR;
-    if (fillh_radius > 0) {
-        if (verbose) cout << "Filling holes" << endl;
+    if (fillh_radius.Get() > 0) {
+        if (verbose) std::cout << "Filling holes" << std::endl;
         auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeF>::New();
         itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeF>::InputSizeType radius;
-        radius.Fill(2);
+        radius.Fill(fillh_radius.Get());
         fillHoles->SetInput(otsuFilter->GetOutput());
         fillHoles->SetRadius(radius);
         fillHoles->SetMajorityThreshold(2); // Corresponds to (rad^3-1)/2 + 2 threshold
@@ -141,9 +106,9 @@ int main(int argc, char **argv) {
     } else {
         finalMask = otsuFilter->GetOutput();
     }
-    if (verbose) cout << "Saving mask" << endl;
-    QI::WriteImage(finalMask, outName + QI::OutExt());
-    if (verbose) cout << "Finished." << endl;
+    if (verbose) std::cout << "Saving mask to: " << out_path << std::endl;
+    QI::WriteImage(finalMask, out_path);
+    if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
 
