@@ -22,6 +22,7 @@
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/IO.h"
+#include "QI/Masking.h"
 
 int main(int argc, char **argv) {
     args::ArgumentParser parser(
@@ -79,22 +80,18 @@ int main(int argc, char **argv) {
      */
     // Use an Otsu Threshold filter to generate the mask
     if (verbose) std::cout << "Generating Otsu mask" << std::endl;
-    auto otsuFilter = itk::OtsuThresholdImageFilter<QI::VolumeF, QI::VolumeF>::New();
-    otsuFilter->SetInput(vol->GetOutput());
-    otsuFilter->SetOutsideValue(1);
-    otsuFilter->SetInsideValue(0);
-    otsuFilter->Update();
+    auto otsuMask = QI::OtsuMask(vol->GetOutput());
     
     /*
      *  Stage 2 - Hole Filling
      */
-    QI::VolumeF::Pointer finalMask = ITK_NULLPTR;
+    QI::VolumeI::Pointer finalMask = ITK_NULLPTR;
     if (fillh_radius.Get() > 0) {
         if (verbose) std::cout << "Filling holes" << std::endl;
-        auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeF>::New();
-        itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeF>::InputSizeType radius;
+        auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::New();
+        itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::InputSizeType radius;
         radius.Fill(fillh_radius.Get());
-        fillHoles->SetInput(otsuFilter->GetOutput());
+        fillHoles->SetInput(otsuMask);
         fillHoles->SetRadius(radius);
         fillHoles->SetMajorityThreshold(2); // Corresponds to (rad^3-1)/2 + 2 threshold
         fillHoles->SetBackgroundValue(0.0);
@@ -104,7 +101,7 @@ int main(int argc, char **argv) {
         finalMask = fillHoles->GetOutput();
         finalMask->DisconnectPipeline();
     } else {
-        finalMask = otsuFilter->GetOutput();
+        finalMask = otsuMask;
     }
     if (verbose) std::cout << "Saving mask to: " << out_path << std::endl;
     QI::WriteImage(finalMask, out_path);
