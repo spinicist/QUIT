@@ -376,7 +376,8 @@ int main(int argc, char **argv) {
             mask = QI::ThresholdMask(input, intensity_threshold);
     }
 
-    QI::VolumeI::Pointer labels = QI::FindLabels(mask, size_threshold, keep);
+    QI::VolumeI::Pointer labels;
+    QI::FindLabels(mask, size_threshold, keep, labels);
     if (verbose) cout << "Found " << keep << " subjects, saving labels." << endl;
     QI::WriteImage(labels, prefix + "_labels.nii");
 

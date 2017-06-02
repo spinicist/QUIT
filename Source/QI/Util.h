@@ -53,6 +53,20 @@ public:
     void Execute(const itk::Object *object, const itk::EventObject &event) ITK_OVERRIDE;
 };
 
+/*
+ * Helper function to calculate the volume of a voxel in an image
+ */
+template<typename TImg>
+double VoxelVolume(const itk::SmartPointer<TImg> &img) {
+    double vox_volume = img->GetSpacing()[0];
+    if (TImg::ImageDimension < 3) {
+        QI_EXCEPTION("Tried to find the volume of a <3D image");
+    }
+    for (int v = 1; v < 3; v++)
+        vox_volume *= img->GetSpacing()[v];
+    return vox_volume;
+}
+
 } // End namespace QUIT
 
 #endif // QUIT_UTIL_H

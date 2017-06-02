@@ -17,6 +17,10 @@
 #include "itkComplexToModulusImageFilter.h"
 #include "itkOtsuThresholdImageFilter.h"
 #include "itkVotingBinaryIterativeHoleFillingImageFilter.h"
+#include "itkBinaryCrossStructuringElement.h"
+#include "itkBinaryBallStructuringElement.h"
+#include "itkBinaryErodeImageFilter.h"
+#include "itkBinaryDilateImageFilter.h"
 
 #include "QI/Args.h"
 #include "QI/Types.h"
@@ -40,7 +44,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> volume(parser, "VOLUME", "Choose volume to mask in multi-volume file. Default 1, -1 selects last volume", {'v', "volume"}, 0);
     args::Flag     is_complex(parser, "COMPLEX", "Input data is complex, take magnitude first", {'x', "complex"});
     args::ValueFlag<float> intensity_threshold(parser, "THRESHOLD", "Specify intensity threshold for 1st stage, otherwise Otsu's method is used", {'t', "threshold"}, 0.);
-    args::Flag     connected(parser, "CONNECTED", "Keep only the largest connected component", {'c', "connected"});
+    args::ValueFlag<float> rats(parser, "RATS", "Perform the RATS step, argument is size threshold for connected component", {'r', "rats"}, 0.);
     args::ValueFlag<int> fillh_radius(parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
     args::Flag     run_bet(parser, "RUN BET", "Run the Brain Extraction Tool stage", {'B', "bet"});
 
@@ -91,18 +95,9 @@ int main(int argc, char **argv) {
         if (verbose) std::cout << "Generating Otsu mask" << std::endl;
         mask_image = QI::OtsuMask(intensity_image);
     }
-    
 
     /*
-     *  Stage 2 - Find largest connected component
-     */
-     if (connected) {
-         int keep = 1; // In split subjects, this might get modified
-         mask_image = QI::FindLabels(mask_image, 0, keep);
-     }
-
-    /*
-     *  Stage 3 - Hole Filling
+     *  Stage 2 - Hole Filling
      */
     QI::VolumeI::Pointer finalMask = ITK_NULLPTR;
     if (fillh_radius) {
@@ -113,13 +108,53 @@ int main(int argc, char **argv) {
         fillHoles->SetInput(mask_image);
         fillHoles->SetRadius(radius);
         fillHoles->SetMajorityThreshold(2); // Corresponds to (rad^3-1)/2 + 2 threshold
-        fillHoles->SetBackgroundValue(0.0);
-        fillHoles->SetForegroundValue(1.0);
+        fillHoles->SetBackgroundValue(0);
+        fillHoles->SetForegroundValue(1);
         fillHoles->SetMaximumNumberOfIterations(3);
         fillHoles->Update();
         mask_image = fillHoles->GetOutput();
         mask_image->DisconnectPipeline();
     }
+
+    /*
+     *  Stage 3 - RATS
+     */
+     if (rats) {
+        typedef itk::BinaryBallStructuringElement<int, 3> TBall;
+        typedef itk::BinaryErodeImageFilter<QI::VolumeI, QI::VolumeI, TBall> TErode;
+        typedef itk::BinaryDilateImageFilter<QI::VolumeI, QI::VolumeI, TBall> TDilate;
+        float mask_volume = std::numeric_limits<float>::infinity();
+        float voxel_volume = QI::VoxelVolume(mask_image);
+        std::cout << "Voxel volume: " << voxel_volume << std::endl;
+        int radius = 1;
+        QI::VolumeI::Pointer mask_rats;
+        while (mask_volume > rats.Get()) {
+            radius++;
+            TBall ball;
+            TBall::SizeType radii; radii.Fill(radius);
+            ball.SetRadius(radii);
+            ball.CreateStructuringElement();
+            TErode::Pointer erode = TErode::New();
+            erode->SetInput(mask_image);
+            erode->SetForegroundValue(1);
+            erode->SetBackgroundValue(0);
+            erode->SetKernel(ball);
+            erode->Update();
+            std::vector<float> kept_sizes = QI::FindLabels(erode->GetOutput(), 0, 1, mask_rats);
+            mask_volume = kept_sizes[0] * voxel_volume;
+            auto dilate = TDilate::New();
+            dilate->SetKernel(ball);
+            dilate->SetInput(mask_rats);
+            dilate->SetForegroundValue(1);
+            dilate->SetBackgroundValue(0);
+            dilate->Update();
+            mask_rats = dilate->GetOutput();
+            mask_rats->DisconnectPipeline();
+            if (verbose) std::cout << "Ran RATS iteration, current radius: " << radius << " volume is: " << mask_volume << std::endl;
+         }
+         mask_image = mask_rats;
+     }
+
     if (verbose) std::cout << "Saving mask to: " << out_path << std::endl;
     QI::WriteImage(mask_image, out_path);
     if (verbose) std::cout << "Finished." << std::endl;

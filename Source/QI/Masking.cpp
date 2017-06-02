@@ -48,7 +48,7 @@ VolumeI::Pointer OtsuMask(const VolumeF::Pointer &img) {
     return mask;
 }
 
-VolumeI::Pointer FindLabels(const QI::VolumeI::Pointer &mask, const int size_threshold, int &keep) {
+std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const int size_threshold, const int to_keep, QI::VolumeI::Pointer &labels) {
     auto CC = itk::ConnectedComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
     auto relabel = itk::RelabelComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
     CC->SetInput(mask);
@@ -56,15 +56,14 @@ VolumeI::Pointer FindLabels(const QI::VolumeI::Pointer &mask, const int size_thr
     relabel->Update();
     // Relabel sorts on size by default, so now work out how many make the size threshold
     auto label_sizes = relabel->GetSizeOfObjectsInPixels();
-    if (keep > label_sizes.size())
-        keep = label_sizes.size();
-    for (int i = 0; i < keep; i++) {
+    std::vector<float> kept_sizes;
+    for (int i = 0; i < to_keep && i < label_sizes.size(); i++) {
         if (label_sizes[i] < size_threshold) {
-            keep = i;
             break;
         }
+        kept_sizes.push_back(label_sizes[i]);
     }
-    if (keep == 0) {
+    if (kept_sizes.size() == 0) {
         QI_EXCEPTION("No labels found in mask");
     }
 
@@ -72,12 +71,12 @@ VolumeI::Pointer FindLabels(const QI::VolumeI::Pointer &mask, const int size_thr
     TKeepN::Pointer keepN = TKeepN::New();
     keepN->SetInput(relabel->GetOutput());
     keepN->SetBackgroundValue(0);
-    keepN->SetNumberOfObjects(keep);
+    keepN->SetNumberOfObjects(kept_sizes.size());
     keepN->SetAttribute(TKeepN::LabelObjectType::NUMBER_OF_PIXELS);
     keepN->Update();
-    VolumeI::Pointer labels = keepN->GetOutput();
+    labels = keepN->GetOutput();
     labels->DisconnectPipeline();
-    return labels;
+    return kept_sizes;
 }
 
 } // End namespace QI

@@ -18,7 +18,7 @@ namespace QI {
 
 VolumeI::Pointer ThresholdMask(const QI::VolumeF::Pointer &img, const float thresh);
 VolumeI::Pointer OtsuMask(const QI::VolumeF::Pointer &img);
-VolumeI::Pointer FindLabels(const QI::VolumeI::Pointer &mask, const int size_threshold, int &keep);
+std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const int size_threshold, const int to_keep, QI::VolumeI::Pointer &labels);
 
 } // End namespace QI
 

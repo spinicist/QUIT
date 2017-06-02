@@ -16,6 +16,7 @@
 #include "QI/Types.h"
 #include "QI/IO.h"
 #include "QI/Args.h"
+#include "QI/Util.h"
 
 #include "itkLabelGeometryImageFilter.h"
 typedef itk::LabelGeometryImageFilter<QI::VolumeI, QI::VolumeF> TLblGeoFilter;
@@ -36,16 +37,6 @@ args::Flag     transpose(parser, "TRANSPOSE", "Transpose output table (values go
 args::Flag     ignore_zero(parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
 args::ValueFlag<std::string> delim(parser, "DELIMITER", "Specify delimiter to use between entries (default ,)", {'d',"delim"}, ",");
 args::ValueFlagList<std::string> header_paths(parser, "HEADER", "Add a header (can be specified multiple times)", {'H', "header"});
-
-/*
- * Helper function to calculate the volume of a voxel in an image
- */
-double VoxelVolume(QI::VolumeI::Pointer img) {
-    double vox_volume = img->GetSpacing()[0];
-    for (int v = 1; v < 3; v++)
-        vox_volume *= img->GetSpacing()[v];
-    return vox_volume;
-}
 
 /*
  * Helper function to work out the label list
@@ -131,7 +122,7 @@ std::vector<std::vector<double>> GetValues(const int n_files, const TLblGeoFilte
             value_img = QI::ReadImage(in_paths.Get().at(f + n_files));
             label_filter->SetIntensityInput(value_img);
         }
-        double vox_volume = VoxelVolume(label_img);
+        double vox_volume = QI::VoxelVolume(label_img);
         label_filter->SetInput(label_img);
         label_filter->Update();
         for (int i = 0; i < labels.size(); i++) {
