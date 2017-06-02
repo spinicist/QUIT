@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPUT FILE", "Set output filename, default is input + _mask", {'o', "out"});
     args::ValueFlag<int> volume(parser, "VOLUME", "Choose volume to mask in multi-volume file. Default 1, -1 selects last volume", {'v', "volume"}, 0);
     args::Flag     is_complex(parser, "COMPLEX", "Input data is complex, take magnitude first", {'x', "complex"});
+    args::ValueFlag<float> intensity_threshold(parser, "THRESHOLD", "Specify intensity threshold for 1st stage, otherwise Otsu's method is used", {'t', "threshold"}, 0.);
     args::ValueFlag<int> fillh_radius(parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
     args::Flag     run_bet(parser, "RUN BET", "Run the Brain Extraction Tool stage", {'B', "bet"});
 
@@ -53,7 +54,6 @@ int main(int argc, char **argv) {
     }
 
     std::string out_path;
-    std::cout << "outarg is: " << outarg.Get() << std::endl;
     if (outarg.Get() == "") {
         out_path = QI::StripExt(input_path.Get()) + "_mask" + QI::OutExt();
     } else {
@@ -63,8 +63,9 @@ int main(int argc, char **argv) {
     // Extract one volume to process
     auto region = vols->GetLargestPossibleRegion();
     if (std::abs(volume.Get()) < region.GetSize()[3]) {
-        region.GetModifiableIndex()[3] = (region.GetSize()[3] + volume.Get()) % region.GetSize()[3];
-        if (verbose) std::cout << "Using volume " << region.GetIndex()[3] << " out of " << region.GetSize()[3] << std::endl;
+        int volume_to_get = (region.GetSize()[3] + volume.Get()) % region.GetSize()[3];
+        if (verbose) std::cout << "Using volume " << volume_to_get << std::endl;
+        region.GetModifiableIndex()[3] = volume_to_get;
     } else {
         std::cerr << "Specified volume was invalid: " << volume.Get() << std::endl;
         return EXIT_FAILURE;
@@ -74,37 +75,42 @@ int main(int argc, char **argv) {
     vol->SetExtractionRegion(region);
     vol->SetInput(vols);
     vol->SetDirectionCollapseToSubmatrix();
-
+    vol->Update();
+    QI::VolumeF::Pointer intensity_image = vol->GetOutput();
+    intensity_image->DisconnectPipeline();
     /*
      *  Stage 1 - Otsu or Threshold
      */
-    // Use an Otsu Threshold filter to generate the mask
-    if (verbose) std::cout << "Generating Otsu mask" << std::endl;
-    auto otsuMask = QI::OtsuMask(vol->GetOutput());
+    QI::VolumeI::Pointer mask_image = ITK_NULLPTR;
+    if (intensity_threshold) {
+        if (verbose) std::cout << "Using intensity threshold: " << intensity_threshold.Get() << std::endl;
+        mask_image = QI::ThresholdMask(intensity_image, intensity_threshold.Get());
+    } else {
+        if (verbose) std::cout << "Generating Otsu mask" << std::endl;
+        mask_image = QI::OtsuMask(intensity_image);
+    }
     
     /*
      *  Stage 2 - Hole Filling
      */
     QI::VolumeI::Pointer finalMask = ITK_NULLPTR;
-    if (fillh_radius.Get() > 0) {
+    if (fillh_radius) {
         if (verbose) std::cout << "Filling holes" << std::endl;
         auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::New();
         itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::InputSizeType radius;
         radius.Fill(fillh_radius.Get());
-        fillHoles->SetInput(otsuMask);
+        fillHoles->SetInput(mask_image);
         fillHoles->SetRadius(radius);
         fillHoles->SetMajorityThreshold(2); // Corresponds to (rad^3-1)/2 + 2 threshold
         fillHoles->SetBackgroundValue(0.0);
         fillHoles->SetForegroundValue(1.0);
         fillHoles->SetMaximumNumberOfIterations(3);
         fillHoles->Update();
-        finalMask = fillHoles->GetOutput();
-        finalMask->DisconnectPipeline();
-    } else {
-        finalMask = otsuMask;
+        mask_image = fillHoles->GetOutput();
+        mask_image->DisconnectPipeline();
     }
     if (verbose) std::cout << "Saving mask to: " << out_path << std::endl;
-    QI::WriteImage(finalMask, out_path);
+    QI::WriteImage(mask_image, out_path);
     if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
