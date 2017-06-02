@@ -100,6 +100,10 @@ foreach(PROGRAM ${ELLIPSE})
                           ${ITK_LIBRARIES} ${CERES_LIBRARIES})
 endforeach(PROGRAM)
 
+## Add extra sources for some programs here. There is probably a better way.
+target_sources( qisplitsubjects PUBLIC Source/QI/Masking.cpp )
+target_sources( qimask          PUBLIC Source/QI/Masking.cpp )
+
 set(TESTS_DIR Test)
 set(TESTS despot1.bats test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_es.sh
           test_relax.sh test_ssfp.sh test_poly.sh test_all.sh)

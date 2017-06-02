@@ -20,10 +20,8 @@
 #include "QI/Masking.h"
 
 #include "itkRescaleIntensityImageFilter.h"
-#include "itkConnectedComponentImageFilter.h"
-#include "itkLabelShapeKeepNObjectsImageFilter.h"
-#include "itkRelabelComponentImageFilter.h"
-#include "itkGrayscaleFillholeImageFilter.h"
+#include "itkThresholdImageFilter.h"
+#include "itkBinaryThresholdImageFilter.h"
 #include "itkLabelStatisticsImageFilter.h"
 #include "itkLabelImageToLabelMapFilter.h"
 #include "itkLabelMapMaskImageFilter.h"
@@ -45,43 +43,6 @@
 #include "itkImageRegistrationMethod.h"
 
 using namespace std;
-
-QI::VolumeI::Pointer FindLabels(const QI::VolumeI::Pointer &mask, const int size_threshold, int &keep) {
-    auto CC = itk::ConnectedComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
-    auto relabel = itk::RelabelComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
-    CC->SetInput(mask);
-    relabel->SetInput(CC->GetOutput());
-    relabel->Update();
-    // Relabel sorts on size by default, so now work out how many make the size threshold
-    auto label_sizes = relabel->GetSizeOfObjectsInPixels();
-    if (keep > label_sizes.size())
-        keep = label_sizes.size();
-    for (int i = 0; i < keep; i++) {
-        if (label_sizes[i] < size_threshold) {
-            keep = i;
-            break;
-        }
-    }
-    if (keep == 0) {
-        QI_EXCEPTION("No labels found in mask");
-    }
-
-    typedef itk::LabelShapeKeepNObjectsImageFilter<QI::VolumeI> TKeepN;
-    TKeepN::Pointer keepN = TKeepN::New();
-    keepN->SetInput(relabel->GetOutput());
-    keepN->SetBackgroundValue(0);
-    keepN->SetNumberOfObjects(keep);
-    keepN->SetAttribute(TKeepN::LabelObjectType::NUMBER_OF_PIXELS);
-    
-    typedef itk::GrayscaleFillholeImageFilter<QI::VolumeI, QI::VolumeI> TFill;
-    TFill::Pointer fill = TFill::New();
-    fill->SetInput(keepN->GetOutput());
-    fill->Update();
-    
-    typename QI::VolumeI::Pointer labels = fill->GetOutput();
-    labels->DisconnectPipeline();
-    return labels;
-}
 
 QI::VolumeF::Pointer MaskWithLabel(const QI::VolumeF::Pointer &image, const QI::VolumeI::Pointer &labels, const int l, const bool crop) {
     // convert the label image into a LabelMap
@@ -415,7 +376,7 @@ int main(int argc, char **argv) {
             mask = QI::ThresholdMask(input, intensity_threshold);
     }
 
-    QI::VolumeI::Pointer labels = FindLabels(mask, size_threshold, keep);
+    QI::VolumeI::Pointer labels = QI::FindLabels(mask, size_threshold, keep);
     if (verbose) cout << "Found " << keep << " subjects, saving labels." << endl;
     QI::WriteImage(labels, prefix + "_labels.nii");
 

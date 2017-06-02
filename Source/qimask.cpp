@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> volume(parser, "VOLUME", "Choose volume to mask in multi-volume file. Default 1, -1 selects last volume", {'v', "volume"}, 0);
     args::Flag     is_complex(parser, "COMPLEX", "Input data is complex, take magnitude first", {'x', "complex"});
     args::ValueFlag<float> intensity_threshold(parser, "THRESHOLD", "Specify intensity threshold for 1st stage, otherwise Otsu's method is used", {'t', "threshold"}, 0.);
+    args::Flag     connected(parser, "CONNECTED", "Keep only the largest connected component", {'c', "connected"});
     args::ValueFlag<int> fillh_radius(parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
     args::Flag     run_bet(parser, "RUN BET", "Run the Brain Extraction Tool stage", {'B', "bet"});
 
@@ -78,6 +79,7 @@ int main(int argc, char **argv) {
     vol->Update();
     QI::VolumeF::Pointer intensity_image = vol->GetOutput();
     intensity_image->DisconnectPipeline();
+
     /*
      *  Stage 1 - Otsu or Threshold
      */
@@ -90,8 +92,17 @@ int main(int argc, char **argv) {
         mask_image = QI::OtsuMask(intensity_image);
     }
     
+
     /*
-     *  Stage 2 - Hole Filling
+     *  Stage 2 - Find largest connected component
+     */
+     if (connected) {
+         int keep = 1; // In split subjects, this might get modified
+         mask_image = QI::FindLabels(mask_image, 0, keep);
+     }
+
+    /*
+     *  Stage 3 - Hole Filling
      */
     QI::VolumeI::Pointer finalMask = ITK_NULLPTR;
     if (fillh_radius) {
