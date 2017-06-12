@@ -17,9 +17,9 @@
 #include "QI/Util.h"
 #include "QI/IO.h"
 #include "QI/Args.h"
-#include "QI/Algorithms/Banding.h"
-#include "QI/Algorithms/Ellipse.h"
-#include "QI/Algorithms/EllipseFit.h"
+#include "QI/Banding.h"
+#include "QI/Ellipse/Ellipse.h"
+#include "QI/Ellipse/EllipseFit.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 
 using namespace std;

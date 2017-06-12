@@ -15,7 +15,7 @@
 
 #include "QI/Util.h"
 #include "QI/Option.h"
-#include "QI/Algorithms/CEST.h"
+#include "QI/CEST.h"
 #include "Filters/ApplyAlgorithmFilter.h"
 
 using namespace std;

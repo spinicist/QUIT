@@ -9,9 +9,9 @@
  *
  */
 
-#include "QI/Algorithms/Ellipse.h"
-#include "QI/Algorithms/EllipseHelpers.h"
-#include "QI/Algorithms/Banding.h"
+#include "QI/Ellipse/Ellipse.h"
+#include "QI/Ellipse/EllipseHelpers.h"
+#include "QI/Banding.h"
 #include "QI/GoldenSection.h"
 
 namespace QI {

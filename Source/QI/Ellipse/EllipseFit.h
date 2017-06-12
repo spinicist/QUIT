@@ -12,7 +12,7 @@
 #ifndef QI_ELLIPSEFIT_H
 #define QI_ELLIPSEFIT_H
 
-#include "QI/Algorithms/Ellipse.h"
+#include "QI/Ellipse/Ellipse.h"
 
 namespace QI {
 

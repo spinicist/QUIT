@@ -9,7 +9,7 @@
  *
  */
 
-#include "QI/Algorithms/EllipseHelpers.h"
+#include "QI/Ellipse/EllipseHelpers.h"
 
 namespace QI {
 

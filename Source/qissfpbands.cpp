@@ -19,7 +19,7 @@
 #include "Filters/ReorderVectorFilter.h"
 #include "QI/Util.h"
 #include "QI/Option.h"
-#include "QI/Algorithms/Banding.h"
+#include "QI/Banding.h"
 
 using namespace std;
 using namespace Eigen;

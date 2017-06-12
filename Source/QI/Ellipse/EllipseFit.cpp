@@ -9,8 +9,8 @@
  *
  */
 
-#include "QI/Algorithms/EllipseFit.h"
-#include "QI/Algorithms/Banding.h"
+#include "QI/Ellipse/EllipseFit.h"
+#include "QI/Banding.h"
 #include "ceres/ceres.h"
 
 namespace QI {

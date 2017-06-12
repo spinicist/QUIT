@@ -9,7 +9,7 @@
  *
  */
 
-#include "QI/Algorithms/Banding.h"
+#include "QI/Banding.h"
 
 namespace QI {
 

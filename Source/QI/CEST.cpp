@@ -10,7 +10,7 @@
  */
 
 #include <unsupported/Eigen/Splines>
-#include "QI/Algorithms/CEST.h"
+#include "QI/CEST.h"
 #include "ceres/ceres.h"
 
 namespace QI {

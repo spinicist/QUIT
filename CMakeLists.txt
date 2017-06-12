@@ -65,11 +65,11 @@ set( MDLLIB "qimdl" )
 add_library( ${MDLLIB} STATIC
              ${MDLDIR}/Model.cpp ${MDLDIR}/DESPOT_2C.cpp ${MDLDIR}/DESPOT_3C.cpp ${MDLDIR}/qMT.cpp )
 
-set( ALGDIR ${QIDIR}/Algorithms )
-set( ALGLIB "qialg" )
-add_library( ${ALGLIB} STATIC
-             ${ALGDIR}/Banding.cpp ${ALGDIR}/Ellipse.cpp ${ALGDIR}/EllipseHelpers.cpp ${ALGDIR}/EllipseFit.cpp
-             ${ALGDIR}/CEST.cpp )
+set( ELDIR ${QIDIR}/Ellipse )
+add_library( CEST    STATIC ${QIDIR}/CEST.cpp )
+add_library( Banding STATIC ${QIDIR}/Banding.cpp )
+add_library( Ellipse STATIC ${ELDIR}/Ellipse.cpp ${ELDIR}/EllipseHelpers.cpp ${ELDIR}/EllipseFit.cpp )
+add_library( Masking STATIC ${QIDIR}/Masking.cpp )
 
 set( UTILS qihdr qinewimage qidiff qiconvert
            qicomplex qiaffine qimask qikfilter qireorder
@@ -80,8 +80,8 @@ set( QUANT qisignal
            qiafi qidream
            qidespot1 qidespot2 qidespot1hifi qidespot2fm
            qimcdespot 
-           qimultiecho qimp2rage )
-set( ELLIPSE qissfpbands qiesmap qicest )
+           qimultiecho qimp2rage
+           qissfpbands qiesmap qicest )
 
 foreach(PROGRAM ${UTILS})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
@@ -94,15 +94,12 @@ foreach(PROGRAM ${QUANT})
                           ${ITK_LIBRARIES} ${CERES_LIBRARIES})
 endforeach(PROGRAM)
 
-foreach(PROGRAM ${ELLIPSE})
-    add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
-    target_link_libraries(${PROGRAM} ${ALGLIB} ${MDLLIB} ${SEQLIB} ${SIGLIB} ${QI}
-                          ${ITK_LIBRARIES} ${CERES_LIBRARIES})
-endforeach(PROGRAM)
-
-## Add extra sources for some programs here. There is probably a better way.
-target_sources( qisplitsubjects PUBLIC Source/QI/Masking.cpp )
-target_sources( qimask          PUBLIC Source/QI/Masking.cpp )
+## Add extra libraries here
+target_link_libraries( qicest          CEST )
+target_link_libraries( qissfpbands     Banding )
+target_link_libraries( qiesmap         Ellipse Banding )
+target_link_libraries( qisplitsubjects Masking )
+target_link_libraries( qimask          Masking )
 
 set(TESTS_DIR Test)
 set(TESTS despot1.bats test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_es.sh
