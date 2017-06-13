@@ -38,8 +38,7 @@ set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp
              ${QIDIR}/Option.cpp
-             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp
-             ${QIDIR}/GoldenSection.cpp )
+             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp )
 add_dependencies( ${QI} qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
@@ -67,8 +66,10 @@ add_library( ${MDLLIB} STATIC
 
 set( ELDIR ${QIDIR}/Ellipse )
 add_library( CEST    STATIC ${QIDIR}/CEST.cpp )
+target_link_libraries( CEST ${CERES_LIBRARIES} )
 add_library( Banding STATIC ${QIDIR}/Banding.cpp )
-add_library( Ellipse STATIC ${ELDIR}/Ellipse.cpp ${ELDIR}/EllipseHelpers.cpp ${ELDIR}/EllipseFit.cpp )
+add_library( Ellipse STATIC ${ELDIR}/Ellipse.cpp ${ELDIR}/EllipseHelpers.cpp ${ELDIR}/EllipseFit.cpp ${QIDIR}/GoldenSection.cpp )
+target_link_libraries( Ellipse ${CERES_LIBRARIES} ${SIGLIB} )
 add_library( Masking STATIC ${QIDIR}/Masking.cpp )
 
 set( UTILS qihdr qinewimage qidiff qiconvert
