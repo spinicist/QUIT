@@ -204,8 +204,8 @@ int main(int argc, char **argv) {
     apply->SetSplitsPerThread(threads.Get()); // Fairly unbalanced algorithm
     apply->SetInput(0, ssfpData);
     apply->SetConst(0, T1);
-    apply->SetConst(1, QI::ReadImage(B1.Get()));
-    apply->SetMask(QI::ReadImage(mask.Get()));
+    if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
+    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) {
         apply->SetSubregion(QI::RegionOpt(args::get(subregion)));
     }
