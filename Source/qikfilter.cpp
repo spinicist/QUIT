@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
-    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<int> zero_padding(parser, "ZEROPAD", "Zero-pad volume by N voxels in each direction", {'z', "zero_pad"}, 0);
     args::Flag complex_in(parser, "COMPLEX_IN", "Input data is complex", {"complex_in"});
     args::Flag complex_out(parser, "COMPLEX_OUT", "Write complex output", {"complex_out"});
@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
         vols = cast->GetOutput();
         vols->DisconnectPipeline();
     }
-    std::string out_base = out_prefix.Get() + QI::Basename(in_path.Get());
+    const std::string out_base = out_prefix ? out_prefix.Get() : QI::Basename(in_path.Get());
     /*
      * Main calculation starts hear.
      * First a lot of typedefs.
