@@ -129,10 +129,10 @@ void Run() {
 
     if (in_real) {
         if (verbose) std::cout << "Reading real file: " << in_real.Get() << std::endl;
-        auto img1 = QI::ReadImage<TImage>(in_real.Get());
+        img1 = QI::ReadImage<TImage>(in_real.Get());
         if (in_imag) {
             if (verbose) std::cout << "Reading imaginary file: " << in_imag.Get() << std::endl;
-            auto img2 = QI::ReadImage<TImage>(in_imag.Get());
+            img2 = QI::ReadImage<TImage>(in_imag.Get());
         } else {
             QI_FAIL("Must set real and imaginary inputs together");
         }
@@ -229,8 +229,8 @@ void Run() {
         if (verbose) std::cout << "Wrote imaginary image " << out_imag.Get() << std::endl;
     }
     if (out_complex) {
+        if (verbose) std::cout << "Writing complex image " << out_complex.Get() << std::endl;
         QI::WriteImage(imgX, out_complex.Get());
-        if (verbose) std::cout << "Wrote complex image " << out_complex.Get() << std::endl;
     }
 }
 
