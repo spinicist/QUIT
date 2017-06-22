@@ -53,7 +53,7 @@ protected:
 public:
     void SetNegate(const bool all, const bool alternate) {
         m_all = all;
-        m_alternate = all;
+        m_alternate = alternate;
     }
     virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
         typedef typename TImage::PixelType PixelType;
@@ -195,6 +195,7 @@ void Run() {
         fix->SetNegate(negate, fixge);
         fix->Update();
         imgX = fix->GetOutput();
+        imgX->DisconnectPipeline();
     }
 
     if (verbose) std::cout << "Writing output files" << std::endl;
