@@ -416,9 +416,9 @@ Options:\n\
     for (int i = 0; i < model->nParameters(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
     }
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual" + QI::OutExt());
     if (all_residuals) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
     }
     QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
     return EXIT_SUCCESS;

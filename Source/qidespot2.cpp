@@ -285,11 +285,11 @@ int main(int argc, char **argv) {
 
     }
     *outPrefix = *outPrefix + "D2_";
-    QI::WriteImage(apply->GetOutput(0), *outPrefix + "PD.nii");
-    QI::WriteImage(apply->GetOutput(1), *outPrefix + "T2.nii");
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), *outPrefix + "residual.nii");
+    QI::WriteImage(apply->GetOutput(0), *outPrefix + "PD" + QI::OutExt());
+    QI::WriteImage(apply->GetOutput(1), *outPrefix + "T2" + QI::OutExt());
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), *outPrefix + "residual" + QI::OutExt());
     if (*all_residuals) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), *outPrefix + "all_residuals.nii");
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), *outPrefix + "all_residuals" + QI::OutExt());
     }
     if (*verbose) cout << "All done." << endl;
     return EXIT_SUCCESS;

@@ -264,14 +264,14 @@ int main(int argc, char **argv) {
         cout << "Writing results files." << endl;
     }
     *outPrefix += "D1_";
-    QI::WriteImage(apply->GetOutput(0),*outPrefix + "PD.nii");
-    QI::WriteImage(apply->GetOutput(1), *outPrefix + "T1.nii");
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), *outPrefix + "residual.nii");
+    QI::WriteImage(apply->GetOutput(0),*outPrefix + "PD" + QI::OutExt());
+    QI::WriteImage(apply->GetOutput(1), *outPrefix + "T1" + QI::OutExt());
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), *outPrefix + "residual" + QI::OutExt());
     if (*all_residuals) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), *outPrefix + "all_residuals.nii");
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), *outPrefix + "all_residuals" + QI::OutExt());
     }
     if (algo->getIterations() != D1Algo::DefaultIterations) {
-        QI::WriteImage(apply->GetIterationsOutput(), *outPrefix + "iterations.nii");
+        QI::WriteImage(apply->GetIterationsOutput(), *outPrefix + "iterations" + QI::OutExt());
     }
     if (*verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;

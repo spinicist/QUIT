@@ -220,13 +220,13 @@ int main(int argc, char **argv) {
         cout << "Writing results files." << endl;
     }
     std::string outPrefix = args::get(outarg) + "FM_";
-    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD.nii");
-    QI::WriteImage(apply->GetOutput(1), outPrefix + "T2.nii");
-    QI::WriteImage(apply->GetOutput(2), outPrefix + "f0.nii");
-    QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "its.nii");
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual.nii");
+    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
+    QI::WriteImage(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
+    QI::WriteImage(apply->GetOutput(2), outPrefix + "f0" + QI::OutExt());
+    QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "its" + QI::OutExt());
+    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual" + QI::OutExt());
     if (resids) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals.nii");
+        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
     }
     return EXIT_SUCCESS;
 }
