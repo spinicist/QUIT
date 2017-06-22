@@ -87,7 +87,7 @@ protected:
         ConstNeighborhoodIterator<TInputImage>::RadiusType radius;
         radius.Fill(1);
         ConstNeighborhoodIterator<TInputImage> inputIter(radius, this->GetInput(), region);
-        ConstNeighborhoodIterator<TOutputImage> pass1Iter(radius, this->GetPass1(), region);
+        ConstNeighborhoodIterator<TInputImage> pass1Iter(radius, this->GetPass1(), region);
         auto m = this->GetMask();
         ImageRegionConstIterator<TMask> maskIter;
         if (m) {
@@ -96,8 +96,8 @@ protected:
         ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
         ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
         VariableLengthVector<complex<float>> output(m_flips);
-        size_t phase_stride = 1;
-        size_t flip_stride = m_flips;
+        size_t phase_stride = m_flips;
+        size_t flip_stride = 1;
         if (m_reorderPhase)
             std::swap(flip_stride, phase_stride);
         Eigen::ArrayXcd a_center(m_lines);
@@ -106,28 +106,28 @@ protected:
         Eigen::ArrayXcd b_pixel(m_lines);
         while(!inputIter.IsAtEnd()) {
             if (!m || maskIter.Get()) {
-                VariableLengthVector<complex<float>> input_center = inputIter.GetCenterPixel();
+                VariableLengthVector<complex<float>> center_pixel = inputIter.GetCenterPixel();
                 for (int f = 0; f < m_flips; f++) {
-                    const ArrayXcd phases_center = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(input_center.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
-                    QI::SplitBlocks(phases_center, a_center, b_center, m_reorderBlock);
-                    complex<double> sum(0.0,0.0);
-                    for (int i = 0; i < m_lines; i++) {
-                        double num = 0., den = 0.;
-                        for (int p = 0; p < inputIter.Size(); ++p) {
-                            VariableLengthVector<complex<float>> pass1_pixel = pass1Iter.GetPixel(p);
-                            const complex<double> Id = pass1_pixel[f];
-                            VariableLengthVector<complex<float>> input_pixel = inputIter.GetPixel(p);
-                            const ArrayXcd phases_pixel = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(input_pixel.GetDataPointer() + f, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
-                            QI::SplitBlocks(phases_pixel, a_pixel, b_pixel, m_reorderBlock);
-                            num += real(conj(b_pixel[i] - Id)*(b_pixel[i] - a_pixel[i]) + conj(b_pixel[i] - a_pixel[i])*(b_pixel[i] - Id));
-                            den += real(conj(a_pixel[i] - b_pixel[i])*(a_pixel[i] - b_pixel[i]));
-                        }
-                        double w = num / (2. * den);
-                        if (isfinite(w)) {
-                            sum += w*a_center[i] + (1. - w)*b_center[i];
+                    const ArrayXcd center_array = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(center_pixel.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
+                    QI::SplitBlocks(center_array, a_center, b_center, m_reorderBlock);
+                    Eigen::ArrayXcd sums = Eigen::ArrayXcd::Zero(m_lines);
+                    Eigen::ArrayXd nums = Eigen::ArrayXd::Zero(m_lines);
+                    Eigen::ArrayXd dens = Eigen::ArrayXd::Zero(m_lines);
+                    Eigen::ArrayXcd ws = Eigen::ArrayXcd::Zero(m_lines);
+                    for (int p = 0; p < inputIter.Size(); ++p) {
+                        VariableLengthVector<complex<float>> pass1_pixel = pass1Iter.GetPixel(p);
+                        VariableLengthVector<complex<float>> input_pixel = inputIter.GetPixel(p);
+                        const complex<double> Id = pass1_pixel[f];
+                        if (norm(Id) > 0.) {
+                            const ArrayXcd input_array = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(input_pixel.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
+                            QI::SplitBlocks(input_array, a_pixel, b_pixel, m_reorderBlock);
+                            nums += real(conj(b_pixel - Id)*(b_pixel - a_pixel) + conj(b_pixel - a_pixel)*(b_pixel - Id));
+                            dens += real(conj(a_pixel - b_pixel)*(a_pixel - b_pixel));
                         }
                     }
-                    output[f] = static_cast<complex<float>>(sum / static_cast<double>(m_lines));
+                    ws = nums / (2. * dens);
+                    sums = ws*a_center + (1. - ws)*b_center;
+                    output[f] = static_cast<complex<float>>(sums.sum() / static_cast<double>(m_lines));
                 }
             } else {
                 output.Fill(complex<float>(0.f,0.f));
@@ -135,9 +135,10 @@ protected:
             outputIter.Set(output);
             ++inputIter;
             ++pass1Iter;
-            if (m)
-                ++maskIter;
             ++outputIter;
+            if (m) {
+                ++maskIter;
+            }
             if (threadId == 0)
                 progress.CompletedPixel(); // We can get away with this because enqueue blocks if the queue is full
         }
@@ -191,7 +192,6 @@ int main(int argc, char **argv) {
             if (*verbose) cout << "Geometric solution selected" << endl;
             auto g = make_shared<QI::GSAlgo>();
             g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
-            g->setReorderBlock(*alt_order);
             switch(*regularise) {
                 case 'L': suffix += "L"; g->setRegularise(QI::RegEnum::Line); break;
                 case 'M': suffix += "M"; g->setRegularise(QI::RegEnum::Magnitude); break;
@@ -208,38 +208,40 @@ int main(int argc, char **argv) {
     algo->setPhases(*ph_incs);
     algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
     algo->setReorderPhase(*ph_order);
-    auto apply = QI::ApplyVectorXF::New();
-    apply->SetAlgorithm(algo);
-    apply->SetMask(*mask);
-    apply->SetInput(0, inFile);
-    apply->SetPoolsize(*num_threads);
-    apply->SetSplitsPerThread(*num_threads); // Unbalanced algorithm
-    apply->SetVerbose(*verbose);
+    algo->setReorderBlock(*alt_order);
+    auto pass1 = QI::ApplyVectorXF::New();
+    pass1->SetAlgorithm(algo);
+    pass1->SetMask(*mask);
+    pass1->SetInput(0, inFile);
+    pass1->SetPoolsize(*num_threads);
+    pass1->SetSplitsPerThread(*num_threads); // Unbalanced algorithm
+    pass1->SetVerbose(*verbose);
     if (*verbose) {
         cout << "1st pass" << endl;
         auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
+        pass1->AddObserver(itk::ProgressEvent(), monitor);
     }
-    apply->Update();
-    QI::VectorVolumeXF::Pointer output = apply->GetOutput(0);
-    output->DisconnectPipeline();
+    pass1->Update();
+    QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
     if (*two_pass) {
         suffix += "2";
-        auto p2 = itk::MinEnergyFilter::New();
-        p2->SetPhases(*ph_incs);
-        p2->setReorderBlock(*alt_order);
-        p2->setReorderPhase(*ph_order);
-        p2->SetInput(inFile);
-        p2->SetPass1(output);
-        p2->SetMask(*mask);
+        itk::MultiThreader::SetGlobalDefaultNumberOfThreads(*num_threads);
+        auto pass2 = itk::MinEnergyFilter::New();
+        pass2->SetPhases(*ph_incs);
+        pass2->setReorderBlock(*alt_order);
+        pass2->setReorderPhase(*ph_order);
+        pass2->SetInput(inFile);
+        pass2->SetPass1(pass1->GetOutput(0));
+        pass2->SetMask(*mask);
         if (*verbose) {
             cout << "2nd pass" << endl;
             auto monitor = QI::GenericMonitor::New();
-            p2->AddObserver(itk::ProgressEvent(), monitor);
+            pass2->AddObserver(itk::ProgressEvent(), monitor);
         }
-        p2->Update();
-        output = p2->GetOutput();
-        output->DisconnectPipeline();
+        pass2->Update();
+        output = pass2->GetOutput();
+    } else {
+        output = pass1->GetOutput(0);
     }
     if (*prefix == "")
         *prefix = QI::StripExt(nonopts[0]) + "_" + suffix;
