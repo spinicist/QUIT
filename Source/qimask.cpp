@@ -43,7 +43,8 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPUT FILE", "Set output filename, default is input + _mask", {'o', "out"});
     args::ValueFlag<int> volume(parser, "VOLUME", "Choose volume to mask in multi-volume file. Default 1, -1 selects last volume", {'v', "volume"}, 0);
     args::Flag     is_complex(parser, "COMPLEX", "Input data is complex, take magnitude first", {'x', "complex"});
-    args::ValueFlag<float> intensity_threshold(parser, "THRESHOLD", "Specify intensity threshold for 1st stage, otherwise Otsu's method is used", {'t', "threshold"}, 0.);
+    args::ValueFlag<float> lower_threshold(parser, "LOWER THRESHOLD", "Specify lower intensity threshold for 1st stage, otherwise Otsu's method is used", {'l', "lower"}, 0.);
+    args::ValueFlag<float> upper_threshold(parser, "UPPER THRESHOLD", "Specify upper intensity threshold for 1st stage, otherwise Otsu's method is used", {'u', "upper"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> rats(parser, "RATS", "Perform the RATS step, argument is size threshold for connected component", {'r', "rats"}, 0.);
     args::ValueFlag<int> fillh_radius(parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
     args::Flag     run_bet(parser, "RUN BET", "Run the Brain Extraction Tool stage", {'B', "bet"});
@@ -88,9 +89,9 @@ int main(int argc, char **argv) {
      *  Stage 1 - Otsu or Threshold
      */
     QI::VolumeI::Pointer mask_image = ITK_NULLPTR;
-    if (intensity_threshold) {
-        if (verbose) std::cout << "Using intensity threshold: " << intensity_threshold.Get() << std::endl;
-        mask_image = QI::ThresholdMask(intensity_image, intensity_threshold.Get());
+    if (lower_threshold || upper_threshold) {
+        if (verbose) std::cout << "Thresholding range: " << lower_threshold.Get() << "-" << upper_threshold.Get() << std::endl;
+        mask_image = QI::ThresholdMask(intensity_image, lower_threshold.Get(), upper_threshold.Get());
     } else {
         if (verbose) std::cout << "Generating Otsu mask" << std::endl;
         mask_image = QI::OtsuMask(intensity_image);
@@ -126,7 +127,7 @@ int main(int argc, char **argv) {
         float mask_volume = std::numeric_limits<float>::infinity();
         float voxel_volume = QI::VoxelVolume(mask_image);
         std::cout << "Voxel volume: " << voxel_volume << std::endl;
-        int radius = 1;
+        int radius = 0;
         QI::VolumeI::Pointer mask_rats;
         while (mask_volume > rats.Get()) {
             radius++;

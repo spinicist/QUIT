@@ -23,12 +23,12 @@
 
 namespace QI {
 
-VolumeI::Pointer ThresholdMask(const VolumeF::Pointer &img, const float thresh) {
+VolumeI::Pointer ThresholdMask(const VolumeF::Pointer &img, const float lower, const float upper) {
     typedef itk::BinaryThresholdImageFilter<VolumeF, VolumeI> TThreshFilter;
     auto threshold = TThreshFilter::New();
     threshold->SetInput(img);
-    threshold->SetLowerThreshold(thresh);
-    threshold->SetUpperThreshold(std::numeric_limits<float>::infinity());
+    threshold->SetLowerThreshold(lower);
+    threshold->SetUpperThreshold(upper);
     threshold->SetInsideValue(1);
     threshold->SetOutsideValue(0);
     threshold->Update();
