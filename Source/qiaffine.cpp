@@ -18,6 +18,7 @@
 #include "itkTransformFileWriter.h"
 #include "itkPermuteAxesImageFilter.h"
 #include "itkFlipImageFilter.h"
+#include "itkImageMomentsCalculator.h"
 
 #include "QI/Util.h"
 #include "QI/IO.h"
@@ -38,7 +39,7 @@ args::Positional<std::string> dest_path(parser, "DEST", "Destination file");
 
 args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-args::Flag     center(parser, "CENTER", "Set the origin to the center of the image", {'c', "center"});
+args::ValueFlag<std::string> center(parser, "CENTER", "Set the origin to geometric center (geo) or (cog)", {'c', "center"});
 args::ValueFlag<std::string> tfm_path(parser, "TFM", "Write out the transformation to a file", {'t', "tfm"});
 args::ValueFlag<double> scale(parser, "SCALE", "Scale by a constant", {'s', "scale"});
 args::ValueFlag<double> offX(parser, "OFF_X", "Translate origin in X direction", {"offX"});
@@ -145,10 +146,22 @@ int Pipeline() {
     }
     itk::Versor<double>::VectorType offset; offset.Fill(0);
     if (center) {
-        for (int i = 0; i < 3; i++) {
-            offset[i] = origin[i]-spacing[i]*size[i] / 2;
+        if (center.Get() == "geo") {
+            if (verbose) std::cout << "Setting geometric center" << std::endl;
+            for (int i = 0; i < 3; i++) {
+                offset[i] = origin[i]-spacing[i]*size[i] / 2;
+            }
+        } else if (center.Get() == "cog") {
+            if (verbose) std::cout << "Setting center to center of gravity" << std::endl;
+            auto moments = itk::ImageMomentsCalculator<TImage>::New();
+            moments->SetImage(image);
+            moments->Compute();
+            // ITK seems to put a negative sign on the CoG
+            for (int i = 0; i < 3; i++) {
+                offset[i] = moments->GetCenterOfGravity()[i];
+            }
         }
-        if (verbose) std::cout << "Centering image" << std::endl;
+        std::cout << "Translation will be: " << offset << std::endl;
         tfm->Translate(-offset);
     } else if (offX || offY || offZ) {
         offset[0] = offX.Get();
@@ -189,8 +202,10 @@ int Pipeline() {
 
     // Write out the edited file
     if (dest_path) {
+        if (verbose) std::cout << "Writing: " << dest_path.Get() << std::endl;
         QI::WriteImage(image, dest_path.Get());
     } else {
+        if (verbose) std::cout << "Writing: " << source_path.Get() << std::endl;
         QI::WriteImage(image, source_path.Get());
     }
     return EXIT_SUCCESS;
