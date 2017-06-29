@@ -15,10 +15,7 @@
 #include <getopt.h>
 #include <iostream>
 #include <Eigen/Dense>
-#include <unsupported/Eigen/LevenbergMarquardt>
-#include <unsupported/Eigen/NumericalDiff>
-
-#include "itkImageFileReader.h"
+#include "ceres/ceres.h"
 
 #include "QI/Sequences/Sequences.h"
 #include "QI/Util.h"
@@ -69,33 +66,85 @@ static const struct option long_opts[] = {
 };
 static const char *short_opts = "hvnMm:o:t:c:s:p:i:rT:";
 
-// HIFI Algorithm - includes optimising B1
-class HIFIFunctor : public DenseFunctor<double> {
-    protected:
-        const shared_ptr<QI::SPGRSimple> m_spgr;
-        const shared_ptr<QI::MPRAGE> m_mprage;
-        const ArrayXd m_data;
+class SPGRCost : public ceres::CostFunction {
+protected:
+    const QI::SPGRSimple &m_seq;
+    const ArrayXd m_data;
 
-    public:
-        HIFIFunctor(const shared_ptr<QI::SPGRSimple> spgr,
-                    const shared_ptr<QI::MPRAGE> mprage,
-                    const ArrayXd &data) :
-            DenseFunctor<double>(3, spgr->size() + mprage->size()),
-            m_spgr(spgr), m_mprage(mprage), m_data(data)
-        {
-            assert(static_cast<size_t>(m_data.rows()) == values());
+public:
+    SPGRCost(const QI::SPGRSimple &s, const ArrayXd &data) :
+        m_seq(s), m_data(data)
+    {
+        mutable_parameter_block_sizes()->push_back(3);
+        set_num_residuals(data.size());
+    }
+
+    virtual bool Evaluate(double const* const* p,
+                          double* resids,
+                          double** jacobians) const override
+    {
+        const double &M0 = p[0][0];
+        const double &T1 = p[0][1];
+        const double &B1 = p[0][2];
+
+        const ArrayXd sa = sin(B1 * m_seq.m_flip);
+        const ArrayXd ca = cos(B1 * m_seq.m_flip);
+        const double E1 = exp(-m_seq.m_TR / T1);
+        const ArrayXd denom = (1.-E1*ca);
+        
+        Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
+        r = M0*sa*(1-E1)/denom - m_data;
+        
+        // std::cout << "SPGR RESIDS" << std::endl;
+        // std::cout << r.transpose() << std::endl;
+        if (jacobians && jacobians[0]) {
+            Eigen::Map<Eigen::Matrix<double, -1, -1, RowMajor>> j(jacobians[0], m_data.size(), 3);
+            j.col(0) = (1-E1)*sa/denom;
+            j.col(1) = E1*M0*m_seq.m_TR*(ca-1.)*sa/((denom*T1).square());
+            j.col(2) = M0*m_seq.m_flip*(1.-E1)*(ca-E1)/denom.square();
         }
+        return true;
+    }
+};
 
-        int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
-            eigen_assert(diffs.size() == values());
+// Use AutoDiff for this
+class IRCostFunction  {
+protected:
+    const QI::MPRAGE &m_seq;
+    const ArrayXd m_data;
 
-            ArrayXd s(values());
-            s.head(m_spgr->size()) = QI::One_SPGR_Magnitude(m_spgr->flip(), m_spgr->TR(), params[0], params[1], params[2]);
-            s.tail(m_mprage->size()) = QI::One_MPRAGE(m_mprage->flip()[0], m_mprage->TR(), m_mprage->m_Nseg, m_mprage->m_Nk0, m_mprage->m_TI, m_mprage->m_TD,
-                                                      params[0], params[1], params[2], m_mprage->m_eta).cwiseAbs(); 
-            diffs = s - m_data;
-            return 0;
-        }
+public:
+    IRCostFunction(const QI::MPRAGE &s, const ArrayXd &data) :
+        m_seq(s), m_data(data)
+    {
+    }
+
+    template<typename T> bool operator() (const T* const p1, const T* const p2, T* r) const
+    {
+        const T &M0 = p1[0];
+        const T &T1 = p1[1];
+        const T &B1 = p1[2];
+        const T &eta = p2[0]; // Inversion efficiency
+
+        const double TIs = m_seq.m_TI[0] - m_seq.m_TR*m_seq.m_Nk0; // Adjust TI for k0
+        const T T1s = 1. / (1./T1 - log(cos(m_seq.m_flip[0] * B1))/m_seq.m_TR);
+        const T M0s = M0 * (1. - exp(-m_seq.m_TR/T1)) / (1. - exp(-m_seq.m_TR/T1s));
+        const T A_1 = M0s*(1. - exp(-(m_seq.m_Nseg*m_seq.m_TR)/T1s));
+
+        const T A_2 = M0*(1. - exp(-m_seq.m_TD[0]/T1));
+        const T A_3 = M0*(1. - exp(-TIs/T1));
+        const T B_1 = exp(-(m_seq.m_Nseg*m_seq.m_TR)/T1s);
+        const T B_2 = exp(-m_seq.m_TD[0]/T1);
+        const T B_3 = eta*exp(-TIs/T1); // Inversion efficiency defined as -1 < eta < 0
+
+        const T A = A_3 + A_2*B_3 + A_1*B_2*B_3;
+        const T B = B_1*B_2*B_3;
+        const T M1 = A / (1. - B);
+
+        r[0] = m_data[0] - (M0s + (M1 - M0s)*exp(-(m_seq.m_Nk0*m_seq.m_TR)/T1s)) * sin(m_seq.m_flip[0] * B1);
+        // std::cout << "MPRAGE " << m_data[0] << " " << M0*(Ms + (M1 - Ms)*E1k) * sin(m_seq.m_flip[0] * b) << std::endl;
+        return true;
+    }
 };
 
 class HIFIAlgo : public QI::ApplyF::Algorithm {
@@ -113,7 +162,7 @@ public:
     void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
     size_t numInputs() const override  { return 2; }
     size_t numConsts() const override  { return 0; }
-    size_t numOutputs() const override { return 3; }
+    size_t numOutputs() const override { return 4; }
     size_t dataSize() const override   { return m_spgr->size() + m_mprage->size(); }
     const float &zero(const size_t i) const override { static float zero = 0; return zero; }
 
@@ -127,30 +176,52 @@ public:
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override
     {
-        Eigen::Map<const ArrayXf> spgr(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::Map<const ArrayXf> irspgr(inputs[1].GetDataPointer(), inputs[1].Size());
-        ArrayXf indata(dataSize()); indata << spgr, irspgr;
-        const ArrayXd data = indata.cast<double>() / indata.abs().maxCoeff(); // Scale to make parameters roughly equal
-        HIFIFunctor f(m_spgr, m_mprage, data);
-        NumericalDiff<HIFIFunctor> nDiff(f);
-        LevenbergMarquardt<NumericalDiff<HIFIFunctor>> lm(nDiff);
-        // LevenbergMarquardt does not currently have a good interface, have to do things in steps
-        lm.setMaxfev(m_iterations * (data.rows() + 1));
-        VectorXd p(3); p << 10., 1., 1.; // Initial guess
-        lm.minimize(p);
-        ArrayXd r(indata.rows());
-        f(p, r); // Get the residuals
+        Eigen::Map<const Eigen::ArrayXf> spgr_in(inputs[0].GetDataPointer(), inputs[0].Size());
+        Eigen::Map<const Eigen::ArrayXf> ir_in(inputs[1].GetDataPointer(), inputs[1].Size());
+        double scale = std::max(spgr_in.maxCoeff(), ir_in.maxCoeff());
+        const ArrayXd spgr_data = spgr_in.cast<double>() / scale;
+        const ArrayXd ir_data = ir_in.cast<double>() / scale;
+        double spgr_pars[] = {10., 1., 1.}; // PD, T1, B1
+        double ir_pars[] = {-0.99}; // Inversion Efficiency
+        ceres::Problem problem;
+        problem.AddResidualBlock(new SPGRCost(*m_spgr, spgr_data), NULL, spgr_pars);
+        ceres::CostFunction *IRCost = new ceres::AutoDiffCostFunction<IRCostFunction, 1, 3, 1>(new IRCostFunction(*m_mprage, ir_data));
+        problem.AddResidualBlock(IRCost, NULL, spgr_pars, ir_pars);
+        problem.SetParameterLowerBound(spgr_pars, 0, 1.);
+        problem.SetParameterLowerBound(spgr_pars, 1, 0.001);
+        problem.SetParameterUpperBound(spgr_pars, 1, 5.0);
+        problem.SetParameterLowerBound(spgr_pars, 2, 0.1);
+        problem.SetParameterUpperBound(spgr_pars, 2, 2.0);
+        problem.SetParameterLowerBound(ir_pars, 0, -1.0);
+        problem.SetParameterUpperBound(ir_pars, 0, -0.5);
+        ceres::Solver::Options options;
+        ceres::Solver::Summary summary;
+        options.max_num_iterations = 50;
+        options.function_tolerance = 1e-5;
+        options.gradient_tolerance = 1e-6;
+        options.parameter_tolerance = 1e-4;
+        // options.check_gradients = true;
+        options.logging_type = ceres::SILENT;
+        // std::cout << "START P: " << p.transpose() << std::endl;
+        ceres::Solve(options, &problem, &summary);
         
-        if (p[0] < m_thresh)
-            p[0] = 0;
-        else
-            outputs[0] = p[0] * indata.abs().maxCoeff();
-        outputs[1] = QI::clamp(p[1], m_lo, m_hi);
-        outputs[2] = p[2];
-        residual = sqrt(r.square().sum() / r.rows());
-        ArrayXf rf = r.cast<float>();
-        resids = itk::VariableLengthVector<float>(rf.data(), rf.rows());
-        its = lm.iterations();
+        outputs[0] = spgr_pars[0] * scale;
+        outputs[1] = spgr_pars[1];
+        outputs[2] = spgr_pars[2];
+        outputs[3] = ir_pars[0];
+        if (!summary.IsSolutionUsable()) {
+            std::cout << summary.FullReport() << std::endl;
+        }
+        its = summary.iterations.size();
+        residual = summary.final_cost * scale;
+        if (resids.Size() > 0) {
+            assert(resids.Size() == data.size());
+            vector<double> r_temp(spgr_data.size() + 1);
+            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
+            for (int i = 0; i < r_temp.size(); i++) {
+                resids[i] = r_temp[i];
+            }
+        }
         return true;
     }
 };
@@ -218,6 +289,8 @@ int main(int argc, char **argv) {
     apply->SetAlgorithm(hifi);
     apply->SetOutputAllResiduals(all_residuals);
     apply->SetPoolsize(num_threads);
+    apply->SetSplitsPerThread(num_threads);
+    apply->SetVerbose(verbose);
     apply->SetInput(0, spgrImg);
     apply->SetInput(1, irImg);
     if (mask)
@@ -237,9 +310,10 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(2), outPrefix + "B1" + QI::OutExt());
+    QI::WriteImage(apply->GetOutput(3), outPrefix + "eff" + QI::OutExt());
     QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual"  + QI::OutExt());
     if (all_residuals) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;

@@ -26,7 +26,7 @@
 namespace QI {
 
 class SequenceBase {
-    protected:
+    public:
         double m_TR = 0.;
         Eigen::ArrayXd m_flip;
 
