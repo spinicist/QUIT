@@ -96,7 +96,7 @@ void WriteScaledImage(const itk::SmartPointer<TImg> &ptr, const itk::SmartPointe
     WriteScaledImage<TImg>(ptr.GetPointer(), sptr.GetPointer(), path);
 }
 
-template<typename TPixel>
+template<typename TPixel = float>
 auto ReadVectorImage(const std::string &path) -> typename itk::VectorImage<TPixel, 3>::Pointer {
     typedef itk::Image<TPixel, 4> TSeries;
     typedef itk::VectorImage<TPixel, 3> TVector;
