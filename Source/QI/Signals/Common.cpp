@@ -16,19 +16,6 @@ using namespace Eigen;
 
 namespace QI {
 
-double clamp(double value, double low, double high)
-{
-    if (value > low) {
-        if (value < high) {
-            return value;
-        } else {
-            return high;
-        }
-    } else {
-        return low;
-    }
-}
-
 //******************************************************************************
 #pragma mark Magnetisation Evolution Matrices, helper functions etc.
 //******************************************************************************

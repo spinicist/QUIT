@@ -12,7 +12,6 @@
 
 #include <iostream>
 #include <Eigen/Dense>
-#include "args.hxx"
 #include "ceres/ceres.h"
 
 #include "QI/Util.h"

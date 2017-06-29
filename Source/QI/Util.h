@@ -82,6 +82,21 @@ double VoxelVolume(const itk::SmartPointer<TImg> &img) {
     return vox_volume;
 }
 
+/*
+ * Helper function to clamp between two values
+ */
+template<typename T> T Clamp(const T &value, const T &low, const T &high) {
+    if (value > low) {
+        if (value < high) {
+            return value;
+        } else {
+            return high;
+        }
+    } else {
+        return low;
+    }
+}
+
 } // End namespace QUIT
 
 #endif // QUIT_UTIL_H

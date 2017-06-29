@@ -90,8 +90,8 @@ public:
         ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        outputs[0] = QI::clamp(PD, m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(T2, m_loT2, m_hiT2);
+        outputs[0] = QI::Clamp(PD, m_loPD, m_hiPD);
+        outputs[1] = QI::Clamp(T2, m_loT2, m_hiT2);
         its = 1;
         return true;
     }
@@ -148,8 +148,8 @@ public:
         ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        outputs[0] = QI::clamp(PD, m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(T2, m_loT2, m_hiT2);
+        outputs[0] = QI::Clamp(PD, m_loPD, m_hiPD);
+        outputs[1] = QI::Clamp(T2, m_loT2, m_hiT2);
         its = m_iterations;
         return true;
     }
@@ -199,8 +199,8 @@ public:
         lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
         VectorXd p(2); p << data.array().maxCoeff() * 5., 0.1;
         lm.minimize(p);
-        outputs[0] = QI::clamp(p[0], m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(p[1], m_loT2, m_hiT2);
+        outputs[0] = QI::Clamp(p[0], m_loPD, m_hiPD);
+        outputs[1] = QI::Clamp(p[1], m_loT2, m_hiT2);
         VectorXd fullp(5); fullp << outputs[0], T1, outputs[1], 0, B1; // Assume on-resonance
         ArrayXd theory = m_sequence->signal(m_model, fullp).abs(); // Sequence will already be elliptical if necessary
         ArrayXf r = (data.array() - theory).cast<float>();

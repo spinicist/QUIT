@@ -71,8 +71,8 @@ public:
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        outputs[0] = QI::clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(-m_sequence->TR() / log(b[0]), m_loT1, m_hiT1);
+        outputs[0] = QI::Clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
+        outputs[1] = QI::Clamp(-m_sequence->TR() / log(b[0]), m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
         ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
@@ -111,8 +111,8 @@ public:
             else
                 out = newOut;
         }
-        outputs[0] = QI::clamp(out[0], m_loPD, m_hiPD);
-        outputs[1] = QI::clamp(out[1], m_loT1, m_hiT1);
+        outputs[0] = QI::Clamp(out[0], m_loPD, m_hiPD);
+        outputs[1] = QI::Clamp(out[1], m_loT1, m_hiT1);
         ArrayXd theory = QI::One_SPGR(m_sequence->flip(), m_sequence->TR(), outputs[0], outputs[1], B1).array().abs();
         ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());

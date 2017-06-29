@@ -88,7 +88,7 @@ protected:
                             const double PD, const double T2) const {
         if (PD > m_thresh) {
             outputs[0] = PD;
-            outputs[1] = QI::clamp(T2, m_clampLo, m_clampHi);
+            outputs[1] = QI::Clamp(T2, m_clampLo, m_clampHi);
             ArrayXd theory = QI::One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
             ArrayXf r = (data.array() - theory).cast<float>();
             residual = sqrt(r.square().sum() / r.rows());
