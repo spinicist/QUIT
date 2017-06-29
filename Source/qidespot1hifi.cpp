@@ -119,12 +119,12 @@ public:
     {
     }
 
-    template<typename T> bool operator() (const T* const p1, const T* const p2, T* r) const
+    template<typename T> bool operator() (const T* const p1, T* r) const
     {
         const T &M0 = p1[0];
         const T &T1 = p1[1];
         const T &B1 = p1[2];
-        const T &eta = p2[0]; // Inversion efficiency
+        const double eta = -1.0; // Inversion efficiency defined as -1 < eta < 0
 
         const double TIs = m_seq.m_TI[0] - m_seq.m_TR*m_seq.m_Nk0; // Adjust TI for k0
         const T T1s = 1. / (1./T1 - log(cos(m_seq.m_flip[0] * B1))/m_seq.m_TR);
@@ -135,7 +135,7 @@ public:
         const T A_3 = M0*(1. - exp(-TIs/T1));
         const T B_1 = exp(-(m_seq.m_Nseg*m_seq.m_TR)/T1s);
         const T B_2 = exp(-m_seq.m_TD[0]/T1);
-        const T B_3 = eta*exp(-TIs/T1); // Inversion efficiency defined as -1 < eta < 0
+        const T B_3 = eta*exp(-TIs/T1);
 
         const T A = A_3 + A_2*B_3 + A_1*B_2*B_3;
         const T B = B_1*B_2*B_3;
@@ -162,7 +162,7 @@ public:
     void setClamp(double lo, double hi) { m_lo = lo; m_hi = hi; }
     size_t numInputs() const override  { return 2; }
     size_t numConsts() const override  { return 0; }
-    size_t numOutputs() const override { return 4; }
+    size_t numOutputs() const override { return 3; }
     size_t dataSize() const override   { return m_spgr->size() + m_mprage->size(); }
     const float &zero(const size_t i) const override { static float zero = 0; return zero; }
 
@@ -182,18 +182,15 @@ public:
         const ArrayXd spgr_data = spgr_in.cast<double>() / scale;
         const ArrayXd ir_data = ir_in.cast<double>() / scale;
         double spgr_pars[] = {10., 1., 1.}; // PD, T1, B1
-        double ir_pars[] = {-0.99}; // Inversion Efficiency
         ceres::Problem problem;
         problem.AddResidualBlock(new SPGRCost(*m_spgr, spgr_data), NULL, spgr_pars);
-        ceres::CostFunction *IRCost = new ceres::AutoDiffCostFunction<IRCostFunction, 1, 3, 1>(new IRCostFunction(*m_mprage, ir_data));
-        problem.AddResidualBlock(IRCost, NULL, spgr_pars, ir_pars);
+        ceres::CostFunction *IRCost = new ceres::AutoDiffCostFunction<IRCostFunction, 1, 3>(new IRCostFunction(*m_mprage, ir_data));
+        problem.AddResidualBlock(IRCost, NULL, spgr_pars);
         problem.SetParameterLowerBound(spgr_pars, 0, 1.);
         problem.SetParameterLowerBound(spgr_pars, 1, 0.001);
         problem.SetParameterUpperBound(spgr_pars, 1, 5.0);
         problem.SetParameterLowerBound(spgr_pars, 2, 0.1);
         problem.SetParameterUpperBound(spgr_pars, 2, 2.0);
-        problem.SetParameterLowerBound(ir_pars, 0, -1.0);
-        problem.SetParameterUpperBound(ir_pars, 0, -0.5);
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
         options.max_num_iterations = 50;
@@ -208,7 +205,6 @@ public:
         outputs[0] = spgr_pars[0] * scale;
         outputs[1] = spgr_pars[1];
         outputs[2] = spgr_pars[2];
-        outputs[3] = ir_pars[0];
         if (!summary.IsSolutionUsable()) {
             std::cout << summary.FullReport() << std::endl;
         }
@@ -310,7 +306,6 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(2), outPrefix + "B1" + QI::OutExt());
-    QI::WriteImage(apply->GetOutput(3), outPrefix + "eff" + QI::OutExt());
     QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual"  + QI::OutExt());
     if (all_residuals) {
         QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
