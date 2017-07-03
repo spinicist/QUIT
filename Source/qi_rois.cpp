@@ -54,6 +54,9 @@ void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::str
     if (label_list_path) {
         if (verbose) std::cout << "Opening label list file: " << label_list_path.Get() << std::endl;
         std::ifstream file(label_list_path.Get());
+        if (!file) {
+            QI_EXCEPTION("Could not open label list file: " << label_list_path);
+        }
         std::string temp;
         while (std::getline(file, temp, ',')) {
             label_numbers.push_back(stoi(temp));
@@ -93,6 +96,9 @@ std::vector<std::vector<std::string>> GetHeaders(int n_files) {
         const std::string header_path = header_paths.Get().at(h);
         if (verbose) std::cout << "Reading header file: " << header_path << std::endl;
         std::ifstream header_file(header_path);
+        if (!header_file) {
+            QI_EXCEPTION("Failed to open header file: " << header_path);
+        }
         std::string element;
         while (std::getline(header_file, element)) {
             headers.at(h).push_back(element);
