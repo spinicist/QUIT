@@ -46,7 +46,7 @@ void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::str
         if (verbose) std::cout << "Opening label list file: " << label_list_path.Get() << std::endl;
         std::ifstream file(label_list_path.Get());
         if (!file) {
-            QI_EXCEPTION("Could not open label list file: " << label_list_path);
+            QI_EXCEPTION("Could not open label list file: " << label_list_path.Get());
         }
         std::string temp;
         while (std::getline(file, temp, ',')) {
