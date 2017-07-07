@@ -28,6 +28,21 @@
 #include "QI/Macro.h"
 #include "QI/Types.h"
 
+/*
+ * Print a std::vector
+ */
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
+    os << "(";
+    auto it = vec.begin();
+    std::cout << *it;
+    for (it++; it != vec.end(); it++) {
+        std::cout << ", " << *it;
+    }
+    os << ")";
+    return os;
+}
+
 namespace QI {
 
 const std::string &GetVersion();                    //!< Return the version of the QI library

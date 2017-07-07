@@ -14,6 +14,7 @@
 #include "itkMetaDataObject.h"
 #include "QI/IO.h"
 #include "QI/Args.h"
+#include "QI/Util.h"
 
 args::ArgumentParser parser(
 "Extracts information from image headers.\n"
@@ -103,16 +104,18 @@ int main(int argc, char **argv) {
             auto header = imageIO->GetMetaDataDictionary();
             if (header.HasKey(hf)) {
                 std::vector<std::string> string_array_value;
+                std::vector<std::vector<double> > double_array_array_value;
                 std::vector<double> double_array_value;
                 std::string string_value;
+                auto delim = "";
                 double double_value;
                 if (verbose) std::cout << hf << ": ";
                 if (ExposeMetaData(header, hf, string_array_value)) {
-                    for (const auto &v : string_array_value) std::cout << v << ",";
-                    std::cout << std::endl;
+                    std::cout << string_array_value << std::endl;
                 } else if (ExposeMetaData(header, hf, double_array_value)) {
-                    for (const auto &v : double_array_value) std::cout << v << ",";
-                    std::cout << std::endl;
+                    std::cout << double_array_value << std::endl;
+                } else if (ExposeMetaData(header, hf, double_array_array_value)) {
+                    std::cout << double_array_array_value << std::endl;
                 } else if (ExposeMetaData(header, hf, string_value)) {
                    std::cout << string_value << std::endl;
                 } else if (ExposeMetaData(header, hf, double_value)) {
