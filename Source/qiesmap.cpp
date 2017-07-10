@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     }
     apply->SetVerbose(verbose);
     if (subregion) {
-        apply->SetSubregion(QI::RegionOpt(args::get(subregion)));
+        apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     }
     if (verbose) {
         cout << "Processing" << endl;

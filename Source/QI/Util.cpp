@@ -27,6 +27,13 @@ const std::string &GetVersion() {
     return Version;
 }
 
+/*
+ * This function checks the environment variable QUIT_EXT. If it does not exist,
+ * a default value is returned. If it exists, and is one of the FSL output-types
+ * the matching extension is returned. Otherwise, it is assumed that the
+ * environment variable is a valid extension, including the ., and it is
+ * returned.
+ */
 const std::string &OutExt() {
     static char *env_ext = getenv("QUIT_EXT");
     static string ext;
@@ -38,9 +45,11 @@ const std::string &OutExt() {
             {"NIFTI_GZ", ".nii.gz"},
             {"NIFTI_PAIR_GZ", ".img.gz"},
         };
-        if (!env_ext || (valid_ext.find(env_ext) == valid_ext.end())) {
+        if (!env_ext) {
             cerr << "Environment variable QUIT_EXT is not valid, defaulting to NIFTI_GZ" << endl;
             ext = valid_ext["NIFTI_GZ"];
+        } else if (valid_ext.find(env_ext) == valid_ext.end()){
+            ext = env_ext;
         } else {
             ext = valid_ext[env_ext];
         }

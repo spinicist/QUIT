@@ -54,8 +54,18 @@ std::vector<T> CheckList(args::PositionalList<T> &a) {
     }
 }
 
+template<typename TArray, const int size>
+void ArrayArg(const std::string &a, TArray &array) {
+    std::istringstream iss(a);
+    std::string el;
+    for (int i = 0; i < size; i++) {
+        std::getline(iss, el, ',');
+        array[i] = std::stoi(el);
+    }
+}
+
 template<typename TRegion = typename QI::VolumeF::RegionType>
-TRegion RegionOpt(const std::string &a) {
+TRegion RegionArg(const std::string &a) {
     std::istringstream iss(a);
     std::string el;
     typename TRegion::IndexType start;
