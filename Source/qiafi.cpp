@@ -12,38 +12,15 @@
 
 #include <iostream>
 #include <string>
-#include <getopt.h>
 
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/IO.h"
+#include "QI/Args.h"
 
 #include "itkExtractImageFilter.h"
 #include "itkDivideImageFilter.h"
 #include "itkBinaryFunctorImageFilter.h"
-
-using namespace std;
-
-const string usage{
-"Usage is: qiafi [options] input \n\
-\
-Options:\n\
-    --verbose, -v   : Print more messages\n\
-    --mask, -m file : Mask input with specified file.\n\
-    --out, -o path  : Add a prefix to the output filenames.\n\
-    --flip, -f      : Specify the nominal flip-angle (default 55 degrees)\n\
-    --ratio, -r     : Specify TR2:TR1 ratio (default 5)\n"
-};
-
-static struct option long_options[] = {
-    {"verbose", required_argument, 0, 'v'},
-    {"mask",    required_argument, 0, 'm'},
-    {"out",     required_argument, 0, 'o'},
-    {"flip",    required_argument, 0, 'f'},
-    {"ratio",   required_argument, 0, 'r'},
-    {0, 0, 0, 0}
-};
-static const char *short_options = "vm:o:f:r:T:h";
 
 template<class TPixel> class AFI {
 public:
@@ -65,46 +42,25 @@ public:
     }
 };
 
-
 int main(int argc, char **argv) {
-    int indexptr = 0, c;
-    string outPrefix = "AFI_";
-    bool verbose = false;
-    double n = 5., nomFlip = 55.;
-    QI::VolumeF::Pointer maskFile = ITK_NULLPTR;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'm':
-                cout << "Reading mask." << endl;
-                maskFile = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                outPrefix = optarg;
-                cout << "Output prefix will be: " << outPrefix << endl;
-                break;
-            case 'f': nomFlip = atof(optarg); break;
-            case 'r': n = atof(optarg); break;
-            case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
-        cout << QI::GetVersion() << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-    if (verbose) cout << "Opening input file " << argv[optind] << endl;
-    auto inFile = QI::ReadImage<QI::SeriesF>(argv[optind]);
+    args::ArgumentParser parser("Calculates B1 maps from AFI data. Input file should have two volumes\n"
+                                "http://github.com/spinicist/QUIT");
+    args::Positional<std::string> input_path(parser, "INPUT", "Input file");
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<double> nom_flip(parser, "NOMINAL FLIP", "Specify nominal flip-angle, default 55", {'f', "flip"}, 55.0);
+    args::ValueFlag<double> tr_ratio(parser, "TR RATIO", "Specify TR2:TR1 ratio, default 5", {'r', "ratio"}, 5.0);
+    args::Flag     save_angle(parser, "SAVE ANGLE", "Write out the actual flip-angle as well as B1", {'s', "save"});
+    QI::ParseArgs(parser, argc, argv);
+
+    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
+    if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     if (verbose) {
-        cout << "Nominal flip-angle is " << nomFlip << " degrees." << endl;
-        cout << "TR2:TR1 ratio is " << n << endl;
+        std::cout << "Nominal flip-angle is " << nom_flip.Get() << " degrees." << std::endl;
+        std::cout << "TR2:TR1 ratio is " << tr_ratio.Get() << std::endl;
     }
     auto volume1 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto volume2 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
@@ -124,14 +80,14 @@ int main(int argc, char **argv) {
     imageRatio->SetInput(1, volume1->GetOutput());
     auto afi = itk::BinaryFunctorImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF, AFI<float>>::New();
     afi->SetInput1(imageRatio->GetOutput());
-    afi->SetConstant2(n);
+    afi->SetConstant2(tr_ratio.Get());
     auto B1 = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
     B1->SetInput1(afi->GetOutput());
-    B1->SetConstant2(nomFlip);
+    B1->SetConstant2(nom_flip.Get());
     B1->Update();
-    QI::WriteImage(afi->GetOutput(), outPrefix + "angle" + QI::OutExt());
-    QI::WriteImage(B1->GetOutput(),  outPrefix + "B1" + QI::OutExt());
-    if (verbose) cout << "Finished." << endl;
+    QI::WriteImage(B1->GetOutput(),  out_prefix.Get() + "AFI_B1" + QI::OutExt());
+    if (save_angle) QI::WriteImage(afi->GetOutput(), out_prefix.Get() + "AFI_angle" + QI::OutExt());
+    if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
 
