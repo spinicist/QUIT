@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetInput(0, spgrImg);
     apply->SetInput(1, irImg);
-    if (subregion) apply->SetSubregion(QI::RegionOpt(args::get(subregion)));
+    if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (verbose) std::cout << "Processing..." << std::endl;
     apply->Update();
