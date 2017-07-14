@@ -17,11 +17,9 @@
 #include "itkMaskImageFilter.h"
 #include "QI/Types.h"
 #include "QI/Util.h"
+#include "QI/IO.h"
 #include "QI/Polynomial.h"
-#include "QI/Option.h"
-
-using namespace std;
-using namespace Eigen;
+#include "QI/Args.h"
 
 namespace itk {
 
@@ -98,7 +96,7 @@ protected:
             if (mask)
                 ++maskIter;
         }
-        VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         m_poly.setCoeffs(b);
     }
 
@@ -111,30 +109,32 @@ private:
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts("Usage is: qipolyfit [options] input\n\nFits a 3D polynomial to a volume and prints the co-efficients to stdout.\n");
-    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::Switch print_terms('\0',"print-terms","Print out the polynomial terms", opts);
-    QI::Option<int> order(2,'o',"order","Specify the polynomial order (default 2)", opts);
-    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
-    QI::Switch verbose('v',"verbose","Print more information", opts);
-    QI::Help help(opts);
-    std::deque<std::string> nonopts = opts.parse(argc, argv);
-    if (nonopts.size() != 1) {
-        std::cerr << opts << std::endl;
-        std::cerr << "Please specify input filename only." << std::endl;
-        return EXIT_FAILURE;
-    }
-    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(*num_threads);
-    QI::VolumeF::Pointer input = QI::ReadImage(nonopts[0]);
+
+    args::ArgumentParser parser("Fits a 3D polynomial to a volume and prints the co-efficients to stdout.\n"
+                                "http://github.com/spinicist/QUIT");
+
+    args::Positional<std::string> input_path(parser, "INPUT", "Input file");
+    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag                    verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag                    print_terms(parser, "TERMS","Print out the polynomial terms", {"print-terms"});
+    args::ValueFlag<int>          order(parser, "ORDER", "Specify the polynomial order (default 4)", {'o',"order"}, 4);
+    args::ValueFlag<std::string>  mask_path(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+
+    QI::ParseArgs(parser, argc, argv);
+    if (verbose) std::cout << "Reading input from: " << QI::CheckPos(input_path) << std::endl;
+    auto input = QI::ReadImage(QI::CheckPos(input_path));
     auto fit = itk::PolynomialFitImageFilter::New();
-    QI::Polynomial poly(*order);
+    QI::Polynomial poly(order.Get());
     fit->SetInput(input);
     fit->SetPolynomial(poly);
-    fit->SetMask(*mask);
+    if (mask_path) {
+        if (verbose) std::cout << "Reading mask from: " << mask_path.Get() << std::endl;
+        fit->SetMask(QI::ReadImage(mask_path.Get()));
+    }
     fit->Update();
-    cout << fit->GetPolynomial().coeffs().transpose() << endl;
-    if (*print_terms)
+    std::cout << fit->GetPolynomial().coeffs().transpose() << std::endl;
+    if (print_terms)
         fit->GetPolynomial().print_terms();
-    if (*verbose) cout << "Finished." << endl;
+    if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
