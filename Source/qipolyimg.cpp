@@ -41,6 +41,7 @@ public:
 
     void SetPolynomial(const QI::Polynomial &p) { m_poly = p; }
     void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
+    void SetCenter(const itk::Point<double, 3>& v) { m_center = v; }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
     
     virtual void GenerateOutputInformation() ITK_OVERRIDE {
@@ -55,9 +56,12 @@ public:
 
 protected:
     SmartPointer<TImage> m_reference;
+    itk::Point<double, 3> m_center;
     QI::Polynomial m_poly;
 
-    PolynomialImage(){}
+    PolynomialImage(){
+        m_center.Fill(0.0);
+    }
     ~PolynomialImage(){}
     virtual void GenerateData() ITK_OVERRIDE {
         typename TImage::Pointer output = this->GetOutput();
@@ -72,9 +76,10 @@ protected:
         }
         while(!imageIt.IsAtEnd()) {
             if (!mask || maskIter.Get()) {
-                TImage::PointType p;
+                TImage::PointType p, p2;
                 m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), p);
-                Eigen::Vector3d ep(p[0], p[1], p[2]);
+                p2 = p - m_center;
+                Eigen::Vector3d ep(p2[0], p2[1], p2[2]);
                 double val = m_poly.value(ep);
                 imageIt.Set(val);
             } else {
@@ -110,9 +115,13 @@ int main(int argc, char **argv) {
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(*num_threads);
     if (*verbose) cout << "Reading image " << argv[optind] << std::endl;
     QI::VolumeF::Pointer reference = QI::ReadImage(nonopts[0]);
+    itk::Point<double, 3> center;
+    std::cin >> center;
+    if (*verbose) std::cout << "Center point is: " << center << std::endl;
     if (*verbose) cout << "Building polynomial" << std::endl;
     QI::Polynomial poly(*order);
     ArrayXd coeff;
+    std::string dummy; std::getline(cin, dummy); // Damn C++ stream operators
     QI::ReadArray(cin, coeff);
     if (coeff.rows() != poly.nterms()) {
         QI_EXCEPTION("Require " + to_string(poly.nterms()) + " terms for " + to_string(*order) + " order polynomial");
@@ -123,6 +132,7 @@ int main(int argc, char **argv) {
     image->SetReferenceImage(reference);
     image->SetPolynomial(poly);
     image->SetMask(*mask);
+    image->SetCenter(center);
     image->Update();
     QI::WriteImage(image->GetOutput(), nonopts[1]);
     if (*verbose) cout << "Finished." << endl;

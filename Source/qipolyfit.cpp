@@ -14,7 +14,7 @@
 
 #include "itkImageToImageFilter.h"
 #include "itkImageRegionConstIteratorWithIndex.h"
-#include "itkMaskImageFilter.h"
+#include "itkImageMomentsCalculator.h"
 #include "QI/Types.h"
 #include "QI/Util.h"
 #include "QI/IO.h"
@@ -42,6 +42,7 @@ public:
     const QI::Polynomial &GetPolynomial() const { return m_poly; } 
     void SetPolynomial(const QI::Polynomial &p) { m_poly = p; }
     void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
+    void SetCenter(const itk::Point<double, 3>& v) { m_center = v; }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
     virtual void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
@@ -52,8 +53,11 @@ public:
 
 protected:
     QI::Polynomial m_poly;
+    itk::Point<double, 3> m_center;
+
     PolynomialFitImageFilter() {
         this->SetNumberOfRequiredInputs(1);
+        m_center.Fill(0.0);
     }
     ~PolynomialFitImageFilter() {}
 
@@ -85,9 +89,10 @@ protected:
         int yi = 0;
         while(!imageIt.IsAtEnd()) {
             if (!mask || maskIter.Get()) {
-                TImage::PointType p;
+                TImage::PointType p, p2;
                 input->TransformIndexToPhysicalPoint(imageIt.GetIndex(), p);
-                Eigen::Vector3d ep(p[0], p[1], p[2]);
+                p2 = p - m_center;
+                Eigen::Vector3d ep(p2[0], p2[1], p2[2]);
                 X.row(yi) = m_poly.terms(ep);
                 Y[yi] = imageIt.Get();
                 ++yi;
@@ -127,11 +132,22 @@ int main(int argc, char **argv) {
     QI::Polynomial poly(order.Get());
     fit->SetInput(input);
     fit->SetPolynomial(poly);
+    itk::Point<double, 3> center; center.Fill(0.0);
     if (mask_path) {
         if (verbose) std::cout << "Reading mask from: " << mask_path.Get() << std::endl;
-        fit->SetMask(QI::ReadImage(mask_path.Get()));
+        auto mask_image = QI::ReadImage(mask_path.Get());
+        fit->SetMask(mask_image);
+        auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
+        moments->SetImage(mask_image);
+        moments->Compute();
+        // ITK seems to put a minus sign on CoG
+        if (verbose) std::cout << "Mask CoG is: " << -moments->GetCenterOfGravity() << std::endl;
+        center = -moments->GetCenterOfGravity();
     }
+    fit->SetCenter(center);
     fit->Update();
+    // itk::Point does not have symmetric operator<< and operator>>
+    std::cout << center[0] << " " << center[1] << " " << center[2] << std::endl;
     std::cout << fit->GetPolynomial().coeffs().transpose() << std::endl;
     if (print_terms)
         fit->GetPolynomial().print_terms();
