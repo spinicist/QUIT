@@ -215,6 +215,9 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv);
     if (verbose) std::cout << "Reading header for: " << QI::CheckPos(source_path) << std::endl;
     auto header = itk::ImageIOFactory::CreateImageIO(QI::CheckPos(source_path).c_str(), itk::ImageIOFactory::ReadMode);
+    if (!header)  {
+        QI_EXCEPTION("Failed to read header from: " << source_path.Get());
+    }
     header->SetFileName(source_path.Get());
     header->ReadImageInformation();
     auto dims  = header->GetNumberOfDimensions();
