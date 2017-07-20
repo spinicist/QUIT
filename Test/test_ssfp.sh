@@ -27,14 +27,14 @@ SSFP_PINC="180 0 90 270"
 SSFP_TR="0.005"
 GS_REF_FILE="gs_ref.nii"
 GS_REF_MAG="gs_ref_mag.nii"
-GS_FILE="gs.nii"
-GSM_FILE="gsm.nii"
-GSL_FILE="gsl.nii"
-GS2_FILE="gs2.nii"
-CS_FILE="cs.nii"
-MAG_FILE="mag.nii"
-RMS_FILE="rms.nii"
-MAX_FILE="max.nii"
+GS_FILE="ssfp_GS.nii"
+GSM_FILE="ssfp_GSM.nii"
+GSL_FILE="ssfp_GSL.nii"
+GS2_FILE="ssfp_GSL2.nii"
+CS_FILE="ssfp_CS.nii"
+MAG_FILE="ssfp_MagMean.nii"
+RMS_FILE="ssfp_RMS.nii"
+MAX_FILE="ssfp_Max.nii"
 NOISE="0.001"
 run_test "CREATE_COMPLEX_SIGNALS" $QUITDIR/qisignal --model=1 -n --noise=$NOISE -x <<END_IN
 PD.nii
@@ -57,7 +57,7 @@ $QUITDIR/qicomplex -x $GS_REF_FILE -M $GS_REF_MAG -P gs_ref_ph.nii
 fslmaths gs_ref_ph -div 3.141592 -div $SSFP_TR gs_ref_f0.nii
 
 $QUITDIR/qicomplex -x $SSFP_FILE -M ssfp_mag.nii -P ssfp_ph.nii
-run_test "GS"  $QUITDIR/qissfpbands $SSFP_FILE -R N -o $GS_FILE --alt_order
+run_test "GS"  $QUITDIR/qissfpbands $SSFP_FILE --regularise N --alt-order
 $QUITDIR/qicomplex -x $GS_FILE -M gs_mag.nii -P gs_ph.nii
 fslmaths gs_ph -div 3.141592 -div $SSFP_TR gs_f0.nii
 
@@ -67,12 +67,12 @@ $SSFP_PINC
 $SSFP_TR
 END_IN
 
-#run_test "GSM" $QUITDIR/qissfpbands $SSFP_FILE -R M      --magnitude -o $GSM_FILE
-#run_test "GSL" $QUITDIR/qissfpbands $SSFP_FILE -R L      --magnitude -o $GSL_FILE
-#run_test "GS2" $QUITDIR/qissfpbands $SSFP_FILE -R L -2   --magnitude -o $GS2_FILE
+#run_test "GSM" $QUITDIR/qissfpbands $SSFP_FILE --regularise M      --magnitude -o $GSM_FILE
+#run_test "GSL" $QUITDIR/qissfpbands $SSFP_FILE --regularise L      --magnitude -o $GSL_FILE
+#run_test "GS2" $QUITDIR/qissfpbands $SSFP_FILE --regularise L -2   --magnitude -o $GS2_FILE
 #run_test "CS"  $QUITDIR/qissfpbands $SSFP_FILE --cs      --magnitude -o $CS_FILE
 #run_test "MAG" $QUITDIR/qissfpbands $SSFP_FILE --magmean --magnitude -o $MAG_FILE
-#run_test "RMS" $QUITDIR/qissfpbands $SSFP_FILE --rms     --magnitude -o $RMS_FILE
+#run_test "RMS" $QUITDIR/qissfpbands $SSFP_FILE ---regularisems     --magnitude -o $RMS_FILE
 #run_test "MAX" $QUITDIR/qissfpbands $SSFP_FILE --max     --magnitude -o $MAX_FILE
 
 #compare_test "GS"  $GS_FILE  $GS_REF_MAG $NOISE 50

@@ -18,11 +18,9 @@
 
 #include "Filters/ReorderVectorFilter.h"
 #include "QI/Util.h"
-#include "QI/Option.h"
+#include "QI/Args.h"
 #include "QI/Banding.h"
-
-using namespace std;
-using namespace Eigen;
+#include "QI/IO.h"
 
 namespace itk {
 
@@ -95,7 +93,7 @@ protected:
         }
         ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
         ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
-        VariableLengthVector<complex<float>> output(m_flips);
+        VariableLengthVector<std::complex<float>> output(m_flips);
         size_t phase_stride = m_flips;
         size_t flip_stride = 1;
         if (m_reorderPhase)
@@ -106,20 +104,20 @@ protected:
         Eigen::ArrayXcd b_pixel(m_lines);
         while(!inputIter.IsAtEnd()) {
             if (!m || maskIter.Get()) {
-                VariableLengthVector<complex<float>> center_pixel = inputIter.GetCenterPixel();
+                VariableLengthVector<std::complex<float>> center_pixel = inputIter.GetCenterPixel();
                 for (int f = 0; f < m_flips; f++) {
-                    const ArrayXcd center_array = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(center_pixel.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
+                    const Eigen::ArrayXcd center_array = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(center_pixel.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
                     QI::SplitBlocks(center_array, a_center, b_center, m_reorderBlock);
                     Eigen::ArrayXcd sums = Eigen::ArrayXcd::Zero(m_lines);
                     Eigen::ArrayXd nums = Eigen::ArrayXd::Zero(m_lines);
                     Eigen::ArrayXd dens = Eigen::ArrayXd::Zero(m_lines);
                     Eigen::ArrayXcd ws = Eigen::ArrayXcd::Zero(m_lines);
                     for (int p = 0; p < inputIter.Size(); ++p) {
-                        VariableLengthVector<complex<float>> pass1_pixel = pass1Iter.GetPixel(p);
-                        VariableLengthVector<complex<float>> input_pixel = inputIter.GetPixel(p);
-                        const complex<double> Id = pass1_pixel[f];
+                        VariableLengthVector<std::complex<float>> pass1_pixel = pass1Iter.GetPixel(p);
+                        VariableLengthVector<std::complex<float>> input_pixel = inputIter.GetPixel(p);
+                        const std::complex<double> Id = pass1_pixel[f];
                         if (norm(Id) > 0.) {
-                            const ArrayXcd input_array = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(input_pixel.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
+                            const Eigen::ArrayXcd input_array = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(input_pixel.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
                             QI::SplitBlocks(input_array, a_pixel, b_pixel, m_reorderBlock);
                             nums += real(conj(b_pixel - Id)*(b_pixel - a_pixel) + conj(b_pixel - a_pixel)*(b_pixel - Id));
                             dens += real(conj(a_pixel - b_pixel)*(a_pixel - b_pixel));
@@ -127,10 +125,10 @@ protected:
                     }
                     ws = nums / (2. * dens);
                     sums = ws*a_center + (1. - ws)*b_center;
-                    output[f] = static_cast<complex<float>>(sums.sum() / static_cast<double>(m_lines));
+                    output[f] = static_cast<std::complex<float>>(sums.sum() / static_cast<double>(m_lines));
                 }
             } else {
-                output.Fill(complex<float>(0.f,0.f));
+                output.Fill(std::complex<float>(0.f,0.f));
             }
             outputIter.Set(output);
             ++inputIter;
@@ -152,89 +150,99 @@ private:
 
 } // End namespace itk
 
-//******************************************************************************
-// Main
-//******************************************************************************
+/*
+ * Main
+ */
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList  opts("Usage is: qissfpbands [options] input\n\nInput must be a single complex image with >2 pairs phase incs\n");
-    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::Option<int> ph_incs(4,'\0',"ph_incs","Number of phase increments (default is 4).", opts);
-    QI::Switch      ph_order('\0',"ph_order","Data order is phase, then flip-angle (default opposite).", opts);
-    QI::Switch      two_pass('2',"2pass","Use the energy-minimisation scheme from Xiang and Hoff.", opts);
-    QI::EnumOption  regularise("MLN",'L','R',"regularise","Apply regularisation (magnitude/line/none)", opts);
-    QI::EnumOption  method("GXRMN",'G','M',"method","Choose method GXRMN = GS/CS/RMS/Max/Mag Mean", opts);
-    QI::Switch      magnitude('M',"magnitude","Output a magnitude image (default is complex)", opts);
-    QI::Switch      alt_order('\0',"alt_order","Opposing phase-incs alternate (default is 2 blocks)", opts);
-    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
-    QI::Option<string> prefix("",'o',"out","Specify output filename (default input+_nobands)", opts);
-    QI::Switch      verbose('v',"verbose","Print more information", opts);
-    QI::Help        help(opts);
-    std::deque<std::string> nonopts = opts.parse(argc, argv);
-    if (nonopts.size() != 1) {
-        cerr << opts << endl;
-        cerr << "Incorrect number of arguments." << endl;
-        return EXIT_FAILURE;
-    }
-    if (*verbose) cout << "Opening input file: " << nonopts[0] << endl;
-    auto inFile = QI::ReadVectorImage<complex<float>>(nonopts[0]);
-    size_t nVols = inFile->GetNumberOfComponentsPerPixel() / *ph_incs;
-    if (*verbose) {
-        cout << "Number of phase increments is " << *ph_incs << endl;
-        cout << "Number of volumes to process is " << nVols << endl;
+
+    args::ArgumentParser parser("Removes bands from SSFP images.\n"
+                                "http://github.com/spinicist/QUIT");
+    
+    args::Positional<std::string> input_path(parser, "INPUT", "Input filename");
+    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<std::string> out_arg(parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
+    args::ValueFlag<int> num_threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::Flag     alt_order(parser, "ALTERNATE", "Opposing phase-incs alternate (default is 2 blocks)", {"alt-order"});
+    args::Flag     ph_order(parser, "PHASE 1st", "Data order is phase, then flip-angle (default opposite)", {"ph-order"});
+    args::ValueFlag<int> ph_incs(parser, "PHASE-INCS", "Number of phase increments (default 4)", {"ph-incs"}, 4);
+    args::Flag     magnitude(parser, "MAGNITUDE", "Output a magnitude image only (default is complex)", {"magnitude"});
+    args::ValueFlag<std::string> method(parser, "METHOD", "Choose banding-removal method. G = Geometric Solution, X = Complex Average, R = Root Mean Square, M = Maximum, N = Mean Magnitude. Default = G", {"method"},"G");
+    args::ValueFlag<std::string> regularise(parser, "REGULARISE", "Chose regularisation method for GS. M = Magnitude, L = Line, N = None", {"regularise"}, "L");
+    args::Flag     two_pass(parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2',"2pass"});
+    QI::ParseArgs(parser, argc, argv);
+    
+    if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
+    auto inFile = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
+    size_t nVols = inFile->GetNumberOfComponentsPerPixel() / ph_incs.Get();
+    if (verbose) {
+        std::cout << "Number of phase increments is " << ph_incs.Get() << std::endl;
+        std::cout << "Number of volumes to process is " << nVols << std::endl;
     }
 
-    shared_ptr<QI::BandAlgo> algo = nullptr;
-    string suffix = "";
-    switch (*method) {
-        case 'G': {
-            suffix = "GS";
-            if (*verbose) cout << "Geometric solution selected" << endl;
-            auto g = make_shared<QI::GSAlgo>();
-            g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
-            switch(*regularise) {
-                case 'L': suffix += "L"; g->setRegularise(QI::RegEnum::Line); break;
-                case 'M': suffix += "M"; g->setRegularise(QI::RegEnum::Magnitude); break;
-                case 'N': g->setRegularise(QI::RegEnum::None); break;
-            }
-            algo = g;
-        }   break;
-        case 'X': suffix = "CS"; algo = make_shared<QI::CSAlgo>(); break;
-        case 'R': suffix = "RMS"; algo = make_shared<QI::RMSAlgo>(); break;
-        case 'N': suffix = "MagMean"; algo = make_shared<QI::MagMeanAlgo>(); break;
-        case 'M': suffix = "Max"; algo = make_shared<QI::MaxAlgo>(); break;
+    std::shared_ptr<QI::BandAlgo> algo = nullptr;
+    std::string suffix = "";
+    if (method.Get() == "G") {
+        suffix = "GS";
+        if (verbose) std::cout << "Geometric solution selected" << std::endl;
+        auto g = std::make_shared<QI::GSAlgo>();
+        g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
+        if (regularise.Get() == "L") {
+            suffix += "L"; g->setRegularise(QI::RegEnum::Line);
+        } else if (regularise.Get() == "M") {
+            suffix += "M"; g->setRegularise(QI::RegEnum::Magnitude);
+        } else if (regularise.Get() == "N") {
+            g->setRegularise(QI::RegEnum::None);
+        } else {
+            std::cerr << "Invalid regularisation " << regularise.Get() << " selected." << std::endl;
+            return EXIT_FAILURE;
+        }
+        algo = g;
+    } else if (method.Get() == "X") {
+        suffix = "CS"; algo = std::make_shared<QI::CSAlgo>();
+    } else if (method.Get() == "R") {
+        suffix = "RMS"; algo = std::make_shared<QI::RMSAlgo>();
+    } else if (method.Get() == "N") {
+        suffix = "MagMean"; algo = std::make_shared<QI::MagMeanAlgo>();
+    } else if (method.Get() == "M") {
+        suffix = "Max"; algo = std::make_shared<QI::MaxAlgo>();
+    } else {
+        std::cerr << "Invalid method " << method.Get() << " selected." << std::endl;
+        return EXIT_FAILURE;
     }
-    if (*verbose) cout << suffix << " method selected." << endl;
-    algo->setPhases(*ph_incs);
+    if (verbose) std::cout << suffix << " method selected." << std::endl;
+    algo->setPhases(ph_incs.Get());
     algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
-    algo->setReorderPhase(*ph_order);
-    algo->setReorderBlock(*alt_order);
+    algo->setReorderPhase(ph_order);
+    algo->setReorderBlock(alt_order);
     auto pass1 = QI::ApplyVectorXF::New();
     pass1->SetAlgorithm(algo);
-    pass1->SetMask(*mask);
+    if (mask) pass1->SetMask(QI::ReadImage(mask.Get()));
     pass1->SetInput(0, inFile);
-    pass1->SetPoolsize(*num_threads);
-    pass1->SetSplitsPerThread(*num_threads); // Unbalanced algorithm
-    pass1->SetVerbose(*verbose);
-    if (*verbose) {
-        cout << "1st pass" << endl;
+    pass1->SetPoolsize(num_threads.Get());
+    pass1->SetSplitsPerThread(num_threads.Get()); // Unbalanced algorithm
+    pass1->SetVerbose(verbose);
+    if (verbose) {
+        std::cout << "1st pass" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         pass1->AddObserver(itk::ProgressEvent(), monitor);
     }
     pass1->Update();
     QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
-    if (*two_pass) {
+    if (two_pass) {
         suffix += "2";
-        itk::MultiThreader::SetGlobalDefaultNumberOfThreads(*num_threads);
+        itk::MultiThreader::SetGlobalDefaultNumberOfThreads(num_threads.Get());
         auto pass2 = itk::MinEnergyFilter::New();
-        pass2->SetPhases(*ph_incs);
-        pass2->setReorderBlock(*alt_order);
-        pass2->setReorderPhase(*ph_order);
+        pass2->SetPhases(ph_incs.Get());
+        pass2->setReorderBlock(alt_order);
+        pass2->setReorderPhase(ph_order);
         pass2->SetInput(inFile);
         pass2->SetPass1(pass1->GetOutput(0));
-        pass2->SetMask(*mask);
-        if (*verbose) {
-            cout << "2nd pass" << endl;
+        if (mask) pass2->SetMask(QI::ReadImage(mask.Get()));
+        if (verbose) {
+            std::cout << "2nd pass" << std::endl;
             auto monitor = QI::GenericMonitor::New();
             pass2->AddObserver(itk::ProgressEvent(), monitor);
         }
@@ -243,16 +251,14 @@ int main(int argc, char **argv) {
     } else {
         output = pass1->GetOutput(0);
     }
-    if (*prefix == "")
-        *prefix = QI::StripExt(nonopts[0]) + "_" + suffix;
-    string outname = *prefix;
-    outname.append(QI::OutExt());
-    if (*verbose) cout << "Output filename: " << outname << endl;
-    if (*magnitude) {
+    std::string prefix = (out_arg ? out_arg.Get() : QI::StripExt(input_path.Get()) );
+    std::string outname = prefix + "_" + suffix + QI::OutExt();
+    if (verbose) std::cout << "Output filename: " << outname << std::endl;
+    if (magnitude) {
         QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(output, outname);
     } else {
         QI::WriteVectorImage(output, outname);
     }
-    if (*verbose) cout << "Finished." << endl;
+    if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
