@@ -250,6 +250,7 @@ int main(int argc, char **argv) {
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(*all_residuals);
     apply->SetPoolsize(*num_threads);
+    apply->SetSplitsPerThread(*num_threads); // Unbalanced algorithm
     apply->SetInput(0, data);
     apply->SetMask(*mask);
     apply->SetConst(0, *B1);
