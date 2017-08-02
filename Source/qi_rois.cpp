@@ -37,6 +37,7 @@ args::Flag     transpose(parser, "TRANSPOSE", "Transpose output table (values go
 args::Flag     ignore_zero(parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
 args::ValueFlag<std::string> delim(parser, "DELIMITER", "Specify delimiter to use between entries (default ,)", {'d',"delim"}, ",");
 args::ValueFlagList<std::string> header_paths(parser, "HEADER", "Add a header (can be specified multiple times)", {'H', "header"});
+args::ValueFlagList<std::string> header_names(parser, "HEADER NAME", "Header name (must be specified in same order as paths)", {"header_name"});
 
 /*
  * Helper function to work out the label list
@@ -82,6 +83,9 @@ void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::str
  * Helper function to read in all the header lines
  */
 std::vector<std::vector<std::string>> GetHeaders(int n_files) {
+    if (header_names && (header_names.Get().size() != header_paths.Get().size())) {
+        QI_EXCEPTION("Number of header names must match number of header paths");
+    }
     std::vector<std::vector<std::string>> headers(header_paths.Get().size(), std::vector<std::string>());
     for (int h = 0; h < headers.size(); h++) {
         const std::string header_path = header_paths.Get().at(h);
@@ -171,7 +175,11 @@ int main(int argc, char **argv) {
     if (transpose) {
         if (print_names) {
             for (int h = 0; h < headers.size(); ++h) {
-                std::cout << header_paths.Get().at(h) << delim.Get();
+                if (header_names) {
+                    std::cout << header_names.Get().at(h) << delim.Get();
+                } else {
+                    std::cout << header_paths.Get().at(h) << delim.Get();
+                }
             }
             auto it = label_names.begin();
             std::cout << *it;
@@ -193,7 +201,13 @@ int main(int argc, char **argv) {
         }
     } else {
         for (int h = 0; h < headers.size(); h++) {
-            if (print_names) std::cout << header_paths.Get().at(h) << delim.Get();
+            if (print_names) {
+                if (header_names) {
+                    std::cout << header_names.Get().at(h) << delim.Get();
+                } else {
+                    std::cout << header_paths.Get().at(h) << delim.Get();
+                }
+            }
             auto h_el = headers.at(h).begin();
             std::cout << *h_el;
             for (++h_el; h_el != headers.at(h).end(); ++h_el) {
