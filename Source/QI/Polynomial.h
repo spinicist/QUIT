@@ -17,9 +17,10 @@
 
 namespace QI {
 
+template<int D>
 class Polynomial {
 protected:
-    static const int Dimension = 3;
+    static const int Dimension = D;
     int m_order;
     Eigen::ArrayXd m_coeffs;
 
@@ -49,7 +50,7 @@ public:
     Eigen::ArrayXd terms(const Eigen::Vector3d &p) {
         Eigen::ArrayXd ts(m_coeffs.rows());
         int it = 0;
-        Eigen::Vector4d all; all << 1, p;
+        Eigen::Matrix<double, Dimension + 1, 1> all; all << 1, p;
         std::function<void (double, int, int)> orderLoop = [&](double t, int o, int start)->void {
             if (o == m_order) {
                 ts[it++] = t;
@@ -73,7 +74,12 @@ public:
 
     void print_terms() const {
         std::vector<std::string> t(m_coeffs.rows(), "a");
-        std::string list = "1xyz";
+        std::string list = "1";
+        char dim = 'a';
+        for (int i = 0; i < Dimension; i++) {
+            list.append(std::string(1, dim));
+            dim++;
+        }
         int it = 0, startx = 0, starty = 0, startz = 0;
         std::function<void (std::string, int, int)> orderLoop = [&](std::string term, int o, int start)->void {
             if (o == m_order) {

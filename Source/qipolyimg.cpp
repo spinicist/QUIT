@@ -39,7 +39,7 @@ public:
         m_reference = img;
     }
 
-    void SetPolynomial(const QI::Polynomial &p) { m_poly = p; }
+    void SetPolynomial(const QI::Polynomial<3> &p) { m_poly = p; }
     void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
     void SetCenter(const itk::Point<double, 3>& v) { m_center = v; }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
@@ -57,7 +57,7 @@ public:
 protected:
     SmartPointer<TImage> m_reference;
     itk::Point<double, 3> m_center;
-    QI::Polynomial m_poly;
+    QI::Polynomial<3> m_poly;
 
     PolynomialImage(){
         m_center.Fill(0.0);
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
     std::cin >> center;
     if (*verbose) std::cout << "Center point is: " << center << std::endl;
     if (*verbose) cout << "Building polynomial" << std::endl;
-    QI::Polynomial poly(*order);
+    QI::Polynomial<3> poly(*order);
     ArrayXd coeff;
     std::string dummy; std::getline(cin, dummy); // Damn C++ stream operators
     QI::ReadArray(cin, coeff);

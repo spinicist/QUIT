@@ -39,8 +39,8 @@ public:
     //void SetInput(const TImage *img) ITK_OVERRIDE      { this->SetNthInput(0, const_cast<TImage*>(img)); }
     //typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
 
-    const QI::Polynomial &GetPolynomial() const { return m_poly; } 
-    void SetPolynomial(const QI::Polynomial &p) { m_poly = p; }
+    const QI::Polynomial<3> &GetPolynomial() const { return m_poly; } 
+    void SetPolynomial(const QI::Polynomial<3> &p) { m_poly = p; }
     void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
     void SetCenter(const itk::Point<double, 3>& v) { m_center = v; }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
@@ -52,7 +52,7 @@ public:
     }
 
 protected:
-    QI::Polynomial m_poly;
+    QI::Polynomial<3> m_poly;
     itk::Point<double, 3> m_center;
 
     PolynomialFitImageFilter() {
@@ -129,7 +129,7 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Reading input from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadImage(QI::CheckPos(input_path));
     auto fit = itk::PolynomialFitImageFilter::New();
-    QI::Polynomial poly(order.Get());
+    QI::Polynomial<3> poly(order.Get());
     fit->SetInput(input);
     fit->SetPolynomial(poly);
     itk::Point<double, 3> center; center.Fill(0.0);

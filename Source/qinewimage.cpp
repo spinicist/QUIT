@@ -79,11 +79,15 @@ int main(int argc, char **argv) {
         stream >> stopVal;
         int steps;
         stream >> steps;
+        if (steps < 2) {
+            std::cerr << "Must have more than 1 step" << std::endl;
+            return EXIT_FAILURE;
+        }
         stepLength = imgSize[fillDim] / steps;
         deltaVal = (stopVal - startVal) / (steps - 1);
         if (verbose) std::cout << "Fill with " << steps << " steps " << startVal << "-" << stopVal << " on dim " << fillDim << std::endl;
     }
-
+    if (verbose) std::cout << "Step length is " << stepLength << " delta value is " << deltaVal << std::endl;
     imgRegion.SetIndex(imgIndex);
     imgRegion.SetSize(imgSize);
     newimg->SetRegions(imgRegion);
@@ -109,7 +113,11 @@ int main(int argc, char **argv) {
             it.NextLine();
         }
         it.NextSlice();
-        if ((it.GetIndex()[fillDim] % stepLength) == (stepLength - 1)) val += deltaVal;
+        if (fillType == FillTypes::Gradient) {
+            val += deltaVal;
+        } else if ((it.GetIndex()[fillDim] % stepLength) == 0) {
+            val += deltaVal;
+        }
     }
     if (verbose) std::cout << "Writing file to: " << QI::CheckPos(fName) << std::endl;
     QI::WriteImage(newimg, QI::CheckPos(fName));
