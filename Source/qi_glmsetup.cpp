@@ -91,13 +91,15 @@ int main(int argc, char **argv) {
         if (*verbose) std::cout << "Design matrix will be saved to: " << *design_path << std::endl;
         design_file = std::ofstream(*design_path);
     }
-    std::vector<std::vector<std::vector<double>>> covars(n_groups);
+    std::vector<std::vector<std::vector<std::string>>> covars(n_groups);
     std::vector<std::ifstream> covars_files;
     if (covars_path.set()) {
+        if (*verbose) std::cout << "All covariates: " << *covars_path << std::endl;
         std::istringstream stream_covars(*covars_path);
         while (!stream_covars.eof()) {
             std::string path;
             getline(stream_covars, path, ',');
+            std::cout << "Opening covariate file: " << path << std::endl;
             std::ifstream covars_file(path);
             if (!covars_file) {
                 std::cerr << "Failed to open covariate file: " << path << std::endl;
@@ -113,15 +115,16 @@ int main(int argc, char **argv) {
             if (*verbose) std::cout << "File: " << file_paths.at(i) << " Group: " << group << std::flush;
             QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.at(i));
             groups.at(group - 1).push_back(ptr);
-            std::vector<double> covar;
+            std::vector<std::string> covar;
             if (covars_path.set()) {
+                if (*verbose) std::cout << " Covariates: ";
                 for (auto &f : covars_files) {
-                    double c;
-                    f >> c;
+                    std::string c;
+                    std::getline(f, c);
                     covar.push_back(c);
+                    if (*verbose) std::cout << c << "\t";
                 }
                 covars.at(group - 1).push_back(covar);
-                if (*verbose) std::cout << ", read covariates.";
             }
             if (*verbose) std::cout << std::endl;
             if (!*sort) {
@@ -145,10 +148,10 @@ int main(int argc, char **argv) {
             }
         } else {
             if (*verbose) std::cout << "Ignoring file: " << file_paths.at(i) << std::endl;
-            // Eat a value in the covariates files as well
+            // Eat a line in each covariates file
             for (auto &f : covars_files) {
-                double c;
-                f >> c;
+                std::string dummy;
+                std::getline(f, dummy);
             }
         }
     }
