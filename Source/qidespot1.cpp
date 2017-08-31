@@ -160,18 +160,31 @@ public:
 
 class D1NLLS : public D1Algo {
 public:
+    D1NLLS() {
+        m_loT1 = 1e-6;
+        m_loPD = 1e-6;
+    }
+
     virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                        std::vector<TOutput> &outputs, TConst &residual,
                        TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        double B1 = consts[0];
-        const ArrayXd data = indata.cast<double>() / indata.maxCoeff();
-        Eigen::Array2d p;
+        const double B1 = consts[0];
+        const double scale = indata.maxCoeff();
+        if (scale < 0) {
+            outputs[0] = 0;
+            outputs[1] = 0;
+            residual = 0;
+            return false;
+        }
+        const ArrayXd data = indata.cast<double>() / scale;
+        Eigen::Array2d p; p << 10., 1.;
         ceres::Problem problem;
         problem.AddResidualBlock(new T1Cost(m_sequence, data, B1), NULL, p.data());
-        problem.SetParameterLowerBound(p.data(), 0, 1.);
-        problem.SetParameterLowerBound(p.data(), 1, 0.001);
+        problem.SetParameterLowerBound(p.data(), 0, m_loPD / scale);
+        problem.SetParameterUpperBound(p.data(), 0, m_hiPD / scale);
+        problem.SetParameterLowerBound(p.data(), 1, m_loT1);
         problem.SetParameterUpperBound(p.data(), 1, m_hiT1);
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
@@ -181,7 +194,6 @@ public:
         options.parameter_tolerance = 1e-4;
         // options.check_gradients = true;
         options.logging_type = ceres::SILENT;
-        p << 10., 1.;
         // std::cout << "START P: " << p.transpose() << std::endl;
         ceres::Solve(options, &problem, &summary);
         
@@ -212,8 +224,8 @@ int main(int argc, char **argv) {
     QI::Switch all_residuals('r',"resids","Write out per flip-angle residuals", opts);
     QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
     QI::Option<int> its(15,'i',"its","Max iterations for WLLS/NLLS (default 15)", opts);
-    QI::Option<float> clampPD(std::numeric_limits<float>::infinity(),'p',"clampPD","Clamp PD between 0 and value", opts);
-    QI::Option<float> clampT1(std::numeric_limits<float>::infinity(),'t',"clampT1","Clamp T1 between 0 and value", opts);
+    QI::Option<float> clampPD(std::numeric_limits<float>::infinity(),'p',"clampPD","Clamp PD between 1e-6 and value", opts);
+    QI::Option<float> clampT1(std::numeric_limits<float>::infinity(),'t',"clampT1","Clamp T1 between 1e-6 and value", opts);
     QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
     QI::ImageOption<QI::VolumeF> B1('b', "B1", "B1 Map file (ratio)", opts);
     QI::EnumOption algorithm("lwn",'l','a',"algo","Choose algorithm (l/w/n)", opts);
@@ -241,9 +253,9 @@ int main(int argc, char **argv) {
     }
     algo->setIterations(*its);
     if (isfinite(*clampPD))
-        algo->setClampPD(0, *clampPD);
+        algo->setClampPD(1e-6, *clampPD);
     if (isfinite(*clampT1))
-        algo->setClampT1(0, *clampT1);
+        algo->setClampT1(1e-6, *clampT1);
     algo->setSequence(spgrSequence);
     auto apply = QI::ApplyF::New();
     apply->SetVerbose(*verbose);
