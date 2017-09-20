@@ -5,7 +5,7 @@
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
- *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *  file, you can obtain one at http://mozilla.org/MPL/2.0/.
  *
  */
 
@@ -20,6 +20,7 @@
 #include "QI/IO.h"
 #include "QI/Polynomial.h"
 #include "QI/Args.h"
+#include "QI/Fit.h"
 
 namespace itk {
 
@@ -35,6 +36,9 @@ public:
 
     itkNewMacro(Self);
     itkTypeMacro(Self, Superclass);
+
+    itkSetMacro(Robust, bool);
+    itkGetMacro(Robust, bool);
 
     //void SetInput(const TImage *img) ITK_OVERRIDE      { this->SetNthInput(0, const_cast<TImage*>(img)); }
     //typename TImage::ConstPointer GetInput() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(0)); }
@@ -54,6 +58,7 @@ public:
 protected:
     QI::Polynomial<3> m_poly;
     itk::Point<double, 3> m_center;
+    bool m_Robust;
 
     PolynomialFitImageFilter() {
         this->SetNumberOfRequiredInputs(1);
@@ -82,10 +87,9 @@ protected:
             N = region.GetNumberOfPixels();
         }
         Eigen::MatrixXd X(N, m_poly.nterms());
-        Eigen::VectorXd Y(N);
+        Eigen::VectorXd y(N);
         itk::ImageRegionConstIteratorWithIndex<TImage> imageIt(input,region);
         imageIt.GoToBegin();
-        ++imageIt;
         int yi = 0;
         while(!imageIt.IsAtEnd()) {
             if (!mask || maskIter.Get()) {
@@ -94,14 +98,14 @@ protected:
                 p2 = p - m_center;
                 Eigen::Vector3d ep(p2[0], p2[1], p2[2]);
                 X.row(yi) = m_poly.terms(ep);
-                Y[yi] = imageIt.Get();
+                y[yi] = imageIt.Get();
                 ++yi;
             }
             ++imageIt;
             if (mask)
                 ++maskIter;
         }
-        Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        Eigen::VectorXd b = m_Robust ? QI::RobustLeastSquares(X, y) : QI::LeastSquares(X, y);
         m_poly.setCoeffs(b);
     }
 
@@ -121,7 +125,8 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag                    verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag                    print_terms(parser, "TERMS","Print out the polynomial terms", {"print-terms"});
+    args::Flag                    print_terms(parser, "TERMS", "Print out the polynomial terms", {"print-terms"});
+    args::Flag                    robust(parser, "ROBUST", "Use a robust (Huber) fit", {'r', "robust"});
     args::ValueFlag<int>          order(parser, "ORDER", "Specify the polynomial order (default 4)", {'o',"order"}, 4);
     args::ValueFlag<std::string>  mask_path(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
 
@@ -132,6 +137,7 @@ int main(int argc, char **argv) {
     QI::Polynomial<3> poly(order.Get());
     fit->SetInput(input);
     fit->SetPolynomial(poly);
+    fit->SetRobust(robust);
     itk::Point<double, 3> center; center.Fill(0.0);
     if (mask_path) {
         if (verbose) std::cout << "Reading mask from: " << mask_path.Get() << std::endl;
