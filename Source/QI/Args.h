@@ -13,6 +13,7 @@
 #define QI_ARGS_H
 
 #include "args.hxx"
+#include "QI/Macro.h"
 #include "QI/Types.h"
 
 namespace QI {
@@ -24,13 +25,9 @@ void ParseArgs(args::ArgumentParser &parser, int argc, char **argv) {
         std::cout << parser;
         exit(EXIT_SUCCESS);
     } catch (args::ParseError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        exit(EXIT_FAILURE);
+        QI_FAIL(e.what() << std::endl << parser);
     } catch (args::ValidationError e) {
-        std::cerr << e.what() << std::endl;
-        std::cerr << parser;
-        exit(EXIT_FAILURE);
+        QI_FAIL(e.what() << std::endl << parser);
     }
 }
 
@@ -39,8 +36,7 @@ T CheckPos(args::Positional<T> &a) {
     if (a) {
         return a.Get();
     } else {
-        std::cerr << a.Name() << " was not specified. Use --help to see usage." << std::endl;
-        exit(EXIT_FAILURE);
+        QI_FAIL(a.Name() << " was not specified. Use --help to see usage.");
     }
 }
 
@@ -49,8 +45,7 @@ std::vector<T> CheckList(args::PositionalList<T> &a) {
     if (a) {
         return a.Get();
     } else {
-        std::cerr << "No values of " << a.Name() << " specified. Use --help to see usage." << std::endl;
-        exit(EXIT_FAILURE);
+        QI_FAIL("No values of " << a.Name() << " specified. Use --help to see usage.");
     }
 }
 
@@ -59,6 +54,9 @@ void ArrayArg(const std::string &a, TArray &array) {
     std::istringstream iss(a);
     std::string el;
     for (int i = 0; i < size; i++) {
+        if (!iss) {
+            QI_FAIL("Failed to read array argument from string: " << a);
+        }
         std::getline(iss, el, ',');
         array[i] = std::stoi(el);
     }
