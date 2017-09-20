@@ -53,6 +53,11 @@ int main(int argc, char **argv) {
     if (spacing_arg) QI::ArrayArg<QI::VolumeF::SpacingType, 3>(spacing_arg.Get(), imgSpacing);
     if (origin_arg)  QI::ArrayArg<QI::VolumeF::PointType, 3>(origin_arg.Get(), imgOrigin);
 
+    if (verbose) {
+        std::cout << "Size:    " << imgSize << std::endl;
+        std::cout << "Spacing: " << imgSpacing << std::endl;
+        std::cout << "Origin:  " << imgOrigin << std::endl;
+    }
     enum class FillTypes { Fill, Gradient, Steps };
     int ndims = 3;
     FillTypes fillType = FillTypes::Fill;
