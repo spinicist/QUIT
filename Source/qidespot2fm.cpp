@@ -93,8 +93,11 @@ public:
             ArrayXd data = indata.cast<double>() / indata.maxCoeff();
 
             vector<double> f0_starts = {0, 0.4/m_sequence->TR()};
-            if (this->m_asymmetric)
+            if (this->m_asymmetric) {
+                f0_starts.push_back(0.2/m_sequence->TR());
+                f0_starts.push_back(-0.2/m_sequence->TR());
                 f0_starts.push_back(-0.4/m_sequence->TR());
+            }
 
             double best = numeric_limits<double>::infinity();
             Eigen::Array3d p, bestP;
