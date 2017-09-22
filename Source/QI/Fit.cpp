@@ -41,33 +41,35 @@ Eigen::VectorXd RobustLeastSquares(const Eigen::MatrixXd &X, const Eigen::Vector
     const double sig_lower = (sig_y == 0) ? 1.0 : 1e-6 * sig_y;
 
     // Solve Xb = Y via least squares via QR decomposition, keep the decomposition around
-    Eigen::ColPivHouseholderQR<Eigen::MatrixXd> QR(X);
+    Eigen::ColPivHouseholderQR<Eigen::MatrixXd> QR(X.rows(), X.cols());
+    QR.compute(X);
     Eigen::VectorXd b = QR.solve(y);
-    // Calculate leverage and correction factor from the 'thinQ' matrix
-    Eigen::MatrixXd Q(X.rows(), X.cols()); Q.setIdentity();
-    Q = QR.householderQ() * Q;
-    Eigen::ArrayXd h = Q.array().square().rowwise().sum(); //(Q * Q.transpose()).diagonal();
-    Eigen::ArrayXd corr_fac = (1.0 - h).sqrt();
-
-    // For Huber at the moment
-    const double tune = 1.345;
-    int iter = 0;
-    bool converged = false;
+    Eigen::ArrayXd corr_fac;
+    {   // Calculate leverage and correction factor from the 'thinQ' matrix in here to de-alloc memory when done
+        Eigen::MatrixXd Q(X.rows(), X.cols()); Q.setIdentity();
+        Q = QR.householderQ() * Q;
+        // The below expression with Q is equal to (Q * Q.transpose()).diagonal() = h
+        corr_fac = (1.0 - Q.array().square().rowwise().sum()).sqrt();
+    }
 
     // Allocate some workspace for loop
-    Eigen::ArrayXd resid(y.rows()), sorted_resid(y.rows()), r(y.rows()), w(y.rows()), wy(y.rows());
+    Eigen::ArrayXd r(y.rows()), sr(y.rows()), w(y.rows());
     Eigen::VectorXd b_prev(b.rows());
     Eigen::MatrixXd wX(X.rows(), X.cols());
-    while (!converged && (++iter < 10)) {
-        resid = (y - X*b); // Calculate residuals
-        const double sig = mad_sigma(resid, sorted_resid, X.cols()); // Get Median Absolute Deviation
-        r = resid / (tune * std::max(sig, sig_lower) * corr_fac); // Adjust residuals
-        std::cerr << "Iteration: " << iter << " total resid: " << resid.square().sum() << " adjusted resid: " << r.square().sum() << std::endl;
+    
+    const double tune = 1.345; // For Huber only
+    int iter = 0;
+    bool converged = false;
+    while (!converged && (++iter < 20)) {
+        r = (y - X*b); // Calculate residuals
+        const double sig = mad_sigma(r, sr, X.cols()); // Get Median Absolute Deviation
+        r /= (tune * std::max(sig, sig_lower) * corr_fac); // Adjust residuals
         w = 1 / r.abs().max(1); // Huber weights
-        b_prev = b; // Save weights
+        b_prev = b; // Save co-efficients
         wX = w.matrix().asDiagonal() * X;
-        wy = w * y.array();
-        b = LeastSquares(wX, wy); // Weighted solve
+        QR.compute(wX);
+        w *= y.array(); // Re-use w array for weighted-y
+        b = QR.solve(w.matrix()); // Weighted solve
         if (((b - b_prev).array().abs() < sqrt(std::numeric_limits<double>::epsilon())).all()) {
             converged = true;
         }
