@@ -18,7 +18,7 @@ using namespace Eigen;
 namespace QI {
 
 MPRAGE::MPRAGE(const ArrayXd &TI, const ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip, const double eta) :
-    SequenceBase(), m_TI(TI), m_TD(TD), m_Nseg(Nseg), m_Nk0(Nk0), m_eta(eta) {
+    SequenceBase(), m_TI(TI), m_TD(TD), m_ETL(Nseg), m_k0(Nk0), m_eta(eta) {
     m_TR = TR;
     m_flip.resize(1); m_flip[0] = flip;
     if (m_TI.size() != m_TD.size()) {
@@ -34,9 +34,9 @@ MPRAGE::MPRAGE(std::istream &istr, const bool prompt) : SequenceBase() {
     if (prompt) cout << "Enter read-out TR (seconds): " << flush;
     QI::Read(istr, m_TR);
     if (prompt) cout << "Enter segment size: " << flush;
-    QI::Read(istr, m_Nseg);
+    QI::Read(istr, m_ETL);
     if (prompt) cout << "Enter k0: " << flush;
-    QI::Read(istr, m_Nk0);
+    QI::Read(istr, m_k0);
     if (prompt) cout << "Enter inversion times (seconds): " << flush;
     QI::ReadArray(istr, m_TI);
     if (prompt) cout << "Enter relaxation delay times (seconds): " << flush;
@@ -63,11 +63,11 @@ IRSPGR::IRSPGR(std::istream &istr, const bool prompt) : MPRAGE() {
     if (prompt) cout << "Enter number of spatial locations (remember +4): ";
     QI::Read(istr, NPE2);
     if (NPE2 >= 64) {
-        m_Nseg = NPE2 / 2;
+     m_ETL = NPE2 / 2;
     } else {
-        m_Nseg = NPE2;
+     m_ETL = NPE2;
     }
-    m_Nk0 = 0;
+    m_k0 = 0;
     
     if (prompt) cout << "Enter TIs (seconds): " << flush;
     QI::ReadArray(istr, m_TI);
@@ -77,14 +77,13 @@ IRSPGR::IRSPGR(std::istream &istr, const bool prompt) : MPRAGE() {
 }
 
 ArrayXcd MPRAGE::signal(shared_ptr<Model> m, const VectorXd &par) const {
-    return m->MPRAGE(par, m_flip[0], m_TR, m_Nseg, m_Nk0, m_eta, m_TI, m_TD);
+    return m->MPRAGE(par, m_flip[0], m_TR, m_ETL, m_k0, m_eta, m_TI, m_TD);
 }
 
 void MPRAGE::write(ostream &os) const {
     os << name() << endl;
-    os << "TR: " << m_TR << "\tSegment Length: " << m_Nseg << "\tk-Zero: " << m_Nk0 << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
-    os << "TI: " << m_TI.transpose() << endl;
-    os << "TD: " << m_TD.transpose() << endl;
+    os << "TR: " << m_TR << "\tSegment Length: " << m_ETL << "\tk-Zero: " << m_k0 << "\tAlpha: " << m_flip[0] * 180 / M_PI << endl;
+    os << "TI: " << m_TI.transpose() << "\tTD: " << m_TD.transpose() << "\tEta: " << m_eta << "\tSegment Time: " << (m_TI + m_TR*(m_ETL - m_k0) + m_TD) << endl;
 }
 
 ArrayXd MPRAGE::weights(const double f0) const {

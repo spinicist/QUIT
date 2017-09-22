@@ -82,14 +82,14 @@ public:
         const T &B1 = p1[2];
         const double eta = -1.0; // Inversion efficiency defined as -1 < eta < 0
 
-        const double TIs = m_seq.m_TI[0] - m_seq.m_TR*m_seq.m_Nk0; // Adjust TI for k0
+        const double TIs = m_seq.m_TI[0] - m_seq.m_TR*m_seq.m_k0; // Adjust TI for k0
         const T T1s = 1. / (1./T1 - log(cos(m_seq.m_flip[0] * B1))/m_seq.m_TR);
         const T M0s = M0 * (1. - exp(-m_seq.m_TR/T1)) / (1. - exp(-m_seq.m_TR/T1s));
-        const T A_1 = M0s*(1. - exp(-(m_seq.m_Nseg*m_seq.m_TR)/T1s));
+        const T A_1 = M0s*(1. - exp(-(m_seq.m_ETL*m_seq.m_TR)/T1s));
 
         const T A_2 = M0*(1. - exp(-m_seq.m_TD[0]/T1));
         const T A_3 = M0*(1. - exp(-TIs/T1));
-        const T B_1 = exp(-(m_seq.m_Nseg*m_seq.m_TR)/T1s);
+        const T B_1 = exp(-(m_seq.m_ETL*m_seq.m_TR)/T1s);
         const T B_2 = exp(-m_seq.m_TD[0]/T1);
         const T B_3 = eta*exp(-TIs/T1);
 
@@ -97,7 +97,7 @@ public:
         const T B = B_1*B_2*B_3;
         const T M1 = A / (1. - B);
 
-        r[0] = m_data[0] - (M0s + (M1 - M0s)*exp(-(m_seq.m_Nk0*m_seq.m_TR)/T1s)) * sin(m_seq.m_flip[0] * B1);
+        r[0] = m_data[0] - (M0s + (M1 - M0s)*exp(-(m_seq.m_k0*m_seq.m_TR)/T1s)) * sin(m_seq.m_flip[0] * B1);
         return true;
     }
 };

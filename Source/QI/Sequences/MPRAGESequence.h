@@ -20,7 +20,7 @@ class MPRAGE : public SequenceBase {
     public:
         Eigen::ArrayXd m_TI, m_TD;
         double m_eta;
-        int m_Nseg, m_Nk0;
+        int m_ETL, m_k0;
         MPRAGE() : SequenceBase() {}
         MPRAGE(const Eigen::ArrayXd &TI, const Eigen::ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip, const double eta);
         MPRAGE(std::istream &istr, const bool prompt);
