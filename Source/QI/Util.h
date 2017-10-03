@@ -34,10 +34,12 @@
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
     os << "(";
-    auto it = vec.begin();
-    std::cout << *it;
-    for (it++; it != vec.end(); it++) {
-        std::cout << ", " << *it;
+    if (vec.size() > 0) {
+        auto it = vec.begin();
+        std::cout << *it;
+        for (it++; it != vec.end(); it++) {
+            std::cout << ", " << *it;
+        }
     }
     os << ")";
     return os;
