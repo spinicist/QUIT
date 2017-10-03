@@ -163,7 +163,6 @@ public:
         its = summary.iterations.size();
         residual = summary.final_cost * scale;
         if (resids.Size() > 0) {
-            assert(resids.Size() == data.size());
             std::vector<double> r_temp(spgr_data.size() + 1);
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
             for (int i = 0; i < r_temp.size(); i++) {
