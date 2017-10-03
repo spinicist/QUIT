@@ -36,8 +36,11 @@ args::ValueFlag<std::string> prefix(parser, "PREFIX", "Add a prefix to output fi
  */
 template<typename TImage>
 void Convert(const std::string &input, const std::string &output) {
+    if (verbose) std::cout << "Reading image: " << input << std::endl;
     auto image = QI::ReadImage<TImage>(input);
+    if (verbose) std::cout << "Writing image: " << output << std::endl;
     QI::WriteImage<TImage>(image, output);
+    if (verbose) std::cout << "Finished." << std::endl;
 }
 
 template<int D, typename T>
@@ -134,6 +137,7 @@ int main(int argc, char **argv) {
     const std::string input = QI::CheckPos(input_file);
     itk::ImageIOBase::Pointer header = itk::ImageIOFactory::CreateImageIO(input.c_str(), itk::ImageIOFactory::ReadMode);
     if (!header) QI_FAIL("Could not open: " << input);
+    if (verbose) std::cout << "Reading header information: " << input << std::endl;
     header->SetFileName(input);
     header->ReadImageInformation();
 
