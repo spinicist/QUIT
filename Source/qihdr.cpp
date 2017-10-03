@@ -104,6 +104,7 @@ int main(int argc, char **argv) {
             auto header = imageIO->GetMetaDataDictionary();
             if (header.HasKey(hf)) {
                 std::vector<std::string> string_array_value;
+                std::vector<std::vector<std::string> > string_array_array_value;
                 std::vector<std::vector<double> > double_array_array_value;
                 std::vector<double> double_array_value;
                 std::string string_value;
@@ -112,6 +113,8 @@ int main(int argc, char **argv) {
                 if (verbose) std::cout << hf << ": ";
                 if (ExposeMetaData(header, hf, string_array_value)) {
                     std::cout << string_array_value << std::endl;
+                } else if (ExposeMetaData(header, hf, string_array_array_value)) {
+                    std::cout << string_array_array_value << std::endl;
                 } else if (ExposeMetaData(header, hf, double_array_value)) {
                     std::cout << double_array_value << std::endl;
                 } else if (ExposeMetaData(header, hf, double_array_array_value)) {
