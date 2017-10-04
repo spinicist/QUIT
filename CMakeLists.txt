@@ -68,7 +68,7 @@ set( ELDIR ${QIDIR}/Ellipse )
 add_library( CEST    STATIC ${QIDIR}/CEST.cpp )
 target_link_libraries( CEST ${CERES_LIBRARIES} )
 add_library( Banding STATIC ${QIDIR}/Banding.cpp )
-add_library( Ellipse STATIC ${ELDIR}/Ellipse.cpp ${ELDIR}/EllipseHelpers.cpp ${ELDIR}/EllipseFit.cpp ${QIDIR}/GoldenSection.cpp )
+add_library( Ellipse STATIC ${ELDIR}/EllipseFilters.cpp ${ELDIR}/EllipseHelpers.cpp ${ELDIR}/EllipseFits.cpp )
 target_link_libraries( Ellipse ${CERES_LIBRARIES} ${SIGLIB} )
 add_library( Masking STATIC ${QIDIR}/Masking.cpp )
 
@@ -82,7 +82,7 @@ set( QUANT qisignal
            qidespot1 qidespot2 qidespot1hifi qidespot2fm
            qimcdespot 
            qimultiecho qimp2rage
-           qissfpbands qiesmap qicest )
+           qissfpbands qi_ellipse qi_emt qicest )
 
 foreach(PROGRAM ${UTILS})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
@@ -98,7 +98,7 @@ endforeach(PROGRAM)
 ## Add extra libraries here
 target_link_libraries( qicest          CEST )
 target_link_libraries( qissfpbands     Banding )
-target_link_libraries( qiesmap         Ellipse Banding )
+target_link_libraries( qi_ellipse      Ellipse )
 target_link_libraries( qisplitsubjects Masking )
 target_link_libraries( qimask          Masking )
 

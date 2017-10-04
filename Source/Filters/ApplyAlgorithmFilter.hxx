@@ -318,8 +318,10 @@ void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &regio
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
                 outputIters[i].Set(m_algorithm->zero(i));
             }
-            VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
-            allResidualsIter.Set(residZeros);
+            if (m_allResiduals) {
+                VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
+                allResidualsIter.Set(residZeros);
+            }
             residualIter.Set(0);
             iterationsIter.Set(0);
         }

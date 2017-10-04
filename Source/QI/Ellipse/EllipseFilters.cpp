@@ -9,101 +9,14 @@
  *
  */
 
-#include "QI/Ellipse/Ellipse.h"
-#include "QI/Ellipse/EllipseHelpers.h"
+#include "QI/Ellipse/EllipseFilters.h"
+/*#include "QI/Ellipse/EllipseHelpers.h"
 #include "QI/Banding.h"
-#include "QI/GoldenSection.h"
+#include "QI/GoldenSection.h"*/
 
 namespace QI {
 
-Eigen::MatrixXd HyperEllipse::buildS(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y) const {
-    Eigen::Matrix<double, Eigen::Dynamic, 6> D(x.rows(), 6);
-    D.col(0) = x*x;
-    D.col(1) = 2*x*y;
-    D.col(2) = y*y;
-    D.col(3) = 2*x;
-    D.col(4) = 2*y;
-    D.col(5).setConstant(1);
-    return D.transpose() * D;
-}
-
-Eigen::MatrixXd HyperEllipse::fitzC() const {
-    Matrix6d C = Matrix6d::Zero();
-    // Fitgibbon et al
-    C(0,2) = -2; C(1,1) = 1; C(2,0) = -2;
-    return C;
-}
-
-Eigen::MatrixXd HyperEllipse::hyperC(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y) const {
-    Matrix6d C = Matrix6d::Zero();
-    // Hyper Ellipse
-    const double N = x.cols();
-    const double xc = x.sum() / N;
-    const double yc = y.sum() / N;
-    const double sx = x.square().sum() / N;
-    const double sy = y.square().sum() / N;
-    const double xy = (x * y).sum() / N; 
-    C << 6*sx, 6*xy, sx+sy, 6*xc, 2*yc, 1,
-         6*xy, 4*(sx+sy), 6*xy, 4*yc, 4*xc, 0,
-         sx + sy, 6*xy, 6*sy, 2*xc, 6*yc, 1,
-         6*xc, 4*yc, 2*xc, 4, 0, 0,
-         2*yc, 4*xc, 6*yc, 0, 4, 0,
-         1, 0, 1, 0, 0, 0;
-    return C;
-}
-
-std::array<float, 7> HyperEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
-                                             const double TR, const double flip) const {
-    Eigen::ArrayXcd data = indata.cast<std::complex<double>>();
-    const double scale = data.abs().maxCoeff();
-    Eigen::ArrayXd x = data.real() / scale;
-    Eigen::ArrayXd y = data.imag() / scale;
-    
-    Eigen::MatrixXd S = buildS(x, y);
-    Matrix6d C = hyperC(x, y);
-    
-    // Note S and C are swapped so we can use GES
-    Eigen::GeneralizedSelfAdjointEigenSolver<Matrix6d> solver(C, S);
-    Vector6d Z;
-    if (fabs(solver.eigenvalues()[5]) > fabs(solver.eigenvalues()[0]))
-        Z = solver.eigenvectors().col(5);
-    else
-        Z = solver.eigenvectors().col(0);
-
-    const double dsc=(Z[1]*Z[1]-Z[0]*Z[2]);
-    const double xc = (Z[2]*Z[3]-Z[1]*Z[4])/dsc;
-    const double yc = (Z[0]*Z[4]-Z[1]*Z[3])/dsc;
-    const double theta_te = atan2(yc,xc);
-    const double num = 2*(Z[0]*(Z[4]*Z[4])+Z[2]*(Z[3]*Z[3])+Z[5]*(Z[1]*Z[1])-2*Z[1]*Z[3]*Z[4]-Z[0]*Z[2]*Z[5]);
-    double A = sqrt(num/(dsc*(sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
-    double B = sqrt(num/(dsc*(-sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
-    if (A > B) {
-        std::swap(A, B);
-    }
-    double a, b;
-    double c = sqrt(xc*xc+yc*yc);
-    SemiaxesToHoff(A, B, c, a, b);
-
-    /* Calculate theta_tr, i.e. drop RF phase, eddy currents etc. */
-    /* First, center, rotate back to vertical and get 't' parameter */
-    const Eigen::ArrayXcd vert = data / std::polar(1., theta_te);
-    const Eigen::ArrayXd ct = (vert.real() - c) / A;
-    const Eigen::VectorXd rhs = (ct - b) / (b*ct - 1);
-    Eigen::MatrixXd lhs(rhs.rows(), 2);
-    lhs.col(0) = cos(m_sequence->allPhi());
-    lhs.col(1) = sin(m_sequence->allPhi());
-    const Eigen::VectorXd K = (lhs.transpose() * lhs).partialPivLu().solve(lhs.transpose() * rhs);
-    const double theta_0 = atan2(K[1], K[0]);
-    std::array<float, NumOutputs> outputs;
-    EllipseToMRI(a, b, c*scale, theta_0, TR, flip,
-                 outputs[0], outputs[1], outputs[2], outputs[3], m_debug);
-    outputs[4] = a;
-    outputs[5] = b;
-    outputs[6] = std::arg(std::polar(1.,theta_te) / std::polar(1.,theta_0/2));
-    return outputs;
-}
-
-void ConstrainedEllipse::fit(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y, const Eigen::Vector2d p, const Eigen::Vector2d q, 
+/*void ConstrainedEllipse::fit(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y, const Eigen::Vector2d p, const Eigen::Vector2d q, 
              Eigen::Vector2d gammaBound, Eigen::Matrix2d &A, Eigen::Vector2d &x_c, double &g) const {
     const double epsFmin = 1e-8, epsRootsImag = 1e-6, epsRootsMin = 1e-3; // Threshold Values
     Eigen::Matrix3d B; B << 0,  0, 2,
@@ -217,49 +130,6 @@ void ConstrainedEllipse::fit(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y, c
         if (its > 10)
             break;
     }
-}
-
-std::array<float, 7> ConstrainedEllipse::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &indata,
-                                            const double TR, const double flip) const {
-    Eigen::ArrayXcd data = indata.cast<std::complex<double>>();
-    const double scale = data.abs().maxCoeff();
-    data /= scale;
-    Eigen::ArrayXcd a(data.rows() / 2);
-    Eigen::ArrayXcd b(data.rows() / 2);
-    QI::SplitBlocks(data, a, b, m_reorderBlock);
-    const std::complex<double> gs = QI::GeometricSolution(a, b, QI::RegEnum::Line);
-    Eigen::ArrayXd x = data.real();
-    Eigen::ArrayXd y = data.imag();
-    Eigen::Vector2d p = Eigen::Vector2d::Zero();
-    Eigen::Vector2d q; q << real(gs), imag(gs);
-    Eigen::Vector2d gammaBound; gammaBound << 0.25, 1.5;
-    Eigen::Matrix2d A; Eigen::Vector2d xc; double g;
-    fit(x, y, p, q, gammaBound, A, xc, g);
-    Vector6d Z;
-    {
-        double a = A.coeffRef(0,0);
-        double b = A.coeffRef(1,0)+A.coeffRef(0,1);
-        double c = A.coeffRef(1,1);
-        Z << a, b/2, c, -(2*a*xc[0] + b*xc[1])/2, -(2*c*xc[1] + b*xc[0])/2,
-                a*xc[0]*xc[0] + b*xc[0]*xc[1] + c*xc[1]*xc[1] + g;
-    }
-    const double dsc=(Z[1]*Z[1]-Z[0]*Z[2]);
-    const double th = atan2(xc[1],xc[0]);
-    const double num = 2*(Z[0]*(Z[4]*Z[4])+Z[2]*(Z[3]*Z[3])+Z[5]*(Z[1]*Z[1])-2*Z[1]*Z[3]*Z[4]-Z[0]*Z[2]*Z[5]);
-    double sA = sqrt(num/(dsc*(sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
-    double sB = sqrt(num/(dsc*(-sqrt((Z[0]-Z[2])*(Z[0]-Z[2]) + 4*Z[1]*Z[1])-(Z[0]+Z[2]))));
-    if (sA > sB) {
-        std::swap(sA, sB);
-    }
-    double ea, eb;
-    double c = sqrt(xc[0]*xc[0]+xc[1]*xc[1]);
-    SemiaxesToHoff(sA, sB, c, ea, eb);
-    std::array<float, NumOutputs> outputs;
-    EllipseToMRI(ea, eb, c*scale, th, TR, flip,
-                 outputs[0], outputs[1], outputs[2], outputs[3], m_debug);
-    outputs[4] = ea;
-    outputs[5] = eb;
-    return outputs;
-}
+}*/
 
 } // End namespace QI

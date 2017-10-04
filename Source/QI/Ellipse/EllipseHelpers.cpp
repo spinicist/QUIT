@@ -14,10 +14,39 @@
 namespace QI {
 
 // Helper Functions
+
+Eigen::ArrayXd Unwrap(const Eigen::ArrayXd &x) {
+    // if (debug) {
+    //     std::cout << "*** START ***\nY wrapped:   " << Y.transpose() << std::endl;
+    // }
+    const int sz = x.rows();
+    Eigen::ArrayXd diff = x.tail(sz - 1) - x.head(sz - 1);
+    const Eigen::ArrayXd diffmod = ((diff+M_PI) - (2*M_PI)*floor((diff+M_PI)/(2*M_PI))) - M_PI;
+    Eigen::ArrayXd ph_correct = diffmod - diff;
+    for (int i = 0; i < (sz - 1); i++) {
+        if (std::abs(diff[i]) < M_PI) ph_correct[i] = 0;
+    }
+    for (int i = 1; i < (sz - 1); i++) {
+        ph_correct[i] += ph_correct[i - 1];
+    }
+    Eigen::ArrayXd y(x.rows());
+    y[0] = x[0];
+    y.tail(sz - 1) += ph_correct;
+    return y;
+    // if (debug) {
+    //     std::cout << "Diff         " << diff.transpose() << std::endl;
+    //     std::cout << "Diffmod      " << diffmod.transpose() << std::endl;
+    //     std::cout << "Ph correct   " << ph_correct.transpose() << std::endl;
+    //     std::cout << "Y unwrapped: " << Y.transpose() << std::endl;
+    // }
+}
+
+
 void SemiaxesToHoff(const double A, const double B, const double c,
-                    double &a, double &b) {
+                    double &G, double &a, double &b) {
     b = (-c*A + sqrt(c*c*A*A - (c*c + B*B)*(A*A - B*B)))/(c*c + B*B);
     a = B / (b*B + c*sqrt(1-b*b));
+    G = c*(1 - b*b)/(1 - a*b);
 }
 
 

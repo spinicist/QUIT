@@ -21,8 +21,10 @@
 
 namespace QI {
 
+Eigen::ArrayXd Unwrap(const Eigen::ArrayXd &x);
+
 void SemiaxesToHoff(const double A, const double B, const double c,
-                    double &a, double &b);
+                    double &G, double &a, double &b);
 
 void EllipseToMRI(const double a, const double b, const double c, const double th, const double TR, const double flip,
                   float &M0, float &T1, float &T2, float &df0, const bool debug = false);
