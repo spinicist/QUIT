@@ -153,7 +153,7 @@ public:
         problem.SetParameterLowerBound(p.data(), 0, 0.1);
         problem.SetParameterUpperBound(p.data(), 0, 20.0);
         problem.SetParameterLowerBound(p.data(), 1, 1e-6);
-        problem.SetParameterUpperBound(p.data(), 1, 1.0 - 1e-6);
+        problem.SetParameterUpperBound(p.data(), 1, 0.2 - 1e-6);
         problem.SetParameterLowerBound(p.data(), 2, 0.1);
         problem.SetParameterUpperBound(p.data(), 2, 10.0);
         problem.SetParameterLowerBound(p.data(), 3, 0.5);
@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get());
+    apply->SetSplitsPerThread(threads.Get()*2);
     apply->SetOutputAllResiduals(all_residuals);
     apply->SetInput(0, G);
     apply->SetInput(1, a);

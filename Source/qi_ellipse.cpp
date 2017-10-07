@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     auto apply = QI::ApplyVectorXFVectorF::New();
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get());
+    apply->SetSplitsPerThread(threads.Get()*2);
     apply->SetInput(0, data);
     if (mask) {
         if (verbose) std::cout << "Reading mask: " << mask.Get() << std::endl;

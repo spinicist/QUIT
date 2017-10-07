@@ -75,7 +75,7 @@ add_library( Masking STATIC ${QIDIR}/Masking.cpp )
 set( UTILS qihdr qinewimage qidiff qiconvert
            qicomplex qiaffine qimask qikfilter qireorder
            qisplitsubjects qiunwrap qipolyfit qipolyimg
-           qi_coil_combine qi_bet
+           qi_coil_combine qi_bet qi_rfprofile
            qi_rois qi_glmsetup qi_glmcontrasts )
 set( QUANT qisignal
            qiafi qidream

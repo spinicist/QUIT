@@ -178,10 +178,11 @@ Array5d DirectEllipse(const Eigen::ArrayXcf &indata, const double TR, const Eige
     problem.AddResidualBlock(cost, NULL, p.data());
     const double not_zero = 1.0e-6;
     const double not_one  = 1.0 - not_zero;
+    const double max_a = exp(-TR / 4.3); // Set a sensible maximum on T2
     problem.SetParameterLowerBound(p.data(), 0, not_zero); problem.SetParameterUpperBound(p.data(), 0, not_one);
-    problem.SetParameterLowerBound(p.data(), 1, not_zero); problem.SetParameterUpperBound(p.data(), 1, not_one);
+    problem.SetParameterLowerBound(p.data(), 1, not_zero); problem.SetParameterUpperBound(p.data(), 1, max_a);
     problem.SetParameterLowerBound(p.data(), 2, not_zero); problem.SetParameterUpperBound(p.data(), 2, not_one);
-    problem.SetParameterLowerBound(p.data(), 3, -1 / TR); problem.SetParameterUpperBound(p.data(), 3,  1 / TR);
+    problem.SetParameterLowerBound(p.data(), 3, -1/TR + 1.0e-6); problem.SetParameterUpperBound(p.data(), 3,  1/TR - 1.0e-6);
     problem.SetParameterLowerBound(p.data(), 4, -M_PI); problem.SetParameterUpperBound(p.data(), 4,  M_PI);
     ceres::Solver::Options options;
     ceres::Solver::Summary summary;
