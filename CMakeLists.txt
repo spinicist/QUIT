@@ -68,7 +68,10 @@ set( ELDIR ${QIDIR}/Ellipse )
 add_library( CEST    STATIC ${QIDIR}/CEST.cpp )
 target_link_libraries( CEST ${CERES_LIBRARIES} )
 add_library( Banding STATIC ${QIDIR}/Banding.cpp )
-add_library( Ellipse STATIC ${ELDIR}/EllipseFilters.cpp ${ELDIR}/EllipseHelpers.cpp ${ELDIR}/EllipseFits.cpp )
+add_library( Ellipse STATIC ${ELDIR}/EllipseAlgo.cpp ${ELDIR}/EllipseHelpers.cpp
+                            ${ELDIR}/DirectAlgo.cpp ${ELDIR}/Direct2Algo.cpp
+                            ${ELDIR}/HyperAlgo.cpp 
+                            ${ELDIR}/MTFromEllipse.cpp )
 target_link_libraries( Ellipse ${CERES_LIBRARIES} ${SIGLIB} )
 add_library( Masking STATIC ${QIDIR}/Masking.cpp )
 
@@ -99,6 +102,7 @@ endforeach(PROGRAM)
 target_link_libraries( qicest          CEST )
 target_link_libraries( qissfpbands     Banding )
 target_link_libraries( qi_ellipse      Ellipse )
+target_link_libraries( qi_emt          Ellipse )
 target_link_libraries( qisplitsubjects Masking )
 target_link_libraries( qimask          Masking )
 
