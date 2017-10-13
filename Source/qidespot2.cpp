@@ -51,7 +51,7 @@ public:
     size_t dataSize() const override { return m_sequence->size(); }
     float zero() const override { return 0.; }
 
-    virtual std::vector<float> defaultConsts() const override {
+    std::vector<float> defaultConsts() const override {
         std::vector<float> def(2, 1.0f); // T1, B1
         return def;
     }
@@ -59,9 +59,9 @@ public:
 
 class D2LLS : public D2Algo {
 public:
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
@@ -99,9 +99,9 @@ public:
 
 class D2WLLS : public D2Algo {
 public:
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
@@ -185,9 +185,9 @@ class D2Functor : public DenseFunctor<double> {
 
 class D2NLLS : public D2Algo {
 public:
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];

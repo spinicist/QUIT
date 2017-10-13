@@ -111,7 +111,7 @@ public:
     size_t dataSize() const override { return m_sequence->size(); }
     float zero() const override { return 0.f; }
 
-    virtual std::vector<float> defaultConsts() const override {
+    std::vector<float> defaultConsts() const override {
         std::vector<float> def(1, 1.0); // B1
         return def;
     }
@@ -119,9 +119,9 @@ public:
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         ArrayXd data = indata.cast<double>();
@@ -141,9 +141,9 @@ public:
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         ArrayXd data = indata.cast<double>();
@@ -193,9 +193,9 @@ private:
 public:
     void setIterations(size_t n) { m_iterations = n; }
 
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         const ArrayXd data = indata.cast<double>();

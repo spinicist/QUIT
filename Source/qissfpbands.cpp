@@ -59,7 +59,7 @@ public:
     typename TOutputImage::ConstPointer GetPass1() const { return static_cast<const TOutputImage *>(this->ProcessObject::GetInput(1)); }
     typename TMask::ConstPointer GetMask() const { return static_cast<const TMask *>(this->ProcessObject::GetInput(2)); }
 
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
+    void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
             QI_EXCEPTION("Input size " << this->GetInput()->GetNumberOfComponentsPerPixel() << " and number of phases " << m_phases << " do not match");
@@ -80,7 +80,7 @@ protected:
     }
     ~MinEnergyFilter() {}
 
-    virtual void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ConstNeighborhoodIterator<TInputImage>::RadiusType radius;
         radius.Fill(1);

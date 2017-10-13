@@ -30,13 +30,13 @@ private:
 	void operator=(const Self &);  //purposely not implemented
 
 public:
-	virtual void GenerateOutputInformation() ITK_OVERRIDE;
+	void GenerateOutputInformation() ITK_OVERRIDE;
 
 protected:
 	ReorderVectorFilter() {}
 	~ReorderVectorFilter() {}
 
-    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE;
+    void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE;
 };
 
 } // End namespace itk

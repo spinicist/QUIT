@@ -44,7 +44,7 @@ public:
     void SetCenter(const itk::Point<double, 3>& v) { m_center = v; }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
     
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
+    void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         auto output = this->GetOutput();
         output->SetRegions(m_reference->GetLargestPossibleRegion());
@@ -63,7 +63,7 @@ protected:
         m_center.Fill(0.0);
     }
     ~PolynomialImage(){}
-    virtual void GenerateData() ITK_OVERRIDE {
+    void GenerateData() ITK_OVERRIDE {
         typename TImage::Pointer output = this->GetOutput();
         itk::ImageRegionIteratorWithIndex<TImage> imageIt(output, output->GetLargestPossibleRegion());
         imageIt.GoToBegin();

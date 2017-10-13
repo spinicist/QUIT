@@ -19,7 +19,7 @@ namespace QI {
 
 class DirectAlgo : public EllipseAlgo {
 protected:
-    virtual Eigen::ArrayXd apply_internal(const Eigen::ArrayXcf &input, const double flip, const double TR, const Eigen::ArrayXd &phi, const bool debug, float &residual) const override;
+    Eigen::ArrayXd apply_internal(const Eigen::ArrayXcf &input, const double flip, const double TR, const Eigen::ArrayXd &phi, const bool debug, float &residual) const override;
 public:
     DirectAlgo(std::shared_ptr<QI::SSFPEcho> &seq, bool debug) : EllipseAlgo(seq, debug) {};
     size_t numOutputs() const override { return 5; }

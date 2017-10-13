@@ -45,9 +45,9 @@ public:
         return diff;
     }
 
-    virtual bool Evaluate(double const* const* parameters,
-                        double* resids,
-                        double** jacobians) const override
+    bool Evaluate(double const* const* parameters,
+                  double* resids,
+                  double** jacobians) const override
     {
         Eigen::Map<const Eigen::Array3d> p(parameters[0]);
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
@@ -80,9 +80,9 @@ public:
         return def;
     }
 
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];

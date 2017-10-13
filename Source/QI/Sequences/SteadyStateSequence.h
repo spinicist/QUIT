@@ -21,7 +21,7 @@ class SteadyState : public SequenceBase {
         SteadyState();
         SteadyState(const Eigen::ArrayXd &flip, const double TR);
 
-        virtual size_t size() const override { return m_flip.rows(); }
+        size_t size() const override { return m_flip.rows(); }
 };
 
 class SPGRSimple : public SteadyState {
@@ -64,13 +64,13 @@ class SSFPSimple : public SteadyState {
         SSFPSimple();
         SSFPSimple(const Eigen::ArrayXd &flip, const double TR, const Eigen::ArrayXd &phases);
         SSFPSimple(std::istream &istr, const bool prompt);
-        virtual size_t size() const override { return m_allFlip.rows(); }
+        size_t size() const override { return m_allFlip.rows(); }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream& os) const override;
         std::string name() const override { return "SSFP"; }
         virtual const Eigen::ArrayXd &phase_incs() const { return m_phi; }
-        virtual const Eigen::ArrayXd &allFlip() const { return m_allFlip; }
-        virtual const Eigen::ArrayXd &allPhi() const { return m_allPhi; }
+        const Eigen::ArrayXd &allFlip() const { return m_allFlip; }
+        const Eigen::ArrayXd &allPhi() const { return m_allPhi; }
         Eigen::ArrayXd weights(const double f0) const override;
 };
 
@@ -116,7 +116,7 @@ protected:
     public:
         AFI(std::istream &istr, const bool prompt);
 
-        virtual size_t size() const override { return 2; }
+        size_t size() const override { return 2; }
         Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
         void write(std::ostream& os) const override;
         std::string name() const override { return "AFI"; }

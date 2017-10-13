@@ -46,7 +46,7 @@ public:
     void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
     
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
+    void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         auto output = this->GetOutput();
         output->SetRegions(m_reference->GetLargestPossibleRegion());
@@ -63,7 +63,7 @@ protected:
     ProfileImage(){
     }
     ~ProfileImage(){}
-    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
         typename TImage::Pointer output = this->GetOutput();
         ImageSliceIteratorWithIndex<TImage> imageIt(output, region);
         imageIt.SetFirstDirection(0);

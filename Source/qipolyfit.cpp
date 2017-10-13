@@ -48,7 +48,7 @@ public:
     void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
     void SetCenter(const itk::Point<double, 3>& v) { m_center = v; }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
+    void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
         auto op = this->GetOutput();
         op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
@@ -66,7 +66,7 @@ protected:
     }
     ~PolynomialFitImageFilter() {}
 
-    virtual void GenerateData() ITK_OVERRIDE {
+    void GenerateData() ITK_OVERRIDE {
         typename TImage::ConstPointer input = this->GetInput();
         auto region = input->GetLargestPossibleRegion();
 

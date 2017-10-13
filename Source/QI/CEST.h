@@ -57,11 +57,11 @@ public:
             default: QI_EXCEPTION("Requested invalid output " << i);
         }
     }
-    virtual std::vector<float> defaultConsts() const override {
+    std::vector<float> defaultConsts() const override {
         std::vector<float> def(0, 1.0f);
         return def;
     }
-    virtual const TOutput &zero(const size_t i) const override {
+    const TOutput &zero(const size_t i) const override {
         switch (i) {
             case 0: return m_zero1;
             case 1: return m_zero2;
@@ -73,9 +73,9 @@ public:
         static std::vector<std::string> _names = {"centered","asym", "f0"};
         return _names;
     }
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                       std::vector<TOutput> &outputs, TConst &residual,
-                       TInput &resids, TIters &its) const override;
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override;
 };
 
 } // End namespace QI

@@ -35,9 +35,9 @@ public:
         set_num_residuals(data.size());
     }
 
-    virtual bool Evaluate(double const* const* p,
-                          double* resids,
-                          double** jacobians) const override
+    bool Evaluate(double const* const* p,
+                  double* resids,
+                  double** jacobians) const override
     {
         const double &M0 = p[0][0];
         const double &T1 = p[0][1];
@@ -124,9 +124,9 @@ public:
         return def;
     }
 
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
-                       std::vector<TOutput> &outputs, TConst &residual,
-                       TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> spgr_in(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::Map<const Eigen::ArrayXf> ir_in(inputs[1].GetDataPointer(), inputs[1].Size());

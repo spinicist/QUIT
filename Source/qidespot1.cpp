@@ -58,9 +58,9 @@ public:
 
 class D1LLS : public D1Algo {
 public:
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         ArrayXd data = indata.cast<double>();
@@ -84,9 +84,9 @@ public:
 
 class D1WLLS : public D1Algo {
 public:
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         ArrayXd data = indata.cast<double>();
@@ -135,9 +135,9 @@ public:
         set_num_residuals(data.size());
     }
 
-    virtual bool Evaluate(double const* const* parameters,
-                          double* resids,
-                          double** jacobians) const override
+    bool Evaluate(double const* const* parameters,
+                  double* resids,
+                  double** jacobians) const override
     {
         Eigen::Map<const Eigen::Array2d> p(parameters[0]);
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
@@ -165,9 +165,9 @@ public:
         m_loPD = 1e-6;
     }
 
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                       std::vector<TOutput> &outputs, TConst &residual,
-                       TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         const double B1 = consts[0];

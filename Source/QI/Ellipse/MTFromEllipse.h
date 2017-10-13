@@ -36,9 +36,9 @@ public:
         static std::vector<std::string> _names = {"M0", "F", "kf", "T1f", "T2f"};
         return _names;
     }
-    virtual std::vector<float> defaultConsts() const override;
-    virtual TOutput zero() const override { return 0.f; }
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    std::vector<float> defaultConsts() const override;
+    TOutput zero() const override { return 0.f; }
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
         std::vector<TOutput> &outputs, TConst &residual,
         TInput &resids, TIters &its) const override;
 };

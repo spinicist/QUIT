@@ -81,7 +81,7 @@ public:
     itkSetMacro(Origin, PointType);
 
 protected:
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
+    void GenerateOutputInformation() ITK_OVERRIDE {
         auto output = this->GetOutput(0);
         output->SetLargestPossibleRegion(m_Region);
         output->SetSpacing(m_Spacing);
@@ -89,7 +89,7 @@ protected:
         output->SetOrigin(m_Origin);
     }
 
-    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         const auto startIndex = m_Region.GetIndex();
         const Eigen::Array3d sz{static_cast<double>(m_Region.GetSize()[0]),
                                 static_cast<double>(m_Region.GetSize()[1]),

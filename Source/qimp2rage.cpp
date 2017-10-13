@@ -123,7 +123,7 @@ protected:
         }
     }
 
-    virtual void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
         ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);

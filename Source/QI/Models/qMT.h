@@ -23,7 +23,7 @@ protected:
     TLineshape m_lineshape;
 public:
     void setLineshape(TLineshape &l);
-    virtual Eigen::VectorXcd SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl flip, cdbl TR, cdbl Trf) const override;
+    Eigen::VectorXcd SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl flip, cdbl TR, cdbl Trf) const override;
 };
 
 } // End namespace QI

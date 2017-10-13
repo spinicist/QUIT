@@ -32,7 +32,7 @@ protected:
     ~ReorderImageFilter() {}
 
     void EnlargeOutputRequestedRegion(DataObject *itkNotUsed(output)) ITK_OVERRIDE;
-    virtual void GenerateData() ITK_OVERRIDE;
+    void GenerateData() ITK_OVERRIDE;
 
 };
 

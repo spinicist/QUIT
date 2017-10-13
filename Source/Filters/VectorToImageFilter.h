@@ -37,8 +37,8 @@ protected:
 	VectorToImageFilter();
 	~VectorToImageFilter(){}
 
-    virtual void GenerateOutputInformation() ITK_OVERRIDE; // Because output will be different dimension to input
-    virtual void GenerateData() ITK_OVERRIDE; // Don't need a GenerateData, just call m_tiler->Update()
+    void GenerateOutputInformation() ITK_OVERRIDE; // Because output will be different dimension to input
+    void GenerateData() ITK_OVERRIDE; // Don't need a GenerateData, just call m_tiler->Update()
 
 private:
 	VectorToImageFilter(const Self &); //purposely not implemented

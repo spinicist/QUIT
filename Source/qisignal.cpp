@@ -105,7 +105,7 @@ public:
     itk::RealTimeClock::TimeStampType GetMeanTime() const { return m_meanTime; }
     itk::SizeValueType GetEvaluations() const { return m_evaluations; }
 
-    virtual void GenerateOutputInformation() ITK_OVERRIDE {
+    void GenerateOutputInformation() ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         Superclass::GenerateOutputInformation();
         const auto op = this->GetOutput();
@@ -117,7 +117,7 @@ protected:
     SignalsFilter() {}
     ~SignalsFilter(){}
 
-    virtual void ThreadedGenerateData(const OutputImageRegionType &region, itk::ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const OutputImageRegionType &region, itk::ThreadIdType threadId) ITK_OVERRIDE {
         vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
         for (size_t i = 0; i < m_model->nParameters(); i++) {
             if (this->GetInput(i))
