@@ -65,8 +65,8 @@ add_library( ${MDLLIB} STATIC
              ${MDLDIR}/Model.cpp ${MDLDIR}/DESPOT_2C.cpp ${MDLDIR}/DESPOT_3C.cpp ${MDLDIR}/qMT.cpp )
 
 set( ELDIR ${QIDIR}/Ellipse )
-add_library( CEST    STATIC ${QIDIR}/CEST.cpp )
-target_link_libraries( CEST ${CERES_LIBRARIES} )
+# add_library( CEST    STATIC ${QIDIR}/CEST.cpp )
+# target_link_libraries( CEST ${CERES_LIBRARIES} )
 add_library( Banding STATIC ${QIDIR}/Banding.cpp )
 add_library( Ellipse STATIC ${ELDIR}/EllipseAlgo.cpp ${ELDIR}/EllipseHelpers.cpp
                             ${ELDIR}/DirectAlgo.cpp ${ELDIR}/Direct2Algo.cpp
@@ -85,7 +85,8 @@ set( QUANT qisignal
            qidespot1 qidespot2 qidespot1hifi qidespot2fm
            qimcdespot 
            qimultiecho qimp2rage
-           qissfpbands qi_ellipse qi_emt qicest )
+           #    qicest
+           qissfpbands qi_ellipse qi_emt )
 
 foreach(PROGRAM ${UTILS})
     add_executable(${PROGRAM} Source/${PROGRAM}.cpp)
@@ -99,7 +100,7 @@ foreach(PROGRAM ${QUANT})
 endforeach(PROGRAM)
 
 ## Add extra libraries here
-target_link_libraries( qicest          CEST )
+# target_link_libraries( qicest          CEST )
 target_link_libraries( qissfpbands     Banding )
 target_link_libraries( qi_ellipse      Ellipse )
 target_link_libraries( qi_emt          Ellipse )

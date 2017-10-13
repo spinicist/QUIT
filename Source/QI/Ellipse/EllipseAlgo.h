@@ -40,14 +40,14 @@ public:
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
     size_t dataSize() const override { return m_sequence->size(); }
-    size_t outputSize(const int i) const override { return m_sequence->flip().rows(); }
+    size_t outputSize() const override { return m_sequence->flip().rows(); }
     virtual std::vector<float> defaultConsts() const override {
         std::vector<float> def(1, 1.);
         return def;
     }
-    virtual const TOutput &zero(const size_t i) const override { return m_zero; }
+    virtual TOutput zero() const override { return m_zero; }
     virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                       std::vector<TOutput> &outputs, TConst &residual,
+                       std::vector<TOutput> &outputs, TOutput &residual,
                        TInput &resids, TIters &its) const override;
     
     virtual const std::vector<std::string> & names() const = 0;

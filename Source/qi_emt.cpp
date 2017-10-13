@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (all_residuals) {
         if (verbose) std::cout << "Writing individual residuals." << std::endl;
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
 
     if (verbose) std::cout << "Finished." << std::endl;

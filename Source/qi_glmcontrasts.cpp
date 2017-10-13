@@ -40,14 +40,14 @@ public:
     size_t numConsts() const override { return 0; }
     size_t numOutputs() const override { return m_mat.rows(); }
     size_t dataSize() const override { return m_mat.cols(); }
-    const float &zero(const size_t i) const override { static float zero = 0; return zero; }
-    virtual std::vector<float> defaultConsts() const override {
+    float zero() const override { return 0.f; }
+    std::vector<float> defaultConsts() const override {
         std::vector<float> def;
         return def;
     }
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::VectorXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::VectorXd c = m_mat * indata.cast<double>();

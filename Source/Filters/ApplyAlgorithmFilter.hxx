@@ -123,7 +123,7 @@ DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(ProcessObject::
         auto img = TInputImage::New();
         output = img;
     } else if (idx == (m_algorithm->numOutputs() + ResidualOutputOffset)) {
-        auto img = TConstImage::New();
+        auto img = TOutputImage::New();
         output = img;
     } else if (idx == (m_algorithm->numOutputs() + IterationsOutputOffset)) {
         auto img = TIterationsImage::New();
@@ -149,8 +149,8 @@ auto ApplyAlgorithmFilter<TI, TO, TC>::GetAllResidualsOutput() -> TInputImage *{
 }
 
 template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetResidualOutput() -> TConstImage *{
-    return dynamic_cast<TConstImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+ResidualOutputOffset));
+auto ApplyAlgorithmFilter<TI, TO, TC>::GetResidualOutput() -> TOutputImage *{
+    return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+ResidualOutputOffset));
 }
 
 template<typename TI, typename TO, typename TC>
@@ -184,7 +184,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateOutputInformation() {
         op->SetSpacing(spacing);
         op->SetOrigin(origin);
         op->SetDirection(direction);
-        op->SetNumberOfComponentsPerPixel(m_algorithm->outputSize(i));
+        op->SetNumberOfComponentsPerPixel(m_algorithm->outputSize());
         op->Allocate(true);
     }
     if (m_allResiduals) {
@@ -202,6 +202,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateOutputInformation() {
     r->SetSpacing(spacing);
     r->SetOrigin(origin);
     r->SetDirection(direction);
+    r->SetNumberOfComponentsPerPixel(m_algorithm->outputSize());
     r->Allocate(true);
     auto i = this->GetIterationsOutput();
     i->SetRegions(region);
@@ -274,7 +275,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &regio
         allResidualsIter = ImageRegionIterator<TInputImage>(this->GetAllResidualsOutput(), region);
     }
     // Keep the index on this one to report voxel locations where algorithm fails.
-    ImageRegionIteratorWithIndex<TConstImage> residualIter(this->GetResidualOutput(), region);
+    ImageRegionIteratorWithIndex<TOutputImage> residualIter(this->GetResidualOutput(), region);
     ImageRegionIterator<TIterationsImage> iterationsIter(this->GetIterationsOutput(), region);
 
     while(!dataIters[0].IsAtEnd()) {
@@ -282,7 +283,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &regio
             std::vector<TInputPixel> inputs(m_algorithm->numInputs());
             std::vector<TOutputPixel> outputs(m_algorithm->numOutputs());
             for (size_t i = 0; i < outputs.size(); i++) {
-                outputs[i] = m_algorithm->zero(i);
+                outputs[i] = m_algorithm->zero();
             }
             std::vector<TConstPixel> constants = m_algorithm->defaultConsts();
             for (size_t i = 0; i < constIters.size(); i++) {
@@ -290,7 +291,7 @@ void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &regio
                     constants[i] = constIters[i].Get();
                 }
             }
-            TConstPixel residual;
+            TOutputPixel residual = m_algorithm->zero();
             TInputPixel resids;
             if (m_allResiduals) {
                 resids.SetSize(this->GetAllResidualsOutput()->GetNumberOfComponentsPerPixel());
@@ -316,13 +317,13 @@ void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &regio
             iterationsIter.Set(iterations);
         } else {
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-                outputIters[i].Set(m_algorithm->zero(i));
+                outputIters[i].Set(m_algorithm->zero());
             }
             if (m_allResiduals) {
                 VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
                 allResidualsIter.Set(residZeros);
             }
-            residualIter.Set(0);
+            residualIter.Set(m_algorithm->zero());
             iterationsIter.Set(0);
         }
         

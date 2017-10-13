@@ -25,7 +25,7 @@ EllipseAlgo::EllipseAlgo(std::shared_ptr<QI::SSFPEcho> &seq, bool debug) :
 
 bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
                         const std::vector<TConst> &consts,
-                        std::vector<TOutput> &outputs, TConst &residual,
+                        std::vector<TOutput> &outputs, TOutput &residual,
                         TInput &resids, TIters &its) const
 {
     const int np = m_sequence->phase_incs().rows();
@@ -38,7 +38,7 @@ bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
         if (m_debug) {
             std::cout << "Flip: " << m_sequence->flip()[f] << " Data: " << data.transpose() << std::endl;
         }
-        Eigen::ArrayXd tempOutputs = this->apply_internal(data, B1 * m_sequence->flip()[f], m_sequence->TR(), m_sequence->phase_incs(), m_debug, residual);
+        Eigen::ArrayXd tempOutputs = this->apply_internal(data, B1 * m_sequence->flip()[f], m_sequence->TR(), m_sequence->phase_incs(), m_debug, residual[f]);
         if (m_debug) {
             std::cout << "Outputs: " << tempOutputs.transpose() << std::endl;
         }

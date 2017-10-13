@@ -45,15 +45,15 @@ public:
     size_t numConsts() const override { return 0; }
     size_t numOutputs() const override { return 1; }
     size_t dataSize() const override { return 2 * m_size; }
-    virtual std::vector<float> defaultConsts() const override {
+    std::vector<float> defaultConsts() const override {
         std::vector<float> def;
         return def;
     }
-    const std::complex<float> &zero(const size_t i) const override { static std::complex<float> zero(0., 0.); return zero; }
+    std::complex<float> zero() const override { return std::complex<float>(0., 0.); }
 
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                  std::vector<TOutput> &outputs, TConst &residual,
-                  TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TOutput &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXcf> in_data(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXcd data = in_data.cast<std::complex<double>>();

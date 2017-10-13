@@ -32,12 +32,12 @@ std::vector<float> BandAlgo::defaultConsts() const {
     std::vector<float> def;
     return def;
 }
-const BandAlgo::TOutput &BandAlgo::zero(const size_t i) const {
+BandAlgo::TOutput BandAlgo::zero() const {
     return m_zero;
 }
 
 bool BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                     std::vector<TOutput> &outputs, TConst &residual,
+                     std::vector<TOutput> &outputs, TOutput &residual,
                      TInput &resids, TIters &its) const
 {
     size_t phase_stride = m_flips;

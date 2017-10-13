@@ -32,13 +32,12 @@ public:
     size_t numConsts() const override { return 2; }
     size_t numOutputs() const override { return NumOutputs; }
     size_t dataSize() const override { return (flips.size() * 3); }
-    size_t outputSize(const int i) const override { return 1; }
     const std::vector<std::string> &names() const {
         static std::vector<std::string> _names = {"M0", "F", "kf", "T1f", "T2f"};
         return _names;
     }
     virtual std::vector<float> defaultConsts() const override;
-    virtual const TOutput &zero(const size_t i) const override { static const float zero = 0.f; return zero; }
+    virtual TOutput zero() const override { return 0.f; }
     virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
         std::vector<TOutput> &outputs, TConst &residual,
         TInput &resids, TIters &its) const override;

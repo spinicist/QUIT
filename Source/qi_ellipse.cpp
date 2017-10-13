@@ -88,8 +88,8 @@ int main(int argc, char **argv) {
         if (verbose) std::cout << "Writing: " << outName << std::endl;
         QI::WriteVectorImage(apply->GetOutput(i), outName);
     }
-    if (verbose) std::cout << "Writing total residual." << std::endl;
-    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+    if (verbose) std::cout << "Writing total residuals." << std::endl;
+    QI::WriteVectorImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

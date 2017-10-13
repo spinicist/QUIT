@@ -54,17 +54,18 @@ public:
     size_t numConsts() const override { return 0; }
     size_t numOutputs() const override { return 1; }
     size_t dataSize() const override { return m_flips * m_phases; }
-    size_t outputSize(const int i) const override { return m_flips; }
+    size_t outputSize() const override { return m_flips; }
     void setPhases(const size_t p);
     void setInputSize(const size_t s);
     void setReorderPhase(const bool p) { m_phaseFirst = p; }
     void setReorderBlock(const bool b) { m_reorderBlock = b; }
-    virtual std::vector<float> defaultConsts() const override;
-    virtual const TOutput &zero(const size_t i) const override;
+    std::vector<float> defaultConsts() const override;
+    TOutput zero() const override;
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TOutput &residual,
+               TInput &resids, TIters &its) const override;
+
     virtual std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const = 0;
-    virtual bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                       std::vector<TOutput> &outputs, TConst &residual,
-                       TInput &resids, TIters &its) const override;
 };
 
 class CSAlgo : public BandAlgo {
