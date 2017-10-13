@@ -24,7 +24,7 @@ public:
     DirectAlgo(std::shared_ptr<QI::SSFPEcho> &seq, bool debug) : EllipseAlgo(seq, debug) {};
     size_t numOutputs() const override { return 5; }
     const std::vector<std::string> & names() const override {
-        static std::vector<std::string> _names = {"G", "a", "b", "f0", "phi_rf"};
+        static std::vector<std::string> _names = {"G", "a", "b", "theta_0", "phi_rf"};
         return _names;
     }
 };

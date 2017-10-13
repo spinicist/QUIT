@@ -102,12 +102,13 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     Eigen::ArrayXd T2fs = (-TRs.cast<double>() / a.log());
     const double T2f = T2fs.mean(); // Different TRs so have to average afterwards
 
-    Eigen::Array<double, 6, 1> p; p << 15.0, 0.05, 5.0, 1.0;
-    ceres::Problem problem;
     auto *cost = new ceres::DynamicAutoDiffCostFunction<EMTCost>(new EMTCost{G, b, flips*B1, intB1*B1*B1, TRs, TRFs, T2r, T2f, f0_Hz, debug});
     cost->AddParameterBlock(4);
     cost->SetNumResiduals(G.size() + b.size());
-    problem.AddResidualBlock(cost, NULL, p.data());
+    ceres::LossFunction *loss = new ceres::HuberLoss(1.0);
+    Eigen::Array<double, 6, 1> p; p << 15.0, 0.05, 5.0, 1.0;
+    ceres::Problem problem;
+    problem.AddResidualBlock(cost, loss, p.data());
     const double not_zero = std::nextafter(0.0, 1.0);
     const double not_one  = std::nextafter(1.0, 0.0);
     problem.SetParameterLowerBound(p.data(), 0, 0.1);

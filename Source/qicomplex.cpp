@@ -189,7 +189,8 @@ void Run() {
     }
 
     if (fixge || negate) {
-        if (verbose) std::cout << "Negating values" << std::endl;
+        if (verbose && negate) std::cout << "Negating values" << std::endl;
+        if (verbose && fixge)  std::cout << "Fixing GE lack of FFT-shift bug" << std::endl;
         auto fix = itk::NegateFilter<TXImage>::New();
         fix->SetInput(imgX);
         fix->SetNegate(negate, fixge);

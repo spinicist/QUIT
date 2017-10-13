@@ -35,10 +35,10 @@ void EllipseToMRI(const double a, const double b, const double c, const double t
  * a concatenated array instead of as actual complex numbers
  */
 template<typename T>
-Eigen::Array<T, Eigen::Dynamic, 1> EllipseToSignal(const T &G, const T& a, const T&b, const T&f0, const T& psi0,
+Eigen::Array<T, Eigen::Dynamic, 1> EllipseToSignal(const T &G, const T &a, const T &b,
+                                                   const T &theta0, const T &psi0,
                                                    const double &TR, Eigen::ArrayXd const &phi) {
     typedef Eigen::Array<T, Eigen::Dynamic, 1> ArrayXT;
-    const T theta0 = 2.0*M_PI*f0*TR;
     const ArrayXT theta = theta0 - phi;
     const T psi = theta0/2.0 + psi0;
     const ArrayXT cos_th = cos(theta);

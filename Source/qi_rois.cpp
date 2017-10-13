@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <string>
 
@@ -18,9 +19,9 @@
 #include "QI/Args.h"
 #include "QI/Util.h"
 
-#include "itkLabelGeometryImageFilter.h"
-typedef itk::LabelGeometryImageFilter<QI::VolumeI, QI::VolumeF> TLblGeoFilter;
-
+#include "itkLabelStatisticsImageFilter.h"
+typedef itk::LabelStatisticsImageFilter<QI::VolumeF, QI::VolumeI> TStatsFilter;
+typedef TStatsFilter::ValidLabelValuesContainerType TLabels;
 // Declare arguments here so they are available in helper functions
 args::ArgumentParser parser("Calculates average values or volumes of ROI labels.\n"
                             "If the --volumes flag is specified, only give the label images.\n"
@@ -35,14 +36,17 @@ args::ValueFlag<std::string> label_list_path(parser, "LABELS", "Specify labels a
 args::Flag     print_names(parser, "PRINT_NAMES", "Print label names in first column/row (LABEL_NUMBERS must be specified)", {'n', "print_names"});
 args::Flag     transpose(parser, "TRANSPOSE", "Transpose output table (values go in rows instead of columns", {'t', "transpose"});
 args::Flag     ignore_zero(parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
+args::Flag     sigma(parser, "SIGMA", "Print ±std along with mean", {'s', "sigma"});
+args::ValueFlag<int> precision(parser, "PRECISION", "Number of decimal places (default 6)", {'p', "precision"}, 6);
 args::ValueFlag<std::string> delim(parser, "DELIMITER", "Specify delimiter to use between entries (default ,)", {'d',"delim"}, ",");
 args::ValueFlagList<std::string> header_paths(parser, "HEADER", "Add a header (can be specified multiple times)", {'H', "header"});
 args::ValueFlagList<std::string> header_names(parser, "HEADER NAME", "Header name (must be specified in same order as paths)", {"header_name"});
+args::ValueFlagList<double> scales(parser, "SCALE", "Divide ROI values by scale (must be same order as paths)", {"scale"});
 
 /*
  * Helper function to work out the label list
  */
-void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::string> &label_names) {
+void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names) {
     if (label_list_path) {
         if (verbose) std::cout << "Opening label list file: " << label_list_path.Get() << std::endl;
         std::ifstream file(label_list_path.Get());
@@ -59,14 +63,11 @@ void GetLabelList(TLblGeoFilter::LabelsType &label_numbers, std::vector<std::str
         }
     } else {
         if (verbose) std::cout << "Reading first label file to determine labels: " << QI::CheckList(in_paths).at(0) << std::endl;
-        TLblGeoFilter::Pointer label_filter = TLblGeoFilter::New();
-        label_filter->CalculatePixelIndicesOff();
-        label_filter->CalculateOrientedBoundingBoxOff();
-        label_filter->CalculateOrientedLabelRegionsOff();
+        TStatsFilter::Pointer label_filter = TStatsFilter::New();
         QI::VolumeI::Pointer img = QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0));
-        label_filter->SetInput(img);
+        label_filter->SetLabelInput(img);
         label_filter->Update();
-        label_numbers = label_filter->GetLabels();
+        label_numbers = label_filter->GetValidLabelValues();
         std::sort(label_numbers.begin(), label_numbers.end());
         if (verbose) {
             std::cout << "Found the following labels:" << std::endl;
@@ -110,9 +111,12 @@ std::vector<std::vector<std::string>> GetHeaders(int n_files) {
 /*
  * Helper function to actually work out all the values
  */
-std::vector<std::vector<double>> GetValues(const int n_files, const TLblGeoFilter::LabelsType &labels) {
-    std::vector<std::vector<double>> values(n_files, std::vector<double>(labels.size()));
-    TLblGeoFilter::Pointer label_filter = TLblGeoFilter::New();
+void GetValues(const int n_files, const TLabels &labels, const std::vector<double> &scale_list,
+               std::vector<std::vector<double>> &mean_table, std::vector<std::vector<double>> &sigma_table, std::vector<std::vector<double>> &volume_table) {
+    mean_table = std::vector<std::vector<double>>(n_files, std::vector<double>(labels.size()));
+    sigma_table = std::vector<std::vector<double>>(n_files, std::vector<double>(labels.size()));
+    volume_table = std::vector<std::vector<double>>(n_files, std::vector<double>(labels.size()));
+    TStatsFilter::Pointer label_filter = TStatsFilter::New();
     QI::VolumeI::Pointer label_img = ITK_NULLPTR;
     QI::VolumeF::Pointer value_img = ITK_NULLPTR;
     for (int f = 0; f < n_files; f++) {
@@ -124,22 +128,18 @@ std::vector<std::vector<double>> GetValues(const int n_files, const TLblGeoFilte
             label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
             if (verbose) std::cout << "Reading value file: " << in_paths.Get().at(f + n_files) << std::endl;
             value_img = QI::ReadImage(in_paths.Get().at(f + n_files));
-            label_filter->SetIntensityInput(value_img);
+            label_filter->SetInput(value_img);
         }
         double vox_volume = QI::VoxelVolume(label_img);
-        label_filter->SetInput(label_img);
+        label_filter->SetLabelInput(label_img);
         label_filter->Update();
         for (int i = 0; i < labels.size(); i++) {
-            const double n_voxels = label_filter->GetVolume(labels.at(i)); // This is the count of pixels
-            if (volumes) {
-                values.at(f).at(i) = vox_volume * n_voxels;
-            } else {
-                const double integrated = label_filter->GetIntegratedIntensity(labels.at(i));
-                values.at(f).at(i) = integrated / n_voxels;
-            }
+            const double n_voxels = label_filter->GetCount(labels.at(i)); // This is the count of pixels
+            mean_table.at(f).at(i) = label_filter->GetMean(labels.at(i)) / scale_list.at(f);
+            sigma_table.at(f).at(i) = label_filter->GetSigma(labels.at(i)) / scale_list.at(f);
+            volume_table.at(f).at(i) = label_filter->GetCount(labels.at(i)) * vox_volume;
         }
     }
-    return values;
 }
 
 /*
@@ -161,17 +161,34 @@ int main(int argc, char **argv) {
         if (verbose) std::cout << "There are " << n_files << " input image pairs, finding mean ROI values" << std::endl;
     }
     // Setup label number list
-    typename TLblGeoFilter::LabelsType labels;
+    TLabels labels;
     std::vector<std::string> label_names;
     GetLabelList(labels, label_names);
 
     // Setup headers (if any)
     auto headers = GetHeaders(n_files);
 
+    // Setup scales
+    std::vector<double> scale_list = scales.Get();
+    if (scale_list.size() < n_files) {
+        int old_size = scale_list.size();
+        scale_list.resize(n_files);
+        for (int i = old_size; i < n_files; i++) {
+            scale_list.at(i) = 1.0;
+        }
+    }
+    if (verbose) {
+        std::cout << "Scales are: ";
+        for (const auto &s: scale_list) std::cout << s << " ";
+        std::cout << std::endl;
+    }
+
     // Now get the values/volumes
-    auto values_table = GetValues(n_files, labels);
+    std::vector<std::vector<double>> mean_table, sigma_table, volume_table;
+    GetValues(n_files, labels, scale_list, mean_table, sigma_table, volume_table);
 
     if (verbose) std::cout << "Writing CSV: " << std::endl;
+    if (precision) std::cout << std::fixed << std::setprecision(precision.Get());
     if (transpose) {
         if (print_names) {
             for (int h = 0; h < headers.size(); ++h) {
@@ -188,14 +205,24 @@ int main(int argc, char **argv) {
             }
             std::cout << std::endl;
         }
-        for (int row = 0; row < values_table.size(); ++row){
+        for (int row = 0; row < n_files; ++row){
             for (auto h = headers.begin(); h != headers.end(); h++) {
                 std::cout << h->at(row) << delim.Get();
             }
-            auto values_row_it = values_table.at(row).begin();
-            std::cout << *values_row_it;
-            for (++values_row_it; values_row_it != values_table.at(row).end(); ++values_row_it) {
-                std::cout << delim.Get() << *values_row_it;
+            if (volumes) {
+                std::cout << volume_table.at(row).at(0);
+            } else {
+                std::cout << mean_table.at(row).at(0);
+                if (sigma) std::cout << "±" << sigma_table.at(row).at(0);
+            }
+            for (int val = 1; val < labels.size(); ++val) {
+                std::cout << delim.Get();
+                if (volumes) {
+                    std::cout << volume_table.at(row).at(val);
+                } else {
+                    std::cout << mean_table.at(row).at(val);
+                    if (sigma) std::cout << "±" << sigma_table.at(row).at(val);
+                }
             }
             std::cout << std::endl;
         }
@@ -220,10 +247,20 @@ int main(int argc, char **argv) {
                 std::cout << label_names.at(l) << std::flush << delim.Get();
             }
 
-            auto values_col_it = values_table.begin();
-            std::cout << values_col_it->at(l);
-            for (++values_col_it; values_col_it != values_table.end(); ++values_col_it) {
-                std::cout << delim.Get() << values_col_it->at(l);
+            if (volumes) {
+                std::cout << volume_table.at(0).at(l);
+            } else {
+                std::cout << mean_table.at(0).at(l);
+                if (sigma) std::cout << "±" << sigma_table.at(0).at(l);
+            }
+            for (int file = 1; file < n_files; ++file) {
+                std::cout << delim.Get();
+                if (volumes) {
+                    std::cout << volume_table.at(file).at(l);
+                } else {
+                    std::cout << mean_table.at(file).at(l);
+                    if (sigma) std::cout << "±" << sigma_table.at(0).at(l);
+                }
             }
             std::cout << std::endl;
         }
