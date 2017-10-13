@@ -25,46 +25,48 @@ two files must match.
 "
 
 if [ $# -ne 2 ]; then
-echo $USAGE
+echo "$USAGE"
 exit 1;
 fi
 
 IMG="$1"
 SER="$2"
 
-IMG_ROOT="${IMG%%.*}"
-SER_ROOT="${SER%%.*}"
+IMG_ROOT="$( basename ${IMG%%.*})"
+SER_ROOT="$( basename ${SER%%.*})"
 
 TEMP="composer_working_dir"
 mkdir -p $TEMP
 
-## First, do magnitude only combination to get images for registration
-qicomplex --realimag $IMG -M $TEMP/${IMG_ROOT}_mag.nii
-qicomplex --realimag $SER -M $TEMP/${SER_ROOT}_mag.nii
+EXT="nii.gz"
 
-antsMotionCorr -d 3 -a $TEMP/${IMG_ROOT}_mag.nii -o $TEMP/${IMG_ROOT}_avg.nii
-antsMotionCorr -d 3 -a $TEMP/${SER_ROOT}_mag.nii -o $TEMP/${SER_ROOT}_avg.nii
+## First, do magnitude only combination to get images for registration
+qicomplex --realimag $IMG -M $TEMP/${IMG_ROOT}_mag.$EXT
+qicomplex --realimag $SER -M $TEMP/${SER_ROOT}_mag.$EXT
+
+antsMotionCorr -d 3 -a $TEMP/${IMG_ROOT}_mag.$EXT -o $TEMP/${IMG_ROOT}_avg.$EXT
+antsMotionCorr -d 3 -a $TEMP/${SER_ROOT}_mag.$EXT -o $TEMP/${SER_ROOT}_avg.$EXT
 
 ## Register SER to input
-qimask $TEMP/${IMG_ROOT}_avg.nii --fillh=2
-ImageMath 3 $TEMP/mask.nii MD $TEMP/${IMG_ROOT}_avg_mask.nii 3
+qimask $TEMP/${IMG_ROOT}_avg.$EXT --fillh=2
+ImageMath 3 $TEMP/mask.$EXT MD $TEMP/${IMG_ROOT}_avg_mask.$EXT 3
 
 antsRegistration --verbose 1 --dimensionality 3 --float 0 --interpolation Linear \
-    --output [$TEMP/reg,$TEMP/regWarped.nii] -x $TEMP/mask.nii \
-    --initial-moving-transform [$TEMP/${IMG_ROOT}_avg.nii, $TEMP/${SER_ROOT}_avg.nii, 1] \
-    --transform Rigid[0.1] --metric MI[$TEMP/${IMG_ROOT}_avg.nii, $TEMP/${SER_ROOT}_avg.nii, 1, 32, Regular, 0.25] \
+    --output [$TEMP/reg,$TEMP/regWarped.$EXT] -x $TEMP/mask.$EXT \
+    --initial-moving-transform [$TEMP/${IMG_ROOT}_avg.$EXT, $TEMP/${SER_ROOT}_avg.$EXT, 1] \
+    --transform Rigid[0.1] --metric MI[$TEMP/${IMG_ROOT}_avg.$EXT, $TEMP/${SER_ROOT}_avg.$EXT, 1, 32, Regular, 0.25] \
     --convergence [1000x500x250,1e-6,10] --shrink-factors 8x4x2 --smoothing-sigmas 4x2x1vox
 
 ## Resample SER to input
 antsApplyTransforms --dimensionality 3 --input-image-type 3 \
-    --input $SER --reference-image $TEMP/${IMG_ROOT}_avg.nii \
-    --output $TEMP/${SER_ROOT}_resamp.nii \
+    --input $SER --reference-image $TEMP/${IMG_ROOT}_avg.$EXT \
+    --output $TEMP/${SER_ROOT}_resamp.$EXT \
     --transform $TEMP/reg0GenericAffine.mat --float --verbose
 
 ## Now convert to 'real' complex
-qicomplex --realimag $IMG -X $TEMP/${IMG_ROOT}_x.nii
-qicomplex --realimag $TEMP/${SER_ROOT}_resamp.nii -X $TEMP/${SER_ROOT}_x.nii
+qicomplex --realimag $IMG -X $TEMP/${IMG_ROOT}_x.$EXT
+qicomplex --realimag $TEMP/${SER_ROOT}_resamp.$EXT -X $TEMP/${SER_ROOT}_x.$EXT
 
 ## Coil combine
-qi_coil_combine $TEMP/${IMG_ROOT}_x.nii $TEMP/${SER_ROOT}_x.nii --out ${IMG_ROOT}_
-qicomplex -x ${IMG_ROOT}_combined.nii -M ${IMG_ROOT}_combined_mag.nii -P ${IMG_ROOT}_combined_phase.nii
+qi_coil_combine $TEMP/${IMG_ROOT}_x.$EXT $TEMP/${SER_ROOT}_x.$EXT --out ${IMG_ROOT}_
+qicomplex -x ${IMG_ROOT}_combined.$EXT -M ${IMG_ROOT}_combined_mag.$EXT -P ${IMG_ROOT}_combined_phase.$EXT
