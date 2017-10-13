@@ -32,7 +32,8 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser(
     "Generates masks in stages.\n"
     "Stage 1 - Otsu thresholding to generate binary mask\n"
-    "Stage 2 - Fill holes (optional)\n"
+    "Stage 2 - RATs (optional)\n"
+    "Stage 3 - Hole filling (optional)\n"
     "http://github.com/spinicist/QUIT"
     );
 
@@ -98,27 +99,7 @@ int main(int argc, char **argv) {
     }
 
     /*
-     *  Stage 2 - Hole Filling
-     */
-    QI::VolumeI::Pointer finalMask = ITK_NULLPTR;
-    if (fillh_radius) {
-        if (verbose) std::cout << "Filling holes" << std::endl;
-        auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::New();
-        itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::InputSizeType radius;
-        radius.Fill(fillh_radius.Get());
-        fillHoles->SetInput(mask_image);
-        fillHoles->SetRadius(radius);
-        fillHoles->SetMajorityThreshold(2); // Corresponds to (rad^3-1)/2 + 2 threshold
-        fillHoles->SetBackgroundValue(0);
-        fillHoles->SetForegroundValue(1);
-        fillHoles->SetMaximumNumberOfIterations(3);
-        fillHoles->Update();
-        mask_image = fillHoles->GetOutput();
-        mask_image->DisconnectPipeline();
-    }
-
-    /*
-     *  Stage 3 - RATS
+     *  Stage 2 - RATS
      */
      if (rats) {
         typedef itk::BinaryBallStructuringElement<int, 3> TBall;
@@ -155,6 +136,26 @@ int main(int argc, char **argv) {
          }
          mask_image = mask_rats;
      }
+
+    /*
+     *  Stage 3 - Hole Filling
+     */
+    QI::VolumeI::Pointer finalMask = ITK_NULLPTR;
+    if (fillh_radius) {
+        if (verbose) std::cout << "Filling holes" << std::endl;
+        auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::New();
+        itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::InputSizeType radius;
+        radius.Fill(fillh_radius.Get());
+        fillHoles->SetInput(mask_image);
+        fillHoles->SetRadius(radius);
+        fillHoles->SetMajorityThreshold(2); // Corresponds to (rad^3-1)/2 + 2 threshold
+        fillHoles->SetBackgroundValue(0);
+        fillHoles->SetForegroundValue(1);
+        fillHoles->SetMaximumNumberOfIterations(3);
+        fillHoles->Update();
+        mask_image = fillHoles->GetOutput();
+        mask_image->DisconnectPipeline();
+    }
 
     if (verbose) std::cout << "Saving mask to: " << out_path << std::endl;
     QI::WriteImage(mask_image, out_path);
