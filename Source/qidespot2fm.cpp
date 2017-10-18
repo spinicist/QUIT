@@ -19,7 +19,7 @@
 #include "QI/Args.h"
 #include "QI/Models/Models.h"
 #include "QI/Sequences/Sequences.h"
-#include "Filters/ApplyAlgorithmFilter.h"
+#include "QI/Types.h"
 
 using namespace std;
 using namespace Eigen;
@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
     args::Positional<std::string> t1_path(parser, "T1_MAP", "Input T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
     
-    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
@@ -197,7 +197,6 @@ int main(int argc, char **argv) {
 
     auto apply = QI::ApplyF::New();
     shared_ptr<LM_FM> algo = make_shared<LM_FM>(ssfpSequence, asym, debug);
-
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);

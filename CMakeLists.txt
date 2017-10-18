@@ -107,16 +107,8 @@ target_link_libraries( qi_emt          Ellipse )
 target_link_libraries( qisplitsubjects Masking )
 target_link_libraries( qimask          Masking )
 
-set(TESTS_DIR Test)
-set(TESTS despot1.bats test_common.sh test_d1.sh test_fm.sh test_2C.sh test_3C.sh test_es.sh
-          test_relax.sh test_ssfp.sh test_poly.sh test_all.sh)
-foreach(TEST ${TESTS})
-	configure_file(${TESTS_DIR}/${TEST} ${TESTS_DIR}/${TEST} COPYONLY)
-endforeach(TEST)
-
-enable_testing()
-add_test( NAME DESPOT1 WORKING_DIRECTORY ${TESTS_DIR} 
-          COMMAND ${PROJECT_SOURCE_DIR}/External/bats/bin/bats despot1.bats )
+add_custom_target( tests
+                   ${PROJECT_SOURCE_DIR}/External/bats/bin/bats ${PROJECT_SOURCE_DIR}/Test/ )
 
 set(SCRIPTS_DIR Scripts)
 set(SCRIPTS qi_composer.sh)
