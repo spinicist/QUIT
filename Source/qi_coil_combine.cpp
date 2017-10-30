@@ -92,31 +92,6 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Reading reference image: " << QI::CheckPos(ser_path) << std::endl;
     auto ser_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ser_path));
 
-    /*typedef itk::LinearInterpolateImageFunction<QI::SeriesXF, std::complex<double>> TInterp;
-    if (verbose) std::cout << "Resampling reference image" << std::endl;
-    typedef itk::ResampleImageFilter<QI::SeriesXF, QI::SeriesXF, std::complex<double>> TResampler;
-    typename TInterp::Pointer interp = TInterp::New();
-    interp->SetInputImage(ser_image);
-    typename TResampler::Pointer r_ser_image = TResampler::New();
-    r_ser_image->SetInput(ser_image);
-    r_ser_image->SetInterpolator(interp);
-    //resamp->SetDefaultPixelValue(0.);
-    //resamp->SetTransform(tfm);
-    r_ser_image->SetOutputParametersFromImage(input_image);
-    // Get rid of any negative values
-    r_ser_image->Update();
-
-    typedef itk::Image<std::complex<float>, 4> TSeries;
-    typedef itk::VectorImage<std::complex<float>, 3> TVector;
-    typedef itk::ImageToVectorFilter<TSeries> TToVector;
-    
-    auto input_vector = TToVector::New();
-    input_vector->SetInput(input_image);
-    input_vector->Update();
-    auto r_ser_vector = TToVector::New();
-    r_ser_vector->SetInput(r_ser_image->GetOutput());
-    r_ser_vector->Update();*/
-
     if (verbose) std::cout << "Removing Phase and Combining coils" << std::endl;
     auto composer = std::make_shared<COMPOSERAlgo>();
     composer->setSize(input_image->GetNumberOfComponentsPerPixel());
@@ -125,8 +100,8 @@ int main(int argc, char **argv) {
     combined->SetInput(0, input_image);
     combined->SetInput(1, ser_image);
     combined->Update();
-    if (verbose) std::cout << "Writing output file " << std::endl;
-    std::string out_name = args::get(outarg) + "combined.nii";
+    const std::string out_name = outarg ? outarg.Get() : QI::StripExt(input_path.Get()) + "_combined" + QI::OutExt();
+    if (verbose) std::cout << "Writing output file " << out_name << std::endl;
     QI::WriteImage(combined->GetOutput(0), out_name);
 
     return EXIT_SUCCESS;

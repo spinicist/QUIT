@@ -1,4 +1,4 @@
-#!/bin/bash -eux
+#!/bin/bash -eu
 ##
 ## qi_composer.sh
 ##
@@ -9,7 +9,7 @@
 ##  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ##
 
-USAGE="Usage: $0 input_file reference_file
+USAGE="Usage: $0 [opts] -i input_file -r reference_file
 
 This script is an implementation of the COMPOSER algorithm (Robinson et al MRM
 2017). The actual coil-combination step is implemented in qi_coil_combine. The
@@ -22,51 +22,88 @@ The inputs are the multi-coil input image and the short echo-time reference
 (SER) file. For now, these are assumed to be in Bruker 'complex' format - all
 real volumes followed by all complex volumes. The number of coils/volumes in the
 two files must match.
+
+Inputs:
+    -i      Input file
+    -r      Reference (short echo time) file
+    -t      Keep temporary files
+    -m      Output magnitude/phase instead of complex final file
+    -v      Verbose mode (display progress)
 "
 
-if [ $# -ne 2 ]; then
-echo "$USAGE"
-exit 1;
+KEEP_TEMP=""
+OUTPUT_MAG=""
+VERBOSE=""
+while getopts "i:mr:tv" opt; do
+    case $opt in
+        i) IMG="$OPTARG";;
+        m) OUTPUT_MAG="1";;
+        r) SER="$OPTARG";;
+        t) KEEP_TEMP="1";;
+        v) VERBOSE="-v";;
+    esac
+done
+
+if [ -z ${IMG-} ]; then
+    echo "$USAGE"
+    exit 1;
 fi
 
-IMG="$1"
-SER="$2"
+if [ -z ${SER-} ]; then
+    echo "$USAGE"
+    exit 1;
+fi
 
-IMG_ROOT="$( basename ${IMG%%.*})"
-SER_ROOT="$( basename ${SER%%.*})"
+function log() {
+    if [ -n "$VERBOSE" ]; then
+        echo "$1"
+    fi
+}
 
+IMG_ROOT="$( basename ${IMG%%.*} )"
+SER_ROOT="$( basename ${SER%%.*} )"
+EXT=".nii.gz"
+
+log "Creating temporary directory"
 TEMP="composer_working_dir"
 mkdir -p $TEMP
 
-EXT="nii.gz"
+log "Creating magnitude images for registration"
+qicomplex --realimag $IMG -M $TEMP/${IMG_ROOT}_mag${EXT}
+qicomplex --realimag $SER -M $TEMP/${SER_ROOT}_mag${EXT}
 
-## First, do magnitude only combination to get images for registration
-qicomplex --realimag $IMG -M $TEMP/${IMG_ROOT}_mag.$EXT
-qicomplex --realimag $SER -M $TEMP/${SER_ROOT}_mag.$EXT
+antsMotionCorr -d 3 -a $TEMP/${IMG_ROOT}_mag${EXT} -o $TEMP/${IMG_ROOT}_avg${EXT}
+antsMotionCorr -d 3 -a $TEMP/${SER_ROOT}_mag${EXT} -o $TEMP/${SER_ROOT}_avg${EXT}
 
-antsMotionCorr -d 3 -a $TEMP/${IMG_ROOT}_mag.$EXT -o $TEMP/${IMG_ROOT}_avg.$EXT
-antsMotionCorr -d 3 -a $TEMP/${SER_ROOT}_mag.$EXT -o $TEMP/${SER_ROOT}_avg.$EXT
+log "Registering reference to input"
+qimask $TEMP/${IMG_ROOT}_avg${EXT} --fillh=2
+ImageMath 3 $TEMP/mask${EXT} MD $TEMP/${IMG_ROOT}_avg_mask${EXT} 3
 
-## Register SER to input
-qimask $TEMP/${IMG_ROOT}_avg.$EXT --fillh=2
-ImageMath 3 $TEMP/mask.$EXT MD $TEMP/${IMG_ROOT}_avg_mask.$EXT 3
-
-antsRegistration --verbose 1 --dimensionality 3 --float 0 --interpolation Linear \
-    --output [$TEMP/reg,$TEMP/regWarped.$EXT] -x $TEMP/mask.$EXT \
-    --initial-moving-transform [$TEMP/${IMG_ROOT}_avg.$EXT, $TEMP/${SER_ROOT}_avg.$EXT, 1] \
-    --transform Rigid[0.1] --metric MI[$TEMP/${IMG_ROOT}_avg.$EXT, $TEMP/${SER_ROOT}_avg.$EXT, 1, 32, Regular, 0.25] \
+antsRegistration --dimensionality 3 --float 0 --interpolation Linear \
+    --output [$TEMP/reg,$TEMP/regWarped${EXT}] -x $TEMP/mask${EXT} \
+    --initial-moving-transform [$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1] \
+    --transform Rigid[0.1] --metric MI[$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1, 32, Regular, 0.25] \
     --convergence [1000x500x250,1e-6,10] --shrink-factors 8x4x2 --smoothing-sigmas 4x2x1vox
 
-## Resample SER to input
+log "Resampling reference"
 antsApplyTransforms --dimensionality 3 --input-image-type 3 \
-    --input $SER --reference-image $TEMP/${IMG_ROOT}_avg.$EXT \
-    --output $TEMP/${SER_ROOT}_resamp.$EXT \
-    --transform $TEMP/reg0GenericAffine.mat --float --verbose
+    --input $SER --reference-image $TEMP/${IMG_ROOT}_avg${EXT} \
+    --output $TEMP/${SER_ROOT}_resamp${EXT} \
+    --transform $TEMP/reg0GenericAffine.mat --float
 
-## Now convert to 'real' complex
-qicomplex --realimag $IMG -X $TEMP/${IMG_ROOT}_x.$EXT
-qicomplex --realimag $TEMP/${SER_ROOT}_resamp.$EXT -X $TEMP/${SER_ROOT}_x.$EXT
+qicomplex --realimag $IMG -X $TEMP/${IMG_ROOT}_x${EXT}
+qicomplex --realimag $TEMP/${SER_ROOT}_resamp${EXT} -X $TEMP/${SER_ROOT}_x${EXT}
 
-## Coil combine
-qi_coil_combine $TEMP/${IMG_ROOT}_x.$EXT $TEMP/${SER_ROOT}_x.$EXT --out ${IMG_ROOT}_
-qicomplex -x ${IMG_ROOT}_combined.$EXT -M ${IMG_ROOT}_combined_mag.$EXT -P ${IMG_ROOT}_combined_phase.$EXT
+log "Combining coil images"
+qi_coil_combine $TEMP/${IMG_ROOT}_x${EXT} $TEMP/${SER_ROOT}_x${EXT} --out ${IMG_ROOT}_combined${EXT}
+
+if [ -n "$OUTPUT_MAG" ]; then
+    log "Writing magnitude/phase output"
+    qicomplex -x ${IMG_ROOT}_combined${EXT} -M ${IMG_ROOT}_combined_mag${EXT} -P ${IMG_ROOT}_combined_ph${EXT}
+    rm ${IMG_ROOT}_combined${EXT}
+fi
+
+if [ -z "$KEEP_TEMP" ]; then
+    log "Removing temporary files"
+    rm -r $TEMP
+fi
