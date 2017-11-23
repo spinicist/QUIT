@@ -75,7 +75,7 @@ add_library( Ellipse STATIC ${ELDIR}/EllipseAlgo.cpp ${ELDIR}/EllipseHelpers.cpp
 target_link_libraries( Ellipse ${QI} ${CERES_LIBRARIES} ${SIGLIB} )
 add_library( Masking STATIC ${QIDIR}/Masking.cpp )
 
-set( UTILS qihdr qinewimage qidiff qiconvert
+set( UTILS qihdr qinewimage qidiff
            qicomplex qiaffine qimask qikfilter qireorder
            qisplitsubjects qiunwrap qipolyfit qipolyimg
            qi_coil_combine qi_bet qi_rfprofile
