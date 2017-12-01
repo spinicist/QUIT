@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
 
     apply->SetVerbose(verbose);
     if (subregion) {
-        apply->SetSubregion(QI::RegionArg(args::get(subregion)));
+        apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
     if (verbose) {
         std::cout << "Flips: " << flips.transpose() << std::endl;
