@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(threads.Get());
     apply->SetInput(0, data);
-    apply->SetMask(QI::ReadImage(mask.Get()));
+    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
