@@ -20,7 +20,7 @@
 #include "QI/Util.h"
 #include "QI/Args.h"
 #include "QI/IO.h"
-#include "QI/Fit.h"
+#include "QI/Spline.h"
 
 namespace itk {
 

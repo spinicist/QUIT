@@ -11,20 +11,20 @@
 
 #include <iostream>
 #include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
-#include <unsupported/Eigen/Splines>
 
 #include "QI/Util.h"
 #include "QI/Args.h"
 #include "QI/IO.h"
+#include "QI/Spline.h"
 
 class MTAsym : public QI::ApplyVectorF::Algorithm {
 protected:
-    Eigen::ArrayXf m_zfrqs, m_afrqs;
+    Eigen::ArrayXd m_zfrqs, m_afrqs;
     TOutput m_zero;
+    
 public:
     MTAsym(const Eigen::ArrayXf &zf, const Eigen::ArrayXf &af) :
-        m_zfrqs(zf), m_afrqs(af)
+        m_zfrqs(zf.cast<double>()), m_afrqs(af.cast<double>())
     {
         m_zero = TOutput(m_afrqs.rows()); m_zero.Fill(0.);
     }
@@ -50,36 +50,14 @@ public:
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIters &its) const override
     {
-        typedef Eigen::Spline<float, 1> TSpline;
-        typedef Eigen::SplineFitting<TSpline> TFit;
-        const float maxfrq = m_zfrqs.maxCoeff();
-        const float minfrq = m_zfrqs.minCoeff();
-        const float w = maxfrq - minfrq;
-        const Eigen::ArrayXf scaledfrqs = (m_zfrqs - minfrq) / w;
-        Eigen::DenseIndex degree = std::min<int>(m_zfrqs.rows() - 1, 3);
         const Eigen::Map<const Eigen::ArrayXf> zdata(inputs[0].GetDataPointer(), m_zfrqs.rows());
-        // std::cout << "zfrqs " << m_zfrqs.transpose() << std::endl;
-        // std::cout << "sfrqs " << scaledfrqs.transpose() << std::endl;
-        // std::cout << "afrqs " << m_afrqs.transpose() << std::endl; 
-        // std::cout << "zdata " << zdata.transpose() << std::endl;
-        // std::cout << "degree " << degree << std::endl;
-        // std::cout << "zdata " << zdata.transpose() << std::endl;
-        // std::cout << "degree " << degree << std::endl;
-        TSpline zspec;
-        if (scaledfrqs[0] > 0) {
-            // std::cout << "Reverse" << std::endl;
-            zspec = TFit::Interpolate(zdata.reverse().transpose(), degree, scaledfrqs.reverse());
-        } else {
-            // std::cout << "Forward" << std::endl;
-            zspec = TFit::Interpolate(zdata.transpose(), degree, scaledfrqs);
-        }
+        QI::SplineInterpolator zspec(m_zfrqs, zdata.cast<double>());
         float ref = zdata[0];
         for (int f = 0; f < m_afrqs.rows(); f++) {
-            const float pfrq =  (m_afrqs.coeffRef(f) - minfrq)/w;
-            const float nfrq = (-m_afrqs.coeffRef(f) - minfrq)/w;
-            const float pos = zspec(pfrq)[0];
-            const float neg = zspec(nfrq)[0];
-            // std::cout << pos << " " << neg << " " << ref << " " << ((pos - neg)/ref) << std::endl;
+            const double pfrq = m_afrqs[f];
+            const double nfrq = -pfrq;
+            const double pos = zspec(pfrq);
+            const double neg = zspec(nfrq);
             outputs.at(0)[f] = ((pos - neg)/ref);
         }
         return true;

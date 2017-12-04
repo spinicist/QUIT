@@ -37,7 +37,7 @@ CERES_OPTS="-DCMAKE_BUILD_TYPE=Release\
 mkdir -p $CERES_BUILD_DIR
 cd $CERES_BUILD_DIR
 cmake $CERES_DIR $CERES_OPTS
-make -j 4
+make -j 2
 
 # ITK
 ITK_DIR="$EXTERNAL/ITK"
@@ -48,7 +48,7 @@ ITK_OPTS="-DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF\
 mkdir -p $ITK_BUILD_DIR
 cd $ITK_BUILD_DIR
 cmake $ITK_DIR $ITK_OPTS
-make -j 4
+make -j 2
 
 cd $WD
 # Now build QUIT
@@ -59,4 +59,4 @@ QUIT_OPTS="-DCMAKE_BUILD_TYPE=Release\
 mkdir -p $QUIT_BLD_DIR
 cd $QUIT_BLD_DIR
 cmake $WD $QUIT_OPTS
-make -j
+make -j 2

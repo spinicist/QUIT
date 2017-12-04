@@ -38,7 +38,7 @@ set(QI "qi")
 add_library( ${QI} STATIC
              ${QIDIR}/Types.h ${QIDIR}/Util.cpp ${QIDIR}/ThreadPool.cpp
              ${QIDIR}/Option.cpp
-             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp ${QIDIR}/Fit.cpp )
+             ${QIDIR}/Kernels.cpp ${QIDIR}/Lineshape.cpp ${QIDIR}/Fit.cpp ${QIDIR}/Spline.cpp )
 add_dependencies( ${QI} qi_version )
 add_custom_target(qi_template SOURCES Source/Filters/ImageToVectorFilter.h Source/Filters/ImageToVectorFilter.hxx
                                       Source/Filters/VectorToImageFilter.h Source/Filters/VectorToImageFilter.hxx
@@ -85,7 +85,7 @@ set( QUANT qisignal
            qidespot1 qidespot2 qidespot1hifi qidespot2fm
            qimcdespot 
            qimultiecho qimp2rage
-           #    qicest
+           qi_cestasym
            qissfpbands qi_ellipse qi_emt )
 
 foreach(PROGRAM ${UTILS})
