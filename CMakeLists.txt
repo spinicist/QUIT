@@ -85,7 +85,7 @@ set( QUANT qisignal
            qidespot1 qidespot2 qidespot1hifi qidespot2fm
            qimcdespot 
            qimultiecho qimp2rage
-           qi_cestasym
+           qi_cestasym qi_cestlorentz
            qissfpbands qi_ellipse qi_emt )
 
 foreach(PROGRAM ${UTILS})
