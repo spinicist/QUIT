@@ -335,7 +335,7 @@ int main(int argc, char **argv) {
     if (verbose) cout << "Opening input file: " << argv[optind] << endl;
     string fname(argv[optind++]);
     if (prefix == "")
-        prefix = fname.substr(0, fname.find(".nii"));
+        prefix = QI::StripExt(fname);
     string outname = prefix + "_unwrap" + QI::OutExt();
     if (verbose) cout << "Output filename: " << outname << endl;
 

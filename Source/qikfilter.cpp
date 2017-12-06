@@ -258,10 +258,10 @@ int main(int argc, char **argv) {
             auto shift_filter = TFFTShift::New();
             shift_filter->SetInput(forward->GetOutput());
             shift_filter->Update();
-            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_before.nii" + QI::OutExt());
+            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_before" + QI::OutExt());
             shift_filter->SetInput(mult->GetOutput());
             shift_filter->Update();
-            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_after.nii" + QI::OutExt());
+            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_after" + QI::OutExt());
         }
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);

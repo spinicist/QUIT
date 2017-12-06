@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     mesh_to_image->SetInfoImage(input_image);
     mesh_to_image->SetInsideValue(1);
     mesh_to_image->Update();
-    std::string output_path = QI::StripExt(input_path.Get()) + "_mask.nii";
+    std::string output_path = QI::StripExt(input_path.Get()) + "_mask" + QI::OutExt();
     QI::WriteImage(mesh_to_image->GetOutput(), output_path);
     return EXIT_SUCCESS;
 }

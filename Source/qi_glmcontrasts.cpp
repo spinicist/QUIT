@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
     apply->Update();
     for (int c = 0; c < contrasts.rows(); c++) {
         if (*verbose) std::cout << "Writing contrast " << (c + 1) << std::endl;
-        QI::WriteImage(apply->GetOutput(c), *outPrefix + "con" + std::to_string(c + 1) + ".nii");
+        QI::WriteImage(apply->GetOutput(c), *outPrefix + "con" + std::to_string(c + 1) + QI::OutExt());
     }
 }
 

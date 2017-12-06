@@ -259,7 +259,7 @@ void RegisterImageToReference(const QI::VolumeF::Pointer &image, const QI::Volum
 }
 
 const string usage {
-"Usage is: qisplit input_file.nii [options]\n\
+"Usage is: qisplit input_file [options]\n\
 \n\
 Options:\n\
     --help, -h     : Print this message\n\
@@ -379,7 +379,7 @@ int main(int argc, char **argv) {
     QI::VolumeI::Pointer labels;
     QI::FindLabels(mask, size_threshold, keep, labels);
     if (verbose) cout << "Found " << keep << " subjects, saving labels." << endl;
-    QI::WriteImage(labels, prefix + "_labels.nii");
+    QI::WriteImage(labels, prefix + "_labels" + QI::OutExt());
 
     typedef itk::LabelStatisticsImageFilter<QI::VolumeF, QI::VolumeI> TLabelStats;
     auto labelStats = TLabelStats::New();
@@ -443,10 +443,10 @@ int main(int argc, char **argv) {
             rthresh->SetInsideValue(1);
             rthresh->SetOutsideValue(0);
             rthresh->Update();
-            fname = prefix + suffix.str() + ".nii";
+            fname = prefix + suffix.str() + QI::OutExt();
             if (verbose) cout << "Writing output file " << fname << endl;
             QI::WriteImage(rimage, fname);
-            fname = prefix + suffix.str() + "_mask.nii";
+            fname = prefix + suffix.str() + "_mask" + QI::OutExt();
             if (verbose) cout << "Writing output mask " << fname << endl;
             QI::WriteImage(rthresh->GetOutput(), fname);
         }
