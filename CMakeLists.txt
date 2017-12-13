@@ -15,6 +15,7 @@ endif()
 set( Args_DIR "${PROJECT_SOURCE_DIR}/External/Args"
      CACHE PATH "Path to Args library (usually External/Args" )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
+include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 find_package(Eigen3 REQUIRED)
 find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
 find_package(ITK 4.10.0 REQUIRED)
