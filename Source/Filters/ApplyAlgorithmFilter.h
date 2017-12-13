@@ -6,7 +6,7 @@
 #include "itkVariableLengthVector.h"
 #include "itkVectorImage.h"
 #include "itkTimeProbe.h"
-#include "QI/ThreadPool.h"
+#include "ThreadPool.h"
 
 namespace itk{
 
