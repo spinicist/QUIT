@@ -62,16 +62,17 @@ void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names)
             if (verbose) std::cout << "Read label: " << label_numbers.back() << ", name: " << label_names.back() << std::endl;
         }
     } else {
-        if (verbose) std::cout << "Reading first label file to determine labels: " << QI::CheckList(in_paths).at(0) << std::endl;
         TStatsFilter::Pointer label_filter = TStatsFilter::New();
-        QI::VolumeI::Pointer img = QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0));
-        label_filter->SetLabelInput(img);
+        if (verbose) std::cout << "Reading first label file to determine labels: " << QI::CheckList(in_paths).at(0) << std::endl;
+        label_filter->SetLabelInput(QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0)));
+        label_filter->SetInput(QI::ReadImage<QI::VolumeF>(QI::CheckList(in_paths).at(0))); // Dummy value because ITK complains input primary is not set
         label_filter->Update();
         label_numbers = label_filter->GetValidLabelValues();
         std::sort(label_numbers.begin(), label_numbers.end());
         if (verbose) {
             std::cout << "Found the following labels:" << std::endl;
-            for (auto &l : label_numbers) std::cout << l << std::endl;
+            for (auto &l : label_numbers) std::cout << l << " ";
+            std::cout << std::endl;
         }
     }
     if (ignore_zero) {
@@ -123,18 +124,18 @@ void GetValues(const int n_files, const TLabels &labels, const std::vector<doubl
         if (volumes) {
             if (verbose) std::cout << "Reading label file: " << in_paths.Get().at(f) << std::endl;
             label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
+            value_img = QI::ReadImage(in_paths.Get().at(f)); // Dummy image
         } else {
             if (verbose) std::cout << "Reading label file: " << in_paths.Get().at(f) << std::endl;
             label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
             if (verbose) std::cout << "Reading value file: " << in_paths.Get().at(f + n_files) << std::endl;
             value_img = QI::ReadImage(in_paths.Get().at(f + n_files));
-            label_filter->SetInput(value_img);
         }
         double vox_volume = QI::VoxelVolume(label_img);
         label_filter->SetLabelInput(label_img);
+        label_filter->SetInput(value_img);
         label_filter->Update();
         for (int i = 0; i < labels.size(); i++) {
-            const double n_voxels = label_filter->GetCount(labels.at(i)); // This is the count of pixels
             mean_table.at(f).at(i) = label_filter->GetMean(labels.at(i)) / scale_list.at(f);
             sigma_table.at(f).at(i) = label_filter->GetSigma(labels.at(i)) / scale_list.at(f);
             volume_table.at(f).at(i) = label_filter->GetCount(labels.at(i)) * vox_volume;
