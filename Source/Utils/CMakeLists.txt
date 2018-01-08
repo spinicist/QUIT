@@ -4,7 +4,7 @@ if( ${BUILD_UTILITIES} )
         qihdr qinewimage qidiff
         qicomplex qiaffine qimask qikfilter qireorder
         qisplitsubjects qiunwrap qipolyfit qipolyimg
-        qi_coil_combine qi_bet qi_rfprofile
+        qi_coil_combine qi_bet qi_rfprofile qi_asl
         qisignal )
 
     foreach(PROGRAM ${PROGRAMS})
