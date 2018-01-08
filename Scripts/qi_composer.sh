@@ -9,7 +9,7 @@
 ##  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ##
 
-USAGE="Usage: $0 [opts] -i input_file -r reference_file
+USAGE="Usage: $0 -r reference_file [opts] input_1 [input_2 ...]
 
 This script is an implementation of the COMPOSER algorithm (Robinson et al MRM
 2017). The actual coil-combination step is implemented in qi_coil_combine. The
@@ -23,9 +23,8 @@ The inputs are the multi-coil input image and the short echo-time reference
 real volumes followed by all complex volumes. The number of coils/volumes in the
 two files must match.
 
-Inputs:
-    -i      Input file
-    -r      Reference (short echo time) file
+Options:
+    -r      Reference (short echo time) file. REQUIRED
     -t      Keep temporary files
     -m      Output magnitude/phase instead of complex final file
     -v      Verbose mode (display progress)
@@ -34,20 +33,16 @@ Inputs:
 KEEP_TEMP=""
 OUTPUT_MAG=""
 VERBOSE=""
-while getopts "i:mr:tv" opt; do
+EXT=".nii.gz"
+while getopts "mr:tv" opt; do
     case $opt in
-        i) IMG="$OPTARG";;
         m) OUTPUT_MAG="1";;
         r) SER="$OPTARG";;
         t) KEEP_TEMP="1";;
         v) VERBOSE="-v";;
     esac
 done
-
-if [ -z ${IMG-} ]; then
-    echo "$USAGE"
-    exit 1;
-fi
+shift $(( $OPTIND - 1 ))
 
 if [ -z ${SER-} ]; then
     echo "$USAGE"
@@ -60,48 +55,52 @@ function log() {
     fi
 }
 
-IMG_ROOT="$( basename ${IMG%%.*} )"
-SER_ROOT="$( basename ${SER%%.*} )"
-EXT=".nii.gz"
-
-log "Creating temporary directory"
+log "Creating COMPOSER temporary directory"
 TEMP="composer_working_dir"
 mkdir -p $TEMP
 
-log "Creating magnitude images for registration"
-qicomplex --realimag $IMG -M $TEMP/${IMG_ROOT}_mag${EXT}
-qicomplex --realimag $SER -M $TEMP/${SER_ROOT}_mag${EXT}
+while test ${#} -gt 0; do
+    IMG="${1}"
+    IMG_ROOT="$( basename ${IMG%%.*} )"
+    SER_ROOT="$( basename ${SER%%.*} )"
+    log "Processing $IMG_ROOT"
 
-antsMotionCorr -d 3 -a $TEMP/${IMG_ROOT}_mag${EXT} -o $TEMP/${IMG_ROOT}_avg${EXT}
-antsMotionCorr -d 3 -a $TEMP/${SER_ROOT}_mag${EXT} -o $TEMP/${SER_ROOT}_avg${EXT}
+    log "Creating magnitude images for registration"
+    qicomplex --realimag $IMG -M $TEMP/${IMG_ROOT}_mag${EXT}
+    qicomplex --realimag $SER -M $TEMP/${SER_ROOT}_mag${EXT}
 
-log "Registering reference to input"
-qimask $TEMP/${IMG_ROOT}_avg${EXT} --fillh=2
-ImageMath 3 $TEMP/mask${EXT} MD $TEMP/${IMG_ROOT}_avg_mask${EXT} 3
+    antsMotionCorr -d 3 -a $TEMP/${IMG_ROOT}_mag${EXT} -o $TEMP/${IMG_ROOT}_avg${EXT}
+    antsMotionCorr -d 3 -a $TEMP/${SER_ROOT}_mag${EXT} -o $TEMP/${SER_ROOT}_avg${EXT}
 
-antsRegistration --dimensionality 3 --float 0 --interpolation Linear \
-    --output [$TEMP/reg,$TEMP/regWarped${EXT}] -x $TEMP/mask${EXT} \
-    --initial-moving-transform [$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1] \
-    --transform Rigid[0.1] --metric MI[$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1, 32, Regular, 0.25] \
-    --convergence [1000x500x250,1e-6,10] --shrink-factors 8x4x2 --smoothing-sigmas 4x2x1vox
+    log "Registering reference to input"
+    qimask $TEMP/${IMG_ROOT}_avg${EXT} --fillh=2
+    ImageMath 3 $TEMP/mask${EXT} MD $TEMP/${IMG_ROOT}_avg_mask${EXT} 3
 
-log "Resampling reference"
-antsApplyTransforms --dimensionality 3 --input-image-type 3 \
-    --input $SER --reference-image $TEMP/${IMG_ROOT}_avg${EXT} \
-    --output $TEMP/${SER_ROOT}_resamp${EXT} \
-    --transform $TEMP/reg0GenericAffine.mat --float
+    antsRegistration --dimensionality 3 --float 0 --interpolation Linear \
+        --output [$TEMP/reg,$TEMP/regWarped${EXT}] -x $TEMP/mask${EXT} \
+        --initial-moving-transform [$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1] \
+        --transform Rigid[0.1] --metric MI[$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1, 32, Regular, 0.25] \
+        --convergence [1000x500x250,1e-6,10] --shrink-factors 8x4x2 --smoothing-sigmas 4x2x1vox
 
-qicomplex --realimag $IMG -X $TEMP/${IMG_ROOT}_x${EXT}
-qicomplex --realimag $TEMP/${SER_ROOT}_resamp${EXT} -X $TEMP/${SER_ROOT}_x${EXT}
+    log "Resampling reference"
+    antsApplyTransforms --dimensionality 3 --input-image-type 3 \
+        --input $SER --reference-image $TEMP/${IMG_ROOT}_avg${EXT} \
+        --output $TEMP/${SER_ROOT}_resamp${EXT} \
+        --transform $TEMP/reg0GenericAffine.mat --float
 
-log "Combining coil images"
-qi_coil_combine $TEMP/${IMG_ROOT}_x${EXT} $TEMP/${SER_ROOT}_x${EXT} --out ${IMG_ROOT}_combined${EXT}
+    qicomplex --realimag $IMG -X $TEMP/${IMG_ROOT}_x${EXT}
+    qicomplex --realimag $TEMP/${SER_ROOT}_resamp${EXT} -X $TEMP/${SER_ROOT}_x${EXT}
 
-if [ -n "$OUTPUT_MAG" ]; then
-    log "Writing magnitude/phase output"
-    qicomplex -x ${IMG_ROOT}_combined${EXT} -M ${IMG_ROOT}_combined_mag${EXT} -P ${IMG_ROOT}_combined_ph${EXT}
-    rm ${IMG_ROOT}_combined${EXT}
-fi
+    log "Combining coil images"
+    qi_coil_combine $TEMP/${IMG_ROOT}_x${EXT} $TEMP/${SER_ROOT}_x${EXT} --out ${IMG_ROOT}_combined${EXT}
+
+    if [ -n "$OUTPUT_MAG" ]; then
+        log "Writing magnitude/phase output"
+        qicomplex -x ${IMG_ROOT}_combined${EXT} -M ${IMG_ROOT}_combined_mag${EXT} -P ${IMG_ROOT}_combined_ph${EXT}
+        rm ${IMG_ROOT}_combined${EXT}
+    fi
+    shift 1
+done
 
 if [ -z "$KEEP_TEMP" ]; then
     log "Removing temporary files"
