@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
         typedef itk::BinaryDilateImageFilter<QI::VolumeI, QI::VolumeI, TBall> TDilate;
         float mask_volume = std::numeric_limits<float>::infinity();
         float voxel_volume = QI::VoxelVolume(mask_image);
-        std::cout << "Voxel volume: " << voxel_volume << std::endl;
+        if (verbose) std::cout << "Voxel volume: " << voxel_volume << std::endl;
         int radius = 0;
         QI::VolumeI::Pointer mask_rats;
         while (mask_volume > rats.Get()) {
