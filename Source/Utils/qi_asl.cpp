@@ -19,43 +19,71 @@
 #include "Sequences.h"
 #include "Types.h"
 
-class CASL : public QI::ApplyF::Algorithm {
+class CASL : public QI::ApplyVectorF::Algorithm {
 protected:
     const double m_T1, m_alpha, m_lambda, m_PLD, m_LD;
-    const int m_inputsize;
+    const int m_inputsize, m_series_size;
+    const bool m_average_timeseries;
 public:
     CASL(const double T1, const double alpha, const double lambda,
-         const double LD, const double PLD, const int inputsize) :
-        m_T1(T1), m_alpha(alpha), m_lambda(lambda), m_LD(LD), m_PLD(PLD), m_inputsize(inputsize)
-    {}
+         const double LD, const double PLD, const int inputsize,
+         const bool average) :
+        m_T1(T1), m_alpha(alpha), m_lambda(lambda),
+        m_LD(LD), m_PLD(PLD),
+        m_inputsize(inputsize), m_series_size(inputsize/2),
+        m_average_timeseries(average)
+    {
+    }
 
     size_t numInputs() const override  { return 1; }
     size_t numConsts() const override  { return 0; }
     size_t numOutputs() const override { return 1; }
     size_t dataSize() const override   { return m_inputsize; }
-    float zero() const override { return 0.f; }
+    size_t outputSize() const override {
+        if (m_average_timeseries) {
+            return 1;
+        } else {
+            return m_series_size;
+        }
+    }
+    TOutput zero() const override {
+        TOutput z;
+        if (m_average_timeseries) {
+            z.SetSize(1);
+        } else {
+            z.SetSize(m_series_size);
+        }
+        z.Fill(0.);
+        return z;
+    }
+
     std::vector<float> defaultConsts() const override {
         std::vector<float> def(0, 0);
         return def;
     }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               std::vector<TOutput> &outputs, TConst &residual,
+               std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIters &its) const override
     {
-        const int ts_size = m_inputsize / 2;
-        const Eigen::Map<const Eigen::ArrayXf, 0, Eigen::InnerStride<>> even(inputs[0].GetDataPointer(), ts_size, Eigen::InnerStride<>(2));
-        const Eigen::Map<const Eigen::ArrayXf, 0, Eigen::InnerStride<>> odd(inputs[0].GetDataPointer() + 1, ts_size, Eigen::InnerStride<>(2));
+        const Eigen::Map<const Eigen::ArrayXf, 0, Eigen::InnerStride<>> even(inputs[0].GetDataPointer(), m_series_size, Eigen::InnerStride<>(2));
+        const Eigen::Map<const Eigen::ArrayXf, 0, Eigen::InnerStride<>> odd(inputs[0].GetDataPointer() + 1, m_series_size, Eigen::InnerStride<>(2));
 
-        const double diff = (odd.cast<double>() - even.cast<double>()).mean();
-        const double SI_PD = odd.cast<double>().mean();
-        const double CBF = (6000 * m_lambda * diff * exp(m_PLD / m_T1)) / 
+        const Eigen::ArrayXd diff = (odd.cast<double>() - even.cast<double>());
+        const Eigen::ArrayXd SI_PD = odd.cast<double>();
+        const Eigen::ArrayXd CBF = (6000 * m_lambda * diff * exp(m_PLD / m_T1)) / 
                            (2. * m_alpha * m_T1 * SI_PD * (1. - exp(-m_LD / m_T1)));
         // std::cout << "l " << m_lambda << " diff " << diff << " PLD " << m_PLD << " T1 " << m_T1 << " e(PLD) " << exp(m_PLD / m_T1) << std::endl;
         // std::cout << "a " << m_alpha << " PD " << SI_PD << " LD " << m_LD << " (1 - exp()) " << (1. - exp(-m_LD / m_T1)) << std::endl;
         // std::cout << "CBF: " << CBF << std::endl;
-        outputs[0] = CBF;
-        residual = 0;
+        if (m_average_timeseries) {
+            outputs[0][0] = CBF.mean();
+        } else {
+            for (int i = 0; i < m_series_size; i++) {
+                outputs[0][i] = CBF[i];
+            }
+        }
+        residual.Fill(0.);
         resids.Fill(0.);
         its = 0;
         return true;
@@ -77,6 +105,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::Flag              average(parser, "AVERAGE", "Average the time-series", {'a', "average"});
     args::ValueFlag<double> T1_blood(parser, "BLOOD T1", "Value of blood T1 to use (seconds), default 2.429", {'t', "T1"}, 2.429);
     args::ValueFlag<double> alpha(parser, "ALPHA", "Labelling efficiency, default 0.9", {'a', "alpha"}, 0.9);
     args::ValueFlag<double> lambda(parser, "LAMBDA", "Blood-brain partition co-efficent, default 0.9 mL/g", {'l', "lambda"}, 0.9);
@@ -93,13 +122,14 @@ int main(int argc, char **argv) {
     if (prompt) std::cout << "Enter post-label delay (seconds): " << std::flush;
     std::cin >> PLD;
 
-    auto apply = QI::ApplyF::New();
+    auto apply = QI::ApplyVectorF::New();
     if (verbose) {
         std::cout << "T1 blood: " << T1_blood.Get() << " Alpha: " << alpha.Get() << " Lambda: " << lambda.Get() << "\n";
         std::cout << "Label time: " << LD << " Post-label delay: " << PLD << std::endl;
     }
     std::shared_ptr<CASL> algo = std::make_shared<CASL>(T1_blood.Get(), alpha.Get(), lambda.Get(),
-                                                        LD, PLD, input->GetNumberOfComponentsPerPixel());
+                                                        LD, PLD, input->GetNumberOfComponentsPerPixel(),
+                                                        average);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(false);
@@ -122,6 +152,6 @@ int main(int argc, char **argv) {
         std::cout << "Writing results files." << std::endl;
     }
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
-    QI::WriteImage(apply->GetOutput(0), outPrefix + "CBF" + QI::OutExt());
+    QI::WriteVectorImage(apply->GetOutput(0), outPrefix + "CBF" + QI::OutExt());
     return EXIT_SUCCESS;
 }
