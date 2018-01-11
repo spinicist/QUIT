@@ -19,17 +19,37 @@
 #include "Sequences.h"
 #include "Types.h"
 
-class CASL : public QI::ApplyVectorF::Algorithm {
+class CASLSequence {
+public:
+    double label_time, post_label_delay, TR;
+
+    CASLSequence(std::istream& istr, const bool prompt) {
+        if (prompt) std::cout << "Enter TR: " << std::flush;
+        QI::Read(istr, this->TR);
+        if (prompt) std::cout << "Enter label time: " << std::flush;
+        QI::Read(istr, this->label_time);
+        if (prompt) std::cout << "Enter post-label delay: " << std::flush;
+        QI::Read(istr, this->post_label_delay);
+    }
+    void write(std::ostream &os) const {
+        os << "CASL" << std::endl;
+        os << "TR: " << this->TR
+           << "\tLabel Time: " << this->label_time
+           << "\tPost-Label Delay: " << this->post_label_delay << std::endl;
+    }
+};
+
+class CASLAlgo : public QI::ApplyVectorF::Algorithm {
 protected:
-    const double m_T1, m_alpha, m_lambda, m_PLD, m_LD;
+    const CASLSequence m_CASL;
+    const double m_T1, m_alpha, m_lambda;
     const int m_inputsize, m_series_size;
     const bool m_average_timeseries;
 public:
-    CASL(const double T1, const double alpha, const double lambda,
-         const double LD, const double PLD, const int inputsize,
-         const bool average) :
-        m_T1(T1), m_alpha(alpha), m_lambda(lambda),
-        m_LD(LD), m_PLD(PLD),
+    CASLAlgo(const CASLSequence& casl,
+             const double T1, const double alpha, const double lambda,
+             const int inputsize, const bool average) :
+        m_CASL(casl), m_T1(T1), m_alpha(alpha), m_lambda(lambda),
         m_inputsize(inputsize), m_series_size(inputsize/2),
         m_average_timeseries(average)
     {
@@ -71,8 +91,8 @@ public:
 
         const Eigen::ArrayXd diff = (odd.cast<double>() - even.cast<double>());
         const Eigen::ArrayXd SI_PD = odd.cast<double>();
-        const Eigen::ArrayXd CBF = (6000 * m_lambda * diff * exp(m_PLD / m_T1)) / 
-                           (2. * m_alpha * m_T1 * SI_PD * (1. - exp(-m_LD / m_T1)));
+        const Eigen::ArrayXd CBF = (6000 * m_lambda * diff * exp(m_CASL.post_label_delay / m_T1)) / 
+                           (2. * m_alpha * m_T1 * SI_PD * (1. - exp(-m_CASL.label_time / m_T1)));
         // std::cout << "l " << m_lambda << " diff " << diff << " PLD " << m_PLD << " T1 " << m_T1 << " e(PLD) " << exp(m_PLD / m_T1) << std::endl;
         // std::cout << "a " << m_alpha << " PD " << SI_PD << " LD " << m_LD << " (1 - exp()) " << (1. - exp(-m_LD / m_T1)) << std::endl;
         // std::cout << "CBF: " << CBF << std::endl;
@@ -116,20 +136,14 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Reading ASL data from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
 
-    double LD, PLD;
-    if (prompt) std::cout << "Enter label delay (seconds): " << std::flush;
-    std::cin >> LD;
-    if (prompt) std::cout << "Enter post-label delay (seconds): " << std::flush;
-    std::cin >> PLD;
+    CASLSequence sequence(std::cin, prompt);
 
     auto apply = QI::ApplyVectorF::New();
     if (verbose) {
-        std::cout << "T1 blood: " << T1_blood.Get() << " Alpha: " << alpha.Get() << " Lambda: " << lambda.Get() << "\n";
-        std::cout << "Label time: " << LD << " Post-label delay: " << PLD << std::endl;
+        sequence.write(std::cout);
     }
-    std::shared_ptr<CASL> algo = std::make_shared<CASL>(T1_blood.Get(), alpha.Get(), lambda.Get(),
-                                                        LD, PLD, input->GetNumberOfComponentsPerPixel(),
-                                                        average);
+    std::shared_ptr<CASLAlgo> algo = std::make_shared<CASLAlgo>(sequence, T1_blood.Get(), alpha.Get(), lambda.Get(),
+                                                                input->GetNumberOfComponentsPerPixel(), average);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(false);
