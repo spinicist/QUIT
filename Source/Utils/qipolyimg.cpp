@@ -18,7 +18,8 @@
 #include "Types.h"
 #include "Util.h"
 #include "Polynomial.h"
-#include "Option.h"
+#include "Args.h"
+#include "IO.h"
 
 using namespace std;
 using namespace Eigen;
@@ -100,41 +101,39 @@ private:
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts("Usage is: qipolyimg [options] reference output\n\nPolynomial coefficients are read from stdin.\n");
-    QI::Option<int> num_threads(4,'T',"threads","Use N threads (default=4, 0=hardware limit)", opts);
-    QI::Option<int> order(2,'o',"order","Specify the polynomial order (default 2)", opts);
-    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
-    QI::Switch verbose('v',"verbose","Print more information", opts);
-    QI::Help help(opts);
-    std::deque<std::string> nonopts = opts.parse(argc, argv);
-    if (nonopts.size() != 2) {
-        std::cerr << opts << std::endl;
-        std::cerr << "Required inputs are reference image and output filename." << std::endl;
-        return EXIT_FAILURE;
-    }
-    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(*num_threads);
-    if (*verbose) cout << "Reading image " << argv[optind] << std::endl;
-    QI::VolumeF::Pointer reference = QI::ReadImage(nonopts[0]);
+    args::ArgumentParser parser("Creates an image from polynomial coefficients, which are read from stdin.\n"
+                                "\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> ref_path(parser, "REFERENCE", "Reference image space to create the polynomial");
+    args::Positional<std::string> out_path(parser, "OUTPUT", "Output image path");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> order(parser, "ORDER", "Specify the polynomial order (default 2)", {'o',"order"}, 2);
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    QI::ParseArgs(parser, argc, argv);
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
+    if (verbose) cout << "Reading reference image " << QI::CheckPos(ref_path) << std::endl;
+    QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));
     itk::Point<double, 3> center;
     std::cin >> center;
-    if (*verbose) std::cout << "Center point is: " << center << std::endl;
-    if (*verbose) cout << "Building polynomial" << std::endl;
-    QI::Polynomial<3> poly(*order);
+    if (verbose) std::cout << "Center point is: " << center << std::endl;
+    if (verbose) cout << "Building polynomial" << std::endl;
+    QI::Polynomial<3> poly(order.Get());
     ArrayXd coeff;
     std::string dummy; std::getline(cin, dummy); // Damn C++ stream operators
     QI::ReadArray(cin, coeff);
     if (coeff.rows() != poly.nterms()) {
-        QI_EXCEPTION("Require " + to_string(poly.nterms()) + " terms for " + to_string(*order) + " order polynomial");
+        QI_EXCEPTION("Require " + to_string(poly.nterms()) + " terms for " + to_string(order.Get()) + " order polynomial");
     }
     poly.setCoeffs(coeff);
-    if (*verbose) cout << "Generating image" << std::endl;
+    if (verbose) cout << "Generating image" << std::endl;
     auto image = itk::PolynomialImage::New();
     image->SetReferenceImage(reference);
     image->SetPolynomial(poly);
-    image->SetMask(*mask);
+    if (mask) image->SetMask(QI::ReadImage(mask.Get()));
     image->SetCenter(center);
     image->Update();
-    QI::WriteImage(image->GetOutput(), nonopts[1]);
-    if (*verbose) cout << "Finished." << endl;
+    QI::WriteImage(image->GetOutput(), out_path.Get());
+    if (verbose) cout << "Finished." << endl;
     return EXIT_SUCCESS;
 }

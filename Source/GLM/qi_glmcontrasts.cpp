@@ -23,7 +23,8 @@
 
 #include "Types.h"
 #include "Util.h"
-#include "Option.h"
+#include "Args.h"
+#include "IO.h"
 
 class ContrastsAlgorithm : public QI::ApplyF::Algorithm {
 protected:
@@ -63,35 +64,30 @@ public:
     }
 };
 
-
-const std::string usage{
-"Usage is: qi_glmdiffs input design_matrix contrasts\n\
-\n\
-A utility for calculating group means, differences etc.\n\
-Input is the output file, design matrix and contrasts from qi_glmsetup.\n\
-One output file will be generated for each contrast.\n"};
-
+/*
+ * Main
+ */
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts(usage);
-    QI::Switch fractional('F',"frac","Output contrasts as fraction of grand mean", opts);
-    QI::ImageOption<QI::VolumeF> mask('m', "mask", "Mask input with specified file", opts);
-    QI::Option<std::string> outPrefix("", 'o', "out","Add a prefix to output filenames", opts);
-    QI::Switch verbose('v',"verbose","Print more information", opts);
-    QI::Help help(opts);
-    std::deque<std::string> nonopts = opts.parse(argc, argv);
-    if (nonopts.size() != 3) {
-        std::cerr << opts << std::endl;
-        std::cerr << "Must specify input, design_matrix and contrasts" << std::endl;
-        return EXIT_FAILURE;
-    }
+    args::ArgumentParser parser("A utility for calculating group means, differences etc.\n"
+                                "One output file will be generated for each contrast.\n"
+                                "\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> input_path(parser, "IMAGE", "The combined image file from qi_glmsetup");
+    args::Positional<std::string> design_path(parser, "DESIGN", "GLM Design matrix from qi_glmsetup");
+    args::Positional<std::string> contrasts_path(parser, "CONTRASTS", "Contrasts matrix from qi_glmsetup");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag fraction(parser, "FRACTION", "Output contrasts as fraction of grand mean", {'F',"frac"});
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
+    QI::ParseArgs(parser, argc, argv);
 
-    if (*verbose) std::cout << "Reading input file" << std::endl;
-    QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(nonopts.at(0));
-    if (*verbose) std::cout << "Reading design matrix" << std::endl;
-    Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(nonopts.at(1));
-    if (*verbose) std::cout << "Reading contrasts file" << std::endl;
-    Eigen::ArrayXXd contrasts     = QI::ReadArrayFile(nonopts.at(2));
+    if (verbose) std::cout << "Reading input file" << std::endl;
+    QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(input_path.Get());
+    if (verbose) std::cout << "Reading design matrix" << std::endl;
+    Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(design_path.Get());
+    if (verbose) std::cout << "Reading contrasts file" << std::endl;
+    Eigen::ArrayXXd contrasts     = QI::ReadArrayFile(contrasts_path.Get());
     if (design_matrix.rows() != merged->GetNumberOfComponentsPerPixel()) {
         std::cerr << "Number of rows in design matrix (" << design_matrix.rows()
                   << ") does not match number of volumes in image (" << merged->GetNumberOfComponentsPerPixel() << ")" << std::endl;
@@ -103,16 +99,16 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
-    auto con_algo = std::make_shared<ContrastsAlgorithm>(design_matrix, contrasts, *fractional);
+    auto con_algo = std::make_shared<ContrastsAlgorithm>(design_matrix, contrasts, fraction);
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(con_algo);
     apply->SetInput(0, merged);
-    apply->SetMask(*mask);
-    if (*verbose) std::cout << "Calculating contrasts" << std::endl;
+    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
+    if (verbose) std::cout << "Calculating contrasts" << std::endl;
     apply->Update();
     for (int c = 0; c < contrasts.rows(); c++) {
-        if (*verbose) std::cout << "Writing contrast " << (c + 1) << std::endl;
-        QI::WriteImage(apply->GetOutput(c), *outPrefix + "con" + std::to_string(c + 1) + QI::OutExt());
+        if (verbose) std::cout << "Writing contrast " << (c + 1) << std::endl;
+        QI::WriteImage(apply->GetOutput(c), outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt());
     }
 }
 

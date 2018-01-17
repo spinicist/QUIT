@@ -21,7 +21,8 @@
 
 #include "Types.h"
 #include "Util.h"
-#include "Option.h"
+#include "Args.h"
+#include "IO.h"
 
 const std::string usage{
 "Usage is: qi_glmsetup [options] files\n\
@@ -36,34 +37,37 @@ Additionally, simple GLM including co-variates can be generated.\n"};
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::OptionList opts(usage);
-    QI::Switch sort('s',"sort","Sort merged file and GLM in ascending group order", opts);
-    QI::Option<std::string> covars_path("",'C',"covars","Path to covariates file (added to design matrix)", opts);
-    QI::Option<std::string> ftests_path("",'f',"ftests","Generate and save F-tests", opts);
-    QI::Option<std::string> contrasts_path("",'c',"contrasts","Generate and save contrasts", opts);
-    QI::Option<std::string> design_path("",'d',"design","Path to save design matrix", opts);
-    QI::Option<std::string> output_path("",'o',"out","Path for output merged file", opts);
-    QI::Option<std::string> group_path("",'g',"groups","File to read group numbers from", opts);
-    QI::Switch verbose('v',"verbose","Print more information", opts);
-    QI::Help help(opts);
-    std::deque<std::string> file_paths = opts.parse(argc, argv);
-    if (!group_path.set()) {
-        std::cerr << opts << std::endl;
+    args::ArgumentParser parser("A utility for setting up merged 4D files for use with FSL randomise etc.\n"
+                                "The group for each input file must be specified with --groups (one per line)\n"
+                                "A value of 0 means ignore this file.\n"
+                                "\nhttp://github.com/spinicist/QUIT");
+    args::PositionalList<std::string> file_paths(parser, "INPUTS", "Input files to be merged.");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag sort(parser, "SORT", "Sort merged file and GLM in ascending group order", {'s',"sort"});
+    args::ValueFlag<std::string> group_path(parser, "GROUPS", "File to read group numbers from (REQUIRED)", {'g',"groups"});
+    args::ValueFlag<std::string> output_path(parser, "OUT", "Path for output merged file", {'o',"out"});
+    args::ValueFlag<std::string> covars_path(parser, "COVARS", "Path to covariates file (added to design matrix)", {'C',"covars"});
+    args::ValueFlag<std::string> design_path(parser, "DESIGN", "Path to save design matrix", {'d',"design"});
+    args::ValueFlag<std::string> contrasts_path(parser, "CONTRASTS", "Generate and save contrasts", {'c',"contrasts"});
+    args::ValueFlag<std::string> ftests_path(parser, "FTESTS", "Generate and save F-tests", {'f',"ftests"});
+    QI::ParseArgs(parser, argc, argv);
+    
+    if (!group_path) {
         std::cerr << "Group file must be set with --groups option" << std::endl;
         return EXIT_FAILURE;
     }
-    if (!output_path.set()) {
-        std::cerr << opts << std::endl;
+    if (!output_path) {
         std::cerr << "Output file must be set with --out option" << std::endl;
         return EXIT_FAILURE;
     }
 
-    std::ifstream group_file(*group_path);
+    std::ifstream group_file(group_path.Get());
     if (!group_file) {
-        std::cerr << "Group file: " << *group_path << " does not exist" << std::endl;
+        std::cerr << "Group file: " << group_path.Get() << " does not exist" << std::endl;
         return EXIT_FAILURE;
     }
-    if (*verbose) std::cout << "Reading group file" << std::endl;
+    if (verbose) std::cout << "Reading group file" << std::endl;
     std::vector<int> group_list;
     int temp;
     while (group_file >> temp) {
@@ -72,14 +76,14 @@ int main(int argc, char **argv) {
     int n_groups = *std::max_element(group_list.begin(), group_list.end());
     int n_images = std::count_if(group_list.begin(), group_list.end(), [](int i){return i > 0;}); // Count non-zero elements
 
-    if (file_paths.size() != group_list.size()) {
+    if (file_paths.Get().size() != group_list.size()) {
         std::cerr << "Group list size and number of files do not match." << std::endl;
         return EXIT_FAILURE;
     }
 
     std::vector<std::vector<QI::VolumeF::Pointer>> groups(n_groups);
-    if (*verbose) std::cout << "Number of groups: " << n_groups << std::endl;
-    if (*verbose) std::cout << "Number of images: " << n_images << std::endl;
+    if (verbose) std::cout << "Number of groups: " << n_groups << std::endl;
+    if (verbose) std::cout << "Number of images: " << n_images << std::endl;
     itk::FixedArray<unsigned int, 4> layout;
     layout[0] = layout[1] = layout[2] = 1;
     layout[3] = n_images;
@@ -87,15 +91,15 @@ int main(int argc, char **argv) {
     tiler->SetLayout(layout);
 
     std::ofstream design_file;
-    if (design_path.set()) {
-        if (*verbose) std::cout << "Design matrix will be saved to: " << *design_path << std::endl;
-        design_file = std::ofstream(*design_path);
+    if (design_path) {
+        if (verbose) std::cout << "Design matrix will be saved to: " << design_path.Get() << std::endl;
+        design_file = std::ofstream(design_path.Get());
     }
     std::vector<std::vector<std::vector<std::string>>> covars(n_groups);
     std::vector<std::ifstream> covars_files;
-    if (covars_path.set()) {
-        if (*verbose) std::cout << "All covariates: " << *covars_path << std::endl;
-        std::istringstream stream_covars(*covars_path);
+    if (covars_path) {
+        if (verbose) std::cout << "All covariates: " << covars_path.Get() << std::endl;
+        std::istringstream stream_covars(covars_path.Get());
         while (!stream_covars.eof()) {
             std::string path;
             getline(stream_covars, path, ',');
@@ -112,25 +116,25 @@ int main(int argc, char **argv) {
     for (int i = 0; i < group_list.size(); i++) {
         const int group = group_list.at(i);
         if (group > 0) { // Ignore entries with a 0
-            if (*verbose) std::cout << "File: " << file_paths.at(i) << " Group: " << group << std::flush;
-            QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.at(i));
+            if (verbose) std::cout << "File: " << file_paths.Get().at(i) << " Group: " << group << std::flush;
+            QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.Get().at(i));
             groups.at(group - 1).push_back(ptr);
             std::vector<std::string> covar;
-            if (covars_path.set()) {
-                if (*verbose) std::cout << " Covariates: ";
+            if (covars_path) {
+                if (verbose) std::cout << " Covariates: ";
                 for (auto &f : covars_files) {
                     std::string c;
                     std::getline(f, c);
                     covar.push_back(c);
-                    if (*verbose) std::cout << c << "\t";
+                    if (verbose) std::cout << c << "\t";
                 }
                 covars.at(group - 1).push_back(covar);
             }
-            if (*verbose) std::cout << std::endl;
-            if (!*sort) {
+            if (verbose) std::cout << std::endl;
+            if (!sort) {
                 tiler->SetInput(out_index, ptr);
                 out_index++;
-                if (design_path.set()) {
+                if (design_path) {
                     for (int g = 1; g <= n_groups; g++) {
                         if (g == group) {
                             design_file << "1\t";
@@ -138,7 +142,7 @@ int main(int argc, char **argv) {
                             design_file << "0\t";
                         }
                     }
-                    if (covars_path.set()) {
+                    if (covars_path) {
                         for (auto& c : covar) {
                             design_file << c << "\t";
                         }
@@ -147,7 +151,7 @@ int main(int argc, char **argv) {
                 }
             }
         } else {
-            if (*verbose) std::cout << "Ignoring file: " << file_paths.at(i) << std::endl;
+            if (verbose) std::cout << "Ignoring file: " << file_paths.Get().at(i) << std::endl;
             // Eat a line in each covariates file
             for (auto &f : covars_files) {
                 std::string dummy;
@@ -155,13 +159,13 @@ int main(int argc, char **argv) {
             }
         }
     }
-    if (*sort) {
-        if (*verbose) std::cout << "Sorting." << std::endl;
+    if (sort) {
+        if (verbose) std::cout << "Sorting." << std::endl;
         for (int g = 0; g < n_groups; g++) {
             for (int i = 0; i < groups.at(g).size(); i++) {
                 tiler->SetInput(out_index, groups.at(g).at(i));
                 out_index++;
-                if (design_path.set()) {
+                if (design_path) {
                     for (int g2 = 0; g2 < n_groups; g2++) {
                         if (g2 == g) {
                             design_file << "1\t";
@@ -169,7 +173,7 @@ int main(int argc, char **argv) {
                             design_file << "0\t";
                         }
                     }
-                    if (covars_path.set()) {
+                    if (covars_path) {
                         for (auto& c : covars.at(g).at(i)) {
                             design_file << c << "\t";
                         }
@@ -179,10 +183,10 @@ int main(int argc, char **argv) {
             }
         }
     }
-    int n_covars = covars_path.set() ? covars.front().front().size() : 0;
-    if (contrasts_path.set()) {
-        if (*verbose) std::cout << "Generating contrasts" << std::endl;
-        std::ofstream con_file(*contrasts_path);
+    int n_covars = covars_path ? covars.front().front().size() : 0;
+    if (contrasts_path) {
+        if (verbose) std::cout << "Generating contrasts" << std::endl;
+        std::ofstream con_file(contrasts_path.Get());
         for (int g = 0; g < n_groups; g++) {
             for (int g2 = 0; g2 < n_groups; g2++) {
                 if (g2 == g) {
@@ -212,9 +216,9 @@ int main(int argc, char **argv) {
             con_file << std::endl;
         }
     }
-    if (ftests_path.set()) {
-        if (*verbose) std::cout << "Generating F-tests" << std::endl;
-        std::ofstream fts_file(*ftests_path);
+    if (ftests_path) {
+        if (verbose) std::cout << "Generating F-tests" << std::endl;
+        std::ofstream fts_file(ftests_path.Get());
         for (int g = 0; g < n_groups; g++) { // Individual group comparisons
             for (int g2 = 0; g2 < n_groups; g2++) {
                 fts_file << ((g2 == g) ? "1\t" : "0\t");
@@ -235,7 +239,7 @@ int main(int argc, char **argv) {
             fts_file << std::endl;
         }
     }
-    if (*verbose) std::cout << "Writing merged file: " << *output_path << std::endl;
+    if (verbose) std::cout << "Writing merged file: " << output_path.Get() << std::endl;
     tiler->UpdateLargestPossibleRegion();
     // Reset space information because tiler messes it up
     QI::SeriesF::Pointer output = tiler->GetOutput();
@@ -256,7 +260,7 @@ int main(int argc, char **argv) {
     output->SetSpacing(spacing);
     output->SetOrigin(origin);
     output->SetDirection(direction);
-    QI::WriteImage<QI::SeriesF>(output, *output_path);
+    QI::WriteImage<QI::SeriesF>(output, output_path.Get());
     return EXIT_SUCCESS;
 }
 
