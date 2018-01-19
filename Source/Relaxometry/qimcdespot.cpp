@@ -176,7 +176,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<std::string> modelarg(parser, "MODEL", "Select model to fit - 1/2/2nex/3/3_f0/3nex, default 3", {'m', "model"}, "3");
+    args::ValueFlag<std::string> modelarg(parser, "MODEL", "Select model to fit - 1/2/2nex/3/3_f0/3nex, default 3", {'M', "model"}, "3");
     args::Flag scale(parser, "SCALE", "Normalize signals to mean (a good idea)", {'S', "scale"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Select (S)tochastic or (G)aussian Region Contraction", {'a', "algo"}, 'G');
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i',"its"}, 4);
