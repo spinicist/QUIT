@@ -56,7 +56,7 @@ $INPUT
 END_SIG
 
 qimcdespot $OPTS -M2 -bB1.nii -ff0.nii -r -v -n < mcd_input.txt
-img_diff f_m.nii 2C_f_m.nii $NOISE 250
+qidiff --baseline=f_m.nii --input=2C_f_m.nii --noise=$NOISE --tolerance=250 --verbose
 
 }
 
@@ -116,6 +116,6 @@ $INPUT
 END_SIG
 
 qimcdespot $OPTS -M3 -bB1.nii -ff0.nii -r -v -n < mcd_input.txt
-img_diff f_m.nii 3C_f_m.nii $NOISE 250
+qidiff --baseline=f_m.nii --input=3C_f_m.nii --noise=$NOISE --tolerance=250 --verbose
 
 }

@@ -13,7 +13,7 @@ SPGR_FILE="spgr.nii"
 SPGR_FLIP="3 3 20 20"
 SPGR_TR="0.01"
 SIZE="32,32,32"
-NOISE="0.002"
+NOISE="0.01"
 qinewimage --size "$SIZE" -g "1 0.8 1.0" PD.nii
 qinewimage --size "$SIZE" -g "0 0.5 1.5" T1.nii
 qisignal --model=1 -v -n --noise=$NOISE << OUT
@@ -32,7 +32,7 @@ qidespot1 -v -n $SPGR_FILE <<OUT
 $SPGR_FLIP
 $SPGR_TR
 OUT
-img_diff T1.nii D1_T1.nii $NOISE 50
+qidiff --baseline=T1.nii --input=D1_T1.nii --noise=$NOISE --tolerance=30 --verbose
 
 }
 
@@ -44,7 +44,7 @@ FLIP="15 60"
 PINC="180"
 TR="0.01"
 SIZE="32,32,32"
-NOISE="0.002"
+NOISE="0.01"
 qinewimage --size "$SIZE" -g "1 0.8 1.0" PD.nii
 [ -e PD.nii ]
 qinewimage --size "$SIZE" -g "0 0.5 1.5" T1.nii
@@ -69,6 +69,6 @@ $FLIP
 $PINC
 $TR
 OUT
-img_diff T2.nii D2_T2.nii $NOISE 50
+qidiff --baseline=T2.nii --input=D2_T2.nii --noise=$NOISE --tolerance=30 --verbose
 
 }

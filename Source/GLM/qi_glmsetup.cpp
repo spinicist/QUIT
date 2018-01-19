@@ -52,21 +52,8 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> contrasts_path(parser, "CONTRASTS", "Generate and save contrasts", {'c',"contrasts"});
     args::ValueFlag<std::string> ftests_path(parser, "FTESTS", "Generate and save F-tests", {'f',"ftests"});
     QI::ParseArgs(parser, argc, argv);
-    
-    if (!group_path) {
-        std::cerr << "Group file must be set with --groups option" << std::endl;
-        return EXIT_FAILURE;
-    }
-    if (!output_path) {
-        std::cerr << "Output file must be set with --out option" << std::endl;
-        return EXIT_FAILURE;
-    }
 
-    std::ifstream group_file(group_path.Get());
-    if (!group_file) {
-        std::cerr << "Group file: " << group_path.Get() << " does not exist" << std::endl;
-        return EXIT_FAILURE;
-    }
+    std::ifstream group_file(QI::CheckValue(group_path));
     if (verbose) std::cout << "Reading group file" << std::endl;
     std::vector<int> group_list;
     int temp;
@@ -239,7 +226,6 @@ int main(int argc, char **argv) {
             fts_file << std::endl;
         }
     }
-    if (verbose) std::cout << "Writing merged file: " << output_path.Get() << std::endl;
     tiler->UpdateLargestPossibleRegion();
     // Reset space information because tiler messes it up
     QI::SeriesF::Pointer output = tiler->GetOutput();
@@ -260,7 +246,8 @@ int main(int argc, char **argv) {
     output->SetSpacing(spacing);
     output->SetOrigin(origin);
     output->SetDirection(direction);
-    QI::WriteImage<QI::SeriesF>(output, output_path.Get());
+    if (verbose) std::cout << "Writing merged file: " << QI::CheckValue(output_path) << std::endl;
+    QI::WriteImage<QI::SeriesF>(output, QI::CheckValue(output_path));
     return EXIT_SUCCESS;
 }
 

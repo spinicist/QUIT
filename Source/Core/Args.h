@@ -49,6 +49,15 @@ std::vector<T> CheckList(args::PositionalList<T> &a) {
     }
 }
 
+template<typename T>
+T CheckValue(args::ValueFlag<T> &v) {
+    if (v) {
+        return v.Get();
+    } else {
+        QI_FAIL(v.Name() << " was not specified. Use --help to see usage.");
+    }
+}
+
 template<typename TArray, const int size>
 void ArrayArg(const std::string &a, TArray &array) {
     std::istringstream iss(a);

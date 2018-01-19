@@ -48,6 +48,6 @@ qicomplex -x ssfp_GSL.nii.gz -M gs_mag.nii.gz -P gs_ph.nii.gz --verbose
 [ -e gs_ph.nii.gz ]
 qicomplex -x gs_ref.nii.gz -M gs_ref_mag.nii.gz --verbose
 [ -e gs_ref_mag.nii.gz ]
-img_diff gs_ref_mag.nii.gz gs_mag.nii.gz $NOISE 50
+qidiff --baseline=gs_ref_mag.nii.gz --input=gs_mag.nii.gz --noise=$NOISE --tolerance=50 --verbose
 
 }

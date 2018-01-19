@@ -42,8 +42,8 @@ qimultiecho $SPIN_FILE -n -v -al -oLL_ < multiecho.in
 qimultiecho $SPIN_FILE -n -v -an -oLM_ < multiecho.in
 qimultiecho $SPIN_FILE -n -v -aa -oAR_   < multiecho.in
 
-img_diff T2.nii LL_ME_T2.nii $NOISE 50
-img_diff T2.nii LM_ME_T2.nii $NOISE 50
-img_diff T2.nii AR_ME_T2.nii $NOISE 50
+qidiff --baseline=T2.nii --input=LL_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose
+qidiff --baseline=T2.nii --input=LM_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose
+qidiff --baseline=T2.nii --input=AR_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose
 
 }

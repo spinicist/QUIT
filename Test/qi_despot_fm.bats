@@ -42,6 +42,6 @@ $SSFP_PINC
 $SSFP_TR" > fm_in.txt
 
 qidespot2fm -n -v -bB1.nii T1.nii ${SSFP_FILE} --asym < fm_in.txt
-img_diff T2.nii FM_T2.nii $NOISE 50
+qidiff --baseline=T2.nii --input=FM_T2.nii --noise=$NOISE --tolerance=50 --verbose
 
 }
