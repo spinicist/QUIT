@@ -13,7 +13,6 @@
 #include <iostream>
 #include <string>
 #include <complex>
-#include <getopt.h>
 
 #include "itkBinaryFunctorImageFilter.h"
 
@@ -21,36 +20,8 @@
 #include "Types.h"
 #include "Util.h"
 #include "IO.h"
+#include "Args.h"
 #include "MPRAGESequence.h"
-
-using namespace std;
-using namespace Eigen;
-
-const string usage{
-"A tool to process MP-2/3-RAGE images\n\
-Usage is: qimp2rage [options] input \n\
-\
-Input must contain three volumes and be complex-valued\n\
-Output will be files with _CXY where X & Y are inversion times\n\
-Options:\n\
-    --verbose, -v     : Print more messages.\n\
-    --mask, -m file   : Mask input with specified file.\n\
-    --out, -o path    : Add a prefix to the output filenames.\n\
-    --complex, -x     : Output complex contast images.\n\
-    --quant, -q       : Generate T1, B1 and inversion efficiency maps\n\
-    --threads, -T N   : Use a maximum of N threads.\n"
-};
-
-static struct option long_options[] = {
-    {"verbose", required_argument, 0, 'v'},
-    {"mask",    required_argument, 0, 'm'},
-    {"out",     required_argument, 0, 'o'},
-    {"complex", no_argument, 0, 'x'},
-    {"quant", no_argument, 0, 'q'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-static const char *short_options = "vm:o:xqT:h";
 
 template<class T> class MPRAGEFunctor {
 public:
@@ -59,7 +30,7 @@ public:
     bool operator!=(const MPRAGEFunctor &) const { return false; }
     bool operator==(const MPRAGEFunctor &other) const { return !(*this != other); }
 
-    inline T operator()(const complex<T> &ti1, const complex<T> &ti2) const
+    inline T operator()(const std::complex<T> &ti1, const std::complex<T> &ti2) const
     {
         const T a1 = abs(ti1);
         const T a2 = abs(ti2);
@@ -96,24 +67,24 @@ protected:
         this->SetNumberOfRequiredInputs(1);
         this->SetNumberOfRequiredOutputs(1);
         this->SetNthOutput(0, this->MakeOutput(0));
-        QI::MP2RAGE sequence(cin, true);
+        QI::MP2RAGE sequence(std::cin, true);
         MPRAGEFunctor<double> con;
         m_T1.clear();
         m_con.clear();
         for (float T1 = 0.25; T1 < 4.3; T1 += 0.001) {
-            Array3d tp; tp << T1, 1.0, 1.0; // Fix B1 and eta
-            Array2cd sig = sequence.signal(1., T1, 1.0, 1.0);
+            Eigen::Array3d tp; tp << T1, 1.0, 1.0; // Fix B1 and eta
+            Eigen::Array2cd sig = sequence.signal(1., T1, 1.0, 1.0);
             double c = con(sig[0], sig[1]);
             m_T1.push_back(T1);
             m_con.push_back(c);
-            //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose() << endl;
+            //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose() << std::endl;
         }
-        cout << "Lookup table has " << m_T1.size() << " entries" << endl;
+        std::cout << "Lookup table has " << m_T1.size() << " entries" << std::endl;
     }
     ~MPRAGELookUpFilter() {}
 
     DataObject::Pointer MakeOutput(unsigned int idx) {
-        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         if (idx == 0) {
             DataObject::Pointer output = (TImage::New()).GetPointer();
             return output.GetPointer();
@@ -124,13 +95,13 @@ protected:
     }
 
     void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
-        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
         ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
 
         while(!inputIter.IsAtEnd()) {
             const double ival = inputIter.Get();
-            double best_distance = numeric_limits<double>::max();
+            double best_distance = std::numeric_limits<double>::max();
             int best_index = 0;
             for (int i = m_T1.size(); i > 0; i--) {
                 double distance = fabs(m_con[i] - ival);
@@ -139,7 +110,7 @@ protected:
                     best_index = i;
                 }
             }
-            //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose() << endl;
+            //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose() << std::endl;
             outputIter.Set(1./m_T1[best_index]);
             ++inputIter;
             ++outputIter;
@@ -154,44 +125,20 @@ private:
 } // End namespace itk
 
 int main(int argc, char **argv) {
-    int indexptr = 0, c;
-    string outName = "";
-    bool verbose = false, complex_output = false, do_lookup = false;
-    QI::VolumeF::Pointer mask = ITK_NULLPTR;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'm': {
-                cout << "Reading mask." << endl;
-                auto maskFile = QI::ReadImage(optarg);
-            } break;
-            case 'o':
-                outName = optarg;
-                cout << "Output prefix will be: " << outName << endl;
-                break;
-            case 'x': complex_output = true; break;
-            case 'q': do_lookup = true; break;
-            case 'T': itk::MultiThreader::SetGlobalDefaultNumberOfThreads(atoi(optarg)); break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
-        cout << QI::GetVersion() << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-    string inName(argv[optind]);
-    if (verbose) cout << "Opening input file " << inName << endl;
-    if (outName == "")
-        outName = QI::StripExt(inName);
-    auto inFile = QI::ReadImage<QI::SeriesXF>(inName);
-    if (verbose) cout << "Processing" << endl;
+    args::ArgumentParser parser("Calculates T1/B1 maps from MP2/3-RAGE data\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> input_path(parser, "INPUT FILE", "Path to complex MP-RAGE data");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    QI::ParseArgs(parser, argc, argv);
+    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
+
+    std::string inName(argv[optind]);
+    if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;
+    auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
+    if (verbose) std::cout << "Processing" << std::endl;
 
     typedef itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MPRAGEFunctor<float>> MPRageContrastFilterType;
     int nti = inFile->GetLargestPossibleRegion().GetSize()[3];
@@ -205,6 +152,7 @@ int main(int argc, char **argv) {
     QI::SeriesXF::RegionType region_i = inFile->GetLargestPossibleRegion();
     region_i.GetModifiableSize()[3] = 0;
     QI::SeriesXF::RegionType region_j = region_i;
+    std::string outName = outarg ? outarg.Get() : QI::StripExt(input_path.Get());
     for (int i = 0; i < nti - 1; i++) {
         region_i.GetModifiableIndex()[3] = i;
         vol_i->SetInput(inFile);
@@ -221,12 +169,11 @@ int main(int argc, char **argv) {
             QI::WriteImage(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
         }
     }
-
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetInput(MPContrastFilter->GetOutput());
     apply->Update();
     QI::WriteImage(apply->GetOutput(0), outName + "_R1" + QI::OutExt());
-    if (verbose) cout << "Finished." << endl;
+    if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
 

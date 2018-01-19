@@ -213,7 +213,7 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    args::ArgumentParser parser("Calculates T2 maps from SSFP data/nhttp://github.com/spinicist/QUIT");
+    args::ArgumentParser parser("Calculates T2 maps from SSFP data\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> t1_path(parser, "T1 MAP", "Path to T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Path to SSFP data");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});

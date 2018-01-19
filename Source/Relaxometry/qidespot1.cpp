@@ -213,7 +213,7 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    args::ArgumentParser parser("Calculates T1 maps from SPGR data/nhttp://github.com/spinicist/QUIT");
+    args::ArgumentParser parser("Calculates T1 maps from SPGR data\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> spgr_path(parser, "SPGR FILE", "Path to SPGR data");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
@@ -252,8 +252,9 @@ int main(int argc, char **argv) {
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get()); // Unbalanced algorithm
     apply->SetInput(0, data);
-    if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
+    if (B1) apply->SetConst(0, QI::ReadImage(B1.Get()));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
+    if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     if (verbose) {
         std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();

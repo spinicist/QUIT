@@ -1,4 +1,3 @@
-# Setup version
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) # For version file
 set( VERSION_FILE_NAME "VersionFile")
 add_custom_target( qi_version ALL DEPENDS version_depend_dummy )

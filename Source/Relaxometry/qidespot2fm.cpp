@@ -207,9 +207,7 @@ int main(int argc, char **argv) {
     apply->SetConst(0, T1);
     if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (subregion) {
-        apply->SetSubregion(QI::RegionArg(args::get(subregion)));
-    }
+    if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     if (verbose) {
         cout << "Processing" << endl;
         auto monitor = QI::GenericMonitor::New();

@@ -10,9 +10,7 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
-#include "Eigen/Dense"
 
 #include "itkImageSource.h"
 #include "itkConstNeighborhoodIterator.h"
@@ -33,9 +31,7 @@
 #include "Types.h"
 #include "Util.h"
 #include "IO.h"
-
-using namespace std;
-using namespace Eigen;
+#include "Args.h"
 
 namespace itk {
 
@@ -73,7 +69,7 @@ protected:
     ~DiscreteLaplacePhaseFilter() {}
 
     DataObject::Pointer MakeOutput(unsigned int idx) {
-        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         if (idx == 0) {
             DataObject::Pointer output = (TImage::New()).GetPointer();
             return output.GetPointer();
@@ -84,13 +80,13 @@ protected:
     }
 
     void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
-        //std::cout <<  __PRETTY_FUNCTION__ << endl;
+        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         ConstNeighborhoodIterator<TImage>::RadiusType radius;
         radius.Fill(1);
         ConstNeighborhoodIterator<TImage> inputIter(radius, this->GetInput(), region);
         ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
 
-        vector<ConstNeighborhoodIterator<TImage>::OffsetType> back, fwrd;
+        std::vector<ConstNeighborhoodIterator<TImage>::OffsetType> back, fwrd;
         back.push_back({{-1, 0, 0}});
         fwrd.push_back({{ 1, 0, 0}});
         back.push_back({{ 0,-1, 0}});
@@ -103,12 +99,12 @@ protected:
         while(!inputIter.IsAtEnd()) {
             double sum = 0;
             double cphase = inputIter.GetCenterPixel();
-            complex<double> c = std::polar(1., cphase);
+            std::complex<double> c = std::polar(1., cphase);
             for (int i = 0; i < fwrd.size(); ++i) {
                 double bphase = inputIter.GetPixel(back[i]);
                 double fphase = inputIter.GetPixel(fwrd[i]);
-                complex<double> b = std::polar(1., bphase);
-                complex<double> f = std::polar(1., fphase);
+                std::complex<double> b = std::polar(1., bphase);
+                std::complex<double> f = std::polar(1., fphase);
                 sum += std::arg((f*b)/(c*c)) / s_sqr[i];
             }
             outputIter.Set(sum / 7.);
@@ -256,174 +252,116 @@ private:
 } // End namespace itk
 
 //******************************************************************************
-// Arguments / Usage
-//******************************************************************************
-const string usage {
-"Usage is: qiunwrap [options] input \n\
-\n\
-Input is a single wrapped phase volume\n\
-\n\
-Options:\n\
-    --help, -h        : Print this message.\n\
-    --verbose, -v     : Print more information.\n\
-    --out, -o path    : Specify an output filename (default image base).\n\
-    --mask, -m file   : Mask input with specified file.\n\
-    --erode, -e N     : Erode mask by N mm (Default 1 mm).\n\
-    --debug, -d       : Save all pipeline steps.\n\
-    --threads, -T N   : Use N threads (default=hardware limit).\n"
-};
-
-const struct option long_options[] = {
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"out", required_argument, 0, 'o'},
-    {"mask", required_argument, 0, 'm'},
-    {"erode", required_argument, 0, 'e'},
-    {"debug", no_argument, 0, 'd'},
-    {"threads", required_argument, 0, 'T'},
-    {0, 0, 0, 0}
-};
-const char *short_options = "hvo:m:e:dT:";
-
-//******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
+    args::ArgumentParser parser("Laplacian phase unwrapping\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<int> erode(parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"}, 1);
+    args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
+    QI::ParseArgs(parser, argc, argv);
+    
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
 
-    bool verbose = false, debug = false;
-    float erodeRadius = 1;
-    string prefix;
-    QI::VolumeUC::Pointer mask = ITK_NULLPTR;
-    int indexptr = 0, c;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'm': {
-                if (verbose) cout << "Reading mask file " << optarg << endl;
-                auto maskFile = itk::ImageFileReader<QI::VolumeF>::New();
-                auto maskThresh = itk::BinaryThresholdImageFilter<QI::VolumeF, QI::VolumeUC>::New();
-                maskFile->SetFileName(optarg);
-                maskThresh->SetInput(maskFile->GetOutput());
-                maskThresh->SetLowerThreshold(1.0);
-                maskThresh->SetInsideValue(1);
-                maskThresh->Update();
-                mask = maskThresh->GetOutput();
-                mask->DisconnectPipeline();
-            } break;
-            case 'e': erodeRadius = atof(optarg); break;
-            case 'o':
-                prefix = optarg;
-                cout << "Output prefix will be: " << prefix << endl;
-                break;
-            case 'd': debug = true; break;
-            case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 1) {
-        cout << "Incorrect number of arguments." << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-    string fname(argv[optind++]);
-    if (prefix == "")
-        prefix = QI::StripExt(fname);
-    string outname = prefix + "_unwrap" + QI::OutExt();
-    if (verbose) cout << "Output filename: " << outname << endl;
+    if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
+    auto inFile = QI::ReadImage(input_path.Get());
+    std::string prefix = (outarg ? outarg.Get() : QI::StripExt(input_path.Get()));
 
-    auto inFile = QI::ReadImage(fname);
     auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();
     calcLaplace->SetInput(inFile);
     calcLaplace->Update();
     if (debug) QI::WriteImage(calcLaplace->GetOutput(), prefix + "_step1_laplace" + QI::OutExt());
 
     QI::VolumeF::Pointer lap = calcLaplace->GetOutput();
+    auto mask_img = mask ? QI::ReadImage<QI::VolumeUC>(mask.Get()) : ITK_NULLPTR;
     if (mask) {
         auto masker = itk::MaskImageFilter<QI::VolumeF, QI::VolumeUC>::New();
         masker->SetInput(calcLaplace->GetOutput());
-        masker->SetMaskImage(mask);
-        if (erodeRadius > 0) {
+        
+        if (erode) {
             typedef itk::BinaryBallStructuringElement<QI::VolumeUC::PixelType, 3> ElementType;
             ElementType structuringElement;
             ElementType::SizeType radii;
-            auto spacing = mask->GetSpacing();
-            radii[0] = ceil(erodeRadius / spacing[0]);
-            radii[1] = ceil(erodeRadius / spacing[1]);
-            radii[2] = ceil(erodeRadius / spacing[2]);
+            auto spacing = mask_img->GetSpacing();
+            radii[0] = ceil(erode.Get() / spacing[0]);
+            radii[1] = ceil(erode.Get() / spacing[1]);
+            radii[2] = ceil(erode.Get() / spacing[2]);
             structuringElement.SetRadius(radii);
             structuringElement.CreateStructuringElement();
-            if (verbose) cout << "Eroding mask by " << erodeRadius << " mm (" << radii << " voxels)" << endl;
+            if (verbose) std::cout << "Eroding mask by " << erode.Get() << " mm (" << radii << " voxels)" << std::endl;
             typedef itk::BinaryErodeImageFilter <QI::VolumeUC, QI::VolumeUC, ElementType> BinaryErodeImageFilterType;
             BinaryErodeImageFilterType::Pointer erodeFilter = BinaryErodeImageFilterType::New();
-            erodeFilter->SetInput(mask);
+            erodeFilter->SetInput(mask_img);
             erodeFilter->SetErodeValue(1);
             erodeFilter->SetKernel(structuringElement);
             erodeFilter->Update();
             masker->SetMaskImage(erodeFilter->GetOutput());
             if (debug) QI::WriteImage(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
+        } else {
+            masker->SetMaskImage(mask_img);
         }
-        if (verbose) cout << "Applying mask" << endl;
+        if (verbose) std::cout << "Applying mask" << std::endl;
         masker->Update();
         lap = masker->GetOutput();
         lap->DisconnectPipeline();
         if (debug) QI::WriteImage(lap, prefix + "_step1_laplace_masked" + QI::OutExt());
     }
 
-    if (verbose) cout << "Padding image to valid FFT size." << endl;
+    if (verbose) std::cout << "Padding image to valid FFT size." << std::endl;
     typedef itk::FFTPadImageFilter<QI::VolumeF> PadFFTType;
     auto padFFT = PadFFTType::New();
     padFFT->SetInput(lap);
     padFFT->Update();
     if (debug) QI::WriteImage(padFFT->GetOutput(), prefix + "_step2_padFFT" + QI::OutExt());
     if (verbose) {
-        cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << endl;
-        cout << "Calculating Forward FFT." << endl;
+        std::cout << "Padded image size: " << padFFT->GetOutput()->GetLargestPossibleRegion().GetSize() << std::endl;
+        std::cout << "Calculating Forward FFT." << std::endl;
     }
     typedef itk::ForwardFFTImageFilter<QI::VolumeF> FFFTType;
     auto forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
     if (debug) QI::WriteImage(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
-    if (verbose) cout << "Generating Inverse Laplace Kernel." << endl;
+    if (verbose) std::cout << "Generating Inverse Laplace Kernel." << std::endl;
     auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
     if (debug) QI::WriteImage(inverseLaplace->GetOutput(), prefix + "_inverse_laplace_filter" + QI::OutExt());
-    if (verbose) cout << "Multiplying." << endl;
+    if (verbose) std::cout << "Multiplying." << std::endl;
     auto mult = itk::MultiplyImageFilter<QI::VolumeXF, QI::VolumeF, QI::VolumeXF>::New();
     mult->SetInput1(forwardFFT->GetOutput());
     mult->SetInput2(inverseLaplace->GetOutput());
     if (debug) QI::WriteImage(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
-    if (verbose) cout << "Inverse FFT." << endl;
+    if (verbose) std::cout << "Inverse FFT." << std::endl;
     auto inverseFFT = itk::InverseFFTImageFilter<QI::VolumeXF, QI::VolumeF>::New();
     inverseFFT->SetInput(mult->GetOutput());
     inverseFFT->Update();
     if (debug) QI::WriteImage(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
-    if (verbose) cout << "Extracting original size image" << endl;
+    if (verbose) std::cout << "Extracting original size image" << std::endl;
     auto extract = itk::ExtractImageFilter<QI::VolumeF, QI::VolumeF>::New();
     extract->SetInput(inverseFFT->GetOutput());
     extract->SetDirectionCollapseToSubmatrix();
     extract->SetExtractionRegion(calcLaplace->GetOutput()->GetLargestPossibleRegion());
     extract->Update();
     if (debug) QI::WriteImage(extract->GetOutput(), prefix + "_step5_extract" + QI::OutExt());
+    std::string outname = prefix + "_unwrap" + QI::OutExt();
+    if (verbose) std::cout << "Output filename: " << outname << std::endl;
     if (mask) {
-        if (verbose) cout << "Re-applying mask" << endl;
+        if (verbose) std::cout << "Re-applying mask" << std::endl;
         auto masker = itk::MaskImageFilter<QI::VolumeF, QI::VolumeUC>::New();
-        masker->SetMaskImage(mask);
+        masker->SetMaskImage(mask_img);
         masker->SetInput(extract->GetOutput());
         masker->Update();
         QI::WriteImage(masker->GetOutput(), outname);
     } else {
         QI::WriteImage(extract->GetOutput(), outname);
     }
-    if (verbose) cout << "Finished." << endl;
+    if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }

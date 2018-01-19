@@ -10,7 +10,6 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 #include <Eigen/Core>
 #include <unsupported/Eigen/LevenbergMarquardt>
@@ -19,78 +18,33 @@
 #include "Types.h"
 #include "Util.h"
 #include "IO.h"
+#include "Args.h"
 #include "SpinEcho.h"
 #include "ApplyAlgorithmFilter.h"
 #include "ReorderImageFilter.h"
 #include "itkTimeProbe.h"
 #include "itkImageFileReader.h"
 
-using namespace std;
-using namespace Eigen;
-
-const string usage {
-"Usage is: multiecho [options] input_file \n\
-\
-Options:\n\
-    --help, -h        : Print this message\n\
-    --verbose, -v     : Print more information\n\
-    --no-prompt, -n   : Suppress input prompts\n\
-    --out, -o path    : Add a prefix to the output filenames\n\
-    --mask, -m file   : Mask input with specified file\n\
-    --star, -S        : Data is T2*, not T2\n\
-    --thresh, -t n    : Threshold maps at PD < n\n\
-    --clamp, -c n     : Clamp T2 between 0 and n\n\
-    --reorder, -R     : Data is ordered by timepoint, then echo\n\
-    --algo, -a l      : LLS algorithm (default)\n\
-               a      : ARLO algorithm\n\
-               n      : Non-linear (Levenberg-Marquardt)\n\
-    --its, -i N       : Max iterations for non-linear (default 10)\n\
-    --resids, -r      : Write out per flip-angle residuals\n\
-    --threads, -T N   : Use N threads (default=hardware limit)\n"
-};
-
-static int NE = 0, nIterations = 10;
-static bool verbose = false, prompt = true, all_residuals = false, weightedSum = false, reorder = false;
-static string outPrefix, suffix;
-static double thresh = -numeric_limits<double>::infinity();
-static double clamp_lo = -numeric_limits<double>::infinity(), clamp_hi = numeric_limits<double>::infinity();
-static struct option long_options[] =
-{
-    {"help", no_argument, 0, 'h'},
-    {"verbose", no_argument, 0, 'v'},
-    {"no-prompt", no_argument, 0, 'n'},
-    {"out", required_argument, 0, 'o'},
-    {"mask", required_argument, 0, 'm'},
-    {"star", no_argument, 0, 'S'},
-    {"thresh", required_argument, 0, 't'},
-    {"clamp", required_argument, 0, 'c'},
-    {"reorder", no_argument, 0, 'R'},
-    {"algo", required_argument, 0, 'a'},
-    {"threads", required_argument, 0, 'T'},
-    {"resids", no_argument, 0, 'r'},
-    {0, 0, 0, 0}
-};
-static const char *short_opts = "hvnm:Se:o:b:t:c:Ra:T:r";
-
 /*
  * Base class for the 3 different algorithms
  */
 class RelaxAlgo : public QI::ApplyF::Algorithm {
 private:
-    const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
+    const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
 protected:
-    shared_ptr<QI::MultiEcho> m_sequence;
-    double m_clampLo = -numeric_limits<double>::infinity();
-    double m_clampHi = numeric_limits<double>::infinity();
-    double m_thresh = -numeric_limits<double>::infinity();
+    std::shared_ptr<QI::MultiEcho> m_sequence;
+    double m_clampLo = -std::numeric_limits<double>::infinity();
+    double m_clampHi = std::numeric_limits<double>::infinity();
+    double m_thresh = -std::numeric_limits<double>::infinity();
+    size_t m_iterations = 15;
 
-    void clamp_and_threshold(const ArrayXd &data, std::vector<TOutput> &outputs, TConst &residual, TInput &resids,
+    void clamp_and_threshold(const Eigen::ArrayXd &data, std::vector<TOutput> &outputs, TConst &residual, TInput &resids,
                             const double PD, const double T2) const {
         if (PD > m_thresh) {
             outputs[0] = PD;
             outputs[1] = QI::Clamp(T2, m_clampLo, m_clampHi);
-            ArrayXd theory = QI::One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
-            ArrayXf r = (data.array() - theory).cast<float>();
+            Eigen::ArrayXd theory = QI::One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
+            Eigen::ArrayXf r = (data.array() - theory).cast<float>();
             residual = sqrt(r.square().sum() / r.rows());
             resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         } else {
@@ -100,9 +54,9 @@ protected:
             resids.Fill(0);
         }
     }
-
 public:
-    void setSequence(shared_ptr<QI::MultiEcho> &s) { m_sequence = s; }
+    void setIterations(size_t n) { m_iterations = n; }
+    void setSequence(std::shared_ptr<QI::MultiEcho> &s) { m_sequence = s; }
     void setClamp(double lo, double hi) { m_clampLo = lo; m_clampHi = hi; }
     void setThresh(double t) { m_thresh = t; }
     size_t numInputs() const override { return m_sequence->count(); }
@@ -124,13 +78,13 @@ public:
                TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        ArrayXd data = indata.cast<double>();
+        Eigen::ArrayXd data = indata.cast<double>();
         // Set up echo times array
-        MatrixXd X(m_sequence->size(), 2);
+        Eigen::MatrixXd X(m_sequence->size(), 2);
         X.col(0) = m_sequence->m_TE;
         X.col(1).setOnes();
-        VectorXd Y = data.array().log();
-        VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        Eigen::VectorXd Y = data.array().log();
+        Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         double PD = exp(b[1]);
         double T2 = -1 / b[0];
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
@@ -146,7 +100,7 @@ public:
                TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        ArrayXd data = indata.cast<double>();
+        Eigen::ArrayXd data = indata.cast<double>();
         const double dTE_3 = (m_sequence->m_ESP / 3);
         double si2sum = 0, sidisum = 0;
         for (int i = 0; i < m_sequence->size() - 2; i++) {
@@ -163,49 +117,45 @@ public:
     }
 };
 
-class RelaxFunctor : public DenseFunctor<double> {
+class RelaxFunctor : public Eigen::DenseFunctor<double> {
     protected:
-        const shared_ptr<QI::SequenceBase> m_sequence;
-        const ArrayXd m_data;
-        const shared_ptr<QI::SCD> m_model = make_shared<QI::SCD>();
+        const std::shared_ptr<QI::SequenceBase> m_sequence;
+        const Eigen::ArrayXd m_data;
+        const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
 
     public:
-        RelaxFunctor(shared_ptr<QI::SequenceBase> cs, const ArrayXd &data) :
+        RelaxFunctor(std::shared_ptr<QI::SequenceBase> cs, const Eigen::ArrayXd &data) :
             DenseFunctor<double>(2, cs->size()),
             m_sequence(cs), m_data(data)
         {
             assert(static_cast<size_t>(m_data.rows()) == values());
         }
 
-        int operator()(const Ref<VectorXd> &params, Ref<ArrayXd> diffs) const {
+        int operator()(const Eigen::Ref<Eigen::VectorXd> &params, Eigen::Ref<Eigen::ArrayXd> diffs) const {
             eigen_assert(diffs.size() == values());
-            VectorXd fullp(5);
+            Eigen::VectorXd fullp(5);
             fullp << params(0), 0, params(1), 0, 1.0; // Fix B1 to 1.0 for now
-            ArrayXcd s = m_sequence->signal(m_model, fullp);
+            Eigen::ArrayXcd s = m_sequence->signal(m_model, fullp);
             diffs = s.abs() - m_data;
             return 0;
         }
 };
 
 class NonLinAlgo : public RelaxAlgo {
-private:
-    size_t m_iterations = 5;
 public:
-    void setIterations(size_t n) { m_iterations = n; }
-
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIters &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        const ArrayXd data = indata.cast<double>();
+        const Eigen::ArrayXd data = indata.cast<double>();
         RelaxFunctor f(m_sequence, data);
-        NumericalDiff<RelaxFunctor> nDiff(f);
-        LevenbergMarquardt<NumericalDiff<RelaxFunctor>> lm(nDiff);
-        lm.setMaxfev(nIterations * (m_sequence->size() + 1));
+        Eigen::NumericalDiff<RelaxFunctor> nDiff(f);
+        Eigen::LevenbergMarquardt<Eigen::NumericalDiff<RelaxFunctor>> lm(nDiff);
+        lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
         // Just PD & T2 for now
         // Basic guess of T2=50ms
-        VectorXd p(2); p << data(0), 0.05;
+        Eigen::VectorXd p(2); p << data(0), 0.05;
         lm.minimize(p);
         clamp_and_threshold(data, outputs, residual, resids, p[0], p[1]);
         its = lm.iterations();
@@ -218,75 +168,44 @@ public:
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    QI::VolumeF::Pointer mask, B1, f0 = ITK_NULLPTR;
-    shared_ptr<RelaxAlgo> algo = make_shared<LogLinAlgo>();
-    int indexptr = 0, c;
-    while ((c = getopt_long(argc, argv, short_opts, long_options, &indexptr)) != -1) {
-        switch (c) {
-            case 'v': verbose = true; break;
-            case 'n': prompt = false; break;
-            case 'm':
-                cout << "Reading mask file " << optarg << endl;
-                mask = QI::ReadImage(optarg);
-                break;
-            case 'o':
-                outPrefix = optarg;
-                cout << "Output prefix will be: " << outPrefix << endl;
-                break;
-            case 'S': suffix = "star"; break;
-            case 't': thresh = atof(optarg); break;
-            case 'c':
-                clamp_lo = 0;
-                clamp_hi = atof(optarg);
-                break;
-            case 'R': reorder = true; break;
-            case 'a':
-                switch (*optarg) {
-                    case 'l': algo = make_shared<LogLinAlgo>(); if (verbose) cout << "LogLin algorithm selected." << endl; break;
-                    case 'a': algo = make_shared<ARLOAlgo>(); if (verbose) cout << "ARLO algorithm selected." << endl; break;
-                    case 'n': algo = make_shared<NonLinAlgo>(); if (verbose) cout << "Non-linear algorithm (Levenberg Marquardt) selected." << endl; break;
-                    default:
-                        cout << "Unknown algorithm type " << optarg << endl;
-                        return EXIT_FAILURE;
-                        break;
-                } break;
-            case 'T': itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg)); break;
-            case 'r': all_residuals = true; break;
-            case 'h':
-                cout << QI::GetVersion() << endl << usage << endl;
-                return EXIT_SUCCESS;
-            case '?': // getopt will print an error message
-                return EXIT_FAILURE;
-            default:
-                cout << "Unhandled option " << string(1, c) << endl;
-                return EXIT_FAILURE;
-        }
+    args::ArgumentParser parser("Calculates T2/T2* maps from multi-echo data\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> input_path(parser, "INPUT FILE", "Input multi-echo data");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/a/n)", {'a',"algo"}, 'l');
+    args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i',"its"}, 15);
+    args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
+    args::ValueFlag<float> threshPD(parser, "THRESHOLD PD", "Only output maps when PD exceeds threshold value", {'t', "tresh"});
+    QI::ParseArgs(parser, argc, argv);
+    bool prompt = !noprompt;
+    std::shared_ptr<RelaxAlgo> algo = ITK_NULLPTR;
+    switch (algorithm.Get()) {
+        case 'l': algo = std::make_shared<LogLinAlgo>(); if (verbose) std::cout << "LogLin algorithm selected." << std::endl; break;
+        case 'a': algo = std::make_shared<ARLOAlgo>(); if (verbose) std::cout << "ARLO algorithm selected." << std::endl; break;
+        case 'n': algo = std::make_shared<NonLinAlgo>(); if (verbose) std::cout << "Non-linear algorithm (Levenberg Marquardt) selected." << std::endl; break;
+        default:
+            std::cout << "Unknown algorithm type " << algorithm.Get() << std::endl;
+            return EXIT_FAILURE;
     }
-    if ((argc - optind) != 1) {
-        cout << "Incorrect number of arguments." << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-    if (verbose) {
-        cout << "Ouput prefix will be: " << outPrefix << endl;
-        cout << "Clamp: " << clamp_lo << " " << clamp_hi << endl;
-        cout << "Thresh: " << thresh << endl;
-    }
+    algo->setThresh(threshPD.Get());
+    algo->setClamp(0, clampT2.Get());
+    algo->setIterations(its.Get());
+
     // Gather input data
-    auto multiecho = make_shared<QI::MultiEcho>(cin, prompt);
+    auto multiecho = std::make_shared<QI::MultiEcho>(std::cin, prompt);
     algo->setSequence(multiecho);
     auto apply = QI::ApplyF::New();
-    if (mask)
-        apply->SetMask(mask);
-    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-    auto inputFile = itk::ImageFileReader<QI::SeriesF>::New();
-    inputFile->SetFileName(argv[optind]);
-    inputFile->Update(); // Need to know the length of the vector for re-ordering
-    size_t nVols = inputFile->GetOutput()->GetLargestPossibleRegion().GetSize()[3] / multiecho->size();
-    auto inputData = QI::ReorderSeriesF::New();
-    inputData->SetInput(inputFile->GetOutput());
-    if (reorder)
-        inputData->SetStride(nVols);
-    inputData->Update();
+    apply->SetPoolsize(threads.Get());
+    apply->SetSplitsPerThread(threads.Get()); // Unbalanced algorithm
+    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
+    if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
+    auto inputFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
+    size_t nVols = inputFile->GetLargestPossibleRegion().GetSize()[3] / multiecho->size();
 
     auto PDoutput = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
     auto T2output = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
@@ -294,11 +213,11 @@ int main(int argc, char **argv) {
     layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
     PDoutput->SetLayout(layout);
     T2output->SetLayout(layout);
-    if (verbose) cout << "Processing" << endl;
+    if (verbose) std::cout << "Processing" << std::endl;
     auto inputVector = QI::SeriesToVectorF::New();
-    inputVector->SetInput(inputData->GetOutput());
+    inputVector->SetInput(inputFile);
     inputVector->SetBlockSize(multiecho->size());
-    vector<QI::VolumeF::Pointer> PDimgs(nVols), T2imgs(nVols);
+    std::vector<QI::VolumeF::Pointer> PDimgs(nVols), T2imgs(nVols);
     for (size_t i = 0; i < nVols; i++) {
         inputVector->SetBlockStart(i * multiecho->size());
 
@@ -314,12 +233,12 @@ int main(int argc, char **argv) {
         PDoutput->SetInput(i, PDimgs.at(i));
         T2output->SetInput(i, T2imgs.at(i));
     }
-    if (verbose) cout << "Writing output" << endl;
+    if (verbose) std::cout << "Writing output" << std::endl;
     PDoutput->UpdateLargestPossibleRegion();
     T2output->UpdateLargestPossibleRegion();
-    outPrefix = outPrefix + "ME_";
-    QI::WriteImage(PDoutput->GetOutput(), outPrefix + "PD" + suffix + QI::OutExt());
-    QI::WriteImage(T2output->GetOutput(), outPrefix + "T2" + suffix + QI::OutExt());
+    std::string outPrefix = outarg.Get() + "ME_";
+    QI::WriteImage(PDoutput->GetOutput(), outPrefix + "PD" + QI::OutExt());
+    QI::WriteImage(T2output->GetOutput(), outPrefix + "T2" + QI::OutExt());
     //QI::writeResiduals(apply->GetResidOutput(), outPrefix, all_residuals);
 
     return EXIT_SUCCESS;

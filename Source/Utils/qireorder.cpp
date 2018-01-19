@@ -10,71 +10,32 @@
  *
  */
 
-#include <getopt.h>
 #include <iostream>
 #include <Eigen/Dense>
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "Types.h"
+#include "Args.h"
 #include "ReorderImageFilter.h"
 
-using namespace std;
 //******************************************************************************
 // Main
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-
-    size_t stride = 1;
-    size_t blockSize = 0;
-    bool verbose = false;
-
-    const struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {"verbose", no_argument, 0, 'v'},
-        {"stride", required_argument, 0, 's'},
-        {"blocksize", required_argument, 0, 'b'},
-        {"threads", required_argument, 0, 'T'},
-        {0, 0, 0, 0}
-    };
-    const char *short_options = "hvs:b:T:h";
-    const string usage {
-"Usage is: reorder [options] input_file output_file \n\
-\
-Options:\n\
-    --help, -h        : Print this message\n\
-    --verbose, -v     : Print more information\n\
-    --stride, -s      : Set re-order stride (a good idea)\n\
-    --blocksize, -b   : Only re-order within blocks\n\
-    --threads, -T N   : Use N threads (default=hardware limit)\n"
-};
-
-    int indexptr = 0, c;
-    while ((c = getopt_long(argc, argv, short_options, long_options, &indexptr)) != -1) {
-        switch (c) {
-        case 'v': verbose = true; break;
-        case 's': stride = atoi(optarg); break;
-        case 'b': blockSize = atoi(optarg); break;
-        case 'T':
-            itk::MultiThreader::SetGlobalMaximumNumberOfThreads(atoi(optarg));
-            break;
-        case 'h':
-            //cout << QI::GetVersion() << endl << usage << endl;
-            return EXIT_SUCCESS;
-        case '?': // getopt will print an error message
-            return EXIT_FAILURE;
-        default:
-            cout << "Unhandled option " << string(1, c) << endl;
-            return EXIT_FAILURE;
-        }
-    }
-    if ((argc - optind) != 2) {
-        cout << "Incorrect number of arguments." << endl << usage << endl;
-        return EXIT_FAILURE;
-    }
-    if (verbose) cout << "Opening input file: " << argv[optind] << endl;
-    string inName(argv[optind++]);
-    string outName(argv[optind++]);
+    args::ArgumentParser parser("Reorders image series\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> input_path(parser, "INPUT", "Path to input series file");
+    args::Positional<std::string> output_path(parser, "OUTPUT", "Path to output file");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> stride(parser, "STRIDE", "Re-order stride (will do nothing if not set)", {'s', "stride"}, 0);
+    args::ValueFlag<int> blocksize(parser, "BLOCKSIZE", "Only re-order within blocks, size N (default one block)", {'b', "blocksize"}, 0);
+    QI::ParseArgs(parser, argc, argv);
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
+    if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
+    std::string inName(QI::CheckPos(input_path));
+    std::string outName(QI::CheckPos(output_path));
 
     auto inFile = itk::ImageFileReader<QI::SeriesF>::New();
     auto reorder = itk::ReorderImageFilter<QI::SeriesF>::New();
@@ -82,14 +43,11 @@ Options:\n\
 
     inFile->SetFileName(inName);
     reorder->SetInput(inFile->GetOutput());       // Does nothing unless stride set
-    if (stride > 1)
-        reorder->SetStride(stride);
-    if (blockSize > 0)
-        reorder->SetBlockSize(blockSize);
+    if (stride) reorder->SetStride(stride.Get());
+    if (blocksize) reorder->SetBlockSize(blocksize.Get());
     outFile->SetInput(reorder->GetOutput());
     outFile->SetFileName(outName);
     outFile->Update();
-    if (verbose)
-        cout << "Finished" << endl;
+    if (verbose) std::cout << "Finished" << std::endl;
     return EXIT_SUCCESS;
 }

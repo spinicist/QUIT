@@ -241,6 +241,8 @@ int main(int argc, char **argv) {
         case itk::ImageIOBase::INT:    DIM_SWITCH( int ); break;
         case itk::ImageIOBase::ULONG:  DIM_SWITCH( unsigned long ); break;
         case itk::ImageIOBase::LONG:   DIM_SWITCH( long ); break;
+        case itk::ImageIOBase::LONGLONG: DIM_SWITCH( long long ); break;
+        case itk::ImageIOBase::ULONGLONG: DIM_SWITCH( unsigned long long ); break;
         case itk::ImageIOBase::FLOAT:  DIM_SWITCH( float ); break;
         case itk::ImageIOBase::DOUBLE: DIM_SWITCH( double ); break;
     }
