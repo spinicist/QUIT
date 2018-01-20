@@ -7,7 +7,8 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PRO
 
 set(CORE "qi_core")
 add_library( ${CORE} STATIC
-             Types.h Macro.h Args.h IO.h Util.cpp ThreadPool.cpp
+             Types.h Macro.h Args.h IO.h EigenCereal.h
+             Util.cpp ThreadPool.cpp
              GoldenSection.cpp Masking.cpp
              Kernels.cpp Fit.cpp Spline.cpp )
 add_dependencies( ${CORE} qi_version )

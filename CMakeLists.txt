@@ -14,6 +14,8 @@ endif()
 
 set( Args_DIR "${PROJECT_SOURCE_DIR}/External/Args"
      CACHE PATH "Path to Args library (usually External/Args" )
+set( Cereal_DIR "${PROJECT_SOURCE_DIR}/External/cereal/include"
+     CACHE PATH "Path to Cereal library (usually External/Cereal/include" )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 find_package(Eigen3 REQUIRED)
@@ -23,6 +25,6 @@ find_package(ITK 4.10.0 REQUIRED)
 include_directories( ${EIGEN3_INCLUDE_DIR} )
 include_directories( ${CERES_INCLUDE_DIRS} )
 include( ${ITK_USE_FILE} )
-include_directories( ${Args_DIR} )
+include_directories( ${Args_DIR} ${Cereal_DIR} )
 add_subdirectory( Source )
 add_subdirectory( Scripts )

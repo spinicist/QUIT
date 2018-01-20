@@ -1,11 +1,7 @@
-option( BUILD_UTILITIES "Build the core utility programs" ON )
+option( BUILD_PERFUSION "Build the perfusion programs" ON )
 if( ${BUILD_UTILITIES} )
     set( PROGRAMS
-        qihdr qinewimage qidiff
-        qicomplex qiaffine qimask qikfilter qireorder
-        qisplitsubjects qiunwrap qipolyfit qipolyimg
-        qi_coil_combine qi_bet qi_rfprofile
-        qisignal )
+        qi_asl )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)

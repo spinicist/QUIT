@@ -11,9 +11,11 @@
 
 #include <iostream>
 #include <Eigen/Dense>
+#include <cereal/archives/json.hpp>
 
 #include "Util.h"
 #include "IO.h"
+#include "EigenCereal.h"
 #include "Args.h"
 #include "Models.h"
 #include "Sequences.h"
@@ -21,21 +23,13 @@
 
 class CASLSequence {
 public:
-    double label_time, post_label_delay, TR;
+    double TR, label_time, post_label_delay;
 
-    CASLSequence(std::istream& istr, const bool prompt) {
-        if (prompt) std::cout << "Enter TR: " << std::flush;
-        QI::Read(istr, this->TR);
-        if (prompt) std::cout << "Enter label time: " << std::flush;
-        QI::Read(istr, this->label_time);
-        if (prompt) std::cout << "Enter post-label delay: " << std::flush;
-        QI::Read(istr, this->post_label_delay);
-    }
-    void write(std::ostream &os) const {
-        os << "CASL" << std::endl;
-        os << "TR: " << this->TR
-           << "\tLabel Time: " << this->label_time
-           << "\tPost-Label Delay: " << this->post_label_delay << std::endl;
+    template<typename Archive>
+    void serialize(Archive &archive) {
+        archive(CEREAL_NVP(TR),
+                CEREAL_NVP(label_time),
+                CEREAL_NVP(post_label_delay)
     }
 };
 
@@ -141,16 +135,23 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Reading ASL data from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
 
-    CASLSequence sequence(std::cin, prompt);
     QI::VolumeF::Pointer T1_tissue = ITK_NULLPTR;
     if (T1_tissue_path) {
         if (verbose) std::cout << "Reading tissue T1 map: " << T1_tissue_path.Get() << std::endl;
         QI::ReadImage(T1_tissue_path.Get());
     }
-    auto apply = QI::ApplyVectorF::New();
+
+    cereal::JSONInputArchive in_archive(std::cin);
+    CASLSequence sequence;
+    in_archive(sequence);
+
     if (verbose) {
-        sequence.write(std::cout);
+        std::cout << "Read the following CASL sequence: " << std::endl;
+        cereal::JSONOutputArchive archive(std::cout);
+        archive(CEREAL_NVP(sequence));
     }
+
+    auto apply = QI::ApplyVectorF::New();
     std::shared_ptr<CASLAlgo> algo = std::make_shared<CASLAlgo>(sequence, T1_blood.Get(), alpha.Get(), lambda.Get(),
                                                                 input->GetNumberOfComponentsPerPixel(), average);
     apply->SetVerbose(verbose);
