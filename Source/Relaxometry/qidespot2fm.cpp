@@ -18,20 +18,17 @@
 #include "IO.h"
 #include "Args.h"
 #include "Models.h"
-#include "Sequences.h"
+#include "SSFP.h"
 #include "Types.h"
-
-using namespace std;
-using namespace Eigen;
 
 class FMCost : public ceres::CostFunction {
 private:
     const Eigen::ArrayXd &m_data;
     double m_T1, m_B1;
-    shared_ptr<QI::SSFPSimple> m_sequence;
+    std::shared_ptr<QI::SSFP> m_sequence;
 
 public:
-    FMCost(const Eigen::ArrayXd &d, shared_ptr<QI::SSFPSimple> s,
+    FMCost(const Eigen::ArrayXd &d, std::shared_ptr<QI::SSFP> s,
            const double T1, const double B1) :
         m_data(d), m_sequence(s), m_T1(T1), m_B1(B1)
     {
@@ -40,7 +37,7 @@ public:
     }
 
     Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
-        ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
+        Eigen::ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->FA, m_sequence->PhaseInc, m_sequence->TR, p[0], m_T1, p[1], p[2], m_B1);
         Eigen::ArrayXd diff = s - m_data;
         return diff;
     }
@@ -53,8 +50,8 @@ public:
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
         r = residuals(p);
         if (jacobians && jacobians[0]) {
-            Eigen::Map<Eigen::Matrix<double, -1, -1, RowMajor>> j(jacobians[0], m_data.size(), p.size());
-            j = QI::One_SSFP_Echo_Derivs(m_sequence->allFlip(), m_sequence->allPhi(), m_sequence->TR(), p[0], m_T1, p[1], p[2], m_B1);
+            Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), p.size());
+            j = QI::One_SSFP_Echo_Derivs(m_sequence->FA, m_sequence->PhaseInc, m_sequence->TR, p[0], m_T1, p[1], p[2], m_B1);
         }
         return true;
     }
@@ -63,10 +60,10 @@ public:
 
 class LM_FM : public QI::ApplyF::Algorithm {
 protected:
-    shared_ptr<QI::SSFPSimple> m_sequence = nullptr;
+    std::shared_ptr<QI::SSFP> m_sequence = nullptr;
     bool m_asymmetric = false, m_debug = false;
 public:
-    LM_FM(shared_ptr<QI::SSFPSimple> s, const bool a, const bool d) :
+    LM_FM(std::shared_ptr<QI::SSFP> s, const bool a, const bool d) :
         m_sequence(s), m_asymmetric(a), m_debug(d)
     {}
 
@@ -86,28 +83,28 @@ public:
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
-        if (isfinite(T1) && (T1 > m_sequence->TR())) {
+        if (isfinite(T1) && (T1 > m_sequence->TR)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-            ArrayXd data = indata.cast<double>() / indata.maxCoeff();
+            Eigen::ArrayXd data = indata.cast<double>() / indata.maxCoeff();
 
-            vector<double> f0_starts = {0, 0.4/m_sequence->TR()};
+            std::vector<double> f0_starts = {0, 0.4/m_sequence->TR};
             if (this->m_asymmetric) {
-                f0_starts.push_back(0.2/m_sequence->TR());
-                f0_starts.push_back(-0.2/m_sequence->TR());
-                f0_starts.push_back(-0.4/m_sequence->TR());
+                f0_starts.push_back(0.2/m_sequence->TR);
+                f0_starts.push_back(-0.2/m_sequence->TR);
+                f0_starts.push_back(-0.4/m_sequence->TR);
             }
 
-            double best = numeric_limits<double>::infinity();
+            double best = std::numeric_limits<double>::infinity();
             Eigen::Array3d p, bestP;
             ceres::Problem problem;
             problem.AddResidualBlock(new FMCost(data, m_sequence, T1, B1), NULL, p.data());
             problem.SetParameterLowerBound(p.data(), 0, 1.);
-            problem.SetParameterLowerBound(p.data(), 1, m_sequence->TR());
+            problem.SetParameterLowerBound(p.data(), 1, m_sequence->TR);
             problem.SetParameterUpperBound(p.data(), 1, T1);
-            problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence->TR());
-            problem.SetParameterUpperBound(p.data(), 2,  0.5/m_sequence->TR());
+            problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence->TR);
+            problem.SetParameterUpperBound(p.data(), 2,  0.5/m_sequence->TR);
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;
             options.max_num_iterations = 75;
@@ -116,7 +113,7 @@ public:
             options.parameter_tolerance = 1e-5;
             if (!m_debug) options.logging_type = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                p = {5., std::max(0.1 * T1, 1.5*m_sequence->TR()), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                p = {5., std::max(0.1 * T1, 1.5*m_sequence->TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
                     std::cerr << summary.FullReport() << std::endl;
@@ -140,7 +137,7 @@ public:
             residual = best * indata.maxCoeff();
             if (resids.Size() > 0) {
                 assert(resids.Size() == data.size());
-                vector<double> r_temp(data.size());
+                std::vector<double> r_temp(data.size());
                 p = bestP; // Make sure the correct parameters are in the block
                 problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
                 for (int i = 0; i < r_temp.size(); i++)
@@ -170,7 +167,6 @@ int main(int argc, char **argv) {
     
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
@@ -181,22 +177,15 @@ int main(int argc, char **argv) {
     args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
 
-    if (verbose) cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << endl;
+    if (verbose) std::cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << std::endl;
     auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
-    if (verbose) cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << endl;
+    if (verbose) std::cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << std::endl;
     auto ssfpData = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
 
-    shared_ptr<QI::SSFPSimple> ssfpSequence;
-    if (flex)
-        ssfpSequence = make_shared<QI::SSFPEchoFlex>(cin, prompt);
-    else
-        ssfpSequence = make_shared<QI::SSFPEcho>(cin, prompt);
-    if (verbose) cout << *ssfpSequence << endl;
-
+    auto ssfp_sequence = QI::ReadSequence<std::shared_ptr<QI::SSFP>>(std::cin, "SSFP", verbose);
     auto apply = QI::ApplyF::New();
-    shared_ptr<LM_FM> algo = make_shared<LM_FM>(ssfpSequence, asym, debug);
+    std::shared_ptr<LM_FM> algo = std::make_shared<LM_FM>(ssfp_sequence, asym, debug);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);
@@ -209,14 +198,14 @@ int main(int argc, char **argv) {
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     if (verbose) {
-        cout << "Processing" << endl;
+        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
     if (verbose) {
-        cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
-        cout << "Writing results files." << endl;
+        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
+        std::cout << "Writing results files." << std::endl;
     }
     std::string outPrefix = args::get(outarg) + "FM_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());

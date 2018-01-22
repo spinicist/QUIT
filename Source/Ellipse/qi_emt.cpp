@@ -28,7 +28,6 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -38,8 +37,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag     all_residuals(parser, "RESIDUALS", "Write out all residuals", {'r',"all_resids"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
-    
+
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(G_path) << std::endl;
     auto G = QI::ReadVectorImage<float>(QI::CheckPos(G_path));
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(a_path) << std::endl;
@@ -47,13 +45,13 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(b_path) << std::endl;
     auto b = QI::ReadVectorImage<float>(QI::CheckPos(b_path));
 
-    if (prompt) std::cout << "Enter flip-angles (degrees): ";
+    if (verbose) std::cout << "Enter flip-angles (degrees): ";
     Eigen::ArrayXd flips; QI::ReadArray(std::cin, flips); flips *= M_PI/180.;
-    if (prompt) std::cout << "Enter integral B1^2: ";
+    if (verbose) std::cout << "Enter integral B1^2: ";
     Eigen::ArrayXd intB1; QI::ReadArray(std::cin, intB1);
-    if (prompt) std::cout << "Enter TRs (seconds): ";
+    if (verbose) std::cout << "Enter TRs (seconds): ";
     Eigen::ArrayXd TRs; QI::ReadArray(std::cin, TRs);
-    if (prompt) std::cout << "Enter TRFs (seconds): ";
+    if (verbose) std::cout << "Enter TRFs (seconds): ";
     Eigen::ArrayXd TRFs; QI::ReadArray(std::cin, TRFs);
     if (verbose) {
         std::cout << "T2r " << T2r_us.Get() << "us" << std::endl;

@@ -27,11 +27,16 @@
 #include "VectorToImageFilter.h"
 
 #include "Model.h"
-#include "Sequences.h"
 #include "Util.h"
 #include "ThreadPool.h"
 #include "Args.h"
 #include "IO.h"
+
+#include "SequenceGroup.h"
+#include "SPGR.h"
+#include "SpinEcho.h"
+#include "AFI.h"
+#include "MPRAGESequence.h"
 
 /*
  * Signals Filter
@@ -194,21 +199,6 @@ private:
 };
 
 /*
- * Helper Function
- */
-
-void ParseInput(std::vector<std::shared_ptr<QI::SequenceBase>> &cs, std::vector<std::string> &names, bool prompt);
-void ParseInput(std::vector<std::shared_ptr<QI::SequenceBase>> &cs, std::vector<std::string> &names, bool prompt) {
-    std::string type, path;
-    if (prompt) std::cout << "Enter output filename: " << std::flush;
-    while (QI::Read(std::cin, path) && (path != "END") && (path != "")) {
-        names.push_back(path);
-        cs.push_back(QI::ReadSequence(std::cin, prompt));
-        if (prompt) std::cout << "Enter next filename (END to finish input): " << std::flush;
-    }
-}
-
-/*
  * Main
  */
 int main(int argc, char **argv) {
@@ -216,10 +206,9 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser("Generates simulated images from signal equations.\n"
                                 "Input is read from stdin as for analysis programs.\n"
                                 "http://github.com/spinicist/QUIT");
-
+    args::PositionalList<std::string> filenames(parser, "OUTPUT FILES", "Output file names");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -227,9 +216,27 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> noise(parser, "NOISE", "Add complex noise with std=value", {'N',"noise"}, 0.);
     args::ValueFlag<int> seed(parser, "SEED", "Seed noise RNG with specific value", {'s', "seed"}, -1);
     args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model (1/2/3)", {'M',"model"}, 1);
-    args::Flag     complex(parser,"COMPLEX", "Save complex images", {'x',"complex"});
+    args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
+    args::Flag     list_sequences(parser, "LIST", "Output a list of available sequences and exit", {'l', "list"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
+
+    if (list_sequences) {
+        QI::SequenceGroup list;
+        list.addSequence(std::make_shared<QI::SPGR>());
+        list.addSequence(std::make_shared<QI::SPGREcho>());
+        list.addSequence(std::make_shared<QI::SPGRFinite>());
+        list.addSequence(std::make_shared<QI::MPRAGE>());
+        list.addSequence(std::make_shared<QI::SSFP>());
+        list.addSequence(std::make_shared<QI::SSFPEcho>());
+        list.addSequence(std::make_shared<QI::SSFPFinite>());
+        list.addSequence(std::make_shared<QI::SSFP_GS>());
+        list.addSequence(std::make_shared<QI::AFI>());
+        list.addSequence(std::make_shared<QI::MultiEcho>());
+        std::cout << "Available sequences: " << std::endl;
+        cereal::JSONOutputArchive archive(std::cout);
+        archive(list);
+        return EXIT_SUCCESS;
+    }
 
     std::shared_ptr<QI::Model> model = nullptr;
     switch (model_arg.Get()) {
@@ -268,9 +275,9 @@ int main(int argc, char **argv) {
         auto monitor = QI::GenericMonitor::New();
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
-    if (prompt) std::cout << "Loading parameters." << std::endl;
+    if (verbose) std::cout << "Loading parameters." << std::endl;
     for (size_t i = 0; i < model->nParameters(); i++) {
-        if (prompt) std::cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << std::flush;
+        if (verbose) std::cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << std::flush;
         std::string filename;
         getline(std::cin, filename);
         if (filename != "") {
@@ -302,23 +309,24 @@ int main(int argc, char **argv) {
     /***************************************************************************
      * Set up sequences
      **************************************************************************/
-    std::vector<std::shared_ptr<QI::SequenceBase>> sequences;
-    std::vector<std::string> filenames;
-    ParseInput(sequences, filenames, prompt);
-
+    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, "SequenceGroup", verbose);
+    if (filenames.Get().size() != sequences.count()) {
+        QI_FAIL("Input filenames size " << filenames.Get().size()
+                << " does not match sequences size " << sequences.count());
+    }
     for (size_t i = 0; i < sequences.size(); i++) {
-        if (verbose) std::cout << "Generating sequence: " << std::endl << *(sequences[i]);
+        if (verbose) std::cout << "Generating sequence: " << std::endl << sequences[i];
         calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         QI::VectorVolumeXF::Pointer output = calcSignal->GetOutput();
         output->DisconnectPipeline();
         if (verbose) std::cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << std::endl;
         if (complex) {
-            if (verbose) std::cout << "Saving complex image: " << filenames[i] << std::endl;
-            QI::WriteVectorImage(output, outarg.Get() + filenames[i]);
+            if (verbose) std::cout << "Saving complex image: " << filenames.Get()[i] << std::endl;
+            QI::WriteVectorImage(output, outarg.Get() + filenames.Get()[i]);
         } else {
-            if (verbose) std::cout << "Saving magnitude image: " << filenames[i] << std::endl;
-            QI::WriteVectorMagnitudeImage(output, outarg.Get() + filenames[i]);
+            if (verbose) std::cout << "Saving magnitude image: " << filenames.Get()[i] << std::endl;
+            QI::WriteVectorMagnitudeImage(output, outarg.Get() + filenames.Get()[i]);
         }
     }
     if (verbose) std::cout << "Finished all sequences." << std::endl;

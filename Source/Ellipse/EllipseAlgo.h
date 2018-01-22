@@ -23,7 +23,7 @@
 #include "Macro.h"
 #include "Types.h"
 #include "Util.h"
-#include "SteadyStateSequence.h"
+#include "SSFP.h"
 #include "ApplyAlgorithmFilter.h"
 
 namespace QI {
@@ -39,8 +39,8 @@ public:
 
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
-    size_t dataSize() const override { return m_sequence->size(); }
-    size_t outputSize() const override { return m_sequence->flip().rows(); }
+    size_t dataSize() const override { return m_sequence->FA.rows() * m_sequence->PhaseInc.rows(); }
+    size_t outputSize() const override { return m_sequence->FA.rows(); }
     std::vector<float> defaultConsts() const override {
         std::vector<float> def(1, 1.);
         return def;

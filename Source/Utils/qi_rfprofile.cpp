@@ -140,21 +140,19 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
 
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (verbose) std::cout << "Reading image " << QI::CheckPos(b1plus_path) << std::endl;
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 
-    if (prompt) std::cout << "Enter RF profile z-locations:" << std::endl;
+    if (verbose) std::cout << "Enter RF profile z-locations:" << std::endl;
     Eigen::ArrayXd rf_pos; QI::ReadArray(std::cin, rf_pos);
-    if (prompt) std::cout << "Enter RF profile values:" << std::endl;
+    if (verbose) std::cout << "Enter RF profile values:" << std::endl;
     Eigen::ArrayXd rf_val; QI::ReadArray(std::cin, rf_val);
     if (rf_pos.rows() != rf_val.rows()) {
         QI_FAIL("Number of points must match number of values");

@@ -1,7 +1,7 @@
 /*
- *  SpinEcho.cpp
+ *  AFI.cpp
  *
- *  Copyright (c) 2016 Tobias Wood.
+ *  Copyright (c) 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,17 +9,13 @@
  *
  */
 
-#include "SpinEcho.h"
-#include "Util.h"
+#include "AFI.h"
 #include "IO.h"
-
-using namespace std;
-using namespace Eigen;
 
 namespace QI {
 
-ArrayXcd MultiEcho::signal(shared_ptr<Model> m, const VectorXd &p) const {
-    return m->MultiEcho(p, TE, TR);
+Eigen::ArrayXcd AFI::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+    return m->AFI(p, FA, TR1, TR2);
 }
 
 } // End namespace QI

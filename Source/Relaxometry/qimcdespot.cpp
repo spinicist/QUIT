@@ -22,95 +22,64 @@
 #include "Args.h"
 #include "IO.h"
 #include "Model.h"
-#include "Sequences.h"
+#include "SequenceGroup.h"
 #include "RegionContraction.h"
 #include "ApplyAlgorithmFilter.h"
 #include "ReorderVectorFilter.h"
 
-/*
- * Read in all required files and data from cin
- */
-void parseInput(std::shared_ptr<QI::SequenceGroup> seq, std::vector<typename QI::VectorVolumeF::Pointer> &images,
-                bool verbose, bool prompt);
-void parseInput(std::shared_ptr<QI::SequenceGroup> seq, std::vector<typename QI::VectorVolumeF::Pointer> &images,
-                bool verbose, bool prompt)
-{
-    std::string path;
-    if (prompt) std::cout << "Enter input filename: " << std::flush;
-    while (QI::Read(std::cin, path) && (path != "END") && (path != "")) {
-        if (verbose) std::cout << "Reading file: " << path << std::endl;
-        auto image = QI::ReadVectorImage<float>(path);
-        seq->addSequence(QI::ReadSequence(std::cin, prompt));
-        image->DisconnectPipeline(); // This step is really important.
-        images.push_back(image);
-        if (prompt) std::cout << "Enter next filename (END to finish input): " << std::flush;
-    }
-}
+struct MCDSRCFunctor {
+    const QI::SequenceGroup &m_sequence;
+    const Eigen::ArrayXd m_data, m_weights;
+    const std::shared_ptr<QI::Model> m_model;
 
-class MCDAlgo : public QI::ApplyF::Algorithm {
-protected:
+    MCDSRCFunctor(std::shared_ptr<QI::Model> m, QI::SequenceGroup &s,
+                  const Eigen::ArrayXd &d, const Eigen::ArrayXd &w) :
+        m_sequence(s), m_data(d), m_model(m), m_weights(w)
+    {
+        assert(static_cast<size_t>(m_data.rows()) == m_sequence.size());
+    }
+
+    int inputs() const { return m_model->nParameters(); }
+    int values() const { return m_sequence.size(); }
+
+    const bool constraint(const Eigen::VectorXd &params) const {
+        return m_model->ValidParameters(params);
+    }
+
+    Eigen::ArrayXd residuals(const Eigen::Ref<Eigen::VectorXd> &params) const {
+        const Eigen::ArrayXd s = (m_sequence.signal(m_model, params)).abs();
+        return m_data - s;
+    }
+    double operator()(const Eigen::Ref<Eigen::VectorXd> &params) const {
+        return (residuals(params) * m_weights).square().sum();
+    }
+};
+
+struct SRCAlgo : public QI::ApplyF::Algorithm {
     Eigen::ArrayXXd m_bounds;
     std::shared_ptr<QI::Model> m_model = nullptr;
-    std::shared_ptr<QI::SequenceGroup> m_sequence = nullptr;
+    QI::SequenceGroup &m_sequence;
     QI::FieldStrength m_tesla = QI::FieldStrength::Three;
     int m_iterations = 0;
-
-public:
-    MCDAlgo(std::shared_ptr<QI::Model>&m, Eigen::ArrayXXd &b,
-            std::shared_ptr<QI::SequenceGroup> s, int mi) :
-        m_model(m), m_bounds(b), m_sequence(s), m_iterations(mi)
-    {}
-
-    size_t numInputs() const override  { return m_sequence->count(); }
-    size_t numOutputs() const override { return m_model->nParameters(); }
-    size_t dataSize() const override   { return m_sequence->size(); }
-
-    void setModel(std::shared_ptr<QI::Model> &m) { m_model = m; }
-    void setSequence(std::shared_ptr<QI::SequenceGroup> &s) { m_sequence = s; }
-    void setBounds(Eigen::ArrayXXd &b) { m_bounds = b; }
-    void setIterations(const int i) { m_iterations = i; }
-    float zero() const override { return 0.f; }
-};
-
-class MCDSRCFunctor {
-    public:
-        const std::shared_ptr<QI::SequenceGroup> m_sequence;
-        const Eigen::ArrayXd m_data, m_weights;
-        const std::shared_ptr<QI::Model> m_model;
-
-        MCDSRCFunctor(std::shared_ptr<QI::Model> m, std::shared_ptr<QI::SequenceGroup> s,
-                      const Eigen::ArrayXd &d, const Eigen::ArrayXd &w) :
-            m_sequence(s), m_data(d), m_model(m), m_weights(w)
-        {
-            assert(static_cast<size_t>(m_data.rows()) == m_sequence->size());
-        }
-
-        int inputs() const { return m_model->nParameters(); }
-        int values() const { return m_sequence->size(); }
-
-        const bool constraint(const Eigen::VectorXd &params) const {
-            return m_model->ValidParameters(params);
-        }
-
-        Eigen::ArrayXd residuals(const Eigen::Ref<Eigen::VectorXd> &params) const {
-            const Eigen::ArrayXd s = (m_sequence->signal(m_model, params)).abs();
-            return m_data - s;
-        }
-        double operator()(const Eigen::Ref<Eigen::VectorXd> &params) const {
-            return (residuals(params) * m_weights).square().sum();
-        }
-};
-
-class SRCAlgo : public MCDAlgo {
-using MCDAlgo::MCDAlgo;
-
-private:
     size_t m_samples = 5000, m_retain = 50;
     bool m_gauss = true;
 
-public:
-    void setGauss(bool g) { m_gauss = g; }
+    SRCAlgo(std::shared_ptr<QI::Model>&m, Eigen::ArrayXXd &b,
+            QI::SequenceGroup &s, int mi) :
+        m_model(m), m_bounds(b), m_sequence(s), m_iterations(mi)
+    {}
 
+    size_t numInputs() const override  { return m_sequence.count(); }
+    size_t numOutputs() const override { return m_model->nParameters(); }
+    size_t dataSize() const override   { return m_sequence.size(); }
+
+    void setModel(std::shared_ptr<QI::Model> &m) { m_model = m; }
+    void setSequence(QI::SequenceGroup &s) { m_sequence = s; }
+    void setBounds(Eigen::ArrayXXd &b) { m_bounds = b; }
+    void setIterations(const int i) { m_iterations = i; }
+    float zero() const override { return 0.f; }
+
+    void setGauss(bool g) { m_gauss = g; }
     size_t numConsts() const override  { return 2; }
     std::vector<float> defaultConsts() const override {
         std::vector<float> def(2);
@@ -118,9 +87,9 @@ public:
         return def;
     }
 
-bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-           std::vector<TOutput> &outputs, TConst &residual,
-           TInput &resids, TIters &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               std::vector<TOutput> &outputs, TConst &residual,
+               TInput &resids, TIters &its) const override
     {
         Eigen::ArrayXd data(dataSize());
         int dataIndex = 0;
@@ -137,10 +106,10 @@ bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
         const double f0 = consts[0];
         const double B1 = consts[1];
         Eigen::ArrayXXd localBounds = m_bounds;
-        Eigen::ArrayXd weights = Eigen::ArrayXd::Ones(m_sequence->size());
+        Eigen::ArrayXd weights = Eigen::ArrayXd::Ones(m_sequence.size());
         if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
             localBounds.row(m_model->ParameterIndex("f0")) += f0;
-            weights = m_sequence->weights(f0);
+            weights = m_sequence.weights(f0);
         }
         localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
         MCDSRCFunctor func(m_model, m_sequence, data, weights);
@@ -166,9 +135,9 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser("Calculates MWF & other parameter maps from mcDESPOT data\n"
                                 "All times (e.g. T1, TR) are in SECONDS. All angles are in degrees.\n"
                                 "http://github.com/spinicist/QUIT");
+    args::PositionalList<std::string> input_paths(parser, "INPUT FILES", "Input image files");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> f0(parser, "f0", "f0 map (Hertz)", {'f', "f0"});
@@ -182,7 +151,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i',"its"}, 4);
     args::ValueFlag<char> field(parser, "FIELD STRENGTH", "Specify field-strength for fitting regions - 3/7/u for user input", {'t', "tesla"}, '3');
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
 
     std::shared_ptr<QI::Model> model = nullptr;
     if (modelarg.Get() == "1")         { model = std::make_shared<QI::SCD>(); }
@@ -212,10 +180,10 @@ int main(int argc, char **argv) {
             break;
         case 'u': {
             Eigen::ArrayXd temp;
-            if (prompt) std::cout << "Enter lower bounds" << std::endl;
+            if (verbose) std::cout << "Enter lower bounds" << std::endl;
             QI::ReadArray(std::cin, temp);
             bounds.col(0) = temp;
-            if (prompt) std::cout << "Enter upper bounds" << std::endl;
+            if (verbose) std::cout << "Enter upper bounds" << std::endl;
             QI::ReadArray(std::cin, temp);
             bounds.col(1) = temp;
         } break;
@@ -224,15 +192,18 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
         break;
     }
-    
-    if (prompt) {
-        std::cout << "Starting qimcdespot\n"
-                     "Run with -h switch to see usage" << std::endl;
-    }
 
-    std::shared_ptr<QI::SequenceGroup> sequences = std::make_shared<QI::SequenceGroup>();
-    std::vector<QI::VectorVolumeF::Pointer> images;
-    parseInput(sequences, images, verbose, prompt);
+    std::vector<QI::VectorVolumeF::Pointer> images(input_paths.Get().size());
+    for (auto &input_path : input_paths.Get()) {
+        if (verbose) std::cout << "Reading file: " << input_path << std::endl;
+        auto image = QI::ReadVectorImage<float>(input_path);
+        image->DisconnectPipeline(); // This step is really important.
+        images.push_back(image);
+    }
+    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, "SequenceGroup", verbose);
+    if (sequences.count() != images.size()) {
+        QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
+    }
     auto apply = QI::ApplyF::New();
     switch (algorithm.Get()) {
         case 'S': {
@@ -266,7 +237,6 @@ int main(int argc, char **argv) {
     // Need this here so the bounds.txt file will have the correct prefix
     std::string outPrefix = outarg.Get() + model->Name() + "_";
     if (verbose) {
-        std::cout << *sequences;
         std::cout << "Bounds:\n" <<  bounds.transpose() << std::endl;
         std::ofstream boundsFile(outPrefix + "bounds.txt");
         boundsFile << "Names: ";

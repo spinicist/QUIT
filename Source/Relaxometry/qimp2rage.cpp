@@ -62,12 +62,7 @@ public:
         this->SetNthInput(0, const_cast<TImage*>(img));
     }
 
-protected:
-    MPRAGELookUpFilter() {
-        this->SetNumberOfRequiredInputs(1);
-        this->SetNumberOfRequiredOutputs(1);
-        this->SetNthOutput(0, this->MakeOutput(0));
-        QI::MP2RAGE sequence(std::cin, true);
+    void SetSequence(QI::MP2RAGE &sequence) {
         MPRAGEFunctor<double> con;
         m_T1.clear();
         m_con.clear();
@@ -80,6 +75,13 @@ protected:
             //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose() << std::endl;
         }
         std::cout << "Lookup table has " << m_T1.size() << " entries" << std::endl;
+    }
+
+protected:
+    MPRAGELookUpFilter() {
+        this->SetNumberOfRequiredInputs(1);
+        this->SetNumberOfRequiredOutputs(1);
+        this->SetNthOutput(0, this->MakeOutput(0));
     }
     ~MPRAGELookUpFilter() {}
 
@@ -169,7 +171,10 @@ int main(int argc, char **argv) {
             QI::WriteImage(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
         }
     }
+
+    auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGE>(std::cin, "MP2RAGE", verbose);
     auto apply = itk::MPRAGELookUpFilter::New();
+    apply->SetSequence(mp2rage_sequence);
     apply->SetInput(MPContrastFilter->GetOutput());
     apply->Update();
     QI::WriteImage(apply->GetOutput(0), outName + "_R1" + QI::OutExt());

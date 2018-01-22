@@ -16,31 +16,31 @@ using namespace Eigen;
 
 namespace QI {
 
-VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, carrd &TI, carrd &TD, cdbl PD, cdbl T1, cdbl B1, cdbl eta) {
-    carrd TIs = TI - TR*Nk0; // Adjust TI for k0
-    const double M0 = PD;
-    const double T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
-    const double M0s = M0 * (1. - exp(-TR/T1)) / (1 - exp(-TR/T1s));
+VectorXcd One_MPRAGE(cdbl flip, cdbl TR, const int Nseg, const int Nk0, cdbl TI, cdbl TD, cdbl PD, cdbl T1, cdbl B1, cdbl eta) {
+    cdbl TIs = TI - TR*Nk0; // Adjust TI for k0
+    cdbl M0 = PD;
+    cdbl T1s = 1. / (1./T1 - log(cos(flip * B1))/TR);
+    cdbl M0s = M0 * (1. - exp(-TR/T1)) / (1 - exp(-TR/T1s));
 
-    const double A_1 = M0s*(1 - exp(-(Nseg*TR)/T1s));
+    cdbl A_1 = M0s*(1 - exp(-(Nseg*TR)/T1s));
 
-    carrd A_2 = M0*(1 - exp(-TD/T1));
-    carrd A_3 = M0*(1 - exp(-TIs/T1));
-    const double B_1 = exp(-(Nseg*TR)/T1s);
-    carrd B_2 = exp(-TD/T1);
-    carrd B_3 = -eta*exp(-TIs/T1); // eta is inversion efficency
+    cdbl A_2 = M0*(1 - exp(-TD/T1));
+    cdbl A_3 = M0*(1 - exp(-TIs/T1));
+    cdbl B_1 = exp(-(Nseg*TR)/T1s);
+    cdbl B_2 = exp(-TD/T1);
+    cdbl B_3 = -eta*exp(-TIs/T1); // eta is inversion efficency
 
-    carrd A = A_3 + A_2*B_3 + A_1*B_2*B_3;
-    carrd B = B_1*B_2*B_3;
-    carrd M1 = A / (1. - B);
+    cdbl A = A_3 + A_2*B_3 + A_1*B_2*B_3;
+    cdbl B = B_1*B_2*B_3;
+    cdbl M1 = A / (1. - B);
 
-    VectorXcd M(TI.size());
-    M.real() = (M0s + (M1 - M0s)*exp(-(Nk0*TR)/T1s)) * sin(flip * B1);
+    VectorXcd M(1);
+    M.real()[0] = (M0s + (M1 - M0s)*exp(-(Nk0*TR)/T1s)) * sin(flip * B1);
     M.imag().setZero();
     return M;
 }
 
-Array2cd One_MP2RAGE(const Array2d &alpha, cdbl TR, const int N, const Array3d &TD,
+Array2cd One_MP2RAGE(const Eigen::Array2d &alpha, cdbl TR, const int N, const Eigen::Array3d &TD,
                      cdbl M0, cdbl T1, cdbl B1, cdbl eta) {
     const double R1 = 1. / T1;
     const Array2d R1s = R1 - log(cos(B1 * alpha))/TR;

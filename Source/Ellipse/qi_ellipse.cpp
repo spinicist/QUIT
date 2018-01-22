@@ -33,7 +33,6 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -41,12 +40,10 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h/d/2)", {'a', "algo"}, 'h');
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
-    
+
     if (verbose) cout << "Opening file: " << QI::CheckPos(ssfp_path) << endl;
     auto data = QI::ReadVectorImage<complex<float>>(QI::CheckPos(ssfp_path));
-    auto seq = make_shared<QI::SSFPEcho>(cin, prompt);
-    if (verbose) cout << *seq;
+    auto seq = QI::ReadSequence<std::shared_ptr<QI::SSFPEcho>>(std::cin, "SSFP", verbose);
     shared_ptr<QI::EllipseAlgo> algo;
     switch (algorithm.Get()) {
     case 'h': algo = make_shared<QI::HyperAlgo>(seq, debug); break;

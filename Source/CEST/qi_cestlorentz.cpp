@@ -113,18 +113,16 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
 
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(input_path) << std::endl;
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
 
-    if (prompt) std::cout << "Enter Z-Spectrum Frequencies: " << std::endl;
+    if (verbose) std::cout << "Enter Z-Spectrum Frequencies: " << std::endl;
     Eigen::ArrayXf z_frqs; QI::ReadArray(std::cin, z_frqs);
     std::shared_ptr<LorentzFit> algo = std::make_shared<LorentzFit>(z_frqs);
     auto apply = QI::ApplyF::New();

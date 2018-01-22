@@ -43,7 +43,7 @@ protected:
         if (PD > m_thresh) {
             outputs[0] = PD;
             outputs[1] = QI::Clamp(T2, m_clampLo, m_clampHi);
-            Eigen::ArrayXd theory = QI::One_MultiEcho(m_sequence->TE(), m_sequence->TR(), PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
+            Eigen::ArrayXd theory = QI::One_MultiEcho(m_sequence->TE, m_sequence->TR, PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
             Eigen::ArrayXf r = (data.array() - theory).cast<float>();
             residual = sqrt(r.square().sum() / r.rows());
             resids = itk::VariableLengthVector<float>(r.data(), r.rows());
@@ -81,7 +81,7 @@ public:
         Eigen::ArrayXd data = indata.cast<double>();
         // Set up echo times array
         Eigen::MatrixXd X(m_sequence->size(), 2);
-        X.col(0) = m_sequence->m_TE;
+        X.col(0) = m_sequence->TE;
         X.col(1).setOnes();
         Eigen::VectorXd Y = data.array().log();
         Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
@@ -101,7 +101,7 @@ public:
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
-        const double dTE_3 = (m_sequence->m_ESP / 3);
+        const double dTE_3 = (m_sequence->ESP / 3);
         double si2sum = 0, sidisum = 0;
         for (int i = 0; i < m_sequence->size() - 2; i++) {
             const double si = dTE_3 * (data(i) + 4*data(i+1) + data(i+2));
@@ -110,7 +110,7 @@ public:
             sidisum += si*di;
         }
         double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum);
-        double PD = (data.array() / exp(-m_sequence->m_TE / T2)).mean();
+        double PD = (data.array() / exp(-m_sequence->TE / T2)).mean();
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
         return true;
@@ -172,7 +172,6 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Input multi-echo data");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -182,7 +181,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> threshPD(parser, "THRESHOLD PD", "Only output maps when PD exceeds threshold value", {'t', "tresh"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
+
     std::shared_ptr<RelaxAlgo> algo = ITK_NULLPTR;
     switch (algorithm.Get()) {
         case 'l': algo = std::make_shared<LogLinAlgo>(); if (verbose) std::cout << "LogLin algorithm selected." << std::endl; break;
@@ -197,7 +196,7 @@ int main(int argc, char **argv) {
     algo->setIterations(its.Get());
 
     // Gather input data
-    auto multiecho = std::make_shared<QI::MultiEcho>(std::cin, prompt);
+    auto multiecho = QI::ReadSequence<std::shared_ptr<QI::MultiEcho>>(std::cin, "MultiEcho", verbose);
     algo->setSequence(multiecho);
     auto apply = QI::ApplyF::New();
     apply->SetPoolsize(threads.Get());

@@ -17,18 +17,19 @@
 #include "ceres/ceres.h"
 
 #include "Util.h"
-#include "Sequences.h"
+#include "SPGR.h"
+#include "MPRAGESequence.h"
 #include "Args.h"
 #include "IO.h"
 #include "ApplyAlgorithmFilter.h"
 
 class SPGRCost : public ceres::CostFunction {
 protected:
-    const QI::SPGRSimple &m_seq;
+    const QI::SPGR &m_seq;
     const Eigen::ArrayXd m_data;
 
 public:
-    SPGRCost(const QI::SPGRSimple &s, const Eigen::ArrayXd &data) :
+    SPGRCost(const QI::SPGR &s, const Eigen::ArrayXd &data) :
         m_seq(s), m_data(data)
     {
         mutable_parameter_block_sizes()->push_back(3);
@@ -43,9 +44,9 @@ public:
         const double &T1 = p[0][1];
         const double &B1 = p[0][2];
 
-        const Eigen::ArrayXd sa = sin(B1 * m_seq.m_flip);
-        const Eigen::ArrayXd ca = cos(B1 * m_seq.m_flip);
-        const double E1 = exp(-m_seq.m_TR / T1);
+        const Eigen::ArrayXd sa = sin(B1 * m_seq.FA);
+        const Eigen::ArrayXd ca = cos(B1 * m_seq.FA);
+        const double E1 = exp(-m_seq.TR / T1);
         const Eigen::ArrayXd denom = (1.-E1*ca);
         
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
@@ -56,8 +57,8 @@ public:
         if (jacobians && jacobians[0]) {
             Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), 3);
             j.col(0) = (1-E1)*sa/denom;
-            j.col(1) = E1*M0*m_seq.m_TR*(ca-1.)*sa/((denom*T1).square());
-            j.col(2) = M0*m_seq.m_flip*(1.-E1)*(ca-E1)/denom.square();
+            j.col(1) = E1*M0*m_seq.TR*(ca-1.)*sa/((denom*T1).square());
+            j.col(2) = M0*m_seq.FA*(1.-E1)*(ca-E1)/denom.square();
         }
         return true;
     }
@@ -82,34 +83,34 @@ public:
         const T &B1 = p1[2];
         const double eta = -1.0; // Inversion efficiency defined as -1 < eta < 0
 
-        const double TIs = m_seq.m_TI[0] - m_seq.m_TR*m_seq.m_k0; // Adjust TI for k0
-        const T T1s = 1. / (1./T1 - log(cos(m_seq.m_flip[0] * B1))/m_seq.m_TR);
-        const T M0s = M0 * (1. - exp(-m_seq.m_TR/T1)) / (1. - exp(-m_seq.m_TR/T1s));
-        const T A_1 = M0s*(1. - exp(-(m_seq.m_ETL*m_seq.m_TR)/T1s));
+        const double TIs = m_seq.TI - m_seq.TR*m_seq.k0; // Adjust TI for k0
+        const T T1s = 1. / (1./T1 - log(cos(m_seq.FA * B1))/m_seq.TR);
+        const T M0s = M0 * (1. - exp(-m_seq.TR/T1)) / (1. - exp(-m_seq.TR/T1s));
+        const T A_1 = M0s*(1. - exp(-(m_seq.ETL*m_seq.TR)/T1s));
 
-        const T A_2 = M0*(1. - exp(-m_seq.m_TD[0]/T1));
+        const T A_2 = M0*(1. - exp(-m_seq.TD/T1));
         const T A_3 = M0*(1. - exp(-TIs/T1));
-        const T B_1 = exp(-(m_seq.m_ETL*m_seq.m_TR)/T1s);
-        const T B_2 = exp(-m_seq.m_TD[0]/T1);
+        const T B_1 = exp(-(m_seq.ETL*m_seq.TR)/T1s);
+        const T B_2 = exp(-m_seq.TD/T1);
         const T B_3 = eta*exp(-TIs/T1);
 
         const T A = A_3 + A_2*B_3 + A_1*B_2*B_3;
         const T B = B_1*B_2*B_3;
         const T M1 = A / (1. - B);
 
-        r[0] = m_data[0] - (M0s + (M1 - M0s)*exp(-(m_seq.m_k0*m_seq.m_TR)/T1s)) * sin(m_seq.m_flip[0] * B1);
+        r[0] = m_data[0] - (M0s + (M1 - M0s)*exp(-(m_seq.k0*m_seq.TR)/T1s)) * sin(m_seq.FA * B1);
         return true;
     }
 };
 
 class HIFIAlgo : public QI::ApplyF::Algorithm {
 private:
-    const QI::SPGRSimple &m_spgr;
+    const QI::SPGR &m_spgr;
     const QI::MPRAGE &m_mprage;
     double m_lo = 0;
     double m_hi = std::numeric_limits<double>::infinity();
 public:
-    HIFIAlgo(const QI::SPGRSimple &s, const QI::MPRAGE &m, const float hi) :
+    HIFIAlgo(const QI::SPGR &s, const QI::MPRAGE &m, const float hi) :
         m_spgr(s), m_mprage(m), m_hi(hi)
     {}
     size_t numInputs() const override  { return 2; }
@@ -185,7 +186,6 @@ int main(int argc, char **argv) {
     
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::Flag     mprage(parser, "MPRAGE", "2nd image is a generic MP-RAGE, not a GE IR-SPGR", {'M', "mprage"});
     args::Flag     all_resids(parser, "ALL RESIDUALS", "Output individual residuals in addition to the Sum-of-Squares", {'r',"resids"});
     args::ValueFlag<float> clamp(parser, "CLAMP", "Clamp output T1 values to this value", {'c', "clamp"}, std::numeric_limits<float>::infinity());
@@ -195,17 +195,16 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
+
     if (verbose) std::cout << "Reading SPGR file: " << QI::CheckPos(spgr_path) << std::endl;
     auto spgrImg = QI::ReadVectorImage(QI::CheckPos(spgr_path));
     if (verbose) std::cout << "Reading " << (mprage ? "MPRAGE" : "IR-SPGR") << " file: " << QI::CheckPos(ir_path) << std::endl;
     auto irImg = QI::ReadVectorImage(QI::CheckPos(ir_path));
 
-    const QI::SPGRSimple *spgr_sequence = new QI::SPGRSimple(std::cin, prompt);
-    const QI::MPRAGE *ir_sequence = mprage ? new QI::MPRAGE(std::cin, prompt) : new QI::IRSPGR(std::cin, prompt);
-    if (verbose) std::cout << *spgr_sequence << std::endl << *ir_sequence << std::endl;
+    auto spgr_sequence = QI::ReadSequence<QI::SPGR>(std::cin, "SPGR", verbose);
+    auto ir_sequence = QI::ReadSequence<QI::MPRAGE>(std::cin, "MPRAGE", verbose);
     auto apply = QI::ApplyF::New();
-    auto hifi = std::make_shared<HIFIAlgo>(*spgr_sequence, *ir_sequence, clamp.Get());
+    auto hifi = std::make_shared<HIFIAlgo>(spgr_sequence, ir_sequence, clamp.Get());
     apply->SetAlgorithm(hifi);
     apply->SetOutputAllResiduals(all_resids);
     apply->SetPoolsize(threads.Get());

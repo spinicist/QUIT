@@ -17,7 +17,7 @@
 #include <unsupported/Eigen/NumericalDiff>
 
 #include "Models.h"
-#include "Sequences.h"
+#include "SSFP.h"
 #include "Util.h"
 #include "Args.h"
 #include "IO.h"
@@ -28,7 +28,7 @@
 class D2Algo : public QI::ApplyF::Algorithm {
 protected:
     const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
-    std::shared_ptr<QI::SteadyState> m_sequence;
+    std::shared_ptr<QI::SSFPBase> m_sequence;
     size_t m_iterations = 15;
     bool m_elliptical = false;
     double m_loPD = -std::numeric_limits<double>::infinity();
@@ -38,7 +38,7 @@ protected:
 
 public:
     void setIterations(size_t n) { m_iterations = n; }
-    void setSequence(std::shared_ptr<QI::SteadyState> &s) { m_sequence = s; }
+    void setSequence(std::shared_ptr<QI::SSFPBase> &s) { m_sequence = s; }
     void setElliptical(bool e) { m_elliptical = e; }
     void setClampT2(double lo, double hi) { m_loT2 = lo; m_hiT2 = hi; }
     void setClampPD(double lo, double hi) { m_loPD = lo; m_hiPD = hi; }
@@ -62,10 +62,10 @@ public:
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
-        const double TR = m_sequence->TR();
+        const double TR = m_sequence->TR;
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
-        const Eigen::ArrayXd angles = (m_sequence->flip() * B1);
+        const Eigen::ArrayXd angles = (m_sequence->FA * B1);
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
         Eigen::VectorXd Y = data / angles.sin();
@@ -102,10 +102,10 @@ public:
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
-        const double TR = m_sequence->TR();
+        const double TR = m_sequence->TR;
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
-        const Eigen::ArrayXd angles = (m_sequence->flip() * B1);
+        const Eigen::ArrayXd angles = (m_sequence->FA * B1);
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
         Eigen::VectorXd Y = data / angles.sin();
@@ -218,7 +218,6 @@ int main(int argc, char **argv) {
     args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Path to SSFP data");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
@@ -231,7 +230,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampPD(parser, "CLAMP PD", "Clamp PD between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'t',"clampT2"}, std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
 
     std::shared_ptr<D2Algo> algo;
     switch (algorithm.Get()) {
@@ -243,13 +241,12 @@ int main(int argc, char **argv) {
     algo->setIterations(its);
     if (clampPD) algo->setClampPD(0, clampPD.Get());
     if (clampT2) algo->setClampT2(0, clampT2.Get());
-    std::shared_ptr<QI::SteadyState> ssfp;
+    std::shared_ptr<QI::SSFPBase> ssfp;
     if (ellipse) {
-        ssfp = std::make_shared<QI::SSFP_GS>(std::cin, prompt);
+        ssfp = QI::ReadSequence<std::shared_ptr<QI::SSFP_GS>>(std::cin, "SSFP_GS", verbose);
     } else {
-        ssfp = std::make_shared<QI::SSFPSimple>(std::cin, prompt);
+        ssfp = QI::ReadSequence<std::shared_ptr<QI::SSFP>>(std::cin, "SSFP", verbose);
     }
-    if (verbose) std::cout << *ssfp << std::endl;
     algo->setSequence(ssfp);
     algo->setElliptical(ellipse);
 

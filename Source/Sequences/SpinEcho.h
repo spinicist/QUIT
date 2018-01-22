@@ -9,31 +9,35 @@
  *
  */
 
-#ifndef SEQUENCES_SEQUENCE_H
-#define SEQUENCES_SEQUENCE_H
+#ifndef SEQUENCES_SPINECHO_H
+#define SEQUENCES_SPINECHO_H
 
 #include "SequenceBase.h"
 
 namespace QI {
 
-class MultiEcho : public SequenceBase {
-	public:
-		double m_ESP;
-        Eigen::ArrayXd m_TE;
+struct MultiEcho : SequenceBase {
+    double TR, ESP;
+    int NEcho;
+    Eigen::ArrayXd TE;
 
-		MultiEcho();
-        MultiEcho(const Eigen::ArrayXd &te);
-		MultiEcho(std::istream &istr, const bool prompt);
+    size_t size() const override { return NEcho; }
+    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    template<typename Archive>
+    void save(Archive &archive) const {
+        archive(CEREAL_NVP(TR), CEREAL_NVP(ESP), CEREAL_NVP(NEcho));
+    }
+    template<typename Archive>
+    void load(Archive &archive) {
+        archive(CEREAL_NVP(TR), CEREAL_NVP(ESP), CEREAL_NVP(NEcho));
+        this->TE = Eigen::ArrayXd::LinSpaced(NEcho, ESP, ESP*NEcho);
+    }
 
-		size_t size() const override { return m_TE.rows(); }
-        Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
-        void write(std::ostream &os) const override;
-        std::string name() const override { return "MultiEcho"; }
-
-        Eigen::ArrayXd TE() const { return m_TE; }
-        void setTE(const Eigen::ArrayXd &TE) { m_TE = TE; }
 };
 
 } // End namespace QI
 
-#endif // SEQUENCES_SEQUENCE_H
+CEREAL_REGISTER_TYPE(QI::MultiEcho);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::MultiEcho);
+
+#endif // SEQUENCES_SPINECHO_H

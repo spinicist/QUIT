@@ -11,25 +11,22 @@
 
 #include <iostream>
 #include <Eigen/Dense>
-#include <cereal/archives/json.hpp>
 
 #include "Util.h"
 #include "IO.h"
-#include "EigenCereal.h"
 #include "Args.h"
 #include "Models.h"
-#include "Sequences.h"
 #include "Types.h"
+#include "SequenceBase.h"
 
-class CASLSequence {
-public:
+struct CASLSequence {
     double TR, label_time, post_label_delay;
 
     template<typename Archive>
     void serialize(Archive &archive) {
         archive(CEREAL_NVP(TR),
                 CEREAL_NVP(label_time),
-                CEREAL_NVP(post_label_delay)
+                CEREAL_NVP(post_label_delay));
     }
 };
 
@@ -119,7 +116,6 @@ int main(int argc, char **argv) {
     
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -130,7 +126,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> lambda(parser, "LAMBDA", "Blood-brain partition co-efficent, default 0.9 mL/g", {'l', "lambda"}, 0.9);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
 
     if (verbose) std::cout << "Reading ASL data from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
@@ -141,16 +136,7 @@ int main(int argc, char **argv) {
         QI::ReadImage(T1_tissue_path.Get());
     }
 
-    cereal::JSONInputArchive in_archive(std::cin);
-    CASLSequence sequence;
-    in_archive(sequence);
-
-    if (verbose) {
-        std::cout << "Read the following CASL sequence: " << std::endl;
-        cereal::JSONOutputArchive archive(std::cout);
-        archive(CEREAL_NVP(sequence));
-    }
-
+    auto sequence = QI::ReadSequence<CASLSequence>(std::cin, "ASL", verbose);
     auto apply = QI::ApplyVectorF::New();
     std::shared_ptr<CASLAlgo> algo = std::make_shared<CASLAlgo>(sequence, T1_blood.Get(), alpha.Get(), lambda.Get(),
                                                                 input->GetNumberOfComponentsPerPixel(), average);

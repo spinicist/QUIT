@@ -44,7 +44,6 @@ int main(int argc, char **argv) {
 
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     noprompt(parser, "NOPROMPT", "Suppress input prompts", {'n', "no-prompt"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<char> order(parser, "ORDER", "Volume order - f/s/v - fid/ste/vst first", {'O', "order"}, 'f');
@@ -52,7 +51,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> alpha(parser, "ALPHA", "Nominal flip-angle (default 55)", {'a', "alpha"}, 55);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv);
-    bool prompt = !noprompt;
 
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
 

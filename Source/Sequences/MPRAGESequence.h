@@ -13,58 +13,51 @@
 #define SEQUENCES_MPRAGE_H
 
 #include "SequenceBase.h"
+#include "Macro.h"
 
 namespace QI {
 
-class MPRAGE : public SequenceBase {
-    public:
-        Eigen::ArrayXd m_TI, m_TD;
-        double m_eta;
-        int m_ETL, m_k0;
-        MPRAGE() : SequenceBase() {}
-        MPRAGE(const Eigen::ArrayXd &TI, const Eigen::ArrayXd &TD, const double TR, const int Nseg, const int Nk0, const double flip, const double eta);
-        MPRAGE(std::istream &istr, const bool prompt);
-        size_t size() const override { return m_TI.size(); }
-        Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
-        void write(std::ostream &os) const override;
-        std::string name() const override { return "MPRAGE"; }
-        Eigen::ArrayXd weights(const double f0 = 0.0) const override;
-};
-// Special class for GE IRSPGR, for backwards compatibility
-class IRSPGR : public MPRAGE {
-    public:
-        IRSPGR(std::istream &istr, const bool prompt);
-        std::string name() const override { return "IRSPGR"; }
+struct MPRAGE : SequenceBase {
+    double TR, FA, eta, TI, TD;
+    int ETL, k0;
+    size_t size() const override { return 1; }
+    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    Eigen::ArrayXd weights(const double f0 = 0.0) const override;
+    template<typename Archive>
+    void serialize(Archive &archive) {
+        archive(CEREAL_NVP(TR), CEREAL_NVP(FA), CEREAL_NVP(eta), CEREAL_NVP(ETL), CEREAL_NVP(k0),
+                CEREAL_NVP(TI), CEREAL_NVP(TD));
+    }
 };
 
-class MP2RAGE : public SequenceBase {
-    public:
-        Eigen::Array3d m_TD;
-        int m_N;
-        MP2RAGE() : SequenceBase() {}
-        MP2RAGE(const Eigen::Array3d &TD, const double TR, const int N, const Eigen::Array2d flip);
-        MP2RAGE(std::istream &istr, const bool prompt);
-        size_t size() const override { return 3; }
-        Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override { QI_EXCEPTION("Not implemented"); }
-        Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
-        void write(std::ostream &os) const override;
-        std::string name() const override { return "MP3RAGE"; }
+struct MP2RAGE {
+    double TR;
+    int ETL;
+    Eigen::ArrayXd FA;
+    Eigen::ArrayXd TD;
+    Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
+    template<typename Archive>
+    void serialize(Archive &archive) {
+        
+        archive(CEREAL_NVP(TR), CEREAL_NVP(ETL), CEREAL_NVP(FA), CEREAL_NVP(TD));
+    }
 };
 
-class MP3RAGE : public SequenceBase {
-    public:
-        Eigen::Array4d m_TD;
-        int m_N;
-        MP3RAGE() : SequenceBase() {}
-        MP3RAGE(const Eigen::Array4d &TD, const double TR, const int N, const Eigen::Array3d flip);
-        MP3RAGE(std::istream &istr, const bool prompt);
-        size_t size() const override { return 3; }
-        Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override { QI_EXCEPTION("Not implemented"); }
-        Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
-        void write(std::ostream &os) const override;
-        std::string name() const override { return "MP3RAGE"; }
+class MP3RAGE {
+    double TR;
+    int ETL;
+    Eigen::ArrayXd FA;
+    Eigen::ArrayXd TD;
+    Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
+    template<typename Archive>
+    void serialize(Archive &archive) {
+        archive(CEREAL_NVP(TR), CEREAL_NVP(ETL), CEREAL_NVP(FA), CEREAL_NVP(TD));
+    }
 };
 
 } // End namespace QI
+
+CEREAL_REGISTER_TYPE(QI::MPRAGE);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::MPRAGE);
 
 #endif // SEQUENCES_MPRAGE_H
