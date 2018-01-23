@@ -14,6 +14,7 @@
 
 #include "SequenceBase.h"
 #include "Macro.h"
+#include <cereal/cereal.hpp>
 
 namespace QI {
 
@@ -56,8 +57,5 @@ class MP3RAGE {
 };
 
 } // End namespace QI
-
-CEREAL_REGISTER_TYPE(QI::MPRAGE);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::MPRAGE);
 
 #endif // SEQUENCES_MPRAGE_H

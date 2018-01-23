@@ -15,6 +15,8 @@
 #define SEQUENCES_SPGR_H
 
 #include "SequenceBase.h"
+#include "cereal/cereal.hpp"
+#include "EigenCereal.h"
 
 namespace QI {
 
@@ -22,6 +24,7 @@ struct SPGRSequence : SequenceBase {
     double TR;
     Eigen::ArrayXd FA;
 
+    std::string &name() const override { static std::string name = "SPGR"; return name; }
     size_t size() const override;
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     template<typename Archive>
@@ -34,6 +37,7 @@ struct SPGREchoSequence : SequenceBase {
     double TR, TE;
     Eigen::ArrayXd FA;
 
+    std::string &name() const override { static std::string name = "SPGREcho"; return name; }
     size_t size() const override;
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     template<typename Archive>
@@ -46,6 +50,7 @@ struct SPGRFiniteSequence : SequenceBase {
     double TR, TE, Trf;
     Eigen::ArrayXd FA;
 
+    std::string &name() const override { static std::string name = "SPGRFinite"; return name; }
     size_t size() const override;
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     template<typename Archive>
@@ -55,12 +60,5 @@ struct SPGRFiniteSequence : SequenceBase {
 };
 
 } // End namespace QI
-
-CEREAL_REGISTER_TYPE(QI::SPGRSequence);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGRSequence);
-CEREAL_REGISTER_TYPE(QI::SPGREchoSequence);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGREchoSequence);
-CEREAL_REGISTER_TYPE(QI::SPGRFiniteSequence);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGRFiniteSequence);
 
 #endif // SEQUENCES_SPGR_H

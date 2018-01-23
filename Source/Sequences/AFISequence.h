@@ -13,6 +13,7 @@
 #define SEQUENCES_AFI_H
 
 #include "SequenceBase.h"
+#include <cereal/cereal.hpp>
 
 namespace QI {
 
@@ -28,8 +29,5 @@ struct AFISequence : SequenceBase {
 };
 
 } // End namespace QI
-
-CEREAL_REGISTER_TYPE(QI::AFISequence);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::AFISequence);
 
 #endif // SEQUENCES_STEADYSTATE_H

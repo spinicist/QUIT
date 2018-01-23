@@ -13,6 +13,7 @@
 #define SEQUENCES_SPINECHO_H
 
 #include "SequenceBase.h"
+#include <cereal/cereal.hpp>
 
 namespace QI {
 
@@ -36,8 +37,5 @@ struct MultiEchoSequence : SequenceBase {
 };
 
 } // End namespace QI
-
-CEREAL_REGISTER_TYPE(QI::MultiEchoSequence);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::MultiEchoSequence);
 
 #endif // SEQUENCES_SPINECHO_H

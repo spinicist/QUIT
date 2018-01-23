@@ -13,7 +13,9 @@
 #define SEQUENCES_GROUP_H
 
 #include <cereal/types/vector.hpp>
+#include <cereal/archives/json.hpp>
 #include "SequenceBase.h"
+#include "SequenceCereal.h"
 #include "SPGRSequence.h"
 #include "Macro.h"
 
@@ -90,7 +92,6 @@ struct SequenceWrapper {
     }
 
     void save(cereal::JSONOutputArchive &ar) const {
-        //ar(cereal::make_nvp("sequence", tag));
         switch (tag) {
             case Tag::SPGR:       ar(cereal::make_nvp("SPGR", SPGR)); break;
             case Tag::SPGREcho:   ar(cereal::make_nvp("SPGREcho", SPGREcho)); break;
@@ -99,7 +100,6 @@ struct SequenceWrapper {
     }
     
     void load(cereal::JSONInputArchive &ar) {
-        std::cout << "SW LOAD " << ar.getNodeName() << std::endl;
         std::string seq_tag = ar.getNodeName();
         if      (seq_tag == "SPGR") { tag = Tag::SPGR; ar(SPGR); }
         else if (seq_tag == "SPGREcho") { tag = Tag::SPGREcho; ar(SPGREcho); }
@@ -109,22 +109,22 @@ struct SequenceWrapper {
 };
 
 struct SequenceGroup : SequenceBase {
-    std::vector<SequenceWrapper> sequences;
-    SequenceWrapper &operator[](const size_t i);
+    std::vector<std::shared_ptr<SequenceBase>> sequences;
+    std::shared_ptr<SequenceBase> &operator[](const size_t i);
 
+    std::string &name() const override { static std::string name = "SequenceGroup"; return name; }
     size_t count() const override;
     size_t size() const override;
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;
 
-    void addSequence(const SequenceWrapper &w);
+    void addSequence(const std::shared_ptr<SequenceBase> &s);
 
     void save(cereal::JSONOutputArchive &archive) const {
         archive(CEREAL_NVP(sequences));
     }
 
     void load(cereal::JSONInputArchive &archive) {
-        std::cout << "SG LOAD " << archive.getNodeName() << std::endl;
         archive(CEREAL_NVP(sequences));
     }
 

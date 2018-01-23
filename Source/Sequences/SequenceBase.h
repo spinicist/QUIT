@@ -17,9 +17,6 @@
 #include <memory>
 #include <Eigen/Core>
 #include "Models.h"
-#include <cereal/archives/json.hpp>
-#include <cereal/types/polymorphic.hpp>
-#include "EigenCereal.h"
 
 namespace QI {
 
@@ -29,25 +26,9 @@ struct SequenceBase {
     virtual size_t size() const = 0;
     virtual size_t count() const;
     virtual Eigen::ArrayXd weights(double f0 = 0.0) const;
+    virtual std::string &name() const = 0;
 };
 
-template<typename Sequence>
-Sequence ReadSequence(std::istream &is, std::string name, bool verbose) {
-    cereal::JSONInputArchive in_archive(is);
-    Sequence sequence;
-    in_archive(sequence);
-
-    if (verbose) {
-        std::cout << "Read " << name << ": " << std::endl;
-        cereal::JSONOutputArchive archive(std::cout);
-        archive(sequence);
-    }
-    
-    return sequence;
-}
-
 } // End namespace QI
-
-//CEREAL_FORCE_DYNAMIC_INIT(SequenceBase);
 
 #endif // SEQUENCES_BASE_H
