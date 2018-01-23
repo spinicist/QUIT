@@ -18,17 +18,18 @@
 #include "IO.h"
 #include "Args.h"
 #include "Models.h"
-#include "SSFP.h"
 #include "Types.h"
+#include "SSFPSequence.h"
+#include "SequenceCereal.h"
 
 class FMCost : public ceres::CostFunction {
 private:
     const Eigen::ArrayXd &m_data;
     double m_T1, m_B1;
-    std::shared_ptr<QI::SSFP> m_sequence;
+    QI::SSFPSequence m_sequence;
 
 public:
-    FMCost(const Eigen::ArrayXd &d, std::shared_ptr<QI::SSFP> s,
+    FMCost(const Eigen::ArrayXd &d, const QI::SSFPSequence &s,
            const double T1, const double B1) :
         m_data(d), m_sequence(s), m_T1(T1), m_B1(B1)
     {
@@ -37,7 +38,7 @@ public:
     }
 
     Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
-        Eigen::ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence->FA, m_sequence->PhaseInc, m_sequence->TR, p[0], m_T1, p[1], p[2], m_B1);
+        Eigen::ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence.FA, m_sequence.PhaseInc, m_sequence.TR, p[0], m_T1, p[1], p[2], m_B1);
         Eigen::ArrayXd diff = s - m_data;
         return diff;
     }
@@ -51,7 +52,7 @@ public:
         r = residuals(p);
         if (jacobians && jacobians[0]) {
             Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), p.size());
-            j = QI::One_SSFP_Echo_Derivs(m_sequence->FA, m_sequence->PhaseInc, m_sequence->TR, p[0], m_T1, p[1], p[2], m_B1);
+            j = QI::One_SSFP_Echo_Derivs(m_sequence.FA, m_sequence.PhaseInc, m_sequence.TR, p[0], m_T1, p[1], p[2], m_B1);
         }
         return true;
     }
@@ -60,17 +61,17 @@ public:
 
 class LM_FM : public QI::ApplyF::Algorithm {
 protected:
-    std::shared_ptr<QI::SSFP> m_sequence = nullptr;
+    QI::SSFPSequence m_sequence;
     bool m_asymmetric = false, m_debug = false;
 public:
-    LM_FM(std::shared_ptr<QI::SSFP> s, const bool a, const bool d) :
+    LM_FM(QI::SSFPSequence s, const bool a, const bool d) :
         m_sequence(s), m_asymmetric(a), m_debug(d)
     {}
 
-    size_t numInputs() const override  { return m_sequence->count(); }
+    size_t numInputs() const override  { return m_sequence.count(); }
     size_t numConsts() const override  { return 2; }
     size_t numOutputs() const override { return 3; }
-    size_t dataSize() const override   { return m_sequence->size(); }
+    size_t dataSize() const override   { return m_sequence.size(); }
     float zero() const override { return 0.f; }
     std::vector<float> defaultConsts() const override {
         std::vector<float> def(2, 1.0f); // T1 & B1
@@ -83,17 +84,17 @@ public:
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
-        if (isfinite(T1) && (T1 > m_sequence->TR)) {
+        if (isfinite(T1) && (T1 > m_sequence.TR)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
             Eigen::ArrayXd data = indata.cast<double>() / indata.maxCoeff();
 
-            std::vector<double> f0_starts = {0, 0.4/m_sequence->TR};
+            std::vector<double> f0_starts = {0, 0.4/m_sequence.TR};
             if (this->m_asymmetric) {
-                f0_starts.push_back(0.2/m_sequence->TR);
-                f0_starts.push_back(-0.2/m_sequence->TR);
-                f0_starts.push_back(-0.4/m_sequence->TR);
+                f0_starts.push_back(0.2/m_sequence.TR);
+                f0_starts.push_back(-0.2/m_sequence.TR);
+                f0_starts.push_back(-0.4/m_sequence.TR);
             }
 
             double best = std::numeric_limits<double>::infinity();
@@ -101,10 +102,10 @@ public:
             ceres::Problem problem;
             problem.AddResidualBlock(new FMCost(data, m_sequence, T1, B1), NULL, p.data());
             problem.SetParameterLowerBound(p.data(), 0, 1.);
-            problem.SetParameterLowerBound(p.data(), 1, m_sequence->TR);
+            problem.SetParameterLowerBound(p.data(), 1, m_sequence.TR);
             problem.SetParameterUpperBound(p.data(), 1, T1);
-            problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence->TR);
-            problem.SetParameterUpperBound(p.data(), 2,  0.5/m_sequence->TR);
+            problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence.TR);
+            problem.SetParameterUpperBound(p.data(), 2,  0.5/m_sequence.TR);
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;
             options.max_num_iterations = 75;
@@ -113,7 +114,7 @@ public:
             options.parameter_tolerance = 1e-5;
             if (!m_debug) options.logging_type = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                p = {5., std::max(0.1 * T1, 1.5*m_sequence->TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                p = {5., std::max(0.1 * T1, 1.5*m_sequence.TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
                     std::cerr << summary.FullReport() << std::endl;
@@ -183,7 +184,7 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << std::endl;
     auto ssfpData = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
 
-    auto ssfp_sequence = QI::ReadSequence<std::shared_ptr<QI::SSFP>>(std::cin, "SSFP", verbose);
+    auto ssfp_sequence = QI::ReadSequence<QI::SSFPSequence>(std::cin, verbose);
     auto apply = QI::ApplyF::New();
     std::shared_ptr<LM_FM> algo = std::make_shared<LM_FM>(ssfp_sequence, asym, debug);
     apply->SetVerbose(verbose);

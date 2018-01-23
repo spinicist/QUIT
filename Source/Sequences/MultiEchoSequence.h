@@ -22,6 +22,7 @@ struct MultiEchoSequence : SequenceBase {
     int NEcho;
     Eigen::ArrayXd TE;
 
+    QI_SEQUENCE_NAME(MultiEcho);
     size_t size() const override { return NEcho; }
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     template<typename Archive>

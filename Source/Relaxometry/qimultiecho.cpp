@@ -19,7 +19,8 @@
 #include "Util.h"
 #include "IO.h"
 #include "Args.h"
-#include "SpinEcho.h"
+#include "MultiEchoSequence.h"
+#include "SequenceCereal.h"
 #include "ApplyAlgorithmFilter.h"
 #include "ReorderImageFilter.h"
 #include "itkTimeProbe.h"
@@ -32,7 +33,7 @@ class RelaxAlgo : public QI::ApplyF::Algorithm {
 private:
     const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
 protected:
-    std::shared_ptr<QI::MultiEcho> m_sequence;
+    QI::MultiEchoSequence m_sequence;
     double m_clampLo = -std::numeric_limits<double>::infinity();
     double m_clampHi = std::numeric_limits<double>::infinity();
     double m_thresh = -std::numeric_limits<double>::infinity();
@@ -43,7 +44,7 @@ protected:
         if (PD > m_thresh) {
             outputs[0] = PD;
             outputs[1] = QI::Clamp(T2, m_clampLo, m_clampHi);
-            Eigen::ArrayXd theory = QI::One_MultiEcho(m_sequence->TE, m_sequence->TR, PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
+            Eigen::ArrayXd theory = QI::One_MultiEcho(m_sequence.TE, m_sequence.TR, PD, 0., T2).array().abs(); // T1 isn't modelled, set to 0 for instant recovery
             Eigen::ArrayXf r = (data.array() - theory).cast<float>();
             residual = sqrt(r.square().sum() / r.rows());
             resids = itk::VariableLengthVector<float>(r.data(), r.rows());
@@ -56,13 +57,13 @@ protected:
     }
 public:
     void setIterations(size_t n) { m_iterations = n; }
-    void setSequence(std::shared_ptr<QI::MultiEcho> &s) { m_sequence = s; }
+    void setSequence(const QI::MultiEchoSequence &s) { m_sequence = s; }
     void setClamp(double lo, double hi) { m_clampLo = lo; m_clampHi = hi; }
     void setThresh(double t) { m_thresh = t; }
-    size_t numInputs() const override { return m_sequence->count(); }
+    size_t numInputs() const override { return m_sequence.count(); }
     size_t numConsts() const override { return 1; }
     size_t numOutputs() const override { return 2; }
-    size_t dataSize() const override { return m_sequence->size(); }
+    size_t dataSize() const override { return m_sequence.size(); }
     float zero() const override { return 0.f; }
 
     std::vector<float> defaultConsts() const override {
@@ -80,8 +81,8 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
         // Set up echo times array
-        Eigen::MatrixXd X(m_sequence->size(), 2);
-        X.col(0) = m_sequence->TE;
+        Eigen::MatrixXd X(m_sequence.size(), 2);
+        X.col(0) = m_sequence.TE;
         X.col(1).setOnes();
         Eigen::VectorXd Y = data.array().log();
         Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
@@ -101,16 +102,16 @@ public:
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
-        const double dTE_3 = (m_sequence->ESP / 3);
+        const double dTE_3 = (m_sequence.ESP / 3);
         double si2sum = 0, sidisum = 0;
-        for (int i = 0; i < m_sequence->size() - 2; i++) {
+        for (int i = 0; i < m_sequence.size() - 2; i++) {
             const double si = dTE_3 * (data(i) + 4*data(i+1) + data(i+2));
             const double di = data(i) - data(i+2);
             si2sum += si*si;
             sidisum += si*di;
         }
         double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum);
-        double PD = (data.array() / exp(-m_sequence->TE / T2)).mean();
+        double PD = (data.array() / exp(-m_sequence.TE / T2)).mean();
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
         return true;
@@ -119,13 +120,13 @@ public:
 
 class RelaxFunctor : public Eigen::DenseFunctor<double> {
     protected:
-        const std::shared_ptr<QI::SequenceBase> m_sequence;
+        const QI::MultiEchoSequence m_sequence;
         const Eigen::ArrayXd m_data;
         const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
 
     public:
-        RelaxFunctor(std::shared_ptr<QI::SequenceBase> cs, const Eigen::ArrayXd &data) :
-            DenseFunctor<double>(2, cs->size()),
+        RelaxFunctor(const QI::MultiEchoSequence &cs, const Eigen::ArrayXd &data) :
+            DenseFunctor<double>(2, cs.size()),
             m_sequence(cs), m_data(data)
         {
             assert(static_cast<size_t>(m_data.rows()) == values());
@@ -135,7 +136,7 @@ class RelaxFunctor : public Eigen::DenseFunctor<double> {
             eigen_assert(diffs.size() == values());
             Eigen::VectorXd fullp(5);
             fullp << params(0), 0, params(1), 0, 1.0; // Fix B1 to 1.0 for now
-            Eigen::ArrayXcd s = m_sequence->signal(m_model, fullp);
+            Eigen::ArrayXcd s = m_sequence.signal(m_model, fullp);
             diffs = s.abs() - m_data;
             return 0;
         }
@@ -152,7 +153,7 @@ public:
         RelaxFunctor f(m_sequence, data);
         Eigen::NumericalDiff<RelaxFunctor> nDiff(f);
         Eigen::LevenbergMarquardt<Eigen::NumericalDiff<RelaxFunctor>> lm(nDiff);
-        lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
+        lm.setMaxfev(m_iterations * (m_sequence.size() + 1));
         // Just PD & T2 for now
         // Basic guess of T2=50ms
         Eigen::VectorXd p(2); p << data(0), 0.05;
@@ -196,7 +197,7 @@ int main(int argc, char **argv) {
     algo->setIterations(its.Get());
 
     // Gather input data
-    auto multiecho = QI::ReadSequence<std::shared_ptr<QI::MultiEcho>>(std::cin, "MultiEcho", verbose);
+    auto multiecho = QI::ReadSequence<QI::MultiEchoSequence>(std::cin, verbose);
     algo->setSequence(multiecho);
     auto apply = QI::ApplyF::New();
     apply->SetPoolsize(threads.Get());
@@ -204,7 +205,7 @@ int main(int argc, char **argv) {
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
     auto inputFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
-    size_t nVols = inputFile->GetLargestPossibleRegion().GetSize()[3] / multiecho->size();
+    size_t nVols = inputFile->GetLargestPossibleRegion().GetSize()[3] / multiecho.size();
 
     auto PDoutput = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
     auto T2output = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
@@ -215,10 +216,10 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Processing" << std::endl;
     auto inputVector = QI::SeriesToVectorF::New();
     inputVector->SetInput(inputFile);
-    inputVector->SetBlockSize(multiecho->size());
+    inputVector->SetBlockSize(multiecho.size());
     std::vector<QI::VolumeF::Pointer> PDimgs(nVols), T2imgs(nVols);
     for (size_t i = 0; i < nVols; i++) {
-        inputVector->SetBlockStart(i * multiecho->size());
+        inputVector->SetBlockStart(i * multiecho.size());
 
         apply->SetAlgorithm(algo);
         apply->SetInput(0, inputVector->GetOutput());

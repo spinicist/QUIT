@@ -20,6 +20,7 @@
 #include "DirectAlgo.h"
 #include "Direct2Algo.h"
 #include "HyperAlgo.h"
+#include "SequenceCereal.h"
 
 using namespace std;
 using namespace Eigen;
@@ -43,7 +44,7 @@ int main(int argc, char **argv) {
 
     if (verbose) cout << "Opening file: " << QI::CheckPos(ssfp_path) << endl;
     auto data = QI::ReadVectorImage<complex<float>>(QI::CheckPos(ssfp_path));
-    auto seq = QI::ReadSequence<std::shared_ptr<QI::SSFPEcho>>(std::cin, "SSFP", verbose);
+    auto seq = std::make_shared<QI::SSFPEchoSequence>(QI::ReadSequence<QI::SSFPEchoSequence>(std::cin, verbose));
     shared_ptr<QI::EllipseAlgo> algo;
     switch (algorithm.Get()) {
     case 'h': algo = make_shared<QI::HyperAlgo>(seq, debug); break;

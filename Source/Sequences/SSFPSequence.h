@@ -14,7 +14,7 @@
 
 #include "SequenceBase.h"
 #include "Macro.h"
-#include <cereal/cereal.hpp>
+#include "EigenCereal.h"
 
 namespace QI {
 
@@ -28,6 +28,7 @@ struct SSFPBase : SequenceBase {
 struct SSFPSequence : SSFPBase {
     Eigen::ArrayXd PhaseInc;
 
+    QI_SEQUENCE_NAME(SSFP);
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0) const override;
     template<typename Archive>
@@ -44,6 +45,7 @@ struct SSFPSequence : SSFPBase {
 };
 
 struct SSFPEchoSequence : SSFPSequence {
+    QI_SEQUENCE_NAME(SSFPEcho);
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
 };
@@ -52,6 +54,7 @@ struct SSFPFiniteSequence : SSFPBase {
     double Trf;
     Eigen::ArrayXd PhaseInc;
 
+    QI_SEQUENCE_NAME(SSFPFinite);
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0) const override;
     template<typename Archive>
@@ -67,7 +70,8 @@ struct SSFPFiniteSequence : SSFPBase {
     }
 };
 
-struct SSFP_GSSequence : SSFPBase {
+struct SSFPGSSequence : SSFPBase {
+    QI_SEQUENCE_NAME(SSFPGS);
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0) const override;
     template<typename Archive>

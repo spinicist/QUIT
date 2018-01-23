@@ -41,11 +41,11 @@ Eigen::ArrayXcd SSFPFiniteSequence::signal(std::shared_ptr<Model> m, const Eigen
     return m->SSFPFinite(p, FA, TR, Trf, PhaseInc);
 }
 
-Eigen::ArrayXd SSFP_GSSequence::weights(const double f0) const {
+Eigen::ArrayXd SSFPGSSequence::weights(const double f0) const {
     return Eigen::ArrayXd::Ones(size()); // Weight SPGR images higher than SSFP
 }
 
-Eigen::ArrayXcd SSFP_GSSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SSFP_GS(p, FA, TR);
 }
 

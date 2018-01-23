@@ -200,7 +200,7 @@ int main(int argc, char **argv) {
         image->DisconnectPipeline(); // This step is really important.
         images.push_back(image);
     }
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, "SequenceGroup", verbose);
+    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, verbose);
     if (sequences.count() != images.size()) {
         QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
     }

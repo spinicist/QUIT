@@ -16,7 +16,7 @@
 
 namespace QI {
 
-EllipseAlgo::EllipseAlgo(std::shared_ptr<QI::SSFPEcho> &seq, bool debug) :
+EllipseAlgo::EllipseAlgo(std::shared_ptr<QI::SSFPEchoSequence> &seq, bool debug) :
     m_sequence(seq), m_debug(debug)
 {
     m_zero = TOutput(m_sequence->size());

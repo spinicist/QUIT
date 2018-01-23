@@ -17,19 +17,20 @@
 #include "ceres/ceres.h"
 
 #include "Util.h"
-#include "SPGR.h"
+#include "SPGRSequence.h"
 #include "MPRAGESequence.h"
+#include "SequenceCereal.h"
 #include "Args.h"
 #include "IO.h"
 #include "ApplyAlgorithmFilter.h"
 
 class SPGRCost : public ceres::CostFunction {
 protected:
-    const QI::SPGR &m_seq;
+    const QI::SPGRSequence &m_seq;
     const Eigen::ArrayXd m_data;
 
 public:
-    SPGRCost(const QI::SPGR &s, const Eigen::ArrayXd &data) :
+    SPGRCost(const QI::SPGRSequence &s, const Eigen::ArrayXd &data) :
         m_seq(s), m_data(data)
     {
         mutable_parameter_block_sizes()->push_back(3);
@@ -105,12 +106,12 @@ public:
 
 class HIFIAlgo : public QI::ApplyF::Algorithm {
 private:
-    const QI::SPGR &m_spgr;
+    const QI::SPGRSequence &m_spgr;
     const QI::MPRAGE &m_mprage;
     double m_lo = 0;
     double m_hi = std::numeric_limits<double>::infinity();
 public:
-    HIFIAlgo(const QI::SPGR &s, const QI::MPRAGE &m, const float hi) :
+    HIFIAlgo(const QI::SPGRSequence &s, const QI::MPRAGE &m, const float hi) :
         m_spgr(s), m_mprage(m), m_hi(hi)
     {}
     size_t numInputs() const override  { return 2; }
@@ -201,8 +202,8 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Reading " << (mprage ? "MPRAGE" : "IR-SPGR") << " file: " << QI::CheckPos(ir_path) << std::endl;
     auto irImg = QI::ReadVectorImage(QI::CheckPos(ir_path));
 
-    auto spgr_sequence = QI::ReadSequence<QI::SPGR>(std::cin, "SPGR", verbose);
-    auto ir_sequence = QI::ReadSequence<QI::MPRAGE>(std::cin, "MPRAGE", verbose);
+    auto spgr_sequence = QI::ReadSequence<QI::SPGRSequence>(std::cin, verbose);
+    auto ir_sequence = QI::ReadSequence<QI::MPRAGE>(std::cin, verbose);
     auto apply = QI::ApplyF::New();
     auto hifi = std::make_shared<HIFIAlgo>(spgr_sequence, ir_sequence, clamp.Get());
     apply->SetAlgorithm(hifi);

@@ -14,13 +14,14 @@
 
 #include "SequenceBase.h"
 #include "Macro.h"
-#include <cereal/cereal.hpp>
+#include "EigenCereal.h"
 
 namespace QI {
 
 struct MPRAGE : SequenceBase {
     double TR, FA, eta, TI, TD;
     int ETL, k0;
+    std::string &name() const override { static std::string name = "MPRAGE"; return name; }
     size_t size() const override { return 1; }
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;

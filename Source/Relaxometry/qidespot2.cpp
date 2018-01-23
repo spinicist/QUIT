@@ -17,7 +17,8 @@
 #include <unsupported/Eigen/NumericalDiff>
 
 #include "Models.h"
-#include "SSFP.h"
+#include "SSFPSequence.h"
+#include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "IO.h"
@@ -243,9 +244,9 @@ int main(int argc, char **argv) {
     if (clampT2) algo->setClampT2(0, clampT2.Get());
     std::shared_ptr<QI::SSFPBase> ssfp;
     if (ellipse) {
-        ssfp = QI::ReadSequence<std::shared_ptr<QI::SSFP_GS>>(std::cin, "SSFP_GS", verbose);
+        ssfp = std::make_shared<QI::SSFPGSSequence>(QI::ReadSequence<QI::SSFPGSSequence>(std::cin, verbose));
     } else {
-        ssfp = QI::ReadSequence<std::shared_ptr<QI::SSFP>>(std::cin, "SSFP", verbose);
+        ssfp = std::make_shared<QI::SSFPSequence>(QI::ReadSequence<QI::SSFPSequence>(std::cin, verbose));
     }
     algo->setSequence(ssfp);
     algo->setElliptical(ellipse);

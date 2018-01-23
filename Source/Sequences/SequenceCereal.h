@@ -14,19 +14,18 @@
 
 #include <cereal/archives/json.hpp>
 #include "SequenceBase.h"
-#include "SPGRSequence.h"
 #include "Macro.h"
 
 namespace QI {
 
 template<typename Sequence>
-Sequence ReadSequence(std::istream &is, std::string name, bool verbose) {
+Sequence ReadSequence(std::istream &is, bool verbose) {
     cereal::JSONInputArchive in_archive(is);
     Sequence sequence;
     in_archive(sequence);
 
     if (verbose) {
-        std::cout << "Read " << name << ": " << std::endl;
+        // std::cout << "Read " << sequence.name() << ": " << std::endl;
         cereal::JSONOutputArchive archive(std::cout);
         archive(sequence);
     }

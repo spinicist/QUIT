@@ -29,6 +29,9 @@ struct SequenceBase {
     virtual std::string &name() const = 0;
 };
 
+#define QI_SEQUENCE_NAME( N ) \
+    std::string &name() const override { static std::string name = #N; return name; }
+
 } // End namespace QI
 
 #endif // SEQUENCES_BASE_H

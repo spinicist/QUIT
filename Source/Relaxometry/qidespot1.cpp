@@ -16,7 +16,8 @@
 
 #include "ApplyAlgorithmFilter.h"
 #include "Models.h"
-#include "SPGR.h"
+#include "SPGRSequence.h"
+#include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "IO.h"
@@ -29,7 +30,7 @@ public:
     static const size_t DefaultIterations = 15;
 protected:
     const std::shared_ptr<QI::Model> m_model = std::make_shared<QI::SCD>();
-    std::shared_ptr<QI::SPGR> m_sequence;
+    QI::SPGRSequence m_sequence;
     size_t m_iterations = DefaultIterations;
     double m_loPD = -std::numeric_limits<double>::infinity();
     double m_hiPD = std::numeric_limits<double>::infinity();
@@ -39,13 +40,13 @@ protected:
 public:
     void setIterations(size_t n) { m_iterations = n; }
     size_t getIterations() { return m_iterations; }
-    void setSequence(std::shared_ptr<QI::SPGR> &s) { m_sequence = s; }
+    void setSequence(QI::SPGRSequence &s) { m_sequence = s; }
     void setClampT1(double lo, double hi) { m_loT1 = lo; m_hiT1 = hi; }
     void setClampPD(double lo, double hi) { m_loPD = lo; m_hiPD = hi; }
-    size_t numInputs() const override { return m_sequence->count(); }
+    size_t numInputs() const override { return m_sequence.count(); }
     size_t numConsts() const override { return 1; }
     size_t numOutputs() const override { return 2; }
-    size_t dataSize() const override { return m_sequence->size(); }
+    size_t dataSize() const override { return m_sequence.size(); }
     float zero() const override { return 0.f; }
     std::vector<float> defaultConsts() const override {
         // B1
@@ -63,15 +64,15 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
         double B1 = consts[0];
-        Eigen::ArrayXd flip = m_sequence->FA * B1;
+        Eigen::ArrayXd flip = m_sequence.FA * B1;
         Eigen::VectorXd Y = data / flip.sin();
         Eigen::MatrixXd X(Y.rows(), 2);
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         outputs[0] = QI::Clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
-        outputs[1] = QI::Clamp(-m_sequence->TR / log(b[0]), m_loT1, m_hiT1);
-        Eigen::ArrayXd theory = QI::One_SPGR(m_sequence->FA, m_sequence->TR, outputs[0], outputs[1], B1).array().abs();
+        outputs[1] = QI::Clamp(-m_sequence.TR / log(b[0]), m_loT1, m_hiT1);
+        Eigen::ArrayXd theory = QI::One_SPGR(m_sequence.FA, m_sequence.TR, outputs[0], outputs[1], B1).array().abs();
         Eigen::ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
@@ -89,20 +90,20 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
         double B1 = consts[0];
-        Eigen::ArrayXd flip = m_sequence->FA * B1;
+        Eigen::ArrayXd flip = m_sequence.FA * B1;
         Eigen::VectorXd Y = data / flip.sin();
         Eigen::MatrixXd X(Y.rows(), 2);
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         Eigen::Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         Eigen::Array2d out;
-        out[1] = -m_sequence->TR / log(b[0]);
+        out[1] = -m_sequence.TR / log(b[0]);
         out[0] = b[1] / (1. - b[0]);
         for (its = 0; its < m_iterations; its++) {
-            Eigen::VectorXd W = (flip.sin() / (1. - (exp(-m_sequence->TR/outputs[1])*flip.cos()))).square();
+            Eigen::VectorXd W = (flip.sin() / (1. - (exp(-m_sequence.TR/outputs[1])*flip.cos()))).square();
             b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
             Eigen::Array2d newOut;
-            newOut[1] = -m_sequence->TR / log(b[0]);
+            newOut[1] = -m_sequence.TR / log(b[0]);
             newOut[0] = b[1] / (1. - b[0]);
             if (newOut.isApprox(out))
                 break;
@@ -111,7 +112,7 @@ public:
         }
         outputs[0] = QI::Clamp(out[0], m_loPD, m_hiPD);
         outputs[1] = QI::Clamp(out[1], m_loT1, m_hiT1);
-        Eigen::ArrayXd theory = QI::One_SPGR(m_sequence->FA, m_sequence->TR, outputs[0], outputs[1], B1).array().abs();
+        Eigen::ArrayXd theory = QI::One_SPGR(m_sequence.FA, m_sequence.TR, outputs[0], outputs[1], B1).array().abs();
         Eigen::ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
@@ -121,12 +122,12 @@ public:
 
 class T1Cost : public ceres::CostFunction {
 protected:
-    const std::shared_ptr<QI::SPGR> m_seq;
+    const QI::SPGRSequence m_seq;
     const Eigen::ArrayXd m_data;
     const double m_B1;
 
 public:
-    T1Cost(const std::shared_ptr<QI::SPGR> cs, const Eigen::ArrayXd &data, const double B1) :
+    T1Cost(const QI::SPGRSequence cs, const Eigen::ArrayXd &data, const double B1) :
         m_seq(cs), m_data(data), m_B1(B1)
     {
         mutable_parameter_block_sizes()->push_back(2);
@@ -139,11 +140,11 @@ public:
     {
         Eigen::Map<const Eigen::Array2d> p(parameters[0]);
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
-        Eigen::ArrayXd s = QI::One_SPGR(m_seq->FA, m_seq->TR, p[0], p[1], m_B1).array().abs();
+        Eigen::ArrayXd s = QI::One_SPGR(m_seq.FA, m_seq.TR, p[0], p[1], m_B1).array().abs();
         r = s - m_data;
         if (jacobians && jacobians[0]) {
             Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), p.size());
-            j = QI::One_SPGR_Magnitude_Derivs(m_seq->FA, m_seq->TR, p[0], p[1], m_B1);
+            j = QI::One_SPGR_Magnitude_Derivs(m_seq.FA, m_seq.TR, p[0], p[1], m_B1);
         }
         return true;
     }
@@ -240,7 +241,7 @@ int main(int argc, char **argv) {
     algo->setIterations(its.Get());
     if (clampPD) algo->setClampPD(1e-6, clampPD.Get());
     if (clampT1) algo->setClampT1(1e-6, clampT1.Get());
-    auto spgrSequence = QI::ReadSequence<std::shared_ptr<QI::SPGR>>(std::cin, "SPGR", verbose);
+    auto spgrSequence = QI::ReadSequence<QI::SPGRSequence>(std::cin, verbose);
     algo->setSequence(spgrSequence);
     auto apply = QI::ApplyF::New();
     apply->SetVerbose(verbose);

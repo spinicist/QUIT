@@ -23,7 +23,7 @@
 #include "Macro.h"
 #include "Types.h"
 #include "Util.h"
-#include "SSFP.h"
+#include "SSFPSequence.h"
 #include "ApplyAlgorithmFilter.h"
 
 namespace QI {
@@ -31,11 +31,11 @@ namespace QI {
 class EllipseAlgo : public QI::ApplyVectorXFVectorF::Algorithm {
 protected:
     bool m_debug = false;
-    std::shared_ptr<QI::SSFPEcho> m_sequence = nullptr;
+    std::shared_ptr<QI::SSFPEchoSequence> m_sequence = nullptr;
     TOutput m_zero;
     virtual Eigen::ArrayXd apply_internal(const Eigen::ArrayXcf &input, const double flip, const double TR, const Eigen::ArrayXd &phi, const bool debug, float &residual) const = 0;
 public:
-    EllipseAlgo(std::shared_ptr<QI::SSFPEcho> &seq, bool debug);
+    EllipseAlgo(std::shared_ptr<QI::SSFPEchoSequence> &seq, bool debug);
 
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }

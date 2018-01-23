@@ -48,7 +48,7 @@ typedef itk::VectorImage<std::complex<float>, 3> TCVImage;
 
 class SignalsFilter : public itk::ImageToImageFilter<TImage, TCVImage> {
 protected:
-    QI::SequenceBase *m_sequence;
+    std::shared_ptr<QI::SequenceBase> m_sequence;
     std::shared_ptr<QI::Model> m_model;
     double m_sigma = 0.0;
     itk::TimeProbe m_clock;
@@ -92,7 +92,7 @@ public:
         return dynamic_cast<TCVImage *>(this->ProcessObject::GetOutput(0));
     }
 
-    void SetSequence(QI::SequenceBase *s) {
+    void SetSequence(std::shared_ptr<QI::SequenceBase> s) {
         m_sequence = s;
         this->SetNumberOfRequiredOutputs(1);
         this->SetNthOutput(0, this->MakeOutput(0));
@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
     /***************************************************************************
      * Set up sequences
      **************************************************************************/
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, "SequenceGroup", verbose);
+    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, verbose);
     if (filenames.Get().size() != sequences.count()) {
         QI_FAIL("Input filenames size " << filenames.Get().size()
                 << " does not match sequences size " << sequences.count());
@@ -300,7 +300,7 @@ int main(int argc, char **argv) {
         if (verbose) std::cout << "Sequence: " << std::endl;
         cereal::JSONOutputArchive archive(std::cout);
         archive(sequences[i]);
-        calcSignal->SetSequence(sequences[i].ptr());
+        calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         QI::VectorVolumeXF::Pointer output = calcSignal->GetOutput();
         output->DisconnectPipeline();

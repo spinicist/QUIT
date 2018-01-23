@@ -22,6 +22,7 @@
 #include "IO.h"
 #include "Args.h"
 #include "MPRAGESequence.h"
+#include "SequenceCereal.h"
 
 template<class T> class MPRAGEFunctor {
 public:
@@ -172,7 +173,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGE>(std::cin, "MP2RAGE", verbose);
+    auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGE>(std::cin, verbose);
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetSequence(mp2rage_sequence);
     apply->SetInput(MPContrastFilter->GetOutput());

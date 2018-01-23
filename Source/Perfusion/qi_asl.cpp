@@ -17,7 +17,8 @@
 #include "Args.h"
 #include "Models.h"
 #include "Types.h"
-#include "SequenceBase.h"
+#include "SequenceCereal.h"
+#include <cereal/archives/json.hpp>
 
 struct CASLSequence {
     double TR, label_time, post_label_delay;
@@ -136,7 +137,7 @@ int main(int argc, char **argv) {
         QI::ReadImage(T1_tissue_path.Get());
     }
 
-    auto sequence = QI::ReadSequence<CASLSequence>(std::cin, "ASL", verbose);
+    auto sequence = QI::ReadSequence<CASLSequence>(std::cin, verbose);
     auto apply = QI::ApplyVectorF::New();
     std::shared_ptr<CASLAlgo> algo = std::make_shared<CASLAlgo>(sequence, T1_blood.Get(), alpha.Get(), lambda.Get(),
                                                                 input->GetNumberOfComponentsPerPixel(), average);

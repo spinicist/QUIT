@@ -1,5 +1,7 @@
 
 #include "SequenceCereal.h"
+#include "SPGRSequence.h"
+#include "SSFPSequence.h"
 
 namespace cereal {
 
