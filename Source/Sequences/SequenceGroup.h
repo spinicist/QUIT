@@ -15,6 +15,7 @@
 #include <cereal/types/vector.hpp>
 #include "SequenceBase.h"
 #include "SPGRSequence.h"
+#include "Macro.h"
 
 namespace QI {
 
@@ -88,13 +89,22 @@ struct SequenceWrapper {
         }
     }
 
-    template<typename Archive> void serialize(Archive &ar) {
-        ar(cereal::make_nvp("sequence", tag));
+    void save(cereal::JSONOutputArchive &ar) const {
+        //ar(cereal::make_nvp("sequence", tag));
         switch (tag) {
-            case Tag::SPGR:       ar(CEREAL_NVP(SPGR)); break;
-            case Tag::SPGREcho:   ar(CEREAL_NVP(SPGREcho)); break;
-            case Tag::SPGRFinite: ar(CEREAL_NVP(SPGRFinite)); break;
+            case Tag::SPGR:       ar(cereal::make_nvp("SPGR", SPGR)); break;
+            case Tag::SPGREcho:   ar(cereal::make_nvp("SPGREcho", SPGREcho)); break;
+            case Tag::SPGRFinite: ar(cereal::make_nvp("SPGRFinite", SPGRFinite)); break;
         }
+    }
+    
+    void load(cereal::JSONInputArchive &ar) {
+        std::cout << "SW LOAD " << ar.getNodeName() << std::endl;
+        std::string seq_tag = ar.getNodeName();
+        if      (seq_tag == "SPGR") { tag = Tag::SPGR; ar(SPGR); }
+        else if (seq_tag == "SPGREcho") { tag = Tag::SPGREcho; ar(SPGREcho); }
+        else if (seq_tag == "SPGRFinite") { tag = Tag::SPGRFinite; ar(SPGRFinite); }
+        else { QI_FAIL( "Unrecognised sequence type: " << seq_tag ); }
     }
 };
 
@@ -108,10 +118,16 @@ struct SequenceGroup : SequenceBase {
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;
 
     void addSequence(const SequenceWrapper &w);
-    template<typename Archive>
-    void serialize(Archive &archive) {
+
+    void save(cereal::JSONOutputArchive &archive) const {
         archive(CEREAL_NVP(sequences));
     }
+
+    void load(cereal::JSONInputArchive &archive) {
+        std::cout << "SG LOAD " << archive.getNodeName() << std::endl;
+        archive(CEREAL_NVP(sequences));
+    }
+
 };
 
 } // End namespace QI
