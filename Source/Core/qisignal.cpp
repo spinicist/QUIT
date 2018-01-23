@@ -48,8 +48,8 @@ typedef itk::VectorImage<std::complex<float>, 3> TCVImage;
 
 class SignalsFilter : public itk::ImageToImageFilter<TImage, TCVImage> {
 protected:
-     std::shared_ptr<QI::SequenceBase> m_sequence;
-     std::shared_ptr<QI::Model> m_model;
+    QI::SequenceBase *m_sequence;
+    std::shared_ptr<QI::Model> m_model;
     double m_sigma = 0.0;
     itk::TimeProbe m_clock;
     itk::RealTimeClock::TimeStampType m_meanTime = 0.0, m_totalTime = 0.0;
@@ -92,7 +92,7 @@ public:
         return dynamic_cast<TCVImage *>(this->ProcessObject::GetOutput(0));
     }
 
-    void SetSequence(std::shared_ptr<QI::SequenceBase> s) {
+    void SetSequence(QI::SequenceBase *s) {
         m_sequence = s;
         this->SetNumberOfRequiredOutputs(1);
         this->SetNthOutput(0, this->MakeOutput(0));
@@ -218,20 +218,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> seed(parser, "SEED", "Seed noise RNG with specific value", {'s', "seed"}, -1);
     args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model (1/2/3)", {'M',"model"}, 1);
     args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
-    args::Flag     list_sequences(parser, "LIST", "Output a list of available sequences and exit", {'l', "list"});
     QI::ParseArgs(parser, argc, argv);
-
-    if (list_sequences) {
-        QI::SequenceGroup list;
-        list.addSequence(std::make_shared<QI::SPGRSequence>());
-        list.addSequence(std::make_shared<QI::SPGREchoSequence>());
-        std::cout << "Available sequences: " << std::endl;
-        cereal::JSONOutputArchive archive(std::cout);
-        archive(QI::SPGRSequence());
-        archive(std::make_shared<QI::SPGRSequence>());
-        archive(cereal::make_nvp("spgr", QI::SPGRSequence()));
-        return EXIT_SUCCESS;
-    }
 
     std::shared_ptr<QI::Model> model = nullptr;
     switch (model_arg.Get()) {
@@ -310,8 +297,10 @@ int main(int argc, char **argv) {
                 << " does not match sequences size " << sequences.count());
     }
     for (size_t i = 0; i < sequences.size(); i++) {
-        if (verbose) std::cout << "Generating sequence: " << std::endl << sequences[i];
-        calcSignal->SetSequence(sequences[i]);
+        if (verbose) std::cout << "Sequence: " << std::endl;
+        cereal::JSONOutputArchive archive(std::cout);
+        archive(sequences[i]);
+        calcSignal->SetSequence(sequences[i].ptr());
         calcSignal->Update();
         QI::VectorVolumeXF::Pointer output = calcSignal->GetOutput();
         output->DisconnectPipeline();
