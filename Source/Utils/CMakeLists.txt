@@ -1,11 +1,10 @@
-option( BUILD_UTILITIES "Build the core utility programs" ON )
+option( BUILD_UTILITIES "Build the utility programs" ON )
 if( ${BUILD_UTILITIES} )
     set( PROGRAMS
-        qihdr qinewimage qidiff
+        qihdr
         qicomplex qiaffine qimask qikfilter qireorder
         qisplitsubjects qiunwrap qipolyfit qipolyimg
-        qi_coil_combine qi_bet qi_rfprofile
-        qisignal )
+        qi_coil_combine qi_bet qi_rfprofile )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)

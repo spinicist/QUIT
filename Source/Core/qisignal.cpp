@@ -32,11 +32,12 @@
 #include "Args.h"
 #include "IO.h"
 
-#include "SequenceGroup.h"
-#include "SPGR.h"
-#include "SpinEcho.h"
-#include "AFI.h"
+#include "SPGRSequence.h"
+#include "SSFPSequence.h"
+#include "MultiEchoSequence.h"
+#include "AFISequence.h"
 #include "MPRAGESequence.h"
+#include "SequenceGroup.h"
 
 /*
  * Signals Filter
@@ -222,19 +223,13 @@ int main(int argc, char **argv) {
 
     if (list_sequences) {
         QI::SequenceGroup list;
-        list.addSequence(std::make_shared<QI::SPGR>());
-        list.addSequence(std::make_shared<QI::SPGREcho>());
-        list.addSequence(std::make_shared<QI::SPGRFinite>());
-        list.addSequence(std::make_shared<QI::MPRAGE>());
-        list.addSequence(std::make_shared<QI::SSFP>());
-        list.addSequence(std::make_shared<QI::SSFPEcho>());
-        list.addSequence(std::make_shared<QI::SSFPFinite>());
-        list.addSequence(std::make_shared<QI::SSFP_GS>());
-        list.addSequence(std::make_shared<QI::AFI>());
-        list.addSequence(std::make_shared<QI::MultiEcho>());
+        list.addSequence(std::make_shared<QI::SPGRSequence>());
+        list.addSequence(std::make_shared<QI::SPGREchoSequence>());
         std::cout << "Available sequences: " << std::endl;
         cereal::JSONOutputArchive archive(std::cout);
-        archive(list);
+        archive(QI::SPGRSequence());
+        archive(std::make_shared<QI::SPGRSequence>());
+        archive(cereal::make_nvp("spgr", QI::SPGRSequence()));
         return EXIT_SUCCESS;
     }
 

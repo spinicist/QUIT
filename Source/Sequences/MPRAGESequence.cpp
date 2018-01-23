@@ -10,7 +10,6 @@
  */
 
 #include "MPRAGESequence.h"
-#include "IO.h"
 
 namespace QI {
 

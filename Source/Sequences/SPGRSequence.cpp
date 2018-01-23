@@ -11,15 +11,15 @@
  *
  */
 
-#include "SPGR.h"
+#include "SPGRSequence.h"
 
 namespace QI {
 
-size_t SPGR::size() const {
+size_t SPGRSequence::size() const {
     return FA.rows();
 }
 
-Eigen::ArrayXcd SPGR::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SPGRSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SPGR(p, FA, TR);
 }
 
@@ -27,11 +27,11 @@ Eigen::ArrayXcd SPGR::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p)
  * With echo-time correction
  */
 
-size_t SPGREcho::size() const {
+size_t SPGREchoSequence::size() const {
     return FA.rows();
 }
 
-Eigen::ArrayXcd SPGREcho::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SPGREchoSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SPGREcho(p, FA, TR, TE);
 }
 
@@ -39,11 +39,11 @@ Eigen::ArrayXcd SPGREcho::signal(std::shared_ptr<Model> m, const Eigen::VectorXd
  * With echo-time and finite-pulse corrections
  */
 
-size_t SPGRFinite::size() const {
+size_t SPGRFiniteSequence::size() const {
     return FA.rows();
 }
 
-Eigen::ArrayXcd SPGRFinite::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SPGRFiniteSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SPGRFinite(p, FA, TR, Trf, TE);
 }
 

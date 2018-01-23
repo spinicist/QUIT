@@ -24,7 +24,7 @@ struct SSFPBase : SequenceBase {
     size_t size() const override { return FA.rows(); }
 };
 
-struct SSFP : SSFPBase {
+struct SSFPSequence : SSFPBase {
     Eigen::ArrayXd PhaseInc;
 
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
@@ -42,12 +42,12 @@ struct SSFP : SSFPBase {
     }
 };
 
-struct SSFPEcho : SSFP {
+struct SSFPEchoSequence : SSFPSequence {
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
 };
 
-struct SSFPFinite : SSFPBase {
+struct SSFPFiniteSequence : SSFPBase {
     double Trf;
     Eigen::ArrayXd PhaseInc;
 
@@ -66,7 +66,7 @@ struct SSFPFinite : SSFPBase {
     }
 };
 
-struct SSFP_GS : SSFPBase {
+struct SSFP_GSSequence : SSFPBase {
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0) const override;
     template<typename Archive>
@@ -79,13 +79,13 @@ struct SSFP_GS : SSFPBase {
 
 CEREAL_REGISTER_TYPE(QI::SSFPBase);
 CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SSFPBase);
-CEREAL_REGISTER_TYPE(QI::SSFP);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFPBase, QI::SSFP);
-CEREAL_REGISTER_TYPE(QI::SSFPEcho);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFP, QI::SSFPEcho);
-CEREAL_REGISTER_TYPE(QI::SSFPFinite);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFPBase, QI::SSFPFinite);
-CEREAL_REGISTER_TYPE(QI::SSFP_GS);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFPBase, QI::SSFP_GS);
+CEREAL_REGISTER_TYPE(QI::SSFPSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFPBase, QI::SSFPSequence);
+CEREAL_REGISTER_TYPE(QI::SSFPEchoSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFPSequence, QI::SSFPEchoSequence);
+CEREAL_REGISTER_TYPE(QI::SSFPFiniteSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFPBase, QI::SSFPFiniteSequence);
+CEREAL_REGISTER_TYPE(QI::SSFP_GSSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SSFPBase, QI::SSFP_GSSequence);
 
 #endif // SEQUENCES_SSFP_H

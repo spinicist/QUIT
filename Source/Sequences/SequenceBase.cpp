@@ -11,9 +11,6 @@
 
 #include "SequenceBase.h"
 
-using namespace std;
-using namespace Eigen;
-
 namespace QI {
 
 size_t SequenceBase::count() const{

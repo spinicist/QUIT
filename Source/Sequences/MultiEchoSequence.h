@@ -16,7 +16,7 @@
 
 namespace QI {
 
-struct MultiEcho : SequenceBase {
+struct MultiEchoSequence : SequenceBase {
     double TR, ESP;
     int NEcho;
     Eigen::ArrayXd TE;
@@ -37,7 +37,7 @@ struct MultiEcho : SequenceBase {
 
 } // End namespace QI
 
-CEREAL_REGISTER_TYPE(QI::MultiEcho);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::MultiEcho);
+CEREAL_REGISTER_TYPE(QI::MultiEchoSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::MultiEchoSequence);
 
 #endif // SEQUENCES_SPINECHO_H

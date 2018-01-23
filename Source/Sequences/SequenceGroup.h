@@ -13,8 +13,6 @@
 #define SEQUENCES_GROUP_H
 
 #include "SequenceBase.h"
-#include "SPGR.h"
-#include "SSFP.h"
 #include <cereal/types/vector.hpp>
 
 namespace QI {

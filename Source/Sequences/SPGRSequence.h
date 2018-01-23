@@ -18,7 +18,7 @@
 
 namespace QI {
 
-struct SPGR : SequenceBase {
+struct SPGRSequence : SequenceBase {
     double TR;
     Eigen::ArrayXd FA;
 
@@ -30,7 +30,7 @@ struct SPGR : SequenceBase {
     }
 };
 
-struct SPGREcho : SequenceBase {
+struct SPGREchoSequence : SequenceBase {
     double TR, TE;
     Eigen::ArrayXd FA;
 
@@ -42,7 +42,7 @@ struct SPGREcho : SequenceBase {
     }
 };
 
-struct SPGRFinite : SequenceBase {
+struct SPGRFiniteSequence : SequenceBase {
     double TR, TE, Trf;
     Eigen::ArrayXd FA;
 
@@ -56,11 +56,11 @@ struct SPGRFinite : SequenceBase {
 
 } // End namespace QI
 
-CEREAL_REGISTER_TYPE(QI::SPGR);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGR);
-CEREAL_REGISTER_TYPE(QI::SPGREcho);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGREcho);
-CEREAL_REGISTER_TYPE(QI::SPGRFinite);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGRFinite);
+CEREAL_REGISTER_TYPE(QI::SPGRSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGRSequence);
+CEREAL_REGISTER_TYPE(QI::SPGREchoSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGREchoSequence);
+CEREAL_REGISTER_TYPE(QI::SPGRFiniteSequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::SPGRFiniteSequence);
 
 #endif // SEQUENCES_SPGR_H

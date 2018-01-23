@@ -16,7 +16,7 @@
 
 namespace QI {
 
-struct AFI : SequenceBase {
+struct AFISequence : SequenceBase {
     double FA, TR1, TR2;
     size_t size() const override { return 2; }
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
@@ -29,7 +29,7 @@ struct AFI : SequenceBase {
 
 } // End namespace QI
 
-CEREAL_REGISTER_TYPE(QI::AFI);
-CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::AFI);
+CEREAL_REGISTER_TYPE(QI::AFISequence);
+CEREAL_REGISTER_POLYMORPHIC_RELATION(QI::SequenceBase, QI::AFISequence);
 
 #endif // SEQUENCES_STEADYSTATE_H

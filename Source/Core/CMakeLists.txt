@@ -14,3 +14,12 @@ add_library( ${CORE} STATIC
 add_dependencies( ${CORE} qi_version )
 target_link_libraries( ${CORE} qi_filters )
 target_include_directories( ${CORE} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> )
+
+set( PROGRAMS qinewimage qidiff qisignal )
+
+foreach( PROGRAM ${PROGRAMS} )
+    add_executable( ${PROGRAM} ${PROGRAM}.cpp )
+    target_link_libraries( ${PROGRAM} qi_sequences qi_core ${ITK_LIBRARIES} )
+endforeach( PROGRAM )
+
+install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
