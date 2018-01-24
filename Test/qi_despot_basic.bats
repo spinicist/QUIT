@@ -9,28 +9,39 @@ setup() {
 @test "DESPOT1-Basic" {
 
 # Setup parameters
-SPGR_FILE="spgr.nii"
-SPGR_FLIP="3 3 20 20"
+SPGR_FILE="spgr$EXT"
+SPGR_FLIP="3,3,20,20"
 SPGR_TR="0.01"
-SIZE="32,32,32"
+SIZE="16,16,16"
 NOISE="0.01"
-qinewimage --size "$SIZE" -g "1 0.8 1.0" PD.nii
-qinewimage --size "$SIZE" -g "0 0.5 1.5" T1.nii
-qisignal --model=1 -v -n --noise=$NOISE << OUT
-PD.nii
-T1.nii
-
-
-
-$SPGR_FILE
-SPGR
-$SPGR_FLIP
-$SPGR_TR
-END
+qinewimage --size "$SIZE" -g "1 0.8 1.0" PD$EXT
+qinewimage --size "$SIZE" -g "0 0.5 1.5" T1$EXT
+qisignal --model=1 -v --noise=$NOISE $SPGR_FILE << OUT
+{
+    "PD": "PD$EXT",
+    "T1": "T1$EXT",
+    "T2": "",
+    "f0": "",
+    "B1": "",
+    "SequenceGroup": {
+        "sequences": [
+            {
+                "SPGR": {
+                    "TR": $SPGR_TR,
+                    "FA": [$SPGR_FLIP]
+                }
+            }
+        ]
+    }
+}
 OUT
-qidespot1 -v -n $SPGR_FILE <<OUT
-$SPGR_FLIP
-$SPGR_TR
+qidespot1 $SPGR_FILE <<OUT
+{
+    "SPGR": {
+        "TR": $SPGR_TR,
+        "FA": [$SPGR_FLIP]
+    }
+}
 OUT
 qidiff --baseline=T1.nii --input=D1_T1.nii --noise=$NOISE --tolerance=30 --verbose
 
@@ -39,11 +50,11 @@ qidiff --baseline=T1.nii --input=D1_T1.nii --noise=$NOISE --tolerance=30 --verbo
 @test "DESPOT2-Basic" {
 
 # Setup parameters
-FILE="ssfp.nii"
-FLIP="15 60"
-PINC="180"
-TR="0.01"
-SIZE="32,32,32"
+SSFP_FILE="ssfp$EXT"
+SSFP_FLIP="15,60"
+SSFP_PINC="180,180"
+SSFP_TR="0.01"
+SIZE="16,16,16"
 NOISE="0.01"
 qinewimage --size "$SIZE" -g "1 0.8 1.0" PD.nii
 [ -e PD.nii ]
@@ -51,23 +62,34 @@ qinewimage --size "$SIZE" -g "0 0.5 1.5" T1.nii
 [ -e T1.nii ]
 qinewimage --size "$SIZE" -g "2 0.02 0.1" T2.nii
 [ -e T2.nii ]
-qisignal --model=1 -v -n --noise=$NOISE << OUT
-PD.nii
-T1.nii
-T2.nii
-
-
-$FILE
-SSFP
-$FLIP
-$PINC
-$TR
-END
+qisignal --model=1 -v --noise=$NOISE $SSFP_FILE << OUT
+{
+    "PD": "PD$EXT",
+    "T1": "T1$EXT",
+    "T2": "T2$EXT",
+    "f0": "",
+    "B1": "",
+    "SequenceGroup": {
+        "sequences": [
+            {
+                "SSFP": {
+                    "TR": $SSFP_TR,
+                    "FA": [$SSFP_FLIP],
+                    "PhaseInc": [$SSFP_PINC]
+                }
+            }
+        ]
+    }
+}
 OUT
-qidespot2 -v -n T1.nii $FILE <<OUT
-$FLIP
-$PINC
-$TR
+qidespot2 T1.nii $SSFP_FILE <<OUT
+{
+    "SSFP": {
+        "TR": $SSFP_TR,
+        "PhaseInc": [$SSFP_PINC],
+        "FA": [$SSFP_FLIP]
+    }
+}
 OUT
 qidiff --baseline=T2.nii --input=D2_T2.nii --noise=$NOISE --tolerance=30 --verbose
 

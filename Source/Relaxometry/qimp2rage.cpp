@@ -63,7 +63,7 @@ public:
         this->SetNthInput(0, const_cast<TImage*>(img));
     }
 
-    void SetSequence(QI::MP2RAGE &sequence) {
+    void SetSequence(QI::MP2RAGESequence &sequence) {
         MPRAGEFunctor<double> con;
         m_T1.clear();
         m_con.clear();
@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGE>(std::cin, verbose);
+    auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGESequence>(std::cin, verbose);
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetSequence(mp2rage_sequence);
     apply->SetInput(MPContrastFilter->GetOutput());

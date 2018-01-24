@@ -3,29 +3,29 @@
 
 int main(int argc, char **argv) {
     QI::SequenceGroup list;
-    std::cout << "Creating temp" << std::endl;
-    auto t = std::make_shared<QI::SPGRSequence>();
-    std::cout << "Adding temp to list" << std::endl;
-    list.addSequence(t);
-    std::cout << "Direct add to list" << std::endl;
     list.addSequence(std::make_shared<QI::SPGREchoSequence>());
-    std::cout << "List sequences: " << std::endl;
-    {
-        cereal::JSONOutputArchive archive(std::cout);
-        archive(list);
-    }
-
+    QI::SPGRSequence spgr_seq;
     std::stringstream temp;
     {
-        cereal::JSONOutputArchive out_archive(temp);
-        out_archive(list);
+        cereal::JSONOutputArchive archive(std::cout);
+        cereal::JSONOutputArchive temp_archive(temp);
+        // archive(cereal::make_nvp(list.name(), list));
+        archive(cereal::make_nvp("PD", std::string("PD.nii")));
+        archive(cereal::make_nvp("T2", std::string("")));
+        // temp_archive(cereal::make_nvp(list.name(), list));
+        // temp_archive(cereal::make_nvp("PD", std::string("PD.nii")));
+        // temp_archive(cereal::make_nvp("T2", std::string("")));
     }
-    {
-        cereal::JSONInputArchive  in_archive(temp);
-        QI::SequenceGroup list2;
-        in_archive(list2);
-        cereal::JSONOutputArchive final_archive(std::cout);
-        final_archive(list2);
-    }
+    std::cout << "\n" << std::endl;
+    // std::cout << "\nNOW TRYING TO READ\n" << std::endl;
+
+    // {
+    //     cereal::JSONInputArchive in_archive(temp);
+    //     std::string PD, T2;
+    //     in_archive(cereal::make_nvp("PD", PD));
+    //     in_archive(cereal::make_nvp("T2", T2));
+    //     auto A = QI::ReadSequence<QI::SequenceGroup>(in_archive, true);
+    //     std::cout << "\nPD = " << PD << "\nT2 = *" << T2 << "*" << std::endl;
+    // }
     return EXIT_SUCCESS;
 }

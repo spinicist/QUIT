@@ -84,7 +84,7 @@ plain text file, and then using either the redirect operator (“<“) or a HERE
 prompts to enter input with the “-n” option. So to run DESPOT1-HIFI you would
 type:
 
-	qidespot1hifi -m mask_file.nii -n spgr_file.nii irspgr_file.nii < in.txt
+	qidespot1hifi -m mask_file.niispgr_file.nii irspgr_file.nii < in.txt
 
 where “in.txt” is a file containing:
 

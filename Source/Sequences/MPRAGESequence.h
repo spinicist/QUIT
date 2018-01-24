@@ -18,43 +18,33 @@
 
 namespace QI {
 
-struct MPRAGE : SequenceBase {
+struct MPRAGESequence : SequenceBase {
     double TR, FA, eta, TI, TD;
     int ETL, k0;
-    std::string &name() const override { static std::string name = "MPRAGE"; return name; }
-    size_t size() const override { return 1; }
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
-    Eigen::ArrayXd weights(const double f0 = 0.0) const override;
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(FA), CEREAL_NVP(eta), CEREAL_NVP(ETL), CEREAL_NVP(k0),
-                CEREAL_NVP(TI), CEREAL_NVP(TD));
-    }
+    QI_SEQUENCE_DECLARE(MPRAGE);
+    size_t size() const override;
 };
 
-struct MP2RAGE {
+struct MP2RAGESequence : SequenceBase {
     double TR;
     int ETL;
     Eigen::ArrayXd FA;
     Eigen::ArrayXd TD;
+
+    QI_SEQUENCE_DECLARE(MP2RAGE);
+    size_t size() const override;
     Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        
-        archive(CEREAL_NVP(TR), CEREAL_NVP(ETL), CEREAL_NVP(FA), CEREAL_NVP(TD));
-    }
 };
 
-class MP3RAGE {
+class MP3RAGESequence : SequenceBase {
     double TR;
     int ETL;
     Eigen::ArrayXd FA;
     Eigen::ArrayXd TD;
+
+    QI_SEQUENCE_DECLARE(MP3RAGE);
+    size_t size() const override;
     Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(ETL), CEREAL_NVP(FA), CEREAL_NVP(TD));
-    }
 };
 
 } // End namespace QI

@@ -23,7 +23,7 @@ SSFP_TR="0.005"
 SSFP_Trf="0.001"
 
 NOISE="0.002"
-qisignal --model=1 -n -v --noise=$NOISE << END_SIG
+qisignal --model=1-v --noise=$NOISE << END_SIG
 PD.nii
 T1.nii
 T2.nii
@@ -41,7 +41,7 @@ echo "$SSFP_FLIP
 $SSFP_PINC
 $SSFP_TR" > fm_in.txt
 
-qidespot2fm -n -v -bB1.nii T1.nii ${SSFP_FILE} --asym < fm_in.txt
+qidespot2fm-v -bB1.nii T1.nii ${SSFP_FILE} --asym < fm_in.txt
 qidiff --baseline=T2.nii --input=FM_T2.nii --noise=$NOISE --tolerance=50 --verbose
 
 }

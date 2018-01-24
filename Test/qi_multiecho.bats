@@ -25,7 +25,7 @@ SPIN_PAR="2.5
 # Create input for Single Component
 echo "$MCSIG_INPUT" > qisignal.in
 NOISE="0.002"
-qisignal --model=1 -n -v --noise=$NOISE << END_SIG
+qisignal --model=1-v --noise=$NOISE << END_SIG
 PD.nii
 T1.nii
 T2.nii
@@ -38,9 +38,9 @@ END
 END_SIG
 
 echo "$SPIN_PAR" > multiecho.in
-qimultiecho $SPIN_FILE -n -v -al -oLL_ < multiecho.in
-qimultiecho $SPIN_FILE -n -v -an -oLM_ < multiecho.in
-qimultiecho $SPIN_FILE -n -v -aa -oAR_   < multiecho.in
+qimultiecho $SPIN_FILE-v -al -oLL_ < multiecho.in
+qimultiecho $SPIN_FILE-v -an -oLM_ < multiecho.in
+qimultiecho $SPIN_FILE-v -aa -oAR_   < multiecho.in
 
 qidiff --baseline=T2.nii --input=LL_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose
 qidiff --baseline=T2.nii --input=LM_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose

@@ -68,11 +68,11 @@ public:
 // Use AutoDiff for this
 class IRCostFunction  {
 protected:
-    const QI::MPRAGE &m_seq;
+    const QI::MPRAGESequence &m_seq;
     const Eigen::ArrayXd m_data;
 
 public:
-    IRCostFunction(const QI::MPRAGE &s, const Eigen::ArrayXd &data) :
+    IRCostFunction(const QI::MPRAGESequence &s, const Eigen::ArrayXd &data) :
         m_seq(s), m_data(data)
     {
     }
@@ -107,11 +107,11 @@ public:
 class HIFIAlgo : public QI::ApplyF::Algorithm {
 private:
     const QI::SPGRSequence &m_spgr;
-    const QI::MPRAGE &m_mprage;
+    const QI::MPRAGESequence &m_mprage;
     double m_lo = 0;
     double m_hi = std::numeric_limits<double>::infinity();
 public:
-    HIFIAlgo(const QI::SPGRSequence &s, const QI::MPRAGE &m, const float hi) :
+    HIFIAlgo(const QI::SPGRSequence &s, const QI::MPRAGESequence &m, const float hi) :
         m_spgr(s), m_mprage(m), m_hi(hi)
     {}
     size_t numInputs() const override  { return 2; }
@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
     auto irImg = QI::ReadVectorImage(QI::CheckPos(ir_path));
 
     auto spgr_sequence = QI::ReadSequence<QI::SPGRSequence>(std::cin, verbose);
-    auto ir_sequence = QI::ReadSequence<QI::MPRAGE>(std::cin, verbose);
+    auto ir_sequence = QI::ReadSequence<QI::MPRAGESequence>(std::cin, verbose);
     auto apply = QI::ApplyF::New();
     auto hifi = std::make_shared<HIFIAlgo>(spgr_sequence, ir_sequence, clamp.Get());
     apply->SetAlgorithm(hifi);

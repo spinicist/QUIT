@@ -20,43 +20,27 @@
 
 namespace QI {
 
-struct SPGRSequence : SequenceBase {
-    double TR;
+struct SPGRBase : SequenceBase {
     Eigen::ArrayXd FA;
-
-    QI_SEQUENCE_NAME(SPGR);
     size_t size() const override;
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(FA));
-    }
 };
 
-struct SPGREchoSequence : SequenceBase {
+struct SPGRSequence : SPGRBase {
+    double TR;
+    
+    QI_SEQUENCE_DECLARE(SPGR);
+};
+
+struct SPGREchoSequence : SPGRBase {
     double TR, TE;
     Eigen::ArrayXd FA;
-
-    QI_SEQUENCE_NAME(SPGREcho);
-    size_t size() const override;
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(TE), CEREAL_NVP(FA));
-    }
+    QI_SEQUENCE_DECLARE(SPGREcho);
 };
 
-struct SPGRFiniteSequence : SequenceBase {
+struct SPGRFiniteSequence : SPGRBase {
     double TR, TE, Trf;
     Eigen::ArrayXd FA;
-
-    QI_SEQUENCE_NAME(SPGRFinite);
-    size_t size() const override;
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(TE), CEREAL_NVP(Trf), CEREAL_NVP(FA));
-    }
+    QI_SEQUENCE_DECLARE(SPGRFinite);
 };
 
 } // End namespace QI

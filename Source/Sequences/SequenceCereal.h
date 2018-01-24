@@ -18,18 +18,28 @@
 
 namespace QI {
 
-template<typename Sequence>
-Sequence ReadSequence(std::istream &is, bool verbose) {
+template<typename TSeq>
+TSeq ReadSequence(std::istream &is, bool verbose) {
     cereal::JSONInputArchive in_archive(is);
-    Sequence sequence;
-    in_archive(sequence);
+    TSeq sequence;
+    in_archive(cereal::make_nvp(sequence.name(), sequence));
 
     if (verbose) {
-        // std::cout << "Read " << sequence.name() << ": " << std::endl;
         cereal::JSONOutputArchive archive(std::cout);
-        archive(sequence);
+        archive(cereal::make_nvp(sequence.name(), sequence));
     }
-    
+    return sequence;
+}
+
+template<typename TSeq>
+TSeq ReadSequence(cereal::JSONInputArchive &in_archive, bool verbose) {
+    TSeq sequence;
+    in_archive(cereal::make_nvp(sequence.name(), sequence));
+
+    if (verbose) {
+        cereal::JSONOutputArchive archive(std::cout);
+        archive(cereal::make_nvp(sequence.name(), sequence));
+    }
     return sequence;
 }
 

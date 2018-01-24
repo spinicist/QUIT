@@ -13,6 +13,10 @@
 
 namespace QI {
 
+size_t SSFPBase::size() const {
+    return FA.rows();
+}
+
 Eigen::ArrayXd SSFPSequence::weights(const double f0) const {
     Eigen::ArrayXd offset = PhaseInc + 2.*M_PI*f0*TR;
     Eigen::ArrayXd weights = 0.75 * (offset / 2).sin().square();
@@ -23,12 +27,36 @@ Eigen::ArrayXcd SSFPSequence::signal(std::shared_ptr<Model> m, const Eigen::Vect
     return m->SSFP(p, FA, TR, PhaseInc);
 }
 
+void SSFPSequence::load(cereal::JSONInputArchive &ar) {
+    ar(cereal::make_nvp("TR", TR));
+    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+}
+
+void SSFPSequence::save(cereal::JSONOutputArchive &ar) const {
+    ar(cereal::make_nvp("TR", TR));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+}
+
 Eigen::ArrayXcd SSFPEchoSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SSFPEcho(p, FA, TR, PhaseInc);
 }
 
 Eigen::ArrayXd SSFPEchoSequence::signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SSFPEchoMagnitude(p, FA, TR, PhaseInc);
+}
+
+void SSFPEchoSequence::load(cereal::JSONInputArchive &ar) {
+    ar(cereal::make_nvp("TR", TR));
+    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+}
+
+void SSFPEchoSequence::save(cereal::JSONOutputArchive &ar) const {
+    ar(cereal::make_nvp("TR", TR));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
 Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
@@ -41,12 +69,36 @@ Eigen::ArrayXcd SSFPFiniteSequence::signal(std::shared_ptr<Model> m, const Eigen
     return m->SSFPFinite(p, FA, TR, Trf, PhaseInc);
 }
 
+void SSFPFiniteSequence::load(cereal::JSONInputArchive &ar) {
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("Trf", Trf));
+    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+}
+
+void SSFPFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("Trf", Trf));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+}
+
 Eigen::ArrayXd SSFPGSSequence::weights(const double f0) const {
     return Eigen::ArrayXd::Ones(size()); // Weight SPGR images higher than SSFP
 }
 
 Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SSFP_GS(p, FA, TR);
+}
+
+void SSFPGSSequence::load(cereal::JSONInputArchive &ar) {
+    ar(cereal::make_nvp("TR", TR));
+    QI_SEQUENCE_LOAD_DEGREES( FA );
+}
+
+void SSFPGSSequence::save(cereal::JSONOutputArchive &ar) const {
+    ar(cereal::make_nvp("TR", TR));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
 }
 
 } // End namespace QI

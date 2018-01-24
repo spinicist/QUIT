@@ -23,7 +23,7 @@ SSFP_TR="0.005"
 SSFP_FLIP="45"
 SSFP_PC="180 270 0 90"
 NOISE="2e-3"
-qisignal -v -n -x --noise=$NOISE -T1 << END_SIG
+qisignal -v-x --noise=$NOISE -T1 << END_SIG
 PD.nii
 T1.nii
 T2.nii

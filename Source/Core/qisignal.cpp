@@ -258,13 +258,14 @@ int main(int argc, char **argv) {
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
     if (verbose) std::cout << "Loading parameters." << std::endl;
+    cereal::JSONInputArchive input(std::cin);
     for (size_t i = 0; i < model->nParameters(); i++) {
-        if (verbose) std::cout << "Enter path to " << model->ParameterNames()[i] << " file (blank for default value): " << std::flush;
-        std::string filename;
-        getline(std::cin, filename);
-        if (filename != "") {
-            if (verbose) std::cout << "Opening " << filename << std::endl;
-            QI::VolumeF::Pointer param = QI::ReadImage(filename);
+        std::string par_filename;
+        std::string par_name = model->ParameterNames()[i];
+        input(cereal::make_nvp(par_name, par_filename));
+        if (par_filename != "") {
+            if (verbose) std::cout << "Opening " << par_filename << std::endl;
+            QI::VolumeF::Pointer param = QI::ReadImage(par_filename);
             if (reference) {
                 if (verbose) std::cout << "Resampling to reference" << std::endl;
                 typedef itk::ResampleImageFilter<QI::VolumeF, QI::VolumeF, double> TResampler;
@@ -284,22 +285,26 @@ int main(int argc, char **argv) {
                 calcSignal->SetInput(i, param);
             }
         } else {
-            if (verbose) std::cout << "Using default value: " << model->Default()[i] << std::endl;
+            if (verbose) std::cout << "Using default " << par_name << " value: " << model->Default()[i] << std::endl;
         }
     }
 
     /***************************************************************************
      * Set up sequences
      **************************************************************************/
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, verbose);
+    auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, false);
     if (filenames.Get().size() != sequences.count()) {
         QI_FAIL("Input filenames size " << filenames.Get().size()
                 << " does not match sequences size " << sequences.count());
+    } else {
+        if (verbose) std::cout << "Found " << sequences.count() << " sequences to generate" << std::endl;
     }
-    for (size_t i = 0; i < sequences.size(); i++) {
-        if (verbose) std::cout << "Sequence: " << std::endl;
-        cereal::JSONOutputArchive archive(std::cout);
-        archive(sequences[i]);
+    for (size_t i = 0; i < sequences.count(); i++) {
+        if (verbose) {
+            std::cout << "Sequence: " << std::endl;
+            cereal::JSONOutputArchive archive(std::cout);
+            archive(sequences[i]);
+        }
         calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         QI::VectorVolumeXF::Pointer output = calcSignal->GetOutput();

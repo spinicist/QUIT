@@ -21,20 +21,8 @@ struct MultiEchoSequence : SequenceBase {
     double TR, ESP;
     int NEcho;
     Eigen::ArrayXd TE;
-
-    QI_SEQUENCE_NAME(MultiEcho);
-    size_t size() const override { return NEcho; }
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
-    template<typename Archive>
-    void save(Archive &archive) const {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(ESP), CEREAL_NVP(NEcho));
-    }
-    template<typename Archive>
-    void load(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(ESP), CEREAL_NVP(NEcho));
-        this->TE = Eigen::ArrayXd::LinSpaced(NEcho, ESP, ESP*NEcho);
-    }
-
+    QI_SEQUENCE_DECLARE(MultiEcho);
+    size_t size() const override;
 };
 
 } // End namespace QI

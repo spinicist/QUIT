@@ -33,11 +33,11 @@ struct SequenceGroup : SequenceBase {
 
     void addSequence(const std::shared_ptr<SequenceBase> &s);
 
-    void save(cereal::JSONOutputArchive &archive) const {
+    void save(cereal::JSONOutputArchive &archive) const override {
         archive(CEREAL_NVP(sequences));
     }
 
-    void load(cereal::JSONInputArchive &archive) {
+    void load(cereal::JSONInputArchive &archive) override {
         archive(CEREAL_NVP(sequences));
     }
 

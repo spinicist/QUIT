@@ -13,20 +13,89 @@
 
 namespace QI {
 
-Eigen::ArrayXcd MPRAGE::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const {
+size_t MPRAGESequence::size() const { return 1; }
+
+Eigen::ArrayXcd MPRAGESequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const {
     return m->MPRAGE(par, FA, TR, ETL, k0, eta, TI, TD);
 }
 
-Eigen::ArrayXd MPRAGE::weights(const double f0) const {
-    return Eigen::ArrayXd::Ones(size()) * 1.0;
+void MPRAGESequence::load(cereal::JSONInputArchive &ar) {
+    double FA_deg;
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("TI", TI));
+    ar(cereal::make_nvp("TD", TD));
+    ar(cereal::make_nvp("eta", eta));
+    ar(cereal::make_nvp("FA", FA_deg));
+    ar(cereal::make_nvp("ETL", ETL));
+    ar(cereal::make_nvp("k0", k0));
+    FA = FA_deg * M_PI / 180.;
 }
 
-Eigen::ArrayXcd MP2RAGE::signal(const double M0, const double T1, const double B1, const double eta) const {
+void MPRAGESequence::save(cereal::JSONOutputArchive &ar) const {
+    double FA_deg = FA * 180. / M_PI;
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("TI", TI));
+    ar(cereal::make_nvp("TD", TD));
+    ar(cereal::make_nvp("eta", eta));
+    ar(cereal::make_nvp("FA", FA_deg));
+    ar(cereal::make_nvp("ETL", ETL));
+    ar(cereal::make_nvp("k0", k0));
+}
+
+/*
+ * MP2RAGE
+ */
+
+size_t MP2RAGESequence::size() const { return 2; }
+
+Eigen::ArrayXcd MP2RAGESequence::signal(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+    QI_FAIL("Not implemented");
+}
+
+Eigen::ArrayXcd MP2RAGESequence::signal(const double M0, const double T1, const double B1, const double eta) const {
     return One_MP2RAGE(FA, TR, ETL, TD, M0, T1, B1, eta);
 }
 
-Eigen::ArrayXcd MP3RAGE::signal(const double M0, const double T1, const double B1, const double eta) const {
+void MP2RAGESequence::load(cereal::JSONInputArchive &ar) {
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("TD", TD));
+    ar(cereal::make_nvp("ETL", ETL));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+}
+
+void MP2RAGESequence::save(cereal::JSONOutputArchive &ar) const {
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("TD", TD));
+    ar(cereal::make_nvp("ETL", ETL));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+}
+
+/*
+ * MP3RAGE
+ */
+
+size_t MP3RAGESequence::size() const { return 3; }
+
+Eigen::ArrayXcd MP3RAGESequence::signal(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+    QI_FAIL("Not implemented");
+}
+
+Eigen::ArrayXcd MP3RAGESequence::signal(const double M0, const double T1, const double B1, const double eta) const {
     return One_MP3RAGE(FA, TR, ETL, TD, M0, T1, B1, eta);
+}
+
+void MP3RAGESequence::load(cereal::JSONInputArchive &ar) {
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("TD", TD));
+    ar(cereal::make_nvp("ETL", ETL));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+}
+
+void MP3RAGESequence::save(cereal::JSONOutputArchive &ar) const {
+    ar(cereal::make_nvp("TR", TR));
+    ar(cereal::make_nvp("TD", TD));
+    ar(cereal::make_nvp("ETL", ETL));
+    QI_SEQUENCE_SAVE_DEGREES( FA );
 }
 
 } // End namespace QI

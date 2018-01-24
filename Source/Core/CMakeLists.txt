@@ -15,8 +15,7 @@ add_dependencies( ${CORE} qi_version )
 target_link_libraries( ${CORE} qi_filters )
 target_include_directories( ${CORE} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> )
 
-set( PROGRAMS qinewimage qisignal qidiff )
-#set( PROGRAMS qitest )
+set( PROGRAMS qinewimage qisignal qidiff qitest )
 
 foreach( PROGRAM ${PROGRAMS} )
     add_executable( ${PROGRAM} ${PROGRAM}.cpp )

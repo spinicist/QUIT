@@ -1,6 +1,8 @@
 #DATADIR="$BATS_TEST_DIRNAME/basic"
 DATADIR="$BATS_TMPDIR"
 BINDIR="$BATS_TEST_DIRNAME/.."
+EXT=".nii.gz"
+export QUIT_EXT="$EXT"
 
 init_tests() {
     if [ -e ./qidiff ]; then

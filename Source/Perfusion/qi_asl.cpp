@@ -20,9 +20,14 @@
 #include "SequenceCereal.h"
 #include <cereal/archives/json.hpp>
 
-struct CASLSequence {
+struct CASLSequence : QI::SequenceBase {
     double TR, label_time, post_label_delay;
 
+    QI_SEQUENCE_NAME(CASLSequence);
+    size_t size() const override { return 0; };
+    Eigen::ArrayXcd signal(const std::shared_ptr<QI::Model> m, const Eigen::VectorXd &p) const override {
+        QI_FAIL("Not Implemented");
+    }
     template<typename Archive>
     void serialize(Archive &archive) {
         archive(CEREAL_NVP(TR),

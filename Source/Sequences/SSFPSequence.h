@@ -21,32 +21,18 @@ namespace QI {
 struct SSFPBase : SequenceBase {
     double TR;
     Eigen::ArrayXd FA;
-
-    size_t size() const override { return FA.rows(); }
+    size_t size() const override;
 };
 
 struct SSFPSequence : SSFPBase {
     Eigen::ArrayXd PhaseInc;
 
-    QI_SEQUENCE_NAME(SSFP);
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    QI_SEQUENCE_DECLARE(SSFP);
     Eigen::ArrayXd weights(const double f0) const override;
-    template<typename Archive>
-    void save(Archive &archive) const {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(FA), CEREAL_NVP(PhaseInc));
-    }
-    template<typename Archive>
-    void load(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(FA), CEREAL_NVP(PhaseInc));
-        if (FA.rows() != PhaseInc.rows()) {
-            QI_FAIL("Number of flip-angles (FA) must equal number of phase-increments (Phase)");
-        }
-    }
 };
 
 struct SSFPEchoSequence : SSFPSequence {
-    QI_SEQUENCE_NAME(SSFPEcho);
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    QI_SEQUENCE_DECLARE(SSFPEcho);
     Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
 };
 
@@ -54,30 +40,13 @@ struct SSFPFiniteSequence : SSFPBase {
     double Trf;
     Eigen::ArrayXd PhaseInc;
 
-    QI_SEQUENCE_NAME(SSFPFinite);
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    QI_SEQUENCE_DECLARE(SSFPFinite);
     Eigen::ArrayXd weights(const double f0) const override;
-    template<typename Archive>
-    void save(Archive &archive) const {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(Trf), CEREAL_NVP(FA), CEREAL_NVP(PhaseInc));
-    }
-    template<typename Archive>
-    void load(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(Trf), CEREAL_NVP(FA), CEREAL_NVP(PhaseInc));
-        if (FA.rows() != PhaseInc.rows()) {
-            QI_FAIL("Number of flip-angles (FA) must equal number of phase-increments (Phase)");
-        }
-    }
 };
 
 struct SSFPGSSequence : SSFPBase {
-    QI_SEQUENCE_NAME(SSFPGS);
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    QI_SEQUENCE_DECLARE(SSFPGS);
     Eigen::ArrayXd weights(const double f0) const override;
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(TR), CEREAL_NVP(FA));
-    }
 };
 
 } // End namespace QI
