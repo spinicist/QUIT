@@ -16,11 +16,12 @@ WD=$PWD
 # First download Eigen & ITK
 EXTERNAL="$WD/External"
 cd $EXTERNAL
-git submodule init && git submodule update
+git submodule update --init --depth=1
 
-# Eigen and Args are header only, no building required
+# These are header only, no building required
 EIGEN_DIR="$EXTERNAL/eigen"
 ARGS_DIR="$EXTERNAL/args"
+CEREAL_DIR="$EXTERNAL/cereal/include"
 
 # Ceres
 CERES_DIR="$EXTERNAL/ceres-solver"
@@ -55,7 +56,7 @@ cd $WD
 QUIT_BLD_DIR="build"
 QUIT_OPTS="-DCMAKE_BUILD_TYPE=Release\
     -DEIGEN3_INCLUDE_DIR=$EIGEN_DIR -DCeres_DIR=$CERES_BUILD_DIR\
-    -DITK_DIR=$ITK_BUILD_DIR -DArgs_DIR=$ARGS_DIR"
+    -DITK_DIR=$ITK_BUILD_DIR -DArgs_DIR=$ARGS_DIR -DCereal_DIR=$CEREAL_DIR"
 mkdir -p $QUIT_BLD_DIR
 cd $QUIT_BLD_DIR
 cmake $WD $QUIT_OPTS

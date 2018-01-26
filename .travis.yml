@@ -1,0 +1,45 @@
+language:
+  - cpp
+
+branches:
+  only:
+    - development
+    - modules
+
+notifications:
+  email:
+    on_success: never
+    on_fail: always
+
+git:
+  depth: 1
+
+  include:
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
+      env:
+         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env:
+         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+    - os: osx
+      osx_image: xcode8
+
+before_install:
+
+script:
+  - ./easy_build.sh
+  - External/bats/bin/bats Test
