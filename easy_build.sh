@@ -44,7 +44,9 @@ make -j 2
 ITK_DIR="$EXTERNAL/ITK"
 ITK_BUILD_DIR="$ITK_DIR/build"
 ITK_OPTS="-DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF\
-           -DBUILD_TESTING=OFF -DModule_ITKReview=On\
+           -DBUILD_TESTING=OFF -DITK_BUILD_DEFAULT_MODULES=OFF\
+           -DITKGroup_Core=On -DModule_ITKReview=On\
+           -DModule_ITKFFT=On\
            -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_FLAGS=-fpermissive"
 mkdir -p $ITK_BUILD_DIR
 cd $ITK_BUILD_DIR
