@@ -102,9 +102,6 @@ public:
         }
         const Eigen::ArrayXd CBF = (6000 * m_lambda * diff * exp(m_CASL.post_label_delay / m_T1)) / 
                            (2. * m_alpha * m_T1 * SI_PD * (1. - exp(-m_CASL.label_time / m_T1)));
-        // std::cout << "l " << m_lambda << " diff " << diff << " PLD " << m_PLD << " T1 " << m_T1 << " e(PLD) " << exp(m_PLD / m_T1) << std::endl;
-        // std::cout << "a " << m_alpha << " PD " << SI_PD << " LD " << m_LD << " (1 - exp()) " << (1. - exp(-m_LD / m_T1)) << std::endl;
-        // std::cout << "CBF: " << CBF << std::endl;
         if (m_average_timeseries) {
             outputs[0][0] = CBF.mean();
         } else {
@@ -145,7 +142,7 @@ int main(int argc, char **argv) {
     QI::VolumeF::Pointer T1_tissue = ITK_NULLPTR;
     if (T1_tissue_path) {
         if (verbose) std::cout << "Reading tissue T1 map: " << T1_tissue_path.Get() << std::endl;
-        QI::ReadImage(T1_tissue_path.Get());
+        T1_tissue = QI::ReadImage(T1_tissue_path.Get());
     }
 
     auto sequence = QI::ReadSequence<CASLSequence>(std::cin, verbose);
