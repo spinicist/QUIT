@@ -35,7 +35,7 @@ struct SequenceBase {
 
 #define QI_SEQUENCE_DECLARE( N ) \
     std::string &name() const override { static std::string name = #N; return name; }\
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;\
+    Eigen::ArrayXcd signal(std::shared_ptr<QI::Model> m, const Eigen::VectorXd &par) const override;\
     void load(cereal::JSONInputArchive &ar) override;\
     void save(cereal::JSONOutputArchive &ar) const override;
 

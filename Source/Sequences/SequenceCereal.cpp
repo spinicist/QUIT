@@ -2,28 +2,39 @@
 #include "SequenceCereal.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
+#include "MultiEchoSequence.h"
 
 namespace cereal {
 
 void save(cereal::JSONOutputArchive &ar, std::shared_ptr<QI::SequenceBase> const &s) {
-    if (s->name() == "SPGR") { ar(cereal::make_nvp("SPGR", *std::static_pointer_cast<QI::SPGRSequence>(s))); }
-    else if (s->name() == "SPGREcho") { ar(cereal::make_nvp("SPGREcho", *std::static_pointer_cast<QI::SPGREchoSequence>(s))); }
-    else if (s->name() == "SPGRFiniteEcho") { ar(cereal::make_nvp("SPGRFinite", *std::static_pointer_cast<QI::SPGRFiniteSequence>(s))); }
-    else if (s->name() == "SSFP") { ar(cereal::make_nvp("SSFP", *std::static_pointer_cast<QI::SSFPSequence>(s))); }
-    else if (s->name() == "SSFPEcho") { ar(cereal::make_nvp("SSFPEcho", *std::static_pointer_cast<QI::SSFPEchoSequence>(s))); }
-    else if (s->name() == "SSFPFinite") { ar(cereal::make_nvp("SSFPFinite", *std::static_pointer_cast<QI::SSFPFiniteSequence>(s))); }
-    else { QI_FAIL("Unimplemented read for sequence type: " << s->name()); }
+    #define QI_SAVE( NAME ) \
+        (s->name() == #NAME ) { ar(cereal::make_nvp(s->name(), *std::static_pointer_cast< QI::NAME ## Sequence >(s))); }
+    if QI_SAVE( SPGR )
+    else if QI_SAVE( SPGREcho )
+    else if QI_SAVE( SPGRFinite )
+    else if QI_SAVE( SSFP )
+    else if QI_SAVE( SSFPEcho )
+    else if QI_SAVE( SSFPFinite )
+    else if QI_SAVE( SSFPGS )
+    else if QI_SAVE( MultiEcho )
+    else { QI_FAIL("Unimplemented save for sequence type: " << s->name()); }
+    #undef QI_SAVE
 }
 
 void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::SequenceBase> &sb) {
     std::string seq_type = ar.getNodeName();
-    if (seq_type == "SPGR") { QI::SPGRSequence s; ar(s); sb = std::make_shared<QI::SPGRSequence>(s); }
-    else if (seq_type == "SPGREcho") { QI::SPGREchoSequence s; ar(s); sb = std::make_shared<QI::SPGREchoSequence>(s); }
-    else if (seq_type == "SPGRFiniteEcho") { QI::SPGRFiniteSequence s; ar(s); sb = std::make_shared<QI::SPGRFiniteSequence>(s); }
-    else if (seq_type == "SSFP") { QI::SSFPSequence s; ar(s); sb = std::make_shared<QI::SSFPSequence>(s); }
-    else if (seq_type == "SSFPEcho") { QI::SSFPEchoSequence s; ar(s); sb = std::make_shared<QI::SSFPEchoSequence>(s); }
-    else if (seq_type == "SSFPFinite") { QI::SSFPFiniteSequence s; ar(s); sb = std::make_shared<QI::SSFPFiniteSequence>(s); }
+    #define QI_LOAD( NAME ) \
+        (seq_type == #NAME ) { QI::NAME ## Sequence s; ar(s); sb = std::make_shared< QI::NAME ## Sequence >(s); }
+    if QI_LOAD( SPGR )
+    else if QI_LOAD( SPGREcho )
+    else if QI_LOAD( SPGRFinite )
+    else if QI_LOAD( SSFP )
+    else if QI_LOAD( SSFPEcho )
+    else if QI_LOAD( SSFPFinite )
+    else if QI_LOAD( SSFPGS )
+    else if QI_LOAD( MultiEcho )
     else { QI_FAIL("Unimplemented load for sequence type: " << seq_type); }
+    #undef QI_LOAD
 }
 
 } // End namespace cereal

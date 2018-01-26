@@ -9,39 +9,51 @@ setup() {
 @test "DESPOT2-FM" {
 
 SIZE="16,16,17"
-qinewimage PD.nii --size "$SIZE" -f 1.0
-qinewimage T1.nii --size "$SIZE" -f 1.0
-qinewimage T2.nii --size "$SIZE" -g "1 0.025 0.125"
-qinewimage f0.nii --size "$SIZE" -g "2 -150.0 150.0"
-qinewimage B1.nii --size "$SIZE" -f 1.0
+qinewimage PD$EXT --size "$SIZE" -f 1.0
+qinewimage T1$EXT --size "$SIZE" -f 1.0
+qinewimage T2$EXT --size "$SIZE" -g "1 0.025 0.125"
+qinewimage f0$EXT --size "$SIZE" -g "2 -150.0 150.0"
+qinewimage B1$EXT --size "$SIZE" -f 1.0
 
 # Setup parameters
-SSFP_FILE="ssfp.nii"
-SSFP_FLIP="12 65"
-SSFP_PINC="0 90 180 270"
+SSFP_FILE="ssfp$EXT"
+SSFP_FLIP="12,12,12,12,65,65,65,65"
+SSFP_PINC="0,90,180,270,0,90,180,270"
 SSFP_TR="0.005"
 SSFP_Trf="0.001"
 
 NOISE="0.002"
-qisignal --model=1-v --noise=$NOISE << END_SIG
-PD.nii
-T1.nii
-T2.nii
-f0.nii
-B1.nii
-$SSFP_FILE
-SSFP_ECHO
-$SSFP_FLIP
-$SSFP_PINC
-$SSFP_TR
-END
+qisignal --verbose --model=1 --noise=$NOISE $SSFP_FILE << END_SIG
+{
+    "PD": "PD$EXT",
+    "T1": "T1$EXT",
+    "T2": "T2$EXT",
+    "f0": "f0$EXT",
+    "B1": "",
+    "SequenceGroup": {
+        "sequences": [
+            {
+                "SSFP": {
+                    "TR": $SSFP_TR,
+                    "FA": [$SSFP_FLIP],
+                    "PhaseInc": [$SSFP_PINC]
+                }
+            }
+        ]
+    }
+}
 END_SIG
 
-echo "$SSFP_FLIP
-$SSFP_PINC
-$SSFP_TR" > fm_in.txt
+qidespot2fm --verbose -bB1.nii T1.nii ${SSFP_FILE} --asym << END_FM
+{
+    "SSFP": {
+        "TR": $SSFP_TR,
+        "PhaseInc": [$SSFP_PINC],
+        "FA": [$SSFP_FLIP]
+    }
+}
+END_FM
 
-qidespot2fm-v -bB1.nii T1.nii ${SSFP_FILE} --asym < fm_in.txt
 qidiff --baseline=T2.nii --input=FM_T2.nii --noise=$NOISE --tolerance=50 --verbose
 
 }

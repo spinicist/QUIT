@@ -11,6 +11,12 @@
 
 #include "SSFPSequence.h"
 
+#define FA_PHASE_CHECK()\
+    if (FA.rows() != PhaseInc.rows()) {\
+        QI_FAIL("While reading " << this->name() << " number of phase increments " << PhaseInc.rows() <<\
+                " did not match the number of flip angles " << FA.rows() );\
+    }
+
 namespace QI {
 
 size_t SSFPBase::size() const {
@@ -31,6 +37,7 @@ void SSFPSequence::load(cereal::JSONInputArchive &ar) {
     ar(cereal::make_nvp("TR", TR));
     QI_SEQUENCE_LOAD_DEGREES( FA );
     QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    FA_PHASE_CHECK()
 }
 
 void SSFPSequence::save(cereal::JSONOutputArchive &ar) const {
@@ -51,6 +58,7 @@ void SSFPEchoSequence::load(cereal::JSONInputArchive &ar) {
     ar(cereal::make_nvp("TR", TR));
     QI_SEQUENCE_LOAD_DEGREES( FA );
     QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    FA_PHASE_CHECK()
 }
 
 void SSFPEchoSequence::save(cereal::JSONOutputArchive &ar) const {
@@ -74,6 +82,7 @@ void SSFPFiniteSequence::load(cereal::JSONInputArchive &ar) {
     ar(cereal::make_nvp("Trf", Trf));
     QI_SEQUENCE_LOAD_DEGREES( FA );
     QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    FA_PHASE_CHECK()
 }
 
 void SSFPFiniteSequence::save(cereal::JSONOutputArchive &ar) const {

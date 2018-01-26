@@ -16,7 +16,6 @@
 #include <cereal/archives/json.hpp>
 #include "SequenceBase.h"
 #include "SequenceCereal.h"
-#include "SPGRSequence.h"
 #include "Macro.h"
 
 namespace QI {

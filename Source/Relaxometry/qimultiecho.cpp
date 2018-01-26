@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> threshPD(parser, "THRESHOLD PD", "Only output maps when PD exceeds threshold value", {'t', "tresh"});
     QI::ParseArgs(parser, argc, argv);
-
+    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
     std::shared_ptr<RelaxAlgo> algo = ITK_NULLPTR;
     switch (algorithm.Get()) {
         case 'l': algo = std::make_shared<LogLinAlgo>(); if (verbose) std::cout << "LogLin algorithm selected." << std::endl; break;

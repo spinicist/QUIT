@@ -219,7 +219,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model (1/2/3)", {'M',"model"}, 1);
     args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
     QI::ParseArgs(parser, argc, argv);
-
+    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
     std::shared_ptr<QI::Model> model = nullptr;
     switch (model_arg.Get()) {
         case 1: model = std::make_shared<QI::SCD>(); break;
@@ -257,7 +257,7 @@ int main(int argc, char **argv) {
         auto monitor = QI::GenericMonitor::New();
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
-    if (verbose) std::cout << "Loading parameters." << std::endl;
+    if (verbose) std::cout << "Reading model parameter filenames" << std::endl;
     cereal::JSONInputArchive input(std::cin);
     for (size_t i = 0; i < model->nParameters(); i++) {
         std::string par_filename;
@@ -292,6 +292,7 @@ int main(int argc, char **argv) {
     /***************************************************************************
      * Set up sequences
      **************************************************************************/
+    if (verbose) std::cout << "Reading sequences" << std::endl;
     auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, false);
     if (filenames.Get().size() != sequences.count()) {
         QI_FAIL("Input filenames size " << filenames.Get().size()
@@ -301,9 +302,12 @@ int main(int argc, char **argv) {
     }
     for (size_t i = 0; i < sequences.count(); i++) {
         if (verbose) {
-            std::cout << "Sequence: " << std::endl;
-            cereal::JSONOutputArchive archive(std::cout);
-            archive(sequences[i]);
+            std::cout << "Setting sequence:\n";
+            {   // cereal archives do not flush their output until destructed
+                cereal::JSONOutputArchive archive(std::cout);
+                archive(cereal::make_nvp("sequence", sequences[i]));
+            }
+            std::cout << std::endl;
         }
         calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();

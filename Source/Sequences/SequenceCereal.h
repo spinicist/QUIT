@@ -19,14 +19,17 @@
 namespace QI {
 
 template<typename TSeq>
-TSeq ReadSequence(std::istream &is, bool verbose) {
+TSeq ReadSequence(std::istream &is, bool verbose, std::ostream &os = std::cout) {
     cereal::JSONInputArchive in_archive(is);
     TSeq sequence;
     in_archive(cereal::make_nvp(sequence.name(), sequence));
 
     if (verbose) {
-        cereal::JSONOutputArchive archive(std::cout);
-        archive(cereal::make_nvp(sequence.name(), sequence));
+        {   // Archives don't fully flush until destruction
+            cereal::JSONOutputArchive archive(os);
+            archive(cereal::make_nvp(sequence.name(), sequence));
+        }
+        os << std::endl;
     }
     return sequence;
 }

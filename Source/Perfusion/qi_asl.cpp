@@ -23,18 +23,26 @@
 struct CASLSequence : QI::SequenceBase {
     double TR, label_time, post_label_delay;
 
-    QI_SEQUENCE_NAME(CASLSequence);
-    size_t size() const override { return 0; };
-    Eigen::ArrayXcd signal(const std::shared_ptr<QI::Model> m, const Eigen::VectorXd &p) const override {
-        QI_FAIL("Not Implemented");
-    }
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(TR),
-                CEREAL_NVP(label_time),
-                CEREAL_NVP(post_label_delay));
-    }
+    QI_SEQUENCE_DECLARE(CASL);
+    size_t size() const override { return 1; };
 };
+
+void CASLSequence::load(cereal::JSONInputArchive &ar) {
+    ar(CEREAL_NVP(TR),
+       CEREAL_NVP(label_time),
+       CEREAL_NVP(post_label_delay));
+}
+
+void CASLSequence::save(cereal::JSONOutputArchive &ar) const {
+    ar(CEREAL_NVP(TR),
+       CEREAL_NVP(label_time),
+       CEREAL_NVP(post_label_delay));
+}
+
+Eigen::ArrayXcd CASLSequence::signal(const std::shared_ptr<QI::Model> m, const Eigen::VectorXd &p) const {
+    QI_FAIL("Not Implemented");
+}
+
 
 class CASLAlgo : public QI::ApplyVectorF::Algorithm {
 protected:
@@ -117,9 +125,7 @@ public:
 int main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Calculates CBF from ASL data.\nhttp://github.com/spinicist/QUIT");
-    
     args::Positional<std::string> input_path(parser, "ASL_FILE", "Input ASL file");
-    
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
@@ -132,7 +138,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> lambda(parser, "LAMBDA", "Blood-brain partition co-efficent, default 0.9 mL/g", {'l', "lambda"}, 0.9);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv);
-
+    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
     if (verbose) std::cout << "Reading ASL data from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
 
@@ -143,9 +149,9 @@ int main(int argc, char **argv) {
     }
 
     auto sequence = QI::ReadSequence<CASLSequence>(std::cin, verbose);
-    auto apply = QI::ApplyVectorF::New();
     std::shared_ptr<CASLAlgo> algo = std::make_shared<CASLAlgo>(sequence, T1_blood.Get(), alpha.Get(), lambda.Get(),
                                                                 input->GetNumberOfComponentsPerPixel(), average);
+    auto apply = QI::ApplyVectorF::New();
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetConst(0, T1_tissue);
