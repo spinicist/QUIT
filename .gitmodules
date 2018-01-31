@@ -19,3 +19,5 @@
 [submodule "External/cereal"]
 	path = External/cereal
 	url = https://github.com/USCiLab/cereal.git
+[submodule "ITK"]
+	shallow = true
