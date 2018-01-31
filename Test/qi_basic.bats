@@ -6,10 +6,6 @@ setup() {
     init_tests
 }
 
-@test "Environment Check" {
-    [ -n "$FSLDIR" ]
-}
-
 @test "Create Images" {
     # Setup parameters
     command echo $DATADIR

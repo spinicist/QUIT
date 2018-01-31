@@ -108,7 +108,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         const double B1 = consts[1];
         Eigen::ArrayXXd localBounds = m_bounds;
         Eigen::ArrayXd weights = Eigen::ArrayXd::Ones(m_sequence.size());
-        if (isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
+        if (std::isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
             localBounds.row(m_model->ParameterIndex("f0")) += f0;
             weights = m_sequence.weights(f0);
         }

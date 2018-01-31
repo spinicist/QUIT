@@ -55,10 +55,18 @@ make -j 2
 
 cd $WD
 # Now build QUIT
+
+# User can specify install directory (mainly for Travis)
+if [ -n "$1" ]; then
+    QUIT_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=$1"
+else
+    QUIT_INSTALL_DIR=""
+fi
 QUIT_BLD_DIR="build"
 QUIT_OPTS="-DCMAKE_BUILD_TYPE=Release\
     -DEIGEN3_INCLUDE_DIR=$EIGEN_DIR -DCeres_DIR=$CERES_BUILD_DIR\
-    -DITK_DIR=$ITK_BUILD_DIR -DArgs_DIR=$ARGS_DIR -DCereal_DIR=$CEREAL_DIR"
+    -DITK_DIR=$ITK_BUILD_DIR -DArgs_DIR=$ARGS_DIR -DCereal_DIR=$CEREAL_DIR
+    $QUIT_INSTALL_DIR"
 mkdir -p $QUIT_BLD_DIR
 cd $QUIT_BLD_DIR
 cmake $WD $QUIT_OPTS

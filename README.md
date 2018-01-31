@@ -1,6 +1,6 @@
 # QUIT - QUantitative Imaging Tools #
 
-[![Build Status](https://travis-ci.org/spinicist/quit.svg?branch=modules)](https://travis-ci.org/spinicist/quit)
+[![Build Status](https://travis-ci.org/spinicist/QUIT.svg?branch=modules)](https://travis-ci.org/spinicist/QUIT)
 
 Credit / Blame / Contact - Tobias Wood - tobias.wood@kcl.ac.uk
 

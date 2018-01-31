@@ -84,7 +84,7 @@ public:
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
-        if (isfinite(T1) && (T1 > m_sequence.TR)) {
+        if (std::isfinite(T1) && (T1 > m_sequence.TR)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
