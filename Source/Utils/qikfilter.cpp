@@ -28,11 +28,12 @@
 #include "itkExtractImageFilter.h"
 #include "itkPasteImageFilter.h"
 #include "itkCastImageFilter.h"
+#include "itkTileImageFilter.h"
 
 #include "Types.h"
 #include "Util.h"
 #include "Kernels.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 
 using namespace std;
@@ -256,12 +257,14 @@ int main(int argc, char **argv) {
         mult->Update();
         if (save_kspace) {
             auto shift_filter = TFFTShift::New();
+            auto cast_filter = itk::CastImageFilter<QI::VolumeXD, QI::VolumeXF>::New();
             shift_filter->SetInput(forward->GetOutput());
-            shift_filter->Update();
-            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_before" + QI::OutExt());
+            cast_filter->SetInput(shift_filter->GetOutput());
+            cast_filter->Update();
+            QI::WriteMagnitudeImage(cast_filter->GetOutput(), out_base + "_kspace_before" + QI::OutExt());
             shift_filter->SetInput(mult->GetOutput());
-            shift_filter->Update();
-            QI::WriteMagnitudeImage(shift_filter->GetOutput(), out_base + "_kspace_after" + QI::OutExt());
+            cast_filter->Update();
+            QI::WriteMagnitudeImage(cast_filter->GetOutput(), out_base + "_kspace_after" + QI::OutExt());
         }
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
@@ -295,7 +298,10 @@ int main(int argc, char **argv) {
         if (verbose) cout << "Saving filter kernel to: " << kernel_path << endl;
         auto shift_filter = itk::FFTShiftImageFilter<QI::VolumeD, QI::VolumeD>::New();
         shift_filter->SetInput(tkernel->GetOutput());
-        QI::WriteImage(shift_filter->GetOutput(), kernel_path);
+        auto cast_filter = itk::CastImageFilter<QI::VolumeD, QI::VolumeF>::New();
+        cast_filter->SetInput(shift_filter->GetOutput());
+        cast_filter->Update();
+        QI::WriteImage(cast_filter->GetOutput(), kernel_path);
     }
     return EXIT_SUCCESS;
 }

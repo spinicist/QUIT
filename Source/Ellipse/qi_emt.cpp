@@ -13,6 +13,7 @@
 #include <Eigen/Dense>
 
 #include "Util.h"
+#include "ImageIO.h"
 #include "IO.h"
 #include "Args.h"
 #include "MTFromEllipse.h"

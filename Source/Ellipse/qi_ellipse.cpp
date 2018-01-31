@@ -15,7 +15,7 @@
 #include "args.hxx"
 
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 #include "DirectAlgo.h"
 #include "Direct2Algo.h"

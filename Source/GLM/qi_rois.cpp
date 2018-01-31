@@ -15,7 +15,7 @@
 #include <string>
 
 #include "Types.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 #include "Util.h"
 

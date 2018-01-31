@@ -11,7 +11,7 @@
 
 #include <iostream>
 
-#include "itkImage.h"
+#include "itkImageIOFactory.h"
 #include "itkVersor.h"
 #include "itkVersorRigid3DTransform.h"
 #include "itkCenteredAffineTransform.h"
@@ -21,7 +21,7 @@
 #include "itkImageMomentsCalculator.h"
 
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 
 using namespace std;
@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
 
     switch (dtype) {
         case itk::ImageIOBase::UNKNOWNCOMPONENTTYPE: QI_FAIL("Unknown component type in image " << source_path);
-        case itk::ImageIOBase::UCHAR:  DIM_SWITCH( unsigned char ); break;
+        /*case itk::ImageIOBase::UCHAR:  DIM_SWITCH( unsigned char ); break;
         case itk::ImageIOBase::CHAR:   DIM_SWITCH( char ); break;
         case itk::ImageIOBase::USHORT: DIM_SWITCH( unsigned short ); break;
         case itk::ImageIOBase::SHORT:  DIM_SWITCH( short ); break;
@@ -242,8 +242,9 @@ int main(int argc, char **argv) {
         case itk::ImageIOBase::ULONG:  DIM_SWITCH( unsigned long ); break;
         case itk::ImageIOBase::LONG:   DIM_SWITCH( long ); break;
         case itk::ImageIOBase::LONGLONG: DIM_SWITCH( long long ); break;
-        case itk::ImageIOBase::ULONGLONG: DIM_SWITCH( unsigned long long ); break;
+        case itk::ImageIOBase::ULONGLONG: DIM_SWITCH( unsigned long long ); break;*/
         case itk::ImageIOBase::FLOAT:  DIM_SWITCH( float ); break;
         case itk::ImageIOBase::DOUBLE: DIM_SWITCH( double ); break;
+        default: QI_FAIL("Unimplemented component type: " << dtype << " in image " << source_path);
     }
 }

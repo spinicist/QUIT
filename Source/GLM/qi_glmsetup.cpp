@@ -22,7 +22,7 @@
 #include "Types.h"
 #include "Util.h"
 #include "Args.h"
-#include "IO.h"
+#include "ImageIO.h"
 
 const std::string usage{
 "Usage is: qi_glmsetup [options] files\n\

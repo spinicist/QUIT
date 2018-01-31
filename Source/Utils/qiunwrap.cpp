@@ -28,9 +28,11 @@
 #include "itkBinaryCrossStructuringElement.h"
 #include "itkBinaryBallStructuringElement.h"
 #include "itkBinaryErodeImageFilter.h"
+#include "itkExtractImageFilter.h"
+
 #include "Types.h"
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 
 namespace itk {

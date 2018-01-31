@@ -17,7 +17,7 @@
 #include "itkImageSliceIteratorWithIndex.h"
 
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 
 /*

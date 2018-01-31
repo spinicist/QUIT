@@ -19,6 +19,7 @@
 #include "Types.h"
 #include "Util.h"
 #include "Args.h"
+#include "ImageIO.h"
 #include "IO.h"
 #include "Spline.h"
 

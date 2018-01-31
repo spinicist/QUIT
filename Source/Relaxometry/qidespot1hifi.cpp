@@ -21,7 +21,7 @@
 #include "MPRAGESequence.h"
 #include "SequenceCereal.h"
 #include "Args.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "ApplyAlgorithmFilter.h"
 
 class SPGRCost : public ceres::CostFunction {

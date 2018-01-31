@@ -9,6 +9,8 @@ set(CORE "qi_core")
 add_library( ${CORE} STATIC
              Types.h Macro.h Args.h IO.h EigenCereal.h
              Util.cpp ThreadPool.cpp
+             ImageRead.cpp ImageWrite.cpp
+             VectorImageRead.cpp VectorImageWrite.cpp
              GoldenSection.cpp Masking.cpp
              Kernels.cpp Fit.cpp Spline.cpp )
 add_dependencies( ${CORE} qi_version )

@@ -17,7 +17,7 @@
 #include "itkImageMomentsCalculator.h"
 #include "Types.h"
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Polynomial.h"
 #include "Args.h"
 #include "Fit.h"

@@ -20,7 +20,7 @@
 #include "Util.h"
 #include "Args.h"
 #include "Banding.h"
-#include "IO.h"
+#include "ImageIO.h"
 
 namespace itk {
 

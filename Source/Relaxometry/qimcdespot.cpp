@@ -10,7 +10,7 @@
  *
  */
 
-#include <iostream>
+#include <fstream>
 #include <Eigen/Dense>
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
@@ -20,6 +20,7 @@
 #include "Types.h"
 #include "Util.h"
 #include "Args.h"
+#include "ImageIO.h"
 #include "IO.h"
 #include "Model.h"
 #include "SequenceGroup.h"

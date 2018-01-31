@@ -14,6 +14,7 @@
 
 #include "Util.h"
 #include "Args.h"
+#include "ImageIO.h"
 #include "IO.h"
 #include "ceres/ceres.h"
 

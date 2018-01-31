@@ -15,16 +15,13 @@
 #include "itkImage.h"
 #include "itkVectorImage.h"
 
-#include "VectorToImageFilter.h"
-#include "ImageToVectorFilter.h"
-#include "ReorderImageFilter.h"
-#include "ReorderVectorFilter.h"
 #include "ApplyAlgorithmFilter.h"
 
 namespace QI {
 
 typedef itk::Image<unsigned char, 3> VolumeUC;
 typedef itk::Image<int, 3> VolumeI;
+typedef itk::Image<unsigned int, 3> VolumeUI;
 
 typedef itk::Image<float, 3> VolumeF;
 typedef itk::Image<float, 4> SeriesF;
@@ -40,21 +37,11 @@ typedef itk::Image<std::complex<double>, 3> VolumeXD;
 typedef itk::Image<std::complex<double>, 4> SeriesXD;
 typedef itk::VectorImage<std::complex<double>, 3> VectorVolumeXD;
 
-typedef itk::ReorderImageFilter<SeriesF> ReorderSeriesF;
-typedef itk::ImageToVectorFilter<SeriesF> SeriesToVectorF;
-typedef itk::VectorToImageFilter<VectorVolumeF> VectorToSeriesF;
-typedef itk::ReorderVectorFilter<VectorVolumeF>  ReorderVectorF;
-
-typedef itk::ReorderImageFilter<SeriesXF> ReorderSeriesXF;
-typedef itk::ImageToVectorFilter<SeriesXF> SeriesToVectorXF;
-typedef itk::VectorToImageFilter<VectorVolumeXF> VectorToSeriesXF;
-typedef itk::ReorderVectorFilter<VectorVolumeXF>  ReorderVectorXF;
-
-typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VolumeF, VolumeF> ApplyF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VolumeF, VolumeF> ApplyXF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VectorVolumeF, VolumeF> ApplyVectorF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VectorVolumeXF, VolumeF> ApplyVectorXF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VectorVolumeF, VolumeF> ApplyVectorXFVectorF;
+typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VolumeF, VolumeF, VolumeF> ApplyF;
+typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VolumeF, VolumeF, VolumeF> ApplyXF;
+typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VectorVolumeF, VolumeF, VolumeF> ApplyVectorF;
+typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VectorVolumeXF, VolumeF, VolumeF> ApplyVectorXF;
+typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VectorVolumeF, VolumeF, VolumeF> ApplyVectorXFVectorF;
 } // End namespace QI
 
 #endif // define QUIT_TYPES

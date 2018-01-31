@@ -15,16 +15,21 @@
 #include <unsupported/Eigen/LevenbergMarquardt>
 #include <unsupported/Eigen/NumericalDiff>
 
+#include "itkTimeProbe.h"
+#include "itkImageFileReader.h"
+#include "itkTileImageFilter.h"
+
 #include "Types.h"
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 #include "MultiEchoSequence.h"
 #include "SequenceCereal.h"
 #include "ApplyAlgorithmFilter.h"
 #include "ReorderImageFilter.h"
-#include "itkTimeProbe.h"
-#include "itkImageFileReader.h"
+#include "ImageToVectorFilter.h"
+
+typedef itk::ImageToVectorFilter<QI::SeriesF> SeriesToVectorF;
 
 /*
  * Base class for the 3 different algorithms
@@ -214,7 +219,7 @@ int main(int argc, char **argv) {
     PDoutput->SetLayout(layout);
     T2output->SetLayout(layout);
     if (verbose) std::cout << "Processing" << std::endl;
-    auto inputVector = QI::SeriesToVectorF::New();
+    auto inputVector = SeriesToVectorF::New();
     inputVector->SetInput(inputFile);
     inputVector->SetBlockSize(multiecho.size());
     std::vector<QI::VolumeF::Pointer> PDimgs(nVols), T2imgs(nVols);

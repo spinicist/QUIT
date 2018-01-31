@@ -17,7 +17,7 @@
 #include "itkSquareImageFilter.h"
 #include "Util.h"
 #include "Args.h"
-#include "IO.h"
+#include "ImageIO.h"
 
 //******************************************************************************
 // Main

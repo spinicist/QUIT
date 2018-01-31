@@ -16,7 +16,7 @@
 #include "ceres/ceres.h"
 
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 
 #include "itkImageMomentsCalculator.h"

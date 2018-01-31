@@ -15,7 +15,7 @@
 
 #include "Types.h"
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 
 #include "itkExtractImageFilter.h"

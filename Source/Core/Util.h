@@ -26,7 +26,6 @@
 #include "itkCommand.h"
 
 #include "Macro.h"
-#include "Types.h"
 
 /*
  * Print a std::vector

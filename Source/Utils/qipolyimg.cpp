@@ -19,6 +19,7 @@
 #include "Util.h"
 #include "Polynomial.h"
 #include "Args.h"
+#include "ImageIO.h"
 #include "IO.h"
 
 using namespace std;

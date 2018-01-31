@@ -21,11 +21,12 @@
 #include "itkBinaryBallStructuringElement.h"
 #include "itkBinaryErodeImageFilter.h"
 #include "itkBinaryDilateImageFilter.h"
+#include "itkExtractImageFilter.h"
 
 #include "Args.h"
 #include "Types.h"
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Masking.h"
 
 int main(int argc, char **argv) {

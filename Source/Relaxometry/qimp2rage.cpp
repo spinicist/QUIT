@@ -15,11 +15,12 @@
 #include <complex>
 
 #include "itkBinaryFunctorImageFilter.h"
+#include "itkExtractImageFilter.h"
 
 #include "ApplyAlgorithmFilter.h"
 #include "Types.h"
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 #include "MPRAGESequence.h"
 #include "SequenceCereal.h"

@@ -11,8 +11,9 @@
  */
 
 #include <iostream>
+#include "itkImageFileReader.h"
 #include "itkMetaDataObject.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 #include "Util.h"
 

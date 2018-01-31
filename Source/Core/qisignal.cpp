@@ -14,11 +14,7 @@
 #include <iostream>
 #include <Eigen/Dense>
 
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkVectorImage.h"
 #include "itkImageToImageFilter.h"
-#include "itkComplexToModulusImageFilter.h"
 #include "itkTimeProbe.h"
 #include "itkResampleImageFilter.h"
 #include "itkLinearInterpolateImageFunction.h"
@@ -30,7 +26,7 @@
 #include "Util.h"
 #include "ThreadPool.h"
 #include "Args.h"
-#include "IO.h"
+#include "ImageIO.h"
 
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"

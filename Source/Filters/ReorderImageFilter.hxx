@@ -1,6 +1,8 @@
 #ifndef REORDERIMAGEFILTER_HXX
 #define REORDERIMAGEFILTER_HXX
 
+#include "itkImageAlgorithm.h"
+
 namespace itk {
 
 // Can only process whole image, can't do subregions

@@ -16,7 +16,7 @@
 
 #include "Util.h"
 #include "Types.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Masking.h"
 
 #include "itkRescaleIntensityImageFilter.h"

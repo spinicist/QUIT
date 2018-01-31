@@ -10,13 +10,13 @@
 
 namespace itk {
 
-template<typename TI, typename TO, typename TC>
-ApplyAlgorithmFilter<TI, TO, TC>::ApplyAlgorithmFilter() {
+template<typename TI, typename TO, typename TC, typename TM>
+ApplyAlgorithmFilter<TI, TO, TC, TM>::ApplyAlgorithmFilter() {
     //std::cout <<  __PRETTY_FUNCTION__ << endl;
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetAlgorithm(const std::shared_ptr<Algorithm> &a) {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetAlgorithm(const std::shared_ptr<Algorithm> &a) {
     //std::cout <<  __PRETTY_FUNCTION__ << endl;
     m_algorithm = a;
     // Inputs go: Data 0, Data 1, ..., Mask, Const 0, Const 1, ...
@@ -30,11 +30,11 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetAlgorithm(const std::shared_ptr<Algori
     }
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetAlgorithm() const -> std::shared_ptr<const Algorithm>{ return m_algorithm; }
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetAlgorithm() const -> std::shared_ptr<const Algorithm>{ return m_algorithm; }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetPoolsize(const size_t n) {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetPoolsize(const size_t n) {
     if (n > 0) {
         m_poolsize = n;
     } else {
@@ -42,8 +42,8 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetPoolsize(const size_t n) {
     }
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetSplitsPerThread(const size_t n) {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetSplitsPerThread(const size_t n) {
     if (n > 0) {
         m_splitsPerThread = n;
     } else {
@@ -51,24 +51,24 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetSplitsPerThread(const size_t n) {
     }
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetSubregion(const TRegion &sr) {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetSubregion(const TRegion &sr) {
     if (m_verbose) std::cout << "Setting subregion to: " << std::endl << sr << std::endl;
     m_subregion = sr;
     m_hasSubregion = true;
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetVerbose(const bool v) { m_verbose = v; }
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetVerbose(const bool v) { m_verbose = v; }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
 
-template<typename TI, typename TO, typename TC>
-RealTimeClock::TimeStampType ApplyAlgorithmFilter<TI, TO, TC>::GetTotalTime() const { return m_elapsedTime; }
+template<typename TI, typename TO, typename TC, typename TM>
+RealTimeClock::TimeStampType ApplyAlgorithmFilter<TI, TO, TC, TM>::GetTotalTime() const { return m_elapsedTime; }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetInput(const size_t i, const TInputImage *image) {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetInput(const size_t i, const TInputImage *image) {
     if (i < m_algorithm->numInputs()) {
         this->SetNthInput(i, const_cast<TInputImage*>(image));
     } else {
@@ -76,8 +76,8 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetInput(const size_t i, const TInputImag
     }
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetConst(const size_t i, const TConstImage *image) {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetConst(const size_t i, const TConstImage *image) {
     if (i < m_algorithm->numConsts()) {
         this->SetNthInput(m_algorithm->numInputs() + 1 + i, const_cast<TConstImage*>(image));
     } else {
@@ -85,13 +85,13 @@ void ApplyAlgorithmFilter<TI, TO, TC>::SetConst(const size_t i, const TConstImag
     }
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::SetMask(const TConstImage *image) {
-    this->SetNthInput(m_algorithm->numInputs(), const_cast<TConstImage*>(image));
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetMask(const TMaskImage *image) {
+    this->SetNthInput(m_algorithm->numInputs(), const_cast<TMaskImage *>(image));
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetInput(const size_t i) const -> typename TInputImage::ConstPointer {
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetInput(const size_t i) const -> typename TInputImage::ConstPointer {
     if (i < m_algorithm->numInputs()) {
         return static_cast<const TInputImage *> (this->ProcessObject::GetInput(i));
     } else {
@@ -99,8 +99,8 @@ auto ApplyAlgorithmFilter<TI, TO, TC>::GetInput(const size_t i) const -> typenam
     }
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetConst(const size_t i) const -> typename TConstImage::ConstPointer {
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetConst(const size_t i) const -> typename TConstImage::ConstPointer {
     if (i < m_algorithm->numConsts()) {
         size_t index = m_algorithm->numInputs() + 1 + i;
         return static_cast<const TConstImage *> (this->ProcessObject::GetInput(index));
@@ -109,13 +109,13 @@ auto ApplyAlgorithmFilter<TI, TO, TC>::GetConst(const size_t i) const -> typenam
     }
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetMask() const -> typename TConstImage::ConstPointer {
-    return static_cast<const TConstImage *>(this->ProcessObject::GetInput(m_algorithm->numInputs()));
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetMask() const -> typename TMaskImage::ConstPointer {
+    return static_cast<const TMaskImage *>(this->ProcessObject::GetInput(m_algorithm->numInputs()));
 }
 
-template<typename TI, typename TO, typename TC>
-DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) {
+template<typename TI, typename TO, typename TC, typename TM>
+DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC, TM>::MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) {
     DataObject::Pointer output;
     if (idx < m_algorithm->numOutputs()) {
         output = (TOutputImage::New()).GetPointer();
@@ -134,8 +134,8 @@ DataObject::Pointer ApplyAlgorithmFilter<TI, TO, TC>::MakeOutput(ProcessObject::
     return output.GetPointer();
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetOutput(const size_t i) -> TOutputImage *{
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetOutput(const size_t i) -> TOutputImage *{
     if (i < m_algorithm->numOutputs()) {
         return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(i));
     } else {
@@ -143,23 +143,23 @@ auto ApplyAlgorithmFilter<TI, TO, TC>::GetOutput(const size_t i) -> TOutputImage
     }
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetAllResidualsOutput() -> TInputImage *{
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetAllResidualsOutput() -> TInputImage *{
     return dynamic_cast<TInputImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+AllResidualsOutputOffset));
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetResidualOutput() -> TOutputImage *{
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetResidualOutput() -> TOutputImage *{
     return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+ResidualOutputOffset));
 }
 
-template<typename TI, typename TO, typename TC>
-auto ApplyAlgorithmFilter<TI, TO, TC>::GetIterationsOutput() -> TIterationsImage *{
+template<typename TI, typename TO, typename TC, typename TM>
+auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetIterationsOutput() -> TIterationsImage *{
     return dynamic_cast<TIterationsImage *>(this->ProcessObject::GetOutput(m_algorithm->numOutputs()+IterationsOutputOffset));
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::GenerateOutputInformation() {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateOutputInformation() {
     Superclass::GenerateOutputInformation();
     size_t size = 0;
     for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
@@ -212,8 +212,8 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateOutputInformation() {
     i->Allocate(true);
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateData() {
     const unsigned int LastDim = TInputImage::ImageDimension - 1;
     auto fullRegion = this->GetInput(0)->GetLargestPossibleRegion();
     if (m_hasSubregion) {
@@ -246,12 +246,12 @@ void ApplyAlgorithmFilter<TI, TO, TC>::GenerateData() {
     if (m_verbose) std::cout << "Finished all splits" << std::endl;
 }
 
-template<typename TI, typename TO, typename TC>
-void ApplyAlgorithmFilter<TI, TO, TC>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
-    ImageRegionConstIterator<TConstImage> maskIter;
+template<typename TI, typename TO, typename TC, typename TM>
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
+    ImageRegionConstIterator<TMaskImage> maskIter;
     const auto mask = this->GetMask();
     if (mask) {
-        maskIter = ImageRegionConstIterator<TConstImage>(mask, region);
+        maskIter = ImageRegionConstIterator<TMaskImage>(mask, region);
     }
     
     std::vector<ImageRegionConstIterator<TInputImage>> dataIters(m_algorithm->numInputs());

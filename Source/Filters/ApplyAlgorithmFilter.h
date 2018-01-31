@@ -10,12 +10,16 @@
 
 namespace itk{
 
-template<typename TInputImage_, typename TOutputImage_, typename TConstImage_>
+template<typename TInputImage_,
+         typename TOutputImage_,
+         typename TConstImage_,
+         typename TMaskImage_>
 class ApplyAlgorithmFilter : public ImageToImageFilter<TInputImage_, TOutputImage_> {
 public:
     typedef TInputImage_  TInputImage;
     typedef TOutputImage_ TOutputImage;
     typedef TConstImage_  TConstImage;
+    typedef TMaskImage_   TMaskImage;
 
     typedef typename TInputImage::PixelType  TInputPixel;
     typedef typename TOutputImage::PixelType TOutputPixel;
@@ -51,15 +55,15 @@ public:
         virtual TOutput zero() const = 0; // Hack, to supply a zero for masked voxels
     };
 
-	void SetAlgorithm(const std::shared_ptr<Algorithm> &a);
-	std::shared_ptr<const Algorithm> GetAlgorithm() const;
+    void SetAlgorithm(const std::shared_ptr<Algorithm> &a);
+    std::shared_ptr<const Algorithm> GetAlgorithm() const;
 
-	void SetInput(const size_t i, const TInputImage *img);
-	typename TInputImage::ConstPointer GetInput(const size_t i) const;
-	void SetConst(const size_t i, const TConstImage *img);
-	typename TConstImage::ConstPointer GetConst(const size_t i) const;
-	void SetMask(const TConstImage *mask);
-	typename TConstImage::ConstPointer GetMask() const;
+    void SetInput(const size_t i, const TInputImage *img);
+    typename TInputImage::ConstPointer GetInput(const size_t i) const;
+    void SetConst(const size_t i, const TConstImage *img);
+    typename TConstImage::ConstPointer GetConst(const size_t i) const;
+    void SetMask(const TMaskImage *mask);
+    typename TMaskImage::ConstPointer GetMask() const;
 
     void SetPoolsize(const size_t nThreads);
     void SetSplitsPerThread(const size_t nSplits);
@@ -75,18 +79,18 @@ public:
     RealTimeClock::TimeStampType GetTotalTime() const;
 
 protected:
-	ApplyAlgorithmFilter();
+    ApplyAlgorithmFilter();
     virtual ~ApplyAlgorithmFilter() {}
-	DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) ITK_OVERRIDE;
+    DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) ITK_OVERRIDE;
 
-	std::shared_ptr<Algorithm> m_algorithm;
+    std::shared_ptr<Algorithm> m_algorithm;
     bool m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
     size_t m_poolsize = 1, m_splitsPerThread = 1;
     TRegion m_subregion;
 
     RealTimeClock::TimeStampType m_elapsedTime = 0.0;
     static const int AllResidualsOutputOffset = 0;
-	static const int ResidualOutputOffset = 1;
+    static const int ResidualOutputOffset = 1;
     static const int IterationsOutputOffset = 2;
     static const int ExtraOutputs = 3;
 
@@ -96,8 +100,8 @@ protected:
     virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE;
 
 private:
-	ApplyAlgorithmFilter(const Self &); //purposely not implemented
-	void operator=(const Self &);  //purposely not implemented
+    ApplyAlgorithmFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 
 };
 

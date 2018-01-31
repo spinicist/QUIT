@@ -9,8 +9,7 @@
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  */
-#include <iostream>
-using namespace std;
+#include <fstream>
 
 #include "itkVectorMagnitudeImageFilter.h"
 #include "itkMultiplyImageFilter.h"
@@ -36,17 +35,17 @@ const std::string &GetVersion() {
  */
 const std::string &OutExt() {
     static char *env_ext = getenv("QUIT_EXT");
-    static string ext;
+    static std::string ext;
     static bool checked = false;
     if (!checked) {
-        static map<string, string> valid_ext{
+        static std::map<std::string, std::string> valid_ext{
             {"NIFTI", ".nii"},
             {"NIFTI_PAIR", ".img"},
             {"NIFTI_GZ", ".nii.gz"},
             {"NIFTI_PAIR_GZ", ".img.gz"},
         };
         if (!env_ext) {
-            cerr << "Environment variable QUIT_EXT is not valid, defaulting to NIFTI_GZ" << endl;
+            std::cerr << "Environment variable QUIT_EXT is not valid, defaulting to NIFTI_GZ" << std::endl;
             ext = valid_ext["NIFTI_GZ"];
         } else if (valid_ext.find(env_ext) == valid_ext.end()){
             ext = env_ext;
@@ -93,16 +92,16 @@ std::string Basename(const std::string &path) {
     }
 }
 
-mt19937_64::result_type RandomSeed() {
-    static random_device rd;
-    static mt19937_64 rng;
+std::mt19937_64::result_type RandomSeed() {
+    static std::random_device rd;
+    static std::mt19937_64 rng;
     static bool init = false;
-    mutex seed_mtx;
+    std::mutex seed_mtx;
     if (!init) {
-        rng = mt19937_64(rd());
+        rng = std::mt19937_64(rd());
     }
     seed_mtx.lock();
-    mt19937_64::result_type r = rng();
+    std::mt19937_64::result_type r = rng();
     seed_mtx.unlock();
     return r;
 }

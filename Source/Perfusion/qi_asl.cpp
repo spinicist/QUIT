@@ -13,7 +13,7 @@
 #include <Eigen/Dense>
 
 #include "Util.h"
-#include "IO.h"
+#include "ImageIO.h"
 #include "Args.h"
 #include "Models.h"
 #include "Types.h"
