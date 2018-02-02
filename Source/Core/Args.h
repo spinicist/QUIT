@@ -63,10 +63,10 @@ void ArrayArg(const std::string &a, TArray &array) {
     std::istringstream iss(a);
     std::string el;
     for (int i = 0; i < size; i++) {
+        std::getline(iss, el, ',');
         if (!iss) {
             QI_FAIL("Failed to read array argument from string: " << a);
         }
-        std::getline(iss, el, ',');
         array[i] = std::stoi(el);
     }
 }
