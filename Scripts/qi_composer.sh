@@ -93,17 +93,15 @@ while test ${#} -gt 0; do
 
     log "Combining coil images"
     qi_coil_combine --verbose $TEMP/${IMG_ROOT}_x${EXT} --composer=$TEMP/${SER_ROOT}_ph${EXT} --out ${IMG_ROOT}
-    qi_coil_combine --verbose $TEMP/${IMG_ROOT}_x${EXT} --out ${IMG_ROOT}_hammond${EXT}
     if [ -n "$OUTPUT_MAG" ]; then
         log "Writing magnitude/phase output"
         qicomplex -x ${IMG_ROOT}_combined${EXT} -M ${IMG_ROOT}_combined_mag${EXT} -P ${IMG_ROOT}_combined_ph${EXT}
-        qicomplex -x ${IMG_ROOT}_hammond${EXT} -M ${IMG_ROOT}_hammond_mag${EXT} -P ${IMG_ROOT}_hammond_ph${EXT}
-        # rm ${IMG_ROOT}_combined${EXT}
+        rm ${IMG_ROOT}_combined${EXT}
     fi
     shift 1
 done
 
-# if [ -z "$KEEP_TEMP" ]; then
-#     log "Removing temporary files"
-#     rm -r $TEMP
-# fi
+if [ -z "$KEEP_TEMP" ]; then
+    log "Removing temporary files"
+    rm -r $TEMP
+fi
