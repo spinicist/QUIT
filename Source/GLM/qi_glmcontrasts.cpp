@@ -21,7 +21,7 @@
 #include "itkDivideImageFilter.h"
 #include "MeanImageFilter.h"
 
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
@@ -47,8 +47,9 @@ public:
         return def;
     }
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::VectorXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::VectorXd c = m_mat * indata.cast<double>();

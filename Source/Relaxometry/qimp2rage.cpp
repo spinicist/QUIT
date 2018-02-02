@@ -18,7 +18,7 @@
 #include "itkExtractImageFilter.h"
 
 #include "ApplyAlgorithmFilter.h"
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"

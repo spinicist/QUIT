@@ -17,6 +17,7 @@
 #include "ImageIO.h"
 #include "IO.h"
 #include "Spline.h"
+#include "ApplyTypes.h"
 
 class MTAsym : public QI::ApplyVectorF::Algorithm {
 protected:
@@ -48,8 +49,9 @@ public:
         return _names;
     }
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         const Eigen::Map<const Eigen::ArrayXf> zdata(inputs[0].GetDataPointer(), m_zfrqs.rows());
         QI::SplineInterpolator zspec(m_zfrqs, zdata.cast<double>());

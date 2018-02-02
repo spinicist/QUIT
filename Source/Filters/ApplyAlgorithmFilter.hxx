@@ -8,6 +8,8 @@
 #include "itkProgressReporter.h"
 #include "itkImageRegionSplitterSlowDimension.h"
 
+#include "ApplyAlgorithmFilter.h"
+
 namespace itk {
 
 template<typename TI, typename TO, typename TC, typename TM>
@@ -259,16 +261,16 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
         dataIters[i] = ImageRegionConstIterator<TInputImage>(this->GetInput(i), region);
     }
 
-    std::vector<ImageRegionConstIterator<TConstImage>> constIters(m_algorithm->numConsts());
+    std::vector<ImageRegionConstIterator<TConstImage>> consTIterations(m_algorithm->numConsts());
     for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
         typename TConstImage::ConstPointer c = this->GetConst(i);
         if (c) {
-            constIters[i] = ImageRegionConstIterator<TConstImage>(c, region);
+            consTIterations[i] = ImageRegionConstIterator<TConstImage>(c, region);
         }
     }
-    std::vector<ImageRegionIterator<TOutputImage>> outputIters(m_algorithm->numOutputs());
+    std::vector<ImageRegionIterator<TOutputImage>> outpuTIterations(m_algorithm->numOutputs());
     for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-        outputIters[i] = ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
+        outpuTIterations[i] = ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
     }
     ImageRegionIterator<TInputImage> allResidualsIter;
     if (m_allResiduals) {
@@ -286,9 +288,9 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
                 outputs[i] = m_algorithm->zero();
             }
             std::vector<TConstPixel> constants = m_algorithm->defaultConsts();
-            for (size_t i = 0; i < constIters.size(); i++) {
+            for (size_t i = 0; i < consTIterations.size(); i++) {
                 if (this->GetConst(i)) {
-                    constants[i] = constIters[i].Get();
+                    constants[i] = consTIterations[i].Get();
                 }
             }
             TOutputPixel residual = m_algorithm->zero();
@@ -303,12 +305,13 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
             for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
                 inputs[i] = dataIters[i].Get();
             }
-            bool success = m_algorithm->apply(inputs, constants, outputs, residual, resids, iterations);
+            bool success = m_algorithm->apply(inputs, constants, residualIter.GetIndex(),
+                                              outputs, residual, resids, iterations);
             if (!success) {
                 std::cerr << "Algorithm failed for voxel: " << residualIter.GetIndex() << std::endl;
             }
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-                outputIters[i].Set(outputs[i]);
+                outpuTIterations[i].Set(outputs[i]);
             }
             residualIter.Set(residual);
             if (m_allResiduals) {
@@ -317,7 +320,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
             iterationsIter.Set(iterations);
         } else {
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-                outputIters[i].Set(m_algorithm->zero());
+                outpuTIterations[i].Set(m_algorithm->zero());
             }
             if (m_allResiduals) {
                 VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
@@ -334,10 +337,10 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
         }
         for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
             if (this->GetConst(i))
-                ++constIters[i];
+                ++consTIterations[i];
         }
         for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-            ++outputIters[i];
+            ++outpuTIterations[i];
         }
         if (m_allResiduals)
             ++allResidualsIter;

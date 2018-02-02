@@ -14,7 +14,7 @@
 
 #include "args.hxx"
 #include "Macro.h"
-#include "Types.h"
+#include "ImageTypes.h"
 
 namespace QI {
 

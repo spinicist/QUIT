@@ -7,23 +7,9 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PRO
 
 set(CORE "qi_core")
 add_library( ${CORE} STATIC
-             Types.h Macro.h Args.h IO.h EigenCereal.h
+             Macro.h Args.h IO.h EigenCereal.h ImageTypes.h
              Util.cpp ThreadPool.cpp
-             ImageRead.cpp ImageWrite.cpp
-             VectorImageRead.cpp VectorImageWrite.cpp
              GoldenSection.cpp Masking.cpp
              Kernels.cpp Fit.cpp Spline.cpp )
 add_dependencies( ${CORE} qi_version )
-target_link_libraries( ${CORE} qi_filters )
-target_include_directories( ${CORE} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}> )
-
-set( PROGRAMS qinewimage qisignal qidiff qitest )
-
-foreach( PROGRAM ${PROGRAMS} )
-    add_executable( ${PROGRAM} ${PROGRAM}.cpp )
-    target_link_libraries( ${PROGRAM} qi_core ${ITK_LIBRARIES} )
-endforeach( PROGRAM )
-target_link_libraries( qisignal qi_sequences )
-target_link_libraries( qitest   qi_sequences )
-
-install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
+target_include_directories( ${CORE} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )

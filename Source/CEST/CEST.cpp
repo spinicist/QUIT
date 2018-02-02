@@ -40,7 +40,7 @@ public:
 
 bool CESTAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                      std::vector<TOutput> &outputs, TConst &residual,
-                     TInput &resids, TIters &its) const
+                     TInput &resids, TIterations &its) const
 {
     size_t full = m_half*2+1;
     const Eigen::Map<const Eigen::ArrayXf> z_spec(inputs[0].GetDataPointer(), full);

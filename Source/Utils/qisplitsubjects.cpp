@@ -15,7 +15,7 @@
 #include <array>
 
 #include "Util.h"
-#include "Types.h"
+#include "ImageTypes.h"
 #include "ImageIO.h"
 #include "Masking.h"
 

@@ -30,7 +30,7 @@
 #include "itkCastImageFilter.h"
 #include "itkTileImageFilter.h"
 
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "Kernels.h"
 #include "ImageIO.h"

@@ -16,7 +16,7 @@
 #include "Eigen/Dense"
 
 #include "Macro.h"
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "Util.h"
 
 namespace QI {
@@ -62,8 +62,9 @@ public:
     std::vector<float> defaultConsts() const override;
     TOutput zero() const override;
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIters &its) const override;
+               TInput &resids, TIterations &its) const override;
     virtual std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const = 0;
 };
 

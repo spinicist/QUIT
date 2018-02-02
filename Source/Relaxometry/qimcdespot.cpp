@@ -17,7 +17,7 @@
 
 #include "itkTimeProbe.h"
 
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
@@ -25,8 +25,6 @@
 #include "Model.h"
 #include "SequenceGroup.h"
 #include "RegionContraction.h"
-#include "ApplyAlgorithmFilter.h"
-#include "ReorderVectorFilter.h"
 
 struct MCDSRCFunctor {
     const QI::SequenceGroup &m_sequence;
@@ -89,8 +87,9 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
     }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::ArrayXd data(dataSize());
         int dataIndex = 0;

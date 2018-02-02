@@ -16,7 +16,7 @@
 #include "Eigen/Dense"
 
 #include "Macro.h"
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "Util.h"
 
 namespace QI {

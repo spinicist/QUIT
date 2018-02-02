@@ -22,6 +22,7 @@
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
+#include "ApplyTypes.h"
 
 //******************************************************************************
 // Algorithm Subclasses
@@ -58,8 +59,9 @@ public:
 class D2LLS : public D2Algo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
@@ -98,8 +100,9 @@ public:
 class D2WLLS : public D2Algo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];
@@ -184,8 +187,9 @@ class D2Functor : public Eigen::DenseFunctor<double> {
 class D2NLLS : public D2Algo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];

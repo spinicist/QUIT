@@ -22,7 +22,7 @@
 #include "SequenceCereal.h"
 #include "Args.h"
 #include "ImageIO.h"
-#include "ApplyAlgorithmFilter.h"
+#include "ApplyTypes.h"
 
 class SPGRCost : public ceres::CostFunction {
 protected:
@@ -127,8 +127,9 @@ public:
     }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> spgr_in(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::Map<const Eigen::ArrayXf> ir_in(inputs[1].GetDataPointer(), inputs[1].Size());

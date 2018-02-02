@@ -16,7 +16,7 @@
 #include "itkImageSource.h"
 #include "itkImageSliceIteratorWithIndex.h"
 #include "itkMaskImageFilter.h"
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"

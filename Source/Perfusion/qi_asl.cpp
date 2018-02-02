@@ -16,7 +16,7 @@
 #include "ImageIO.h"
 #include "Args.h"
 #include "Models.h"
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "SequenceCereal.h"
 #include <cereal/archives/json.hpp>
 
@@ -88,8 +88,9 @@ public:
     }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         const Eigen::Map<const Eigen::ArrayXf, 0, Eigen::InnerStride<>> even(inputs[0].GetDataPointer(), m_series_size, Eigen::InnerStride<>(2));
         const Eigen::Map<const Eigen::ArrayXf, 0, Eigen::InnerStride<>> odd(inputs[0].GetDataPointer() + 1, m_series_size, Eigen::InnerStride<>(2));

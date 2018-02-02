@@ -14,7 +14,7 @@
 #include <Eigen/Dense>
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Args.h"
 #include "ReorderImageFilter.h"
 

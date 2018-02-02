@@ -11,6 +11,7 @@
 
 #include "Util.h"
 #include "ImageIO.h"
+#include "ApplyTypes.h"
 #include "Args.h"
 
 #include "itkRegionOfInterestImageFilter.h"
@@ -48,8 +49,9 @@ public:
     std::complex<float> zero() const override { return std::complex<float>(0., 0.); }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXcf> in_data(inputs[0].GetDataPointer(), m_size);
         Eigen::ArrayXcd data = in_data.cast<std::complex<double>>();

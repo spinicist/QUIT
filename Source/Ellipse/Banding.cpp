@@ -37,8 +37,9 @@ BandAlgo::TOutput BandAlgo::zero() const {
 }
 
 bool BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                     const TIndex &, // Unused // Unused
                      std::vector<TOutput> &outputs, TOutput &residual,
-                     TInput &resids, TIters &its) const
+                     TInput &resids, TIterations &its) const
 {
     size_t phase_stride = m_flips;
     size_t flip_stride = 1;

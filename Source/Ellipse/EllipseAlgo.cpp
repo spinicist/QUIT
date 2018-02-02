@@ -25,8 +25,9 @@ EllipseAlgo::EllipseAlgo(std::shared_ptr<QI::SSFPEchoSequence> &seq, bool debug)
 
 bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
                         const std::vector<TConst> &consts,
+                        const TIndex &, // Unused
                         std::vector<TOutput> &outputs, TOutput &residual,
-                        TInput &resids, TIters &its) const
+                        TInput &resids, TIterations &its) const
 {
     const int np = m_sequence->PhaseInc.rows();
     const double B1 = consts[0];

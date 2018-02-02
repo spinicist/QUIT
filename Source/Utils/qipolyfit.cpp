@@ -13,9 +13,10 @@
 #include "Eigen/Dense"
 
 #include "itkImageToImageFilter.h"
+#include "itkImageRegionConstIterator.h"
 #include "itkImageRegionConstIteratorWithIndex.h"
 #include "itkImageMomentsCalculator.h"
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Polynomial.h"

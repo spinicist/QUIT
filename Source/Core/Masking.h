@@ -12,7 +12,7 @@
 #ifndef QUIT_MASKING_H
 #define QUIT_MASKING_H
 
-#include "Types.h"
+#include "ImageTypes.h"
 
 namespace QI {
 

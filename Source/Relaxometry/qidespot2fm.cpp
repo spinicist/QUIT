@@ -18,7 +18,7 @@
 #include "ImageIO.h"
 #include "Args.h"
 #include "Models.h"
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "SSFPSequence.h"
 #include "SequenceCereal.h"
 
@@ -79,8 +79,9 @@ public:
     }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         const double T1 = consts[0];
         const double B1 = consts[1];

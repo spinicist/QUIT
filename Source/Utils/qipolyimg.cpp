@@ -14,8 +14,9 @@
 
 #include "itkImageSource.h"
 #include "itkImageRegionIteratorWithIndex.h"
+#include "itkImageRegionConstIterator.h"
 #include "itkMaskImageFilter.h"
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "Polynomial.h"
 #include "Args.h"
@@ -70,10 +71,10 @@ protected:
         itk::ImageRegionIteratorWithIndex<TImage> imageIt(output, output->GetLargestPossibleRegion());
         imageIt.GoToBegin();
         const auto mask = this->GetMask();
-        ImageRegionConstIterator<TImage> maskIter;
+        itk::ImageRegionConstIterator<TImage> maskIter;
         if (mask) {
             //if (m_verbose) std::cout << "Counting voxels in mask..." << std::endl;
-            maskIter = ImageRegionConstIterator<TImage>(mask, output->GetLargestPossibleRegion());
+            maskIter = itk::ImageRegionConstIterator<TImage>(mask, output->GetLargestPossibleRegion());
             maskIter.GoToBegin();
         }
         while(!imageIt.IsAtEnd()) {

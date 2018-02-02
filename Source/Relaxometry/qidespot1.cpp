@@ -14,7 +14,7 @@
 #include <Eigen/Dense>
 #include "ceres/ceres.h"
 
-#include "ApplyAlgorithmFilter.h"
+#include "ApplyTypes.h"
 #include "Models.h"
 #include "SPGRSequence.h"
 #include "SequenceCereal.h"
@@ -58,8 +58,9 @@ public:
 class D1LLS : public D1Algo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
@@ -84,8 +85,9 @@ public:
 class D1WLLS : public D1Algo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
@@ -160,8 +162,9 @@ public:
     }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         const double B1 = consts[0];

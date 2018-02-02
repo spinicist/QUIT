@@ -1,7 +1,7 @@
 /*
- * Types.h
+ * ImageTypes.h
  *
- * Copyright (c) 2015 Tobias Wood.
+ * Copyright (c) 2015, 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,13 +9,11 @@
  *
  */
 
-#ifndef QUIT_TYPES
-#define QUIT_TYPES
+#ifndef QUIT_IMAGE_TYPES
+#define QUIT_IMAGE_TYPES
 
 #include "itkImage.h"
 #include "itkVectorImage.h"
-
-#include "ApplyAlgorithmFilter.h"
 
 namespace QI {
 
@@ -37,11 +35,6 @@ typedef itk::Image<std::complex<double>, 3> VolumeXD;
 typedef itk::Image<std::complex<double>, 4> SeriesXD;
 typedef itk::VectorImage<std::complex<double>, 3> VectorVolumeXD;
 
-typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VolumeF, VolumeF, VolumeF> ApplyF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VolumeF, VolumeF, VolumeF> ApplyXF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeF, VectorVolumeF, VolumeF, VolumeF> ApplyVectorF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VectorVolumeXF, VolumeF, VolumeF> ApplyVectorXF;
-typedef itk::ApplyAlgorithmFilter<VectorVolumeXF, VectorVolumeF, VolumeF, VolumeF> ApplyVectorXFVectorF;
 } // End namespace QI
 
-#endif // define QUIT_TYPES
+#endif // define QUIT_IMAGE_TYPES

@@ -21,7 +21,7 @@
 #include "Eigen/Dense"
 
 #include "Macro.h"
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "Util.h"
 #include "SteadyStateSequence.h"
 
@@ -74,8 +74,9 @@ public:
         return _names;
     }
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override;
+               TInput &resids, TIterations &its) const override;
 };
 
 } // End namespace QI

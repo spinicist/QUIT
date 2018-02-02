@@ -19,7 +19,7 @@
 #include "itkDivideImageFilter.h"
 #include "MeanImageFilter.h"
 
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"

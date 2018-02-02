@@ -12,7 +12,7 @@
 #ifndef QUIT_IMAGEIO_H
 
 #include <string>
-#include "Types.h"
+#include "ImageTypes.h"
 
 namespace QI {
 

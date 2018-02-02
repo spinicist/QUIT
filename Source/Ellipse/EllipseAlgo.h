@@ -21,7 +21,7 @@
 #include "Eigen/Dense"
 
 #include "Macro.h"
-#include "Types.h"
+#include "ApplyTypes.h"
 #include "Util.h"
 #include "SSFPSequence.h"
 #include "ApplyAlgorithmFilter.h"
@@ -47,8 +47,9 @@ public:
     }
     TOutput zero() const override { return m_zero; }
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                       std::vector<TOutput> &outputs, TOutput &residual,
-                       TInput &resids, TIters &its) const override;
+               const TIndex &, // Unused
+               std::vector<TOutput> &outputs, TOutput &residual,
+               TInput &resids, TIterations &its) const override;
     virtual const std::vector<std::string> & names() const = 0;
 };
 

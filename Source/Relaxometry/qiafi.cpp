@@ -13,7 +13,7 @@
 #include <iostream>
 #include <string>
 
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"

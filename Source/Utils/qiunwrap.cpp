@@ -30,7 +30,7 @@
 #include "itkBinaryErodeImageFilter.h"
 #include "itkExtractImageFilter.h"
 
-#include "Types.h"
+#include "ImageTypes.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"

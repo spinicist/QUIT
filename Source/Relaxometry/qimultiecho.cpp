@@ -19,13 +19,12 @@
 #include "itkImageFileReader.h"
 #include "itkTileImageFilter.h"
 
-#include "Types.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
 #include "MultiEchoSequence.h"
 #include "SequenceCereal.h"
-#include "ApplyAlgorithmFilter.h"
+#include "ApplyTypes.h"
 #include "ReorderImageFilter.h"
 #include "ImageToVectorFilter.h"
 
@@ -80,8 +79,9 @@ public:
 class LogLinAlgo: public RelaxAlgo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
@@ -102,8 +102,9 @@ public:
 class ARLOAlgo : public RelaxAlgo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
@@ -150,8 +151,9 @@ class RelaxFunctor : public Eigen::DenseFunctor<double> {
 class NonLinAlgo : public RelaxAlgo {
 public:
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         const Eigen::ArrayXd data = indata.cast<double>();

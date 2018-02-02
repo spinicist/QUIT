@@ -85,8 +85,9 @@ std::vector<float> MTFromEllipse::defaultConsts() const {
 }
 
 bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                    std::vector<TOutput> &outputs, TConst &residual,
-                    TInput &resids, TIters &its) const
+                          const TIndex &, // Unused
+                          std::vector<TOutput> &outputs, TConst &residual,
+                          TInput &resids, TIterations &its) const
 {
     const double B1 = consts[0];
     const double f0_Hz = consts[1];

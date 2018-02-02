@@ -24,13 +24,14 @@ public:
     typedef typename TInputImage::PixelType  TInputPixel;
     typedef typename TOutputImage::PixelType TOutputPixel;
     typedef typename TConstImage::PixelType  TConstPixel;
-    typedef unsigned int TIterations;
+    typedef int TIterations;
     typedef Image<TIterations, TInputImage::ImageDimension> TIterationsImage;
 
     typedef ApplyAlgorithmFilter                          Self;
     typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
     typedef SmartPointer<Self>                            Pointer;
     typedef typename TInputImage::RegionType              TRegion;
+    typedef typename TRegion::IndexType                   TIndex;
 
     itkNewMacro(Self); /** Method for creation through the object factory. */
     itkTypeMacro(ApplyAlgorithmFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
@@ -40,7 +41,8 @@ public:
         using TInput = TInputPixel;
         using TOutput = TOutputPixel;
         using TConst = TConstPixel;
-        typedef TIterations  TIters;
+        using TIndex = TIndex;           // Make TIndex available to algorithm subclasses
+        using TIterations = TIterations; // Make TIterations available to algorithm subclasses
         virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
         virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
         virtual size_t numOutputs() const = 0; // Number of output parameters/variables
@@ -49,9 +51,10 @@ public:
         virtual std::vector<TConst> defaultConsts() const = 0;    // Give some default constants for when the user does not supply them
         virtual bool apply(const std::vector<TInput> &inputs,
                            const std::vector<TConst> &consts,
+                           const TIndex &index,
                            std::vector<TOutput> &outputs,
                            TOutput &residual, TInput &resids,
-                           TIters &iterations) const = 0; // Apply the algorithm to the data from one voxel. Return false to indicate algorithm failed.
+                           TIterations &iterations) const = 0; // Apply the algorithm to the data from one voxel. Return false to indicate algorithm failed.
         virtual TOutput zero() const = 0; // Hack, to supply a zero for masked voxels
     };
 
@@ -106,7 +109,5 @@ private:
 };
 
 }
-
-#include "ApplyAlgorithmFilter.hxx"
 
 #endif // APPLYAGLOFILTER_H

@@ -14,7 +14,7 @@
 #include <fstream>
 #include <string>
 
-#include "Types.h"
+#include "ImageTypes.h"
 #include "ImageIO.h"
 #include "Args.h"
 #include "Util.h"

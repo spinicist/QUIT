@@ -16,6 +16,7 @@
 #include "Args.h"
 #include "ImageIO.h"
 #include "IO.h"
+#include "ApplyTypes.h"
 #include "ceres/ceres.h"
 
 Eigen::ArrayXd Lorentzian(const double f0, const double fwhm, const double A, const Eigen::ArrayXd &f) {
@@ -63,8 +64,9 @@ public:
         return _names;
     }
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+               const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIters &its) const override
+               TInput &resids, TIterations &its) const override
     {
         const Eigen::Map<const Eigen::ArrayXf> z_spec(inputs[0].GetDataPointer(), m_zfrqs.size());
 

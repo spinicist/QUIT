@@ -67,7 +67,6 @@ template void WriteImage<VolumeF>(const VolumeF *ptr, const std::string &path);
 template void WriteImage<VolumeXF>(const VolumeXF *ptr, const std::string &path);
 template void WriteImage<VolumeD>(const VolumeD *ptr, const std::string &path);
 template void WriteImage<VolumeI>(const VolumeI *ptr, const std::string &path);
-template void WriteImage<VolumeUI>(const VolumeUI *ptr, const std::string &path);
 template void WriteImage<VolumeUC>(const VolumeUC *ptr, const std::string &path);
 template void WriteImage<SeriesF>(const SeriesF *ptr, const std::string &path);
 template void WriteImage<SeriesD>(const SeriesD *ptr, const std::string &path);
