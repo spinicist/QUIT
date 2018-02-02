@@ -9,13 +9,13 @@ setup() {
 @test "Perfusion (ASL)" {
 
 SIZE="32,32,32,2"
-qinewimage --verbose --dims=4 --size="$SIZE" --step="3 0 1 2" asl.nii
+qinewimage --verbose --dims=4 --size="$SIZE" --step="3 1 1.06 2" asl.nii
 qi_asl --verbose asl.nii <<END_INPUT
 {
     "CASL" : {
         "TR": 4.0,
         "label_time": 3.0,
-        "post_label_delay": 0.3
+        "post_label_delay": [0.3]
     }
 }
 END_INPUT

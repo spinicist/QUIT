@@ -17,11 +17,13 @@
 #include "Args.h"
 #include "Models.h"
 #include "ApplyTypes.h"
+#include "EigenCereal.h"
 #include "SequenceCereal.h"
 #include <cereal/archives/json.hpp>
 
 struct CASLSequence : QI::SequenceBase {
-    double TR, label_time, post_label_delay;
+    double TR, label_time;
+    Eigen::ArrayXd post_label_delay;
 
     QI_SEQUENCE_DECLARE(CASL);
     size_t size() const override { return 1; };
@@ -53,11 +55,14 @@ protected:
 public:
     CASLAlgo(const CASLSequence& casl,
              const double T1, const double alpha, const double lambda,
-             const int inputsize, const bool average) :
+             const int inputsize, const bool average, const bool slice_time) :
         m_CASL(casl), m_T1(T1), m_alpha(alpha), m_lambda(lambda),
         m_inputsize(inputsize), m_series_size(inputsize/2),
         m_average_timeseries(average)
     {
+        if (!slice_time && (casl.post_label_delay.rows() != 1)) {
+            QI_FAIL("More than one post-label delay specified, but not in slice-timing correction mode");
+        }
     }
 
     size_t numInputs() const override  { return 1; }
@@ -129,7 +134,8 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    args::Flag              average(parser, "AVERAGE", "Average the time-series", {'a', "average"});
+    args::Flag average(parser, "AVERAGE", "Average the time-series", {'a', "average"});
+    args::Flag slice_time(parser, "SLICE TIME CORRECTION", "Apply slice-time correction (number of post-label delays must match number of slices)", {'s', "slicetime"});
     args::ValueFlag<double> T1_blood(parser, "BLOOD T1", "Value of blood T1 to use (seconds), default 2.429", {'b', "blood"}, 2.429);
     args::ValueFlag<std::string> T1_tissue_path(parser, "TISSUE T1", "Path to tissue T1 map (units are seconds)", {'t', "tissue"});
     args::ValueFlag<double> alpha(parser, "ALPHA", "Labelling efficiency, default 0.9", {'a', "alpha"}, 0.9);
@@ -147,8 +153,12 @@ int main(int argc, char **argv) {
     }
 
     auto sequence = QI::ReadSequence<CASLSequence>(std::cin, verbose);
+    const auto n_slices = input->GetLargestPossibleRegion().GetSize()[2];
+    if (slice_time && (n_slices != sequence.post_label_delay.rows())) {
+        QI_FAIL("Number of post-label delays " << sequence.post_label_delay.rows() << " does not match number of slices " << n_slices);
+    }
     std::shared_ptr<CASLAlgo> algo = std::make_shared<CASLAlgo>(sequence, T1_blood.Get(), alpha.Get(), lambda.Get(),
-                                                                input->GetNumberOfComponentsPerPixel(), average);
+                                                                input->GetNumberOfComponentsPerPixel(), average, slice_time);
     auto apply = QI::ApplyVectorF::New();
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
