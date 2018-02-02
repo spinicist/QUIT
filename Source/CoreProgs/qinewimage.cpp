@@ -14,7 +14,7 @@
 #include <random>
 
 #include "itkImage.h"
-#include "itkImageSliceIteratorWithIndex.h"
+#include "itkImageLinearIteratorWithIndex.h"
 
 #include "Util.h"
 #include "ImageIO.h"
@@ -106,26 +106,22 @@ void make_image() {
     newimg->Allocate();
 
     if (fillDim >= dim) QI_FAIL("Fill dimension is larger than image dimension");
-    itk::ImageSliceIteratorWithIndex<ImageType> it(newimg, imgRegion);
-    it.SetFirstDirection((fillDim + 1) % dim);
-    it.SetSecondDirection((fillDim + 2) % dim);
-    float val = startVal;
+    itk::ImageLinearIteratorWithIndex<ImageType> it(newimg, imgRegion);
+    it.SetDirection(fillDim);
     if (verbose) std::cout << "Filling..." << std::endl;
     it.GoToBegin();
     while (!it.IsAtEnd()) {
-        while (!it.IsAtEndOfSlice()) {
-            while (!it.IsAtEndOfLine()) {
-                it.Set(val);
-                ++it;
+        float val = startVal;
+        while (!it.IsAtEndOfLine()) {
+            it.Set(val);
+            ++it;
+            if (fillType == FillTypes::Gradient) {
+                val += deltaVal;
+            } else if ((it.GetIndex()[fillDim] % stepLength) == 0) {
+                val += deltaVal;
             }
-            it.NextLine();
         }
-        it.NextSlice();
-        if (fillType == FillTypes::Gradient) {
-            val += deltaVal;
-        } else if ((it.GetIndex()[fillDim] % stepLength) == 0) {
-            val += deltaVal;
-        }
+    it.NextLine();
     }
     if (verbose) std::cout << "Writing file to: " << QI::CheckPos(fName) << std::endl;
     QI::WriteImage(newimg, QI::CheckPos(fName));
