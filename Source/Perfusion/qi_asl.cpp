@@ -93,7 +93,7 @@ public:
     }
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
+               const TIndex &index, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override
     {
@@ -106,7 +106,8 @@ public:
         if (T1_tissue > 0) {
             SI_PD /= (1 - exp(-m_CASL.TR / T1_tissue));
         }
-        const Eigen::ArrayXd CBF = (6000 * m_lambda * diff * exp(m_CASL.post_label_delay / m_T1)) / 
+        const double PLD = (m_CASL.post_label_delay.rows() > 1) ? m_CASL.post_label_delay[index[2]] : m_CASL.post_label_delay[0];
+        const Eigen::ArrayXd CBF = (6000 * m_lambda * diff * exp(PLD / m_T1)) / 
                            (2. * m_alpha * m_T1 * SI_PD * (1. - exp(-m_CASL.label_time / m_T1)));
         if (m_average_timeseries) {
             outputs[0][0] = CBF.mean();
