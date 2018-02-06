@@ -161,14 +161,14 @@ public:
 //******************************************************************************
 class D2Functor : public Eigen::DenseFunctor<double> {
     public:
+        const Eigen::ArrayXd m_data;
         const std::shared_ptr<QI::SequenceBase> m_sequence;
         const double m_T1, m_B1;
         const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
-        const Eigen::ArrayXd m_data;
 
         D2Functor(const double T1, const std::shared_ptr<QI::SequenceBase> s, const Eigen::ArrayXd &d, const double B1, const bool fitComplex, const bool debug = false) :
             DenseFunctor<double>(3, s->size()),
-            m_sequence(s), m_data(d),
+            m_data(d), m_sequence(s),
             m_T1(T1), m_B1(B1)
         {
             assert(static_cast<size_t>(m_data.rows()) == values());

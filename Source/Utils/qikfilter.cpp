@@ -173,7 +173,6 @@ int main(int argc, char **argv) {
      */
     typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXD> TExtract;
     typedef itk::TileImageFilter<QI::VolumeXF, QI::SeriesXF>    TTile;
-    typedef itk::CastImageFilter<QI::VolumeXD, QI::VolumeXF>    TCast;
     typedef itk::ConstantPadImageFilter<QI::VolumeXD, QI::VolumeXD> TZeroPad;
     typedef itk::FFTPadImageFilter<QI::VolumeXD>                TFFTPad;
     typedef itk::FFTShiftImageFilter<QI::VolumeXD, QI::VolumeXD> TFFTShift;

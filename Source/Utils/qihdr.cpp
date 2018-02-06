@@ -109,7 +109,6 @@ int main(int argc, char **argv) {
                 std::vector<std::vector<double> > double_array_array_value;
                 std::vector<double> double_array_value;
                 std::string string_value;
-                auto delim = "";
                 double double_value;
                 if (verbose) std::cout << hf << ": ";
                 if (ExposeMetaData(header, hf, string_array_value)) {

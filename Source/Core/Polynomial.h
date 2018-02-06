@@ -80,7 +80,7 @@ public:
             list.append(std::string(1, dim));
             dim++;
         }
-        int it = 0, startx = 0, starty = 0, startz = 0;
+        int it = 0;
         std::function<void (std::string, int, int)> orderLoop = [&](std::string term, int o, int start)->void {
             if (o == m_order) {
                 t[it++] = term;

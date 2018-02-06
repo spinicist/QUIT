@@ -26,7 +26,6 @@ namespace QI {
 typedef const Eigen::VectorXd cvecd;
 
 enum class FieldStrength { Three, Seven, User };
-static const std::string to_string(const FieldStrength& f);
 
 class Model {
 public:

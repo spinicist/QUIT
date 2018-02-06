@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
                 index[i] = size[i] / 2 - 4;
             }
             region.GetModifiableIndex() = index;
-            region.GetModifiableSize() = {8, 8, 8};
+            region.GetModifiableSize() = {{8, 8, 8}};
         }
         if (verbose) std::cout << "Reference region is:\n" << region << std::endl;
         auto roi = itk::RegionOfInterestImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF>::New();

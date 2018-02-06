@@ -110,8 +110,6 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     Eigen::Array<double, 6, 1> p; p << 15.0, 0.05, 5.0, 1.0;
     ceres::Problem problem;
     problem.AddResidualBlock(cost, loss, p.data());
-    const double not_zero = std::nextafter(0.0, 1.0);
-    const double not_one  = std::nextafter(1.0, 0.0);
     problem.SetParameterLowerBound(p.data(), 0, 0.1);
     problem.SetParameterUpperBound(p.data(), 0, 20.0);
     problem.SetParameterLowerBound(p.data(), 1, 1e-6);

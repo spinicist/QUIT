@@ -70,7 +70,7 @@ template<typename TI, typename TO, typename TC, typename TM>
 RealTimeClock::TimeStampType ApplyAlgorithmFilter<TI, TO, TC, TM>::GetTotalTime() const { return m_elapsedTime; }
 
 template<typename TI, typename TO, typename TC, typename TM>
-void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetInput(const size_t i, const TInputImage *image) {
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetInput(unsigned int i, const TInputImage *image) {
     if (i < m_algorithm->numInputs()) {
         this->SetNthInput(i, const_cast<TInputImage*>(image));
     } else {
@@ -216,7 +216,6 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateOutputInformation() {
 
 template<typename TI, typename TO, typename TC, typename TM>
 void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateData() {
-    const unsigned int LastDim = TInputImage::ImageDimension - 1;
     auto fullRegion = this->GetInput(0)->GetLargestPossibleRegion();
     if (m_hasSubregion) {
         if (fullRegion.IsInside(m_subregion)) {

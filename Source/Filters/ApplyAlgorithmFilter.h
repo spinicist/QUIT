@@ -41,8 +41,8 @@ public:
         using TInput = TInputPixel;
         using TOutput = TOutputPixel;
         using TConst = TConstPixel;
-        using TIndex = TIndex;           // Make TIndex available to algorithm subclasses
-        using TIterations = TIterations; // Make TIterations available to algorithm subclasses
+        using TIndex = ApplyAlgorithmFilter::TIndex;           // Make TIndex available to algorithm subclasses
+        using TIterations = ApplyAlgorithmFilter::TIterations; // Make TIterations available to algorithm subclasses
         virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
         virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
         virtual size_t numOutputs() const = 0; // Number of output parameters/variables
@@ -61,7 +61,7 @@ public:
     void SetAlgorithm(const std::shared_ptr<Algorithm> &a);
     std::shared_ptr<const Algorithm> GetAlgorithm() const;
 
-    void SetInput(const size_t i, const TInputImage *img);
+    void SetInput(unsigned int i, const TInputImage *img) override;
     typename TInputImage::ConstPointer GetInput(const size_t i) const;
     void SetConst(const size_t i, const TConstImage *img);
     typename TConstImage::ConstPointer GetConst(const size_t i) const;

@@ -17,15 +17,6 @@ using namespace Eigen;
 
 namespace QI {
 
-const string to_string(const FieldStrength& f) {
-	static const string f3{"3T"}, f7{"7T"}, fu{"User"};
-	switch (f) {
-		case FieldStrength::Three: return f3;
-		case FieldStrength::Seven: return f7;
-		case FieldStrength::User: return fu;
-	}
-}
-
 /*****************************************************************************/
 /* Base Class                                                                */
 /*****************************************************************************/

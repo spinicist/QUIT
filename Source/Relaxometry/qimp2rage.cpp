@@ -87,7 +87,7 @@ protected:
     }
     ~MPRAGELookUpFilter() {}
 
-    DataObject::Pointer MakeOutput(unsigned int idx) {
+    DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) override {
         //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         if (idx == 0) {
             DataObject::Pointer output = (TImage::New()).GetPointer();

@@ -207,7 +207,7 @@ void RegisterImageToReference(const QI::VolumeF::Pointer &image, const QI::Volum
     TPars bestPars = tfm->GetParameters();
     
     if (verbose) cout << "Starting registration" << endl;
-    std::array<std::array<int, 3>, 7> translations{{ {0,0,0}, {{-1,0,0}}, {{1,0,0}}, {{0,-1,0}}, {{0,1,0}}, {{0,0,-1}}, {{0,0,1}} }};
+    std::array<std::array<int, 3>, 7> translations{{ {{0,0,0}}, {{-1,0,0}}, {{1,0,0}}, {{0,-1,0}}, {{0,1,0}}, {{0,0,-1}}, {{0,0,1}} }};
     do {
         TShrink::ShrinkFactorsType imageShrink = MakeShrink(gridSpacing, image);
         shrink_img->SetShrinkFactors(imageShrink);

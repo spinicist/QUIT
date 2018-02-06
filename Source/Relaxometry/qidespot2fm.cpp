@@ -31,7 +31,7 @@ private:
 public:
     FMCost(const Eigen::ArrayXd &d, const QI::SSFPSequence &s,
            const double T1, const double B1) :
-        m_data(d), m_sequence(s), m_T1(T1), m_B1(B1)
+        m_data(d), m_T1(T1), m_B1(B1), m_sequence(s)
     {
         mutable_parameter_block_sizes()->push_back(3);
         set_num_residuals(d.size());

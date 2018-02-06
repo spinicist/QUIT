@@ -61,7 +61,7 @@ public:
     itkNewMacro(Self); /** Method for creation through the object factory. */
     itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
-    void SetInput(const size_t i, const TImage *img) {
+    void SetInput(unsigned int i, const TImage *img) override {
         if (i < m_model->nParameters()) {
             this->SetNthInput(i, const_cast<TImage*>(img));
         } else {
@@ -178,7 +178,7 @@ protected:
         }
     }
 
-    itk::DataObject::Pointer MakeOutput(unsigned int idx) {
+    itk::DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) override {
         itk::DataObject::Pointer output;
         if (idx < 1) {
             auto img = TCVImage::New();

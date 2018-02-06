@@ -33,7 +33,7 @@ struct MCDSRCFunctor {
 
     MCDSRCFunctor(std::shared_ptr<QI::Model> m, QI::SequenceGroup &s,
                   const Eigen::ArrayXd &d, const Eigen::ArrayXd &w) :
-        m_sequence(s), m_data(d), m_model(m), m_weights(w)
+        m_sequence(s), m_data(d), m_weights(w), m_model(m)
     {
         assert(static_cast<size_t>(m_data.rows()) == m_sequence.size());
     }
@@ -65,7 +65,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
 
     SRCAlgo(std::shared_ptr<QI::Model>&m, Eigen::ArrayXXd &b,
             QI::SequenceGroup &s, int mi) :
-        m_model(m), m_bounds(b), m_sequence(s), m_iterations(mi)
+        m_bounds(b), m_model(m), m_sequence(s), m_iterations(mi)
     {}
 
     size_t numInputs() const override  { return m_sequence.count(); }

@@ -17,7 +17,7 @@
 namespace QI {
 
 EllipseAlgo::EllipseAlgo(std::shared_ptr<QI::SSFPEchoSequence> &seq, bool debug) :
-    m_sequence(seq), m_debug(debug)
+    m_debug(debug), m_sequence(seq)
 {
     m_zero = TOutput(m_sequence->size());
     m_zero.Fill(0.);

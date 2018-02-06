@@ -119,10 +119,7 @@ template<typename TPixel>
 void Run() {
     typedef itk::Image<TPixel, 4>          TImage;
     typedef itk::Image<std::complex<TPixel>, 4> TXImage;
-    typedef itk::ImageFileReader<TImage>   TReader;
-    typedef itk::ImageFileReader<TXImage>  TXReader;
     typedef itk::ImageFileWriter<TImage>   TWriter;
-    typedef itk::ImageFileWriter<TXImage>  TXWriter;
 
     typename TImage::Pointer img1 = ITK_NULLPTR, img2 = ITK_NULLPTR;
     typename TXImage::Pointer imgX = ITK_NULLPTR;
