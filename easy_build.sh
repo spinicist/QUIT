@@ -14,9 +14,9 @@
 
 WD=$PWD
 # First download Eigen & ITK
+git submodule update --init
 EXTERNAL="$WD/External"
 cd $EXTERNAL
-git submodule update --init
 
 # These are header only, no building required
 EIGEN_DIR="$EXTERNAL/eigen"
