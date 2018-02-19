@@ -10,12 +10,13 @@
  */
 
 #include "ApplyAlgorithmFilter.hxx"
-#include "ImageTypes.h"
+#include "ApplyTypes.h"
 
 namespace itk {
 
 template class ApplyAlgorithmFilter<QI::VectorVolumeF, QI::VectorVolumeF, QI::VolumeF, QI::VolumeF>;
 template class ApplyAlgorithmFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::VolumeF, QI::VolumeF>;
 template class ApplyAlgorithmFilter<QI::VectorVolumeXF, QI::VectorVolumeF, QI::VolumeF, QI::VolumeF>;
+template class ApplyAlgorithmFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::VectorVolumeF, QI::VolumeF>;
 
 }
