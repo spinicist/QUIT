@@ -40,8 +40,11 @@ TSeq ReadSequence(cereal::JSONInputArchive &in_archive, bool verbose) {
     in_archive(cereal::make_nvp(sequence.name(), sequence));
 
     if (verbose) {
-        cereal::JSONOutputArchive archive(std::cout);
-        archive(cereal::make_nvp(sequence.name(), sequence));
+        {
+            cereal::JSONOutputArchive archive(std::cout);
+            archive(cereal::make_nvp(sequence.name(), sequence));
+        }
+        std::cout << std::endl;
     }
     return sequence;
 }
