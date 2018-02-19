@@ -66,7 +66,7 @@ public:
     }
 
     size_t numInputs() const override  { return 1; }
-    size_t numConsts() const override  { return 1; }
+    size_t numConsts() const override  { return 2; }
     size_t numOutputs() const override { return 1; }
     size_t dataSize() const override   { return m_inputsize; }
     size_t outputSize() const override {
@@ -88,7 +88,7 @@ public:
     }
 
     std::vector<float> defaultConsts() const override {
-        std::vector<float> def(1, 0);
+        std::vector<float> def(2, 0);
         return def;
     }
 
@@ -103,12 +103,18 @@ public:
         const Eigen::ArrayXd diff = (odd.cast<double>() - even.cast<double>());
         Eigen::ArrayXd SI_PD = odd.cast<double>();
         double T1_tissue = consts[0];
+        Eigen::ArrayXd PD;
+        if (consts[1] == 0) {
+            PD = odd.cast<double>();
+        } else {
+            PD = Eigen::ArrayXd::Constant(m_series_size, consts[1]);
+        }
         if (T1_tissue > 0) {
-            SI_PD /= (1 - exp(-m_CASL.TR / T1_tissue));
+            PD /= (1 - exp(-m_CASL.TR / T1_tissue));
         }
         const double PLD = (m_CASL.post_label_delay.rows() > 1) ? m_CASL.post_label_delay[index[2]] : m_CASL.post_label_delay[0];
         const Eigen::ArrayXd CBF = (6000 * m_lambda * diff * exp(PLD / m_T1)) / 
-                           (2. * m_alpha * m_T1 * SI_PD * (1. - exp(-m_CASL.label_time / m_T1)));
+                           (2. * m_alpha * m_T1 * PD * (1. - exp(-m_CASL.label_time / m_T1)));
         if (m_average_timeseries) {
             outputs[0][0] = CBF.mean();
         } else {
@@ -139,6 +145,7 @@ int main(int argc, char **argv) {
     args::Flag slice_time(parser, "SLICE TIME CORRECTION", "Apply slice-time correction (number of post-label delays must match number of slices)", {'s', "slicetime"});
     args::ValueFlag<double> T1_blood(parser, "BLOOD T1", "Value of blood T1 to use (seconds), default 2.429", {'b', "blood"}, 2.429);
     args::ValueFlag<std::string> T1_tissue_path(parser, "TISSUE T1", "Path to tissue T1 map (units are seconds)", {'t', "tissue"});
+    args::ValueFlag<std::string> PD_path(parser, "PROTON DENSITY", "Path to PD image", {'p', "pd"});
     args::ValueFlag<double> alpha(parser, "ALPHA", "Labelling efficiency, default 0.9", {'a', "alpha"}, 0.9);
     args::ValueFlag<double> lambda(parser, "LAMBDA", "Blood-brain partition co-efficent, default 0.9 mL/g", {'l', "lambda"}, 0.9);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
@@ -146,6 +153,12 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Starting " << argv[0] << std::endl;
     if (verbose) std::cout << "Reading ASL data from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
+
+    QI::VolumeF::Pointer PD_image = ITK_NULLPTR;
+    if (PD_path) {
+        if (verbose) std::cout << "Reading proton density map: " << PD_path.Get() << std::endl;
+        PD_image = QI::ReadImage(PD_path.Get());
+    }
 
     QI::VolumeF::Pointer T1_tissue = ITK_NULLPTR;
     if (T1_tissue_path) {
@@ -164,6 +177,7 @@ int main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetConst(0, T1_tissue);
+    apply->SetConst(1, PD_image);
     apply->SetOutputAllResiduals(false);
     if (verbose) std::cout << "Using " << threads.Get() << " threads" << std::endl;
     apply->SetPoolsize(threads.Get());
