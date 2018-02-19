@@ -260,16 +260,16 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
         dataIters[i] = ImageRegionConstIterator<TInputImage>(this->GetInput(i), region);
     }
 
-    std::vector<ImageRegionConstIterator<TConstImage>> consTIterations(m_algorithm->numConsts());
+    std::vector<ImageRegionConstIterator<TConstImage>> constIters(m_algorithm->numConsts());
     for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
         typename TConstImage::ConstPointer c = this->GetConst(i);
         if (c) {
-            consTIterations[i] = ImageRegionConstIterator<TConstImage>(c, region);
+            constIters[i] = ImageRegionConstIterator<TConstImage>(c, region);
         }
     }
-    std::vector<ImageRegionIterator<TOutputImage>> outpuTIterations(m_algorithm->numOutputs());
+    std::vector<ImageRegionIterator<TOutputImage>> outputIters(m_algorithm->numOutputs());
     for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-        outpuTIterations[i] = ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
+        outputIters[i] = ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
     }
     ImageRegionIterator<TInputImage> allResidualsIter;
     if (m_allResiduals) {
@@ -287,9 +287,9 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
                 outputs[i] = m_algorithm->zero();
             }
             std::vector<TConstPixel> constants = m_algorithm->defaultConsts();
-            for (size_t i = 0; i < consTIterations.size(); i++) {
+            for (size_t i = 0; i < constIters.size(); i++) {
                 if (this->GetConst(i)) {
-                    constants[i] = consTIterations[i].Get();
+                    constants[i] = constIters[i].Get();
                 }
             }
             TOutputPixel residual = m_algorithm->zero();
@@ -310,7 +310,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
                 std::cerr << "Algorithm failed for voxel: " << residualIter.GetIndex() << std::endl;
             }
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-                outpuTIterations[i].Set(outputs[i]);
+                outputIters[i].Set(outputs[i]);
             }
             residualIter.Set(residual);
             if (m_allResiduals) {
@@ -319,7 +319,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
             iterationsIter.Set(iterations);
         } else {
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-                outpuTIterations[i].Set(m_algorithm->zero());
+                outputIters[i].Set(m_algorithm->zero());
             }
             if (m_allResiduals) {
                 VariableLengthVector<float> residZeros(m_algorithm->dataSize()); residZeros.Fill(0.);
@@ -336,10 +336,10 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
         }
         for (size_t i = 0; i < m_algorithm->numConsts(); i++) {
             if (this->GetConst(i))
-                ++consTIterations[i];
+                ++constIters[i];
         }
         for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
-            ++outpuTIterations[i];
+            ++outputIters[i];
         }
         if (m_allResiduals)
             ++allResidualsIter;

@@ -46,13 +46,10 @@ export FSLOUTPUTTYPE=NIFTI
 # All times (e.g. TR) are specified in SECONDS, not milliseconds
 #
 
-SPGR_FLIP="2 3 4 5 6 7 9 13 18"
-SPGR_TR="0.008"
-SPGR_TE="0.003"
-
-SSFP_FLIP="12.3529413 16.4705884 21.6176471 27.7941174 33.9705877 41.1764703 52.5 70"
-SSFP_TR="0.003888"
-SSFP_PHASE="0 180"
+SPGR_SEQ='"SPGR": { "FA": [2,3,4,5,6,7,9,13,18], "TR": 0.008 }'
+SSFP_SEQ='"SSFP": { "TR": 0.004,
+                    "FA": [12,16,21,27,33,41,52.5,70,12,16,21,27,33,41,52.5,70],
+                    "PhaseInc": [0,0,0,0,0,0,0,0,180,180,180,180,180,180,180,180] }'
 
 #
 # Process DESPOT1 T1 and PD
@@ -60,32 +57,30 @@ SSFP_PHASE="0 180"
 
 echo "Processing T1."
 qidespot1-v -an -b $B1_FILE -m $MASK_FILE $SPGR_FILE $NTHREADS <<END_HIFI
-$SPGR_FLIP
-$SPGR_TR
+{
+    $SPGR_SEQ
+}
 END_HIFI
 
 # Process DESPOT2-FM to get a T2 and f0 map that we will use with mcdespot
 
 echo "Processing T2"
 qidespot2fm-v -b $B1_FILE -m $MASK_FILE D1_T1.nii $SSFP_FILE $NTHREADS <<END_FM
-$SSFP_FLIP
-$SSFP_PHASE
-$SSFP_TR
+{
+    $SSFP_SEQ
+}
 END_FM
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 # The SPGR echo-time is used to correct for differential decay between the components
 
 qimcdespot-v -m $MASK_FILE -f FM_f0.nii -b HIFI_B1.nii -M3 -S $NTHREADS <<END_MCD
-$SPGR_FILE
-SPGR_ECHO
-$SPGR_FLIP
-$SPGR_TR
-$SPGR_TE
-$SSFP_FILE
-SSFP_ECHO
-$SSFP_FLIP
-$SSFP_PHASE
-$SSFP_TR
-END
+{
+    "SequenceGroup": {
+        "sequences": [
+            { $SPGR_SEQ },
+            { $SSFP_SEQ }
+        ]
+    }
+}
 END_MCD

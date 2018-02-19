@@ -50,21 +50,12 @@ NTHREADS="-T4"
 # All times (e.g. TR) are specified in SECONDS, not milliseconds
 #
 
-SPGR_FLIP="3 4 5 6 7 9 13 18"
-SPGR_TR="0.008"
-SPGR_TE="0.003"
-
-IR_SPGR_FLIP="5"
-IR_SPGR_TR="0.008"
-IR_SPGR_NPE="68"
-IR_SPGR_K0="0"
-IR_SPGR_TI="0.45"
-IR_SPGR_DELAY="0.0"
-IR_SPGR_EFF="1.0"
-
-SSFP_TR="0.004208"
-SSFP_FLIP="12 12 16 16 21 21 27 27 33 33 40 40 51 51 68 68"
-SSFP_PHASE="180 0 90 270 180 0 90 270 180 0 90 270 180 0 90 270"
+SPGR_SEQ='"SPGR": { "FA": [2,3,4,5,6,7,9,13,18], "TR": 0.008 }'
+SSFP_SEQ='"SSFP": { "TR": 0.004,
+                    "FA": [12,12,16,16,21,21,27,27,33,33,40,40,51,51,68,68],
+                    "PhaseInc": [180,0,90,270,180,0,90,270,180,0,90,270,180,0,90,270] }'
+MPRAGE_SEQ='"MPRAGE": { "TR": 0.008, "FA": 5, "NPE": 68, "k0": 0,
+                        "TI": 0.45, "TD": 0, "eta": 1 }'
 
 # Motion correction
 # First register the SSFP to the average volume (to approximately remove bands)
@@ -88,15 +79,9 @@ qimask $SPGR_MCF --fillh=2 -o $MASK_FILE
 
 echo "Processing HIFI."
 qidespot1hifi-v --clamp=5.0 --mprage -m $MASK_FILE $SPGR_MCF $IRSPGR_MCF $NTHREADS <<END_HIFI
-$SPGR_FLIP
-$SPGR_TR
-$IR_SPGR_FLIP
-$IR_SPGR_TR
-$IR_SPGR_NPE
-$IR_SPGR_K0
-$IR_SPGR_TI
-$IR_SPGR_DELAY
-$IR_SPGR_EFF
+{
+    $SPGR_SEQ, $MPRAGE_SEQ
+}
 END_HIFI
 
 # Fit a polynomial to the B1 map to remove WM/GM/CSF contrast
@@ -108,8 +93,7 @@ qipolyfit --mask=$MASK_FILE --order=8 HIFI_B1 | qipolyimg --order=8 --mask=$MASK
 
 echo "Recalculating T1 map"
 qidespot1-v --clampT1=5.0 --mask=$MASK_FILE --B1=POLY_B1.nii $SPGR_MCF <<END_D1
-$SPGR_FLIP
-$SPGR_TR
+$SPGR_SEQ
 END_D1
 
 # Process DESPOT2-FM to get a T2 and f0 map
@@ -117,23 +101,18 @@ END_D1
 
 echo "Processing FM"
 qidespot2fm-v --flex --asym -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
-$SSFP_FLIP
-$SSFP_PHASE
-$SSFP_TR
+$SSFP_SEQ
 END_FM
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 
 qimcdespot-v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii -M3 -S $NTHREADS -s "0 0 48 80 80 1" <<END_MCD
-$SPGR_MCF
-SPGR_ECHO
-$SPGR_FLIP
-$SPGR_TR
-$SPGR_TE
-$SSFP_MCF
-SSFP_ECHO
-$SSFP_FLIP
-$SSFP_PHASE
-$SSFP_TR
-END
+{
+    "SequenceGroup": {
+        "sequences": [
+            { $SPGR_SEQ },
+            { $SSFP_SEQ }
+        ]
+    }
+}
 END_MCD
