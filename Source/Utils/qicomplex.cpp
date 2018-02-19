@@ -96,6 +96,13 @@ args::ArgumentParser parser(
     "Output is specified with upper case letters. Any combination can be given\n"
     "http://github.com/spinicist/QUIT");
 
+args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
+args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+args::Flag     use_double(parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
+args::Flag     fixge(parser, "FIX_GE", "Negate alternate slices (fixes lack of FFT shift)", {"fixge"});
+args::Flag     negate(parser, "NEGATE", "Negate entire volume", {"negate"});
+
 args::ValueFlag<std::string> in_mag(parser, "IN_MAG", "Input magnitude file", {'m', "mag"});
 args::ValueFlag<std::string> in_pha(parser, "IN_PHA", "Input phase file", {'p', "pha"});
 args::ValueFlag<std::string> in_real(parser, "IN_REAL", "Input real file", {'r', "real"});
@@ -108,12 +115,6 @@ args::ValueFlag<std::string> out_pha(parser, "OUT_PHA", "Output phase file", {'P
 args::ValueFlag<std::string> out_real(parser, "OUT_REAL", "Output real file", {'R', "REAL"});
 args::ValueFlag<std::string> out_imag(parser, "OUT_IMAG", "Output imaginary file", {'I', "IMAG"});
 args::ValueFlag<std::string> out_complex(parser, "OUT_CPLX", "Output complex file", {'X', "COMPLEX"});
-
-args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
-args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-args::Flag     use_double(parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
-args::Flag     fixge(parser, "FIX_GE", "Negate alternate slices (fixes lack of FFT shift)", {"fixge"});
-args::Flag     negate(parser, "NEGATE", "Negate entire volume", {"negate"});
 
 template<typename TPixel>
 void Run() {
@@ -235,6 +236,7 @@ void Run() {
 
 int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv);
+    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (use_double) {
         if (verbose) std::cout << "Using double precision" << std::endl;
         Run<double>();
