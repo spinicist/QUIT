@@ -198,13 +198,14 @@ int main(int argc, char **argv) {
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     QI::ParseArgs(parser, argc, argv);
 
+    cereal::JSONInputArchive input(std::cin);
     if (verbose) std::cout << "Reading SPGR file: " << QI::CheckPos(spgr_path) << std::endl;
     auto spgrImg = QI::ReadVectorImage(QI::CheckPos(spgr_path));
+    auto spgr_sequence = QI::ReadSequence<QI::SPGRSequence>(input, verbose);
     if (verbose) std::cout << "Reading " << (mprage ? "MPRAGE" : "IR-SPGR") << " file: " << QI::CheckPos(ir_path) << std::endl;
     auto irImg = QI::ReadVectorImage(QI::CheckPos(ir_path));
+    auto ir_sequence = QI::ReadSequence<QI::MPRAGESequence>(input, verbose);
 
-    auto spgr_sequence = QI::ReadSequence<QI::SPGRSequence>(std::cin, verbose);
-    auto ir_sequence = QI::ReadSequence<QI::MPRAGESequence>(std::cin, verbose);
     auto apply = QI::ApplyF::New();
     auto hifi = std::make_shared<HIFIAlgo>(spgr_sequence, ir_sequence, clamp.Get());
     apply->SetAlgorithm(hifi);
