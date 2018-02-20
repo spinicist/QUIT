@@ -1,8 +1,7 @@
 /*
- *  qiunwrap.cpp
+ *  qi_unwrap_laplace.cpp
  *
- *  Created by Tobias Wood on 11/06/2015.
- *  Copyright (c) 2015 Tobias Wood.
+ *  Copyright (c) 2015, 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this

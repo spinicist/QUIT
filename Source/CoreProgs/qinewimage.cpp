@@ -40,6 +40,7 @@ args::ValueFlag<std::string> origin_arg(parser, "ORIGIN", "Image origin", {'o', 
 args::ValueFlag<std::string> fill_arg(parser, "FILL", "Fill with value", {'f', "fill"});
 args::ValueFlag<std::string> grad_arg(parser, "GRADIENT", "Fill with gradient (dim, low, high)", {'g', "grad"});
 args::ValueFlag<std::string> steps_arg(parser, "STEPS", "Fill with discrete steps (dim, low, high, steps)", {'t', "step"});
+args::ValueFlag<double>      wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
 
 template<int dim>
 void make_image() {
@@ -119,6 +120,9 @@ void make_image() {
                 val += deltaVal;
             } else if ((it.GetIndex()[fillDim] % stepLength) == 0) {
                 val += deltaVal;
+            }
+            if (wrap_arg) {
+                val = fmod(val, wrap_arg.Get());
             }
         }
     it.NextLine();

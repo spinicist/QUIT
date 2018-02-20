@@ -1,10 +1,6 @@
-option( BUILD_UTILITIES "Build the utility programs" ON )
-if( ${BUILD_UTILITIES} )
-    set( PROGRAMS
-        qihdr
-        qicomplex qiaffine qimask qikfilter qireorder
-        qisplitsubjects qipolyfit qipolyimg
-        qi_coil_combine qi_bet qi_rfprofile )
+option( BUILD_SUSCEPTIBILITY "Build the susceptibility programs" ON )
+if( ${BUILD_SUSCEPTIBILITY} )
+    set( PROGRAMS qi_unwrap_laplace qi_unwrap_path )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)

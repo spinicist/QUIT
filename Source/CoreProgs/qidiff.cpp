@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> baseline_path(parser, "BASELINE", "Baseline file for difference", {"baseline"});
     args::ValueFlag<double>      tolerance(parser, "TOLERANCE", "Tolerance (mean percent difference)", {"tolerance"}, 0);
     args::ValueFlag<double>      noise(parser, "NOISE", "Added noise level, tolerance is relative to this", {"noise"}, 1);
+    args::Flag                   absolute(parser, "ABSOLUTE", "Use absolute difference, not relative (avoids 0/0 problems)", {'a', "abs"});
     QI::ParseArgs(parser, argc, argv);
     if (verbose) std::cout << "Reading input: " << QI::CheckValue(input_path) << std::endl;
     if (verbose) std::cout << "Reading baseline: " << QI::CheckValue(baseline_path) << std::endl;
@@ -42,22 +43,24 @@ int main(int argc, char **argv) {
     diff->SetInput1(input);
     diff->SetInput2(baseline);
 
-    auto diff_norm = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
-    diff_norm->SetInput1(diff->GetOutput());
-    diff_norm->SetInput2(baseline);
-    diff_norm->Update();
-    
     auto sqr_norm = itk::SquareImageFilter<QI::VolumeF, QI::VolumeF>::New();
-    sqr_norm->SetInput(diff_norm->GetOutput());
-    
+    if (absolute) {
+        sqr_norm->SetInput(diff->GetOutput());
+    } else {
+        auto diff_norm = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
+        diff_norm->SetInput1(diff->GetOutput());
+        diff_norm->SetInput2(baseline);
+        diff_norm->Update();
+        sqr_norm->SetInput(diff_norm->GetOutput());
+    }
     auto stats = itk::StatisticsImageFilter<QI::VolumeF>::New();
     stats->SetInput(sqr_norm->GetOutput());
     stats->Update();
 
-    double mean_sqr_diff = stats->GetMean();
-    double root_mean_sqr_diff = sqrt(mean_sqr_diff);
-    double rel_diff = root_mean_sqr_diff / noise.Get();
-    bool passed = (rel_diff <= tolerance.Get());
+    const double mean_sqr_diff = stats->GetMean();
+    const double root_mean_sqr_diff = sqrt(mean_sqr_diff);
+    const double rel_diff = root_mean_sqr_diff / noise.Get();
+    const bool passed = rel_diff <= tolerance.Get();
     if (verbose) {
         std::cout << "Mean Square Diff: " << mean_sqr_diff
                   << "\nRelative noise: " << noise.Get()
