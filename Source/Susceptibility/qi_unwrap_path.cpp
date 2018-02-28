@@ -7,6 +7,11 @@
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
+ *  This is an implementation of the algorithm found in:
+ *  Abdul-Rahman et al, Fast and robust three-dimensional best path phase unwrapping algorithm,
+ *  http://ao.osa.org/abstract.cfm?URI=ao-46-26-6623
+ *  Abdul-Rahman et al, Robust three-dimensional best-path phase-unwrapping algorithm that 
+ *  avoids singularity loops, http://ao.osa.org/abstract.cfm?URI=ao-48-23-4582
  */
 
 #include <iostream>
@@ -261,7 +266,8 @@ private:
 int main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Path-based phase unwrapping\n"
-                                "See Hussein et al. Fast and Robust three-dimensional best path phase unwrapping algorithm\n"
+                                "See Abdul-Rahman et al. Fast and Robust three-dimensional best path phase unwrapping algorithm\n"
+                                "http://ao.osa.org/abstract.cfm?URI=ao-46-26-6623\n"
                                 "http://github.com/spinicist/QUIT");
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
