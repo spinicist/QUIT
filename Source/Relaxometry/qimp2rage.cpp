@@ -139,14 +139,12 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv);
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
 
-    std::string inName(argv[optind]);
     if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
-    if (verbose) std::cout << "Processing" << std::endl;
 
+    if (verbose) std::cout << "Combining MP2 contrasts" << std::endl;
     typedef itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MPRAGEFunctor<float>> MPRageContrastFilterType;
     int nti = inFile->GetLargestPossibleRegion().GetSize()[3];
-
     auto MPContrastFilter = MPRageContrastFilterType::New();
     typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF> ExtractType;
     auto vol_i = ExtractType::New();
@@ -173,7 +171,7 @@ int main(int argc, char **argv) {
             QI::WriteImage(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
         }
     }
-
+    std::cout << "Calculating T1" << std::endl;
     auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGESequence>(std::cin, verbose);
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetSequence(mp2rage_sequence);
