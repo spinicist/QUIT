@@ -1,11 +1,12 @@
 option( BUILD_SUSCEPTIBILITY "Build the susceptibility programs" ON )
 if( ${BUILD_SUSCEPTIBILITY} )
-    set( PROGRAMS qi_unwrap_laplace qi_unwrap_path )
+    add_executable(qi_unwrap_laplace qi_unwrap_laplace.cpp)
+    target_link_libraries(qi_unwrap_laplace qi_imageio qi_filters qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES})
 
-    foreach(PROGRAM ${PROGRAMS})
-        add_executable(${PROGRAM} ${PROGRAM}.cpp)
-        target_link_libraries(${PROGRAM} qi_imageio qi_filters qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES})
-    endforeach(PROGRAM)
+    add_executable( qi_unwrap_path qi_unwrap_path.cpp
+                        ReliabilityFilter.cpp
+                        PathUnwrapFilter.cpp )
+    target_link_libraries( qi_unwrap_path qi_imageio qi_filters qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES} )
 
-    install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
+    install( TARGETS qi_unwrap_laplace qi_unwrap_path RUNTIME DESTINATION bin )
 endif()
