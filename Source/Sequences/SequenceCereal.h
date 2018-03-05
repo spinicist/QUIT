@@ -1,7 +1,7 @@
 /*
  *  SequenceCereal.h
  *
- *  Copyright (c) 2016 Tobias Wood.
+ *  Copyright (c) 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef SEQUENCES_CEREAL_H
-#define SEQUENCES_CEREAL_H
+#ifndef SEQUENCE_CEREAL_H
+#define SEQUENCE_CEREAL_H
 
 #include <cereal/archives/json.hpp>
 #include "SequenceBase.h"
@@ -19,35 +19,12 @@
 namespace QI {
 
 template<typename TSeq>
-TSeq ReadSequence(std::istream &is, bool verbose, std::ostream &os = std::cout) {
-    cereal::JSONInputArchive in_archive(is);
-    TSeq sequence;
-    in_archive(cereal::make_nvp(sequence.name(), sequence));
-
-    if (verbose) {
-        {   // Archives don't fully flush until destruction
-            cereal::JSONOutputArchive archive(os);
-            archive(cereal::make_nvp(sequence.name(), sequence));
-        }
-        os << std::endl;
-    }
-    return sequence;
-}
+extern TSeq ReadSequence(cereal::JSONInputArchive &in_archive,
+                         bool verbose,
+                         std::ostream &os = std::cout);
 
 template<typename TSeq>
-TSeq ReadSequence(cereal::JSONInputArchive &in_archive, bool verbose) {
-    TSeq sequence;
-    in_archive(cereal::make_nvp(sequence.name(), sequence));
-
-    if (verbose) {
-        {
-            cereal::JSONOutputArchive archive(std::cout);
-            archive(cereal::make_nvp(sequence.name(), sequence));
-        }
-        std::cout << std::endl;
-    }
-    return sequence;
-}
+extern TSeq ReadSequence(std::istream &is, bool verbose, std::ostream &os = std::cout);
 
 } // End namespace QI
 
@@ -58,4 +35,4 @@ void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::SequenceBase> &sb);
 
 } // End namespace cereal
 
-#endif // SEQUENCES_BASE_H
+#endif // SEQUENCE_CEREAL_H

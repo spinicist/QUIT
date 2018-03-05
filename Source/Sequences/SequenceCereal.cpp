@@ -1,9 +1,11 @@
 
 #include "SequenceCereal.h"
+#include "SequenceCereal.hpp"
 #include "SPGRSequence.h"
 #include "MPRAGESequence.h"
 #include "SSFPSequence.h"
 #include "MultiEchoSequence.h"
+#include "SequenceGroup.h"
 
 namespace cereal {
 
@@ -41,3 +43,22 @@ void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::SequenceBase> &sb) {
 }
 
 } // End namespace cereal
+
+namespace QI {
+    #define QI_READSEQ( Seq ) \
+        template auto ReadSequence< Seq >(cereal::JSONInputArchive &in_archive, bool verbose, std::ostream &os = std::cout) -> Seq;\
+        template auto ReadSequence< Seq >(std::istream &is, bool verbose, std::ostream &os = std::cout) -> Seq;
+
+    QI_READSEQ( SPGRSequence )
+    QI_READSEQ( SPGREchoSequence )
+    QI_READSEQ( SPGRFiniteSequence )
+    QI_READSEQ( MPRAGESequence )
+    QI_READSEQ( SSFPSequence )
+    QI_READSEQ( SSFPEchoSequence )
+    QI_READSEQ( SSFPFiniteSequence )
+    QI_READSEQ( SSFPGSSequence )
+    QI_READSEQ( MultiEchoSequence )
+    QI_READSEQ( MP2RAGESequence )
+    QI_READSEQ( SequenceGroup )
+    #undef QI_READSEQ
+}
