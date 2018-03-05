@@ -1,4 +1,4 @@
-#!/bin/bash -eux
+#!/bin/bash -eu
 ##
 ## qi_composer.sh
 ##
@@ -79,11 +79,8 @@ antsMotionCorr -d 3 -a $TEMP/${IMG_ROOT}_mag${EXT} -o $TEMP/${IMG_ROOT}_avg${EXT
 antsMotionCorr -d 3 -a $TEMP/${SER_ROOT}_mag${EXT} -o $TEMP/${SER_ROOT}_avg${EXT}
 
 log "Registering reference to input"
-qimask $TEMP/${IMG_ROOT}_avg${EXT} --fillh=2
-ImageMath 3 $TEMP/mask${EXT} MD $TEMP/${IMG_ROOT}_avg_mask${EXT} 3
-
 antsRegistration --dimensionality 3 --float 0 --interpolation Linear \
-    --output [$TEMP/reg,$TEMP/regWarped${EXT}] -x $TEMP/mask${EXT} \
+    --output [$TEMP/reg,$TEMP/regWarped${EXT}] \
     --initial-moving-transform [$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1] \
     --transform Rigid[0.1] --metric MI[$TEMP/${IMG_ROOT}_avg${EXT}, $TEMP/${SER_ROOT}_avg${EXT}, 1, 32, Regular, 0.25] \
     --convergence [1000x500x250,1e-6,10] --shrink-factors 8x4x2 --smoothing-sigmas 4x2x1vox
