@@ -29,8 +29,7 @@ Eigen::ArrayXd Unwrap(const Eigen::ArrayXd &x) {
     for (int i = 1; i < (sz - 1); i++) {
         ph_correct[i] += ph_correct[i - 1];
     }
-    Eigen::ArrayXd y(x.rows());
-    y[0] = x[0];
+    Eigen::ArrayXd y = x;
     y.tail(sz - 1) += ph_correct;
     return y;
     // if (debug) {
