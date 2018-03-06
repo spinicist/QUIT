@@ -29,26 +29,6 @@
 #include "ReliabilityFilter.h"
 #include "PathUnwrapFilter.h"
 
-class TemporalUnwrap {
-public:
-    TemporalUnwrap() {}
-    ~TemporalUnwrap() {}
-    bool operator!=(const TemporalUnwrap &) const { return false; }
-    bool operator==(const TemporalUnwrap &other) const { return !(*this != other); }
-
-    inline itk::VariableLengthVector<float> operator()(const itk::VariableLengthVector<float> &vx) const
-    {
-        Eigen::Map<const Eigen::ArrayXf> xf(vx.GetDataPointer(), vx.Size());
-        Eigen::ArrayXd xd = xf.cast<double>(); 
-        auto y = QI::Unwrap(xd);
-        itk::VariableLengthVector<float> ry(y.rows());
-        for (auto i = 0; i < y.rows(); i++) {
-            ry[i] = y[i];
-        }
-        return ry;
-    }
-};
-
 /*
  * Main
  */
