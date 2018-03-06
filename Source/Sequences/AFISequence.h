@@ -30,4 +30,4 @@ struct AFISequence : SequenceBase {
 
 } // End namespace QI
 
-#endif // SEQUENCES_STEADYSTATE_H
+#endif // SEQUENCES_AFI_H

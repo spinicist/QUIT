@@ -15,45 +15,18 @@
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
-#include "Models.h"
 #include "ApplyTypes.h"
-#include "EigenCereal.h"
+#include "CASLSequence.h"
 #include "SequenceCereal.h"
-#include <cereal/archives/json.hpp>
-
-struct CASLSequence : QI::SequenceBase {
-    double TR, label_time;
-    Eigen::ArrayXd post_label_delay;
-
-    QI_SEQUENCE_DECLARE(CASL);
-    size_t size() const override { return 1; };
-};
-
-void CASLSequence::load(cereal::JSONInputArchive &ar) {
-    ar(CEREAL_NVP(TR),
-       CEREAL_NVP(label_time),
-       CEREAL_NVP(post_label_delay));
-}
-
-void CASLSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(CEREAL_NVP(TR),
-       CEREAL_NVP(label_time),
-       CEREAL_NVP(post_label_delay));
-}
-
-Eigen::ArrayXcd CASLSequence::signal(const std::shared_ptr<QI::Model> m, const Eigen::VectorXd &p) const {
-    QI_FAIL("Not Implemented");
-}
-
 
 class CASLAlgo : public QI::ApplyVectorF::Algorithm {
 protected:
-    const CASLSequence m_CASL;
+    const QI::CASLSequence m_CASL;
     const double m_T1, m_alpha, m_lambda;
     const int m_inputsize, m_series_size;
     const bool m_average_timeseries;
 public:
-    CASLAlgo(const CASLSequence& casl,
+    CASLAlgo(const QI::CASLSequence& casl,
              const double T1, const double alpha, const double lambda,
              const int inputsize, const bool average, const bool slice_time) :
         m_CASL(casl), m_T1(T1), m_alpha(alpha), m_lambda(lambda),
@@ -166,7 +139,7 @@ int main(int argc, char **argv) {
         T1_tissue = QI::ReadImage(T1_tissue_path.Get());
     }
 
-    auto sequence = QI::ReadSequence<CASLSequence>(std::cin, verbose);
+    auto sequence = QI::ReadSequence<QI::CASLSequence>(std::cin, verbose);
     const auto n_slices = input->GetLargestPossibleRegion().GetSize()[2];
     if (slice_time && (n_slices != sequence.post_label_delay.rows())) {
         QI_FAIL("Number of post-label delays " << sequence.post_label_delay.rows() << " does not match number of slices " << n_slices);
@@ -198,6 +171,6 @@ int main(int argc, char **argv) {
         std::cout << "Writing results files." << std::endl;
     }
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
-    QI::WriteVectorImage(apply->GetOutput(0), outPrefix + "CBF" + QI::OutExt());
+    QI::WriteVectorImage(apply->GetOutput(0), outPrefix + "_CBF" + QI::OutExt());
     return EXIT_SUCCESS;
 }
