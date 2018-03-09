@@ -57,10 +57,10 @@ Eigen::ArrayXcd MP2RAGESequence::signal(const double M0, const double T1, const 
 }
 
 void MP2RAGESequence::load(cereal::JSONInputArchive &ar) {
-    try { ar(cereal::make_nvp("TR", TR)); } catch (cereal::RapidJSONException &e) { QI_FAIL("Error parsing TR for MP2RAGE: " << e.what()) };
-    try { ar(cereal::make_nvp("TD", TD)); } catch (cereal::RapidJSONException &e) { QI_FAIL("Error parsing TD for MP2RAGE: " << e.what()) };
-    try { ar(cereal::make_nvp("ETL", ETL)); } catch (cereal::RapidJSONException &e) { QI_FAIL("Error parsing ETL for MP2RAGE: " << e.what()) };
-    try { QI_SEQUENCE_LOAD_DEGREES( FA ); } catch (cereal::RapidJSONException &e) { QI_FAIL("Error parsing FA for MP2RAGE: " << e.what()) };
+    QI_SEQUENCE_LOAD( TR );
+    QI_SEQUENCE_LOAD( TD );
+    QI_SEQUENCE_LOAD( ETL );
+    QI_SEQUENCE_LOAD_DEGREES( FA );
 }
 
 void MP2RAGESequence::save(cereal::JSONOutputArchive &ar) const {

@@ -13,13 +13,12 @@
 #define SEQUENCES_SPINECHO_H
 
 #include "SequenceBase.h"
-#include <cereal/cereal.hpp>
 
 namespace QI {
 
 struct MultiEchoSequence : SequenceBase {
-    double TR, ESP;
-    int NEcho;
+    double TR, TE1, ESP;
+    int ETL;
     Eigen::ArrayXd TE;
     QI_SEQUENCE_DECLARE(MultiEcho);
     size_t size() const override;

@@ -22,12 +22,15 @@ Eigen::ArrayXcd MultiEchoSequence::signal(std::shared_ptr<Model> m, const Eigen:
 }
 
 void MultiEchoSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(CEREAL_NVP(TR), CEREAL_NVP(ESP), CEREAL_NVP(NEcho));
+    ar(CEREAL_NVP(TR), CEREAL_NVP(TE1), CEREAL_NVP(ESP), CEREAL_NVP(ETL));
 }
 
 void MultiEchoSequence::load(cereal::JSONInputArchive &ar) {
-    ar(CEREAL_NVP(TR), CEREAL_NVP(ESP), CEREAL_NVP(NEcho));
-    this->TE = Eigen::ArrayXd::LinSpaced(NEcho, ESP, ESP*NEcho);
+    QI_SEQUENCE_LOAD( TR );
+    QI_SEQUENCE_LOAD( TE1 );
+    QI_SEQUENCE_LOAD( ESP );
+    QI_SEQUENCE_LOAD( ETL );
+    this->TE = Eigen::ArrayXd::LinSpaced(ETL, TE1, TE1+ESP*(ETL - 1));
 }
 
 } // End namespace QI
