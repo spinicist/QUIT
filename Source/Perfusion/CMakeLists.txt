@@ -1,6 +1,6 @@
 option( BUILD_PERFUSION "Build the perfusion programs" ON )
 if( ${BUILD_PERFUSION} )
-    set( PROGRAMS qi_asl )
+    set( PROGRAMS qi_asl qi_ase_oef )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)
