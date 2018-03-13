@@ -115,7 +115,7 @@ protected:
                 }
             }
             //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose() << std::endl;
-            outputIter.Set(1./m_T1[best_index]);
+            outputIter.Set(m_T1[best_index]);
             ++inputIter;
             ++outputIter;
         }
@@ -143,41 +143,34 @@ int main(int argc, char **argv) {
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
 
     if (verbose) std::cout << "Combining MP2 contrasts" << std::endl;
+
+    auto ti_1 = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
+    auto ti_2 = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
+    auto region = inFile->GetLargestPossibleRegion();
+    region.GetModifiableSize()[3] = 0;
+    ti_1->SetExtractionRegion(region);
+    ti_1->SetDirectionCollapseToSubmatrix();
+    ti_1->SetInput(inFile);
+    region.GetModifiableIndex()[3] = 1;
+    ti_2->SetExtractionRegion(region);
+    ti_2->SetDirectionCollapseToSubmatrix();
+    ti_2->SetInput(inFile);
+
     typedef itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MPRAGEFunctor<float>> MPRageContrastFilterType;
-    int nti = inFile->GetLargestPossibleRegion().GetSize()[3];
     auto MPContrastFilter = MPRageContrastFilterType::New();
-    typedef itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF> ExtractType;
-    auto vol_i = ExtractType::New();
-    auto vol_j = ExtractType::New();
-    vol_i->SetDirectionCollapseToSubmatrix();
-    vol_j->SetDirectionCollapseToSubmatrix();
-    QI::SeriesXF::RegionType region_i = inFile->GetLargestPossibleRegion();
-    region_i.GetModifiableSize()[3] = 0;
-    QI::SeriesXF::RegionType region_j = region_i;
+    MPContrastFilter->SetInput1(ti_1->GetOutput());
+    MPContrastFilter->SetInput2(ti_2->GetOutput());
+    MPContrastFilter->Update();
     std::string outName = outarg ? outarg.Get() : QI::StripExt(input_path.Get());
-    for (int i = 0; i < nti - 1; i++) {
-        region_i.GetModifiableIndex()[3] = i;
-        vol_i->SetInput(inFile);
-        vol_i->SetExtractionRegion(region_i);
-        vol_i->Update();
-        MPContrastFilter->SetInput1(vol_i->GetOutput());
-        for (int j = (i + 1); j < nti; j++) {
-            region_j.GetModifiableIndex()[3] = j;
-            vol_j->SetInput(inFile);
-            vol_j->SetExtractionRegion(region_j);
-            vol_j->Update();
-            MPContrastFilter->SetInput2(vol_j->GetOutput());
-            MPContrastFilter->Update();
-            QI::WriteImage(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
-        }
-    }
+    QI::WriteImage(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
+
     std::cout << "Calculating T1" << std::endl;
     auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGESequence>(std::cin, verbose);
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetSequence(mp2rage_sequence);
     apply->SetInput(MPContrastFilter->GetOutput());
     apply->Update();
-    QI::WriteImage(apply->GetOutput(0), outName + "_R1" + QI::OutExt());
+    QI::WriteImage(apply->GetOutput(0), outName + "_T1" + QI::OutExt());
     if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }

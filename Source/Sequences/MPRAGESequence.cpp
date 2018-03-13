@@ -57,16 +57,25 @@ Eigen::ArrayXcd MP2RAGESequence::signal(const double M0, const double T1, const 
 }
 
 void MP2RAGESequence::load(cereal::JSONInputArchive &ar) {
+    double SegTR;
+    Eigen::Array2d TI;
     QI_SEQUENCE_LOAD( TR );
-    QI_SEQUENCE_LOAD( TD );
+    QI_SEQUENCE_LOAD( SegTR );
+    QI_SEQUENCE_LOAD( TI );
     QI_SEQUENCE_LOAD( ETL );
     QI_SEQUENCE_LOAD_DEGREES( FA );
+    TD[0] = TI[0];
+    TD[1] = TI[1] - (ETL * TR) - TI[0];
+    TD[2] = SegTR - (ETL * TR) - TI[1];
 }
 
 void MP2RAGESequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TD", TD));
-    ar(cereal::make_nvp("ETL", ETL));
+    Eigen::Array2d TI{TD[0], TD[1] + (ETL * TR) + TD[0]};
+    double SegTR = TI[1] + (ETL * TR) + TD[2];
+    QI_SEQUENCE_SAVE( TR );
+    QI_SEQUENCE_SAVE( SegTR );
+    QI_SEQUENCE_SAVE( TI );
+    QI_SEQUENCE_SAVE( ETL );
     QI_SEQUENCE_SAVE_DEGREES( FA );
 }
 

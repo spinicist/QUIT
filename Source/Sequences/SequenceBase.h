@@ -57,6 +57,9 @@ struct SequenceBase {
         exit(EXIT_FAILURE);\
     }
 
+#define QI_SEQUENCE_SAVE( X )\
+    ar(cereal::make_nvp(#X, X));
+
 #define QI_SEQUENCE_SAVE_DEGREES( X ) \
     Eigen::ArrayXd X ## _degrees = X * 180. / M_PI;\
     ar(cereal::make_nvp(#X, X ## _degrees));\

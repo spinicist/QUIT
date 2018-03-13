@@ -38,21 +38,19 @@ namespace Eigen {
     }
 
     template<typename Archive, typename T, cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value> = cereal::traits::sfinae>
-    inline void serialize(Archive &ar, const Array<T, 2, 1> &v) {
-        cereal::size_type n_elements = 2;
-        ar(cereal::make_size_tag(n_elements));
-        for(auto i = 0; i < n_elements; ++i) {
-            ar(v[i]);
-        }
+    inline void load(Archive &ar, Array<T, 2, 1> &v) {
+        cereal::size_type sz = 2;
+        ar(cereal::make_size_tag(sz));
+        ar(v[0]);
+        ar(v[1]);
     }
 
     template<typename Archive, typename T, cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value> = cereal::traits::sfinae>
-    inline void serialize(Archive &ar, const Array<T, 3, 1> &v) {
-        cereal::size_type n_elements = 3;
-        ar(cereal::make_size_tag(n_elements));
-        for(auto i = 0; i < n_elements; ++i) {
-            ar(v[i]);
-        }
+    inline void save(Archive &ar, const Array<T, 2, 1> &v) {
+        cereal::size_type sz = 2;
+        ar(cereal::make_size_tag(sz));
+        ar(v[0]);
+        ar(v[1]);
     }
 
 } // end namespace Eigen
