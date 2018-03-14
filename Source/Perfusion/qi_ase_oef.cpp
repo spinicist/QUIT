@@ -12,6 +12,8 @@
 #include <iostream>
 #include <Eigen/Dense>
 
+#include "itkDerivativeImageFilter.h"
+
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
@@ -24,7 +26,7 @@ protected:
     const QI::MultiEchoSequence m_sequence;
     const int m_inputsize;
     int m_linear_count;
-    const double m_B0;
+    const double m_B0, m_slthick;
 
     // Constants for calculations
     const double kappa = 0.03; // Conversion factor
@@ -33,8 +35,8 @@ protected:
     const double Hb = 0.34 / kappa; // Hct = 0.34;
 
 public:
-    ASEAlgo(const QI::MultiEchoSequence& seq, const int inputsize, const double B0) :
-        m_sequence(seq), m_B0(B0), m_inputsize(inputsize)
+    ASEAlgo(const QI::MultiEchoSequence& seq, const int inputsize, const double B0, const double slthick) :
+        m_sequence(seq), m_inputsize(inputsize), m_B0(B0), m_slthick(slthick)
     {
         // 2.94 is dHb for an OEF of 26%
         const double Tc = 2.0 / ((4./3.) * M_PI * gamma * B0 * delta_X0 * 0.75);
@@ -47,7 +49,7 @@ public:
     }
 
     size_t numInputs() const override  { return 1; }
-    size_t numConsts() const override  { return 0; }
+    size_t numConsts() const override  { return 1; }
     size_t numOutputs() const override { return 4; }
     size_t dataSize() const override   { return m_inputsize; }
     size_t outputSize() const override { return 1; }
@@ -57,7 +59,7 @@ public:
     }
 
     std::vector<float> defaultConsts() const override {
-        std::vector<float> def;
+        std::vector<float> def(1, 0.0); // No field gradient
         return def;
     }
 
@@ -66,6 +68,31 @@ public:
         return _names;
     }
 
+    double sinc(const double x) const {
+        static double const taylor_0_bound = std::numeric_limits<double>::epsilon();
+        static double const taylor_2_bound = sqrt(taylor_0_bound);
+        static double const taylor_n_bound = sqrt(taylor_2_bound);
+
+        if (std::abs(x) >= taylor_n_bound) {
+            return(sin(x)/x);
+        } else {
+            // approximation by taylor series in x at 0 up to order 0
+            double result = 1;
+
+            if (abs(x) >= taylor_0_bound) {
+                double x2 = x*x;
+                // approximation by taylor series in x at 0 up to order 2
+                result -= x2/6;
+
+                if (abs(x) >= taylor_2_bound) {
+                    // approximation by taylor series in x at 0 up to order 4
+                    result += (x2*x2)/120;
+                }
+            }
+            return result;
+        }
+    }
+    
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &index, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
@@ -82,7 +109,13 @@ public:
         // const double R2prime = -b[0];
         // const double logS0_linear = b[1];
 
-        Eigen::ArrayXd linear_data = data.tail(m_linear_count);
+        const double grad = consts[0];
+        const Eigen::ArrayXd tau = m_sequence.TE.tail(m_linear_count);
+        // Distances are in mm, hence the 1e-3 to convert to m
+        const Eigen::ArrayXd x = grad * 2 * M_PI * m_slthick * 1e-3 * tau / 2;
+        Eigen::ArrayXd F(x.rows());
+        for (int i = 0; i < x.rows(); i++) { F[i] = std::abs(sinc(x[i])); };
+        const Eigen::ArrayXd linear_data = data.tail(m_linear_count) / F;
         const double dTE_3 = (m_sequence.ESP / 3);
         double si2sum = 0, sidisum = 0;
         for (int i = 0; i < m_linear_count - 2; i++) {
@@ -92,21 +125,27 @@ public:
             sidisum += si*di;
         }
         double R2prime = 1 / ((si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum));
-        double S0_linear = (linear_data.array() / exp(-m_sequence.TE.tail(m_linear_count) * R2prime)).mean();
+        double S0_linear = (linear_data.array() / exp(-tau * R2prime)).mean();
 
         const double DBV = log(S0_linear) - log(data[0]);
 
         const double dHb = 3*R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * m_B0);
         const double OEF = dHb / Hb;
 
-        // QI_DB( input );
-        // QI_DBVEC( data );
-        // QI_DB( R2prime );
-        // QI_DB( log(S0_linear) );
-        // QI_DB( log(data[0]) );
-        // QI_DB( DBV );
-        // QI_DB( dHb );
-        // QI_DB( OEF );
+        QI_DB( input );
+        QI_DBVEC( data );
+        QI_DBVEC( linear_data );
+        QI_DB( m_slthick );
+        QI_DB( grad );
+        QI_DBVEC( tau );
+        QI_DBVEC( x );
+        QI_DBVEC( F );
+        QI_DB( R2prime );
+        QI_DB( log(S0_linear) );
+        QI_DB( log(data[0]) );
+        QI_DB( DBV );
+        QI_DB( dHb );
+        QI_DB( OEF );
 
         outputs[0] = R2prime;
         outputs[1] = DBV*100;
@@ -132,14 +171,17 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<double> B0(parser, "B0", "Field-strength (Tesla), default 3", {'B', "B0"}, 3.0);
+    args::ValueFlag<std::string> f0_arg(parser, "FIELD MAP", "A field map for macroscopic field gradient correction", {'f', "fmap"});
+    args::ValueFlag<double> slice_arg(parser, "SLICE THICKNESS", "Slice-thickness for MFG calculation (useful if there was a slice gap)", {'s', "slice"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv);
     if (verbose) std::cout << "Starting " << argv[0] << std::endl;
     if (verbose) std::cout << "Reading ASE data from: " << QI::CheckPos(input_path) << std::endl;
+    const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
-
     auto sequence = QI::ReadSequence<QI::MultiEchoSequence>(std::cin, verbose);
-    std::shared_ptr<ASEAlgo> algo = std::make_shared<ASEAlgo>(sequence, input->GetNumberOfComponentsPerPixel(), B0.Get());
+    const double slthick = slice_arg ? slice_arg.Get() : input->GetSpacing()[2];
+    std::shared_ptr<ASEAlgo> algo = std::make_shared<ASEAlgo>(sequence, input->GetNumberOfComponentsPerPixel(), B0.Get(), slthick);
     auto apply = QI::ApplyF::New();
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
@@ -148,6 +190,15 @@ int main(int argc, char **argv) {
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, input);
+    if (f0_arg) {
+        if (verbose) std::cout << "Calculating gradient of field-map" << std::endl;
+        auto f0_map = QI::ReadImage(f0_arg.Get());
+        auto grad = itk::DerivativeImageFilter<QI::VolumeF, QI::VolumeF>::New();
+        grad->SetInput(f0_map);
+        grad->SetDirection(2);
+        apply->SetConst(0, grad->GetOutput());
+        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad" + QI::OutExt());
+    }
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(args::get(subregion)));
@@ -161,7 +212,7 @@ int main(int argc, char **argv) {
     if (verbose) {
         std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
     }
-    const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
+    
     for (size_t i = 0; i < algo->numOutputs(); i++) {
         const std::string fname = outPrefix + "_" + algo->names()[i] + QI::OutExt();
         std::cout << "Writing file: " << fname << std::endl;
