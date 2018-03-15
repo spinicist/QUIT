@@ -26,7 +26,8 @@ protected:
     const QI::MultiEchoSequence m_sequence;
     const int m_inputsize;
     int m_linear_count;
-    const double m_B0, m_slthick;
+    const double m_B0;
+    const QI::VolumeF::SpacingType m_voxsize;
 
     // Constants for calculations
     const double kappa = 0.03; // Conversion factor
@@ -35,11 +36,11 @@ protected:
     const double Hb = 0.34 / kappa; // Hct = 0.34;
 
 public:
-    ASEAlgo(const QI::MultiEchoSequence& seq, const int inputsize, const double B0, const double slthick) :
-        m_sequence(seq), m_inputsize(inputsize), m_B0(B0), m_slthick(slthick)
+    ASEAlgo(const QI::MultiEchoSequence& seq, const int inputsize, const double B0, const QI::VolumeF::SpacingType voxsize) :
+        m_sequence(seq), m_inputsize(inputsize), m_B0(B0), m_voxsize(voxsize)
     {
         // 2.94 is dHb for an OEF of 26%
-        const double Tc = 2.0 / ((4./3.) * M_PI * gamma * B0 * delta_X0 * 0.75);
+        const double Tc = 1.5 / ((4./3.) * M_PI * gamma * B0 * delta_X0 * 0.75);
         m_linear_count = (m_sequence.TE > Tc).count();
         QI_DB( B0 );
         QI_DB( Tc );
@@ -49,7 +50,7 @@ public:
     }
 
     size_t numInputs() const override  { return 1; }
-    size_t numConsts() const override  { return 1; }
+    size_t numConsts() const override  { return 3; }
     size_t numOutputs() const override { return 4; }
     size_t dataSize() const override   { return m_inputsize; }
     size_t outputSize() const override { return 1; }
@@ -59,7 +60,7 @@ public:
     }
 
     std::vector<float> defaultConsts() const override {
-        std::vector<float> def(1, 0.0); // No field gradient
+        std::vector<float> def(3, 0.0); // No field gradients
         return def;
     }
 
@@ -109,12 +110,17 @@ public:
         // const double R2prime = -b[0];
         // const double logS0_linear = b[1];
 
-        const double grad = consts[0];
         const Eigen::ArrayXd tau = m_sequence.TE.tail(m_linear_count);
-        // Distances are in mm, hence the 1e-3 to convert to m
-        const Eigen::ArrayXd x = grad * 2 * M_PI * m_slthick * 1e-3 * tau / 2;
-        Eigen::ArrayXd F(x.rows());
-        for (int i = 0; i < x.rows(); i++) { F[i] = std::abs(sinc(x[i])); };
+        Eigen::ArrayXd F = Eigen::ArrayXd::Ones(m_linear_count);
+        // QI_DBVEC( F );
+        for (int d = 0; d < 3; d++) {
+            const double grad = consts[d];
+            const Eigen::ArrayXd x = grad * 2 * M_PI * m_voxsize[d] * tau / 2;
+            for (int i = 0; i < x.rows(); i++) { F[i] *= std::abs(sinc(x[i])); };
+            // QI_DB( grad );
+            // QI_DBVEC( x );
+            // QI_DBVEC( F );
+        }
         const Eigen::ArrayXd linear_data = data.tail(m_linear_count) / F;
         const double dTE_3 = (m_sequence.ESP / 3);
         double si2sum = 0, sidisum = 0;
@@ -132,20 +138,18 @@ public:
         const double dHb = 3*R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * m_B0);
         const double OEF = dHb / Hb;
 
-        QI_DB( input );
-        QI_DBVEC( data );
-        QI_DBVEC( linear_data );
-        QI_DB( m_slthick );
-        QI_DB( grad );
-        QI_DBVEC( tau );
-        QI_DBVEC( x );
-        QI_DBVEC( F );
-        QI_DB( R2prime );
-        QI_DB( log(S0_linear) );
-        QI_DB( log(data[0]) );
-        QI_DB( DBV );
-        QI_DB( dHb );
-        QI_DB( OEF );
+        // QI_DB( input );
+        // QI_DBVEC( data );
+        // QI_DBVEC( linear_data );
+        // QI_DB( m_voxsize );
+        // QI_DBVEC( tau );
+        // QI_DBVEC( F );
+        // QI_DB( R2prime );
+        // QI_DB( log(S0_linear) );
+        // QI_DB( log(data[0]) );
+        // QI_DB( DBV );
+        // QI_DB( dHb );
+        // QI_DB( OEF );
 
         outputs[0] = R2prime;
         outputs[1] = DBV*100;
@@ -180,8 +184,11 @@ int main(int argc, char **argv) {
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
     auto sequence = QI::ReadSequence<QI::MultiEchoSequence>(std::cin, verbose);
-    const double slthick = slice_arg ? slice_arg.Get() : input->GetSpacing()[2];
-    std::shared_ptr<ASEAlgo> algo = std::make_shared<ASEAlgo>(sequence, input->GetNumberOfComponentsPerPixel(), B0.Get(), slthick);
+    QI::VolumeF::SpacingType vox_size = input->GetSpacing();
+    if (slice_arg) {
+        vox_size[2]  = slice_arg.Get();
+    }
+    std::shared_ptr<ASEAlgo> algo = std::make_shared<ASEAlgo>(sequence, input->GetNumberOfComponentsPerPixel(), B0.Get(), vox_size);
     auto apply = QI::ApplyF::New();
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
@@ -195,9 +202,18 @@ int main(int argc, char **argv) {
         auto f0_map = QI::ReadImage(f0_arg.Get());
         auto grad = itk::DerivativeImageFilter<QI::VolumeF, QI::VolumeF>::New();
         grad->SetInput(f0_map);
-        grad->SetDirection(2);
+        grad->SetDirection(0);
         apply->SetConst(0, grad->GetOutput());
-        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad" + QI::OutExt());
+        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad_x" + QI::OutExt());
+        grad->GetOutput()->DisconnectPipeline();
+        grad->SetDirection(1);
+        apply->SetConst(1, grad->GetOutput());
+        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad_y" + QI::OutExt());
+        grad->GetOutput()->DisconnectPipeline();
+        grad->SetDirection(2);
+        apply->SetConst(2, grad->GetOutput());
+        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad_z" + QI::OutExt());
+        grad->GetOutput()->DisconnectPipeline();
     }
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) {
