@@ -151,7 +151,19 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i',"its"}, 4);
     args::ValueFlag<char> field(parser, "FIELD STRENGTH", "Specify field-strength for fitting regions - 3/7/u for user input", {'t', "tesla"}, '3');
     QI::ParseArgs(parser, argc, argv);
-    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
+
+    std::vector<QI::VectorVolumeF::Pointer> images;
+    for (auto &input_path : QI::CheckList(input_paths)) {
+        if (verbose) std::cout << "Reading file: " << input_path << std::endl;
+        auto image = QI::ReadVectorImage<float>(input_path);
+        image->DisconnectPipeline(); // This step is really important.
+        images.push_back(image);
+    }
+    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, verbose);
+    if (sequences.count() != images.size()) {
+        QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
+    }
+
     std::shared_ptr<QI::Model> model = nullptr;
     if (modelarg.Get() == "1")         { model = std::make_shared<QI::SCD>(); }
     else if (modelarg.Get() == "2")    { model = std::make_shared<QI::MCD2>(); }
@@ -193,17 +205,6 @@ int main(int argc, char **argv) {
         break;
     }
 
-    std::vector<QI::VectorVolumeF::Pointer> images;
-    for (auto &input_path : input_paths.Get()) {
-        if (verbose) std::cout << "Reading file: " << input_path << std::endl;
-        auto image = QI::ReadVectorImage<float>(input_path);
-        image->DisconnectPipeline(); // This step is really important.
-        images.push_back(image);
-    }
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, verbose);
-    if (sequences.count() != images.size()) {
-        QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
-    }
     auto apply = QI::ApplyF::New();
     switch (algorithm.Get()) {
         case 'S': {

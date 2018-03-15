@@ -188,7 +188,6 @@ int main(int argc, char **argv) {
     
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     mprage(parser, "MPRAGE", "2nd image is a generic MP-RAGE, not a GE IR-SPGR", {'M', "mprage"});
     args::Flag     all_resids(parser, "ALL RESIDUALS", "Output individual residuals in addition to the Sum-of-Squares", {'r',"resids"});
     args::ValueFlag<float> clamp(parser, "CLAMP", "Clamp output T1 values to this value", {'c', "clamp"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
@@ -198,11 +197,11 @@ int main(int argc, char **argv) {
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     QI::ParseArgs(parser, argc, argv);
 
-    cereal::JSONInputArchive input(std::cin);
     if (verbose) std::cout << "Reading SPGR file: " << QI::CheckPos(spgr_path) << std::endl;
     auto spgrImg = QI::ReadVectorImage(QI::CheckPos(spgr_path));
+    cereal::JSONInputArchive input(std::cin);
     auto spgr_sequence = QI::ReadSequence<QI::SPGRSequence>(input, verbose);
-    if (verbose) std::cout << "Reading " << (mprage ? "MPRAGE" : "IR-SPGR") << " file: " << QI::CheckPos(ir_path) << std::endl;
+    if (verbose) std::cout << "Reading MPRAGE file: " << QI::CheckPos(ir_path) << std::endl;
     auto irImg = QI::ReadVectorImage(QI::CheckPos(ir_path));
     auto ir_sequence = QI::ReadSequence<QI::MPRAGESequence>(input, verbose);
 
