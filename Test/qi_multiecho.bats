@@ -18,8 +18,9 @@ qinewimage B1.nii --size "$SIZE" -f 1
 SPIN_SEQUENCE="
 \"MultiEcho\" : {
     \"TR\" : 2.5,
+    \"TE1\" : 0.005,
     \"ESP\" : 0.005,
-    \"NEcho\" : 16
+    \"ETL\" : 16
 }
 "
 

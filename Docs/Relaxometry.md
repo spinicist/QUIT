@@ -319,8 +319,13 @@ The input file must be complex-valued.
 
 **Outputs**
 
-* {input}_contrast.nii.gz - The MP2 contrast image. The range of this image is -0.5 to 0.5.
+* {input}_contrast.nii.gz - The MP2 contrast image. The range of this image is -0.5 to 0.5 *unless* the `--automask` option is specified, in which case it will be shifted to 0 to 1.
 * {input}_T1.nii.gz - The T1 map. Units are the same as `TR` and `SegTR`.
+
+**Important Options**
+
+* `--automask, -a`
+    * Attempts to automatically calculate a mask to remove background noise. This option will add 0.5 to the contrast image to make it more easily interpretable.
 
 **References**
 
@@ -346,7 +351,7 @@ qimultiecho input_file.nii.gz --algo=a < input.txt
         "TR" : 2.5,
         "TE1" : 0.005,
         "ESP" : 0.005,
-        "NEcho" : 16
+        "ETL" : 16
     }
 }
 ```
