@@ -16,6 +16,8 @@
 
 #include "itkBinaryFunctorImageFilter.h"
 #include "itkExtractImageFilter.h"
+#include "itkMaskImageFilter.h"
+#include "itkAddImageFilter.h"
 
 #include "ApplyAlgorithmFilter.h"
 #include "ImageTypes.h"
@@ -24,19 +26,35 @@
 #include "Args.h"
 #include "MPRAGESequence.h"
 #include "SequenceCereal.h"
+#include "Masking.h"
 
-template<class T> class MPRAGEFunctor {
+template<class T> class MP2Functor {
 public:
-    MPRAGEFunctor() {}
-    ~MPRAGEFunctor() {}
-    bool operator!=(const MPRAGEFunctor &) const { return false; }
-    bool operator==(const MPRAGEFunctor &other) const { return !(*this != other); }
+    MP2Functor() {}
+    ~MP2Functor() {}
+    bool operator!=(const MP2Functor &) const { return false; }
+    bool operator==(const MP2Functor &other) const { return !(*this != other); }
 
     inline T operator()(const std::complex<T> &ti1, const std::complex<T> &ti2) const
     {
         const T a1 = abs(ti1);
         const T a2 = abs(ti2);
         return real((conj(ti1)*ti2)/(a1*a1 + a2*a2));
+    }
+};
+
+template<class T> class SqrSumFunctor {
+public:
+    SqrSumFunctor() {}
+    ~SqrSumFunctor() {}
+    bool operator!=(const SqrSumFunctor &) const { return false; }
+    bool operator==(const SqrSumFunctor &other) const { return !(*this != other); }
+
+    inline T operator()(const std::complex<T> &ti1, const std::complex<T> &ti2) const
+    {
+        const T a1 = abs(ti1);
+        const T a2 = abs(ti2);
+        return a1*a1 + a2*a2;
     }
 };
 
@@ -65,7 +83,7 @@ public:
     }
 
     void SetSequence(QI::MP2RAGESequence &sequence) {
-        MPRAGEFunctor<double> con;
+        MP2Functor<double> con;
         m_T1.clear();
         m_con.clear();
         for (float T1 = 0.25; T1 < 4.3; T1 += 0.001) {
@@ -136,13 +154,12 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::Flag     automask(parser, "AUTOMASK", "Create a mask from the sum of squares image", {'a', "automask"});
     QI::ParseArgs(parser, argc, argv);
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
 
     if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
-
-    if (verbose) std::cout << "Combining MP2 contrasts" << std::endl;
 
     auto ti_1 = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
     auto ti_2 = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
@@ -156,21 +173,49 @@ int main(int argc, char **argv) {
     ti_2->SetDirectionCollapseToSubmatrix();
     ti_2->SetInput(inFile);
 
-    typedef itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MPRAGEFunctor<float>> MPRageContrastFilterType;
-    auto MPContrastFilter = MPRageContrastFilterType::New();
-    MPContrastFilter->SetInput1(ti_1->GetOutput());
-    MPContrastFilter->SetInput2(ti_2->GetOutput());
-    MPContrastFilter->Update();
-    std::string outName = outarg ? outarg.Get() : QI::StripExt(input_path.Get());
-    QI::WriteImage(MPContrastFilter->GetOutput(), outName + "_contrast" + QI::OutExt());
+    QI::VolumeI::Pointer mask_img = nullptr;
+    if (automask) {
+        if (verbose) std::cout << "Calculating mask" << std::endl;
+        auto SqrSumFilter = itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, SqrSumFunctor<float>>::New();
+        SqrSumFilter->SetInput1(ti_1->GetOutput());
+        SqrSumFilter->SetInput2(ti_2->GetOutput());
+        SqrSumFilter->Update();
+        mask_img = QI::ThresholdMask(SqrSumFilter->GetOutput(), 0.025);
+    } else if (mask) {
+        if (verbose) std::cout << "Reading mask file: " << mask.Get() << std::endl;
+        mask_img = QI::ReadImage<QI::VolumeI>(mask.Get());
+    }
 
-    std::cout << "Calculating T1" << std::endl;
+    if (verbose) std::cout << "Generating MP2 contrasts" << std::endl;
+    auto MP2Filter = itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MP2Functor<float>>::New();
+    MP2Filter->SetInput1(ti_1->GetOutput());
+    MP2Filter->SetInput2(ti_2->GetOutput());
+    MP2Filter->Update();
+    std::string outName = outarg ? outarg.Get() : QI::StripExt(input_path.Get());
+    if (verbose) std::cout << "Calculating T1" << std::endl;
     auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGESequence>(std::cin, verbose);
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetSequence(mp2rage_sequence);
-    apply->SetInput(MPContrastFilter->GetOutput());
+    apply->SetInput(MP2Filter->GetOutput());
     apply->Update();
-    QI::WriteImage(apply->GetOutput(0), outName + "_T1" + QI::OutExt());
+
+    if (mask_img) {
+        if (verbose) std::cout << "Masking outputs" << std::endl;
+        auto masker = itk::MaskImageFilter<QI::VolumeF, QI::VolumeI>::New();
+        auto add = itk::AddImageFilter<QI::VolumeF, QI::VolumeF>::New();
+        add->SetInput(MP2Filter->GetOutput());
+        add->SetConstant(0.5);
+        masker->SetInput(add->GetOutput());
+        masker->SetMaskImage(mask_img);
+        masker->Update();
+        QI::WriteImage(masker->GetOutput(), outName + "_contrast" + QI::OutExt());
+        masker->SetInput(apply->GetOutput());
+        masker->Update();
+        QI::WriteImage(masker->GetOutput(0), outName + "_T1" + QI::OutExt());
+    } else {
+        QI::WriteImage(MP2Filter->GetOutput(), outName + "_contrast" + QI::OutExt());
+        QI::WriteImage(apply->GetOutput(0), outName + "_T1" + QI::OutExt());
+    }
     if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
