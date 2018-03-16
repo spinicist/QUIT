@@ -1,6 +1,6 @@
 site_name: QUIT
 docs_dir: Docs
-
+theme: mkdocs
 # pages:
 #     - Home: index.md
 #     - About: about.md
