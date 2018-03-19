@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag average(parser, "AVERAGE", "Average the time-series", {'a', "average"});
     args::Flag slice_time(parser, "SLICE TIME CORRECTION", "Apply slice-time correction (number of post-label delays must match number of slices)", {'s', "slicetime"});
-    args::ValueFlag<double> T1_blood(parser, "BLOOD T1", "Value of blood T1 to use (seconds), default 2.429", {'b', "blood"}, 2.429);
+    args::ValueFlag<double> T1_blood(parser, "BLOOD T1", "Value of blood T1 to use (seconds), default 1.65 for 3T", {'b', "blood"}, 1.65);
     args::ValueFlag<std::string> T1_tissue_path(parser, "TISSUE T1", "Path to tissue T1 map (units are seconds)", {'t', "tissue"});
     args::ValueFlag<std::string> PD_path(parser, "PROTON DENSITY", "Path to PD image", {'p', "pd"});
     args::ValueFlag<double> alpha(parser, "ALPHA", "Labelling efficiency, default 0.9", {'a', "alpha"}, 0.9);
