@@ -271,7 +271,7 @@ int main(int argc, char **argv) {
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
 
     if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
-    auto inFile = QI::ReadImage(input_path.Get());
+    auto inFile = QI::ReadImage(QI::CheckPos(input_path));
     std::string prefix = (outarg ? outarg.Get() : QI::StripExt(input_path.Get()));
 
     auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();

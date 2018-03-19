@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
 
     if (verbose) std::cout << "Reading phase file: " << QI::CheckPos(input_path) << std::endl;
-    auto inFile = QI::ReadImage<QI::SeriesF>(input_path.Get());
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
 
     typedef itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF> TExtract;
     typedef itk::TileImageFilter<QI::VolumeF, QI::SeriesF>    TTile;
