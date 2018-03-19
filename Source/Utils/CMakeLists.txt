@@ -4,7 +4,7 @@ if( ${BUILD_UTILITIES} )
         qihdr
         qicomplex qiaffine qimask qikfilter qireorder
         qisplitsubjects qipolyfit qipolyimg
-        qi_coil_combine qi_bet qi_rfprofile )
+        qi_coil_combine qi_rfprofile )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)

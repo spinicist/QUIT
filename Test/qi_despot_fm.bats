@@ -8,7 +8,7 @@ setup() {
 
 @test "DESPOT2-FM" {
 
-SIZE="16,16,17"
+SIZE="16,16,9"
 qinewimage PD$EXT --size "$SIZE" -f 1.0
 qinewimage T1$EXT --size "$SIZE" -f 1.0
 qinewimage T2$EXT --size "$SIZE" -g "1 0.025 0.125"

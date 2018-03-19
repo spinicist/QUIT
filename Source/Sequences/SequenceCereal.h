@@ -14,7 +14,6 @@
 
 #include <cereal/archives/json.hpp>
 #include "SequenceBase.h"
-#include "Macro.h"
 
 namespace QI {
 

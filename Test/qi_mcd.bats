@@ -8,7 +8,7 @@ setup() {
 
 @test "2C mcDESPOT" {
 
-SIZE="4,4,4"
+SIZE="4,4,2"
 qinewimage --size "$SIZE" -f "1.0" PD$EXT
 qinewimage --size "$SIZE" -f "0.465" T1_m$EXT
 qinewimage --size "$SIZE" -f "0.026" T2_m$EXT

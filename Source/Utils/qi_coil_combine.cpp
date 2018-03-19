@@ -163,7 +163,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> region_arg(parser, "REGION", "Region to average phase for Hammond method, default is 8x8x8 cube at center", {'r', "region"});
     args::ValueFlag<std::string> ser_path(parser, "COMPOSER", "Short Echo Time reference file for COMPOSER method", {'c', "composer"});
     args::ValueFlag<int> coils_arg(parser, "COILS", "Number of coils (default is number of volumes)", {'C', "coils"});
-    args::Flag     save_corrected(parser, "SAVE COILS", "Save the individual coil images with phase corrected", {'s', "save"});
+    args::Flag     save_corrected(parser, "SAVE COILS", "Save the individual coil images after phase correction", {'s', "save"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv);
 
