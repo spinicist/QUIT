@@ -92,7 +92,7 @@ void make_image() {
         int steps;
         stream >> steps;
         if (steps < 2) {
-            QI_FAIL("Must have more than 1 step");
+            QI_FAIL("Must have more than 1 step, only have " << steps);
         }
         stepLength = imgSize[fillDim] / steps;
         deltaVal = (stopVal - startVal) / (steps - 1);

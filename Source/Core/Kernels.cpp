@@ -26,7 +26,7 @@ void TukeyKernel::print(std::ostream &ostr) const {
     ostr << "Tukey," << m_a << "," << m_q;
 }
 double TukeyKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
-    const double r = sqrt(((pos / sz).square() / 3).sum());
+    const double r = sqrt(((pos / sz).square()).sum() / 3);
     const double v = (r <= (1 - m_a)) ? 1 : 0.5*((1+m_q)+(1-m_q)*cos(M_PI*(r - (1 - m_a))/m_a));
     return v;
 }
@@ -45,7 +45,7 @@ void HammingKernel::print(std::ostream &ostr) const {
     ostr << "Hamming," << m_a << "," << m_b;
 }
 double HammingKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const {
-    const double r = sqrt(((pos / sz).square() / 3).sum());
+    const double r = sqrt(((pos / sz).square()).sum() / 3);
     const double v = m_a - m_b*cos(M_PI*(1.+r));
     return v;
 }
