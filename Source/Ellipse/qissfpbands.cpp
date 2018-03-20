@@ -15,8 +15,8 @@
 #include "itkUnaryFunctorImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkConstNeighborhoodIterator.h"
+#include "itkImageRegionIterator.h"
 
-#include "ReorderVectorFilter.h"
 #include "Util.h"
 #include "Args.h"
 #include "Banding.h"

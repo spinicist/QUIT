@@ -9,8 +9,7 @@ QUIT contains a number of utilities. Note that these are actually compiled in tw
 * [qihdr](#qihdr)
 * [qikfilter](#qikfilter)
 * [qimask](#qimask)
-* [qipolyfit](#qipolyfit)
-* [qipolyimg](#qipolyimg)
+* [qipolyfit/qipolyimg](#qipolyfit/qipolyimg)
 * [qireorder](#qireorder)
 * [qisplitsubjects](#qisplitsubjects)
 * [qidiff](#qidiff)
@@ -204,3 +203,194 @@ qikfilter input_file.nii.gz --filter=Gauss,0.5
 
     Read / write complex data.
 
+##qimask
+
+Implements several different masking strategies. For human data, BET, antsBrainExtraction of 3dSkullStrip are likely better ideas. For pre-clinical data, the strategies below can provide a reasonable mask with some tweaking. There are potentially three stages to generating the mask:
+
+1 - Binary thresholding. If lower or upper thresholds are specified, these are used to separate the image into foreground and background. If neither are specified, then Otsu's method is used to automatically estimate a reasonable threshold value.
+2 - (Optional) Run the RATs algorithm
+3 - (Optional) Hole-filling
+
+**Example Command Line**
+
+```bash
+qimask input_image.nii.gz --lower=10 --rats=1200 --fillh=1
+```
+
+In this case an intensity value of 10 will be used as the threshold, RATs will be run with a target volume of 1200 mm^3, and then holes with a radius of 1 voxel will be filled.
+
+**Outputs**
+
+- `input_image_mask.nii.gz`
+
+**Important Options**
+
+- `--lower,-l`/`--upper,-u`
+
+    Specify lower and/or upper intensity thresholds. Values below/above these values are set to 0, those inside are set 1. If this option is not specified, Otsu's method will be used to generate a threshold value. If no thresholding is desired, specify `--lower=0`.
+
+- `--rats, -r`
+
+    Use the RATs algorithm to remove non-brain tissue. The RATs algorithm uses erode & dilate filters of progressively increasing size until the largest connected component falls below a target size. For rats, target values of around 1000 mm^3 are reasonable.
+
+- `--fillh, -F`
+
+    Fill holes in the mask up to radius N voxels.
+
+**References**
+
+- [RATs algorithm][1]
+
+[2]: http://dx.doi.org/10.1016/j.jneumeth.2013.09.021
+
+##qipolyfit/qipolyimg
+
+These tools work together to fit Nth order polynomials to images. This is typically used for smoothing a B1 field.
+
+`qipolyfit` will output the polynomial co-efficients and origin to `stdout`. `qipolyimg` can then read these to generate the polyimage image, using a different image as the reference space. In this way the polynomial image can be created without having to use upsampling.
+
+**Example Command Line**
+
+```bash
+qipolyfit noisy_b1_map.nii.gz --mask=brain_mask.nii.gz --order=8 | qipolyimg hires_t1_image.nii.gz hires_smooth_b1_map.nii.gz --order=8
+```
+
+With the above command-line the output of `qipolyfit` is piped directly to the output of `qipolyimg`. You can instead redirect it to a file with `>` and read it in separately. The `--order` argument must match between the two commands.
+
+**Important Options**
+
+- `--order, -o`
+
+    The order of the fitted polynomial. Default is 2 (quadratic)
+
+- `--mask, -m`
+
+    Only fit the data within a mask. This is usually the brain or only white-matter.
+
+- `--robust` (`qipolyimg` only)
+
+    Use Robust Polynomial Fitting with Huber weights. There is a good discussion of this topic in the Matlab help files.
+
+##qisplitsubjects
+
+This program is deprecated. It was used to separate ex-vivo images containing multiple subjects into distinct images.
+
+##qidiff
+
+Calculates the mean square difference between two images and checks if it is below a tolerance value. Used in the QUIT tests to ensure that calculated parameter maps are close to their baseline values.
+
+**Example Command Line**
+
+```bash
+qidiff --baseline=original.nii --input=calculated.nii --noise=0.01 --tolerance=30
+```
+
+The program simply returns `FAILURE` or `SUCCESS`, which is detected by BATS. Note, to make useage clearer, unlike most other QUIT programs all input is specified as arguments.
+
+**Important Options**
+
+- `--baseline`
+
+    The baseline image. Required.
+
+- `--image`
+
+    The image to compare to the baseline. Required.
+
+- `--noise`
+
+    The added noise level.
+
+- `--tolerance`
+
+    The tolerance is relative to the added noise level (i.e. it is a noise amplification factor).
+
+- `--abs, -a`
+
+    Use absolute difference instead of fractional difference (i.e. do not divide by the baseline image). Useful when images contain genuine zeros (e.g. off resonance maps).
+
+##qinewimage
+
+Creates new images filled with specified patterns. Used for generating test data.
+
+**Example Command Line**
+
+```bash
+qinewimage --size 32,32,32 --grad "0 0.5 1.5" output_image.nii.gz
+```
+
+The file specified on the command line is the *output* file.
+
+**Important Options**
+
+- `--dims, -d`
+
+    The output dimension. Valid values are 3 and 4.
+
+- `--size, -s`
+
+    Matrix size of the output image.
+
+- `--fill, -f`
+
+    Set all voxels in the image to the specified value.
+
+- `--grad, -g "DIM,LOW,HIGH"`
+
+    Fill voxels with a gradient along the specified dimension, starting at the low value at one edge and finishing at the high value on the other. It is recommended to encase `DIM,LOW,HIGH` with quotation marks as they must be passed as a single string to be interpreted properly.
+
+- `--step, -t "DIM,LOW,HIGH,STEPS"
+
+    Similar to `--grad`, but instead of a smooth gradient will with a number of discrete steps.
+
+- `--wrap, -w`
+
+    Wrap output voxels at the specified value. Useful for simulating phase data.
+
+##qisignal
+
+Generates simulated images using signal equations. Used for the QUIT tests - which will also serve as good examples if you want to use this tool.
+
+**Example Command Line**
+
+```bash
+qisignal --noise=0.01 simulated_spgr_image.nii.gz < input.txt
+```
+
+**Example Input File**
+
+```json
+{
+    "PD": "pd.nii",
+    "T1": "t1.nii",
+    "T2": "",
+    "f0": "",
+    "B1": "",
+    "SequenceGroup": {
+        "sequences": [
+            {
+                "SPGR": {
+                    "TR": 0.05,
+                    "FA": [3, 10]
+                }
+            }
+        ]
+    }
+}
+```
+
+The first set of inputs are the filenames for each parameter. Each model will have a different set of parameters. If a filename is not specified, a default value will be used in each voxel. After the parameters comes a `SequenceGroup` input, the sequences within must correspond to the image filenames given on the command line.
+
+**Important Options**
+
+- `--ref, -r`
+
+    Resample the input parameters to this space, then simulate and output the images instead of using the parameter's native space.
+
+- `--noise, -n`
+
+    Add complex-valued Gaussian noise with specified FWHM to the output.
+
+- `--model, -M`
+
+    Specify the model to use to generate the images. At the moment, the models that can be specified are `1`, `2` & `3`, corresponding to single-component (default), the two component mcDESPOT model and the three component mcDESPOT model. If you change the model then the required input parameter files will also change (see `qi_mcd.bats` for examples).

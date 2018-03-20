@@ -212,10 +212,13 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> ref_arg(parser, "REFERENCE", "Resample inputs to this reference space", {'r', "ref"});
     args::ValueFlag<float> noise(parser, "NOISE", "Add complex noise with std=value", {'N',"noise"}, 0.);
     args::ValueFlag<int> seed(parser, "SEED", "Seed noise RNG with specific value", {'s', "seed"}, -1);
-    args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model (1/2/3)", {'M',"model"}, 1);
+    args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model 1/2/3, default 1", {'M',"model"}, 1);
     args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
     QI::ParseArgs(parser, argc, argv);
-    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
+    if (!filenames) {
+        std::cerr << "No output filenames specified. Use --help to see usage." << std::endl;
+        return EXIT_FAILURE;
+    }
     std::shared_ptr<QI::Model> model = nullptr;
     switch (model_arg.Get()) {
         case 1: model = std::make_shared<QI::SCD>(); break;

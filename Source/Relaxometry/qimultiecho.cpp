@@ -25,7 +25,6 @@
 #include "MultiEchoSequence.h"
 #include "SequenceCereal.h"
 #include "ApplyTypes.h"
-#include "ReorderImageFilter.h"
 #include "ImageToVectorFilter.h"
 
 typedef itk::ImageToVectorFilter<QI::SeriesF> SeriesToVectorF;

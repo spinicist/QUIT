@@ -49,7 +49,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> upper_threshold(parser, "UPPER THRESHOLD", "Specify upper intensity threshold for 1st stage, otherwise Otsu's method is used", {'u', "upper"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> rats(parser, "RATS", "Perform the RATS step, argument is size threshold for connected component", {'r', "rats"}, 0.);
     args::ValueFlag<int> fillh_radius(parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
-    args::Flag     run_bet(parser, "RUN BET", "Run the Brain Extraction Tool stage", {'B', "bet"});
 
     QI::ParseArgs(parser, argc, argv);
 
