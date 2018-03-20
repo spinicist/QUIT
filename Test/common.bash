@@ -4,7 +4,15 @@ if [ -z $QI_TEST_DIR ]; then
 fi
 EXT=".nii.gz"
 export QUIT_EXT="$EXT"
-export DYLD_LIBRARY_PATH="$HOME/Code/install/lib"
+
+if [[ $OSTYPE == darwin* ]]; then
+    # Work around SIP removing DYLD_LIBRARY_PATH in child processes
+    if [ -e $HOME/.bashrc ]; then
+        source $HOME/.bashrc
+    elif [ -e $HOME/.bash_profile ]; then
+        source $HOME/.bash_profile
+    fi
+fi
 
 init_tests() {
     mkdir -p $QI_TEST_DIR

@@ -8,16 +8,17 @@ setup() {
 
 @test "2C mcDESPOT" {
 
-SIZE="4,4,2"
+SIZE="3,3,3"
 qinewimage --size "$SIZE" -f "1.0" PD$EXT
 qinewimage --size "$SIZE" -f "0.465" T1_m$EXT
 qinewimage --size "$SIZE" -f "0.026" T2_m$EXT
 qinewimage --size "$SIZE" -f "1.070" T1_ie$EXT
 qinewimage --size "$SIZE" -f "0.117" T2_ie$EXT
 qinewimage --size "$SIZE" -f "0.18" tau_m$EXT
-qinewimage --size "$SIZE" -g "0 0. 200." f0$EXT
-qinewimage --size "$SIZE" -g "1 0.75 1.25" B1$EXT
-qinewimage --size "$SIZE" -g "2 0.05 0.25" f_m$EXT
+qinewimage --size "$SIZE" -g "0 0.05 0.25" f_m$EXT
+qinewimage --size "$SIZE" -g "1 0. 200." f0$EXT
+qinewimage --size "$SIZE" -g "2 0.75 1.25" B1$EXT
+
 
 # Setup parameters
 SPGR_FILE="spgr$EXT"
