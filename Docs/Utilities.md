@@ -84,6 +84,54 @@ These values should be generated with a Bloch simulation. Internally, they are u
 
 * output_b1map.nii.gz - The relative flip-angle/B1 map
 
+## qiaffine
+
+This tool applies simple affine transformations to the header data of an image, i.e. rotations or scalings. It was written because of the inconsistent definitions of co-ordinate systems in pre-clinical imaging. Non-primate mammals are usually scanned prone instead of supine, and are quadrupeds instead of bipeds. This means the definitions of superior/inferior and anterior/posterior are different than in clinical scanning. However, several pre-clinical atlases, e.g. Dorr et al, rotate their data so that the clinical conventions apply. It is hence useful as a pre-processing step to adopt the same co-ordinate system. In addition, packages such as SPM or ANTs have several hard-coded assumptions about their input images that are only appropriate for human brains. It can hence be useful to scale up rodent brains by a factor of 10 so that they have roughly human dimensions.
+
+**Example Command Line**
+
+```bash
+qiaffine input_image.nii.gz --scale=10.0 --rotX=90
+```
+
+If no output image is specified, the output will be written back to the input filename.
+
+**Common Options**
+
+- `--scale, -s`
+
+    Multiply the voxel spacing by a constant factor.
+
+- `--rotX, --rotY, --rotZ`
+
+    Rotate about the specified axis by the specified number of degrees. Note that currently, each rotation can only be specified once and the order will always be X, Y, then Z.
+
+- `--offX, --offY, --offZ`
+
+    Add the specified offset to the origin.
+
+- `--center, -c`
+
+    Set the image origin to be the Center of Gravity of the image.
+
+## qicomplex
+
+Manipulate complex/real/imaginary/magnitude/phase data.
+
+**Example Command Line**
+
+```bash
+qicomplex -m input_magnitude.nii.gz -p input_phase.nii.gz -R output_real.nii.gz -I output_imaginary.nii.gz
+```
+
+Lower case arguments `--mag, -m, --pha, -p, --real, -r, --imag, -i, --complex, -x` are inputs (of which it is only valid to specify certain combinations, complex OR magnitude/phase OR real/imaginary).
+
+Upper case arguments `--MAG, -M, --PHA, -P, --REAL, -R, --IMAG, -I, --COMPLEX, -X` are outputs, any or all of which can be specified.
+
+An additional input argument, `--realimag` is for Bruker "complex" data, which consists of all real volumes followed by all imaginary volumes, instead of a true complex datatype.
+
+The `--fixge` argument fixes the lack of an FFT shift in the slab direction on GE data by multiplying alternate slices by -1. `--negate` multiplies the entire volume by -1. `--double` reads and writes double precision data instead of floats.
+
 ## qihdr
 
 Prints the header of input files as seen by ITK to `stdout`. Can extract single header fields or print the entirety.
@@ -106,24 +154,53 @@ If any of the following options are specified, then only those fields will be pr
 
 Another useful option is `--meta, -m`. This will let you query specific image meta-data from the header. You must know the exact name of the meta-data field you wish to obtain.
 
-## qicomplex
+## qikfilter
 
-Manipulate complex/real/imaginary/magnitude/phase data.
+MR images often required smoothing or filtering. While this is best done during reconstruction, sometimes it is required as a post-processing step. Instead of filtering by performing a convolution in image space, this tool takes the Fourier Transfrom of input volumes, multiplies k-Space by the specified filter, and transforms back.
 
 **Example Command Line**
 
 ```bash
-qicomplex -m input_magnitude.nii.gz -p input_phase.nii.gz -R output_real.nii.gz -I output_imaginary.nii.gz
+qikfilter input_file.nii.gz --filter=Gauss,0.5
 ```
 
-Lower case arguments `--mag, -m, --pha, -p, --real, -r, --imag, -i, --complex, -x` are inputs (of which it is only valid to specify certain combinations, complex OR magnitude/phase OR real/imaginary).
+**Outputs**
 
-Upper case arguments `--MAG, -M, --PHA, -P, --REAL, -R, --IMAG, -I, --COMPLEX, -X` are outputs, any or all of which can be specified.
+- `input_file_filtered.nii.gz`
 
-An additional input argument, `--realimag` is for Bruker "complex" data, which consists of all real volumes followed by all imaginary volumes, instead of a true complex datatype.
+**Important Options**
 
-The `--fixge` argument fixes the lack of an FFT shift in the slab direction on GE data by multiplying alternate slices by -1. `--negate` multiplies the entire volume by -1. `--double` reads and writes double precision data instead of floats.
+- `--filter,-f`
 
+    Specify the filter to use. For all filters below the value \(r\) is the fractional distance from k-Space center, i.e. \(r = \sqrt(((k_x / s_x)^2 + (k_y / s_y)^2 + (k_z / s_z)^2) / 3)\). Valid filters are:
 
+    - `Tukey,a,q`
 
+        A Tukey filter with parameters \(a\) and \(q\). Filter value is 1 for \(r < (1 - a)\), else the value is $$\frac{(1+q)+(1-q)\cos(\pi\frac{r - (1 - a)}{a})}{2}$$
+    
+    - `Hamming,a,b`
+
+        A Hamming filter, parameters \(a\) and \(b\), value is $$a - b\cos(\pi(1+r))$$
+    
+    - `Gauss,w` or `Gauss,x,y,z`
+
+        A Gaussian filter with FWHM specified either isotropically or for each direction independantly.
+
+    - `Blackman` or `Blackman,a`
+
+        A Blackman filter, either with the default parameter of \(\alpha=0.16\) or specified \(\alpha\). Refer to Wikipedia for the relevant equation.
+    
+    - `Rectangle,Dim,Width,Inside,Outside`
+
+        A rectangular or top-hat filter along the specified dimension (must be 0, 1 or 2).
+    
+    If multiple filters are specified, they are concatenated, *unless* the `--filter_per_volume` option is specified.
+
+- `--filter_per_volume`
+
+    For multiple flip-angle data, the difference in contrast between flip-angles can lead to different amounts of ringing. Hence you may wish to filter volumes with more ringing more heavily. If this option is specified, the number of filters on the command line must match the number of volumes in the input file, and they will be processed in order.
+
+- `--complex_in` and `--complex_out`
+
+    Read / write complex data.
 
