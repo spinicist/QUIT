@@ -1,21 +1,20 @@
-# MT
+# SSFP
 
-MR voxels often contain complex microstructure with multiple different components or pools, each with unique relaxation properties. It is possible for magnetization to be transferred between these pools via several mechanisms, such as exchange of individual protons or entire molecules, or simple dipolar coupling from molecules that are in close proximity. These mechanisms can be studied in the related fields of Magnetization Transfer (MT) and Chemical Exchange Saturation Transfer (CEST). QUIT currently contains some basic CEST analysis tools and one for calculating simple dipolar/inhomogeneous MT ratios.
+The Steady-State Free-Precession (SSFP), or more precisely balanced-SSFP (bSSFP), sequence is one of the oldest NMR sequences and can be used to give high SNR MR images with mixed T1/T2 contrast in very short scan time. However, it suffers from banding artefacts in areas of off-resonance which limit its clinical applicability. This module contains a tool for removing those banding artefacts, and then further tools for quantitative mapping using the ellipse signal model.
 
-In addition a tool is provided for calculating qMT parameters from SSFP data. This is in the [SSFP](SSFP.md) module.
+* [qissfpbands](#qissfpbands)
+* [qi_ssfp_ellipse](#qi_ssfp_ellipse)
+* [qi_ssfp_relax](#qi_ssfp_relax)
+* [qi_ssfp_emt](#qi_ssfp_emt)
 
-* [qi_lorentzian](#qi_lorentzian)
-* [qi_mtasym](#qi_mtasym)
-* [qi_dipolar_mtr](#qi_dipolar_mtr)
+## qissfpbands
 
-## qi_lorentzian
-
-Fits a single Lorentzian to a Z-spectrum for B0 correction. Currently hard-coded to only fit the spectrum between +/-2ppm to avoid background MT contamination.
+There are several different methods for removing SSFP bands in the literature. Most of them rely on acquiring multiple SSFP images with different phase-increments (also called phase-cycling or phase-cycling patterns). Changing the phase-increments moves the bands to a different location, after which the images can be combined to reduce the banding. The different approaches are discussed further below.
 
 **Example Command Line**
 
 ```bash
-qi_lorentzian zspectrum.nii.gz < input.txt
+qissfpbands
 ```
 
 The Z-spectrum must be a 4D file with each volume acquired at a different offset frequency.
@@ -92,11 +91,3 @@ The input must consist of 5 volumes: Dipolar +/-, Dipolar -/+, Unsaturated, MT+,
 * `DMT_emtr.nii.gz` - The enhanced MTR, expressed as a percentage
 * `DMT_dmtr.nii.gz` - The dipolar MTR, expressed as a percentage. This is the difference between eMTR and MTR.
 * `DMT_mta.nii.gz` - The first-order MT-asymmetry (MT- subtracted from MT+, relative to unsaturated, in percent).
-
-**References**
-
-1. [Original full paper][1]
-2. [Dipolar versus inhomogeneous naming][2]
-
-[1]: http://doi.wiley.com/10.1002/mrm.25174
-[2]: https://doi.org/10.1016/j.jmr.2016.11.013

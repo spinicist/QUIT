@@ -28,6 +28,7 @@
 #include "Args.h"
 #include "ImageIO.h"
 
+#include "EigenCereal.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
 #include "MultiEchoSequence.h"
@@ -261,7 +262,7 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < model->nParameters(); i++) {
         std::string par_filename;
         std::string par_name = model->ParameterNames()[i];
-        input(cereal::make_nvp(par_name, par_filename));
+        QI::ReadCereal(input, par_name, par_filename);
         if (par_filename != "") {
             if (verbose) std::cout << "Opening " << par_filename << std::endl;
             QI::VolumeF::Pointer param = QI::ReadImage(par_filename);
@@ -293,21 +294,17 @@ int main(int argc, char **argv) {
      **************************************************************************/
     if (verbose) std::cout << "Reading sequences" << std::endl;
     auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, false);
+    if (verbose) {
+        std::cout << "Found " << sequences.count() << " sequences to generate" << std::endl;
+        cereal::JSONOutputArchive archive(std::cout); // cereal archives do not flush their output until destructed
+        archive(cereal::make_nvp("SequenceGroup", sequences));
+    }
     if (filenames.Get().size() != sequences.count()) {
         QI_FAIL("Input filenames size " << filenames.Get().size()
                 << " does not match sequences size " << sequences.count());
-    } else {
-        if (verbose) std::cout << "Found " << sequences.count() << " sequences to generate" << std::endl;
     }
     for (size_t i = 0; i < sequences.count(); i++) {
-        if (verbose) {
-            std::cout << "Setting sequence:\n";
-            {   // cereal archives do not flush their output until destructed
-                cereal::JSONOutputArchive archive(std::cout);
-                archive(cereal::make_nvp("sequence", sequences[i]));
-            }
-            std::cout << std::endl;
-        }
+        if (verbose) std::cout << "Simulating sequence: " << sequences[i]->name() << std::endl;
         calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         QI::VectorVolumeXF::Pointer output = calcSignal->GetOutput();

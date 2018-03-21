@@ -1,4 +1,4 @@
-option( BUILD_ELLIPSE "Build the SSFP Ellipse programs" ON )
+option( BUILD_ELLIPSE "Build the SSFP programs" ON )
 if( ${BUILD_ELLIPSE} )
     add_executable( qissfpbands qissfpbands.cpp Banding.cpp )
     target_link_libraries( qissfpbands qi_sequences qi_imageio qi_filters qi_core ${ITK_LIBRARIES} )
