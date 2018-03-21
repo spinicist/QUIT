@@ -67,3 +67,26 @@ The off-resonance map units must match the input frequencies (e.g. either PPM or
 * `--f0, -f`
 
     Specify an off-resonance map. Units must be the same as the input & asymmetry frequencies.
+
+##qi_dipolar_mtr
+
+Calculates dipolar/inhomogeneous Magnetization Transfer Ratios (MTRs). Dipolar/inhomogeneous MT is a new (see note) contrast mechanism that is present in highly structured materials such as myelin and tendon. By applying off-resonance saturation at both positive and negative frequencies (instead of only one side as in classic MTR) it is possible to decouple the dipolar pool and hence produce an enhanced Magnetization Transfer (eMT) effect. The different between eMT and normal MT is the dipolar/inhomogeneous MT and is potentially highly specific to myelin within the brain.
+
+Although the majority of the existing literature refers to this effect as inhomogeneous MT, this name was chosen before the physical phenomena underlying the effect was well understood. Current theory does not rely on inhomogeneous effects at all, so the name is a misnomer.
+
+*Note - The original ihMT abstracts are from around 2005. There was 10 years between the conference abstracts and the corresponding full papers. So the method is not that new*
+
+**Example Command Line**
+
+```bash
+qi_dipolar_mtr dipolar_mt_volumes.nii.gz
+```
+
+The input must consist of 5 volumes: Dipolar +/-, Dipolar -/+, Unsaturated, MT+, MT-. This scheme is not flexible and will be improved in a future version.
+
+**Outputs**
+
+* `DMT_mtr.nii.gz` - The classic MTR, expressed as a percentage
+* `DMT_emtr.nii.gz` - The enhanced MTR, expressed as a percentage
+* `DMT_dmtr.nii.gz` - The dipolar MTR, expressed as a percentage. This is the difference between eMTR and MTR.
+* `DMT_mta.nii.gz` - The first-order MT-asymmetry (MT- subtracted from MT+, relative to unsaturated, in percent).
