@@ -45,9 +45,9 @@ OUT
 }
 
 @test "SSFP GS Banding" {
-    qissfpbands ssfp$EXT --method=G --magnitude --verbose
-    qissfpbands ssfp$EXT --method=G -2 --magnitude --verbose
+    qissfpbands ssfp$EXT --method=G --magnitude --alt-order --verbose
+    qissfpbands ssfp$EXT --method=G -2 --magnitude --alt-order --verbose
     qicomplex -x ssfpgs$EXT -M ssfpgs_mag$EXT
     qidiff --baseline=ssfpgs_mag$EXT --input=ssfp_GSL$EXT --noise=0.01 --tolerance=15 --verbose
-    qidiff --baseline=ssfpgs_mag$EXT --input=ssfp_GSL2$EXT --noise=0.01 --tolerance=15 --verbose
+    qidiff --baseline=ssfpgs_mag$EXT --input=ssfp_GSL2$EXT --noise=0.01 --tolerance=13 --verbose
 }

@@ -9,85 +9,60 @@ The Steady-State Free-Precession (SSFP), or more precisely balanced-SSFP (bSSFP)
 
 ## qissfpbands
 
-There are several different methods for removing SSFP bands in the literature. Most of them rely on acquiring multiple SSFP images with different phase-increments (also called phase-cycling or phase-cycling patterns). Changing the phase-increments moves the bands to a different location, after which the images can be combined to reduce the banding. The different approaches are discussed further below.
+There are several different methods for removing SSFP bands in the literature. Most of them rely on acquiring multiple SSFP images with different phase-increments (also called phase-cycling or phase-cycling patterns). Changing the phase-increments moves the bands to a different location, after which the images can be combined to reduce the banding. The different approaches are discussed further below, but the recommended method is the Geometric Solution which requires complex data.
 
 **Example Command Line**
 
 ```bash
-qissfpbands
+qissfpbands ssfp.nii.gz --method=G --2pass --magnitude
 ```
 
-The Z-spectrum must be a 4D file with each volume acquired at a different offset frequency.
-
-**Example Input File**
-
-```json
-{
-    "freq" : [ -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
-}
-```
-
-These are the offset frequencies for each volume in the Z-spectrum input.
+The SSFP file must be complex-valued to use the Geometric Solution or Complex Average methods. For the other methods magnitude data is sufficient. Phase-increments should be in opposing pairs, e.g. 180 & 0 degrees, 90 & 270 degrees. These should either be ordered in two blocks, e.g. 180, 90, 0, 270, or alternating, e.g. 180, 0, 90, 270.
 
 **Outputs**
 
-* `LTZ_f0.nii.gz`  - The center frequency of the fitted Lorentzian.
-* `LTZ_w.nii.gz`   - The width of the fitted Lorentzian.
-* `LTZ_sat.nii.gz` - The saturation ratio of the fitted Lorentzian.
-* `LTZ_PD.nii.gz`  - The apparent Proton Density of the fitted Lorentzian.
-
-## qi_mtasym
-
-Calculates the MT asymmetry of a Z-spectrum.
-
-**Example Command Line**
-
-```bash
-qi_mtasym zspectrum.nii.gz --f0=LTZ_f0.nii.gz < input.txt
-```
-
-The off-resonance map units must match the input frequencies (e.g. either PPM or Hertz)
-
-**Example Input File**
-
-```json
-{
-    "freq" : [ -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5],
-    "asym_freq" : [-3, -2]
-}
-```
-
-`freq` is the offset frequencies the Z-spectrum was acquired at. `asym_freq` are the frequencies you want the asymmetry calculated at.
-
-**Outputs**
-
-* `MT_asymmetry.nii.gz` The asymmetry value at each asymmetry frequency.
+The output filename is the input filename with a suffix that will depend on the method selected (see below).
 
 **Important Options**
 
-* `--f0, -f`
+- `--method`
 
-    Specify an off-resonance map. Units must be the same as the input & asymmetry frequencies.
+    Choose the band removal method. Choices are:
 
-##qi_dipolar_mtr
+    - `G` Geometric solution. Suffix will be `GSL` or `GSM`
+    - `X` Complex Average. Suffix will be `CS` (for Complex Solution)
+    - `R` Root-mean-square. Suffix will be `RMS`
+    - `M` Maximum of magnitudes. Suffix will be `Max`
+    - `N` Mean of magnitudes. Suffix will be `MagMean`
 
-Calculates dipolar/inhomogeneous Magnetization Transfer Ratios (MTRs). Dipolar/inhomogeneous MT is a new (see note) contrast mechanism that is present in highly structured materials such as myelin and tendon. By applying off-resonance saturation at both positive and negative frequencies (instead of only one side as in classic MTR) it is possible to decouple the dipolar pool and hence produce an enhanced Magnetization Transfer (eMT) effect. The different between eMT and normal MT is the dipolar/inhomogeneous MT and is potentially highly specific to myelin within the brain.
+- `--regularise`
 
-Although the majority of the existing literature refers to this effect as inhomogeneous MT, this name was chosen before the physical phenomena underlying the effect was well understood. Current theory does not rely on inhomogeneous effects at all, so the name is a misnomer.
+    The Geometric Solution requires regularisation in noisy areas. Available methods are:
 
-*Note - The original ihMT abstracts are from around 2005. There was 10 years between the conference abstracts and the corresponding full papers. So the method is not that new*
+    - `M` Magnitude regularisation as in original paper
+    - `L` Line regularisation (unpublished)
+    - `N` None
 
-**Example Command Line**
+    The default is `L`. If `L` or `M` are selected, then that character will be appended to the suffix.
 
-```bash
-qi_dipolar_mtr dipolar_mt_volumes.nii.gz
-```
+- `--2pass, -2`
 
-The input must consist of 5 volumes: Dipolar +/-, Dipolar -/+, Unsaturated, MT+, MT-. This scheme is not flexible and will be improved in a future version.
+    Apply the second-pass energy-minimisation filter from the original paper. Can be likened to smoothing the phase data. If selected will append `2` to the suffix.
 
-**Outputs**
+- `--alt-order`
 
-* `DMT_mtr.nii.gz` - The classic MTR, expressed as a percentage
-* `DMT_emtr.nii.gz` - The enhanced MTR, expressed as a percentage
-* `DMT_dmtr.nii.gz` - The dipolar MTR, expressed as a percentage. This is the difference between eMTR and MTR.
-* `DMT_mta.nii.gz` - The first-order MT-asymmetry (MT- subtracted from MT+, relative to unsaturated, in percent).
+    Phase-increments alternate, e.g. 180, 0, 90, 270. The default is the opposite (two blocks), e.g. 180, 90, 0, 270.
+
+- `--ph-incs`
+
+    Number of phase-increments. The default is 4. If you have multiple phase-increments and (for example) multiple flip-angles, `qissfpbands` can process them all in one pass.
+
+- `--ph-order`
+
+    The data order is phase-increment varying fastest, flip-angle slowest. The default is the opposite.
+
+**References**
+
+- [Geometric Solution][1]
+
+[1]: http://doi.wiley.com/10.1002/mrm.25098
