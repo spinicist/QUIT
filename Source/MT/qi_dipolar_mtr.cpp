@@ -45,7 +45,7 @@ public:
         return true;
     }
 };
-    
+
 int main(int argc, char **argv) {
     args::ArgumentParser parser("Calculates MTR & dipolar MTR.\nhttp://github.com/spinicist/QUIT");
 

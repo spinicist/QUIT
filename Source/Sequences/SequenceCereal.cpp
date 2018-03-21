@@ -60,6 +60,7 @@ namespace QI {
     QI_READSEQ( SSFPEchoSequence )
     QI_READSEQ( SSFPFiniteSequence )
     QI_READSEQ( SSFPGSSequence )
+    QI_READSEQ( SSFPEllipseSequence )
     QI_READSEQ( MultiEchoSequence )
     QI_READSEQ( MP2RAGESequence )
     QI_READSEQ( CASLSequence )

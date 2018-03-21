@@ -31,16 +31,16 @@ namespace QI {
 class EllipseAlgo : public QI::ApplyVectorXFVectorF::Algorithm {
 protected:
     bool m_debug = false;
-    std::shared_ptr<QI::SSFPEchoSequence> m_sequence = nullptr;
+    const QI::SSFPEllipseSequence &m_seq;
     TOutput m_zero;
     virtual Eigen::ArrayXd apply_internal(const Eigen::ArrayXcf &input, const double flip, const double TR, const Eigen::ArrayXd &phi, const bool debug, float &residual) const = 0;
 public:
-    EllipseAlgo(std::shared_ptr<QI::SSFPEchoSequence> &seq, bool debug);
+    EllipseAlgo(const QI::SSFPEllipseSequence &seq, bool debug);
 
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
-    size_t dataSize() const override { return m_sequence->FA.rows() * m_sequence->PhaseInc.rows(); }
-    size_t outputSize() const override { return m_sequence->FA.rows(); }
+    size_t dataSize() const override { return m_seq.size(); }
+    size_t outputSize() const override { return m_seq.FA.rows(); }
     std::vector<float> defaultConsts() const override {
         std::vector<float> def(1, 1.);
         return def;

@@ -21,7 +21,7 @@ class Direct2Algo : public EllipseAlgo {
 protected:
     Eigen::ArrayXd apply_internal(const Eigen::ArrayXcf &input, const double flip, const double TR, const Eigen::ArrayXd &phi, const bool debug, float &residual) const override;
 public:
-    Direct2Algo(std::shared_ptr<QI::SSFPEchoSequence> &seq, bool debug) : EllipseAlgo(seq, debug) {};
+    Direct2Algo(const QI::SSFPEllipseSequence &seq, bool debug) : EllipseAlgo(seq, debug) {};
     size_t numOutputs() const override { return 9; }
     const std::vector<std::string> & names() const override {
         static std::vector<std::string> _names = {"G_ie", "a_ie", "b_ie", "f0_ie", 

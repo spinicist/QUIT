@@ -46,7 +46,12 @@ struct SSFPFiniteSequence : SSFPBase {
 
 struct SSFPGSSequence : SSFPBase {
     QI_SEQUENCE_DECLARE(SSFPGS);
-    Eigen::ArrayXd weights(const double f0) const override;
+};
+
+struct SSFPEllipseSequence : SSFPBase {
+    Eigen::ArrayXd PhaseInc;
+    QI_SEQUENCE_DECLARE(SSFPEllipse);
+    size_t size() const override;
 };
 
 } // End namespace QI

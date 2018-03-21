@@ -92,10 +92,6 @@ void SSFPFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
-Eigen::ArrayXd SSFPGSSequence::weights(const double f0) const {
-    return Eigen::ArrayXd::Ones(size()); // Weight SPGR images higher than SSFP
-}
-
 Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
     return m->SSFP_GS(p, FA, TR);
 }
@@ -108,6 +104,26 @@ void SSFPGSSequence::load(cereal::JSONInputArchive &ar) {
 void SSFPGSSequence::save(cereal::JSONOutputArchive &ar) const {
     ar(cereal::make_nvp("TR", TR));
     QI_SEQUENCE_SAVE_DEGREES( FA );
+}
+
+Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+    QI_FAIL("Not implemented");
+}
+
+size_t SSFPEllipseSequence::size() const {
+    return FA.rows() * PhaseInc.rows();
+}
+
+void SSFPEllipseSequence::load(cereal::JSONInputArchive &ar) {
+    QI_SEQUENCE_LOAD( TR );
+    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+}
+
+void SSFPEllipseSequence::save(cereal::JSONOutputArchive &ar) const {
+    QI_SEQUENCE_SAVE( TR );
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
 } // End namespace QI

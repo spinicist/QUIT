@@ -16,10 +16,10 @@
 
 namespace QI {
 
-EllipseAlgo::EllipseAlgo(std::shared_ptr<QI::SSFPEchoSequence> &seq, bool debug) :
-    m_debug(debug), m_sequence(seq)
+EllipseAlgo::EllipseAlgo(const QI::SSFPEllipseSequence &seq, bool debug) :
+    m_debug(debug), m_seq(seq)
 {
-    m_zero = TOutput(m_sequence->size());
+    m_zero = TOutput(m_seq.size());
     m_zero.Fill(0.);
 }
 
@@ -29,17 +29,17 @@ bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
                         std::vector<TOutput> &outputs, TOutput &residual,
                         TInput &resids, TIterations &its) const
 {
-    const int np = m_sequence->PhaseInc.rows();
+    const int np = m_seq.PhaseInc.rows();
     const double B1 = consts[0];
-    for (int f = 0; f < m_sequence->FA.rows(); f++) {
+    for (int f = 0; f < m_seq.FA.rows(); f++) {
         Eigen::ArrayXcf data(np);
         for (int i = 0; i < np; i++) {
             data[i] = inputs[0][f*np + i];
         }
         if (m_debug) {
-            std::cout << "Flip: " << m_sequence->FA[f] << " Data: " << data.transpose() << std::endl;
+            std::cout << "Flip: " << m_seq.FA[f] << " Data: " << data.transpose() << std::endl;
         }
-        Eigen::ArrayXd tempOutputs = this->apply_internal(data, B1 * m_sequence->FA[f], m_sequence->TR, m_sequence->PhaseInc, m_debug, residual[f]);
+        Eigen::ArrayXd tempOutputs = this->apply_internal(data, B1 * m_seq.FA[f], m_seq.TR, m_seq.PhaseInc, m_debug, residual[f]);
         if (m_debug) {
             std::cout << "Outputs: " << tempOutputs.transpose() << std::endl;
         }

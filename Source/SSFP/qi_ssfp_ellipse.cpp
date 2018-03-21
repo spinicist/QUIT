@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 
     if (verbose) cout << "Opening file: " << QI::CheckPos(ssfp_path) << endl;
     auto data = QI::ReadVectorImage<complex<float>>(QI::CheckPos(ssfp_path));
-    auto seq = std::make_shared<QI::SSFPEchoSequence>(QI::ReadSequence<QI::SSFPEchoSequence>(std::cin, verbose));
+    auto seq = QI::ReadSequence<QI::SSFPEllipseSequence>(std::cin, verbose);
     shared_ptr<QI::EllipseAlgo> algo;
     switch (algorithm.Get()) {
     case 'h': algo = make_shared<QI::HyperAlgo>(seq, debug); break;

@@ -2,12 +2,12 @@
 
 The Steady-State Free-Precession (SSFP), or more precisely balanced-SSFP (bSSFP), sequence is one of the oldest NMR sequences and can be used to give high SNR MR images with mixed T1/T2 contrast in very short scan time. However, it suffers from banding artefacts in areas of off-resonance which limit its clinical applicability. This module contains a tool for removing those banding artefacts, and then further tools for quantitative mapping using the ellipse signal model.
 
-* [qissfpbands](#qissfpbands)
+* [qi_ssfp_bands](#qi_ssfp_bands)
 * [qi_ssfp_ellipse](#qi_ssfp_ellipse)
-* [qi_ssfp_relax](#qi_ssfp_relax)
+* [qi_ssfp_planet](#qi_ssfp_relax)
 * [qi_ssfp_emt](#qi_ssfp_emt)
 
-## qissfpbands
+## qi_ssfp_bands
 
 There are several different methods for removing SSFP bands in the literature. Most of them rely on acquiring multiple SSFP images with different phase-increments (also called phase-cycling or phase-cycling patterns). Changing the phase-increments moves the bands to a different location, after which the images can be combined to reduce the banding. The different approaches are discussed further below, but the recommended method is the Geometric Solution which requires complex data.
 
