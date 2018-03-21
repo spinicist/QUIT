@@ -14,6 +14,9 @@
 
 #include <Eigen/Dense>
 #include <cereal/cereal.hpp>
+#include <cereal/archives/json.hpp>
+
+#include "Macro.h"
 
 namespace Eigen {
     template<typename Archive, typename T, cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value> = cereal::traits::sfinae>
@@ -54,5 +57,18 @@ namespace Eigen {
     }
 
 } // end namespace Eigen
+
+namespace QI {
+
+template<typename T>
+void ReadCereal(cereal::JSONInputArchive &ar, const std::string &name, T &par) {
+    try {
+        ar(cereal::make_nvp(name, par));
+    } catch (cereal::RapidJSONException &e) {
+        QI_FAIL("Could not read parameter " << name << std::endl);
+    }
+}
+
+} // end namespace QI
 
 #endif // End QI_EIGENCEREAL_H

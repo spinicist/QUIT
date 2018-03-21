@@ -1,7 +1,7 @@
-option( BUILD_CEST "Build the CEST Programs" ON )
+option( BUILD_CEST "Build the MT Programs" ON )
 if( ${BUILD_CEST} )
     set( PROGRAMS
-        qi_cestasym qi_cestlorentz )
+         qi_mtasym qi_lorentzian )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)

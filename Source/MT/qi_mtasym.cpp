@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
         std::cout << "Writing output." << std::endl;
     }
-    std::string outPrefix = outarg.Get() + "CEST_";
+    std::string outPrefix = outarg.Get() + "MT_";
     for (int i = 0; i < algo->numOutputs(); i++) {
         QI::WriteVectorImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }

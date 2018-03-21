@@ -4,6 +4,7 @@ Welcome to the QUantitative Imaging Tools, a collection of C++ programs for anal
 
 * [Relaxometry](Relaxometry.md)
 * [Perfusion](Perfusion.md)
+* [Magnetization Transfer](MT.md)
 * [Susceptibility](Susceptibility.md)
 * [Utilities](Utilities.md)
 

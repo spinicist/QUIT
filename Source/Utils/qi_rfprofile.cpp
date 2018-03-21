@@ -12,7 +12,6 @@
 #include <iostream>
 #include "Eigen/Dense"
 #include <unsupported/Eigen/Splines>
-#include <cereal/archives/json.hpp>
 #include <cereal/types/vector.hpp>
 
 #include "itkImageSource.h"
@@ -166,12 +165,8 @@ int main(int argc, char **argv) {
     Eigen::ArrayXd rf_pos;
     std::vector<Eigen::ArrayXd> rf_vals;
     if (verbose) std::cout << "Reading slab profile" << std::endl;
-    try {
-        input(cereal::make_nvp("rf_pos", rf_pos));
-    } catch (cereal::RapidJSONException &e) {
-        std::cerr << "Could not read parameter 'rf_pos'" << std::endl;
-        return EXIT_FAILURE;
-    }
+    QI::ReadCereal(input, "rf_pos", rf_pos);
+    QI::ReadCereal(input, "rf_vals", rf_vals);
     try {
         input(cereal::make_nvp("rf_vals", rf_vals));
     } catch (cereal::RapidJSONException &e) {
