@@ -11,6 +11,8 @@ The following programs are available:
 
 This program implements the standard equation to calculate CBF from either Continuous or pseudo-Continuous Arterial Spin Labelling data (CASL or pCASL). For the exact equation used, see the first reference below.
 
+![CBF Map](cbf.png)
+
 **Example Command Line**
 
 ```bash
