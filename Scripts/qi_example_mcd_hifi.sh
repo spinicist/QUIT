@@ -13,7 +13,8 @@ This script will produce T1, T2 and MWF maps from DESPOT data using
 DESPOT1-HIFI for B1 correction. It requires as input the SPGR, IR-SPGR and SSFP
 file names. A rough processing mask will be automatically generated.
 
-Requires FSL.
+This script will use FSL to register the data together. Hence you must have FSL
+installed.
 
 You MUST edit the script to the flip-angles, TRs etc. used in your scans.
 
@@ -106,7 +107,7 @@ END_FM
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 
-qimcdespot-v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii -M3 -S $NTHREADS -s "0 0 48 80 80 1" <<END_MCD
+qimcdespot-v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii -M3 -S $NTHREADS <<END_MCD
 {
     "SequenceGroup": {
         "sequences": [

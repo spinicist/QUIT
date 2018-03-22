@@ -1,9 +1,22 @@
 site_name: QUIT
+site_description: Documentation for the QUantitative Imaging Tools
+repo_url: https://github.com/spinicist/quit
+
 docs_dir: Docs
 theme: mkdocs
-# pages:
-#     - Home: index.md
-#     - About: about.md
+pages:
+    - Home: index.md
+    - Modules:
+        - Relaxometry: Relaxometry.md
+        - SSFP: SSFP.md
+        - Magnetization Transfer: MT.md
+        - Perfusion: Perfusion.md
+        - Susceptibility: Susceptibility.md
+        - Statistics: Stats.md
+        - Utilities: Utilities.md
+    - Developer: Developer.md
+
+copyright: Copyright &copy; 2018 Tobias Wood tobias.wood@kcl.ac.uk
 
 extra_javascript: 
     - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML

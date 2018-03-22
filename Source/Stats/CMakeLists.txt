@@ -1,5 +1,5 @@
-option( BUILD_GLM "Build the GLM Utilities" ON )
-if( ${BUILD_GLM} )
+option( BUILD_STATS "Build the Stats Utilities" ON )
+if( ${BUILD_STATS} )
     set( PROGRAMS
         qi_rois qi_glmsetup qi_glmcontrasts )
 

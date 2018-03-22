@@ -1,3 +1,5 @@
+![Logo](Docs/logo.png)
+
 # QUIT - QUantitative Imaging Tools #
 
 [![Build Status](https://travis-ci.org/spinicist/QUIT.svg?branch=modules)](https://travis-ci.org/spinicist/QUIT)

@@ -83,12 +83,12 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     QI::ParseArgs(parser, argc, argv);
 
-    if (verbose) std::cout << "Reading input file" << std::endl;
-    QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(input_path.Get());
-    if (verbose) std::cout << "Reading design matrix" << std::endl;
-    Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(design_path.Get());
-    if (verbose) std::cout << "Reading contrasts file" << std::endl;
-    Eigen::ArrayXXd contrasts     = QI::ReadArrayFile(contrasts_path.Get());
+    if (verbose) std::cout << "Reading input file " << QI::CheckPos(input_path) << std::endl;
+    QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
+    if (verbose) std::cout << "Reading design matrix" << QI::CheckPos(design_path) << std::endl;
+    Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(QI::CheckPos(design_path));
+    if (verbose) std::cout << "Reading contrasts file" << QI::CheckPos(contrasts_path) << std::endl;
+    Eigen::ArrayXXd contrasts     = QI::ReadArrayFile(QI::CheckPos(contrasts_path));
     if (design_matrix.rows() != merged->GetNumberOfComponentsPerPixel()) {
         std::cerr << "Number of rows in design matrix (" << design_matrix.rows()
                   << ") does not match number of volumes in image (" << merged->GetNumberOfComponentsPerPixel() << ")" << std::endl;

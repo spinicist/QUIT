@@ -64,7 +64,7 @@ qidespot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.
 
 ## qidespot1hifi
 
-This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / IR-SPGR type sequence. Although DESPOT1-HIFI can produce a rough estimate of B1, it often fails to produce reasonable values in the ventricles, and the fact that the MP-RAGE image is often acquired at lower resolution than the SPGR/FLASH data can also cause problems. Hence you should either smooth the B1 map produced as output, or fit it with a [polynomial](Utils.md), then recalculate T1 using the [DESPOT1](##qidespot1) program. Note that if your MP-RAGE image is not acquired at the same resolution as your SPGR data, it must be resampled to the same spacing before processing (and it should also be registered to your SPGR data).
+This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / IR-SPGR type sequence. Although DESPOT1-HIFI can produce a rough estimate of B1, it often fails to produce reasonable values in the ventricles, and the fact that the MP-RAGE image is often acquired at lower resolution than the SPGR/FLASH data can also cause problems. Hence you should either smooth the B1 map produced as output, or fit it with a [polynomial](Utilities.md), then recalculate T1 using the [DESPOT1](##qidespot1) program. Note that if your MP-RAGE image is not acquired at the same resolution as your SPGR data, it must be resampled to the same spacing before processing (and it should also be registered to your SPGR data).
 
 **Example Command Line**
 
@@ -108,7 +108,7 @@ For the MPRAGE sequence, the TR is the spacing between readouts/echoes, not the 
 
 ## qidespot2
 
-DESPOT2 uses SSFP data and a separate T<sub>1</sub> map to calculate T<sub>2</sub>, using the same maths as DESPOT1. It does not account for the banding artefacts present in SSFP data at field-strengths of 3T and above. See [qidespot2fm](##qidespot2fm) for a method that does account for them, or if you have at least 4 phase-increments and complex data then see [qissfpbands](Ellipse.md) for a way to remove them before using this program.
+DESPOT2 uses SSFP data and a separate T<sub>1</sub> map to calculate T<sub>2</sub>, using the same maths as DESPOT1. It does not account for the banding artefacts present in SSFP data at field-strengths of 3T and above. See [qidespot2fm](#qidespot2fm) for a method that does account for them, or if you have at least 4 phase-increments and complex data then see [qi_ssfp_bands](SSFP.md#qi_ssfp_bands) for a way to remove them before using this program.
 
 ![A T2 map](T2_slices.png)
 

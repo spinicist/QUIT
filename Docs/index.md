@@ -1,3 +1,5 @@
+![Logo](logo.png)
+
 # Welcome
 
 Welcome to the QUantitative Imaging Tools, a collection of C++ programs for analysing quantitative MR images. QUIT is divided into several modules, each of which contains numerous programs for processing images. The modules are:
@@ -5,7 +7,9 @@ Welcome to the QUantitative Imaging Tools, a collection of C++ programs for anal
 * [Relaxometry](Relaxometry.md)
 * [Perfusion](Perfusion.md)
 * [Magnetization Transfer](MT.md)
+* [Steady-State Free-Precession](SSFP.md)
 * [Susceptibility](Susceptibility.md)
+* [Stats / GLM](Stats.md)
 * [Utilities](Utilities.md)
 
 ## Installation
@@ -96,3 +100,11 @@ and run the following:
 ```
 
 then (provided your input data does contain two volumes corresponding to flip-angles 3 and 18 degrees) then DESPOT1 will run, and you should see two files created (`D1_T1.nii.gz` and `D1_PD.nii.gz`). If you want to see what the programs are doing while running, specify the `--verbose` or `-v` options.
+
+## File Formats
+
+Because QUIT uses the [ITK](http://itk.org) library, it can read a wide variety of file-formats, including DICOM & NRRD. The preferred file-format is NIFTI for compatibility with FSL and SPM. By default QUIT will output `.nii.gz` files. This can be controlled by the `QUIT_EXT` environment variable. Valid values for this are any file extension that ITK can write, e.g. `.nii` or `.nrrd`, or the FSL values `NIFTI`, `NIFTI_PAIR`, `NIFTI_GZ`, `NIFTI_PAIR_GZ`. Note that ITK cannot write every format it can read (e.g. it can read Bruker 2dseq datasets, but it cannot write them).
+
+## Scripting
+
+The QUIT tools are designed to be used inside shell scripts or SGE jobs. 3 scripts are provided along with the binaries. `qi_composer.sh` uses the `qi_coil_combine` program to correctly combine complex data from multiple element RF coils. `qi_example_mcd_b1.sh` and `qi_example_mcd_hifi.sh` give example mcDESPOT processing pipelines. The first assumes that you have a good B1 map and have already registered all the input volumes to a common reference. The second shows one of doing this using FSL. Registration is beyond the scope of QUIT, so you must have additional tools installed for this.
