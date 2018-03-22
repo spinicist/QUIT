@@ -200,6 +200,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateOutputInformation() {
         r->SetNumberOfComponentsPerPixel(size);
         r->Allocate(true);
     }
+    if (m_verbose) std::cout << "Allocating total residual memory" << std::endl;
     auto r = this->GetResidualOutput();
     r->SetRegions(region);
     r->SetSpacing(spacing);
@@ -207,6 +208,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateOutputInformation() {
     r->SetDirection(direction);
     r->SetNumberOfComponentsPerPixel(m_algorithm->outputSize());
     r->Allocate(true);
+    if (m_verbose) std::cout << "Allocating iterations memory" << std::endl;
     auto i = this->GetIterationsOutput();
     i->SetRegions(region);
     i->SetSpacing(spacing);

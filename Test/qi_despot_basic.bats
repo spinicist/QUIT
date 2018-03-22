@@ -35,7 +35,7 @@ qisignal --model=1 -v --noise=$NOISE $SPGR_FILE << OUT
     }
 }
 OUT
-qidespot1 $SPGR_FILE <<OUT
+qidespot1 $SPGR_FILE --verbose <<OUT
 {
     "SPGR": {
         "TR": $SPGR_TR,
@@ -82,7 +82,7 @@ qisignal --model=1 -v --noise=$NOISE $SSFP_FILE << OUT
     }
 }
 OUT
-qidespot2 T1.nii $SSFP_FILE <<OUT
+qidespot2 T1.nii $SSFP_FILE --verbose <<OUT
 {
     "SSFP": {
         "TR": $SSFP_TR,

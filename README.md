@@ -1,7 +1,5 @@
 ![Logo](Docs/logo.png)
 
-# QUIT - QUantitative Imaging Tools #
-
 [![Build Status](https://travis-ci.org/spinicist/QUIT.svg?branch=modules)](https://travis-ci.org/spinicist/QUIT)
 
 Credit / Blame / Contact - Tobias Wood - tobias.wood@kcl.ac.uk
@@ -17,18 +15,18 @@ The previous version is here http://github.com/spinicist/old_quit
 
 # Brief Description #
 
-A collection of programs for processing quantitative MRI data, in particular
-DESPOT and mcDESPOT.
+A collection of programs for processing quantitative MRI data, originally DESPOT
+but now a wider variety of techniques.
 
 # Thanks #
 
 Many thanks to Samuel Hurley for many, many suggestions.
 Thanks to Anna Combes, Amy McDowell and Sjoerd Vos for finding bugs.
 
-# Help #
+# Documentation #
 
-As of version 1.0 there is now a Wiki at http://github.com/spinicist/QUIT/wiki.
-It will be filled out gradually.
+Documentation exists in Markdown format in the Docs folder, and is also available at
+http://spinicist.github.io/QUIT/
 
 # Installation #
 

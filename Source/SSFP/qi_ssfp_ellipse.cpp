@@ -18,12 +18,8 @@
 #include "ImageIO.h"
 #include "Args.h"
 #include "DirectAlgo.h"
-#include "Direct2Algo.h"
 #include "HyperAlgo.h"
 #include "SequenceCereal.h"
-
-using namespace std;
-using namespace Eigen;
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
@@ -42,16 +38,15 @@ int main(int argc, char **argv) {
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
     QI::ParseArgs(parser, argc, argv);
     if (verbose) std::cout << "Starting " << argv[0] << std::endl;
-    if (verbose) cout << "Opening file: " << QI::CheckPos(ssfp_path) << endl;
-    auto data = QI::ReadVectorImage<complex<float>>(QI::CheckPos(ssfp_path));
+    if (verbose) std::cout << "Opening file: " << QI::CheckPos(ssfp_path) << std::endl;
+    auto data = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ssfp_path));
     auto seq = QI::ReadSequence<QI::SSFPEllipseSequence>(std::cin, verbose);
-    shared_ptr<QI::EllipseAlgo> algo;
+    std::shared_ptr<QI::EllipseAlgo> algo;
     switch (algorithm.Get()) {
-    case 'h': algo = make_shared<QI::HyperAlgo>(seq, debug); break;
-    case 'd': algo = make_shared<QI::DirectAlgo>(seq, debug); break;
-    case '2': algo = make_shared<QI::Direct2Algo>(seq, debug); break;
+    case 'h': algo = std::make_shared<QI::HyperAlgo>(seq, debug); break;
+    case 'd': algo = std::make_shared<QI::DirectAlgo>(seq, debug); break;
     }
-    auto apply = QI::ApplyVectorXFVectorF::New();
+    QI::ApplyVectorXFVectorF::Pointer apply = QI::ApplyVectorXFVectorF::New();
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get()*2);
@@ -66,21 +61,17 @@ int main(int argc, char **argv) {
         apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     }
     if (verbose) {
-        cout << "Processing" << endl;
+        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
     if (verbose) {
-        cout << "Elapsed time was " << apply->GetTotalTime() << "s" << endl;
-        cout << "Writing results files." << endl;
+        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
+        std::cout << "Writing results files." << std::endl;
     }
     std::string outPrefix;
-    if (algorithm.Get() == '2') {
-        outPrefix = outarg.Get() + "ES2_";
-    } else {
-        outPrefix = outarg.Get() + "ES_";
-    }
+    outPrefix = outarg.Get() + "ES_";
     for (int i = 0; i < algo->numOutputs(); i++) {
         std::string outName = outPrefix + algo->names().at(i) + QI::OutExt();
         if (verbose) std::cout << "Writing: " << outName << std::endl;
@@ -88,6 +79,6 @@ int main(int argc, char **argv) {
     }
     if (verbose) std::cout << "Writing total residuals." << std::endl;
     QI::WriteVectorImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    if (verbose) cout << "Finished." << endl;
+    if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }

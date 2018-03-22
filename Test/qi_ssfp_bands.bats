@@ -32,8 +32,8 @@ setup() {
     }
 }
 OUT
-    qissfpbands ssfp_mag$EXT --method=M --magnitude --verbose
-    qissfpbands ssfp_mag$EXT --method=N --magnitude --verbose
+    qi_ssfp_bands ssfp_mag$EXT --method=M --magnitude --verbose
+    qi_ssfp_bands ssfp_mag$EXT --method=N --magnitude --verbose
     # No proper ground truth here, compare the methods to each other
     qidiff --baseline=ssfp_mag_MagMean$EXT --input=ssfp_mag_Max$EXT --noise=0.01 --tolerance=30 --verbose
 }
@@ -70,8 +70,8 @@ OUT
 }
 OUT
 
-    qissfpbands ssfp$EXT --method=G --magnitude --alt-order --verbose
-    qissfpbands ssfp$EXT --method=G -2 --magnitude --alt-order --verbose
+    qi_ssfp_bands ssfp$EXT --method=G --magnitude --alt-order --verbose
+    qi_ssfp_bands ssfp$EXT --method=G -2 --magnitude --alt-order --verbose
     qicomplex -x ssfpgs$EXT -M ssfpgs_mag$EXT
     qidiff --baseline=ssfpgs_mag$EXT --input=ssfp_GSL$EXT --noise=0.01 --tolerance=15 --verbose
     qidiff --baseline=ssfpgs_mag$EXT --input=ssfp_GSL2$EXT --noise=0.01 --tolerance=13 --verbose

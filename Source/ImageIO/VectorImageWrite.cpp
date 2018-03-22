@@ -24,9 +24,9 @@ namespace QI {
 
 template<typename TVImg>
 void WriteVectorImage(const TVImg *img, const std::string &path) {
-    typedef itk::VectorToImageFilter<TVImg> TToSeries;
+    using TToSeries = itk::VectorToImageFilter<TVImg>;
 
-    auto convert = TToSeries::New();
+    typename TToSeries::Pointer convert = TToSeries::New();
     convert->SetInput(img);
     convert->Update();
     WriteImage(convert->GetOutput(), path);

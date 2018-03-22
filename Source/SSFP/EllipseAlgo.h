@@ -39,6 +39,11 @@ public:
 
     size_t numInputs() const override { return 1; }
     size_t numConsts() const override { return 1; }
+    size_t numOutputs() const override { return 5; }
+    const std::vector<std::string> & names() const {
+        static std::vector<std::string> _names = {"G", "a", "b", "theta_0", "phi_rf"};
+        return _names;
+    }
     size_t dataSize() const override { return m_seq.size(); }
     size_t outputSize() const override { return m_seq.FA.rows(); }
     std::vector<float> defaultConsts() const override {
@@ -50,7 +55,6 @@ public:
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override;
-    virtual const std::vector<std::string> & names() const = 0;
 };
 
 } // End namespace QI

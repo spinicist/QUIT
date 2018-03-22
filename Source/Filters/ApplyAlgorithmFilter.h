@@ -92,9 +92,9 @@ protected:
     TRegion m_subregion;
 
     RealTimeClock::TimeStampType m_elapsedTime = 0.0;
-    static const int AllResidualsOutputOffset = 0;
-    static const int ResidualOutputOffset = 1;
-    static const int IterationsOutputOffset = 2;
+    static const int ResidualOutputOffset = 0;
+    static const int IterationsOutputOffset = 1;
+    static const int AllResidualsOutputOffset = 2;
     static const int ExtraOutputs = 3;
 
     virtual void GenerateData() ITK_OVERRIDE;

@@ -5,7 +5,7 @@ if( ${BUILD_ELLIPSE} )
 
     add_executable( qi_ssfp_ellipse qi_ssfp_ellipse.cpp
         EllipseAlgo.cpp EllipseHelpers.cpp
-        DirectAlgo.cpp Direct2Algo.cpp HyperAlgo.cpp )
+        DirectAlgo.cpp HyperAlgo.cpp )
     target_link_libraries( qi_ssfp_ellipse qi_sequences qi_imageio qi_filters qi_core ${CERES_LIBRARIES} )
 
     add_executable( qi_ssfp_planet qi_ssfp_planet.cpp )
