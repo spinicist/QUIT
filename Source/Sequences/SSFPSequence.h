@@ -54,6 +54,12 @@ struct SSFPEllipseSequence : SSFPBase {
     size_t size() const override;
 };
 
+struct SSFPMTSequence : SequenceBase {
+    Eigen::ArrayXd FA, TR, Trf, intB1, PhaseInc;
+    QI_SEQUENCE_DECLARE(SSFPMT);
+    size_t size() const override;
+};
+
 } // End namespace QI
 
 #endif // SEQUENCES_SSFP_H

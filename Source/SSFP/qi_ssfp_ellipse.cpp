@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
     QI::ParseArgs(parser, argc, argv);
-
+    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
     if (verbose) cout << "Opening file: " << QI::CheckPos(ssfp_path) << endl;
     auto data = QI::ReadVectorImage<complex<float>>(QI::CheckPos(ssfp_path));
     auto seq = QI::ReadSequence<QI::SSFPEllipseSequence>(std::cin, verbose);

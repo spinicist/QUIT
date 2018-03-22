@@ -126,4 +126,31 @@ void SSFPEllipseSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
+Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+    QI_FAIL("Not implemented");
+}
+
+size_t SSFPMTSequence::size() const {
+    return FA.rows();
+}
+
+void SSFPMTSequence::load(cereal::JSONInputArchive &ar) {
+    QI_SEQUENCE_LOAD( TR );
+    QI_SEQUENCE_LOAD( Trf );
+    QI_SEQUENCE_LOAD( intB1 );
+    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    if ((TR.rows() != Trf.rows()) || (TR.rows() != intB1.rows()) || (TR.rows() != FA.rows())) {
+        QI_FAIL("One on more parameters had differing lengths, TR had " << TR.rows() << ", Trf had " << Trf.rows() << ", intB1 had " << intB1.rows() << ", FA had " << FA.rows());
+    }
+}
+
+void SSFPMTSequence::save(cereal::JSONOutputArchive &ar) const {
+    QI_SEQUENCE_SAVE( TR );
+    QI_SEQUENCE_SAVE( Trf );
+    QI_SEQUENCE_SAVE( intB1 );
+    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+}
+
 } // End namespace QI

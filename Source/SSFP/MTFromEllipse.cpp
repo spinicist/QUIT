@@ -21,8 +21,8 @@ struct EMTCost {
 public:
     const Eigen::ArrayXd &G;
     const Eigen::ArrayXd &b;
-    const Eigen::ArrayXd &flip;
-    const Eigen::ArrayXd &int_omega2;
+    const Eigen::ArrayXd flip;
+    const Eigen::ArrayXd int_omega2;
     const Eigen::ArrayXd &TR;
     const Eigen::ArrayXd &Trf;
     const double T2r;
@@ -33,7 +33,6 @@ public:
     template<typename T>
     bool operator() (T const* const* p, T* resids) const {
         typedef Eigen::Array<T, Eigen::Dynamic, 1> ArrayXT;
-
         const T &M0  = p[0][0];
         const T &F   = p[0][1];
         const T &kf  = p[0][2];
@@ -73,8 +72,8 @@ public:
     }
 };
 
-MTFromEllipse::MTFromEllipse(const Eigen::ArrayXd &f, const Eigen::ArrayXd &iB, const Eigen::ArrayXd &tr, const Eigen::ArrayXd &trf, const double T2, const bool d) :
-    flips(f), intB1(iB), TRs(tr), TRFs(trf), T2r(T2), debug(d)
+MTFromEllipse::MTFromEllipse(const QI::SSFPMTSequence &s, const double T2, const bool d) :
+    m_seq(s), T2r(T2), debug(d)
 {
 }
 
@@ -100,14 +99,14 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     Eigen::ArrayXd G = in_G.cast<double>() / scale;
     Eigen::ArrayXd a = in_a.cast<double>();
     Eigen::ArrayXd b = in_b.cast<double>();
-    Eigen::ArrayXd T2fs = (-TRs.cast<double>() / a.log());
+    Eigen::ArrayXd T2fs = (-m_seq.TR / a.log());
     const double T2f = T2fs.mean(); // Different TRs so have to average afterwards
 
-    auto *cost = new ceres::DynamicAutoDiffCostFunction<EMTCost>(new EMTCost{G, b, flips*B1, intB1*B1*B1, TRs, TRFs, T2r, T2f, f0_Hz, debug});
+    auto *cost = new ceres::DynamicAutoDiffCostFunction<EMTCost>(new EMTCost{G, b, m_seq.FA*B1, m_seq.intB1*B1*B1, m_seq.TR, m_seq.Trf, T2r, T2f, f0_Hz, debug});
     cost->AddParameterBlock(4);
     cost->SetNumResiduals(G.size() + b.size());
     ceres::LossFunction *loss = new ceres::HuberLoss(1.0);
-    Eigen::Array<double, 6, 1> p; p << 15.0, 0.05, 5.0, 1.0;
+    Eigen::Array<double, 4, 1> p; p << 15.0, 0.01, 5.0, 1.0;
     ceres::Problem problem;
     problem.AddResidualBlock(cost, loss, p.data());
     problem.SetParameterLowerBound(p.data(), 0, 0.1);
@@ -148,7 +147,7 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
         problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
         for (int i = 0; i < G.size(); i++)
             resids[i] = r_temp[i];
-        Eigen::ArrayXd as = (-TRs.cast<double>() / T2f).exp();
+        Eigen::ArrayXd as = (-m_seq.TR / T2f).exp();
         for (int i = 0; i < a.size(); i++) {
             resids[i + G.size()] = as[i] - a[i];
         }

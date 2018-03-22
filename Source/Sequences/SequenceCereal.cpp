@@ -21,6 +21,7 @@ void save(cereal::JSONOutputArchive &ar, std::shared_ptr<QI::SequenceBase> const
     else if QI_SAVE( SSFPEcho )
     else if QI_SAVE( SSFPFinite )
     else if QI_SAVE( SSFPGS )
+    else if QI_SAVE( SSFPMT )
     else if QI_SAVE( MultiEcho )
     else if QI_SAVE( CASL )
     else { QI_FAIL("Unimplemented save for sequence type: " << s->name()); }
@@ -39,6 +40,7 @@ void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::SequenceBase> &sb) {
     else if QI_LOAD( SSFPEcho )
     else if QI_LOAD( SSFPFinite )
     else if QI_LOAD( SSFPGS )
+    else if QI_LOAD( SSFPMT )
     else if QI_LOAD( MultiEcho )
     else if QI_LOAD( CASL )
     else { QI_FAIL("Unimplemented load for sequence type: " << seq_type); }
@@ -61,6 +63,7 @@ namespace QI {
     QI_READSEQ( SSFPFiniteSequence )
     QI_READSEQ( SSFPGSSequence )
     QI_READSEQ( SSFPEllipseSequence )
+    QI_READSEQ( SSFPMTSequence )
     QI_READSEQ( MultiEchoSequence )
     QI_READSEQ( MP2RAGESequence )
     QI_READSEQ( CASLSequence )

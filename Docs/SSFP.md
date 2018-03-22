@@ -71,6 +71,8 @@ The output filename is the input filename with a suffix that will depend on the 
 
 The most important result of Xiang & Hoff's Geometric Solution paper was that the SSFP signal equation can be expressed as an ellipse in the complex-plane. Shcherbakova built on this and showed it was possible to recover the ellipse parameters \(G, a, b\) from at least six phase-increments. They then proceeded it was possible to recover \(T_1 & T_2\) from the ellipse parameters. This utility calculates the ellipse parameters, and `qi_ssfp_planet` then processes those parameters to calculate \(T_1 & \T_2\)
 
+![SSFP Ellipse Parameters](ellipse.png)
+
 **Example Command Line**
 
 ```bash
@@ -125,3 +127,29 @@ qi_ssfp_planet ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
 - [PLANET][1]
 
 [1]: http://dx.doi.org/10.1002/mrm.26717
+
+## qi_ssfp_emt
+
+Due to the short \(TR\) commonly used with SSFP, at high flip-angles the sequence becomes MT weighted. It is hence possible to extract qMT parameters from SSFP data. More details will be in a forthcoming paper.
+
+**Example Command Line**
+
+```bash
+qi_ssfp_emt ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+```
+
+**Outputs**
+
+- `EMT_T1f.nii.gz` - Longitudinal relaxation time of the free water bool
+- `EMT_T2f.nii.gz` - Transverse relaxation time of the free water pool
+- `EMT_M0.nii.gz` - Apparent Proton Density
+- `EMT_F.nii.gz`- Bound pool fraction
+- `EMT_kf.nii.gz` - Forward exchange rate
+
+**References**
+
+- [Bieri et al][1]
+- [Gloor et al][2]
+
+[1]: http://doi.wiley.com/10.1002/mrm.21056
+[2]: http://doi.wiley.com/10.1002/mrm.21705

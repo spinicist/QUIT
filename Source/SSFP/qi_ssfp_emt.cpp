@@ -17,6 +17,7 @@
 #include "IO.h"
 #include "Args.h"
 #include "MTFromEllipse.h"
+#include "SequenceCereal.h"
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
@@ -25,7 +26,6 @@ int main(int argc, char **argv) {
     args::Positional<std::string> G_path(parser, "G_FILE", "Input G file");
     args::Positional<std::string> a_path(parser, "a_FILE", "Input a file");
     args::Positional<std::string> b_path(parser, "b_FILE", "Input b file");
-    
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag     all_residuals(parser, "RESIDUALS", "Write out all residuals", {'r',"all_resids"});
     QI::ParseArgs(parser, argc, argv);
-
+    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(G_path) << std::endl;
     auto G = QI::ReadVectorImage<float>(QI::CheckPos(G_path));
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(a_path) << std::endl;
@@ -46,18 +46,12 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(b_path) << std::endl;
     auto b = QI::ReadVectorImage<float>(QI::CheckPos(b_path));
 
-    if (verbose) std::cout << "Enter flip-angles (degrees): ";
-    Eigen::ArrayXd flips; QI::ReadArray(std::cin, flips); flips *= M_PI/180.;
-    if (verbose) std::cout << "Enter integral B1^2: ";
-    Eigen::ArrayXd intB1; QI::ReadArray(std::cin, intB1);
-    if (verbose) std::cout << "Enter TRs (seconds): ";
-    Eigen::ArrayXd TRs; QI::ReadArray(std::cin, TRs);
-    if (verbose) std::cout << "Enter TRFs (seconds): ";
-    Eigen::ArrayXd TRFs; QI::ReadArray(std::cin, TRFs);
+    cereal::JSONInputArchive input(std::cin);
+    auto seq = QI::ReadSequence<QI::SSFPMTSequence>(input, verbose);
     if (verbose) {
         std::cout << "T2r " << T2r_us.Get() << "us" << std::endl;
     }
-    auto algo = std::make_shared<QI::MTFromEllipse>(flips, intB1, TRs, TRFs, T2r_us.Get() * 1e-6, debug);
+    auto algo = std::make_shared<QI::MTFromEllipse>(seq, T2r_us.Get() * 1e-6, debug);
 
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
@@ -76,10 +70,6 @@ int main(int argc, char **argv) {
         apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
     if (verbose) {
-        std::cout << "Flips: " << flips.transpose() << std::endl;
-        std::cout << "Int B1^2: " << intB1.transpose() << std::endl;
-        std::cout << "TR: " << TRs.transpose() << std::endl;
-        std::cout << "Trf: " << TRFs.transpose() << std::endl;
         std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);

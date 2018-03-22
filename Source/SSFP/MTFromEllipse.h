@@ -13,6 +13,7 @@
 #define QI_ELLIPSE_MTFROMELLIPSE_H
 
 #include "ApplyTypes.h"
+#include "SSFPSequence.h"
 
 namespace QI {
 
@@ -20,18 +21,15 @@ class MTFromEllipse : public QI::ApplyF::Algorithm {
 public:
     const static size_t NumOutputs = 5;
 protected:
-    const Eigen::ArrayXd &flips;
-    const Eigen::ArrayXd &intB1;
-    const Eigen::ArrayXd &TRs;
-    const Eigen::ArrayXd &TRFs;
+    const QI::SSFPMTSequence &m_seq;
     const double T2r;
     const bool debug;
 public:
-    MTFromEllipse(const Eigen::ArrayXd &f, const Eigen::ArrayXd &iB, const Eigen::ArrayXd &tr, const Eigen::ArrayXd &trf, const double T2, const bool d);
+    MTFromEllipse(const QI::SSFPMTSequence &s, const double T2, const bool d);
     size_t numInputs() const override { return 3; }
     size_t numConsts() const override { return 2; }
     size_t numOutputs() const override { return NumOutputs; }
-    size_t dataSize() const override { return (flips.size() * 3); }
+    size_t dataSize() const override { return m_seq.FA.rows() * 3; }
     const std::vector<std::string> &names() const {
         static std::vector<std::string> _names = {"M0", "F", "kf", "T1f", "T2f"};
         return _names;
