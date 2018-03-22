@@ -54,9 +54,12 @@ struct PLANET : public QI::ApplyVectorF::Algorithm {
         Eigen::Map<const Eigen::ArrayXf> b(inputs[2].GetDataPointer(), inputs[0].Size());
         const float b1 = consts[0];
         const Eigen::ArrayXf cosa = cos(b1 * m_seq.FA.cast<float>());
+        const Eigen::ArrayXf sina = sin(b1 * m_seq.FA.cast<float>());
         const Eigen::ArrayXf T1 = -m_seq.TR / log((a*(1. + cosa - a*b*cosa) - b)/(a*(1. + cosa - a*b) - b*cosa));
         const Eigen::ArrayXf T2 = -m_seq.TR / log(a);
-        const Eigen::ArrayXf PD = G / sqrt(a);
+        const Eigen::ArrayXf E1 = exp(-m_seq.TR / T1);
+        const Eigen::ArrayXf E2 = a; // For simplicity copying formulas
+        const Eigen::ArrayXf PD = G * (1. - E1*cosa - E2*E2*(E1 - cosa)) / (sqrt(E2)*(1. - E1)*sina);
         for (int i = 0; i < m_seq.FA.rows(); i++) {
             outputs[0][i] = T1[i];
             outputs[1][i] = T2[i];

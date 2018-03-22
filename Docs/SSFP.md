@@ -66,3 +66,62 @@ The output filename is the input filename with a suffix that will depend on the 
 - [Geometric Solution][1]
 
 [1]: http://doi.wiley.com/10.1002/mrm.25098
+
+## qi_ssfp_ellipse
+
+The most important result of Xiang & Hoff's Geometric Solution paper was that the SSFP signal equation can be expressed as an ellipse in the complex-plane. Shcherbakova built on this and showed it was possible to recover the ellipse parameters \(G, a, b\) from at least six phase-increments. They then proceeded it was possible to recover \(T_1 & T_2\) from the ellipse parameters. This utility calculates the ellipse parameters, and `qi_ssfp_planet` then processes those parameters to calculate \(T_1 & \T_2\)
+
+**Example Command Line**
+
+```bash
+qi_ssfp_ellipse ssfp_data.nii.gz < input.txt
+```
+
+The SSFP file must be complex-valued. At least three pairs of opposing phase-increments are recommended (six images in total).
+
+**Outputs**
+
+- `ES_G` - The Geometric Solution point of the ellipse. Influences the overall size of the ellipse. This is called \(M\) in the Hoff and Shcherbakova papers, but it is not a measurable magnetization and hence to distinguish it a different letter is used.
+- `ES_a` - The ellipse parameter that along with \(G\) controls the ellipse size.
+- `ES_b` - The ellipse parameter that determines how flat or circular the ellipse is.
+- `ES_theta_0` - The accrued phase due to off-resonance (divide by \(2\pi TE\=\pi TR\) to find the off-resonance frequency).
+- `ES_phi_rf` - The effective phase of the RF pulse.
+
+**Important Options**
+
+- `--algo, -a`
+
+    There are two available methods for calculating the ellipse parameters
+
+    - `h` Hyper-Ellipse method, similar to that used in the Shcherbakova paper. Can fail when \(\alpha\) falls below the Ernst angle, where there is an inversion of the ellipse properties.
+    - `d` Direct non-linear fitting of the data, which does not suffer the above properties. The default.
+
+**References**
+
+- [PLANET][1]
+- [Hyper-Ellipse][2]
+
+[1]: http://dx.doi.org/10.1002/mrm.26717
+[2]: http://linkinghub.elsevier.com/retrieve/pii/S0167947310004809
+
+## qi_ssfp_planet
+
+Converts the SSFP Ellipse parameters into relaxation times.
+
+**Example Command Line**
+
+```bash
+qi_ssfp_planet ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+```
+
+**Outputs**
+
+- `PLANET_T1.nii.gz` - Longitudinal relaxation time
+- `PLANET_T2.nii.gz` - Transverse relaxation time
+- `PLANET_PD.nii.gz` - Apparent Proton Density
+
+**References**
+
+- [PLANET][1]
+
+[1]: http://dx.doi.org/10.1002/mrm.26717

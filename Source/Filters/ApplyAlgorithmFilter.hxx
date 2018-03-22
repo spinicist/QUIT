@@ -188,6 +188,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateOutputInformation() {
         op->SetDirection(direction);
         op->SetNumberOfComponentsPerPixel(m_algorithm->outputSize());
         op->Allocate(true);
+        if (m_verbose) std::cout << "Allocated output " << i << std::endl;
     }
     if (m_allResiduals) {
         if (m_verbose) std::cout << "Allocating residuals memory" << std::endl;

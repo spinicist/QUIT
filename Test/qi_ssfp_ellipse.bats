@@ -6,18 +6,19 @@ setup() {
     init_tests
 }
 
-@test "SSFP Planet" {
+@test "SSFP PLANET" {
     SIZE="64,64,16"
+    NOISE="0.005"
     qinewimage --size "$SIZE" -f 1.0 PD$EXT
-    qinewimage --size "$SIZE" -g "1 0.5 1.5" T1$EXT
-    qinewimage --size "$SIZE" -g "2 0.05 0.1" T2$EXT
-    qinewimage --size "$SIZE" -g "0 -200 200" f0$EXT
-    qisignal --model=1 -v --noise=0.00 ssfp$EXT --complex << INPUT
+    qinewimage --size "$SIZE" -g "0 0.5 1.5" T1$EXT
+    qinewimage --size "$SIZE" -g "1 0.05 0.1" T2$EXT
+    qinewimage --size "$SIZE" -g "2 -200 200" f0$EXT
+    qisignal --model=1 -v --noise=$NOISE ssfp$EXT --complex << INPUT
 {
     "PD": "PD$EXT",
     "T1": "T1$EXT",
     "T2": "T2$EXT",
-    "f0": "",
+    "f0": "f0$EXT",
     "B1": "",
     "SequenceGroup": {
         "sequences": [
@@ -32,7 +33,7 @@ setup() {
     }
 }
 INPUT
-    qi_ssfp_ellipse ssfp$EXT --verbose <<INPUT
+    qi_ssfp_ellipse ssfp$EXT --verbose --algo=d << INPUT
 {
     "SSFPEllipse": {
         "TR": 0.01,
@@ -50,7 +51,7 @@ INPUT
 }
 INPUT
     # No proper ground truth here, compare the methods to each other
-    qidiff --baseline=T1$EXT --input=PLANET_T1$EXT --noise=0.01 --tolerance=30 --verbose
-    qidiff --baseline=T2$EXT --input=PLANET_T2$EXT --noise=0.01 --tolerance=30 --verbose
-    qidiff --baseline=PD$EXT --input=PLANET_PD$EXT --noise=0.01 --tolerance=30 --verbose
+    qidiff --baseline=T1$EXT --input=PLANET_T1$EXT --noise=$NOISE --tolerance=40 --verbose
+    qidiff --baseline=T2$EXT --input=PLANET_T2$EXT --noise=$NOISE --tolerance=35 --verbose
+    qidiff --baseline=PD$EXT --input=PLANET_PD$EXT --noise=$NOISE --tolerance=20 --verbose
 }
