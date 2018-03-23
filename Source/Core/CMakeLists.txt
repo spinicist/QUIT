@@ -12,8 +12,10 @@ add_library( qi_core
              Kernels.cpp Fit.cpp Spline.cpp )
 add_dependencies( qi_core qi_version )
 target_include_directories( qi_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
-target_link_libraries( qi_core ${ITK_LIBRARIES} )
+target_link_libraries( qi_core PRIVATE ${ITK_LIBRARIES} )
 install( TARGETS  qi_core
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib
          RUNTIME DESTINATION bin )
+set_target_properties( qi_core PROPERTIES VERSION 2.0.0
+                                        SOVERSION 2.0.0 )

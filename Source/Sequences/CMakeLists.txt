@@ -9,3 +9,5 @@ install( TARGETS qi_sequences
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib
          RUNTIME DESTINATION bin )
+set_target_properties( qi_sequences PROPERTIES VERSION 2.0.0
+                                             SOVERSION 2.0.0 )

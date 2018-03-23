@@ -1,16 +1,11 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_policy( SET CMP0068 NEW )
 project(QUIT CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 include(CMakeToolsHelpers OPTIONAL)
-
-# Prevent undefined lookup errors when building libqi as a shared library with Clang
-message( STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID}" )
-if(CMAKE_CXX_COMPILER_ID MATCHES "(C|c?)lang")
-    set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS "${CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS} -undefined dynamic_lookup")
-endif()
 
 set( Args_DIR "${PROJECT_SOURCE_DIR}/External/Args"
      CACHE PATH "Path to Args library (usually External/Args" )
@@ -27,7 +22,7 @@ include_directories( ${CERES_INCLUDE_DIRS} )
 include( ${ITK_USE_FILE} )
 include_directories( ${Args_DIR} ${Cereal_DIR} )
 
-OPTION(BUILD_SHARED_LIBS "Build shared libraries." ON)
+OPTION(BUILD_SHARED_LIBS "Build shared libraries." OFF)
 
 add_subdirectory( Source )
 add_subdirectory( Scripts )

@@ -6,3 +6,5 @@ install( TARGETS qi_signals
          ARCHIVE DESTINATION lib
          LIBRARY DESTINATION lib
          RUNTIME DESTINATION bin )
+set_target_properties( qi_signals PROPERTIES VERSION 2.0.0
+                                           SOVERSION 2.0.0 )
