@@ -1,8 +1,17 @@
 # Developer
 
-Below are a few introductory notes for anyone who might be interested in contributing to QUIT. Although I hope that most QUIT code is fairly clear, the following is provided to give a high-level overview of how most QUIT programs are structured.
+Below are a few introductory notes for anyone who wants to compile QUIT from source or might be interested in contributing to QUIT. Although I hope that most QUIT code is fairly clear, the following is provided to give a high-level overview of how most QUIT programs are structured.
 
-QUIT is built using several C++ libraries. These are:
+## Basic Requirements
+
+1. A C++11 compliant compiler (GCC 4.8.0+, Clang 3.1+)
+2. CMake version 3.2 or higher (http://www.cmake.org)
+
+WARNING - You will require a recent compiler for DESPOT as it uses C++11 features. GCC 4.8.0 is a MINIMUM as earlier versions do not support C++11 threads - however you will not be able to build the `Stats` module without GCC 5.0.0 or later. Clang 3.1 will also work. You can find out the version of your system gcc by running `gcc -v`.
+
+## External Libraries
+
+QUIT is built using several C++ libraries. These are currently included in the project as git submodules. The easiest way to initialise these is with the `easy_build.sh` script. However, if you are already have some of them available you may wish to not run the script and instead configure them yourself. This is discussed further below. The libraries are:
 
 - [Args](http://github.com/taywee/args)
 
@@ -23,6 +32,28 @@ QUIT is built using several C++ libraries. These are:
 - [ITK](http://itk.org)
 
     The Insight Tool-Kit. This is intended as a registration library for medical images. Although the registration features are not used in QUIT, the overall framework is extremely useful. In particular, ITK reads a large variety of common file-formats, and all ITK filters automatically check that their inputs share a common space / co-ordinate definition. This single feature alone prevents the vast majority of easy user mistakes - e.g. trying to use a B1 map that has a different voxel spacing to the input data.
+
+## Compilation
+
+If you are unfamiliar with C++/CMake/git etc. a script is provided that should be able to build the tools provided the right software is available on your system. To use it, in a terminal window, change directory to where you unpacked QUIT. Then type `./easy_build.sh`. This should correctly checkout the git repositories for each external library, build Ceres and ITK, and then configure and build QUIT.
+
+If you are familiar with C++/CMake/git etc. then compiling QUIT should be straightforward. The rough steps are:
+
+1. Ensure you have all the libraries above available. If you do not have system versions, then run `git submodule init; git submodule update` in the QUIT directory.
+2. Compile the Ceres library. Make sure it uses the same version of Eigen that you will use for QUIT.
+3. Compile ITK following their instructions.
+4. Create a build directory for QUIT and use cmake/ccmake to configure the project. Specify the paths to the library when prompted. It is likely that CMake will report an error on the first 'Configure' attempt if it cannot locate Eigen, specify the correct directory and run the configure step again.
+5. Compile QUIT.
+
+## File Formats
+
+The available file formats are controlled by the main `CMakeLists.txt` in the root QUIT directory, by listing them as `COMPONENTS` in the ITK `find_package()` step. Add any additional file formats you wish to use here.s
+
+## Tests
+
+QUIT programs are tested using the Bash Automated Test System [(BATS)](http://github.com/bats-core/bats-core), which is included as a git submodule. To run the tests, point BATS at the Tests directory, e.g. `path/to/bats QUIT/Test`, which will run all of the tests. It is possible to run the test files individually as well. It was decided to use BATS instead of a unit-test based framework because this allows the QUIT programs to be tested as a whole, including command-line arguments.
+
+Most QUIT programs are tested by generating ground-truth parameter files with `qinewimage`, feeding these into `qisignal` to generate simulated MR images with added noise, and then running the particular QUIT program to calculate some parameter maps, then comparing these to the ground-truth with `qidiff`. `qidiff` calculates figure-of-merit based on noise factors, i.e. they are a measure of how much the signal noise is amplified in the final maps. In this way the tests also serve to illustrate the quality of the methods as well as whether the programs run correctly. For programs where a ground-truth image cannot be generated easily, the tests at least ensure that the program runs and does not crash.
 
 ## The ApplyAlgorithmFilter
 

@@ -1,6 +1,7 @@
 site_name: QUIT
 site_description: Documentation for the QUantitative Imaging Tools
-repo_url: https://github.com/spinicist/quit
+site_url: https://spinicist.github.io/QUIT
+repo_url: https://github.com/spinicist/QUIT
 
 docs_dir: Docs
 theme: mkdocs

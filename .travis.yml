@@ -39,3 +39,21 @@ script:
   - cd build && make install && cd ..
   - export PATH="$PWD/install/bin:$PATH"
   - External/bats/bin/bats Test
+
+deploy:
+  - provider: releases
+    api_key: "GITHUB API KEY"
+    file:
+      - QUIT-2.0.0-Darwin.tar.gz
+    skip_cleanup: true
+    on:
+      condition: $TRAVIS_OS_NAME = osx
+      tags: true
+  - provider: releases
+    api_key: "GITHUB API KEY"
+    file:
+      - QUIT-2.0.0-Linux.tar.gz
+    skip_cleanup: true
+    on:
+      condition: $TRAVIS_OS_NAME = linux
+      tags: true

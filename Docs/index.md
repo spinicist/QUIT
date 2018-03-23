@@ -14,23 +14,11 @@ Welcome to the QUantitative Imaging Tools, a collection of C++ programs for anal
 
 ## Installation
 
-**Binary Installation**
+Compiled binaries are provided for Mac and Linux and can be found on the github releases page. These are provided in `.tar.gz` archive. After extraction, you need to ensure that the binaries are accessible via your `PATH` variable. Either edit your shell profile (e.g. `.bashrc`) and add the QUIT directory your `PATH` variable there, or copy the files to somewhere that will be on your path, e.g. `/usr/local/bin` (this will likely require `sudo` permissions).
 
-Compiled binaries are provided for Mac and Linux and can be found on the github releases page. These are provided in both tar (`.tar.gz`) and self-extracting tar (`.sh`) formats.
+##Compile From Source
 
-If you download the self-extracting tar version, the following command should install QUIT correctly:
-
-```bash
-sudo ./QUIT-2.0.0-Darwin.sh --prefix=/usr/local --exclude-subdir
-```
-
-If you download the `.tar.gz` version, you will need to copy the files to the correct locations. The usual location is `/usr/local`, however it is possible to locate them somewhere else. Ensure that the libraries (in /lib) are somewhere that the system can find them. On Mac, this means the directory with the libraries must be contained in the `DLYD_LIBRARY_PATH` environment variable.
-
-**Compile From Source**
-
-Compiling QUIT requires a recent version of CMake and a C++11 compatible compiler (GCC 5 or higher is recommended). If you have cloned the git repository and are compiling from source, it is recommended to run the `easy_build.sh` script the first time. This will ensure the external libraries required have been initialised properly and that the main QUIT build is pointed at them.
-
-If you wish to customise your build, then the standard `mkdir build && cd build && ccmake ../` approach will work, but you will have to tell `cmake` where to find the external libraries (Args, Cereal, Eigen, Ceres & ITK). These are included as git submodules, but Ceres and ITK will require compilation first.
+See the [developer documentation](Developer.md)
 
 ## General Usage
 
@@ -103,7 +91,9 @@ then (provided your input data does contain two volumes corresponding to flip-an
 
 ## File Formats
 
-Because QUIT uses the [ITK](http://itk.org) library, it can read a wide variety of file-formats, including DICOM & NRRD. The preferred file-format is NIFTI for compatibility with FSL and SPM. By default QUIT will output `.nii.gz` files. This can be controlled by the `QUIT_EXT` environment variable. Valid values for this are any file extension that ITK can write, e.g. `.nii` or `.nrrd`, or the FSL values `NIFTI`, `NIFTI_PAIR`, `NIFTI_GZ`, `NIFTI_PAIR_GZ`. Note that ITK cannot write every format it can read (e.g. it can read Bruker 2dseq datasets, but it cannot write them).
+By default, QUIT is compiled with support for NIFTI and NRRD formats. The preferred file-format is NIFTI for compatibility with FSL and SPM. By default QUIT will output `.nii.gz` files. This can be controlled by the `QUIT_EXT` environment variable. Valid values for this are any file extension supported by ITK that QUIT has been compiled to support, e.g. `.nii` or `.nrrd`, or the FSL values `NIFTI`, `NIFTI_PAIR`, `NIFTI_GZ`, `NIFTI_PAIR_GZ`.
+
+The [ITK](http://itk.org) library supports a much wider variety of file formats, but adding support for all of these almost triples the size of the compiled binaries. Hence by default they are excluded. You can add support for more file formats by compiling QUIT yourself, see the [developer documentation](Developer.md). Note that ITK cannot write every format it can read (e.g. it can read Bruker 2dseq datasets, but it cannot write them).
 
 ## Scripting
 
