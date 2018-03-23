@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
-cmake_policy( SET CMP0068 NEW )
 project(QUIT CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
@@ -15,7 +14,11 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 find_package(Eigen3 REQUIRED)
 find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
-find_package(ITK 4.10.0 REQUIRED)
+find_package(ITK 4.10.0 REQUIRED
+              COMPONENTS
+                ITKIOImageBase ITKIONRRD ITKIONIFTI
+                ITKStatistics ITKCommon ITKOptimizersv4 ITKLabelMap
+                ITKTransform ITKIOTransformBase ITKIOTransformHDF5 ITKIOTransformMatlab)
 
 include_directories( ${EIGEN3_INCLUDE_DIR} )
 include_directories( ${CERES_INCLUDE_DIRS} )
@@ -36,5 +39,5 @@ SET(CPACK_PACKAGE_VERSION_MINOR "0")
 SET(CPACK_PACKAGE_VERSION_PATCH "0")
 set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
-set(CPACK_GENERATOR "STGZ")
+set(CPACK_GENERATOR "TGZ")
 INCLUDE(CPack)
