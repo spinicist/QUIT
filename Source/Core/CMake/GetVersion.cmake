@@ -2,7 +2,7 @@
 set( VERSION_FILE_NAME "VersionFile")
 
 find_package(Git)
-set( BUILD_VERSION 1.1 )
+set( BUILD_VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}" )
 if( GIT_FOUND )
     execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --dirty RESULT_VARIABLE GIT_RES OUTPUT_VARIABLE GIT_DESCRIPTION )
     if( NOT ${GIT_RES} EQUAL 0 )

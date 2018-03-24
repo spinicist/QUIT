@@ -1,6 +1,6 @@
 ![Logo](Docs/logo.png)
 
-[![Build Status](https://travis-ci.org/spinicist/QUIT.svg?branch=modules)](https://travis-ci.org/spinicist/QUIT)
+[![Build Status](https://travis-ci.org/spinicist/QUIT.svg?branch=master)](https://travis-ci.org/spinicist/QUIT)
 
 Credit / Blame / Contact - Tobias Wood - tobias.wood@kcl.ac.uk
 
