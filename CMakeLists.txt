@@ -17,7 +17,7 @@ find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
 find_package(ITK 4.10.0 REQUIRED
               COMPONENTS
                 ITKIOImageBase ITKIONRRD ITKIONIFTI
-                ITKStatistics ITKCommon ITKOptimizersv4 ITKLabelMap
+                ITKStatistics ITKCommon ITKOptimizers ITKLabelMap ITKConnectedComponents ITKReview
                 ITKTransform ITKIOTransformBase ITKIOTransformHDF5 ITKIOTransformMatlab)
 
 include_directories( ${EIGEN3_INCLUDE_DIR} )
