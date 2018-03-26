@@ -26,7 +26,7 @@ CEREAL_DIR="$EXTERNAL/cereal/include"
 # Check for presence of ninja
 if [ -x "$(which ninja)" ]; then
     GENERATOR="-GNinja"
-    BUILDCMD="ninja"
+    BUILDCMD="ninja -j 2"
 else
     GENERATOR=""
     BUILDCMD="make -j 2"

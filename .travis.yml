@@ -14,18 +14,20 @@ matrix:
         sources:
         - ubuntu-toolchain-r-test
         packages:
-        - gcc-5
-        - g++-5
+        - gcc-6
+        - g++-6
+        - ninja-build
     env:
-    - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+    - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
   - os: osx
-    osx_image: xcode8
+    osx_image: xcode9
 before_install:
   - eval "${MATRIX_EVAL}"
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew install ninja; fi
 script:
   - mkdir install
   - "./easy_build.sh $PWD/install"
-  - cd build && make install && make package && cd ..
+  - cd build && ninja install && ninja package && cd ..
   - export PATH="$PWD/install/bin:$PATH"
   - External/bats/bin/bats Test
 deploy:
