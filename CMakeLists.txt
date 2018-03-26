@@ -16,9 +16,13 @@ find_package(Eigen3 REQUIRED)
 find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
 find_package(ITK 4.10.0 REQUIRED
               COMPONENTS
-                ITKIOImageBase ITKIONRRD ITKIONIFTI
-                ITKStatistics ITKCommon ITKOptimizers ITKLabelMap ITKConnectedComponents 
-                ITKTransform ITKIOTransformBase ITKIOTransformHDF5 ITKIOTransformMatlab)
+                ITKBinaryMathematicalMorphology ITKCommon ITKConnectedComponents
+                ITKFFT ITKIOImageBase ITKIONRRD ITKIONIFTI
+                ITKIOTransformBase ITKImageCompose
+                ITKImageFeature ITKImageFilterBase ITKImageFunction ITKImageGrid
+                ITKImageIntensity ITKImageStatistics ITKLabelMap ITKLabelVoting
+                ITKMathematicalMorphology ITKOptimizers ITKRegistrationCommon
+                ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
 
 include_directories( ${EIGEN3_INCLUDE_DIR} )
 include_directories( ${CERES_INCLUDE_DIRS} )
