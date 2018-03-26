@@ -52,7 +52,29 @@ $BUILDCMD
 ITK_DIR="$EXTERNAL/ITK"
 ITK_BUILD_DIR="$ITK_DIR/build"
 ITK_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF\
-           -DBUILD_TESTING=OFF -DITK_BUILD_DEFAULT_MODULES=OFF -DModule_ITKReview=On\
+           -DBUILD_TESTING=OFF -DITK_BUILD_DEFAULT_MODULES=OFF -DITKGroup_Core=OFF\
+           -DModule_ITKCommon=ON -DModule_ITKIONIFTI=ON -DModule_ITKIONRRD=ON\
+           -DModule_ITKIOTransformInsightLegacy=ON\
+           -DModule_ITKBinaryMathematicalMorphology=ON\
+           -DModule_ITKConnectedComponents=ON\
+           -DModule_ITKFFT=ON\
+           -DModule_ITKIOImageBase=ON\
+           -DModule_ITKIOTransformBase=ON\
+           -DModule_ITKImageCompose=ON\
+           -DModule_ITKImageFeature=ON\
+           -DModule_ITKImageFilterBase=ON\
+           -DModule_ITKImageFunction=ON\
+           -DModule_ITKImageGrid=ON\
+           -DModule_ITKImageIntensity=ON\
+           -DModule_ITKImageStatistics=ON\
+           -DModule_ITKLabelMap=ON\
+           -DModule_ITKLabelVoting=ON\
+           -DModule_ITKMathematicalMorphology=ON\
+           -DModule_ITKOptimizers=ON\
+           -DModule_ITKRegistrationCommon=ON\
+           -DModule_ITKSmoothing=ON\
+           -DModule_ITKThresholding=ON\
+           -DModule_ITKTransform=ON\
            -DCMAKE_CXX_STANDARD=11 -DCMAKE_CXX_FLAGS=-fpermissive"
 mkdir -p $ITK_BUILD_DIR
 cd $ITK_BUILD_DIR
