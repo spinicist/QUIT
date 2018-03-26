@@ -31,9 +31,14 @@ available at http://spinicist.github.io/QUIT/
 
 # Installation #
 
-Pre-compiled binaries are provided for Linux and Mac OS X in a .tar.gz archive.
+Pre-compiled binaries are provided for Linux and Mac OS X in a .tar.gz archive
+from http://github.com/spinicist/QUIT/releases.
+
 Download the correct archive for your platform, untar it and then ensure that
-the binaries can be found via your `PATH` environment variable.
+the binaries can be found via your `PATH` environment variable. The Linux
+binaries are built with Ubuntu 14.04 with GCC 6. If you need to run on an older
+version of Linux with a previous version of `glibc` then you will need to
+compile from source.
 
 For instructions on how to compile from source, please see the developer page
 in the documentation.
