@@ -178,8 +178,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> f0_arg(parser, "FIELD MAP", "A field map for macroscopic field gradient correction", {'f', "fmap"});
     args::ValueFlag<double> slice_arg(parser, "SLICE THICKNESS", "Slice-thickness for MFG calculation (useful if there was a slice gap)", {'s', "slice"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv);
-    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (verbose) std::cout << "Reading ASE data from: " << QI::CheckPos(input_path) << std::endl;
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));

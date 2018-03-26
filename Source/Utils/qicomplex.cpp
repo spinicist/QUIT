@@ -235,7 +235,7 @@ void Run() {
 }
 
 int main(int argc, char **argv) {
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (use_double) {
         if (verbose) std::cout << "Using double precision" << std::endl;

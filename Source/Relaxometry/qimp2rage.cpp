@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag     automask(parser, "AUTOMASK", "Create a mask from the sum of squares image", {'a', "automask"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
 
     if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;

@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> seed(parser, "SEED", "Seed noise RNG with specific value", {'s', "seed"}, -1);
     args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model 1/2/3, default 1", {'M',"model"}, 1);
     args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (!filenames) {
         std::cerr << "No output filenames specified. Use --help to see usage." << std::endl;
         return EXIT_FAILURE;

@@ -212,7 +212,7 @@ int Pipeline() {
 }
 
 int main(int argc, char **argv) {
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (verbose) std::cout << "Reading header for: " << QI::CheckPos(source_path) << std::endl;
     auto header = itk::ImageIOFactory::CreateImageIO(QI::CheckPos(source_path).c_str(), itk::ImageIOFactory::ReadMode);
     if (!header)  {

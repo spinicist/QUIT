@@ -37,8 +37,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> T2r_us(parser, "T2r", "T2r (in microseconds, default 12)", {"T2r"}, 12);
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag     all_residuals(parser, "RESIDUALS", "Write out all residuals", {'r',"all_resids"});
-    QI::ParseArgs(parser, argc, argv);
-    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(G_path) << std::endl;
     auto G = QI::ReadVectorImage<float>(QI::CheckPos(G_path));
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(a_path) << std::endl;

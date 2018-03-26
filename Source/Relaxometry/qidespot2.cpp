@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i',"its"}, 15);
     args::ValueFlag<float> clampPD(parser, "CLAMP PD", "Clamp PD between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'t',"clampT2"}, std::numeric_limits<float>::infinity());
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     std::shared_ptr<D2Algo> algo;
     switch (algorithm.Get()) {

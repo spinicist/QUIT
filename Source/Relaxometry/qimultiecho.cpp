@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i',"its"}, 15);
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> threshPD(parser, "THRESHOLD PD", "Only output maps when PD exceeds threshold value", {'t', "tresh"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
     auto inputFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));

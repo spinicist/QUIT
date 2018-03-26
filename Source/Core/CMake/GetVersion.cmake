@@ -13,7 +13,7 @@ if( GIT_FOUND )
 endif( GIT_FOUND )
 message( STATUS "Version: ${BUILD_VERSION}" )
 
-set( VERSION_STRING "const static std::string Version = \"Version ${BUILD_VERSION}\"\;\n")
+set( VERSION_STRING "const static std::string Version = \"${BUILD_VERSION}\"\;\n")
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME}.tmp ${VERSION_STRING} )
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME}.tmp ${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} )

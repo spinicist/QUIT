@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<int> erode(parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"}, 1);
     args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
 

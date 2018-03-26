@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int>          order(parser, "ORDER", "Specify the polynomial order (default 4)", {'o',"order"}, 4);
     args::ValueFlag<std::string>  mask_path(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
 
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (verbose) std::cout << "Reading input from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadImage(QI::CheckPos(input_path));
     auto fit = itk::PolynomialFitImageFilter::New();

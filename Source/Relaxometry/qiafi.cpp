@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> nom_flip(parser, "NOMINAL FLIP", "Specify nominal flip-angle, default 55", {'f', "flip"}, 55.0);
     args::ValueFlag<double> tr_ratio(parser, "TR RATIO", "Specify TR2:TR1 ratio, default 5", {'r', "ratio"}, 5.0);
     args::Flag     save_angle(parser, "SAVE ANGLE", "Write out the actual flip-angle as well as B1", {'s', "save"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
     if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;

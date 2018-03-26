@@ -42,7 +42,7 @@ args::ValueFlagList<std::string> header_fields(parser, "METADATA", "Print a head
 //******************************************************************************
 int main(int argc, char **argv) {
 
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     bool print_all = !(print_direction || print_origin || print_spacing || print_size ||
                        print_voxvol || print_type || print_dims || header_fields);
     for (const std::string& fname : QI::CheckList(filenames)) {

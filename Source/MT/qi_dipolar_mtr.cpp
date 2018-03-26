@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
     if (verbose) std::cout << "Opening MT file " << QI::CheckPos(input_file) << std::endl;

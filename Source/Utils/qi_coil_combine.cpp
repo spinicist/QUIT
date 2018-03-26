@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> coils_arg(parser, "COILS", "Number of coils (default is number of volumes)", {'C', "coils"});
     args::Flag     save_corrected(parser, "SAVE COILS", "Save the individual coil images after phase correction", {'s', "save"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     if (verbose) std::cout << "Reading input image: " << QI::CheckPos(input_path) << std::endl;
     auto input_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));

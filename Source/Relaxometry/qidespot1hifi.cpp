@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     if (verbose) std::cout << "Reading SPGR file: " << QI::CheckPos(spgr_path) << std::endl;
     auto spgrImg = QI::ReadVectorImage(QI::CheckPos(spgr_path));

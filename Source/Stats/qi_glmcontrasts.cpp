@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     args::Flag fraction(parser, "FRACTION", "Output contrasts as fraction of grand mean", {'F',"frac"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     if (verbose) std::cout << "Reading input file " << QI::CheckPos(input_path) << std::endl;
     QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(QI::CheckPos(input_path));

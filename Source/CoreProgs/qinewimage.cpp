@@ -136,7 +136,7 @@ void make_image() {
 //******************************************************************************
 int main(int argc, char **argv) {
 
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (dims_arg.Get() == 3) {
         make_image<3>();
     } else if (dims_arg.Get() == 4) {

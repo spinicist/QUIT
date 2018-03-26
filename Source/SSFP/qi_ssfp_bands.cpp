@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> method(parser, "METHOD", "Choose banding-removal method. G = Geometric Solution, X = Complex Average, R = Root Mean Square, M = Maximum, N = Mean Magnitude. Default = G", {"method"},"G");
     args::ValueFlag<std::string> regularise(parser, "REGULARISE", "Chose regularisation method for GS. M = Magnitude, L = Line, N = None", {"regularise"}, "L");
     args::Flag     two_pass(parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2',"2pass"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     
     if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
     auto inFile = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));

@@ -147,7 +147,7 @@ void GetValues(const int n_files, const TLabels &labels, const std::vector<doubl
  * MAIN
  */
 int main(int argc, char **argv) {
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     int n_files = QI::CheckList(in_paths).size();
     if (volumes) {

@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> f0(parser, "OFF RESONANCE", "Specify off-resonance frequency", {'f', "f0"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     if (verbose) std::cout << "Opening file: " << QI::CheckPos(input_path) << std::endl;
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));

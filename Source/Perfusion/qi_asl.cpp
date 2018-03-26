@@ -122,8 +122,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> alpha(parser, "ALPHA", "Labelling efficiency, default 0.9", {'a', "alpha"}, 0.9);
     args::ValueFlag<double> lambda(parser, "LAMBDA", "Blood-brain partition co-efficent, default 0.9 mL/g", {'l', "lambda"}, 0.9);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv);
-    if (verbose) std::cout << "Starting " << argv[0] << std::endl;
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (verbose) std::cout << "Reading ASL data from: " << QI::CheckPos(input_path) << std::endl;
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
 

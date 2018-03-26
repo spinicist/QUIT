@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<int> order(parser, "ORDER", "Specify the polynomial order (default 2)", {'o',"order"}, 2);
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (verbose) cout << "Reading reference image " << QI::CheckPos(ref_path) << std::endl;
     QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));

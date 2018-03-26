@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<char> algorithm(parser, "ALGO", "Select (S)tochastic or (G)aussian Region Contraction", {'a', "algo"}, 'G');
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i',"its"}, 4);
     args::ValueFlag<char> field(parser, "FIELD STRENGTH", "Specify field-strength for fitting regions - 3/7/u for user input", {'t', "tesla"}, '3');
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     std::vector<QI::VectorVolumeF::Pointer> images;
     for (auto &input_path : QI::CheckList(input_paths)) {

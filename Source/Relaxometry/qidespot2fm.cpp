@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     if (verbose) std::cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << std::endl;
     auto T1 = QI::ReadImage(QI::CheckPos(t1_path));

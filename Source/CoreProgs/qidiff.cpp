@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<double>      tolerance(parser, "TOLERANCE", "Tolerance (mean percent difference)", {"tolerance"}, 0);
     args::ValueFlag<double>      noise(parser, "NOISE", "Added noise level, tolerance is relative to this", {"noise"}, 1);
     args::Flag                   absolute(parser, "ABSOLUTE", "Use absolute difference, not relative (avoids 0/0 problems)", {'a', "abs"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     if (verbose) std::cout << "Reading input: " << QI::CheckValue(input_path) << std::endl;
     if (verbose) std::cout << "Reading baseline: " << QI::CheckValue(baseline_path) << std::endl;
     auto input = QI::ReadImage(QI::CheckValue(input_path));

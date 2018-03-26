@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> design_path(parser, "DESIGN", "Path to save design matrix", {'d',"design"});
     args::ValueFlag<std::string> contrasts_path(parser, "CONTRASTS", "Generate and save contrasts", {'c',"contrasts"});
     args::ValueFlag<std::string> ftests_path(parser, "FTESTS", "Generate and save F-tests", {'f',"ftests"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     std::ifstream group_file(QI::CheckValue(group_path));
     if (verbose) std::cout << "Reading group file" << std::endl;

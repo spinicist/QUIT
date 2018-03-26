@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
     args::Flag save_kspace(parser, "KSPACE", "Save k-space before & after filtering", {"save_kspace"});
     args::Flag filter_per_volume(parser, "FILTER_PER_VOL", "Instead of concatenating multiple filters, use one per volume", {"filter_per_volume"});
     args::ValueFlagList<std::string> filters(parser, "FILTER", "Specify a filter to use (can be multiple)", {'f', "filter"});
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
 
     std::vector<std::shared_ptr<QI::FilterKernel>> kernels;

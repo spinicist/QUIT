@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> rats(parser, "RATS", "Perform the RATS step, argument is size threshold for connected component", {'r', "rats"}, 0.);
     args::ValueFlag<int> fillh_radius(parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
 
-    QI::ParseArgs(parser, argc, argv);
+    QI::ParseArgs(parser, argc, argv, verbose);
 
     if (verbose) std::cout << "Reading input image: " << QI::CheckPos(input_path) << std::endl;
     QI::SeriesF::Pointer vols = ITK_NULLPTR;
