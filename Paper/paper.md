@@ -11,7 +11,7 @@ authors:
     affiliation: 1
 affiliations:
   - name: Department of Neuroimaging, King's College London
-  - index: 1
+    index: 1
 date: 2018-03-27
 bibliography: paper.bib
 ---
