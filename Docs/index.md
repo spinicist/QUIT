@@ -94,6 +94,34 @@ and run the following:
 
 then (provided your input data does contain two volumes corresponding to flip-angles 3 and 18 degrees) then DESPOT1 will run, and you should see two files created (`D1_T1.nii.gz` and `D1_PD.nii.gz`). If you want to see what the programs are doing while running, specify the `--verbose` or `-v` options.
 
+## Common Options
+
+The following options are supported by most, but not necessarily all, QUIT programs.
+
+* `--out, -o`
+
+    Add a prefix to the output parameter files. By default, most QUIT programs write their output files using filenames in a pattern `PROGRAM_PARAMETER.nii.gz`. They will overwrite any existing files with the same names. If you need to save the output from multiple runs of the same program, or want to save output to a particular directory, use this option to add an addtional prefix to the output names.
+
+* `--mask, -m`
+
+    Specify a mask file, where non-zero values indicate that voxels should be processed, and zero values indicate that voxels should not be processed. The background voxels will be set to zero in the final image. This is useful for two reasons, first is to simply speed up processing for long-running programs (e.g. `qimcdespot`), second is that outside the head fitting data is non-sensical, as there is no signal. Hence these regions appear very noisy on output maps, which can make visualization difficult.
+
+* `--threads, -t`
+
+    Control the maximum number of threads used. The majority of QUIT programs are multi-threaded across voxels to improve processing times. In some parallel computing environments (e.g. Sun Grid Engine), it is possible to set the maximum number of cores available to a program, and it is hence good for CPU utilisation to match the number of threads to the number of cores. The default is 4. Note that HyperThreading may make the number of logical cores appear to be double the number of physical cores - QUIT programs are CPU bound, not IO bound, and hence gain no benefit from HyperThreading. You are better to specify the number of physical cores available rather than the number of logical cores.
+
+* `--subregion, -s`
+
+    Similar to `--mask`, this command will only process a sub-region of the input images. The argument needs to be in the format `"start_i,start_j,start_k,size_i,size_j,size_k"` where `i,j,k` are voxel indices (not physical co-ordinates). This is useful to speed up processing for trial-runs of pipelines.
+
+* `--resids, -r`
+
+    Most QUIT programs will write out a single root-sum-squared residual image along with their parameter maps. Use this option to also output residuals for each data-point to look for systematic offsets. Note that if multiple inputs are specified (e.g. `qimcdespot`), then this option will write out a single cocatenated file for all input data-points in order.
+
+* `--B1, -b` & `--f0, -f`
+
+    Several of the QUIT programs take B1 (relative flip-angle) and f0 (off-resonance in Hz) maps as correction factors.
+
 ## File Formats
 
 By default, QUIT is compiled with support for NIFTI and NRRD formats. The preferred file-format is NIFTI for compatibility with FSL and SPM. By default QUIT will output `.nii.gz` files. This can be controlled by the `QUIT_EXT` environment variable. Valid values for this are any file extension supported by ITK that QUIT has been compiled to support, e.g. `.nii` or `.nrrd`, or the FSL values `NIFTI`, `NIFTI_PAIR`, `NIFTI_GZ`, `NIFTI_PAIR_GZ`.
