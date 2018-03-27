@@ -167,12 +167,6 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Reading slab profile" << std::endl;
     QI::ReadCereal(input, "rf_pos", rf_pos);
     QI::ReadCereal(input, "rf_vals", rf_vals);
-    try {
-        input(cereal::make_nvp("rf_vals", rf_vals));
-    } catch (cereal::RapidJSONException &e) {
-        std::cerr << "Could not read array parameter 'rf_vals'" << std::endl;
-        return EXIT_FAILURE;
-    }
     for (const auto &v : rf_vals) {
         if (rf_pos.rows() != v.rows()) {
             QI_FAIL("Number of points must match number of values");
