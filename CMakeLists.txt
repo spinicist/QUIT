@@ -12,8 +12,18 @@ set( Cereal_DIR "${PROJECT_SOURCE_DIR}/External/cereal/include"
      CACHE PATH "Path to Cereal library (usually External/Cereal/include" )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
+
 find_package(Eigen3 REQUIRED)
+if (EIGEN_FOUND)
+  if (EIGEN_VERSION VERSION_LESS 3.3.0)
+    message(FATAL_ERROR "-- QUIT requires Eigen version >= 3.3.0, detected Eigen : ${EIGEN_VERSION}")
+  else (EIGEN_VERSION VERSION LESS 3.3.0)
+    message("-- Found Eigen version: ${EIGEN_VERSION}")
+  endif (EIGEN_VERSION VERSION_LESS 3.3.0)
+endif (EIGEN_FOUND)
+
 find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
+
 find_package(ITK 4.10.0 REQUIRED
               COMPONENTS
                 ITKBinaryMathematicalMorphology ITKCommon ITKConnectedComponents

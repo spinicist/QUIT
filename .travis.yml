@@ -26,8 +26,8 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; brew install ninja; fi
 script:
   - mkdir install
-  - "./easy_build.sh $PWD/install"
-  - cd build && ninja install && ninja package && cd ..
+  - "./easy_build.sh -p $PWD/install"
+  - cd cmake_build && ninja install && ninja package && cd ..
   - export PATH="$PWD/install/bin:$PATH"
   - External/bats/bin/bats Test
 deploy:
