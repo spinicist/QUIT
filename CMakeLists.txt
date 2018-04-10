@@ -13,16 +13,16 @@ set( Cereal_DIR "${PROJECT_SOURCE_DIR}/External/cereal/include"
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 
-find_package(Eigen3 REQUIRED)
-if (EIGEN_FOUND)
-  if (EIGEN_VERSION VERSION_LESS 3.3.0)
-    message(FATAL_ERROR "-- QUIT requires Eigen version >= 3.3.0, detected Eigen : ${EIGEN_VERSION}")
-  else (EIGEN_VERSION VERSION LESS 3.3.0)
-    message("-- Found Eigen version: ${EIGEN_VERSION}")
-  endif (EIGEN_VERSION VERSION_LESS 3.3.0)
-endif (EIGEN_FOUND)
+if( NOT DEFINED EIGEN3_INCLUDE_DIRS )
+    find_package( Eigen3 REQUIRED )
+endif()
+message( STATUS "Found Eigen in ${EIGEN3_INCLUDE_DIRS}" )
+include_directories( ${EIGEN3_INCLUDE_DIRS} )
 
-find_package(Ceres 1.12.0 REQUIRED COMPONENTS C++11)
+if( NOT DEFINED CERES_INCLUDE_DIRS )
+    find_package( Ceres 1.12.0 REQUIRED COMPONENTS C++11 )
+endif()
+include_directories( ${CERES_INCLUDE_DIRS} )
 
 find_package(ITK 4.10.0 REQUIRED
               COMPONENTS
@@ -33,9 +33,6 @@ find_package(ITK 4.10.0 REQUIRED
                 ITKImageIntensity ITKImageStatistics ITKLabelMap ITKLabelVoting
                 ITKMathematicalMorphology ITKOptimizers ITKRegistrationCommon
                 ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
-
-include_directories( ${EIGEN3_INCLUDE_DIR} )
-include_directories( ${CERES_INCLUDE_DIRS} )
 include( ${ITK_USE_FILE} )
 include_directories( ${Args_DIR} ${Cereal_DIR} )
 
