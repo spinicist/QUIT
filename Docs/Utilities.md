@@ -62,7 +62,7 @@ This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excita
 **Example Command Line**
 
 ```bash
-qihdr b1plus_map.nii.gz output_b1_map.nii.gz < input.txt
+qi_rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.txt
 ```
 
 **Example Input File**

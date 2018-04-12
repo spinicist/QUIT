@@ -69,7 +69,7 @@ The output filename is the input filename with a suffix that will depend on the 
 
 ## qi_ssfp_ellipse
 
-The most important result of Xiang & Hoff's Geometric Solution paper was that the SSFP signal equation can be expressed as an ellipse in the complex-plane. Shcherbakova built on this and showed it was possible to recover the ellipse parameters \(G, a, b\) from at least six phase-increments. They then proceeded it was possible to recover \(T_1 & T_2\) from the ellipse parameters. This utility calculates the ellipse parameters, and `qi_ssfp_planet` then processes those parameters to calculate \(T_1 & \T_2\)
+The most important result of Xiang & Hoff's Geometric Solution paper was that the SSFP signal equation can be expressed as an ellipse in the complex-plane. Shcherbakova built on this and showed it was possible to recover the ellipse parameters \(G, a, b\) from at least six phase-increments. They then proceeded to recover \(T_1 & T_2\) from the ellipse parameters. This utility calculates the ellipse parameters, and `qi_ssfp_planet` then processes those parameters to calculate \(T_1 & \T_2\)
 
 ![SSFP Ellipse Parameters](ellipse.png)
 
