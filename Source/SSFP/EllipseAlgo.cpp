@@ -31,6 +31,7 @@ bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
 {
     const int np = m_seq.PhaseInc.rows();
     const double B1 = consts[0];
+    if (m_debug) std::cout << "Input: " << inputs[0] << std::endl;
     for (int f = 0; f < m_seq.FA.rows(); f++) {
         Eigen::ArrayXcf data(np);
         for (int i = 0; i < np; i++) {

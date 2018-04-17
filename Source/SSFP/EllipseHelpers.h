@@ -45,8 +45,8 @@ Eigen::Array<T, Eigen::Dynamic, 1> EllipseToSignal(const T &G, const T &a, const
     const ArrayXT sin_th = sin(theta);
     const T cos_psi = cos(psi);
     const T sin_psi = sin(psi);
-    const ArrayXT re_m = (cos_psi - a*cos_th*cos_psi + a*sin_th*sin_psi) * G / (1.0 - b*cos_th);
-    const ArrayXT im_m = (sin_psi - a*cos_th*sin_psi - a*sin_th*cos_psi) * G / (1.0 - b*cos_th);
+    const ArrayXT re_m = (cos_psi - a*(cos_th*cos_psi - sin_th*sin_psi)) * G / (1.0 - b*cos_th);
+    const ArrayXT im_m = (sin_psi - a*(cos_th*sin_psi + sin_th*cos_psi)) * G / (1.0 - b*cos_th);
     ArrayXT result(re_m.rows() + im_m.rows()); result << re_m, im_m;
     return result;
 }

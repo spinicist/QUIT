@@ -31,14 +31,18 @@ public:
     const bool debug;
 
     template<typename T>
-    bool operator() (T const* const* p, T* resids) const {
+    double debug_print(const T& v) const {
+        return v.a;
+    }
+
+    template<typename T>
+    bool operator() (const T *const p, T* resids) const {
         typedef Eigen::Array<T, Eigen::Dynamic, 1> ArrayXT;
-        const T &M0  = p[0][0];
-        const T &F   = p[0][1];
-        const T &kf  = p[0][2];
-        const T &T1f = p[0][3];
-        const T &T1r = T1f; //p[0][3];
-        //const double &T2r = 12.0e-6; //p[0][4];
+        const T &M0  = p[0];
+        const T &F   = p[1];
+        const T &kf  = p[2];
+        const T &T1f = p[3];
+        const T &T1r = T1f;
 
         const ArrayXT E1f = (-TR/T1f).exp();
         const Eigen::ArrayXd E2f = (-TR/T2f).exp();
@@ -48,7 +52,6 @@ public:
         const ArrayXT E1r = (-TR/T1r).exp();
         const ArrayXT fk = (-TR*(kf + kr)).exp();
 
-        //const double T2r = 25.e-6; // Fixed for now;
         const double G_gauss = (T2r / sqrt(2.*M_PI))*exp(-pow(2.*M_PI*f0_Hz*T2r,2) / 2.0);
         const Eigen::ArrayXd WT = M_PI * int_omega2 * G_gauss; // # Product of W and Trf to save a division and multiplication
         const Eigen::ArrayXd fw = (-WT).exp();
@@ -64,13 +67,16 @@ public:
         r.head(G.size()) = (G - Gp);
         r.tail(b.size()) = (b - bp);
         if (debug) {
-            std::cerr << "M0=" << M0 << "\nF=" << F << "\nkf=" << kf << "\nT1f=" << T1f << "\nT2f=" << T2f << "\nf0_Hz=" << f0_Hz << "\n"
-                      << "flip:" << flip.transpose() << "\n"
-                      << "int: " << int_omega2.transpose() << std::endl;
+            std::cerr << "M0=" << debug_print(M0) << "\tF=" << debug_print(F)
+                      << "\tkf=" << debug_print(kf) << "\tT1f=" << debug_print(T1f) << std::endl;
         }
         return true;
     }
 };
+template<>
+double EMTCost::debug_print(const double &v) const {
+    return v;
+}
 
 MTFromEllipse::MTFromEllipse(const QI::SSFPMTSequence &s, const double T2, const bool d) :
     m_seq(s), T2r(T2), debug(d)
@@ -102,11 +108,9 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     Eigen::ArrayXd T2fs = (-m_seq.TR / a.log());
     const double T2f = T2fs.mean(); // Different TRs so have to average afterwards
 
-    auto *cost = new ceres::DynamicAutoDiffCostFunction<EMTCost>(new EMTCost{G, b, m_seq.FA*B1, m_seq.intB1*B1*B1, m_seq.TR, m_seq.Trf, T2r, T2f, f0_Hz, debug});
-    cost->AddParameterBlock(4);
-    cost->SetNumResiduals(G.size() + b.size());
+    auto *cost = new ceres::AutoDiffCostFunction<EMTCost, ceres::DYNAMIC, 4>(new EMTCost{G, b, m_seq.FA*B1, m_seq.intB1*B1*B1, m_seq.TR, m_seq.Trf, T2r, T2f, f0_Hz, debug}, G.size() + b.size());
     ceres::LossFunction *loss = new ceres::HuberLoss(1.0);
-    Eigen::Array<double, 4, 1> p; p << 15.0, 0.01, 5.0, 1.0;
+    Eigen::Array<double, 4, 1> p; p << 15.0, 0.1, 2.5, 1.0;
     ceres::Problem problem;
     problem.AddResidualBlock(cost, loss, p.data());
     problem.SetParameterLowerBound(p.data(), 0, 0.1);
@@ -114,15 +118,15 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     problem.SetParameterLowerBound(p.data(), 1, 1e-6);
     problem.SetParameterUpperBound(p.data(), 1, 0.2 - 1e-6);
     problem.SetParameterLowerBound(p.data(), 2, 0.1);
-    problem.SetParameterUpperBound(p.data(), 2, 10.0);
-    problem.SetParameterLowerBound(p.data(), 3, 0.5);
+    problem.SetParameterUpperBound(p.data(), 2, 5.0);
+    problem.SetParameterLowerBound(p.data(), 3, 0.05);
     problem.SetParameterUpperBound(p.data(), 3, 5.0);
     ceres::Solver::Options options;
     ceres::Solver::Summary summary;
     options.max_num_iterations = 100;
     options.function_tolerance = 1e-7;
     options.gradient_tolerance = 1e-8;
-    options.parameter_tolerance = 1e-6;
+    options.parameter_tolerance = 1e-3;
     if (!debug) options.logging_type = ceres::SILENT;
     ceres::Solve(options, &problem, &summary);
     if (!summary.IsSolutionUsable()) {
@@ -142,7 +146,7 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     outputs[4] = T2f;
     residual = summary.final_cost;
     if (resids.Size() > 0) {
-        assert(resids.Size() == data.size());
+        assert(resids.Size() == (G.size() + a.size() + b.size()));
         std::vector<double> r_temp(G.size() + a.size() + b.size());
         problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
         for (int i = 0; i < G.size(); i++)
