@@ -25,6 +25,7 @@
 #include "Model.h"
 #include "SequenceGroup.h"
 #include "RegionContraction.h"
+#include "EigenCereal.h"
 
 struct MCDSRCFunctor {
     const QI::SequenceGroup &m_sequence;
@@ -159,7 +160,8 @@ int main(int argc, char **argv) {
         image->DisconnectPipeline(); // This step is really important.
         images.push_back(image);
     }
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(std::cin, verbose);
+    cereal::JSONInputArchive input(std::cin);
+    auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, verbose);
     if (sequences.count() != images.size()) {
         QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
     }
@@ -179,8 +181,8 @@ int main(int argc, char **argv) {
     if (verbose && scale) std::cout << "Mean-scaling selected" << std::endl;
     model->setScaleToMean(scale);
 
-    Eigen::ArrayXXd bounds;
-    Eigen::ArrayXd start;
+    Eigen::ArrayXXd bounds = model->Bounds(QI::FieldStrength::Three);
+    Eigen::ArrayXd start = model->Default(QI::FieldStrength::Three);
     switch (field.Get()) {
         case '3':
             bounds = model->Bounds(QI::FieldStrength::Three);
@@ -193,10 +195,10 @@ int main(int argc, char **argv) {
         case 'u': {
             Eigen::ArrayXd temp;
             if (verbose) std::cout << "Enter lower bounds" << std::endl;
-            QI::ReadArray(std::cin, temp);
+            QI::ReadCereal(input, "lower_bounds", temp);
             bounds.col(0) = temp;
             if (verbose) std::cout << "Enter upper bounds" << std::endl;
-            QI::ReadArray(std::cin, temp);
+            QI::ReadCereal(input, "upper_bounds", temp);
             bounds.col(1) = temp;
         } break;
     default:
@@ -226,7 +228,7 @@ int main(int argc, char **argv) {
     apply->SetOutputAllResiduals(resids);
     apply->SetVerbose(verbose);
     apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get()); // mcdespot with a mask & threads is a very unbalanced algorithm
+    apply->SetSplitsPerThread(threads.Get() < 8 ? 8 : threads.Get()); // mcdespot with a mask & threads is a very unbalanced algorithm
     for (int i = 0; i < images.size(); i++) {
         apply->SetInput(i, images[i]);
     }
