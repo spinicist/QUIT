@@ -72,8 +72,9 @@ public:
         return values(p).sum();
     }
 
-    void print_terms() const {
+    std::string get_terms() const {
         std::vector<std::string> t(m_coeffs.rows(), "a");
+        std::ostringstream output;
         std::string list = "1";
         char dim = 'a';
         for (int i = 0; i < Dimension; i++) {
@@ -92,11 +93,11 @@ public:
             }
         };
         orderLoop(std::string(""), 0, 0);
-        std::cout << t[0];
+        output << t[0];
         for (int i = 1; i < m_coeffs.rows(); i++) {
-            std::cout << " + " << t[i]; 
+            output << " + " << t[i]; 
         }
-        std::cout << std::endl;
+        return output.str();
     }
 };
 

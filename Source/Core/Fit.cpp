@@ -28,14 +28,18 @@ double mad_sigma(Eigen::ArrayXd &r, Eigen::ArrayXd &sr, const int p) {
     return sr[index] / 0.6745;
 }
 
-Eigen::VectorXd LeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y) {
+Eigen::VectorXd LeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y, double *resid) {
     // Solve Xb = Y via least squares via QR decomposition
     Eigen::ColPivHouseholderQR<Eigen::MatrixXd> QR(X);
     Eigen::VectorXd b = QR.solve(y);
+    // std::cerr << "X\n" << X.topRows(10) << "\n...\n" << X.bottomRows(10) << "\ny: " << y.transpose().head(10) << "..." << y.transpose().tail(10) << "\nb: " << b.transpose() << std::endl;
+    if (resid) {
+        *resid = (y - X*b).norm();
+    }
     return b;
 }
 
-Eigen::VectorXd RobustLeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y) {
+Eigen::VectorXd RobustLeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y, double *resid) {
     // With thanks to gsl_multifit_robust & Matlab
     const double sig_y = standard_dev(y);
     const double sig_lower = (sig_y == 0) ? 1.0 : 1e-6 * sig_y;
@@ -75,6 +79,9 @@ Eigen::VectorXd RobustLeastSquares(const Eigen::MatrixXd &X, const Eigen::Vector
         }
     }
 
+    if (resid) {
+        *resid = (y - X*b).norm();
+    }
     return b;
 }
 

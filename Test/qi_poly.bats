@@ -12,8 +12,11 @@ SIZE="32, 32, 32"
 qinewimage --size "$SIZE" --step="2 0 1 2" mask.nii
 # Set constant term to 1 so there are no zero voxels, because qidiff doesn't like that
 qipolyimg mask.nii baseline.nii --order=2 -v << END_INPUT
-0 0 0
-1 1 2 4 1 0 0 1 0 1
+{
+    "center": [0, 0, 0],
+    "scale": 1,
+    "coeffs": [1, 1, 2, 4, 1, 0, 0, 1, 0, 1]
+}
 END_INPUT
 qipolyfit baseline.nii --order=2 --print-terms > unmasked_terms.txt
 qipolyfit baseline.nii --order=2 --print-terms --mask=mask.nii > masked_terms.txt

@@ -40,20 +40,24 @@ namespace Eigen {
         }
     }
 
-    template<typename Archive, typename T, cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value> = cereal::traits::sfinae>
-    inline void load(Archive &ar, Array<T, 2, 1> &v) {
-        cereal::size_type sz = 2;
+    template<typename Archive, typename T, int D,
+             cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value> = cereal::traits::sfinae>
+    inline void load(Archive &ar, Array<T, D, 1> &v) {
+        cereal::size_type sz = D;
         ar(cereal::make_size_tag(sz));
-        ar(v[0]);
-        ar(v[1]);
+        for (size_t i = 0; i < D; i++) {
+            ar(v[i]);
+        }
     }
 
-    template<typename Archive, typename T, cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value> = cereal::traits::sfinae>
-    inline void save(Archive &ar, const Array<T, 2, 1> &v) {
-        cereal::size_type sz = 2;
+    template<typename Archive, typename T, int D,
+             cereal::traits::EnableIf<cereal::traits::is_text_archive<Archive>::value> = cereal::traits::sfinae>
+    inline void save(Archive &ar, const Array<T, D, 1> &v) {
+        cereal::size_type sz = D;
         ar(cereal::make_size_tag(sz));
-        ar(v[0]);
-        ar(v[1]);
+        for (size_t i = 0; i < D; i++) {
+            ar(v[i]);
+        }
     }
 
 } // end namespace Eigen
@@ -65,7 +69,16 @@ void ReadCereal(cereal::JSONInputArchive &ar, const std::string &name, T &par) {
     try {
         ar(cereal::make_nvp(name, par));
     } catch (cereal::RapidJSONException &e) {
-        QI_FAIL("Could not read parameter " << name << std::endl);
+        QI_FAIL("Could not read parameter: " << name << std::endl);
+    }
+}
+
+template<typename T>
+void WriteCereal(cereal::JSONOutputArchive &ar, const std::string &name, const T &par) {
+    try {
+        ar(cereal::make_nvp(name, par));
+    } catch (cereal::RapidJSONException &e) {
+        QI_FAIL("Could not write parameter: " << name << std::endl);
     }
 }
 

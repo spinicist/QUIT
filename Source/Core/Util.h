@@ -23,6 +23,7 @@
 
 #include <Eigen/Core>
 
+#include "itkVector.h"
 #include "itkCommand.h"
 
 #include "Macro.h"
@@ -96,6 +97,14 @@ template<typename T> T Clamp(const T &value, const T &low, const T &high) {
     } else {
         return low;
     }
+}
+
+template<typename T, unsigned int D> Eigen::Array<T, D, 1> Eigenify(const itk::Vector<T, D> &itk_vector) {
+    Eigen::Array<T, D, 1> eigen_vector;
+    for (size_t i = 0; i < D; i++) {
+        eigen_vector[i] = itk_vector[i];
+    }
+    return eigen_vector;
 }
 
 } // End namespace QUIT

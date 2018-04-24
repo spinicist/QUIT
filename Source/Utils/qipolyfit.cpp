@@ -22,6 +22,7 @@
 #include "Polynomial.h"
 #include "Args.h"
 #include "Fit.h"
+#include "EigenCereal.h"
 
 namespace itk {
 
@@ -47,23 +48,23 @@ public:
     const QI::Polynomial<3> &GetPolynomial() const { return m_poly; } 
     void SetPolynomial(const QI::Polynomial<3> &p) { m_poly = p; }
     void SetMask(const TImage *mask) { this->SetNthInput(1, const_cast<TImage*>(mask)); }
-    void SetCenter(const itk::Point<double, 3>& v) { m_center = v; }
+    void SetCenter(const Eigen::Array3d& v) { m_center = v; }
+    void SetScale(const double s) { m_scale = s; }
     typename TImage::ConstPointer GetMask() const { return static_cast<const TImage *>(this->ProcessObject::GetInput(1)); }
+    double GetResidual() { return m_residual; }
     void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
-        auto op = this->GetOutput();
-        op->SetRegions(this->GetInput()->GetLargestPossibleRegion());
-        op->Allocate();
     }
 
 protected:
     QI::Polynomial<3> m_poly;
-    itk::Point<double, 3> m_center;
-    bool m_Robust;
+    Eigen::Array3d m_center = Eigen::Array3d::Zero();
+    bool m_Robust = false;
+    double m_scale = 1.0, m_residual = 0.0;
 
     PolynomialFitImageFilter() {
         this->SetNumberOfRequiredInputs(1);
-        m_center.Fill(0.0);
+        this->SetNumberOfRequiredOutputs(0);
     }
     ~PolynomialFitImageFilter() {}
 
@@ -89,16 +90,14 @@ protected:
         }
         Eigen::MatrixXd X(N, m_poly.nterms());
         Eigen::VectorXd y(N);
-        itk::ImageRegionConstIteratorWithIndex<TImage> imageIt(input,region);
+        itk::ImageRegionConstIteratorWithIndex<TImage> imageIt(input, region);
         imageIt.GoToBegin();
         int yi = 0;
         while(!imageIt.IsAtEnd()) {
             if (!mask || maskIter.Get()) {
-                TImage::PointType p, p2;
+                TImage::PointType p;
                 input->TransformIndexToPhysicalPoint(imageIt.GetIndex(), p);
-                p2 = p - m_center;
-                Eigen::Vector3d ep(p2[0], p2[1], p2[2]);
-                X.row(yi) = m_poly.terms(ep);
+                X.row(yi) = m_poly.terms((QI::Eigenify(p.GetVectorFromOrigin()) - m_center) / m_scale);
                 y[yi] = imageIt.Get();
                 ++yi;
             }
@@ -106,7 +105,7 @@ protected:
             if (mask)
                 ++maskIter;
         }
-        Eigen::VectorXd b = m_Robust ? QI::RobustLeastSquares(X, y) : QI::LeastSquares(X, y);
+        Eigen::VectorXd b = m_Robust ? QI::RobustLeastSquares(X, y, &m_residual) : QI::LeastSquares(X, y, &m_residual);
         m_poly.setCoeffs(b);
     }
 
@@ -139,7 +138,7 @@ int main(int argc, char **argv) {
     fit->SetInput(input);
     fit->SetPolynomial(poly);
     fit->SetRobust(robust);
-    itk::Point<double, 3> center; center.Fill(0.0);
+    Eigen::Array3d center = Eigen::Array3d::Zero();
     if (mask_path) {
         if (verbose) std::cout << "Reading mask from: " << mask_path.Get() << std::endl;
         auto mask_image = QI::ReadImage(mask_path.Get());
@@ -149,15 +148,25 @@ int main(int argc, char **argv) {
         moments->Compute();
         // ITK seems to put a minus sign on CoG
         if (verbose) std::cout << "Mask CoG is: " << -moments->GetCenterOfGravity() << std::endl;
-        center = -moments->GetCenterOfGravity();
+        center = QI::Eigenify(-moments->GetCenterOfGravity());
     }
     fit->SetCenter(center);
+    QI::VolumeF::SizeType size = input->GetLargestPossibleRegion().GetSize();
+    QI::VolumeF::SpacingType spacing = input->GetSpacing();
+    for (int i = 0; i < 3; i++) spacing[i] *= size[i];
+    double scale = (spacing/2).GetNorm();
+    fit->SetScale(scale);
     fit->Update();
     // itk::Point does not have symmetric operator<< and operator>>
-    std::cout << center[0] << " " << center[1] << " " << center[2] << std::endl;
-    std::cout << fit->GetPolynomial().coeffs().transpose() << std::endl;
-    if (print_terms)
-        fit->GetPolynomial().print_terms();
+    {
+        cereal::JSONOutputArchive output(std::cout);
+        QI::WriteCereal(output, "center", center);
+        QI::WriteCereal(output, "scale", scale);
+        QI::WriteCereal(output, "coeffs", fit->GetPolynomial().coeffs());
+        if (print_terms)
+            QI::WriteCereal(output, "terms", fit->GetPolynomial().get_terms());
+        QI::WriteCereal(output, "residual",  fit->GetResidual());
+    }
     if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
 }
