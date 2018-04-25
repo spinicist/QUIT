@@ -56,7 +56,7 @@ SSFP_SEQ='"SSFP": { "TR": 0.004,
 #
 
 echo "Processing T1."
-qidespot1-v -an -b $B1_FILE -m $MASK_FILE $SPGR_FILE $NTHREADS <<END_HIFI
+qidespot1 -v -an -b $B1_FILE -m $MASK_FILE $SPGR_FILE $NTHREADS <<END_HIFI
 {
     $SPGR_SEQ
 }
@@ -65,7 +65,7 @@ END_HIFI
 # Process DESPOT2-FM to get a T2 and f0 map that we will use with mcdespot
 
 echo "Processing T2"
-qidespot2fm-v -b $B1_FILE -m $MASK_FILE D1_T1.nii $SSFP_FILE $NTHREADS <<END_FM
+qidespot2fm -v -b $B1_FILE -m $MASK_FILE D1_T1.nii $SSFP_FILE $NTHREADS <<END_FM
 {
     $SSFP_SEQ
 }
@@ -74,7 +74,7 @@ END_FM
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 # The SPGR echo-time is used to correct for differential decay between the components
 
-qimcdespot-v -m $MASK_FILE -f FM_f0.nii -b HIFI_B1.nii -M3 -S $NTHREADS <<END_MCD
+qimcdespot -v -m $MASK_FILE -f FM_f0.nii -b HIFI_B1.nii -M3 -S $NTHREADS <<END_MCD
 {
     "SequenceGroup": {
         "sequences": [

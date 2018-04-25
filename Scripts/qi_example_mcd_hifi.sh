@@ -79,7 +79,7 @@ qimask $SPGR_MCF --fillh=2 -o $MASK_FILE
 # Process DESPOT1-HIFI to get an approximate B1 map
 
 echo "Processing HIFI."
-qidespot1hifi-v --clamp=5.0 --mprage -m $MASK_FILE $SPGR_MCF $IRSPGR_MCF $NTHREADS <<END_HIFI
+qidespot1hifi -v --clamp=5.0 --mprage -m $MASK_FILE $SPGR_MCF $IRSPGR_MCF $NTHREADS <<END_HIFI
 {
     $SPGR_SEQ, $MPRAGE_SEQ
 }
@@ -88,26 +88,28 @@ END_HIFI
 # Fit a polynomial to the B1 map to remove WM/GM/CSF contrast
 
 echo "Fitting B1 polynomial"
-qipolyfit --mask=$MASK_FILE --order=8 HIFI_B1 | qipolyimg --order=8 --mask=$MASK_FILE HIFI_B1.nii POLY_B1.nii
+qipolyfit --mask=$MASK_FILE --order=8 --robust HIFI_B1 | qipolyimg --order=8 --mask=$MASK_FILE HIFI_B1.nii POLY_B1.nii
 
 # Recalculate T1/PD map using the fitted B1 map
 
 echo "Recalculating T1 map"
-qidespot1-v --clampT1=5.0 --mask=$MASK_FILE --B1=POLY_B1.nii $SPGR_MCF <<END_D1
+qidespot1 -v --clampT1=5.0 --mask=$MASK_FILE --B1=POLY_B1.nii $SPGR_MCF <<END_D1
+{
 $SPGR_SEQ
+}
 END_D1
 
 # Process DESPOT2-FM to get a T2 and f0 map
 # FM is automatically clamped between 0.001 and T1 seconds
 
 echo "Processing FM"
-qidespot2fm-v --flex --asym -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
+qidespot2fm -v --flex --asym -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
 $SSFP_SEQ
 END_FM
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 
-qimcdespot-v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii -M3 -S $NTHREADS <<END_MCD
+qimcdespot -v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii -M3 -S $NTHREADS <<END_MCD
 {
     "SequenceGroup": {
         "sequences": [
