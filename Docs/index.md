@@ -14,7 +14,7 @@ Welcome to the QUantitative Imaging Tools, a collection of C++ programs for anal
 
 ## Installation
 
-Pre-compiled binaries are provided for Linux and Mac OS X in a .tar.gz archive from http://github.com/spinicist/QUIT/releases.
+Pre-compiled binaries are provided for Linux and Mac OS X in a .tar.gz archive from the [releases page](http://github.com/spinicist/QUIT/releases "Releases").
 
 Download the correct archive for your platform, untar it and then ensure that the binaries can be found via your `PATH` environment variable. Either edit your shell profile (e.g. `.bashrc`) and add the QUIT directory your `PATH` variable there, or copy the files to somewhere that will be on your path, e.g. `/usr/local/bin` (this will likely require `sudo` permissions).
 
