@@ -4,17 +4,17 @@ Relaxometry is the measurement of the longitudinal and transverse relaxation tim
 
 The following programs are available:
 
-* [qidespot1](##qidespot1)
-* [qidespot1hifi](##qidespot1hifi)
-* [qidespot2](##qidespot2)
-* [qidespot2fm](##qidespot2fm)
-* [qimcdespot](##qimcdespot)
-* [qimultiecho](##qimultiecho)
-* [qimp2rage](##qimp2rage)
-* [qiafi](##qiafi)
-* [qidream](##qidream)
+* [qidespot1](#qidespot1)
+* [qidespot1hifi](#qidespot1hifi)
+* [qidespot2](#qidespot2)
+* [qidespot2fm](#qidespot2fm)
+* [qimcdespot](#qimcdespot)
+* [qimultiecho](#qimultiecho)
+* [qimp2rage](#qimp2rage)
+* [qiafi](#qiafi)
+* [qidream](#qidream)
 
-## qidespot1
+##qidespot1
 
 This program implements the classic Driven Equilibrium Single-Pulse Observation of T1 (DESPOT1) algorithm, also known as the Variable Flip-Angle (VFA) method in the literature. This is a fast way to measure longitudinal relaxation using a spoiled steady-state sequence, which is know by a different name by every scanner manufacturer just to be helpful. On GE, it's SPoiled Gradient Recalled echo (SPGR), on Siemens it's Fast Low-Angle SHot (FLASH) and on Phillips the sequence is Fast Field Echo (FFE).
 
@@ -62,7 +62,7 @@ qidespot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.
 [2]: http://doi.wiley.com/10.1002/mrm.21669
 [3]: http://doi.wiley.com/10.1002/mrm.25592
 
-## qidespot1hifi
+##qidespot1hifi
 
 This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / IR-SPGR type sequence. Although DESPOT1-HIFI can produce a rough estimate of B1, it often fails to produce reasonable values in the ventricles, and the fact that the MP-RAGE image is often acquired at lower resolution than the SPGR/FLASH data can also cause problems. Hence you should either smooth the B1 map produced as output, or fit it with a [polynomial](Utilities.md), then recalculate T1 using the [DESPOT1](##qidespot1) program. Note that if your MP-RAGE image is not acquired at the same resolution as your SPGR data, it must be resampled to the same spacing before processing (and it should also be registered to your SPGR data).
 
@@ -106,7 +106,7 @@ For the MPRAGE sequence, the TR is the spacing between readouts/echoes, not the 
 
 [1]: http://doi.wiley.com/10.1002/jmri.21130
 
-## qidespot2
+##qidespot2
 
 DESPOT2 uses SSFP data and a separate T<sub>1</sub> map to calculate T<sub>2</sub>, using the same maths as DESPOT1. It does not account for the banding artefacts present in SSFP data at field-strengths of 3T and above. See [qidespot2fm](#qidespot2fm) for a method that does account for them, or if you have at least 4 phase-increments and complex data then see [qi_ssfp_bands](SSFP.md#qi_ssfp_bands) for a way to remove them before using this program.
 
@@ -157,7 +157,7 @@ Both `PhaseInc` and `FA` are measured in degrees. If the ellipse option is speci
 
 [1]: http://doi.wiley.com/10.1002/mrm.10407
 
-## qidespot2fm
+##qidespot2fm
 
 DESPOT2-FM uses SSFP data with mulitple phase-increments (also called phase-cycles or phase-cycling patterns) to produce T2 maps without banding artefacts.
 
@@ -204,7 +204,7 @@ Both `PhaseInc` and `FA` are measured in degrees. The length of `PhaseInc` and `
 
 [1]: http://doi.wiley.com/10.1002/jmri.21849
 
-## qimcdespot
+##qimcdespot
 
 Multi-component DESPOT aims to separate SPGR and SSFP signals into multiple discrete pools with different T<sub>1</sub> and T<sub>2</sub>. In the brain, the pool with shorter values is attributed to myelin water, while pools with longer values can be either intra/extra-cellular water or CSF.
 
@@ -295,7 +295,7 @@ The intra/extra-cellular water fraction is not output, as it is not a free param
 [2]: http://doi.wiley.com/10.1002/mrm.24429
 [3]: http://doi.wiley.com/10.1002/mrm.25108
 
-## qimp2rage
+##qimp2rage
 
 MP2RAGE adds a second inversion time to the standard T1w MPRAGE sequence. Combining the (complex) images with the expression `S<sub>1</sub>S<sub>2</sub>*/(|S<sub>1</sub><sup>2</sup>S<sub>2</sub><sup>2</sup>|)` produces a real-valued image that is corrected for receive coil (B1-) inhomogeneity. In addition, if the two inversion times are carefully selected, a one-to-one mapping exists between the values in that image and T1, which is also robust to transmit (B1+) inhomogeneity. Finally, as the two images are implicitly registered, this method has several advantages over DESPOT1.
 
@@ -339,7 +339,7 @@ The input file must be complex-valued.
 
 [1]: https://www.sciencedirect.com/science/article/pii/S1053811909010738
 
-## qimultiecho
+##qimultiecho
 
 Classic monoexponential decay fitting. Can be used to fit either T2 or T2*.
 
@@ -387,7 +387,7 @@ qimultiecho input_file.nii.gz --algo=a < input.txt
 
 [1]: http://doi.wiley.com/10.1002/mrm.25137
 
-## qiafi
+##qiafi
 
 Calculates a relative flip-angle (B1) map using the Actual Flip-angle Imaging method.
 
@@ -427,7 +427,7 @@ Does not read any input from `stdin`. The input file should contain two volumes,
 [2]: http://doi.wiley.com/10.1002/mrm.22394
 [3]: http://doi.wiley.com/10.1002/mrm.21592
 
-## qidream
+##qidream
 
 Calculates a relative flip-angle (B1) map using the DREAM method.
 
