@@ -105,7 +105,11 @@ public:
             problem.SetParameterLowerBound(p.data(), 0, 1.);
             problem.SetParameterLowerBound(p.data(), 1, m_sequence.TR);
             problem.SetParameterUpperBound(p.data(), 1, T1);
-            problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence.TR);
+            if (this->m_asymmetric) {
+                problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence.TR);
+            } else {
+                problem.SetParameterLowerBound(p.data(), 2, 0.0);
+            }
             problem.SetParameterUpperBound(p.data(), 2,  0.5/m_sequence.TR);
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;
