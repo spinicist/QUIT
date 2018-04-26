@@ -15,6 +15,7 @@
 #include "itkVersor.h"
 #include "itkVersorRigid3DTransform.h"
 #include "itkCenteredAffineTransform.h"
+#include "itkEuler3DTransform.h"
 #include "itkTransformFileWriter.h"
 #include "itkPermuteAxesImageFilter.h"
 #include "itkFlipImageFilter.h"
@@ -23,8 +24,6 @@
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
-
-using namespace std;
 
 /*
  * Declare arguments here so they are available to pipeline
@@ -41,15 +40,11 @@ args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
 args::ValueFlag<std::string> center(parser, "CENTER", "Set the origin to geometric center (geo) or (cog)", {'c', "center"});
 args::ValueFlag<std::string> tfm_path(parser, "TFM", "Write out the transformation to a file", {'t', "tfm"});
+args::ValueFlag<std::string> permute(parser, "PERMUTE", "Permute axes in data-space, e.g. 2,0,1. Negative values mean flip as well", {"permute"});
+args::ValueFlag<std::string> flip(parser, "FLIP", "Flip axes in data-space, e.g. 0,1,0. Occurs AFTER any permutation.", {"flip"});
 args::ValueFlag<double> scale(parser, "SCALE", "Scale by a constant", {'s', "scale"});
-args::ValueFlag<double> offX(parser, "OFF_X", "Translate origin in X direction", {"offX"});
-args::ValueFlag<double> offY(parser, "OFF_Y", "Translate origin in Y direction", {"offY"});
-args::ValueFlag<double> offZ(parser, "OFF_Z", "Translate origin in Z direction", {"offZ"});
-args::ValueFlag<double> rotX(parser, "ROT_X", "Rotate about X-axis by angle (degrees)", {"rotX"});
-args::ValueFlag<double> rotY(parser, "ROT_Y", "Rotate about Y-axis by angle (degrees)", {"rotY"});
-args::ValueFlag<double> rotZ(parser, "ROT_Z", "Rotate about Z-axis by angle (degrees)", {"rotZ"});
-args::ValueFlag<std::string> permute(parser, "PERMUTE", "Permute axes, e.g. 2,0,1. Negative values mean flip as well", {"permute"});
-args::ValueFlag<std::string> flip(parser, "FLIP", "Flip an axis, e.g. 0,1,0. Occurs AFTER any permutation.", {"flip"});
+args::ValueFlag<std::string> translate(parser, "TRANSLATE", "Translate image by X,Y,Z (mm)", {"trans"}, "0,0,0");
+args::ValueFlag<std::string> rotate(parser, "ROTATE", "Rotate by Euler angles around X,Y,Z (degrees).", {"rotate"}, "0,0,0");
 
 template<typename TImage>
 int Pipeline() {
@@ -110,8 +105,9 @@ int Pipeline() {
     QI::VolumeF::DirectionType direction;
     QI::VolumeF::SpacingType spacing;
 
-    typedef itk::CenteredAffineTransform<double, 3> TAffine; 
-    TAffine::OutputVectorType origin;
+    using Affine = itk::CenteredAffineTransform<double, 3>; 
+    using Euler  = itk::Euler3DTransform<double>;
+    Affine::OutputVectorType origin;
     QI::VolumeF::SizeType size;
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -122,30 +118,28 @@ int Pipeline() {
         size[i] = fullSize[i];
     }
 
-    auto img_tfm = TAffine::New();
+    auto img_tfm = Affine::New();
     img_tfm->SetMatrix(direction);
     img_tfm->Scale(spacing);
     img_tfm->Translate(origin);
-    if (verbose) std::cout << "Start transform:\n" << img_tfm->GetMatrix() << std::endl;
-    auto tfm = TAffine::New();
     if (scale) {
-        if (verbose) cout << "Scaling by factor " << scale.Get() << endl;
-        tfm->Scale(scale.Get());
+        if (verbose) std::cout << "Scaling by factor " << scale.Get() << std::endl;
+        img_tfm->Scale(scale.Get());
     }
-    if (rotX != 0.0) {
-        if (verbose) cout << "Rotating image by " << rotX.Get() << " around X axis." << endl;
-        tfm->Rotate(1,2,rotX.Get() * M_PI / 180.0);
+    
+    auto tfm = Euler::New();
+    if (rotate) {
+        Eigen::Array3d angles; QI::ArrayArg<Eigen::Array3d, 3>(rotate.Get(), angles);
+        tfm->SetRotation(angles[0]*M_PI/180., angles[1]*M_PI/180., angles[2]*M_PI/180.);
+        if (verbose) std::cout << "Rotation by: " << angles.transpose() << std::endl;
     }
-    if (rotY != 0.0) {
-        if (verbose) cout << "Rotating image by " << rotY.Get() << " around X axis." << endl;
-        tfm->Rotate(2,0,rotY.Get() * M_PI / 180.0);
+    if (translate) {
+        Euler::OffsetType offset; QI::ArrayArg<Euler::OffsetType, 3>(translate.Get(), offset);
+        tfm->Translate(-offset);
+        if (verbose) std::cout << "Translate by: " << offset << std::endl;
     }
-    if (rotZ != 0.0) {
-        if (verbose) cout << "Rotating image by " << rotZ.Get() << " around X axis." << endl;
-        tfm->Rotate(0,1,rotZ.Get() * M_PI / 180.0);
-    }
-    itk::Versor<double>::VectorType offset; offset.Fill(0);
     if (center) {
+        Euler::OffsetType offset; offset.Fill(0.);
         if (center.Get() == "geo") {
             if (verbose) std::cout << "Setting geometric center" << std::endl;
             for (int i = 0; i < 3; i++) {
@@ -163,18 +157,13 @@ int Pipeline() {
         }
         std::cout << "Translation will be: " << offset << std::endl;
         tfm->Translate(-offset);
-    } else if (offX || offY || offZ) {
-        offset[0] = offX.Get();
-        offset[1] = offY.Get();
-        offset[2] = offZ.Get();
-        if (verbose) std::cout << "Translating by: " << offset << std::endl;
-        tfm->Translate(-offset);
     }
 
     if (tfm_path) { // Output the transform file
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
         writer->SetFileName(tfm_path.Get());
+        if (verbose) std::cout << "Writing transform file: " << tfm_path.Get() << std::endl;
         writer->Update();
     }
 
@@ -190,8 +179,6 @@ int Pipeline() {
             scale += fmat[i][j]*fmat[i][j];
         }
         scale = sqrt(scale);
-        
-        fullSpacing[j] = scale;
         for (int i = 0; i < 3; i++) {
             fullDir[i][j] = fmat[i][j] / scale;
         }
