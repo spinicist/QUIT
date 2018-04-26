@@ -55,7 +55,7 @@ SPGR_SEQ='"SPGR": { "FA": [2,3,4,5,6,7,9,13,18], "TR": 0.008 }'
 SSFP_SEQ='"SSFP": { "TR": 0.004,
                     "FA": [12,12,16,16,21,21,27,27,33,33,40,40,51,51,68,68],
                     "PhaseInc": [180,0,90,270,180,0,90,270,180,0,90,270,180,0,90,270] }'
-MPRAGE_SEQ='"MPRAGE": { "TR": 0.008, "FA": 5, "NPE": 68, "k0": 0,
+MPRAGE_SEQ='"MPRAGE": { "TR": 0.008, "FA": 5, "ETL": 68, "k0": 0,
                         "TI": 0.45, "TD": 0, "eta": 1 }'
 
 # Motion correction
@@ -79,7 +79,7 @@ qimask $SPGR_MCF --fillh=2 -o $MASK_FILE
 # Process DESPOT1-HIFI to get an approximate B1 map
 
 echo "Processing HIFI."
-qidespot1hifi -v --clamp=5.0 --mprage -m $MASK_FILE $SPGR_MCF $IRSPGR_MCF $NTHREADS <<END_HIFI
+qidespot1hifi -v --clamp=5.0 -m $MASK_FILE $SPGR_MCF $IRSPGR_MCF $NTHREADS <<END_HIFI
 {
     $SPGR_SEQ, $MPRAGE_SEQ
 }
@@ -93,7 +93,7 @@ qipolyfit --mask=$MASK_FILE --order=8 --robust HIFI_B1 | qipolyimg --order=8 --m
 # Recalculate T1/PD map using the fitted B1 map
 
 echo "Recalculating T1 map"
-qidespot1 -v --clampT1=5.0 --mask=$MASK_FILE --B1=POLY_B1.nii $SPGR_MCF <<END_D1
+qidespot1 -v --algo=n --clampT1=5.0 --mask=$MASK_FILE --B1=POLY_B1.nii $SPGR_MCF <<END_D1
 {
 $SPGR_SEQ
 }
@@ -103,7 +103,7 @@ END_D1
 # FM is automatically clamped between 0.001 and T1 seconds
 
 echo "Processing FM"
-qidespot2fm -v --flex --asym -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
+qidespot2fm -v --asym -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
 $SSFP_SEQ
 END_FM
 
