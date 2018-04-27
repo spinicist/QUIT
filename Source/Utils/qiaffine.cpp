@@ -42,7 +42,7 @@ args::ValueFlag<std::string> center(parser, "CENTER", "Set the origin to geometr
 args::ValueFlag<std::string> tfm_path(parser, "TFM", "Write out the transformation to a file", {'t', "tfm"});
 args::ValueFlag<std::string> permute(parser, "PERMUTE", "Permute axes in data-space, e.g. 2,0,1. Negative values mean flip as well", {"permute"});
 args::ValueFlag<std::string> flip(parser, "FLIP", "Flip axes in data-space, e.g. 0,1,0. Occurs AFTER any permutation.", {"flip"});
-args::ValueFlag<double> scale(parser, "SCALE", "Scale by a constant", {'s', "scale"});
+args::ValueFlag<double> scale(parser, "SCALE", "Scale by a constant", {'s', "scale"}, 1.);
 args::ValueFlag<std::string> translate(parser, "TRANSLATE", "Translate image by X,Y,Z (mm)", {"trans"}, "0,0,0");
 args::ValueFlag<std::string> rotate(parser, "ROTATE", "Rotate by Euler angles around X,Y,Z (degrees).", {"rotate"}, "0,0,0");
 
@@ -174,18 +174,18 @@ int Pipeline() {
         fullOrigin[i] = img_tfm->GetOffset()[i];
     }
     for (int j = 0; j < 3; j++) {
-        double scale = 0.;
+        double mat_scale = 0.;
         for (int i = 0; i < 3; i++) {
-            scale += fmat[i][j]*fmat[i][j];
+            mat_scale += fmat[i][j]*fmat[i][j];
         }
-        scale = sqrt(scale);
+        mat_scale = sqrt(mat_scale);
         for (int i = 0; i < 3; i++) {
-            fullDir[i][j] = fmat[i][j] / scale;
+            fullDir[i][j] = fmat[i][j] / mat_scale;
         }
     }
     image->SetDirection(fullDir);
     image->SetOrigin(fullOrigin);
-    image->SetSpacing(fullSpacing);
+    image->SetSpacing(fullSpacing * scale.Get());
 
     // Write out the edited file
     if (dest_path) {
