@@ -63,11 +63,8 @@ The units for all these values must be consistent, seconds are preferred. If sin
 
 **References**
 
-- [ISMRM Consortium Recommendations][1]
-- [High-field blood T1 times][2]
-
-[1]: http://dx.doi.org/10.1002/mrm.25197
-[2]: http://dx.doi.org/10.1016/j.mri.2006.10.020
+- [ISMRM Consortium Recommendations](http://dx.doi.org/10.1002/mrm.25197)
+- [High-field blood T1 times](http://dx.doi.org/10.1016/j.mri.2006.10.020)
 
 ## qi_ase_oef
 
@@ -118,6 +115,4 @@ qi_ase_oef ase_file.nii.gz --B0=9.4 $DB --fmap=fieldmap.nii.gz <input.txt
 
 **References**
 
-- [Blockley][1]
-
-[1]: https://doi.org/10.1016/j.neuroimage.2016.11.057
+- [Blockley](https://doi.org/10.1016/j.neuroimage.2016.11.057)

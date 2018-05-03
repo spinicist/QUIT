@@ -63,9 +63,7 @@ The output filename is the input filename with a suffix that will depend on the 
 
 **References**
 
-- [Geometric Solution][1]
-
-[1]: http://doi.wiley.com/10.1002/mrm.25098
+- [Geometric Solution](http://doi.wiley.com/10.1002/mrm.25098)
 
 ## qi_ssfp_ellipse
 
@@ -100,11 +98,8 @@ The SSFP file must be complex-valued. At least three pairs of opposing phase-inc
 
 **References**
 
-- [PLANET][1]
-- [Hyper-Ellipse][2]
-
-[1]: http://dx.doi.org/10.1002/mrm.26717
-[2]: http://linkinghub.elsevier.com/retrieve/pii/S0167947310004809
+- [PLANET](http://dx.doi.org/10.1002/mrm.26717)
+- [Hyper-Ellipse](http://linkinghub.elsevier.com/retrieve/pii/S0167947310004809)
 
 ## qi_ssfp_planet
 
@@ -124,9 +119,7 @@ qi_ssfp_planet ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
 
 **References**
 
-- [PLANET][1]
-
-[1]: http://dx.doi.org/10.1002/mrm.26717
+- [PLANET](http://dx.doi.org/10.1002/mrm.26717)
 
 ## qi_ssfp_emt
 
@@ -148,8 +141,5 @@ qi_ssfp_emt ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
 
 **References**
 
-- [Bieri et al][1]
-- [Gloor et al][2]
-
-[1]: http://doi.wiley.com/10.1002/mrm.21056
-[2]: http://doi.wiley.com/10.1002/mrm.21705
+- [Bieri et al](http://doi.wiley.com/10.1002/mrm.21056)
+- [Gloor et al](http://doi.wiley.com/10.1002/mrm.21705)

@@ -23,11 +23,8 @@ The phase file must be specified in radians (i.e. between -pi and +pi). Does not
 
 **References**
 
-- [Abdul-Rahman et al][1]
-- [Abdul-Rahman et al][2]
-
-[1]: http://ao.osa.org/abstract.cfm?URI=ao-46-26-6623
-[2]: http://ao.osa.org/abstract.cfm?URI=ao-48-23-4582
+- [Abdul-Rahman et al](http://ao.osa.org/abstract.cfm?URI=ao-46-26-6623)
+- [Abdul-Rahman et al](http://ao.osa.org/abstract.cfm?URI=ao-48-23-4582)
 
 ## qi_unwrap_laplace
 
@@ -57,6 +54,4 @@ The phase file must be specified in radians (i.e. between -pi and +pi). Does not
 
 **References**
 
-- [Bakker et al][1]
-
-[1]: http://linkinghub.elsevier.com/retrieve/pii/S0730725X12000124
+- [Bakker et al](http://linkinghub.elsevier.com/retrieve/pii/S0730725X12000124)

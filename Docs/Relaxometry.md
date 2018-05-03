@@ -54,13 +54,9 @@ qidespot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.
 
 **References**
 
-- [Christen et al, the original paper][1]
-- [Chang et al, Weighted Least Squares Fitting][2]
-- [Wood, Optimum Flip-Angle Formulas][3]
-
-[1]: http://pubs.acs.org/doi/abs/10.1021/j100612a022
-[2]: http://doi.wiley.com/10.1002/mrm.21669
-[3]: http://doi.wiley.com/10.1002/mrm.25592
+- [Christen et al, the original paper](http://pubs.acs.org/doi/abs/10.1021/j100612a022)
+- [Chang et al, Weighted Least Squares Fitting](http://doi.wiley.com/10.1002/mrm.21669)
+- [Wood, Optimum Flip-Angle Formulas](http://doi.wiley.com/10.1002/mrm.25592)
 
 ##qidespot1hifi
 
@@ -102,9 +98,7 @@ For the MPRAGE sequence, the TR is the spacing between readouts/echoes, not the 
 
 **References**
 
-- [Deoni, original paper][1]
-
-[1]: http://doi.wiley.com/10.1002/jmri.21130
+- [Deoni, original paper](http://doi.wiley.com/10.1002/jmri.21130)
 
 ##qidespot2
 
@@ -153,9 +147,7 @@ Both `PhaseInc` and `FA` are measured in degrees. If the ellipse option is speci
 
 **References**
 
-- [Deoni et al, the original paper][1]
-
-[1]: http://doi.wiley.com/10.1002/mrm.10407
+- [Deoni et al, the original paper](http://doi.wiley.com/10.1002/mrm.10407)
 
 ##qidespot2fm
 
@@ -200,9 +192,7 @@ Both `PhaseInc` and `FA` are measured in degrees. The length of `PhaseInc` and `
 
 **References**
 
-- [Deoni et al, the original paper][1]
-
-[1]: http://doi.wiley.com/10.1002/jmri.21849
+- [Deoni et al, the original paper](http://doi.wiley.com/10.1002/jmri.21849)
 
 ##qimcdespot
 
@@ -287,13 +277,9 @@ The intra/extra-cellular water fraction is not output, as it is not a free param
 
 **References**
 
-- [Original paper][1]
-- [3 component model][2]
-- [Stochastic/Gaussian Region Contraction][3]
-
-[1]: http://doi.wiley.com/10.1002/mrm.21704
-[2]: http://doi.wiley.com/10.1002/mrm.24429
-[3]: http://doi.wiley.com/10.1002/mrm.25108
+- [Original paper](http://doi.wiley.com/10.1002/mrm.21704)
+- [3 component model](http://doi.wiley.com/10.1002/mrm.24429)
+- [Stochastic/Gaussian Region Contraction](http://doi.wiley.com/10.1002/mrm.25108)
 
 ##qimp2rage
 
@@ -335,9 +321,7 @@ The input file must be complex-valued.
 
 **References**
 
-- [Original paper][1]
-
-[1]: https://www.sciencedirect.com/science/article/pii/S1053811909010738
+- [Original paper](https://www.sciencedirect.com/science/article/pii/S1053811909010738)
 
 ##qimultiecho
 
@@ -383,9 +367,7 @@ qimultiecho input_file.nii.gz --algo=a < input.txt
 
 **References**
 
-- [ARLO][1]
-
-[1]: http://doi.wiley.com/10.1002/mrm.25137
+- [ARLO](http://doi.wiley.com/10.1002/mrm.25137)
 
 ##qiafi
 
@@ -419,13 +401,9 @@ Does not read any input from `stdin`. The input file should contain two volumes,
 
 **References**
 
-- [Original][1]
-- [Optimal parameters][2]
-- [Steady-State Conditions][3]
-
-[1]: http://doi.wiley.com/10.1002/mrm.21120
-[2]: http://doi.wiley.com/10.1002/mrm.22394
-[3]: http://doi.wiley.com/10.1002/mrm.21592
+- [Original](http://doi.wiley.com/10.1002/mrm.21120)
+- [Optimal parameters](http://doi.wiley.com/10.1002/mrm.22394)
+- [Steady-State Conditions](http://doi.wiley.com/10.1002/mrm.21592)
 
 ##qidream
 
@@ -458,8 +436,5 @@ Does not read any input from `stdin`. The input file should contain two volumes,
 
 **References**
 
-- [Original][1]
-- [Virtual Stimulated Echo][2]
-
-[1]: http://doi.wiley.com/10.1002/mrm.24158
-[2]: http://doi.wiley.com/10.1002/mrm.24667
+- [Original](http://doi.wiley.com/10.1002/mrm.24158)
+- [Virtual Stimulated Echo](http://doi.wiley.com/10.1002/mrm.24667)

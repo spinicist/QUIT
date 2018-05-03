@@ -95,8 +95,5 @@ The input must consist of 5 volumes: Dipolar +/-, Dipolar -/+, Unsaturated, MT+,
 
 **References**
 
-1. [Original full paper][1]
-2. [Dipolar versus inhomogeneous naming][2]
-
-[1]: http://doi.wiley.com/10.1002/mrm.25174
-[2]: https://doi.org/10.1016/j.jmr.2016.11.013
+1. [Original full paper](http://doi.wiley.com/10.1002/mrm.25174)
+2. [Dipolar versus inhomogeneous naming](https://doi.org/10.1016/j.jmr.2016.11.013)
