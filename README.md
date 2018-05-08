@@ -13,23 +13,23 @@ If you find the tools useful the author would love to hear from you.
 This is the updated version of QUIT based on ITK http://www.itk.org
 The previous version is here http://github.com/spinicist/old_quit
 
-# Brief Description #
+## Brief Description
 
 A collection of programs for processing quantitative MRI data, originally DESPOT
 but now a wider variety of techniques.
 
-# Thanks #
+## Thanks
 
 Many thanks to Samuel Hurley for many, many suggestions.
 Thanks to Anna Combes, Amy McDowell and Sjoerd Vos for finding bugs in early
 versions.
 
-# Documentation #
+## Documentation
 
 Documentation exists in Markdown format in the Docs folder, and is also
 available at http://spinicist.github.io/QUIT/
 
-# Installation #
+## Installation
 
 Pre-compiled binaries are provided for Linux and Mac OS X in a .tar.gz archive
 from http://github.com/spinicist/QUIT/releases.
@@ -43,7 +43,7 @@ compile from source.
 For instructions on how to compile from source, please see the developer page
 in the documentation.
 
-# Usage #
+## Usage
 
 Example scripts for mcDESPOT processing are provided in the installation
 archive. These print usage instructions if you call them with no arguments.
@@ -53,4 +53,8 @@ with your particular flip-angles and TRs.
 Each product has some basic usage instructions that will be printed with either
 the -h or --help options, e.g. `qimcdespot -h`. The majority of programs take
 the input filenames as arguments on the command-line, and in addition will read
-an input text file from `stdin`. For further details, see the documentation.
+an input text file from `stdin`. For further details, see the (documentation)[https://spinicist.github.io/QUIT], which is also available in the `Docs` folder.
+
+## Getting Help
+
+If you can't find an answer to a problem in the documentation or help strings, you can open an (issue)[https://github.com/spinicist/QUIT/issues], post a question on (Neurostars)[https://neurostars.org] or find the main developer on Twitter (@spinicist).

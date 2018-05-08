@@ -18,7 +18,7 @@ If you think you have found a bug, then opening a Github issue is the preferred 
 If you want to edit the QUIT code yourself to fix a problem or implement a new feature, you are very welcome to! Please follow this model for submitting a Pull Request:
 - (Fork)[https://help.github.com/articles/fork-a-repo/] the QUIT repo to your Github profile.
 - Clone this repo, and checkout the `development` branch, then create a new branch.
-- Make your changes on this own branch.
+- Make your changes on this own branch. At the start of your commit messages, please state whether something is a bug (BUG), enhancement (ENH), style change (STYLE) or documentation edit (DOC). This convention follows from ITK.
 - When you are finished, make sure your copy of the `development` branch is up to date, and if necessary `rebase` your branch to the latest `development` commit.
 - Push your branch to Github.
 - Open a (Pull Request)[https://help.github.com/articles/fork-a-repo/].

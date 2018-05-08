@@ -1,20 +1,19 @@
-# QUIT Changelog #
+# QUIT Changelog
 
-## Version 1.1 ##
+## Version 2.0.1
 
-1. Bug-fixes for qimcdespot.
-2. All programs now print the version number with the usage string.
-3. Improved multi-threading that will make more consistent use of available
-threads.
-4. Added 'qisplitsubject' for splitting up images with multiple subjects
-scanned at the same time (e.g. ex-vivo scanning).
+A bug-fix release
 
-## Version 1.0 ##
+1. JSON-ified the input for `qi_rfprofile`, and added `lower_bounds` and `upper_bounds` to the JSON input for `qimcdespot`
+2. Improved the numerical stability of `qipolyfit` so that higher order (8 and above) polynomials fit correctly
+3. `qiaffine` did not handle non-isotropic voxel spacings correctly
+4. A lot of documentation fixes
 
-1. I gave up and used a version number for simplicity. The changelog will
-only list major changes and new tools, not every small change.
-2. Faster qimcdespot - the matrix exponential step has been replaced with an
-approximate expression that gives equivalent results but is much faster.
-3. Correct echo-time signal equations for SPGR and SSFP. Use 'SPGR_ECHO' or
-'SSFP_ECHO' in the input to qimcdespot or qisignal to use them.
-4. Expanded qissfpbands with extra output options.
+## Version 2.0.0
+
+This was a major upgrade from QUIT 1.1 with a lot of improvements and new features. Principal changes were:
+
+1. Introduction of proper (documentation)[https://spinicist.github.io/QUIT]
+2. A switch to JSON as the input file format
+3. Standardisation of input arguments across all tools
+4. Introduction of a lot of new methods, including ASL, phase unwrapping and SSFP ellipse methods
