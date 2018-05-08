@@ -125,7 +125,7 @@ TOpt::ScalesType MakeScales(double rotScale, double tScale) {
 
 TShrink::ShrinkFactorsType MakeShrink(const double &gridSpacing, const QI::VolumeF::Pointer &image) {
     TShrink::ShrinkFactorsType shrink;
-    for (int i = 0; i < shrink.Size(); i++) {
+    for (size_t i = 0; i < shrink.Size(); i++) {
         shrink[i] = round(gridSpacing / image->GetSpacing()[i]);
         if (shrink[i] < 1)
             shrink[i] = 1;

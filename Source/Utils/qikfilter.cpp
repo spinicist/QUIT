@@ -89,7 +89,7 @@ protected:
         output->SetOrigin(m_Origin);
     }
 
-    void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const RegionType & /* Unused */, ThreadIdType /* Unused */) ITK_OVERRIDE {
         const auto startIndex = m_Region.GetIndex();
         const Eigen::Array3d sz{static_cast<double>(m_Region.GetSize()[0]),
                                 static_cast<double>(m_Region.GetSize()[1]),
@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
     layout[3] = nvols;
     tile->SetLayout(layout);
 
-    for (int i = 0; i < nvols; i++) {
+    for (size_t i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
         if (verbose) std::cout << "Processing volume " << i << std::endl;
 

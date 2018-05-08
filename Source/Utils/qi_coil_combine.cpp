@@ -23,7 +23,7 @@
 typedef itk::ApplyAlgorithmFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::VectorVolumeF, QI::VolumeF> TApplyCombine;
 class ComplexCombine : public TApplyCombine::Algorithm {
 protected:
-    const int m_insize = 0, m_coils = 0, m_outsize = 0;
+    const size_t m_insize = 0, m_coils = 0, m_outsize = 0;
     TOutput m_zero;
     std::vector<TConst> m_channel_phase;
 public:
@@ -60,7 +60,7 @@ public:
 
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TOutput &residual,
+               std::vector<TOutput> &outputs, TOutput & /* Unused */,
                TInput &resids, TIterations &its) const override
     {
         Eigen::Map<const Eigen::ArrayXXcf> in_data(inputs[0].GetDataPointer(), m_outsize, m_coils);
@@ -77,21 +77,11 @@ public:
         // Then average
         Eigen::ArrayXcd averaged = phase_corrected.rowwise().sum() / m_coils;
 
-        // QI_DBMAT(data.abs())
-        // QI_DBMAT(data.arg())
-        // QI_DBVEC(ph)
-        // QI_DBVEC(correction.abs())
-        // QI_DBVEC(correction.arg())
-        // QI_DBMAT(phase_corrected.abs())
-        // QI_DBMAT(phase_corrected.arg())
-        // QI_DBVEC(averaged.abs())
-        // QI_DBVEC(averaged.arg())
-
-        for (auto i = 0; i < m_outsize; i++) {
+        for (size_t i = 0; i < m_outsize; i++) {
             outputs[0][i] = averaged[i];
         }
         Eigen::ArrayXcf pcf = (Eigen::Map<Eigen::ArrayXcd>(phase_corrected.data(), m_insize)).cast<std::complex<float>>();
-        for (auto i = 0; i < resids.Size(); i++) { // resids will be zero-length if not saving residuals
+        for (size_t i = 0; i < resids.Size(); i++) { // resids will be zero-length if not saving residuals
             resids[i] = pcf[i];
         }
         its = 1;
@@ -212,7 +202,7 @@ int main(int argc, char **argv) {
         auto roi_mean = mean_filter->GetResult();
         if (verbose) std::cout << "Mean values: " << roi_mean << std::endl;
         itk::VariableLengthVector<float> phase(sz);
-        for (auto i = 0; i < sz; i++) {
+        for (size_t i = 0; i < sz; i++) {
             phase[i] = std::arg(roi_mean[i]);
         }
         if (verbose) std::cout << "Mean phase: " << phase << std::endl;

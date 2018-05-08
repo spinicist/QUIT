@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
         }
     }
     int out_index = 0;
-    for (int i = 0; i < group_list.size(); i++) {
+    for (size_t i = 0; i < group_list.size(); i++) {
         const int group = group_list.at(i);
         if (group > 0) { // Ignore entries with a 0
             if (verbose) std::cout << "File: " << file_paths.Get().at(i) << " Group: " << group << std::flush;
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
     if (sort) {
         if (verbose) std::cout << "Sorting." << std::endl;
         for (int g = 0; g < n_groups; g++) {
-            for (int i = 0; i < groups.at(g).size(); i++) {
+            for (size_t i = 0; i < groups.at(g).size(); i++) {
                 tiler->SetInput(out_index, groups.at(g).at(i));
                 out_index++;
                 if (design_path) {

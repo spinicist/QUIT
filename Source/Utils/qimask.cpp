@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 
     // Extract one volume to process
     auto region = vols->GetLargestPossibleRegion();
-    if (std::abs(volume.Get()) < region.GetSize()[3]) {
+    if (static_cast<size_t>(std::abs(volume.Get())) < region.GetSize()[3]) {
         int volume_to_get = (region.GetSize()[3] + volume.Get()) % region.GetSize()[3];
         if (verbose) std::cout << "Using volume " << volume_to_get << std::endl;
         region.GetModifiableIndex()[3] = volume_to_get;

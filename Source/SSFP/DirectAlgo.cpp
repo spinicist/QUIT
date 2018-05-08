@@ -34,7 +34,7 @@ public:
         const T &psi0 = p[4];
 
         if (b < 2.*a/(1. + a*a)) {
-            ArrayXT m = EllipseToSignal(G, a, b, th0, psi0, TR, phi);
+            ArrayXT m = EllipseToSignal(G, a, b, th0, psi0, phi);
             Eigen::Map<ArrayXT> r(resids, data.size()*2);
             r.head(data.size()) = m.head(data.size()) - data.real();
             r.tail(data.size()) = m.tail(data.size()) - data.imag();
@@ -66,7 +66,7 @@ public:
         const double &psi0 = p[4];
         
         if (b < 2.*a/(1. + a*a)) {
-            Eigen::ArrayXd m = EllipseToSignal(G, a, b, th0, psi0, TR, phi);
+            Eigen::ArrayXd m = EllipseToSignal(G, a, b, th0, psi0, phi);
             Eigen::Map<Eigen::ArrayXd> r(resids, data.size()*2);
             r.head(data.size()) = m.head(data.size()) - data.real();
             r.tail(data.size()) = m.tail(data.size()) - data.imag();
@@ -99,7 +99,7 @@ Eigen::ArrayXd DirectAlgo::apply_internal(const Eigen::ArrayXcf &indata,
     problem.AddResidualBlock(cost, loss, p.data());
     const double not_zero = 1.0e-6;
     const double not_one  = 1.0 - not_zero;
-    const double max_a = exp(-TR / 4.3); // Set a sensible maximum on T2
+    const double max_a = exp(-TR / 5.0); // Set a sensible maximum on T2
     if (debug) std::cout << "max_a : " << max_a << std::endl;
     problem.SetParameterLowerBound(p.data(), 0, not_zero); problem.SetParameterUpperBound(p.data(), 0, not_one);
     problem.SetParameterLowerBound(p.data(), 1, not_zero); problem.SetParameterUpperBound(p.data(), 1, max_a);
@@ -116,7 +116,6 @@ Eigen::ArrayXd DirectAlgo::apply_internal(const Eigen::ArrayXcf &indata,
 
     // Calculate a sensible guess for a/b using T1/T2 of grey matter
     Eigen::Array3d Gab = EllipseGab(1.0, 0.05, TR, flip);
-    std::array<double, 3> costs, start_th0{-M_PI, 0., M_PI};
     double th0, psi0, best_cost = std::numeric_limits<double>::infinity();
     for (const auto &th0_try : {-M_PI, 0., M_PI}) {
         const double psi0_try = arg(c_mean / std::polar(1.0, th0_try/2));

@@ -42,7 +42,7 @@ struct MCDSRCFunctor {
     int inputs() const { return m_model->nParameters(); }
     int values() const { return m_sequence.size(); }
 
-    const bool constraint(const Eigen::VectorXd &params) const {
+    bool constraint(const Eigen::VectorXd &params) const {
         return m_model->ValidParameters(params);
     }
 
@@ -94,7 +94,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
     {
         Eigen::ArrayXd data(dataSize());
         int dataIndex = 0;
-        for (int i = 0; i < inputs.size(); i++) {
+        for (size_t i = 0; i < inputs.size(); i++) {
             Eigen::Map<const Eigen::ArrayXf> this_data(inputs[i].GetDataPointer(), inputs[i].Size());
             if (m_model->scaleToMean()) {
                 data.segment(dataIndex, this_data.rows()) = this_data.cast<double>() / this_data.abs().mean();
@@ -117,7 +117,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         QI::RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
         Eigen::ArrayXd pars(m_model->nParameters());
         rc.optimise(pars);
-        for (int i = 0; i < m_model->nParameters(); i++) {
+        for (size_t i = 0; i < m_model->nParameters(); i++) {
             outputs[i] = pars[i];
         }
         Eigen::ArrayXf r = func.residuals(pars).cast<float>();
@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get() < 8 ? 8 : threads.Get()); // mcdespot with a mask & threads is a very unbalanced algorithm
-    for (int i = 0; i < images.size(); i++) {
+    for (size_t i = 0; i < images.size(); i++) {
         apply->SetInput(i, images[i]);
     }
     if (f0) apply->SetConst(0, QI::ReadImage(f0.Get()));
@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
         std::cout << "Writing results files." << std::endl;
     }
-    for (int i = 0; i < model->nParameters(); i++) {
+    for (size_t i = 0; i < model->nParameters(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
     }
     QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual" + QI::OutExt());

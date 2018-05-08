@@ -80,7 +80,7 @@ protected:
         }
     }
 
-    void ThreadedGenerateData(const RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const RegionType &region, ThreadIdType /* Unused */) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
         ConstNeighborhoodIterator<TImage>::RadiusType radius;
         radius.Fill(1);
@@ -101,7 +101,7 @@ protected:
             double sum = 0;
             double cphase = inputIter.GetCenterPixel();
             std::complex<double> c = std::polar(1., cphase);
-            for (int i = 0; i < fwrd.size(); ++i) {
+            for (size_t i = 0; i < fwrd.size(); ++i) {
                 double bphase = inputIter.GetPixel(back[i]);
                 double fphase = inputIter.GetPixel(fwrd[i]);
                 std::complex<double> b = std::polar(1., bphase);

@@ -36,16 +36,16 @@ BandAlgo::TOutput BandAlgo::zero() const {
     return m_zero;
 }
 
-bool BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                     const TIndex &, // Unused // Unused
-                     std::vector<TOutput> &outputs, TOutput &residual,
-                     TInput &resids, TIterations &its) const
+bool BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+                     const TIndex & /* Unused */,
+                     std::vector<TOutput> &outputs, TOutput & /* Unused */,
+                     TInput & /* Unused */, TIterations & /* Unused */) const
 {
     size_t phase_stride = m_flips;
     size_t flip_stride = 1;
     if (m_phaseFirst)
         std::swap(phase_stride, flip_stride);
-    for (int f = 0; f < m_flips; f++) {
+    for (size_t f = 0; f < m_flips; f++) {
         const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride));
         outputs[0][f] = this->applyFlip(vf);
     }
@@ -56,8 +56,8 @@ std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::Arr
     eigen_assert(a.rows() == b.rows());
     std::complex<double> sum(0., 0.);
     double N = 0;
-    for (size_t i = 0; i < a.rows(); i++) {
-        for (size_t j = i + 1; j < a.rows(); j++) {
+    for (int i = 0; i < a.rows(); i++) {
+        for (int j = i + 1; j < a.rows(); j++) {
             const std::complex<double> di = b[i] -  a[i], dj = b[j] - a[j];
             const std::complex<double> ni(-di.imag(), di.real()), nj(-dj.imag(), dj.real());
 

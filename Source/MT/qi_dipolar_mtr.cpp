@@ -33,10 +33,10 @@ public:
         return _names;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+               const TIndex & /* Unused */,
+               std::vector<TOutput> &outputs, TConst & /* Unused */,
+               TInput & /* Unused */, TIterations & /* Unused */) const override
     {
         outputs[0] = 100. * (1. - (inputs[0][3] + inputs[0][4]) / (2. * inputs[0][2]));
         outputs[1] = 100. * (1. - (inputs[0][0] + inputs[0][1]) / (2. * inputs[0][2]));
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
     }
     std::string outPrefix = out_prefix.Get() + "DMT_";
-    for (int i = 0; i < algo->numOutputs(); i++) {
+    for (size_t i = 0; i < algo->numOutputs(); i++) {
         if (verbose) std::cout << "Writing output: " << outPrefix + algo->names().at(i) + QI::OutExt() << std::endl;
         QI::WriteImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }

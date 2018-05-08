@@ -127,9 +127,9 @@ VectorXcd Three_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD,
     return r;
 }
 
-VectorXcd MT_SPGR(carrd &omega_cwpe, carrd &satf0, cdbl TR, cdbl Trf,
+VectorXcd MT_SPGR(carrd &omega_cwpe, carrd &satf0, cdbl /* Unused */, cdbl /* Unused */,
                   const TLineshape &g, cdbl PD, cdbl T1f, cdbl T2f, cdbl T1r, cdbl T2r,
-                  cdbl kf, cdbl F, cdbl f0, cdbl B1) {
+                  cdbl kf, cdbl F, cdbl /* Unused */, cdbl /* Unused */) {
     // This is a mix of Gloor et al and Ramani et al variable names
     ArrayXd W = omega_cwpe.square()*g(satf0, T2r);
     cdbl R1f = 1. / T1f;

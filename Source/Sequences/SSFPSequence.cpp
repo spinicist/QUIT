@@ -106,7 +106,7 @@ void SSFPGSSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( FA );
 }
 
-Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 
@@ -126,7 +126,7 @@ void SSFPEllipseSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
-Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 

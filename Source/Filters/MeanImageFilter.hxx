@@ -44,7 +44,7 @@ void MeanImageFilter<TInput>::GenerateOutputInformation() {
 }
 
 template<typename TInput>
-void MeanImageFilter<TInput>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
+void MeanImageFilter<TInput>::ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) {
     //std::cout << __PRETTY_FUNCTION__ << std::endl;
     size_t N = this->GetNumberOfRequiredInputs();
     std::vector<ImageRegionConstIterator<TInput>> iters(N);

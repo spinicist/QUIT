@@ -90,7 +90,7 @@ const Matrix6d Exchange(const double &k_ab, const double &k_ba) {
 }
 
 // Calculate the exchange rates from the residence time and fractions
-const void CalcExchange(const double tau_a, const double f_a, double &f_b, double &k_ab, double &k_ba) {
+void CalcExchange(const double tau_a, const double f_a, double &f_b, double &k_ab, double &k_ba) {
     const double feps = numeric_limits<float>::epsilon(); // Because we read from float files
     f_b = 1.0 - f_a;
     k_ab = 1./tau_a; k_ba = k_ab*f_a/f_b;

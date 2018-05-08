@@ -146,7 +146,7 @@ public:
                 std::vector<double> r_temp(data.size());
                 p = bestP; // Make sure the correct parameters are in the block
                 problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-                for (int i = 0; i < r_temp.size(); i++)
+                for (size_t i = 0; i < r_temp.size(); i++)
                     resids[i] = r_temp[i];
             }
         } else {

@@ -48,7 +48,7 @@ void MPRAGESequence::save(cereal::JSONOutputArchive &ar) const {
 
 size_t MP2RAGESequence::size() const { return 2; }
 
-Eigen::ArrayXcd MP2RAGESequence::signal(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd MP2RAGESequence::signal(const std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 
@@ -85,7 +85,7 @@ void MP2RAGESequence::save(cereal::JSONOutputArchive &ar) const {
 
 size_t MP3RAGESequence::size() const { return 3; }
 
-Eigen::ArrayXcd MP3RAGESequence::signal(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd MP3RAGESequence::signal(const std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 

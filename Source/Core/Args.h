@@ -79,11 +79,11 @@ TRegion RegionArg(const std::string &a) {
     std::string el;
     typename TRegion::IndexType start;
     typename TRegion::SizeType size;
-    for (int i = 0; i < TRegion::ImageDimension; i++) {
+    for (size_t i = 0; i < TRegion::ImageDimension; i++) {
         std::getline(iss, el, ',');
         start[i] = std::stoi(el);
     }
-    for (int i = 0; i < TRegion::ImageDimension; i++) {
+    for (size_t i = 0; i < TRegion::ImageDimension; i++) {
         std::getline(iss, el, ',');
         size[i] = std::stoi(el);
     }

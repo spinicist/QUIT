@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     }
     std::string outPrefix;
     outPrefix = outarg.Get() + "ES_";
-    for (int i = 0; i < algo->numOutputs(); i++) {
+    for (size_t i = 0; i < algo->numOutputs(); i++) {
         std::string outName = outPrefix + algo->names().at(i) + QI::OutExt();
         if (verbose) std::cout << "Writing: " << outName << std::endl;
         QI::WriteVectorImage(apply->GetOutput(i), outName);

@@ -60,7 +60,7 @@ int Pipeline() {
             std::getline(iss, el, ',');
             permute_order[i] = std::stoi(el);
         }
-        for (int i = 3; i < TImage::ImageDimension; i++) {
+        for (size_t i = 3; i < TImage::ImageDimension; i++) {
             permute_order[i] = i;
         }
         if (!iss)
@@ -79,11 +79,11 @@ int Pipeline() {
         itk::FixedArray<bool, TImage::ImageDimension> flip_axes; // Save this
         std::istringstream iss(flip.Get());
         std::string el;
-        for (int i = 0; i < 3; i++) {
+        for (size_t i = 0; i < 3; i++) {
             std::getline(iss, el, ',');
             flip_axes[i] = (std::stoi(el) > 0);
         }
-        for (int i = 3; i < TImage::ImageDimension; i++) {
+        for (size_t i = 3; i < TImage::ImageDimension; i++) {
             flip_axes[i] = false;
         }
         if (!iss)

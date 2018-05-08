@@ -52,12 +52,12 @@ void VectorToImageFilter<TInput>::GenerateOutputInformation() {
     outSpacing.Fill(1);
     outOrigin.Fill(1);
     outDirection.SetIdentity();
-    for (int i = 0; i < InputDimension; i++) {
+    for (size_t i = 0; i < InputDimension; i++) {
         outSpacing[i] = spacing[i];
         outOrigin[i] =  origin[i];
         outSize[i] = inRegion.GetSize()[i];
         outIndex[i] = inRegion.GetIndex()[i];
-        for (int j = 0; j < InputDimension; j++) {
+        for (size_t j = 0; j < InputDimension; j++) {
             outDirection[i][j] = direction[i][j];
         }
     }

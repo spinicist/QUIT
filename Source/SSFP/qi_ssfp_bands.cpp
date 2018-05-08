@@ -105,14 +105,14 @@ protected:
         while(!inputIter.IsAtEnd()) {
             if (!m || maskIter.Get()) {
                 VariableLengthVector<std::complex<float>> center_pixel = inputIter.GetCenterPixel();
-                for (int f = 0; f < m_flips; f++) {
+                for (size_t f = 0; f < m_flips; f++) {
                     const Eigen::ArrayXcd center_array = Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(center_pixel.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride)).cast<std::complex<double>>();
                     QI::SplitBlocks(center_array, a_center, b_center, m_reorderBlock);
                     Eigen::ArrayXcd sums = Eigen::ArrayXcd::Zero(m_lines);
                     Eigen::ArrayXd nums = Eigen::ArrayXd::Zero(m_lines);
                     Eigen::ArrayXd dens = Eigen::ArrayXd::Zero(m_lines);
                     Eigen::ArrayXcd ws = Eigen::ArrayXcd::Zero(m_lines);
-                    for (int p = 0; p < inputIter.Size(); ++p) {
+                    for (size_t p = 0; p < inputIter.Size(); ++p) {
                         VariableLengthVector<std::complex<float>> pass1_pixel = pass1Iter.GetPixel(p);
                         VariableLengthVector<std::complex<float>> input_pixel = inputIter.GetPixel(p);
                         const std::complex<double> Id = pass1_pixel[f];

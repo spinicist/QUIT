@@ -37,7 +37,7 @@ void EllipseToMRI(const double a, const double b, const double c, const double t
 template<typename T>
 Eigen::Array<T, Eigen::Dynamic, 1> EllipseToSignal(const T &G, const T &a, const T &b,
                                                    const T &theta0, const T &psi0,
-                                                   const double &TR, Eigen::ArrayXd const &phi) {
+                                                   Eigen::ArrayXd const &phi) {
     typedef Eigen::Array<T, Eigen::Dynamic, 1> ArrayXT;
     const ArrayXT theta = theta0 - phi;
     const T psi = theta0/2.0 + psi0;

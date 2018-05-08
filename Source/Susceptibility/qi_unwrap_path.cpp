@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
 
     auto reliabilityFilter = itk::PhaseReliabilityFilter::New();
     auto unwrapFilter = itk::UnwrapPathPhaseFilter::New();
-    for (int i = 0; i < nvols; i++) {
+    for (size_t i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
         if (verbose) std::cout << "Processing volume " << i << std::endl;
         extract->SetExtractionRegion(region);

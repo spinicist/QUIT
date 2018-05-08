@@ -94,7 +94,7 @@ class MaxAlgo : public BandAlgo {
 public:
     std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override {
         std::complex<float> max = std::numeric_limits<std::complex<float>>::lowest();
-        for (size_t i = 0; i < vf.rows(); i++) {
+        for (int i = 0; i < vf.rows(); i++) {
             if (std::abs(vf[i]) > std::abs(max)) max = vf[i];
         }
         return max;

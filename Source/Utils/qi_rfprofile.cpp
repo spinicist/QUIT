@@ -103,7 +103,7 @@ protected:
             pt_rf = pt - pt_center;
             itk::VariableLengthVector<float> vals(m_splines.size());
 
-            for (int i = 0; i < m_splines.size(); i++) {
+            for (size_t i = 0; i < m_splines.size(); i++) {
                 vals[i] = m_splines[i](pt_rf[2]);
             }
             while (!imageIt.IsAtEndOfSlice()) {

@@ -53,16 +53,16 @@ ArrayXd Model::scale_mag(const ArrayXd &s) const {
     }
 }
 
-VectorXd Model::SSFPEchoMagnitude(cvecd &params, carrd &a, cdbl TR, carrd &phi) const { QI_EXCEPTION("Function not implemented."); }
+VectorXd Model::SSFPEchoMagnitude(cvecd &, carrd &, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 
 VectorXcd Model::MultiEcho(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGR(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGREcho(cvecd &, carrd &, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SPGRFinite(cvecd &, carrd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
-VectorXcd Model::SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl flip, cdbl TR, cdbl Trf) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SPGR_MT(cvecd &, carrd &, carrd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::MPRAGE(cvecd &, cdbl, cdbl, const int, const int, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::AFI(cvecd &, cdbl, cdbl, cdbl) const { QI_EXCEPTION("Function not implemented."); }
-VectorXcd Model::SSFP(cvecd &, carrd &a, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
+VectorXcd Model::SSFP(cvecd &, carrd &, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFPEcho(cvecd &, carrd &, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFP_GS(cvecd &, carrd &, cdbl) const { QI_EXCEPTION("Function not implemented."); }
 VectorXcd Model::SSFPFinite(cvecd &, carrd &, cdbl, cdbl, carrd &) const { QI_EXCEPTION("Function not implemented."); }
@@ -89,7 +89,7 @@ ArrayXXd SCD::Bounds(const FieldStrength f) const {
 	return b;
 }
 
-ArrayXd SCD::Default(const FieldStrength f) const {
+ArrayXd SCD::Default(const FieldStrength /* Unused */) const {
     ArrayXd p(5);
     p << 1.0, 1.0, 0.05, 0, 1.0;
     return p;

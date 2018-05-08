@@ -27,18 +27,18 @@
 //******************************************************************************
 class D1Algo : public QI::ApplyF::Algorithm {
 public:
-    static const size_t DefaultIterations = 15;
+    static const int DefaultIterations = 15;
 protected:
     const std::shared_ptr<QI::Model> m_model = std::make_shared<QI::SCD>();
     QI::SPGRSequence m_sequence;
-    size_t m_iterations = DefaultIterations;
+    int m_iterations = DefaultIterations;
     double m_loPD = -std::numeric_limits<double>::infinity();
     double m_hiPD = std::numeric_limits<double>::infinity();
     double m_loT1 = -std::numeric_limits<double>::infinity();
     double m_hiT1 = std::numeric_limits<double>::infinity();
 
 public:
-    void setIterations(size_t n) { m_iterations = n; }
+    void setIterations(int n) { m_iterations = n; }
     size_t getIterations() { return m_iterations; }
     void setSequence(QI::SPGRSequence &s) { m_sequence = s; }
     void setClampT1(double lo, double hi) { m_loT1 = lo; m_hiT1 = hi; }
@@ -205,7 +205,7 @@ public:
             assert(resids.Size() == data.size());
             std::vector<double> r_temp(data.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (int i = 0; i < r_temp.size(); i++)
+            for (size_t i = 0; i < r_temp.size(); i++)
                 resids[i] = r_temp[i];
         }
         return true;

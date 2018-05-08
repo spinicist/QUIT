@@ -29,8 +29,8 @@ args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag     verbose(parser, "VERBOSE", "Print description of each output line", {'v', "verbose"});
 args::Flag print_direction(parser, "DIRECTION", "Print the image direction/orientation", {'d', "direction"});
 args::Flag print_origin(parser, "ORIGIN", "Print the the origin", {'o', "origin"});
-args::ValueFlag<int> print_spacing(parser, "SPACING", "Print voxel spacing (can specify one dimension)", {'S',"spacing"});
-args::ValueFlag<int> print_size(parser, "SIZE", "Print the matrix size (can specify one dimension)", {'s',"size"});
+args::ValueFlag<size_t> print_spacing(parser, "SPACING", "Print voxel spacing (can specify one dimension)", {'S',"spacing"});
+args::ValueFlag<size_t> print_size(parser, "SIZE", "Print the matrix size (can specify one dimension)", {'s',"size"});
 args::Flag print_voxvol(parser, "VOLUME", "Calculate and print the volume of one voxel", {'v',"voxvol"});
 args::Flag print_type(parser, "DTYPE", "Print the data type",{'T',"dtype"});
 args::Flag print_dims(parser, "DIMS", "Print the number of dimensions",{'D',"dims"});
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
         }
         if (dim3 && dims > 3) dims = 3;
         if (print_all || print_size) {
-            if (print_size.Get() < 0 || print_size.Get() > dims) {
+            if (print_size.Get() > dims) {
                 if (verbose) std::cerr << "Invalid dimension " << print_size.Get() << " for image " << fname << std::endl;
             } else {
                 int start_dim, end_dim;
@@ -77,30 +77,30 @@ int main(int argc, char **argv) {
             }
         }
         if (print_all || print_spacing) {
-            if (print_spacing.Get() < 0 || print_spacing.Get() > dims) {
+            if (print_spacing.Get() > dims) {
                 if (verbose) std::cerr << "Invalid dimension " << print_spacing.Get() << " for image " << fname << std::endl;
             } else {
-                int start_dim, end_dim;
+                size_t start_dim, end_dim;
                 if (print_spacing.Get() == 0) {
                     start_dim = 0; end_dim = dims;
                 } else {
                     start_dim = print_spacing.Get() - 1;
                     end_dim = print_spacing.Get();
                 }
-                if (print_all || verbose) std::cout << "Spacing:    "; if (print_all || print_spacing) { for (int i = start_dim; i < end_dim; i++) std::cout << imageIO->GetSpacing(i) << "\t"; std::cout << std::endl; }
+                if (print_all || verbose) std::cout << "Spacing:    "; if (print_all || print_spacing) { for (size_t i = start_dim; i < end_dim; i++) std::cout << imageIO->GetSpacing(i) << "\t"; std::cout << std::endl; }
             }
         }
-        if (print_all || verbose) std::cout << "Origin:     "; if (print_all || print_origin)   { for (int i = 0; i < dims; i++) std::cout << imageIO->GetOrigin(i) << "\t"; std::cout << std::endl; }
+        if (print_all || verbose) std::cout << "Origin:     "; if (print_all || print_origin)   { for (size_t i = 0; i < dims; i++) std::cout << imageIO->GetOrigin(i) << "\t"; std::cout << std::endl; }
         if (print_all || verbose) std::cout << "Direction:  " << std::endl;
         if (print_all | print_direction) {
-            for (int i = 0; i < dims; i++) {
+            for (size_t i = 0; i < dims; i++) {
                 std::vector<double> dir = imageIO->GetDirection(i);
-                for (int j = 0; j < dims; j++)
+                for (size_t j = 0; j < dims; j++)
                     std::cout << dir[j] << "\t";
                 std::cout << std::endl;
             }
         }
-        if (print_all || verbose) std::cout << "Voxel vol:  "; if (print_all || print_voxvol)   { double vol = imageIO->GetSpacing(0); for (int i = 1; i < dims; i++) vol *= imageIO->GetSpacing(i); std::cout << vol << std::endl; }
+        if (print_all || verbose) std::cout << "Voxel vol:  "; if (print_all || print_voxvol)   { double vol = imageIO->GetSpacing(0); for (size_t i = 1; i < dims; i++) vol *= imageIO->GetSpacing(i); std::cout << vol << std::endl; }
         for (const std::string &hf : header_fields.Get()) {
             auto header = imageIO->GetMetaDataDictionary();
             if (header.HasKey(hf)) {

@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
 
     auto sequence = QI::ReadSequence<QI::CASLSequence>(std::cin, verbose);
     const auto n_slices = input->GetLargestPossibleRegion().GetSize()[2];
-    if (slice_time && (n_slices != sequence.post_label_delay.rows())) {
+    if (slice_time && (n_slices != static_cast<size_t>(sequence.post_label_delay.rows()))) {
         QI_FAIL("Number of post-label delays " << sequence.post_label_delay.rows() << " does not match number of slices " << n_slices);
     }
     std::shared_ptr<CASLAlgo> algo = std::make_shared<CASLAlgo>(sequence, T1_blood.Get(), alpha.Get(), lambda.Get(),

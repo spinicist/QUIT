@@ -17,7 +17,7 @@ size_t SequenceBase::count() const{
     return 1;
 }
 
-Eigen::ArrayXd SequenceBase::weights(const double f0) const {
+Eigen::ArrayXd SequenceBase::weights(const double /* Unused */) const {
     return Eigen::ArrayXd::Ones(size()); // Default weights are constant
 }
 

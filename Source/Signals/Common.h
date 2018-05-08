@@ -40,7 +40,7 @@ const Eigen::Matrix3d InfinitesimalRF(cdbl &dalpha);
 const Eigen::Matrix3d OffResonance(cdbl &inHertz);
 const Eigen::Matrix3d Spoiling();
 const Matrix6d Exchange(cdbl &k_ab, cdbl &k_ba);
-const void CalcExchange(cdbl tau_a, cdbl f_a, double &f_b, double &k_ab, double &k_ba);
+void CalcExchange(cdbl tau_a, cdbl f_a, double &f_b, double &k_ab, double &k_ba);
 
 } // End namespace QI
 

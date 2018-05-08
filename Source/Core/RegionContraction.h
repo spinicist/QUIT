@@ -109,7 +109,7 @@ class RegionContraction {
         size_t   contractions() const { return m_contractions; }
         RCStatus       status() const { return m_status; }
         const Eigen::ArrayXXd &currentBounds() const { return m_currentBounds; }
-		const double   SoS() const { return m_SoS; }
+        double SoS() const { return m_SoS; }
         Eigen::ArrayXd startWidth() const { return m_startBounds.col(1) - m_startBounds.col(0); }
         Eigen::ArrayXd width() const { return m_currentBounds.col(1) - m_currentBounds.col(0); }
         Eigen::ArrayXd midPoint() const { return (m_currentBounds.rowwise().sum() / 2.); }

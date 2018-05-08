@@ -23,11 +23,11 @@ namespace Eigen {
     inline void load(Archive &ar, Array<T, Dynamic, 1> &v) {
         cereal::size_type n_rows;
         ar(cereal::make_size_tag(n_rows));
-        if (v.rows() != n_rows) {
+        if (static_cast<cereal::size_type>(v.rows()) != n_rows) {
             v.resize(n_rows, 1);
         }
 
-        for(auto i = 0; i < n_rows; i++) {
+        for(cereal::size_type i = 0; i < n_rows; i++) {
             ar(v[i]);
         }
     }

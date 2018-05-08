@@ -235,7 +235,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateData() {
     clock.Start();
     {   // Use scope-based instantiation to wait for the threadpool to stop
         QI::ThreadPool threadPool(m_poolsize);
-        for (auto split = 0; split < splits; split++) {
+        for (unsigned int split = 0; split < splits; split++) {
             auto task = [=] {
                 auto thread_region = fullRegion;
                 splitter->GetSplit(split, splits, thread_region);
@@ -251,7 +251,7 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateData() {
 }
 
 template<typename TI, typename TO, typename TC, typename TM>
-void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) {
     ImageRegionConstIterator<TMaskImage> maskIter;
     const auto mask = this->GetMask();
     if (mask) {

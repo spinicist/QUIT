@@ -29,7 +29,7 @@ TSeq ReadSequence(cereal::JSONInputArchive &in_archive, bool verbose, std::ostre
 
     if (verbose) {
         {   // Archives don't fully flush until destruction
-            cereal::JSONOutputArchive archive(std::cout);
+            cereal::JSONOutputArchive archive(os);
             archive(cereal::make_nvp(sequence.name(), sequence));
         }
         std::cout << std::endl;

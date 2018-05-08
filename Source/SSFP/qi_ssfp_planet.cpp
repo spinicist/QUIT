@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
         std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
     }
     std::string outPrefix = out_prefix.Get() + "PLANET_";
-    for (int i = 0; i < algo->numOutputs(); i++) {
+    for (size_t i = 0; i < algo->numOutputs(); i++) {
         if (verbose) std::cout << "Writing output: " << outPrefix + algo->names().at(i) + QI::OutExt() << std::endl;
         QI::WriteVectorImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }

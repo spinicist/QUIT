@@ -166,7 +166,7 @@ class D2Functor : public Eigen::DenseFunctor<double> {
         const double m_T1, m_B1;
         const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
 
-        D2Functor(const double T1, const std::shared_ptr<QI::SequenceBase> s, const Eigen::ArrayXd &d, const double B1, const bool fitComplex, const bool debug = false) :
+        D2Functor(const double T1, const std::shared_ptr<QI::SequenceBase> s, const Eigen::ArrayXd &d, const double B1, const bool /* Unused */, const bool /* Unused */) :
             DenseFunctor<double>(3, s->size()),
             m_data(d), m_sequence(s),
             m_T1(T1), m_B1(B1)

@@ -55,7 +55,7 @@ public:
         m_all = all;
         m_alternate = alternate;
     }
-    void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) ITK_OVERRIDE {
         typedef typename TImage::PixelType PixelType;
         ImageSliceConstIteratorWithIndex<TImage> inIt(this->GetInput(), region);
         ImageSliceIteratorWithIndex<TImage>      outIt(this->GetOutput(), region);
@@ -83,7 +83,6 @@ public:
             inIt.NextSlice();
             outIt.NextSlice();
         }
-        // std::std::cout << "End " << __PRETTY_FUNCTION__ << std::std::endl;
     }
 };
 

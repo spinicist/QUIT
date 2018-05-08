@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
         std::cout << "Writing results files." << std::endl;
     }
     std::string outPrefix = outarg.Get() + "EMT_";
-    for (int i = 0; i < algo->numOutputs(); i++) {
+    for (size_t i = 0; i < algo->numOutputs(); i++) {
         std::string outName = outPrefix + algo->names().at(i) + QI::OutExt();
         if (verbose) std::cout << "Writing: " << outName << std::endl;
         QI::WriteImage(apply->GetOutput(i), outName);

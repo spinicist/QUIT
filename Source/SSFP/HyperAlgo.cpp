@@ -55,7 +55,7 @@ Eigen::MatrixXd HyperC(const Eigen::ArrayXd &x, const Eigen::ArrayXd &y) {
     return C;
 }
 
-Eigen::ArrayXd HyperAlgo::apply_internal(const Eigen::ArrayXcf &input, const double flip, const double TR, const Eigen::ArrayXd &phi, const bool debug, float &residual) const {
+Eigen::ArrayXd HyperAlgo::apply_internal(const Eigen::ArrayXcf &input, const double /* Unused */, const double TR, const Eigen::ArrayXd &phi, const bool /* Unused */, float & /* Unused */) const {
     Eigen::ArrayXcd data = input.cast<std::complex<double>>();
     const double scale = data.abs().maxCoeff();
     Eigen::ArrayXd x = data.real() / scale;

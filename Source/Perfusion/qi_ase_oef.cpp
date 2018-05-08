@@ -55,7 +55,7 @@ public:
     size_t dataSize() const override   { return m_inputsize; }
     size_t outputSize() const override { return 1; }
     TOutput zero() const override {
-        TOutput z;
+        TOutput z{0};
         return z;
     }
 
@@ -95,7 +95,7 @@ public:
     }
     
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &index, // Unused
+               const TIndex & /* Unused */,
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override
     {

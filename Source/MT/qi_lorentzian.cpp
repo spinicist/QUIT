@@ -64,10 +64,10 @@ public:
         static std::vector<std::string> _names = {"f0", "w", "sat", "PD"};
         return _names;
     }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIterations &its) const override
+               TInput & /* Unused */, TIterations & /* Unused */) const override
     {
         const Eigen::Map<const Eigen::ArrayXf> z_spec(inputs[0].GetDataPointer(), m_zfrqs.size());
 
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
         std::cout << "Writing output." << std::endl;
     }
     std::string outPrefix = outarg.Get() + "LTZ_";
-    for (int i = 0; i < algo->numOutputs(); i++) {
+    for (size_t i = 0; i < algo->numOutputs(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }
     QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());

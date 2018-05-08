@@ -20,7 +20,7 @@ VolumeI::Pointer ThresholdMask(const QI::VolumeF::Pointer &img,
                                const float lower,
                                const float upper = std::numeric_limits<float>::infinity());
 VolumeI::Pointer OtsuMask(const QI::VolumeF::Pointer &img);
-std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const int size_threshold, const int to_keep, QI::VolumeI::Pointer &labels);
+std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const unsigned long size_threshold, const size_t to_keep, QI::VolumeI::Pointer &labels);
 
 } // End namespace QI
 

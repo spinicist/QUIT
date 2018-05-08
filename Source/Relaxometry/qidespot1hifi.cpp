@@ -168,7 +168,7 @@ public:
         if (resids.Size() > 0) {
             std::vector<double> r_temp(spgr_data.size() + 1);
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (int i = 0; i < r_temp.size(); i++) {
+            for (size_t i = 0; i < r_temp.size(); i++) {
                 resids[i] = r_temp[i];
             }
         }

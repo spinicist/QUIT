@@ -64,7 +64,7 @@ bool qMT::ValidParameters(cvecd &params) const {
 
 void qMT::setLineshape(TLineshape &l) { m_lineshape = l; }
 
-VectorXcd qMT::SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl flip, cdbl TR, cdbl Trf) const {
+VectorXcd qMT::SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl, cdbl TR, cdbl Trf) const {
     return scale(MT_SPGR(satflip, satf0, TR, Trf, m_lineshape, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]));
 }
 

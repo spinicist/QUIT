@@ -36,7 +36,7 @@ float PhaseReliabilityFilter::wrap(float voxel_value) {
     }
 }
 
-void PhaseReliabilityFilter::ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) {
+void PhaseReliabilityFilter::ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) {
     using TIter = ImageRegionIterator<TImage>;
     using TCNIter = ConstNeighborhoodIterator<TImage>;
     using TOffset = TCNIter::OffsetType;
@@ -60,7 +60,7 @@ void PhaseReliabilityFilter::ThreadedGenerateData(const TRegion &region, ThreadI
     while (!inputIter.IsAtEnd()) {
         const float phase = inputIter.GetCenterPixel();
         float reliability = 0;
-        for (auto j = 0; j < back.size(); j++) {
+        for (size_t j = 0; j < back.size(); j++) {
             const float d = wrap(inputIter.GetPixel(back[j]) - phase) -
                             wrap(phase - inputIter.GetPixel(fwrd[j]));
             reliability += d*d;

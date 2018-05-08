@@ -37,15 +37,15 @@ void ImageToVectorFilter<TInput>::GenerateOutputInformation() {
 	typename TOutput::PointType   outOrigin;
 	typename TOutput::DirectionType outDirection;
 
-	for (int i = 0; i < (OutputDimension); i++) {
-		outSpacing[i] = spacing[i];
-		outOrigin[i] =  origin[i];
-		for (int j = 0; j < (OutputDimension); j++) {
-			outDirection[i][j] = direction[i][j];
-		}
+    for (size_t i = 0; i < (OutputDimension); i++) {
+        outSpacing[i] = spacing[i];
+        outOrigin[i] =  origin[i];
+        for (size_t j = 0; j < (OutputDimension); j++) {
+            outDirection[i][j] = direction[i][j];
+        }
     }
     outputPtr->SetSpacing(outSpacing);
-	outputPtr->SetOrigin(outOrigin);
+    outputPtr->SetOrigin(outOrigin);
     outputPtr->SetDirection(outDirection);
     //std::cout << "END " << __PRETTY_FUNCTION__ << std::endl;
 }
@@ -61,7 +61,7 @@ void ImageToVectorFilter<TInput>::GenerateData() {
         itkExceptionMacro("Block end " << blockEnd << " would be greater than input length (" << inputLength << ")");
     }
     region.GetModifiableSize()[OutputDimension] = 0;
-    for (int i = 0; i < m_BlockSize; i ++) {
+    for (size_t i = 0; i < m_BlockSize; i ++) {
         region.GetModifiableIndex()[OutputDimension] = i + m_BlockStart;
         //std::cout << region << std::endl;
 		auto volume = ExtractType::New();

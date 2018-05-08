@@ -27,7 +27,7 @@ bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
                         const std::vector<TConst> &consts,
                         const TIndex &, // Unused
                         std::vector<TOutput> &outputs, TOutput &residual,
-                        TInput &resids, TIterations &its) const
+                        TInput & /* Unused */, TIterations & /* Unused */) const
 {
     const int np = m_seq.PhaseInc.rows();
     const double B1 = consts[0];
@@ -44,7 +44,7 @@ bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
         if (m_debug) {
             std::cout << "Outputs: " << tempOutputs.transpose() << std::endl;
         }
-        for (int o = 0; o < this->numOutputs(); o++) {
+        for (size_t o = 0; o < this->numOutputs(); o++) {
             outputs[o][f] = tempOutputs[o];
         }
     }

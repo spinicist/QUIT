@@ -46,10 +46,10 @@ public:
         std::vector<float> def;
         return def;
     }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
+               std::vector<TOutput> &outputs, TConst & /* Unused */,
+               TInput & /* Unused */, TIterations & /* Unused */) const override
     {
         Eigen::Map<const Eigen::VectorXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::VectorXd c = m_mat * indata.cast<double>();
@@ -59,8 +59,6 @@ public:
         for (int i = 0; i < m_mat.rows(); i++) {
             outputs[i] = c[i];
         }
-        residual = 0;
-        its = 0;
         return true;
     }
 };

@@ -50,8 +50,8 @@ public:
     }
     bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIterations &its) const override
+               std::vector<TOutput> &outputs, TOutput & /* Unused */,
+               TInput & /* Unused */, TIterations & /* Unused */) const override
     {
         const Eigen::Map<const Eigen::ArrayXf> zdata(inputs[0].GetDataPointer(), m_zfrqs.rows());
         QI::SplineInterpolator zspec(m_zfrqs, zdata.cast<double>());
@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
         std::cout << "Writing output." << std::endl;
     }
     std::string outPrefix = outarg.Get() + "MT_";
-    for (int i = 0; i < algo->numOutputs(); i++) {
+    for (size_t i = 0; i < algo->numOutputs(); i++) {
         QI::WriteVectorImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }
     

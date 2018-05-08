@@ -84,12 +84,12 @@ void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names)
 /*
  * Helper function to read in all the header lines
  */
-std::vector<std::vector<std::string>> GetHeaders(int n_files) {
+std::vector<std::vector<std::string>> GetHeaders(size_t n_files) {
     if (header_names && (header_names.Get().size() != header_paths.Get().size())) {
         QI_EXCEPTION("Number of header names must match number of header paths");
     }
     std::vector<std::vector<std::string>> headers(header_paths.Get().size(), std::vector<std::string>());
-    for (int h = 0; h < headers.size(); h++) {
+    for (size_t h = 0; h < headers.size(); h++) {
         const std::string header_path = header_paths.Get().at(h);
         if (verbose) std::cout << "Reading header file: " << header_path << std::endl;
         std::ifstream header_file(header_path);
@@ -135,7 +135,7 @@ void GetValues(const int n_files, const TLabels &labels, const std::vector<doubl
         label_filter->SetLabelInput(label_img);
         label_filter->SetInput(value_img);
         label_filter->Update();
-        for (int i = 0; i < labels.size(); i++) {
+        for (size_t i = 0; i < labels.size(); i++) {
             mean_table.at(f).at(i) = label_filter->GetMean(labels.at(i)) / scale_list.at(f);
             sigma_table.at(f).at(i) = label_filter->GetSigma(labels.at(i)) / scale_list.at(f);
             volume_table.at(f).at(i) = label_filter->GetCount(labels.at(i)) * vox_volume;
@@ -149,7 +149,7 @@ void GetValues(const int n_files, const TLabels &labels, const std::vector<doubl
 int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    int n_files = QI::CheckList(in_paths).size();
+    size_t n_files = QI::CheckList(in_paths).size();
     if (volumes) {
         if (verbose) std::cout << "There are " << n_files << " input images, finding ROI volumes" << std::endl;
     } else {
@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
     if (scale_list.size() < n_files) {
         int old_size = scale_list.size();
         scale_list.resize(n_files);
-        for (int i = old_size; i < n_files; i++) {
+        for (size_t i = old_size; i < n_files; i++) {
             scale_list.at(i) = 1.0;
         }
     }
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
     if (precision) std::cout << std::fixed << std::setprecision(precision.Get());
     if (transpose) {
         if (print_names) {
-            for (int h = 0; h < headers.size(); ++h) {
+            for (size_t h = 0; h < headers.size(); ++h) {
                 if (header_names) {
                     std::cout << header_names.Get().at(h) << delim.Get();
                 } else {
@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
             }
             std::cout << std::endl;
         }
-        for (int row = 0; row < n_files; ++row){
+        for (size_t row = 0; row < n_files; ++row){
             for (auto h = headers.begin(); h != headers.end(); h++) {
                 std::cout << h->at(row) << delim.Get();
             }
@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
                 std::cout << mean_table.at(row).at(0);
                 if (sigma) std::cout << "±" << sigma_table.at(row).at(0);
             }
-            for (int val = 1; val < labels.size(); ++val) {
+            for (size_t val = 1; val < labels.size(); ++val) {
                 std::cout << delim.Get();
                 if (volumes) {
                     std::cout << volume_table.at(row).at(val);
@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
             std::cout << std::endl;
         }
     } else {
-        for (int h = 0; h < headers.size(); h++) {
+        for (size_t h = 0; h < headers.size(); h++) {
             if (print_names) {
                 if (header_names) {
                     std::cout << header_names.Get().at(h) << delim.Get();
@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
             }
             std::cout << std::endl;
         }
-        for (int l = 0; l < labels.size(); ++l) {
+        for (size_t l = 0; l < labels.size(); ++l) {
             if (print_names) {
                 std::cout << label_names.at(l) << std::flush << delim.Get();
             }
@@ -254,7 +254,7 @@ int main(int argc, char **argv) {
                 std::cout << mean_table.at(0).at(l);
                 if (sigma) std::cout << "±" << sigma_table.at(0).at(l);
             }
-            for (int file = 1; file < n_files; ++file) {
+            for (size_t file = 1; file < n_files; ++file) {
                 std::cout << delim.Get();
                 if (volumes) {
                     std::cout << volume_table.at(file).at(l);

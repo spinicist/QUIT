@@ -53,7 +53,7 @@ void ReadArray(const std::string &s, Eigen::Array<Scalar, Eigen::Dynamic, 1> &ar
     }
 
     array = Eigen::Array<Scalar, Eigen::Dynamic, 1>(vals.size());
-    for (int i = 0; i < vals.size(); i++) {
+    for (size_t i = 0; i < vals.size(); i++) {
         array[i] = vals[i];
     }
 }
@@ -100,7 +100,7 @@ void ReadArray(std::istream &in, Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dyn
     }
     
     array = Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dynamic>(rows.size(), rows.at(0).size());
-    for (int i = 0; i < rows.size(); i++) {
+    for (size_t i = 0; i < rows.size(); i++) {
         if (rows.at(i).size() == array.cols()) {
             array.row(i) = rows.at(i);
         } else {
