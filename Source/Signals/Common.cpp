@@ -16,9 +16,9 @@ using namespace Eigen;
 
 namespace QI {
 
-//******************************************************************************
-#pragma mark Magnetisation Evolution Matrices, helper functions etc.
-//******************************************************************************
+/*
+ * Magnetisation Evolution Matrices, helper functions etc.
+ */
 typedef Matrix<double, 6, 6> Matrix6d;
 typedef Matrix<double, 6, 1> Vector6d;
 typedef Matrix<double, 9, 9> Matrix9d;
