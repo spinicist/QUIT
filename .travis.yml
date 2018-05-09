@@ -35,7 +35,8 @@ deploy:
     api_key:
       secure: cU68PSZVlgTVNuSWBj7mjDbReYTl9a4MZnbNWYgUkQ67DBBz9YLxyTKj/MjQguvcIUSoSu2HsiZvOmGe6xifWqu5a9YNWW6NKAYJS4S/ZQSL2aFwPw7lkkVjOX0aA/5UUnhbBXlMsC/3f7ZIL9cGtmeC5nh83yTnWigSaSbhXvkc3MlxGzZoQ3evhKly/W8Q9dzIC5vzu3ChdwNaDtDtRQAgKT68QUR0eNMGZ9XsxNhNVW0KQ7H8YExSBZxhdJOl+cxWXpsccL5cYUpVwumOFouAtbIxZ4dT9noE8KbcOIEyyAWZy3JITTYXUFxsxF6e58RgZOeV77X2wP+6q1lURmQ/D2blzj2zCIgINcW3x+yw/2K9KK1e/tckYnENGjyLg//HyV878zFqxInhvIaqNJ9XaALi1JAY7rFYjWHmsWv8b9J4p8FDFe7BAo0U95fqLTEC83l9lAcSHw27jUWHYA6PsljLKXpS/s1OEt6McJu+NMmw9+TB+qx181CM6kgGfvUnfFgIDZHT70ZeN3IZrxwHQcJ2z8YrY4OQ0xr96X40RwUkiZOjFkhUPCJAYwP/99Vf6hZAV6Lj31yGJOXR23A7oQuBm9kG3M3hIRT7XN8vqJW+eRu7KV7xOImRKprWwhbUzakTpPZ6gOS4RhE6yFTUYhARcN7duz6l8ZazKLQ=
     skip_cleanup: true
-    file: build/QUIT-2.0.0-Darwin.tar.gz
+    file_glob: true
+    file: cmake_build/QUIT-*-Darwin.tar.gz
     on:
       condition: $TRAVIS_OS_NAME = osx
       repo: spinicist/QUIT
@@ -44,7 +45,10 @@ deploy:
     api_key:
       secure: cU68PSZVlgTVNuSWBj7mjDbReYTl9a4MZnbNWYgUkQ67DBBz9YLxyTKj/MjQguvcIUSoSu2HsiZvOmGe6xifWqu5a9YNWW6NKAYJS4S/ZQSL2aFwPw7lkkVjOX0aA/5UUnhbBXlMsC/3f7ZIL9cGtmeC5nh83yTnWigSaSbhXvkc3MlxGzZoQ3evhKly/W8Q9dzIC5vzu3ChdwNaDtDtRQAgKT68QUR0eNMGZ9XsxNhNVW0KQ7H8YExSBZxhdJOl+cxWXpsccL5cYUpVwumOFouAtbIxZ4dT9noE8KbcOIEyyAWZy3JITTYXUFxsxF6e58RgZOeV77X2wP+6q1lURmQ/D2blzj2zCIgINcW3x+yw/2K9KK1e/tckYnENGjyLg//HyV878zFqxInhvIaqNJ9XaALi1JAY7rFYjWHmsWv8b9J4p8FDFe7BAo0U95fqLTEC83l9lAcSHw27jUWHYA6PsljLKXpS/s1OEt6McJu+NMmw9+TB+qx181CM6kgGfvUnfFgIDZHT70ZeN3IZrxwHQcJ2z8YrY4OQ0xr96X40RwUkiZOjFkhUPCJAYwP/99Vf6hZAV6Lj31yGJOXR23A7oQuBm9kG3M3hIRT7XN8vqJW+eRu7KV7xOImRKprWwhbUzakTpPZ6gOS4RhE6yFTUYhARcN7duz6l8ZazKLQ=
     skip_cleanup: true
-    file: build/QUIT-2.0.0-Linux.tar.gz
+    file_glob: true
+    file:
+      - cmake_build/QUIT-*-Linux.tar.gz
+      - cmake_build/QUIT-*-Linux.deb
     on:
       condition: $TRAVIS_OS_NAME = linux
       repo: spinicist/QUIT
