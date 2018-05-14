@@ -1,0 +1,5 @@
+quit (2.0.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Tobias C Wood <tobias@spinicist.org.uk>  Mon, 14 May 2018 05:53:23 -0400
