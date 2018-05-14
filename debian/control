@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Tobias C Wood <tobias@spinicist.org.uk>
 Build-Depends: debhelper (>= 9), cmake
 Standards-Version: 3.9.5
-Homepage: <insert the upstream URL, if relevant>
+Homepage: https://github.com/spinicist/quit
 #Vcs-Git: git://anonscm.debian.org/collab-maint/quit.git
 #Vcs-Browser: http://anonscm.debian.org/?p=collab-maint/quit.git;a=summary
 
@@ -12,9 +12,4 @@ Package: quit
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
-
-Package: quit-doc
-Architecture: all
-Description: documentation for quit
  <insert long description, indented with spaces>
