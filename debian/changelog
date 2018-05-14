@@ -1,3 +1,14 @@
+quit (2.0.1-2~1.gbp962d34) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @962d34f38988b4610ed474d67153b1939b293a12 **
+
+  [ NeuroDebian User ]
+  * WIP: Removed quit-docs from debian/
+
+  [ Tobias C Wood ]
+
+ -- NeuroDebian User <brain@neurodebian>  Mon, 14 May 2018 06:10:09 -0400
+
 quit (2.0.1-1) unstable; urgency=low
 
   * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
