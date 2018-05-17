@@ -108,14 +108,15 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
         const double dTE_3 = (m_sequence.ESP / 3);
-        double si2sum = 0, sidisum = 0;
+        double si2sum = 0, di2sum = 0, sidisum = 0;
         for (size_t i = 0; i < m_sequence.size() - 2; i++) {
             const double si = dTE_3 * (data(i) + 4*data(i+1) + data(i+2));
             const double di = data(i) - data(i+2);
             si2sum += si*si;
+            di2sum += di*di;
             sidisum += si*di;
         }
-        double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum);
+        double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*di2sum + sidisum);
         double PD = (data.array() / exp(-m_sequence.TE / T2)).mean();
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;

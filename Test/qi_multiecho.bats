@@ -28,7 +28,7 @@ SPIN_FILE="me.nii"
 
 # Create input for Single Component
 echo "$MCSIG_INPUT" > qisignal.in
-NOISE="0.002"
+NOISE="0.02"
 qisignal --model=1 -v --noise=$NOISE $SPIN_FILE << END_SIG
 {
     "PD" : "PD.nii",
@@ -51,8 +51,8 @@ qimultiecho $SPIN_FILE -v -al -oLL_ < multiecho.in
 qimultiecho $SPIN_FILE -v -an -oLM_ < multiecho.in
 qimultiecho $SPIN_FILE -v -aa -oAR_   < multiecho.in
 
-qidiff --baseline=T2.nii --input=LL_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose
-qidiff --baseline=T2.nii --input=LM_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose
-qidiff --baseline=T2.nii --input=AR_ME_T2.nii --noise=$NOISE --tolerance=50 --verbose
+qidiff --baseline=T2.nii --input=LL_ME_T2.nii --noise=$NOISE --tolerance=20 --verbose
+qidiff --baseline=T2.nii --input=LM_ME_T2.nii --noise=$NOISE --tolerance=5 --verbose
+qidiff --baseline=T2.nii --input=AR_ME_T2.nii --noise=$NOISE --tolerance=5 --verbose
 
 }
