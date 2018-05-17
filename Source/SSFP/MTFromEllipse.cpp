@@ -118,7 +118,7 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     problem.SetParameterLowerBound(p.data(), 1, 1e-6);
     problem.SetParameterUpperBound(p.data(), 1, 0.2 - 1e-6);
     problem.SetParameterLowerBound(p.data(), 2, 0.1);
-    problem.SetParameterUpperBound(p.data(), 2, 5.0);
+    problem.SetParameterUpperBound(p.data(), 2, 10.0);
     problem.SetParameterLowerBound(p.data(), 3, 0.05);
     problem.SetParameterUpperBound(p.data(), 3, 5.0);
     ceres::Solver::Options options;
