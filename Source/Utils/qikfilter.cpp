@@ -227,11 +227,14 @@ int main(int argc, char **argv) {
             fft_pad->SetInput(extract->GetOutput());
         }
         fft_pad->Update(); // Need to know the size of this to set up the kernel properly
+        if (verbose) std::cout << "After FFT padding size is: " << fft_pad->GetOutput()->GetLargestPossibleRegion().GetSize() << std::endl;
         if (i == 0) {
             tkernel->SetRegion(fft_pad->GetOutput()->GetLargestPossibleRegion());
             tkernel->SetSpacing(fft_pad->GetOutput()->GetSpacing());
             tkernel->SetOrigin(fft_pad->GetOutput()->GetOrigin());
             tkernel->SetDirection(fft_pad->GetOutput()->GetDirection());
+            tkernel->Update();
+            if (verbose) std::cout << "Created kernel, size is: " << tkernel->GetOutput()->GetLargestPossibleRegion().GetSize() << std::endl;
         }
         if (filter_per_volume) {
             tkernel->SetKernel(kernels.at(i));
@@ -239,19 +242,24 @@ int main(int argc, char **argv) {
         }
         auto forward = TFFT::New();
         forward->SetInput(fft_pad->GetOutput());
-
+        forward->Update();
+        
         auto mult    = TMult::New();
         mult->SetInput1(forward->GetOutput());
         mult->SetInput2(tkernel->GetOutput());
+        mult->Update();
 
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
         inverse->SetInput(mult->GetOutput());
+        if (verbose) std::cout << "Filtering k-space" << std::endl;
+        inverse->Update(); // If we don't have this update, next step fails
 
         auto unpadder = TUnpad::New();
         unpadder->SetDirectionCollapseToSubmatrix();
         unpadder->SetExtractionRegion(unpad_region);
         unpadder->SetInput(inverse->GetOutput());
+        if (verbose) std::cout << "Unpadding & tiling output" << std::endl;
         unpadder->Update();
 
         QI::VolumeXF::Pointer v = unpadder->GetOutput();
