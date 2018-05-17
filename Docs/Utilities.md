@@ -62,7 +62,7 @@ This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excita
 **Example Command Line**
 
 ```bash
-qi_rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.txt
+qi_rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.json
 ```
 
 **Example Input File**
@@ -354,7 +354,7 @@ Generates simulated images using signal equations. Used for the QUIT tests - whi
 **Example Command Line**
 
 ```bash
-qisignal --noise=0.01 simulated_spgr_image.nii.gz < input.txt
+qisignal --noise=0.01 simulated_spgr_image.nii.gz < input.json
 ```
 
 **Example Input File**

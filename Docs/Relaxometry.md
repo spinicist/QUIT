@@ -23,7 +23,7 @@ This program implements the classic Driven Equilibrium Single-Pulse Observation 
 **Example Command Line**
 
 ```bash
-qidespot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.txt
+qidespot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 ```
 
 **Example Input File**
@@ -65,7 +65,7 @@ This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / I
 **Example Command Line**
 
 ```bash
-qidespot1hifi spgr_file.nii.gz irspgr_file.nii.gz --mask=mask_file.nii.gz < input.txt
+qidespot1hifi spgr_file.nii.gz irspgr_file.nii.gz --mask=mask_file.nii.gz < input.json
 ```
 
 **Example Input File**
@@ -109,7 +109,7 @@ DESPOT2 uses SSFP data and a separate T<sub>1</sub> map to calculate T<sub>2</su
 **Example Command Line**
 
 ```bash
-qidespot2 t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.txt
+qidespot2 t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 ```
 
 **Example Input File**
@@ -156,7 +156,7 @@ DESPOT2-FM uses SSFP data with mulitple phase-increments (also called phase-cycl
 **Example Command Line**
 
 ```bash
-qidespot2fm t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.txt
+qidespot2fm t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 ```
 
 The input file should contain all SSFP images concatenated together as a 4D file. The preferred ordering is flip-angle, then phase-increment (i.e. all flip-angles at one phase-increment, then all flip-angles at the next phase-increment).
@@ -205,7 +205,7 @@ It is recommended to have an off-resonance map to stabilise the fitting. This ca
 **Example Command Line**
 
 ```bash
-qimcdespot spgr_file.nii.gz ssfp_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz --f0=f0_file.nii.gz --scale < input.txt
+qimcdespot spgr_file.nii.gz ssfp_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz --f0=f0_file.nii.gz --scale < input.json
 ```
 
 The SSFP input file should contain all SSFP images concatenated together as a 4D file (see [qidespot2fm](##qidespot2fm) above).
@@ -288,7 +288,7 @@ MP2RAGE adds a second inversion time to the standard T1w MPRAGE sequence. Combin
 **Example Command Line**
 
 ```bash
-qimp2rage input_file.nii.gz --mask=mask_file.nii.gz < input.txt
+qimp2rage input_file.nii.gz --mask=mask_file.nii.gz < input.json
 ```
 
 The input file must be complex-valued.
@@ -330,7 +330,7 @@ Classic monoexponential decay fitting. Can be used to fit either T2 or T2*.
 **Example Command Line**
 
 ```bash
-qimultiecho input_file.nii.gz --algo=a < input.txt
+qimultiecho input_file.nii.gz --algo=a < input.json
 ```
 
 **Example Input File**

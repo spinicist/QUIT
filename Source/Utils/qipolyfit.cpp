@@ -157,7 +157,6 @@ int main(int argc, char **argv) {
     double scale = (spacing/2).GetNorm();
     fit->SetScale(scale);
     fit->Update();
-    // itk::Point does not have symmetric operator<< and operator>>
     {
         cereal::JSONOutputArchive output(std::cout);
         QI::WriteCereal(output, "center", center);

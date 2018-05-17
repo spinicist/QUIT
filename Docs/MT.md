@@ -15,7 +15,7 @@ Fits a single Lorentzian to a Z-spectrum for B0 correction. Currently hard-coded
 **Example Command Line**
 
 ```bash
-qi_lorentzian zspectrum.nii.gz < input.txt
+qi_lorentzian zspectrum.nii.gz < input.json
 ```
 
 The Z-spectrum must be a 4D file with each volume acquired at a different offset frequency.
@@ -44,7 +44,7 @@ Calculates the MT asymmetry of a Z-spectrum.
 **Example Command Line**
 
 ```bash
-qi_mtasym zspectrum.nii.gz --f0=LTZ_f0.nii.gz < input.txt
+qi_mtasym zspectrum.nii.gz --f0=LTZ_f0.nii.gz < input.json
 ```
 
 The off-resonance map units must match the input frequencies (e.g. either PPM or Hertz)

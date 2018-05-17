@@ -74,7 +74,7 @@ The most important result of Xiang & Hoff's Geometric Solution paper was that th
 **Example Command Line**
 
 ```bash
-qi_ssfp_ellipse ssfp_data.nii.gz < input.txt
+qi_ssfp_ellipse ssfp_data.nii.gz < input.json
 ```
 
 The SSFP file must be complex-valued. At least three pairs of opposing phase-increments are recommended (six images in total).

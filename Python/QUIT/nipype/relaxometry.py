@@ -56,7 +56,7 @@ class QiDespot1(CommandLine):
     Example with parameter file
     -------
     >>> from QUIT.nipype.relaxometry import QiDespot1
-    >>> d1 = QiDespot1(prefix='nipype_', param_file='spgr_params.txt')
+    >>> d1 = QiDespot1(prefix='nipype_', param_file='spgr_params.json')
     >>> d1.inputs.in_file = 'SPGR.nii.gz'
     >>> d1_res = d1.run()
     >>> print(d1_res.outputs)

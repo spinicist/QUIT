@@ -119,7 +119,6 @@ SEQUENCE_GROUP="\
     }
 "
 
-echo "$INPUT" > mcd_input.txt
 NOISE="0.002"
 qisignal --model=3 -v --noise=$NOISE $SPGR_FILE $SSFP_FILE << END_SIG
 {
