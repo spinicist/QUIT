@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     all_resids(parser, "ALL RESIDUALS", "Output individual residuals in addition to the Sum-of-Squares", {'r',"resids"});
-    args::ValueFlag<float> clamp(parser, "CLAMP", "Clamp output T1 values to this value", {'c', "clamp"}, std::numeric_limits<float>::infinity());
+    args::ValueFlag<float> clamp(parser, "CLAMP T1", "Clamp output T1 values to this value", {'c', "clampT1"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
