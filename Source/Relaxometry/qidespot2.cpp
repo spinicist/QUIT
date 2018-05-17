@@ -236,6 +236,12 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'t',"clampT2"}, std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose);
 
+    if (verbose) std::cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << std::endl;
+    auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
+
+    if (verbose) std::cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << std::endl;
+    auto data = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
+
     std::shared_ptr<D2Algo> algo;
     switch (algorithm.Get()) {
         case 'l': algo = std::make_shared<D2LLS>();  if (verbose) std::cout << "LLS algorithm selected." << std::endl; break;
@@ -255,11 +261,6 @@ int main(int argc, char **argv) {
     algo->setSequence(ssfp);
     algo->setElliptical(ellipse);
 
-    if (verbose) std::cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << std::endl;
-    auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
-
-    if (verbose) std::cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << std::endl;
-    auto data = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);
