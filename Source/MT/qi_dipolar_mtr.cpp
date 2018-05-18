@@ -41,7 +41,7 @@ public:
         outputs[0] = 100. * (1. - (inputs[0][3] + inputs[0][4]) / (2. * inputs[0][2]));
         outputs[1] = 100. * (1. - (inputs[0][0] + inputs[0][1]) / (2. * inputs[0][2]));
         outputs[2] = outputs[1] - outputs[0];
-        outputs[3] = 100. * (1. - (inputs[0][3] - inputs[0][4]) / inputs[0][2]);
+        outputs[3] = 100. * (inputs[0][3] - inputs[0][4]) / inputs[0][2];
         return true;
     }
 };
