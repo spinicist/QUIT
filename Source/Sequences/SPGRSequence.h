@@ -27,19 +27,16 @@ struct SPGRBase : SequenceBase {
 
 struct SPGRSequence : SPGRBase {
     double TR;
-    
     QI_SEQUENCE_DECLARE(SPGR);
 };
 
 struct SPGREchoSequence : SPGRBase {
     double TR, TE;
-    Eigen::ArrayXd FA;
     QI_SEQUENCE_DECLARE(SPGREcho);
 };
 
 struct SPGRFiniteSequence : SPGRBase {
     double TR, TE, Trf;
-    Eigen::ArrayXd FA;
     QI_SEQUENCE_DECLARE(SPGRFinite);
 };
 
