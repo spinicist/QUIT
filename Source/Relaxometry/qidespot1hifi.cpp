@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(0), out_prefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), out_prefix + "T1" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(2), out_prefix + "B1" + QI::OutExt());
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), out_prefix + "residual"  + QI::OutExt());
+    QI::WriteImage(apply->GetResidualOutput(), out_prefix + "residual"  + QI::OutExt());
     if (all_resids) {
         QI::WriteVectorImage(apply->GetAllResidualsOutput(), out_prefix + "all_residuals" + QI::OutExt());
     }
