@@ -16,7 +16,7 @@
 
 #include "itkImageSource.h"
 #include "itkImageSliceIteratorWithIndex.h"
-#include "itkMaskImageFilter.h"
+#include "itkProgressReporter.h"
 #include "ImageTypes.h"
 #include "Util.h"
 #include "Args.h"
@@ -96,7 +96,7 @@ protected:
         QI::VectorVolumeF::PointType pt_center; m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
         itk::VariableLengthVector<float> zero(m_splines.size()); zero.Fill(0.);
 
-        ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
+        itk::ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
         while(!imageIt.IsAtEnd()) {
             QI::VectorVolumeF::PointType pt, pt_rf;
             m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), pt);

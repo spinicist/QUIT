@@ -15,7 +15,6 @@
 #include "itkImageSource.h"
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageRegionConstIterator.h"
-#include "itkMaskImageFilter.h"
 #include "ImageTypes.h"
 #include "Util.h"
 #include "Polynomial.h"
