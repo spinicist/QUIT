@@ -259,3 +259,153 @@ class QiDespot2(CommandLine):
             outputs['residual_map'] = prefix + 'D2_residual.nii.gz'
         
         return outputs
+
+############################ qidespot2fm ############################
+
+class QiDespot2FMInputSpec(CommandLineInputSpec):
+    # Inputs
+
+    t1_map = File(exists=True, argstr='%s', mandatory=True,
+        position=0, desc='Path to T1 map')
+    ssfp_file = File(exists=True, argstr='%s', mandatory=True,
+        position=1, desc='Path to SSFP data')
+    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
+        xor=['param_dict'], mandatory=True, exists=True)
+    param_dict = traits.Dict(desc='dictionary trait', position=2, 
+        argstr='', mandatory=True, xor=['param_file'])
+
+    # Options
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
+    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
+    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
+    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='-A')
+    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+    algo = traits.Enum("LLS","WLS","NLS", desc="Choose algorithm", argstr="--algo=%d")
+    environ = {'QUIT_EXT':'NIFTI_GZ'}
+
+class QiDespot2FMOutputSpec(TraitedSpec):
+    t2_map = File(desc="Path to T2 map")
+    pd_map = File(desc="Path to PD map")
+    f0_map = File(desc="Path to f0 (off-resonance) map")
+    residual_map = File(desc="Path to residual map")
+
+class QiDespot2FM(CommandLine):
+    """
+    Run DESPOT2-FM analysis
+
+    Example
+    -------
+    >>> from QUIT.nipype.relaxometry import QiDespot2FM
+    >>> params = {'SSFP': {'TR':5E-3, 'FA':[10,10,50,50], 'PhaseInc':[180,180,0,0] }
+    >>> fm = QiDespot2FM(prefix='nipype_', param_dict=params)
+    >>> fm.inputs.in_file = 'SSFP.nii.gz'
+    >>> fm.inputs.t1_file = 'D1_T1.nii.gz'
+    >>> fm_res = fm.run()
+    >>> print(fm_res.outputs)
+
+    """
+
+    _cmd = 'qidespot2fm'
+    input_spec = QiDespot2FMInputSpec
+    output_spec = QiDespot2FMOutputSpec
+
+    def _format_arg(self, name, spec, value):
+        if name == 'param_dict':
+            with open('_tmp_input.json', 'w') as outfile:
+                json.dump(value, outfile)
+            return "< _tmp_input.json"
+
+        return super(QiDespot2FM, self)._format_arg(name, spec, value)
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        
+        prefix = ''
+        if self.inputs.prefix:
+            prefix = self.inputs.prefix
+            
+        outputs['t2_map'] = prefix + 'FM_T2.nii.gz'
+        outputs['pd_map'] = prefix + 'FM_PD.nii.gz'
+        outputs['f0_map'] = prefix + 'FM_f0.nii.gz'
+        
+        if self.inputs.residuals:
+            outputs['residual_map'] = prefix + 'FM_residual.nii.gz'
+        
+        return outputs
+
+############################ qimcdespot ############################
+
+class QiDespot2FMInputSpec(CommandLineInputSpec):
+    # Inputs
+
+    t1_map = File(exists=True, argstr='%s', mandatory=True,
+        position=0, desc='Path to T1 map')
+    ssfp_file = File(exists=True, argstr='%s', mandatory=True,
+        position=1, desc='Path to SSFP data')
+    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
+        xor=['param_dict'], mandatory=True, exists=True)
+    param_dict = traits.Dict(desc='dictionary trait', position=2, 
+        argstr='', mandatory=True, xor=['param_file'])
+
+    # Options
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
+    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
+    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
+    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='-A')
+    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+    algo = traits.Enum("LLS","WLS","NLS", desc="Choose algorithm", argstr="--algo=%d")
+    environ = {'QUIT_EXT':'NIFTI_GZ'}
+
+class QiDespot2FMOutputSpec(TraitedSpec):
+    t2_map = File(desc="Path to T2 map")
+    pd_map = File(desc="Path to PD map")
+    f0_map = File(desc="Path to f0 (off-resonance) map")
+    residual_map = File(desc="Path to residual map")
+
+class QiDespot2FM(CommandLine):
+    """
+    Run DESPOT2-FM analysis
+
+    Example
+    -------
+    >>> from QUIT.nipype.relaxometry import QiDespot2FM
+    >>> params = {'SSFP': {'TR':5E-3, 'FA':[10,10,50,50], 'PhaseInc':[180,180,0,0] }
+    >>> fm = QiDespot2FM(prefix='nipype_', param_dict=params)
+    >>> fm.inputs.in_file = 'SSFP.nii.gz'
+    >>> fm.inputs.t1_file = 'D1_T1.nii.gz'
+    >>> fm_res = fm.run()
+    >>> print(fm_res.outputs)
+
+    """
+
+    _cmd = 'qidespot2fm'
+    input_spec = QiDespot2FMInputSpec
+    output_spec = QiDespot2FMOutputSpec
+
+    def _format_arg(self, name, spec, value):
+        if name == 'param_dict':
+            with open('_tmp_input.json', 'w') as outfile:
+                json.dump(value, outfile)
+            return "< _tmp_input.json"
+
+        return super(QiDespot2FM, self)._format_arg(name, spec, value)
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        
+        prefix = ''
+        if self.inputs.prefix:
+            prefix = self.inputs.prefix
+            
+        outputs['t2_map'] = prefix + 'FM_T2.nii.gz'
+        outputs['pd_map'] = prefix + 'FM_PD.nii.gz'
+        outputs['f0_map'] = prefix + 'FM_f0.nii.gz'
+        
+        if self.inputs.residuals:
+            outputs['residual_map'] = prefix + 'FM_residual.nii.gz'
+        
+        return outputs
