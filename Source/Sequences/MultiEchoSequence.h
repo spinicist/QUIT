@@ -1,7 +1,7 @@
 /*
- *  SpinEcho.h
+ *  MultiEchoSequence.h
  *
- *  Copyright (c) 2016 Tobias Wood.
+ *  Copyright (c) 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,12 +16,22 @@
 
 namespace QI {
 
-struct MultiEchoSequence : SequenceBase {
-    double TR, TE1, ESP;
-    int ETL;
+struct MultiEchoBase : SequenceBase {
+    double TR;
     Eigen::ArrayXd TE;
-    QI_SEQUENCE_DECLARE(MultiEcho);
-    size_t size() const override;
+    Eigen::Index size() const override;
+    Eigen::ArrayXcd signal(std::shared_ptr<QI::Model> m, const Eigen::VectorXd &par) const override;
+};
+void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::MultiEchoBase> &sb);
+
+struct MultiEchoSequence : MultiEchoBase {
+    double TE1, ESP;
+    int ETL;
+    QI_SEQUENCE_DECLARE_NOSIG(MultiEcho);
+};
+
+struct MultiEchoFlexSequence : MultiEchoBase {
+    QI_SEQUENCE_DECLARE_NOSIG(MultiEchoFlex);
 };
 
 } // End namespace QI

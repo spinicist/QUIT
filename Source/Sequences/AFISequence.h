@@ -19,7 +19,7 @@ namespace QI {
 
 struct AFISequence : SequenceBase {
     double FA, TR1, TR2;
-    size_t size() const override { return 2; }
+    Eigen::Index size() const override { return 2; }
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
 
     template<typename Archive>

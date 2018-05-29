@@ -22,7 +22,7 @@ struct CASLSequence : QI::SequenceBase {
     Eigen::ArrayXd post_label_delay;
 
     QI_SEQUENCE_DECLARE(CASL);
-    size_t size() const override { return 1; };
+    Eigen::Index size() const override { return 1; };
 };
 
 } // End namespace QI

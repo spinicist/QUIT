@@ -22,7 +22,7 @@ struct MPRAGESequence : SequenceBase {
     double TR, FA, eta, TI, TD;
     int ETL, k0;
     QI_SEQUENCE_DECLARE(MPRAGE);
-    size_t size() const override;
+    Eigen::Index size() const override;
 };
 
 struct MP2RAGESequence : SequenceBase {
@@ -32,7 +32,7 @@ struct MP2RAGESequence : SequenceBase {
     Eigen::Array3d TD;
 
     QI_SEQUENCE_DECLARE(MP2RAGE);
-    size_t size() const override;
+    Eigen::Index size() const override;
     Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
 };
 
@@ -43,7 +43,7 @@ class MP3RAGESequence : SequenceBase {
     Eigen::ArrayXd TD;
 
     QI_SEQUENCE_DECLARE(MP3RAGE);
-    size_t size() const override;
+    Eigen::Index size() const override;
     Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
 };
 

@@ -13,7 +13,7 @@
 
 namespace QI {
 
-size_t MPRAGESequence::size() const { return 1; }
+Eigen::Index MPRAGESequence::size() const { return 1; }
 
 Eigen::ArrayXcd MPRAGESequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const {
     return m->MPRAGE(par, FA, TR, ETL, k0, eta, TI, TD);
@@ -46,7 +46,7 @@ void MPRAGESequence::save(cereal::JSONOutputArchive &ar) const {
  * MP2RAGE
  */
 
-size_t MP2RAGESequence::size() const { return 2; }
+Eigen::Index MP2RAGESequence::size() const { return 2; }
 
 Eigen::ArrayXcd MP2RAGESequence::signal(const std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
@@ -83,7 +83,7 @@ void MP2RAGESequence::save(cereal::JSONOutputArchive &ar) const {
  * MP3RAGE
  */
 
-size_t MP3RAGESequence::size() const { return 3; }
+Eigen::Index MP3RAGESequence::size() const { return 3; }
 
 Eigen::ArrayXcd MP3RAGESequence::signal(const std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");

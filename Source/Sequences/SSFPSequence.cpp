@@ -19,7 +19,7 @@
 
 namespace QI {
 
-size_t SSFPBase::size() const {
+Eigen::Index SSFPBase::size() const {
     return FA.rows();
 }
 
@@ -110,7 +110,7 @@ Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model> /* Unused */,
     QI_FAIL("Not implemented");
 }
 
-size_t SSFPEllipseSequence::size() const {
+Eigen::Index SSFPEllipseSequence::size() const {
     return FA.rows() * PhaseInc.rows();
 }
 
@@ -130,7 +130,7 @@ Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model> /* Unused */, cons
     QI_FAIL("Not implemented");
 }
 
-size_t SSFPMTSequence::size() const {
+Eigen::Index SSFPMTSequence::size() const {
     return FA.rows();
 }
 

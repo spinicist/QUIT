@@ -25,9 +25,6 @@ SPIN_SEQUENCE="
 "
 
 SPIN_FILE="me.nii"
-
-# Create input for Single Component
-echo "$MCSIG_INPUT" > qisignal.in
 NOISE="0.02"
 qisignal --model=1 -v --noise=$NOISE $SPIN_FILE << END_SIG
 {

@@ -22,7 +22,7 @@ namespace QI {
 
 struct SPGRBase : SequenceBase {
     Eigen::ArrayXd FA;
-    size_t size() const override;
+    Eigen::Index size() const override;
 };
 
 struct SPGRSequence : SPGRBase {

@@ -13,7 +13,6 @@
 #include <Eigen/Dense>
 
 #include "itkDerivativeImageFilter.h"
-
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
@@ -23,12 +22,13 @@
 
 class ASEAlgo : public QI::ApplyF::Algorithm {
 protected:
-    const QI::MultiEchoSequence m_sequence;
+    const std::shared_ptr<QI::MultiEchoBase> m_sequence;
     const int m_inputsize;
-    int m_linear_count;
     const double m_B0;
+    double m_Tc;
     const QI::VolumeF::SpacingType m_voxsize;
-
+    Eigen::ArrayXd m_TE; // Local copy excluding values below Tc
+    Eigen::Index m_TE0;
     // Constants for calculations
     const double kappa = 0.03; // Conversion factor
     const double gamma = 42.577e6; // Gyromagnetic Ratio
@@ -36,17 +36,33 @@ protected:
     const double Hb = 0.34 / kappa; // Hct = 0.34;
 
 public:
-    ASEAlgo(const QI::MultiEchoSequence& seq, const int inputsize, const double B0, const QI::VolumeF::SpacingType voxsize) :
+    ASEAlgo(const std::shared_ptr<QI::MultiEchoBase> &seq, const int inputsize, const double B0, const QI::VolumeF::SpacingType voxsize) :
         m_sequence(seq), m_inputsize(inputsize), m_B0(B0), m_voxsize(voxsize)
     {
         // 2.94 is dHb for an OEF of 26%
-        const double Tc = 1.5 / ((4./3.) * M_PI * gamma * B0 * delta_X0 * 0.75);
-        m_linear_count = (m_sequence.TE > Tc).count();
-        QI_DB( B0 );
-        QI_DB( Tc );
-        QI_DBVEC( m_sequence.TE );
-        QI_DBVEC( (m_sequence.TE > Tc) );
-        QI_DB( m_linear_count );
+        m_Tc = 1.5 / ((4./3.) * M_PI * gamma * B0 * delta_X0 * 0.75);
+        const int above_Tc_count = (m_sequence->TE.abs() > m_Tc).count();
+        m_TE = Eigen::ArrayXd(above_Tc_count);
+        Eigen::Index ind = 0;
+        m_TE0 = m_sequence->size();
+        for (Eigen::Index i = 0; i < m_sequence->size(); i++) {
+            if (m_sequence->TE[i] == 0) {
+                m_TE0 = i;
+            }
+            if (std::abs(m_sequence->TE[i]) > m_Tc) {
+                m_TE[ind] = std::abs(m_sequence->TE[i]);
+                ind++;
+            }
+        }
+        if (m_TE0 == m_sequence->size()) {
+            QI_FAIL("Did not find a zero echo-time in input");
+        }
+        // QI_DB( B0 );
+        // QI_DB( m_Tc );
+        // QI_DB( m_TE0 );
+        // QI_DB( above_Tc_count );
+        // QI_DBVEC( m_sequence->TE );
+        // QI_DBVEC( m_TE );
     }
 
     size_t numInputs() const override  { return 1; }
@@ -94,47 +110,36 @@ public:
         }
     }
     
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &/* Unused */,
                const TIndex & /* Unused */,
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override
     {
-        const Eigen::Map<const Eigen::ArrayXXf> input(inputs[0].GetDataPointer(), m_sequence.size(), inputs[0].Size() / m_sequence.size());
-        Eigen::ArrayXd data = input.cast<double>().rowwise().mean();
-
-        // Eigen::MatrixXd X(m_linear_count, 2);
-        // X.col(0) = m_sequence.TE.tail(m_linear_count);
-        // X.col(1).setOnes();
-        // Eigen::VectorXd Y = data.tail(m_linear_count).log();
-        // Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        // const double R2prime = -b[0];
-        // const double logS0_linear = b[1];
-
-        const Eigen::ArrayXd tau = m_sequence.TE.tail(m_linear_count);
-        Eigen::ArrayXd F = Eigen::ArrayXd::Ones(m_linear_count);
-        // QI_DBVEC( F );
-        for (int d = 0; d < 3; d++) {
-            const double grad = consts[d];
-            const Eigen::ArrayXd x = grad * 2 * M_PI * m_voxsize[d] * tau / 2;
-            for (int i = 0; i < x.rows(); i++) { F[i] *= std::abs(sinc(x[i])); };
-            // QI_DB( grad );
-            // QI_DBVEC( x );
-            // QI_DBVEC( F );
+        const Eigen::Map<const Eigen::ArrayXXf> input(inputs[0].GetDataPointer(), m_sequence->size(), inputs[0].Size() / m_sequence->size());
+        Eigen::ArrayXd all_data = input.cast<double>().rowwise().mean();
+        Eigen::ArrayXd data(m_TE.rows());
+        Eigen::Index ind = 0;
+        for (Eigen::Index i = 0; i < all_data.rows(); i++) {
+            if (std::abs(m_sequence->TE[i]) > m_Tc) {
+                double F = 1.0;
+                for (auto d = 0; d < 3; d++) {
+                    const double grad = consts[d];
+                    const double x = grad * 2 * M_PI * m_voxsize[d] * m_sequence->TE[i] / 2;
+                    F *= std::abs(sinc(x));
+                }
+                data[ind] = all_data[i] / F;
+                ind++;
+            }
         }
-        const Eigen::ArrayXd linear_data = data.tail(m_linear_count) / F;
-        const double dTE_3 = (m_sequence.ESP / 3);
-        double si2sum = 0, sidisum = 0;
-        for (int i = 0; i < m_linear_count - 2; i++) {
-            const double si = dTE_3 * (linear_data(i) + 4*linear_data(i+1) + linear_data(i+2));
-            const double di = linear_data(i) - linear_data(i+2);
-            si2sum += si*si;
-            sidisum += si*di;
-        }
-        double R2prime = 1 / ((si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum));
-        double S0_linear = (linear_data.array() / exp(-tau * R2prime)).mean();
 
-        const double DBV = log(S0_linear) - log(data[0]);
-
+        Eigen::MatrixXd X(m_TE.rows(), 2);
+        X.col(0) = m_TE;
+        X.col(1).setOnes();
+        Eigen::VectorXd Y = data.log();
+        Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        const double R2prime = -b[0];
+        const double logS0_linear = b[1];
+        const double DBV = logS0_linear - log(data[m_TE0]);
         const double dHb = 3*R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * m_B0);
         const double OEF = dHb / Hb;
 
@@ -182,7 +187,9 @@ int main(int argc, char **argv) {
     if (verbose) std::cout << "Reading ASE data from: " << QI::CheckPos(input_path) << std::endl;
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
-    auto sequence = QI::ReadSequence<QI::MultiEchoSequence>(std::cin, verbose);
+    std::shared_ptr<QI::MultiEchoBase> sequence;
+    cereal::JSONInputArchive ar(std::cin);
+    load(ar, sequence);
     QI::VolumeF::SpacingType vox_size = input->GetSpacing();
     if (slice_arg) {
         vox_size[2]  = slice_arg.Get();

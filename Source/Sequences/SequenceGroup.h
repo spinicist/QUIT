@@ -26,7 +26,7 @@ struct SequenceGroup : SequenceBase {
 
     std::string &name() const override { static std::string name = "SequenceGroup"; return name; }
     size_t count() const override;
-    size_t size() const override;
+    Eigen::Index size() const override;
     Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;
 

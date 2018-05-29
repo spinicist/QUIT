@@ -21,7 +21,7 @@ std::shared_ptr<SequenceBase> &SequenceGroup::operator[](const size_t i) {
     return sequences.at(i);
 }
 
-size_t SequenceGroup::size() const {
+Eigen::Index SequenceGroup::size() const {
     size_t sz = 0;
     for (auto& sig : sequences)
         sz += sig->size();

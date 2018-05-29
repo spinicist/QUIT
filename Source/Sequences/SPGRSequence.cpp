@@ -15,7 +15,7 @@
 
 namespace QI {
 
-size_t SPGRBase::size() const {
+Eigen::Index SPGRBase::size() const {
     return FA.rows();
 }
 
