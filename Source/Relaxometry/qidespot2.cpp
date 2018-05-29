@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
     QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (resids) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
     if (verbose) std::cout << "All done." << std::endl;
     return EXIT_SUCCESS;
