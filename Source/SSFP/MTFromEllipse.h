@@ -22,7 +22,7 @@ public:
     const static size_t NumOutputs = 5;
 protected:
     const QI::SSFPMTSequence &m_seq;
-    const double T2r;
+    const double T2_b;
     const bool debug;
 public:
     MTFromEllipse(const QI::SSFPMTSequence &s, const double T2, const bool d);
@@ -31,7 +31,7 @@ public:
     size_t numOutputs() const override { return NumOutputs; }
     size_t dataSize() const override { return m_seq.FA.rows() * 3; }
     const std::vector<std::string> &names() const {
-        static std::vector<std::string> _names = {"M0", "F", "kf", "T1f", "T2f"};
+        static std::vector<std::string> _names = {"M0", "f_b", "k_bf", "T1_f", "T2_f"};
         return _names;
     }
     std::vector<float> defaultConsts() const override;
