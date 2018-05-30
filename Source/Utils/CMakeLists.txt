@@ -3,7 +3,7 @@ if( ${BUILD_UTILITIES} )
     set( PROGRAMS
         qihdr qicomplex qiaffine qimask qikfilter
         qisplitsubjects qipolyfit qipolyimg
-        qi_coil_combine qi_rfprofile )
+        qi_coil_combine qi_rfprofile qi_gradient )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)

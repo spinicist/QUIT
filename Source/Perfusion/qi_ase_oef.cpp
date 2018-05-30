@@ -110,7 +110,7 @@ public:
         }
     }
     
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &/* Unused */,
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex & /* Unused */,
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override
@@ -143,19 +143,6 @@ public:
         const double dHb = 3*R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * m_B0);
         const double OEF = dHb / Hb;
 
-        // QI_DB( input );
-        // QI_DBVEC( data );
-        // QI_DBVEC( linear_data );
-        // QI_DB( m_voxsize );
-        // QI_DBVEC( tau );
-        // QI_DBVEC( F );
-        // QI_DB( R2prime );
-        // QI_DB( log(S0_linear) );
-        // QI_DB( log(data[0]) );
-        // QI_DB( DBV );
-        // QI_DB( dHb );
-        // QI_DB( OEF );
-
         outputs[0] = R2prime;
         outputs[1] = DBV*100;
         outputs[2] = OEF*100;
@@ -180,7 +167,9 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<double> B0(parser, "B0", "Field-strength (Tesla), default 3", {'B', "B0"}, 3.0);
-    args::ValueFlag<std::string> f0_arg(parser, "FIELD MAP", "A field map for macroscopic field gradient correction", {'f', "fmap"});
+    args::ValueFlag<std::string> gradx(parser, "GRADX", "Gradient of field-map in x-direction for MFG correction", {'x', "gradx"});
+    args::ValueFlag<std::string> grady(parser, "GRADY", "Gradient of field-map in y-direction for MFG correction", {'y', "grady"});
+    args::ValueFlag<std::string> gradz(parser, "GRADZ", "Gradient of field-map in z-direction for MFG correction", {'z', "gradz"});
     args::ValueFlag<double> slice_arg(parser, "SLICE THICKNESS", "Slice-thickness for MFG calculation (useful if there was a slice gap)", {'s', "slice"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
@@ -203,25 +192,10 @@ int main(int argc, char **argv) {
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, input);
-    if (f0_arg) {
-        if (verbose) std::cout << "Calculating gradient of field-map" << std::endl;
-        auto f0_map = QI::ReadImage(f0_arg.Get());
-        auto grad = itk::DerivativeImageFilter<QI::VolumeF, QI::VolumeF>::New();
-        grad->SetInput(f0_map);
-        grad->SetDirection(0);
-        apply->SetConst(0, grad->GetOutput());
-        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad_x" + QI::OutExt());
-        grad->GetOutput()->DisconnectPipeline();
-        grad->SetDirection(1);
-        apply->SetConst(1, grad->GetOutput());
-        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad_y" + QI::OutExt());
-        grad->GetOutput()->DisconnectPipeline();
-        grad->SetDirection(2);
-        apply->SetConst(2, grad->GetOutput());
-        QI::WriteImage(grad->GetOutput(), outPrefix + "_fieldgrad_z" + QI::OutExt());
-        grad->GetOutput()->DisconnectPipeline();
-    }
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
+    if (gradx) apply->SetConst(0, QI::ReadImage(gradx.Get()));
+    if (grady) apply->SetConst(1, QI::ReadImage(grady.Get()));
+    if (gradz) apply->SetConst(2, QI::ReadImage(gradz.Get()));
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     }
