@@ -2,7 +2,7 @@ site_name: QUIT
 site_description: Documentation for the QUantitative Imaging Tools
 site_url: https://spinicist.github.io/QUIT
 repo_url: https://github.com/spinicist/QUIT
-edit_uri: ""
+edit_uri: "edit/development/Docs/"
 
 docs_dir: Docs
 theme: mkdocs
@@ -20,7 +20,7 @@ pages:
 
 copyright: Copyright &copy; 2018 Tobias Wood tobias.wood@kcl.ac.uk
 
-extra_javascript: 
+extra_javascript:
     - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML
 
 markdown_extensions:
