@@ -21,7 +21,7 @@ message( STATUS "Found Eigen in ${EIGEN3_INCLUDE_DIRS}" )
 include_directories( SYSTEM ${EIGEN3_INCLUDE_DIRS} )
 
 if( NOT DEFINED CERES_INCLUDE_DIRS )
-    find_package( Ceres 1.12.0 REQUIRED COMPONENTS C++11 )
+    find_package( Ceres 1.12.0 )
 endif()
 include_directories( SYSTEM ${CERES_INCLUDE_DIRS} )
 
@@ -33,7 +33,7 @@ find_package(ITK 4.10.0 REQUIRED
                 ITKImageFeature ITKImageFilterBase ITKImageFunction ITKImageGrid
                 ITKImageIntensity ITKImageStatistics ITKLabelMap ITKLabelVoting
                 ITKMathematicalMorphology ITKOptimizers ITKRegistrationCommon
-                ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
+                ITKSmoothing ITKThresholding ITKTransform )
 include( ${ITK_USE_FILE} )
 include_directories( SYSTEM ${Args_DIR} ${Cereal_DIR} )
 
