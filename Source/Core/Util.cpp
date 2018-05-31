@@ -86,7 +86,7 @@ std::string GetExt(const std::string &filename) {
 std::string Basename(const std::string &path) {
     std::size_t slash = path.find_last_of("/");
     if (slash != std::string::npos) {
-        return StripExt(path.substr(slash));
+        return StripExt(path.substr(slash + 1));
     } else {
         return StripExt(path);
     }
