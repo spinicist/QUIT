@@ -73,6 +73,14 @@ int Pipeline() {
         image->DisconnectPipeline();
     }
 
+    // Get these before flipping otherwise header info is flipped too
+    typename TImage::DirectionType fullDir = image->GetDirection();
+    typename TImage::SpacingType fullSpacing = image->GetSpacing();
+    typename TImage::PointType fullOrigin = image->GetOrigin();
+    typename TImage::SizeType fullSize = image->GetLargestPossibleRegion().GetSize();
+    QI::VolumeF::DirectionType direction;
+    QI::VolumeF::SpacingType spacing;
+
     // Flip if required
     if (flip) {
         auto flip_filter = itk::FlipImageFilter<TImage>::New();
@@ -96,14 +104,6 @@ int Pipeline() {
         image = flip_filter->GetOutput();
         image->DisconnectPipeline();
     }
-
-
-    typename TImage::DirectionType fullDir = image->GetDirection();
-    typename TImage::SpacingType fullSpacing = image->GetSpacing();
-    typename TImage::PointType fullOrigin = image->GetOrigin();
-    typename TImage::SizeType fullSize = image->GetLargestPossibleRegion().GetSize();
-    QI::VolumeF::DirectionType direction;
-    QI::VolumeF::SpacingType spacing;
 
     using Affine = itk::CenteredAffineTransform<double, 3>; 
     using Euler  = itk::Euler3DTransform<double>;
