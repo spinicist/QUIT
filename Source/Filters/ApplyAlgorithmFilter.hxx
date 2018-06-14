@@ -71,6 +71,7 @@ RealTimeClock::TimeStampType ApplyAlgorithmFilter<TI, TO, TC, TM>::GetTotalTime(
 
 template<typename TI, typename TO, typename TC, typename TM>
 void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetInput(unsigned int i, const TInputImage *image) {
+    if (!m_algorithm) itkExceptionMacro("No algorithm set, do not know number of valid inputs");
     if (i < m_algorithm->numInputs()) {
         this->SetNthInput(i, const_cast<TInputImage*>(image));
     } else {
