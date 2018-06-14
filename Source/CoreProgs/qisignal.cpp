@@ -243,16 +243,10 @@ int main(int argc, char **argv) {
     calcSignal->SetModel(model);
     calcSignal->SetSigma(noise.Get());
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
-    if (mask) {
-        if (verbose) std::cout << "Reading mask: " << mask.Get() << std::endl;
-        calcSignal->SetMask(QI::ReadImage(mask.Get()));
-    }
+    if (mask) calcSignal->SetMask(QI::ReadImage(mask.Get(), verbose));
 
     QI::VolumeF::Pointer reference = ITK_NULLPTR;
-    if (ref_arg) {
-        if (verbose) std::cout << "Reading reference image: " << ref_arg.Get() << std::endl;
-        reference = QI::ReadImage(ref_arg.Get());
-    }
+    if (ref_arg) reference = QI::ReadImage(ref_arg.Get(), verbose);
     if (verbose) {
         auto monitor = QI::GenericMonitor::New();
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
@@ -264,8 +258,7 @@ int main(int argc, char **argv) {
         std::string par_name = model->ParameterNames()[i];
         QI::ReadCereal(input, par_name, par_filename);
         if (par_filename != "") {
-            if (verbose) std::cout << "Opening " << par_filename << std::endl;
-            QI::VolumeF::Pointer param = QI::ReadImage(par_filename);
+            QI::VolumeF::Pointer param = QI::ReadImage(par_filename, verbose);
             if (reference) {
                 if (verbose) std::cout << "Resampling to reference" << std::endl;
                 typedef itk::ResampleImageFilter<QI::VolumeF, QI::VolumeF, double> TResampler;

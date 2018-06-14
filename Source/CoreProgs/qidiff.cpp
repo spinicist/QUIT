@@ -34,10 +34,8 @@ int main(int argc, char **argv) {
     args::ValueFlag<double>      noise(parser, "NOISE", "Added noise level, tolerance is relative to this", {"noise"}, 0);
     args::Flag                   absolute(parser, "ABSOLUTE", "Use absolute difference, not relative (avoids 0/0 problems)", {'a', "abs"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading input: " << QI::CheckValue(input_path) << std::endl;
-    if (verbose) std::cout << "Reading baseline: " << QI::CheckValue(baseline_path) << std::endl;
-    auto input = QI::ReadImage(QI::CheckValue(input_path));
-    auto baseline = QI::ReadImage(QI::CheckValue(baseline_path));
+    auto input = QI::ReadImage(QI::CheckValue(input_path), verbose);
+    auto baseline = QI::ReadImage(QI::CheckValue(baseline_path), verbose);
     
     auto diff = itk::SubtractImageFilter<QI::VolumeF>::New();
     diff->SetInput1(input);
