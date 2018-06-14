@@ -52,4 +52,13 @@ double SplineInterpolator::scale(const double &x) const {
     return (x - m_min) / m_width;
 }
 
+void SplineInterpolator::print(std::ostream &ostr) const {
+    ostr << "SPLINE Min: " << m_min << " Width: " << m_width << std::endl;
+}
+
+std::ostream& operator<<(std::ostream &ostr, const SplineInterpolator &sp) {
+    sp.print(ostr);
+    return ostr;
+}
+
 } // End namespace QI

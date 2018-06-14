@@ -30,6 +30,7 @@ public:
     SplineInterpolator();
     SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y);
     double operator()(const double &x) const;
+    void print(std::ostream &ostr) const;
 
 protected:
     TSpline m_spline;
@@ -37,6 +38,8 @@ protected:
     double m_width;
     double scale(const double &x) const;
 };
+
+std::ostream& operator<<(std::ostream &ostr, const SplineInterpolator &sp);
 
 } // End namespace QI
 

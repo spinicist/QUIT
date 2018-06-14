@@ -40,11 +40,18 @@ public:
     void SetReference(const SmartPointer<QI::VolumeF> ref) {
         m_reference = ref;
     }
-
+    void SetDebug(const bool d) { m_debug = d; }
+    void SetDim(const int d) { 
+        if ((m_dim < 0) || (m_dim > 2)) {
+            QI_FAIL("Invalid dimension for RF profile, must be 0-2");
+        }
+        m_dim = d;
+    }
     void SetRF(const Eigen::ArrayXd pos, const std::vector<Eigen::ArrayXd> vals) {
         m_splines.clear();
         for (const auto &v : vals) {
             m_splines.push_back(QI::SplineInterpolator(pos, v));
+            QI_LOG(m_debug, m_splines.back());
         }
     }
 
@@ -64,6 +71,8 @@ public:
 protected:
     SmartPointer<QI::VolumeF> m_reference;
     std::vector<QI::SplineInterpolator> m_splines;
+    bool m_debug = false;
+    int m_dim = 0;
 
     ProfileImage(){
     }
@@ -71,12 +80,12 @@ protected:
     void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
         auto output = this->GetOutput();
         ImageSliceIteratorWithIndex<QI::VectorVolumeF> imageIt(output, region);
-        imageIt.SetFirstDirection(0);
-        imageIt.SetSecondDirection(1);
+        imageIt.SetFirstDirection((m_dim + 1) % 3);
+        imageIt.SetSecondDirection((m_dim + 2) % 3);
         imageIt.GoToBegin();
         ImageSliceIteratorWithIndex<QI::VolumeF> it_B1(m_reference, region);
-        it_B1.SetFirstDirection(0);
-        it_B1.SetSecondDirection(1);
+        it_B1.SetFirstDirection((m_dim + 1) % 3);
+        it_B1.SetSecondDirection((m_dim + 2) % 3);
         it_B1.GoToBegin();
 
         const auto mask = this->GetMask();
@@ -104,8 +113,9 @@ protected:
             itk::VariableLengthVector<float> vals(m_splines.size());
 
             for (size_t i = 0; i < m_splines.size(); i++) {
-                vals[i] = m_splines[i](pt_rf[2]);
+                vals[i] = m_splines[i](pt_rf[m_dim]);
             }
+            QI_LOG(m_debug, "Slice co-ordinate: " << pt_rf << " Spline Point: " << pt_rf[m_dim] << " value: " << vals);
             while (!imageIt.IsAtEndOfSlice()) {
                 while (!imageIt.IsAtEndOfLine()) {
                     if (!mask || maskIter.Get()) {
@@ -155,6 +165,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<int> dimension(parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 0);
     QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
@@ -177,8 +188,10 @@ int main(int argc, char **argv) {
         if (verbose) std::cout << "Generating image" << std::endl;
     }
     auto image = itk::ProfileImage::New();
+    image->SetDebug(debug);
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
+    image->SetDim(dimension.Get());
     if (mask) image->SetMask(QI::ReadImage(mask.Get()));
     auto monitor = QI::GenericMonitor::New();
     image->AddObserver(itk::ProgressEvent(), monitor);
