@@ -15,3 +15,6 @@
 	url = https://github.com/USCiLab/cereal.git
 [submodule "ITK"]
 	shallow = true
+[submodule "External/NumericalIntegration"]
+	path = External/NumericalIntegration
+	url = https://github.com/tbs1980/NumericalIntegration.git
