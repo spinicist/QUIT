@@ -1,5 +1,5 @@
-option( BUILD_CEST "Build the MT Programs" ON )
-if( ${BUILD_CEST} )
+option( BUILD_MT "Build the MT Programs" ON )
+if( ${BUILD_MT} )
     set( PROGRAMS
          qi_mtasym qi_lorentzian qi_dipolar_mtr )
 
