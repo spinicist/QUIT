@@ -1,7 +1,7 @@
 ![Logo](Docs/logo.png)
 
 [![Build Status](https://travis-ci.org/spinicist/QUIT.svg?branch=master)](https://travis-ci.org/spinicist/QUIT)
-
+[![DOI](http://joss.theoj.org/papers/10.21105/joss.00656/status.svg)](https://doi.org/10.21105/joss.00656)
 [![DOI](https://zenodo.org/badge/37066948.svg)](https://zenodo.org/badge/latestdoi/37066948)
 
 Credit / Blame / Contact - Tobias Wood - tobias.wood@kcl.ac.uk
