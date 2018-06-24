@@ -43,7 +43,7 @@ qidespot1 $SPGR_FILE --verbose <<OUT
     }
 }
 OUT
-qidiff --baseline=T1.nii --input=D1_T1.nii --noise=$NOISE --tolerance=30 --verbose
+qidiff --baseline=T1.nii --input=D1_T1.nii --noise=$NOISE --tolerance=35 --verbose
 
 }
 
