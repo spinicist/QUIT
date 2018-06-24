@@ -12,6 +12,14 @@ Welcome to the QUantitative Imaging Tools, a collection of C++ programs for anal
 * [Stats / GLM](Stats.md)
 * [Utilities](Utilities.md)
 
+## Citing
+
+QUIT has been published in the Journal of Open Source Software. If you use it, please cite the [paper](https://doi.org/10.21105/joss.00656) in the following way:
+
+`Wood, (2018). QUIT: QUantitative Imaging Tools. Journal of Open Source Software, 3(26), 656, https://doi.org/10.21105/joss.00656`
+
+Thank you.
+
 ## Installation
 
 Pre-compiled binaries are provided for Linux and Mac OS X in a .tar.gz archive from the [releases page](http://github.com/spinicist/QUIT/releases "Releases").
