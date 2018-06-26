@@ -9,24 +9,26 @@
  *
  */
 
-#include "qMT.h"
+#include "RamaniModel.h"
 
 using namespace std;
 using namespace Eigen;
 
 namespace QI {
+namespace Model {
+
 /*
  * qMT Model (2 component)
  */
 
-string qMT::Name() const { return "qMT"; }
-size_t qMT::nParameters() const { return 9; }
-const vector<string> & qMT::ParameterNames() const {
-    static vector<string> n{"PD", "T1f", "T2f", "T1r", "T2r", "kf", "F", "f0", "B1"};
+string Ramani::Name() const { return "qMT"; }
+size_t Ramani::nParameters() const { return 9; }
+const vector<string> & Ramani::ParameterNames() const {
+    static vector<string> n{"PD", "T1f", "T2f", "T1b", "T2b", "k_bf", "f_b", "f0", "B1"};
     return n;
 }
 
-ArrayXXd qMT::Bounds(const FieldStrength f) const {
+ArrayXXd Ramani::Bounds(const FieldStrength f) const {
     size_t nP = nParameters();
     ArrayXXd b(nP, 2);
     switch (f) {
@@ -43,7 +45,7 @@ ArrayXXd qMT::Bounds(const FieldStrength f) const {
     return b;
 }
 
-ArrayXd qMT::Default(const FieldStrength f) const {
+ArrayXd Ramani::Default(const FieldStrength f) const {
     ArrayXd p(nParameters());
     switch (f) {
     case FieldStrength::Three: p << 1.0, 1.5, 0.05, 1.0, 12e-6, 1.0, 0.1, 0., 1.0; break;
@@ -53,7 +55,7 @@ ArrayXd qMT::Default(const FieldStrength f) const {
     return p;
 }
 
-bool qMT::ValidParameters(cvecd &params) const {
+bool Ramani::ValidParameters(cvecd &params) const {
     // Negative values for everything except f0 make no sense
     if ((params.array().head(7) < 0.0).any()) {
         return false;
@@ -62,10 +64,11 @@ bool qMT::ValidParameters(cvecd &params) const {
     }
 }
 
-void qMT::setLineshape(TLineshape &l) { m_lineshape = l; }
+void Ramani::setLineshape(TLineshape &l) { m_lineshape = l; }
 
-VectorXcd qMT::SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl, cdbl TR, cdbl Trf) const {
+VectorXcd Ramani::SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl, cdbl TR, cdbl Trf) const {
     return scale(MT_SPGR(satflip, satf0, TR, Trf, m_lineshape, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]));
 }
 
+} // End namespace Model
 } // End namespace QI

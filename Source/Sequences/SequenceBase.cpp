@@ -21,7 +21,7 @@ Eigen::ArrayXd SequenceBase::weights(const double /* Unused */) const {
     return Eigen::ArrayXd::Ones(size()); // Default weights are constant
 }
 
-Eigen::ArrayXd SequenceBase::signal_magnitude(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXd SequenceBase::signal_magnitude(const std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     Eigen::ArrayXcd c_signal = this->signal(m, p);
     return c_signal.abs();
 }

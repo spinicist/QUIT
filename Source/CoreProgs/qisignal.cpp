@@ -22,7 +22,7 @@
 
 #include "VectorToImageFilter.h"
 
-#include "Model.h"
+#include "Models.h"
 #include "Util.h"
 #include "ThreadPool.h"
 #include "Args.h"
@@ -34,6 +34,7 @@
 #include "MultiEchoSequence.h"
 #include "AFISequence.h"
 #include "MPRAGESequence.h"
+#include "MTSatSequence.h"
 #include "SequenceGroup.h"
 
 /*
@@ -46,7 +47,7 @@ typedef itk::VectorImage<std::complex<float>, 3> TCVImage;
 class SignalsFilter : public itk::ImageToImageFilter<TImage, TCVImage> {
 protected:
     std::shared_ptr<QI::SequenceBase> m_sequence;
-    std::shared_ptr<QI::Model> m_model;
+    std::shared_ptr<QI::Model::ModelBase> m_model;
     double m_sigma = 0.0;
     itk::TimeProbe m_clock;
     itk::RealTimeClock::TimeStampType m_meanTime = 0.0, m_totalTime = 0.0;
@@ -94,7 +95,7 @@ public:
         this->SetNumberOfRequiredOutputs(1);
         this->SetNthOutput(0, this->MakeOutput(0));
     }
-    void SetModel(std::shared_ptr<QI::Model> m) {
+    void SetModel(std::shared_ptr<QI::Model::ModelBase> m) {
         m_model = m;
         this->SetNumberOfRequiredInputs(1);
     }
@@ -213,21 +214,19 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> ref_arg(parser, "REFERENCE", "Resample inputs to this reference space", {'r', "ref"});
     args::ValueFlag<float> noise(parser, "NOISE", "Add complex noise with std=value", {'N',"noise"}, 0.);
     args::ValueFlag<int> seed(parser, "SEED", "Seed noise RNG with specific value", {'s', "seed"}, -1);
-    args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model 1/2/3, default 1", {'M',"model"}, 1);
+    args::ValueFlag<std::string> model_arg(parser, "MODEL", "Choose model (1/2/3/MT) default 1", {'M',"model"}, "1");
     args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
     QI::ParseArgs(parser, argc, argv, verbose);
     if (!filenames) {
         std::cerr << "No output filenames specified. Use --help to see usage." << std::endl;
         return EXIT_FAILURE;
     }
-    std::shared_ptr<QI::Model> model = nullptr;
-    switch (model_arg.Get()) {
-        case 1: model = std::make_shared<QI::SCD>(); break;
-        case 2: model = std::make_shared<QI::MCD2>(); break;
-        case 3: model = std::make_shared<QI::MCD3>(); break;
-        default:
-            QI_FAIL("Unknown number of components: " << model_arg.Get());
-    }
+    std::shared_ptr<QI::Model::ModelBase> model = nullptr;
+    if (model_arg.Get() == "1") { model = std::make_shared<QI::Model::OnePool>(); }
+    else if (model_arg.Get() == "2") { model = std::make_shared<QI::Model::TwoPool>(); }
+    else if (model_arg.Get() == "3") { model = std::make_shared<QI::Model::ThreePool>(); }
+    else if (model_arg.Get() == "MT") { model = std::make_shared<QI::Model::Ramani>(); }
+    else { QI_FAIL("Unknown model specified: " << model_arg.Get()); }
     if (verbose) std::cout << "Using " << model->Name() << " model." << std::endl;
 
     if (seed) {

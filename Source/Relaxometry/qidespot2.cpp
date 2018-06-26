@@ -29,7 +29,7 @@
 //******************************************************************************
 class D2Algo : public QI::ApplyF::Algorithm {
 protected:
-    const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+    const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
     std::shared_ptr<QI::SSFPBase> m_sequence;
     size_t m_iterations = 15;
     bool m_elliptical = false;
@@ -164,7 +164,7 @@ class D2Functor : public Eigen::DenseFunctor<double> {
         const Eigen::ArrayXd m_data;
         const std::shared_ptr<QI::SequenceBase> m_sequence;
         const double m_T1, m_B1;
-        const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+        const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
 
         D2Functor(const double T1, const std::shared_ptr<QI::SequenceBase> s, const Eigen::ArrayXd &d, const double B1, const bool /* Unused */, const bool /* Unused */) :
             DenseFunctor<double>(3, s->size()),

@@ -9,15 +9,16 @@
  *
  */
 
-#ifndef MODELS_QMT_H
-#define MODELS_QMT_H
+#ifndef MODEL_RAMANI_H
+#define MODEL_RAMANI_H
 
-#include "Model.h"
+#include "ModelBase.h"
 #include "Lineshape.h"
 
 namespace QI {
+namespace Model {
 
-class qMT : public Model {
+class Ramani : public ModelBase {
     DECLARE_MODEL_INTERFACE()
 protected:
     TLineshape m_lineshape;
@@ -26,6 +27,7 @@ public:
     Eigen::VectorXcd SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl flip, cdbl TR, cdbl Trf) const override;
 };
 
+} // End namespace Model
 } // End namespace QI
 
-#endif // MODELS_QMT_H
+#endif // MODEL_RAMANI_H

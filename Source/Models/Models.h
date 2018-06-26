@@ -12,8 +12,9 @@
 #ifndef MODELS_H
 #define MODELS_H
 
-#include "Model.h"
-#include "DESPOT_2C.h"
-#include "DESPOT_3C.h"
+#include "OnePoolModel.h"
+#include "TwoPoolModel.h"
+#include "ThreePoolModel.h"
+#include "RamaniModel.h"
 
 #endif // MODELS_H
