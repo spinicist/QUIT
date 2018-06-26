@@ -17,6 +17,7 @@
 #include "itkImageSource.h"
 #include "itkImageSliceIteratorWithIndex.h"
 #include "itkProgressReporter.h"
+#include "itkImageMomentsCalculator.h"
 #include "ImageTypes.h"
 #include "Util.h"
 #include "Args.h"
@@ -56,6 +57,7 @@ public:
     }
 
     void SetMask(const QI::VolumeF *mask) { this->SetNthInput(1, const_cast<QI::VolumeF*>(mask)); }
+    void SetCenterMask(const bool cm) { this->m_centerMask = cm; }
     typename QI::VolumeF::ConstPointer GetMask() const { return static_cast<const QI::VolumeF *>(this->ProcessObject::GetInput(1)); }
     
     void GenerateOutputInformation() ITK_OVERRIDE {
@@ -71,7 +73,7 @@ public:
 protected:
     SmartPointer<QI::VolumeF> m_reference;
     std::vector<QI::SplineInterpolator> m_splines;
-    bool m_debug = false;
+    bool m_debug = false, m_centerMask = false;
     int m_dim = 0;
 
     ProfileImage(){
@@ -97,12 +99,21 @@ protected:
             maskIter.GoToBegin();
         }
 
-        // Calculate geometric center
-        QI::VectorVolumeF::IndexType idx_center;
-        for (int i = 0; i < 3; i++) {
-            idx_center[i] = m_reference->GetLargestPossibleRegion().GetSize()[i] / 2;
+        QI::VectorVolumeF::PointType pt_center;
+        if (mask && m_centerMask) {
+            auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
+            moments->SetImage(mask);
+            moments->Compute();
+            if (m_debug) std::cout << "Mask CoG is: " << moments->GetCenterOfGravity() << std::endl;
+            pt_center = moments->GetCenterOfGravity();
+        } else {
+            // Calculate geometric center
+            QI::VectorVolumeF::IndexType idx_center;
+            for (int i = 0; i < 3; i++) {
+                idx_center[i] = m_reference->GetLargestPossibleRegion().GetSize()[i] / 2;
+            }
+            m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
         }
-        QI::VectorVolumeF::PointType pt_center; m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
         itk::VariableLengthVector<float> zero(m_splines.size()); zero.Fill(0.);
 
         itk::ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
@@ -164,8 +175,9 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::Flag     centerMask(parser, "CENTER ON MASK", "Set the center of the slab to the center of the mask", {'c', "center"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    args::ValueFlag<int> dimension(parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 0);
+    args::ValueFlag<int> dimension(parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 2);
     QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
@@ -192,6 +204,7 @@ int main(int argc, char **argv) {
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
     image->SetDim(dimension.Get());
+    image->SetCenterMask(centerMask);
     if (mask) image->SetMask(QI::ReadImage(mask.Get()));
     auto monitor = QI::GenericMonitor::New();
     image->AddObserver(itk::ProgressEvent(), monitor);
