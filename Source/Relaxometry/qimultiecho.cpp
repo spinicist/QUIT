@@ -109,7 +109,7 @@ public:
         Eigen::ArrayXd data = indata.cast<double>();
         const double dTE_3 = (m_sequence.ESP / 3);
         double si2sum = 0, di2sum = 0, sidisum = 0;
-        for (size_t i = 0; i < m_sequence.size() - 2; i++) {
+        for (Eigen::Index i = 0; i < m_sequence.size() - 2; i++) {
             const double si = dTE_3 * (data(i) + 4*data(i+1) + data(i+2));
             const double di = data(i) - data(i+2);
             si2sum += si*si;
