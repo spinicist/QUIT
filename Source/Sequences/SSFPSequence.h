@@ -33,7 +33,7 @@ struct SSFPSequence : SSFPBase {
 
 struct SSFPEchoSequence : SSFPSequence {
     QI_SEQUENCE_DECLARE(SSFPEcho);
-    Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &par) const override;
 };
 
 struct SSFPFiniteSequence : SSFPBase {

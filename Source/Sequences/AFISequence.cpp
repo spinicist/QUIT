@@ -13,7 +13,7 @@
 
 namespace QI {
 
-Eigen::ArrayXcd AFISequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd AFISequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->AFI(p, FA, TR1, TR2);
 }
 

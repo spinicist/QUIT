@@ -29,7 +29,7 @@ Eigen::ArrayXd SSFPSequence::weights(const double f0) const {
     return weights;
 }
 
-Eigen::ArrayXcd SSFPSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFP(p, FA, TR, PhaseInc);
 }
 
@@ -46,11 +46,11 @@ void SSFPSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
-Eigen::ArrayXcd SSFPEchoSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPEchoSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFPEcho(p, FA, TR, PhaseInc);
 }
 
-Eigen::ArrayXd SSFPEchoSequence::signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXd SSFPEchoSequence::signal_magnitude(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFPEchoMagnitude(p, FA, TR, PhaseInc);
 }
 
@@ -73,7 +73,7 @@ Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
     return weights;
 }
 
-Eigen::ArrayXcd SSFPFiniteSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPFiniteSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFPFinite(p, FA, TR, Trf, PhaseInc);
 }
 
@@ -92,7 +92,7 @@ void SSFPFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
-Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFP_GS(p, FA, TR);
 }
 
@@ -106,7 +106,7 @@ void SSFPGSSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( FA );
 }
 
-Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
+Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 
@@ -126,7 +126,7 @@ void SSFPEllipseSequence::save(cereal::JSONOutputArchive &ar) const {
     QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
 }
 
-Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
+Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 

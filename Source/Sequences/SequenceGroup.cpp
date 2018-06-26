@@ -28,7 +28,7 @@ Eigen::Index SequenceGroup::size() const {
     return sz;
 }
 
-Eigen::ArrayXcd SequenceGroup::signal(std::shared_ptr<Model> m,
+Eigen::ArrayXcd SequenceGroup::signal(std::shared_ptr<Model::ModelBase> m,
                                       const Eigen::VectorXd &p) const {
     Eigen::ArrayXcd result(size());
     size_t start = 0;

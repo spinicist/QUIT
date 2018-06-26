@@ -1,7 +1,7 @@
 /*
- *  DESPOT_2C.h
+ *  TwoPoolModel.h
  *
- *  Copyright (c) 2016 Tobias Wood.
+ *  Copyright (c) 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,15 +9,16 @@
  *
  */
 
-#ifndef MODELS_DESPOT_2C_H
-#define MODELS_DESPOT_2C_H
+#ifndef MODEL_TWOPOOL_H
+#define MODEL_TWOPOOL_H
 
-#include "Model.h"
+#include "ModelBase.h"
 
 namespace QI {
+namespace Model {
 
-class MCD2 : public Model {
-	DECLARE_MODEL_INTERFACE()
+class TwoPool : public ModelBase {
+    DECLARE_MODEL_INTERFACE()
 
     Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
     Eigen::VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
@@ -27,13 +28,14 @@ class MCD2 : public Model {
     Eigen::VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
 };
 
-class MCD2_NoEx : public Model {
+class TwoPool_NoExchange : public ModelBase {
     DECLARE_MODEL_INTERFACE()
 
     Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
     Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
 };
 
+} // End namespace Model
 } // End namespace QI
 
-#endif // MODELS_DESPOT_2C_H
+#endif // MODEL_TWOPOOL_H

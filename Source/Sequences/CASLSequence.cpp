@@ -27,7 +27,7 @@ void CASLSequence::save(cereal::JSONOutputArchive &ar) const {
        CEREAL_NVP(post_label_delay));
 }
 
-Eigen::ArrayXcd CASLSequence::signal(const std::shared_ptr<QI::Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
+Eigen::ArrayXcd CASLSequence::signal(const std::shared_ptr<QI::Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not Implemented");
 }
 

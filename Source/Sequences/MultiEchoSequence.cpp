@@ -21,7 +21,7 @@ Eigen::Index MultiEchoBase::size() const {
     return TE.rows();
 }
 
-Eigen::ArrayXcd MultiEchoBase::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd MultiEchoBase::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->MultiEcho(p, TE, TR);
 }
 

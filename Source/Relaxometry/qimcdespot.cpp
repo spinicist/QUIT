@@ -22,7 +22,7 @@
 #include "Args.h"
 #include "ImageIO.h"
 #include "IO.h"
-#include "Model.h"
+#include "Models.h"
 #include "SequenceGroup.h"
 #include "RegionContraction.h"
 #include "EigenCereal.h"
@@ -30,9 +30,9 @@
 struct MCDSRCFunctor {
     const QI::SequenceGroup &m_sequence;
     const Eigen::ArrayXd m_data, m_weights;
-    const std::shared_ptr<QI::Model> m_model;
+    const std::shared_ptr<QI::Model::ModelBase> m_model;
 
-    MCDSRCFunctor(std::shared_ptr<QI::Model> m, QI::SequenceGroup &s,
+    MCDSRCFunctor(std::shared_ptr<QI::Model::ModelBase> m, QI::SequenceGroup &s,
                   const Eigen::ArrayXd &d, const Eigen::ArrayXd &w) :
         m_sequence(s), m_data(d), m_weights(w), m_model(m)
     {
@@ -57,14 +57,14 @@ struct MCDSRCFunctor {
 
 struct SRCAlgo : public QI::ApplyF::Algorithm {
     Eigen::ArrayXXd m_bounds;
-    std::shared_ptr<QI::Model> m_model = nullptr;
+    std::shared_ptr<QI::Model::ModelBase> m_model = nullptr;
     QI::SequenceGroup &m_sequence;
-    QI::FieldStrength m_tesla = QI::FieldStrength::Three;
+    QI::Model::FieldStrength m_tesla = QI::Model::FieldStrength::Three;
     int m_iterations = 0;
     size_t m_samples = 5000, m_retain = 50;
     bool m_gauss = true;
 
-    SRCAlgo(std::shared_ptr<QI::Model>&m, Eigen::ArrayXXd &b,
+    SRCAlgo(std::shared_ptr<QI::Model::ModelBase>&m, Eigen::ArrayXXd &b,
             QI::SequenceGroup &s, int mi) :
         m_bounds(b), m_model(m), m_sequence(s), m_iterations(mi)
     {}
@@ -73,7 +73,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
     size_t numOutputs() const override { return m_model->nParameters(); }
     size_t dataSize() const override   { return m_sequence.size(); }
 
-    void setModel(std::shared_ptr<QI::Model> &m) { m_model = m; }
+    void setModel(std::shared_ptr<QI::Model::ModelBase> &m) { m_model = m; }
     void setSequence(QI::SequenceGroup &s) { m_sequence = s; }
     void setBounds(Eigen::ArrayXXd &b) { m_bounds = b; }
     void setIterations(const int i) { m_iterations = i; }
@@ -169,13 +169,13 @@ int main(int argc, char **argv) {
         QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
     }
 
-    std::shared_ptr<QI::Model> model = nullptr;
-    if (modelarg.Get() == "1")         { model = std::make_shared<QI::SCD>(); }
-    else if (modelarg.Get() == "2")    { model = std::make_shared<QI::MCD2>(); }
-    else if (modelarg.Get() == "2nex") { model = std::make_shared<QI::MCD2_NoEx>(); }
-    else if (modelarg.Get() == "3")    { model = std::make_shared<QI::MCD3>(); }
-    else if (modelarg.Get() == "3_f0") { model = std::make_shared<QI::MCD3_f0>(); }
-    else if (modelarg.Get() == "3nex") { model = std::make_shared<QI::MCD3_NoEx>(); }
+    std::shared_ptr<QI::Model::ModelBase> model = nullptr;
+    if (modelarg.Get() == "1")         { model = std::make_shared<QI::Model::OnePool>(); }
+    else if (modelarg.Get() == "2")    { model = std::make_shared<QI::Model::TwoPool>(); }
+    else if (modelarg.Get() == "2nex") { model = std::make_shared<QI::Model::TwoPool_NoExchange>(); }
+    else if (modelarg.Get() == "3")    { model = std::make_shared<QI::Model::ThreePool>(); }
+    else if (modelarg.Get() == "3_f0") { model = std::make_shared<QI::Model::ThreePool_f0>(); }
+    else if (modelarg.Get() == "3nex") { model = std::make_shared<QI::Model::ThreePool_NoExchange>(); }
     else {
         std::cerr << "Invalid model " << modelarg.Get() << " specified." << std::endl;
         return EXIT_FAILURE;
@@ -184,16 +184,16 @@ int main(int argc, char **argv) {
     if (verbose && scale) std::cout << "Mean-scaling selected" << std::endl;
     model->setScaleToMean(scale);
 
-    Eigen::ArrayXXd bounds = model->Bounds(QI::FieldStrength::Three);
-    Eigen::ArrayXd start = model->Default(QI::FieldStrength::Three);
+    Eigen::ArrayXXd bounds = model->Bounds(QI::Model::FieldStrength::Three);
+    Eigen::ArrayXd start = model->Default(QI::Model::FieldStrength::Three);
     switch (field.Get()) {
         case '3':
-            bounds = model->Bounds(QI::FieldStrength::Three);
-            start = model->Default(QI::FieldStrength::Three);
+            bounds = model->Bounds(QI::Model::FieldStrength::Three);
+            start = model->Default(QI::Model::FieldStrength::Three);
             break;
         case '7':
-            bounds = model->Bounds(QI::FieldStrength::Seven);
-            start = model->Bounds(QI::FieldStrength::Seven);
+            bounds = model->Bounds(QI::Model::FieldStrength::Seven);
+            start = model->Bounds(QI::Model::FieldStrength::Seven);
             break;
         case 'u': {
             Eigen::ArrayXd temp;

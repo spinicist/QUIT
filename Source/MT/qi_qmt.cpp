@@ -1,7 +1,7 @@
 /*
- *  qidespot1.cpp - Part of QUantitative Imaging Tools
+ *  qi_qmt.cpp - Part of QUantitative Imaging Tools
  *
- *  Copyright (c) 2015 Tobias Wood.
+ *  Copyright (c) 2018 Tobias Wood, Samuel Hurley, Erika Raven
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,21 +16,17 @@
 
 #include "ApplyTypes.h"
 #include "Models.h"
-#include "SPGRSequence.h"
+#include "MTSatSequence.h"
 #include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
 
-//******************************************************************************
-// Algorithm Subclasses
-//******************************************************************************
-class D1Algo : public QI::ApplyF::Algorithm {
+class QMTAlgo : public QI::ApplyF::Algorithm {
 public:
-    static const int DefaultIterations = 15;
+
 protected:
-    const std::shared_ptr<QI::Model::ModelBase> m_model = std::make_shared<QI::Model::OnePool>();
-    QI::SPGRSequence m_sequence;
+    QI::SPGRMTSequence m_sequence;
     int m_iterations = DefaultIterations;
     double m_loPD = -std::numeric_limits<double>::infinity();
     double m_hiPD = std::numeric_limits<double>::infinity();
@@ -57,7 +53,7 @@ public:
 
 class D1LLS : public D1Algo {
 public:
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -78,13 +74,13 @@ public:
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = 1;
-        return std::make_tuple(true, "");
+        return true;
     }
 };
 
 class D1WLLS : public D1Algo {
 public:
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -118,7 +114,7 @@ public:
         Eigen::ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        return std::make_tuple(true, "");
+        return true;
     }
 };
 
@@ -161,7 +157,7 @@ public:
         m_loPD = 1e-6;
     }
 
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -169,11 +165,11 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         const double B1 = consts[0];
         const double scale = indata.maxCoeff();
-        if (scale < std::numeric_limits<double>::epsilon()) {
+        if (scale < 0) {
             outputs[0] = 0;
             outputs[1] = 0;
             residual = 0;
-            return std::make_tuple(false, "Maximum data value was zero or less");
+            return false;
         }
         const Eigen::ArrayXd data = indata.cast<double>() / scale;
         Eigen::Array2d p; p << 10., 1.;
@@ -197,7 +193,7 @@ public:
         outputs[0] = p[0] * indata.maxCoeff();
         outputs[1] = p[1];
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            std::cout << summary.FullReport() << std::endl;
         }
         its = summary.iterations.size();
         residual = summary.final_cost * indata.maxCoeff();
@@ -208,7 +204,7 @@ public:
             for (size_t i = 0; i < r_temp.size(); i++)
                 resids[i] = r_temp[i];
         }
-        return std::make_tuple(true, "");
+        return true;
     }
 };
 

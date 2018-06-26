@@ -1,5 +1,5 @@
 /*
- *  SPGR.cpp
+ *  MTSat.cpp
  *
  *  Copyright (c) 2018 Tobias Wood.
  *
@@ -7,30 +7,34 @@
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
- *  SPGR / FLASH / FFE Sequences
+ *  SPGR sequence with saturation pulse at different offsets
  *
  */
 
-#include "SPGRSequence.h"
+#include "MTSatSequence.h"
 
 namespace QI {
 
-Eigen::Index SPGRBase::size() const {
-    return FA.rows();
+Eigen::Index MTSatSequence::size() const {
+    return sat_f0.rows();
 }
 
-Eigen::ArrayXcd SPGRSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return m->SPGR(p, FA, TR);
+Eigen::ArrayXcd MTSatSequence::signal(const Eigen::VectorXd &p) const {
+    return MT_SPGR(p, FA, TR);
 }
 
 void SPGRSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
+    ar(cereal::make_nvp("TR", TR),
+       cereal::make_nvp("FA", FA),
+       cereal::make_nvp("sat_f0", sat_f0);
+    QI_SEQUENCE_LOAD_DEGREES( sat_pwr );
 }
 
 void SPGRSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
+    ar(cereal::make_nvp("TR", TR),
+       cereal::make_nvp("FA", FA),
+       cereal::make_nvp("sat_f0", sat_f0);
+    QI_SEQUENCE_SAVE_DEGREES( sat_pwr );
 }
 
 
