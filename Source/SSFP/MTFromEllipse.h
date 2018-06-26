@@ -36,7 +36,7 @@ public:
     }
     std::vector<float> defaultConsts() const override;
     TOutput zero() const override { return 0.f; }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override;

@@ -64,7 +64,7 @@ public:
         static std::vector<std::string> _names = {"f0", "w", "sat", "PD"};
         return _names;
     }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput & /* Unused */, TIterations & /* Unused */) const override
@@ -105,7 +105,7 @@ public:
         outputs.at(2) = p[2];
         outputs.at(3) = p[3] * scale;
         residual = summary.final_cost;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

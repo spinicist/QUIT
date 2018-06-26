@@ -23,7 +23,7 @@ EllipseAlgo::EllipseAlgo(const QI::SSFPEllipseSequence &seq, bool debug) :
     m_zero.Fill(0.);
 }
 
-bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
+EllipseAlgo::TStatus EllipseAlgo::apply(const std::vector<TInput> &inputs,
                         const std::vector<TConst> &consts,
                         const TIndex &, // Unused
                         std::vector<TOutput> &outputs, TOutput &residual,
@@ -48,7 +48,7 @@ bool EllipseAlgo::apply(const std::vector<TInput> &inputs,
             outputs[o][f] = tempOutputs[o];
         }
     }
-    return true;
+    return std::make_tuple(true, "");
 }
 
 } // End namespace QI

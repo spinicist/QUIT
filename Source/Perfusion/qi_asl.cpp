@@ -65,7 +65,7 @@ public:
         return def;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &index, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override
@@ -98,7 +98,7 @@ public:
         residual.Fill(0.);
         resids.Fill(0.);
         its = 0;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

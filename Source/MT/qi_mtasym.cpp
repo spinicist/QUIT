@@ -48,7 +48,7 @@ public:
         static std::vector<std::string> _names = {"asymmetry"};
         return _names;
     }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput & /* Unused */,
                TInput & /* Unused */, TIterations & /* Unused */) const override
@@ -64,7 +64,7 @@ public:
             const double neg = zspec(nfrq);
             outputs.at(0)[f] = ((pos - neg)/ref);
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

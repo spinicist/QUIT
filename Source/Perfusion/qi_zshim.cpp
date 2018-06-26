@@ -45,7 +45,7 @@ public:
         return def;
     }
     TOutput zero() const override { return m_zero; }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &/* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &/* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &/* Unused */,
                TInput &/* Unused */, TIterations &/* Unused */) const override
@@ -62,7 +62,7 @@ public:
             outputs[0][i] = output[i];
         }
         if (m_debug) std::cout << "Output: " << outputs[0] << std::endl;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

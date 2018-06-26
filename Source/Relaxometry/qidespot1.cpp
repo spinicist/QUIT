@@ -57,7 +57,7 @@ public:
 
 class D1LLS : public D1Algo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -78,13 +78,13 @@ public:
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
 class D1WLLS : public D1Algo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -118,7 +118,7 @@ public:
         Eigen::ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -161,7 +161,7 @@ public:
         m_loPD = 1e-6;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -169,11 +169,11 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         const double B1 = consts[0];
         const double scale = indata.maxCoeff();
-        if (scale < 0) {
+        if (scale < std::numeric_limits<double>::epsilon()) {
             outputs[0] = 0;
             outputs[1] = 0;
             residual = 0;
-            return false;
+            return std::make_tuple(false, "Maximum data value was zero or less");
         }
         const Eigen::ArrayXd data = indata.cast<double>() / scale;
         Eigen::Array2d p; p << 10., 1.;
@@ -197,7 +197,7 @@ public:
         outputs[0] = p[0] * indata.maxCoeff();
         outputs[1] = p[1];
         if (!summary.IsSolutionUsable()) {
-            std::cout << summary.FullReport() << std::endl;
+            return std::make_tuple(false, summary.FullReport());
         }
         its = summary.iterations.size();
         residual = summary.final_cost * indata.maxCoeff();
@@ -208,7 +208,7 @@ public:
             for (size_t i = 0; i < r_temp.size(); i++)
                 resids[i] = r_temp[i];
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

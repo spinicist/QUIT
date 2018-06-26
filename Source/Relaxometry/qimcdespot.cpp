@@ -87,7 +87,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         return def;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -124,7 +124,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = rc.contractions();
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

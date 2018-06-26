@@ -78,7 +78,7 @@ public:
         return def;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -122,11 +122,7 @@ public:
                 p = {5., std::max(0.1 * T1, 1.5*m_sequence.TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
-                    std::cerr << summary.FullReport() << std::endl;
-                    std::cerr << "T1: " << T1 << " B1: " << B1 << std::endl;
-                    std::cerr << "Parameters: " << p.transpose() << std::endl;
-                    std::cerr << "Data: " << indata.transpose() << std::endl;
-                    return false;
+                    return std::make_tuple(false, summary.FullReport());
                 }
                 double r = summary.final_cost;
                 if (r < best) {
@@ -157,7 +153,7 @@ public:
             resids.Fill(0.);
             its = 0;
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

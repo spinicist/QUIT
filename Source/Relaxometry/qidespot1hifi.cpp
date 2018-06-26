@@ -126,7 +126,7 @@ public:
         return def;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -134,6 +134,13 @@ public:
         Eigen::Map<const Eigen::ArrayXf> spgr_in(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::Map<const Eigen::ArrayXf> ir_in(inputs[1].GetDataPointer(), inputs[1].Size());
         double scale = std::max(spgr_in.maxCoeff(), ir_in.maxCoeff());
+        if (scale < std::numeric_limits<double>::epsilon()) {
+            outputs[0] = 0;
+            outputs[1] = 0;
+            outputs[2] = 0;
+            residual = 0;
+            return std::make_tuple(false, "Maximum data value was zero or less");
+        }
         const Eigen::ArrayXd spgr_data = spgr_in.cast<double>() / scale;
         const Eigen::ArrayXd ir_data = ir_in.cast<double>() / scale;
         double spgr_pars[] = {10., 1., 1.}; // PD, T1, B1
@@ -161,7 +168,7 @@ public:
         outputs[1] = QI::Clamp(spgr_pars[1], m_lo, m_hi);
         outputs[2] = spgr_pars[2];
         if (!summary.IsSolutionUsable()) {
-            std::cout << summary.FullReport() << std::endl;
+            return std::make_tuple(false, summary.FullReport());
         }
         its = summary.iterations.size();
         residual = summary.final_cost * scale;
@@ -172,7 +179,7 @@ public:
                 resids[i] = r_temp[i];
             }
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

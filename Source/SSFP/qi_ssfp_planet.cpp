@@ -44,7 +44,7 @@ struct PLANET : public QI::ApplyVectorF::Algorithm {
     }
     PLANET(const QI::SSFPGSSequence &s) : m_seq(s) {}
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &/*Unused*/,
                std::vector<TOutput> &outputs, TOutput &/*Unused*/,
                TInput &/*Unused*/, TIterations &/*Unused*/) const override
@@ -65,7 +65,7 @@ struct PLANET : public QI::ApplyVectorF::Algorithm {
             outputs[1][i] = T2[i];
             outputs[2][i] = PD[i];
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

@@ -33,7 +33,7 @@ public:
         return _names;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex & /* Unused */,
                std::vector<TOutput> &outputs, TConst & /* Unused */,
                TInput & /* Unused */, TIterations & /* Unused */) const override
@@ -42,7 +42,7 @@ public:
         outputs[1] = 100. * (1. - (inputs[0][0] + inputs[0][1]) / (2. * inputs[0][2]));
         outputs[2] = outputs[1] - outputs[0];
         outputs[3] = 100. * (inputs[0][3] - inputs[0][4]) / inputs[0][2];
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

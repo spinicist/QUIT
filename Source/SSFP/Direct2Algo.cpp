@@ -52,7 +52,7 @@ public:
         //               << "M:  f " << f_2 << " a " << a_2 << " b_1 " << b_2 << " f0 " << f0_2 << "\n"
         //               << "G: " << G << " psi0: " << psi0 << std::endl;
         // }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

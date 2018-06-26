@@ -46,7 +46,7 @@ public:
         std::vector<float> def;
         return def;
     }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst & /* Unused */,
                TInput & /* Unused */, TIterations & /* Unused */) const override
@@ -59,7 +59,7 @@ public:
         for (int i = 0; i < m_mat.rows(); i++) {
             outputs[i] = c[i];
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

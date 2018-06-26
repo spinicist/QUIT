@@ -58,7 +58,7 @@ public:
         return m_zero;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput & /* Unused */,
                TInput &resids, TIterations &its) const override
@@ -85,7 +85,7 @@ public:
             resids[i] = pcf[i];
         }
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 

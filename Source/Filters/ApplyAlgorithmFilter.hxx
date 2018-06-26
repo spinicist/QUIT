@@ -308,10 +308,10 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &r
             for (size_t i = 0; i < m_algorithm->numInputs(); i++) {
                 inputs[i] = dataIters[i].Get();
             }
-            bool success = m_algorithm->apply(inputs, constants, residualIter.GetIndex(),
-                                              outputs, residual, resids, iterations);
-            if (!success) {
-                std::cerr << "Algorithm failed for voxel: " << residualIter.GetIndex() << std::endl;
+            typename Algorithm::TStatus status = m_algorithm->apply(inputs, constants, residualIter.GetIndex(),
+                                                outputs, residual, resids, iterations);
+            if (!std::get<0>(status)) {
+                std::cerr << "Algorithm failed for voxel " << residualIter.GetIndex() << ": " << std::get<1>(status) << std::endl;
             }
             for (size_t i = 0; i < m_algorithm->numOutputs(); i++) {
                 outputIters[i].Set(outputs[i]);

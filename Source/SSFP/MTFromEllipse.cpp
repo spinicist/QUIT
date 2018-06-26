@@ -89,10 +89,10 @@ std::vector<float> MTFromEllipse::defaultConsts() const {
     return def;
 }
 
-bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-                          const TIndex &, // Unused
-                          std::vector<TOutput> &outputs, TConst &residual,
-                          TInput &resids, TIterations & /* Unused */) const
+MTFromEllipse::TStatus MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+                             const TIndex &, // Unused
+                             std::vector<TOutput> &outputs, TConst &residual,
+                             TInput &resids, TIterations & /* Unused */) const
 {
     const double B1 = consts[0];
     const double f0_Hz = consts[1];
@@ -130,12 +130,7 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
     if (!debug) options.logging_type = ceres::SILENT;
     ceres::Solve(options, &problem, &summary);
     if (!summary.IsSolutionUsable()) {
-        std::cerr << summary.FullReport() << std::endl;
-        std::cerr << "Parameters: " << p.transpose() << " T2_f: " << T2_f << " B1: " << B1 << std::endl;
-        std::cerr << "G: " << G.transpose() << std::endl;
-        std::cerr << "a: " << a.transpose() << std::endl;
-        std::cerr << "b: " << b.transpose() << std::endl;
-        return false;
+        return std::make_tuple(false, summary.FullReport());
     } else if (debug) {
         std::cout << summary.FullReport() << std::endl;
     }
@@ -159,7 +154,7 @@ bool MTFromEllipse::apply(const std::vector<TInput> &inputs, const std::vector<T
             resids[i + G.size() + a.size()] = r_temp[i + G.size()];
         }
     }
-    return true;
+    return std::make_tuple(true, "");
 }
 
 } // End namespace QI

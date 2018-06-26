@@ -77,7 +77,7 @@ public:
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -94,13 +94,13 @@ public:
         double T2 = -1 / b[0];
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -120,7 +120,7 @@ public:
         double PD = (data.array() / exp(-m_sequence.TE / T2)).mean();
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -150,7 +150,7 @@ class RelaxFunctor : public Eigen::DenseFunctor<double> {
 
 class NonLinAlgo : public RelaxAlgo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -167,7 +167,7 @@ public:
         lm.minimize(p);
         clamp_and_threshold(data, outputs, residual, resids, p[0], p[1]);
         its = lm.iterations();
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
