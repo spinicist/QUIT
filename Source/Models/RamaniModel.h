@@ -14,17 +14,18 @@
 
 #include "ModelBase.h"
 #include "Lineshape.h"
+#include "RFPulse.h"
 
 namespace QI {
 namespace Model {
 
 class Ramani : public ModelBase {
-    DECLARE_MODEL_INTERFACE()
+DECLARE_MODEL_INTERFACE()
 protected:
     TLineshape m_lineshape;
 public:
     void setLineshape(TLineshape &l);
-    Eigen::VectorXcd SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl flip, cdbl TR, cdbl Trf) const override;
+    Eigen::VectorXd MTSat(cvecd &p, cdbl &FA, cdbl &TR, carrd &satf0, carrd &satflip, const RFPulse &pulse) const;
 };
 
 } // End namespace Model

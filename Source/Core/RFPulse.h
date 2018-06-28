@@ -11,22 +11,22 @@
  *
  */
 
-#ifndef SEQUENCES_RFPULSE_H
-#define SEQUENCES_RFPULSE_H
+#ifndef QI_RFPULSE_H
+#define QI_RFPULSE_H
 
 #include <string>
 #include <iostream>
+#include <cereal/archives/json.hpp>
 
 namespace QI {
 
 struct RFPulse {
-    double flip, Trf, intB1, intB1sq;
+    double FAnom, Trf, intB1, intB1sq;
     std::string name;
+    void load(cereal::JSONInputArchive &ar);
+    void save(cereal::JSONOutputArchive &ar) const;
 };
 
 } // End namespace QI
-
-std::ostream& operator<<(std::ostream &os, const QI::RFPulse &pulse);
-std::istream& operator>>(std::istream &is, QI::RFPulse &pulse);
 
 #endif // SEQUENCES_RFPULSE_H

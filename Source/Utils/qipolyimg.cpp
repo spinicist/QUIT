@@ -21,7 +21,8 @@
 #include "Args.h"
 #include "ImageIO.h"
 #include "IO.h"
-#include "EigenCereal.h"
+#include "CerealMacro.h"
+#include "CerealEigen.h"
 
 namespace itk {
 
@@ -118,9 +119,9 @@ int main(int argc, char **argv) {
     {
         if (verbose) std::cout << "Reading polynomial" << std::endl;
         cereal::JSONInputArchive output(std::cin);
-        QI::ReadCereal(output, "center", center);
-        QI::ReadCereal(output, "scale", scale);
-        QI::ReadCereal(output, "coeffs", coeffs);
+        QI_CLOAD(output, center);
+        QI_CLOAD(output, scale);
+        QI_CLOAD(output, coeffs);
     }
     if (verbose) std::cout << "Center point is: " << center.transpose() << "\nScale is: " << scale << std::endl;
 

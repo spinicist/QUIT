@@ -24,7 +24,8 @@
 #include "ImageIO.h"
 #include "IO.h"
 #include "Spline.h"
-#include "EigenCereal.h"
+#include "CerealMacro.h"
+#include "CerealEigen.h"
 
 namespace itk {
 
@@ -188,8 +189,8 @@ int main(int argc, char **argv) {
     Eigen::ArrayXd rf_pos;
     std::vector<Eigen::ArrayXd> rf_vals;
     if (verbose) std::cout << "Reading slab profile" << std::endl;
-    QI::ReadCereal(input, "rf_pos", rf_pos);
-    QI::ReadCereal(input, "rf_vals", rf_vals);
+    QI_CLOAD(input, rf_pos);
+    QI_CLOAD(input, rf_vals);
     for (const auto &v : rf_vals) {
         if (rf_pos.rows() != v.rows()) {
             QI_FAIL("Number of points must match number of values");

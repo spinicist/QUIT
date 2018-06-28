@@ -28,7 +28,7 @@
 #include "Args.h"
 #include "ImageIO.h"
 
-#include "EigenCereal.h"
+#include "CerealMacro.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
 #include "MultiEchoSequence.h"
@@ -225,7 +225,7 @@ int main(int argc, char **argv) {
     if (model_arg.Get() == "1") { model = std::make_shared<QI::Model::OnePool>(); }
     else if (model_arg.Get() == "2") { model = std::make_shared<QI::Model::TwoPool>(); }
     else if (model_arg.Get() == "3") { model = std::make_shared<QI::Model::ThreePool>(); }
-    else if (model_arg.Get() == "MT") { model = std::make_shared<QI::Model::Ramani>(); }
+    else if (model_arg.Get() == "Ramani") { model = std::make_shared<QI::Model::Ramani>(); }
     else { QI_FAIL("Unknown model specified: " << model_arg.Get()); }
     if (verbose) std::cout << "Using " << model->Name() << " model." << std::endl;
 
@@ -255,7 +255,7 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < model->nParameters(); i++) {
         std::string par_filename;
         std::string par_name = model->ParameterNames()[i];
-        QI::ReadCereal(input, par_name, par_filename);
+        QI_CLOAD_NAME(input, par_name, par_filename);
         if (par_filename != "") {
             QI::VolumeF::Pointer param = QI::ReadImage(par_filename, verbose);
             if (reference) {

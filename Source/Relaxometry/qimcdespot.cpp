@@ -25,7 +25,8 @@
 #include "Models.h"
 #include "SequenceGroup.h"
 #include "RegionContraction.h"
-#include "EigenCereal.h"
+#include "CerealMacro.h"
+#include "CerealEigen.h"
 
 struct MCDSRCFunctor {
     const QI::SequenceGroup &m_sequence;
@@ -196,13 +197,11 @@ int main(int argc, char **argv) {
             start = model->Bounds(QI::Model::FieldStrength::Seven);
             break;
         case 'u': {
-            Eigen::ArrayXd temp;
-            if (verbose) std::cout << "Enter lower bounds" << std::endl;
-            QI::ReadCereal(input, "lower_bounds", temp);
-            bounds.col(0) = temp;
-            if (verbose) std::cout << "Enter upper bounds" << std::endl;
-            QI::ReadCereal(input, "upper_bounds", temp);
-            bounds.col(1) = temp;
+            Eigen::ArrayXd lower_bounds, upper_bounds;
+            QI_CLOAD(input, lower_bounds);
+            QI_CLOAD(input, upper_bounds);
+            bounds.col(0) = lower_bounds;
+            bounds.col(1) = upper_bounds;
         } break;
     default:
         std::cerr << "Unknown boundaries type " << field.Get() << std::endl;

@@ -12,6 +12,8 @@
  */
 
 #include "SPGRSequence.h"
+#include "CerealMacro.h"
+#include "CerealEigen.h"
 
 namespace QI {
 
@@ -24,13 +26,13 @@ Eigen::ArrayXcd SPGRSequence::signal(std::shared_ptr<Model::ModelBase> m, const 
 }
 
 void SPGRSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD_DEGREES(ar, FA);
 }
 
 void SPGRSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE_DEGREES(ar, FA);
 }
 
 
@@ -43,15 +45,15 @@ Eigen::ArrayXcd SPGREchoSequence::signal(std::shared_ptr<Model::ModelBase> m, co
 }
 
 void SPGREchoSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD(ar, TE);
+    QI_CLOAD_DEGREES(ar, FA);
 }
 
 void SPGREchoSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE(ar, TE);
+    QI_CSAVE_DEGREES(ar, FA);
 }
 
 /*
@@ -63,17 +65,17 @@ Eigen::ArrayXcd SPGRFiniteSequence::signal(std::shared_ptr<Model::ModelBase> m, 
 }
 
 void SPGRFiniteSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD(ar, TE);
+    QI_CLOAD(ar, Trf);
+    QI_CLOAD_DEGREES(ar, FA);
 }
 
 void SPGRFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE(ar, TE);
+    QI_CSAVE(ar, Trf);
+    QI_CSAVE_DEGREES(ar, FA);
 }
 
 } // End namespace QI

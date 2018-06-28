@@ -18,7 +18,8 @@
 #include "ImageIO.h"
 #include "IO.h"
 #include "ApplyTypes.h"
-#include "EigenCereal.h"
+#include "CerealMacro.h"
+#include "CerealEigen.h"
 
 Eigen::ArrayXd Lorentzian(const double f0, const double fwhm, const double A, const Eigen::ArrayXd &f) {
     Eigen::ArrayXd x = (f0 - f) / (fwhm/2);
@@ -127,8 +128,8 @@ int main(int argc, char **argv) {
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
 
     cereal::JSONInputArchive input(std::cin);
-    if (verbose) std::cout << "Enter Z-Spectrum Frequencies: " << std::endl;
-    Eigen::ArrayXd z_frqs; QI::ReadCereal(input, "freq", z_frqs);
+    Eigen::ArrayXd z_frqs;
+    QI_CLOAD(input, z_frqs);
     std::shared_ptr<LorentzFit> algo = std::make_shared<LorentzFit>(z_frqs);
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);

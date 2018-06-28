@@ -15,8 +15,6 @@
 #define SEQUENCES_SPGR_H
 
 #include "SequenceBase.h"
-#include "cereal/cereal.hpp"
-#include "EigenCereal.h"
 
 namespace QI {
 

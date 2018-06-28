@@ -22,7 +22,8 @@
 #include "Polynomial.h"
 #include "Args.h"
 #include "Fit.h"
-#include "EigenCereal.h"
+#include "CerealMacro.h"
+#include "CerealEigen.h"
 
 namespace itk {
 
@@ -159,12 +160,12 @@ int main(int argc, char **argv) {
     fit->Update();
     {
         cereal::JSONOutputArchive output(std::cout);
-        QI::WriteCereal(output, "center", center);
-        QI::WriteCereal(output, "scale", scale);
-        QI::WriteCereal(output, "coeffs", fit->GetPolynomial().coeffs());
+        QI_CSAVE(output, center);
+        QI_CSAVE(output, scale);
+        QI_CSAVE_NAME(output, fit->GetPolynomial().coeffs(), "coeffs");
         if (print_terms)
-            QI::WriteCereal(output, "terms", fit->GetPolynomial().get_terms());
-        QI::WriteCereal(output, "residual",  fit->GetResidual());
+            QI_CSAVE_NAME(output, fit->GetPolynomial().get_terms(), "terms");
+        QI_CSAVE_NAME(output, fit->GetResidual(), "residual");
     }
     if (verbose) std::cout << "Finished." << std::endl;
     return EXIT_SUCCESS;
