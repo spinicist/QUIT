@@ -12,6 +12,8 @@
 #ifndef MODEL_RAMANI_H
 #define MODEL_RAMANI_H
 
+#include <memory>
+#include <cereal/archives/json.hpp>
 #include "ModelBase.h"
 #include "Lineshape.h"
 #include "RFPulse.h"
@@ -19,12 +21,12 @@
 namespace QI {
 namespace Model {
 
-class Ramani : public ModelBase {
+struct Ramani : public ModelBase {
 DECLARE_MODEL_INTERFACE()
 protected:
-    TLineshape m_lineshape;
+    std::shared_ptr<Lineshapes::Lineshape> lineshape;
 public:
-    void setLineshape(TLineshape &l);
+    Ramani(cereal::JSONInputArchive &in);
     Eigen::VectorXd MTSat(cvecd &p, cdbl &FA, cdbl &TR, carrd &satf0, carrd &satflip, const RFPulse &pulse) const;
 };
 

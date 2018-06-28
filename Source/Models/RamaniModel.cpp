@@ -10,6 +10,7 @@
  */
 
 #include "RamaniModel.h"
+#include "CerealMacro.h"
 
 using namespace std;
 using namespace Eigen;
@@ -17,9 +18,9 @@ using namespace Eigen;
 namespace QI {
 namespace Model {
 
-/*
- * qMT Model (2 component)
- */
+Ramani::Ramani(cereal::JSONInputArchive &in) {
+    QI_CLOAD(in, lineshape);
+}
 
 string Ramani::Name() const { return "qMT"; }
 size_t Ramani::nParameters() const { return 9; }
@@ -27,6 +28,8 @@ const vector<string> & Ramani::ParameterNames() const {
     static vector<string> n{"PD", "T1_f", "T2_f", "T1_b", "T2_b", "k_bf", "f_b", "f0", "B1"};
     return n;
 }
+
+
 
 ArrayXXd Ramani::Bounds(const FieldStrength f) const {
     size_t nP = nParameters();
@@ -64,9 +67,9 @@ bool Ramani::ValidParameters(cvecd &params) const {
     }
 }
 
-void Ramani::setLineshape(TLineshape &l) { m_lineshape = l; }
 
 Eigen::VectorXd Ramani::MTSat(cvecd &p, cdbl &FA, cdbl &TR, carrd &satf0, carrd &satflip, const RFPulse &pulse) const {
+    std::cout << "START MTSat" << std::endl;
     cdbl &PD = p[0];
     cdbl &T1_f = p[1];
     cdbl &T2_f = p[2];
@@ -77,7 +80,9 @@ Eigen::VectorXd Ramani::MTSat(cvecd &p, cdbl &FA, cdbl &TR, carrd &satf0, carrd 
     cdbl &f0   = p[7];
     cdbl &B1   = p[8];
 
-    ArrayXd W = satflip.square()*m_lineshape(satf0, T2_b);
+    std::cout << "Lineshape" << std::endl;
+    ArrayXd W = satflip.square()*this->lineshape->value(satf0, T2_b);
+    std::cout << "Calc" << std::endl;
     cdbl R1f = 1. / T1_f;
     cdbl R1r = 1. / T1_b;
     
@@ -86,6 +91,7 @@ Eigen::VectorXd Ramani::MTSat(cvecd &p, cdbl &FA, cdbl &TR, carrd &satf0, carrd 
     cdbl kr = k_bf/F;
     carrd S = PD * F * ( R1r*kr/R1f + W + R1r + kr ) /
                     ( k_bf*(R1r + W) + (1.0 + (satflip/(2.*M_PI*satf0)).square()*(T1_f/T2_f))*(W+R1r+kr));
+    std::cout << "END MTSat" << std::endl;
     return S;
 }
 

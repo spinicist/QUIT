@@ -24,7 +24,7 @@ struct MTSatSequence : SequenceBase {
     double FA, TR;
     Eigen::ArrayXd sat_f0, sat_angle;
     RFPulse pulse;
-    QI_SEQUENCE_DECLARE(MPRAGE);
+    QI_SEQUENCE_DECLARE(MTSat);
     Eigen::Index size() const override;
 };
 
