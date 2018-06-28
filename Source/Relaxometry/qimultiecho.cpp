@@ -34,7 +34,7 @@ typedef itk::ImageToVectorFilter<QI::SeriesF> SeriesToVectorF;
  */
 class RelaxAlgo : public QI::ApplyF::Algorithm {
 private:
-    const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+    const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
 protected:
     QI::MultiEchoSequence m_sequence;
     double m_clampLo = -std::numeric_limits<double>::infinity();
@@ -128,7 +128,7 @@ class RelaxFunctor : public Eigen::DenseFunctor<double> {
     protected:
         const QI::MultiEchoSequence m_sequence;
         const Eigen::ArrayXd m_data;
-        const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+        const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
 
     public:
         RelaxFunctor(const QI::MultiEchoSequence &cs, const Eigen::ArrayXd &data) :

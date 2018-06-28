@@ -10,6 +10,7 @@
  */
 
 #include "SSFPSequence.h"
+#include "CerealMacro.h"
 
 #define FA_PHASE_CHECK()\
     if (FA.rows() != PhaseInc.rows()) {\
@@ -34,16 +35,16 @@ Eigen::ArrayXcd SSFPSequence::signal(std::shared_ptr<Model::ModelBase> m, const 
 }
 
 void SSFPSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD_DEGREES(ar, FA);
+    QI_CLOAD_DEGREES(ar, PhaseInc);
     FA_PHASE_CHECK()
 }
 
 void SSFPSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE_DEGREES(ar, FA);
+    QI_CSAVE_DEGREES(ar, PhaseInc);
 }
 
 Eigen::ArrayXcd SSFPEchoSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
@@ -55,16 +56,16 @@ Eigen::ArrayXd SSFPEchoSequence::signal_magnitude(std::shared_ptr<Model::ModelBa
 }
 
 void SSFPEchoSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD_DEGREES(ar, FA);
+    QI_CLOAD_DEGREES(ar, PhaseInc);
     FA_PHASE_CHECK()
 }
 
 void SSFPEchoSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE_DEGREES(ar, FA);
+    QI_CSAVE_DEGREES(ar, PhaseInc);
 }
 
 Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
@@ -78,18 +79,18 @@ Eigen::ArrayXcd SSFPFiniteSequence::signal(std::shared_ptr<Model::ModelBase> m, 
 }
 
 void SSFPFiniteSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD(ar, Trf);
+    QI_CLOAD_DEGREES(ar, FA);
+    QI_CLOAD_DEGREES(ar, PhaseInc);
     FA_PHASE_CHECK()
 }
 
 void SSFPFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE(ar, Trf);
+    QI_CSAVE_DEGREES(ar, FA);
+    QI_CSAVE_DEGREES(ar, PhaseInc);
 }
 
 Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
@@ -97,13 +98,13 @@ Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model::ModelBase> m, cons
 }
 
 void SSFPGSSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD_DEGREES(ar, FA);
 }
 
 void SSFPGSSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE_DEGREES(ar, FA);
 }
 
 Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
@@ -115,15 +116,15 @@ Eigen::Index SSFPEllipseSequence::size() const {
 }
 
 void SSFPEllipseSequence::load(cereal::JSONInputArchive &ar) {
-    QI_SEQUENCE_LOAD( TR );
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD_DEGREES(ar, FA);
+    QI_CLOAD_DEGREES(ar, PhaseInc);
 }
 
 void SSFPEllipseSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_SEQUENCE_SAVE( TR );
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE_DEGREES(ar, FA);
+    QI_CSAVE_DEGREES(ar, PhaseInc);
 }
 
 Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
@@ -135,22 +136,22 @@ Eigen::Index SSFPMTSequence::size() const {
 }
 
 void SSFPMTSequence::load(cereal::JSONInputArchive &ar) {
-    QI_SEQUENCE_LOAD( TR );
-    QI_SEQUENCE_LOAD( Trf );
-    QI_SEQUENCE_LOAD( intB1 );
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+    QI_CLOAD(ar, TR);
+    QI_CLOAD(ar, Trf);
+    QI_CLOAD(ar, intB1);
+    QI_CLOAD_DEGREES(ar, FA);
+    QI_CLOAD_DEGREES(ar, PhaseInc);
     if ((TR.rows() != Trf.rows()) || (TR.rows() != intB1.rows()) || (TR.rows() != FA.rows())) {
         QI_FAIL("One on more parameters had differing lengths, TR had " << TR.rows() << ", Trf had " << Trf.rows() << ", intB1 had " << intB1.rows() << ", FA had " << FA.rows());
     }
 }
 
 void SSFPMTSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_SEQUENCE_SAVE( TR );
-    QI_SEQUENCE_SAVE( Trf );
-    QI_SEQUENCE_SAVE( intB1 );
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+    QI_CSAVE(ar, TR);
+    QI_CSAVE(ar, Trf);
+    QI_CSAVE(ar, intB1);
+    QI_CSAVE_DEGREES(ar, FA);
+    QI_CSAVE_DEGREES(ar, PhaseInc);
 }
 
 } // End namespace QI

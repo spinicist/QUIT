@@ -6,10 +6,11 @@ add_custom_command(OUTPUT version_depend_dummy
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
 add_library( qi_core
-             Macro.h Args.h IO.h EigenCereal.h ImageTypes.h
+             Macro.h Args.h IO.h CerealMacro.h CerealEigen.h ImageTypes.h
              Util.cpp ThreadPool.cpp
              GoldenSection.cpp Masking.cpp
-             Kernels.cpp Fit.cpp Spline.cpp )
+             Kernels.cpp Fit.cpp Spline.cpp
+             RFPulse.cpp )
 add_dependencies( qi_core qi_version )
 target_include_directories( qi_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
 target_link_libraries( qi_core PRIVATE ${ITK_LIBRARIES} )

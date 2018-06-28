@@ -14,7 +14,7 @@
 #include "Util.h"
 #include "Args.h"
 #include "Lineshape.h"
-#include "EigenCereal.h"
+#include "CerealEigen.h"
 
 int main(int argc, char **argv) {
     Eigen::initParallel();

@@ -15,8 +15,7 @@
 #define SEQUENCES_MTSAT_H
 
 #include "SequenceBase.h"
-#include "cereal/cereal.hpp"
-#include "EigenCereal.h"
+#include "CerealEigen.h"
 #include "RFPulse.h"
 
 namespace QI {
@@ -25,6 +24,7 @@ struct MTSatSequence : SequenceBase {
     double FA, TR;
     Eigen::ArrayXd sat_f0, sat_angle;
     RFPulse pulse;
+    QI_SEQUENCE_DECLARE(MPRAGE);
     Eigen::Index size() const override;
 };
 

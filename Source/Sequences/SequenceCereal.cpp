@@ -3,6 +3,7 @@
 #include "SequenceCereal.hpp"
 #include "SPGRSequence.h"
 #include "MPRAGESequence.h"
+#include "MTSatSequence.h"
 #include "SSFPSequence.h"
 #include "MultiEchoSequence.h"
 #include "CASLSequence.h"
@@ -22,6 +23,7 @@ void save(cereal::JSONOutputArchive &ar, std::shared_ptr<QI::SequenceBase> const
     else if QI_SAVE( SSFPFinite )
     else if QI_SAVE( SSFPGS )
     else if QI_SAVE( SSFPMT )
+    else if QI_SAVE( MTSat )
     else if QI_SAVE( MultiEcho )
     else if QI_SAVE( MultiEchoFlex )
     else if QI_SAVE( CASL )
@@ -42,6 +44,7 @@ void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::SequenceBase> &sb) {
     else if QI_LOAD( SSFPFinite )
     else if QI_LOAD( SSFPGS )
     else if QI_LOAD( SSFPMT )
+    else if QI_LOAD( MTSat )
     else if QI_LOAD( MultiEcho )
     else if QI_LOAD( MultiEchoFlex )
     else if QI_LOAD( CASL )

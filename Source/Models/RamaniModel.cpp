@@ -24,7 +24,7 @@ namespace Model {
 string Ramani::Name() const { return "qMT"; }
 size_t Ramani::nParameters() const { return 9; }
 const vector<string> & Ramani::ParameterNames() const {
-    static vector<string> n{"PD", "T1f", "T2f", "T1b", "T2b", "k_bf", "f_b", "f0", "B1"};
+    static vector<string> n{"PD", "T1_f", "T2_f", "T1_b", "T2_b", "k_bf", "f_b", "f0", "B1"};
     return n;
 }
 
@@ -66,8 +66,27 @@ bool Ramani::ValidParameters(cvecd &params) const {
 
 void Ramani::setLineshape(TLineshape &l) { m_lineshape = l; }
 
-VectorXcd Ramani::SPGR_MT(cvecd &p, carrd &satflip, carrd &satf0, cdbl, cdbl TR, cdbl Trf) const {
-    return scale(MT_SPGR(satflip, satf0, TR, Trf, m_lineshape, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]));
+Eigen::VectorXd Ramani::MTSat(cvecd &p, cdbl &FA, cdbl &TR, carrd &satf0, carrd &satflip, const RFPulse &pulse) const {
+    cdbl &PD = p[0];
+    cdbl &T1_f = p[1];
+    cdbl &T2_f = p[2];
+    cdbl &T1_b = p[3];
+    cdbl &T2_b = p[4];
+    cdbl &k_bf = p[5];
+    cdbl &f_b  = p[6];
+    cdbl &f0   = p[7];
+    cdbl &B1   = p[8];
+
+    ArrayXd W = satflip.square()*m_lineshape(satf0, T2_b);
+    cdbl R1f = 1. / T1_f;
+    cdbl R1r = 1. / T1_b;
+    
+    // F is M0r/M0b
+    cdbl F = (1 - f_b) / f_b;
+    cdbl kr = k_bf/F;
+    carrd S = PD * F * ( R1r*kr/R1f + W + R1r + kr ) /
+                    ( k_bf*(R1r + W) + (1.0 + (satflip/(2.*M_PI*satf0)).square()*(T1_f/T2_f))*(W+R1r+kr));
+    return S;
 }
 
 } // End namespace Model

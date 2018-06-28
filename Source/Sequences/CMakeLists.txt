@@ -1,6 +1,7 @@
 add_library( qi_sequences
                 SequenceBase.cpp
                 SPGRSequence.cpp SSFPSequence.cpp AFISequence.cpp
+                MTSatSequence.cpp
                 MPRAGESequence.cpp MultiEchoSequence.cpp CASLSequence.cpp
                 SequenceGroup.cpp SequenceCereal.cpp )
 target_link_libraries( qi_sequences qi_models qi_core )

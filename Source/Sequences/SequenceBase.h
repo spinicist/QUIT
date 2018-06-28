@@ -44,31 +44,6 @@ struct SequenceBase {
     void load(cereal::JSONInputArchive &ar) override;\
     void save(cereal::JSONOutputArchive &ar) const override;
 
-#define QI_SEQUENCE_LOAD( X ) \
-    try {\
-        ar(cereal::make_nvp(#X, X));\
-    } catch (cereal::RapidJSONException &e) {\
-        std::cerr << "Error parsing parameter " << #X << " for sequence " << name() << ": " << e.what();\
-        exit(EXIT_FAILURE);\
-    };
-
-#define QI_SEQUENCE_LOAD_DEGREES( X ) \
-    Eigen::ArrayXd X ## _degrees;\
-    try {\
-        ar(cereal::make_nvp(#X, X ## _degrees));\
-        X = X ## _degrees * M_PI / 180.;\
-    } catch (cereal::RapidJSONException &e) {\
-        std::cerr << "Error parsing parameter " << #X << " for sequence " << name() << ": " << e.what() << std::endl;\
-        exit(EXIT_FAILURE);\
-    }
-
-#define QI_SEQUENCE_SAVE( X )\
-    ar(cereal::make_nvp(#X, X));
-
-#define QI_SEQUENCE_SAVE_DEGREES( X ) \
-    Eigen::ArrayXd X ## _degrees = X * 180. / M_PI;\
-    ar(cereal::make_nvp(#X, X ## _degrees));\
-
 } // End namespace QI
 
 #endif // SEQUENCES_BASE_H

@@ -12,6 +12,7 @@
  */
 
 #include "MTSatSequence.h"
+#include "CerealMacro.h"
 
 namespace QI {
 
@@ -19,65 +20,24 @@ Eigen::Index MTSatSequence::size() const {
     return sat_f0.rows();
 }
 
-Eigen::ArrayXcd MTSatSequence::signal(const Eigen::VectorXd &p) const {
-    return MT_SPGR(p, FA, TR);
+Eigen::ArrayXcd MTSatSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
+    return std::dynamic_pointer_cast<Model::Ramani>(m)->MTSat(p, FA, TR, sat_f0, sat_angle, pulse);
 }
 
-void SPGRSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR),
-       cereal::make_nvp("FA", FA),
-       cereal::make_nvp("sat_f0", sat_f0);
-    QI_SEQUENCE_LOAD_DEGREES( sat_pwr );
+void MTSatSequence::load(cereal::JSONInputArchive &ar) {
+    QI_CLOAD(ar, TR);
+    QI_CLOAD(ar, FA);
+    QI_CLOAD(ar, pulse);
+    QI_CLOAD(ar, sat_f0);
+    QI_CLOAD_DEGREES(ar, sat_angle);
 }
 
-void SPGRSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR),
-       cereal::make_nvp("FA", FA),
-       cereal::make_nvp("sat_f0", sat_f0);
-    QI_SEQUENCE_SAVE_DEGREES( sat_pwr );
-}
-
-
-/*
- * With echo-time correction
- */
-
-Eigen::ArrayXcd SPGREchoSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return m->SPGREcho(p, FA, TR, TE);
-}
-
-void SPGREchoSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-}
-
-void SPGREchoSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-}
-
-/*
- * With echo-time and finite-pulse corrections
- */
-
-Eigen::ArrayXcd SPGRFiniteSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return m->SPGRFinite(p, FA, TR, Trf, TE);
-}
-
-void SPGRFiniteSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-}
-
-void SPGRFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("TE", TE));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
+void MTSatSequence::save(cereal::JSONOutputArchive &ar) const {
+    QI_CSAVE(ar, TR);
+    QI_CSAVE(ar, FA);
+    QI_CSAVE(ar, pulse);
+    QI_CSAVE(ar, sat_f0);
+    QI_CSAVE_DEGREES(ar, sat_angle);
 }
 
 } // End namespace QI
