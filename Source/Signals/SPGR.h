@@ -13,7 +13,6 @@
 #define SIGNALS_SPGR_H
 
 #include "Common.h"
-#include "Lineshape.h"
 
 namespace QI {
 
@@ -27,8 +26,6 @@ Eigen::VectorXcd Two_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1_a
 
 Eigen::VectorXcd Three_SPGR(carrd &flip, cdbl TR, cdbl PD, cdbl T1_a, cdbl T1_b, cdbl T1_c, cdbl tau_a, cdbl f_a, cdbl f_c, cdbl B1);
 Eigen::VectorXcd Three_SPGR_Echo(carrd &flip, cdbl TR, cdbl TE, cdbl PD, cdbl T1_a, cdbl T2_a, cdbl T1_b, cdbl T2_b, cdbl T1_c, cdbl T2_c, cdbl tau_a, cdbl f_a, cdbl f_c, cdbl f0_a, cdbl f0_b, cdbl f0_c, cdbl B1);
-
-Eigen::VectorXcd MT_SPGR(carrd &satflip, carrd &satf0, cdbl TR, cdbl Trf, const TLineshape &g, cdbl PD, cdbl T1f, cdbl T2f, cdbl T1r, cdbl T2r, cdbl kf, cdbl F, cdbl f0, cdbl B1);
 
 } // End namespace QI
 

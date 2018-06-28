@@ -21,7 +21,11 @@ Eigen::Index MTSatSequence::size() const {
 }
 
 Eigen::ArrayXcd MTSatSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return std::dynamic_pointer_cast<Model::Ramani>(m)->MTSat(p, FA, TR, sat_f0, sat_angle, pulse);
+    if (auto rm = std::dynamic_pointer_cast<Model::Ramani>(m)) {
+        return rm->MTSat(p, FA, TR, sat_f0, sat_angle, pulse);
+    } else {
+        QI_FAIL("Dyanmic pointer cast to Ramani model failed");
+    }
 }
 
 void MTSatSequence::load(cereal::JSONInputArchive &ar) {

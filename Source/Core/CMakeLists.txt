@@ -10,7 +10,7 @@ add_library( qi_core
              Util.cpp ThreadPool.cpp
              GoldenSection.cpp Masking.cpp
              Kernels.cpp Fit.cpp Spline.cpp
-             RFPulse.cpp )
+             RFPulse.cpp Lineshape.cpp )
 add_dependencies( qi_core qi_version )
 target_include_directories( qi_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
 target_link_libraries( qi_core PRIVATE ${ITK_LIBRARIES} )

@@ -221,11 +221,14 @@ int main(int argc, char **argv) {
         std::cerr << "No output filenames specified. Use --help to see usage." << std::endl;
         return EXIT_FAILURE;
     }
+
+    QI_LOG(verbose, "Reading input");
+    cereal::JSONInputArchive input(std::cin);
     std::shared_ptr<QI::Model::ModelBase> model = nullptr;
     if (model_arg.Get() == "1") { model = std::make_shared<QI::Model::OnePool>(); }
     else if (model_arg.Get() == "2") { model = std::make_shared<QI::Model::TwoPool>(); }
     else if (model_arg.Get() == "3") { model = std::make_shared<QI::Model::ThreePool>(); }
-    else if (model_arg.Get() == "Ramani") { model = std::make_shared<QI::Model::Ramani>(); }
+    else if (model_arg.Get() == "Ramani") { model = std::make_shared<QI::Model::Ramani>(input); }
     else { QI_FAIL("Unknown model specified: " << model_arg.Get()); }
     if (verbose) std::cout << "Using " << model->Name() << " model." << std::endl;
 
@@ -251,11 +254,10 @@ int main(int argc, char **argv) {
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
     if (verbose) std::cout << "Reading model parameter filenames" << std::endl;
-    cereal::JSONInputArchive input(std::cin);
     for (size_t i = 0; i < model->nParameters(); i++) {
         std::string par_filename;
         std::string par_name = model->ParameterNames()[i];
-        QI_CLOAD_NAME(input, par_name, par_filename);
+        QI_CLOAD_NAME(input, par_filename, par_name);
         if (par_filename != "") {
             QI::VolumeF::Pointer param = QI::ReadImage(par_filename, verbose);
             if (reference) {
@@ -288,9 +290,13 @@ int main(int argc, char **argv) {
     auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, false);
     if (verbose) {
         std::cout << "Found " << sequences.count() << " sequences to generate" << std::endl;
-        cereal::JSONOutputArchive archive(std::cout); // cereal archives do not flush their output until destructed
-        archive(cereal::make_nvp("SequenceGroup", sequences));
+        {
+            cereal::JSONOutputArchive archive(std::cout); // cereal archives do not flush their output until destructed
+            archive(cereal::make_nvp("SequenceGroup", sequences));
+        }
+        std::cout << std::endl;
     }
+
     if (filenames.Get().size() != sequences.count()) {
         QI_FAIL("Input filenames size " << filenames.Get().size()
                 << " does not match sequences size " << sequences.count());
