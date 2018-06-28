@@ -12,6 +12,7 @@
 #ifndef QI_CEREALMACRO_H
 #define QI_CEREALMACRO_H
 
+#include <cmath>
 #include <type_traits>
 #include <cereal/cereal.hpp>
 #include <cereal/archives/json.hpp>
