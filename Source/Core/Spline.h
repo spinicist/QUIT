@@ -30,6 +30,7 @@ public:
     SplineInterpolator();
     SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y);
     double operator()(const double &x) const;
+    Eigen::ArrayXd operator()(const Eigen::ArrayXd &x) const;
     void print(std::ostream &ostr) const;
 
 protected:
@@ -37,6 +38,7 @@ protected:
     double m_min;
     double m_width;
     double scale(const double &x) const;
+    Eigen::ArrayXd scale(const Eigen::ArrayXd &x) const;
 };
 
 std::ostream& operator<<(std::ostream &ostr, const SplineInterpolator &sp);

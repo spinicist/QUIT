@@ -1,7 +1,8 @@
 option( BUILD_MT "Build the MT Programs" ON )
 if( ${BUILD_MT} )
     set( PROGRAMS
-         qi_mtasym qi_lorentzian qi_dipolar_mtr )
+         qi_mtasym qi_lorentzian qi_dipolar_mtr
+         qi_lineshape )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)

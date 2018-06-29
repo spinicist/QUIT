@@ -10,7 +10,8 @@
  */
 
 #include "Lineshape.h"
-#include "Macro.h"
+#include "CerealMacro.h"
+#include "CerealEigen.h"
 
 namespace QI {
 namespace Lineshapes {
@@ -19,10 +20,35 @@ Eigen::ArrayXd Gaussian::value(const Eigen::ArrayXd &df0, const double T2b) cons
     return sqrt(M_PI_2) * T2b * exp(-pow(2.0*M_PI*df0*T2b,2.0)/2.0);
 }
 
-void Gaussian::load(cereal::JSONInputArchive &ar) {
+void Gaussian::load(cereal::JSONInputArchive &/* Unused */) {
 }
 
-void Gaussian::save(cereal::JSONOutputArchive &ar) const {
+void Gaussian::save(cereal::JSONOutputArchive &/* Unused */) const {
+}
+
+Splineshape::Splineshape(const Eigen::ArrayXd &f0, const Eigen::ArrayXd &vals, const double T2b) {
+    this->T2b_nominal = T2b;
+    this->frequencies = f0;
+    this->values = vals;
+    this->m_spline = SplineInterpolator(f0, vals);
+}
+
+Eigen::ArrayXd Splineshape::value(const Eigen::ArrayXd &f, const double T2b) const {
+    auto scale = T2b / T2b_nominal;
+    auto sf = f * scale;
+    return m_spline(sf) * scale;
+}
+
+void Splineshape::load(cereal::JSONInputArchive &ar) {
+    QI_CLOAD(ar, T2b_nominal);
+    QI_CLOAD(ar, frequencies);
+    QI_CLOAD(ar, values);
+}
+
+void Splineshape::save(cereal::JSONOutputArchive &ar) const {
+    QI_CSAVE(ar, T2b_nominal);
+    QI_CSAVE(ar, frequencies);
+    QI_CSAVE(ar, values);
 }
 
 } // End namespace Lineshapes

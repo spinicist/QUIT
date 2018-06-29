@@ -16,6 +16,7 @@
 #include <string>
 #include <Eigen/Dense>
 #include <cereal/archives/json.hpp>
+#include "Spline.h"
 
 namespace QI {
 namespace Lineshapes {
@@ -29,6 +30,18 @@ struct Lineshape {
 
 struct Gaussian : Lineshape {
     virtual std::string name() const override { return "Gaussian"; };
+    virtual Eigen::ArrayXd value(const Eigen::ArrayXd &f, const double T2b) const override;
+    void load(cereal::JSONInputArchive &ar) override;
+    void save(cereal::JSONOutputArchive &ar) const override;
+};
+
+struct Splineshape : Lineshape {
+    double T2b_nominal = 1e-6;
+    Eigen::ArrayXd frequencies, values;
+    SplineInterpolator m_spline;
+    Splineshape(const Eigen::ArrayXd &f0, const Eigen::ArrayXd &vals, const double T2b);
+    Splineshape() = default;
+    virtual std::string name() const override { return "Splineshape"; };
     virtual Eigen::ArrayXd value(const Eigen::ArrayXd &f, const double T2b) const override;
     void load(cereal::JSONInputArchive &ar) override;
     void save(cereal::JSONOutputArchive &ar) const override;
