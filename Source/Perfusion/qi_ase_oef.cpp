@@ -39,8 +39,8 @@ public:
     ASEAlgo(const std::shared_ptr<QI::MultiEchoBase> &seq, const int inputsize, const double B0, const QI::VolumeF::SpacingType voxsize) :
         m_sequence(seq), m_inputsize(inputsize), m_B0(B0), m_voxsize(voxsize)
     {
-        // 2.94 is dHb for an OEF of 26%
-        m_Tc = 1.5 / ((4./3.) * M_PI * gamma * B0 * delta_X0 * 0.75);
+        // Nic Blockley uses Tc = 15 ms for 3T, scale for other field-strengths
+        m_Tc = 0.015 / (B0 / 3);
         const int above_Tc_count = (m_sequence->TE.abs() > m_Tc).count();
         m_TE = Eigen::ArrayXd(above_Tc_count);
         Eigen::Index ind = 0;
