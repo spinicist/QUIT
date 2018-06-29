@@ -14,55 +14,38 @@
 #include "Util.h"
 #include "Args.h"
 #include "Lineshape.h"
-#include "CerealEigen.h"
+#include "CerealMacro.h"
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
 
-    args::ArgumentParser parser("Saves lineshapes as JSON objects.\n"
+    args::ArgumentParser parser("Calculates different lineshapes then saves them as a splineshape for fast qMT lookup.\n"
                                 "http://github.com/spinicist/QUIT");
 
-    args::Positional<std::string> output_path(parser, "OUTPUT", "Output JSON file");
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag                    verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<std::string>  lineshape(parser, "LINESHAPE", "Choose lineshape (Gauss/Lorentzian/Super-lorentzian)", {'l', "lineshape"});
+    args::ValueFlag<std::string>  shape_arg(parser, "LINESHAPE", "Choose lineshape (Gauss/Lorentzian/Super-lorentzian)", {'l', "lineshape"}, "G");
+    args::ValueFlag<double>       T2b(parser, "T2 BOUND", "Choose bound-pool T2 (default 10µs)", {'t', "T2b"}, 10e-6);
+    args::ValueFlag<double>       frq_count(parser, "FREQUENCY COUNT", "Number of frequencies (default 10)", {'n', "frq_count"}, 10);
+    args::ValueFlag<double>       frq_start(parser, "FREQUENCY START", "First saturation frequency (default 1000 Hz)", {'s', "frq_start"}, 1e3);
+    args::ValueFlag<double>       frq_spacing(parser, "FREQUENCY SPACING", "Spacing of frequencies (default 1000 Hz)", {'p', "frq_space"}, 1e3);
 
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading input from: " << QI::CheckPos(input_path) << std::endl;
-    auto input = QI::ReadImage(QI::CheckPos(input_path));
-    auto fit = itk::PolynomialFitImageFilter::New();
-    QI::Polynomial<3> poly(order.Get());
-    fit->SetInput(input);
-    fit->SetPolynomial(poly);
-    fit->SetRobust(robust);
-    Eigen::Array3d center = Eigen::Array3d::Zero();
-    if (mask_path) {
-        if (verbose) std::cout << "Reading mask from: " << mask_path.Get() << std::endl;
-        auto mask_image = QI::ReadImage(mask_path.Get());
-        fit->SetMask(mask_image);
-        auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
-        moments->SetImage(mask_image);
-        moments->Compute();
-        // ITK seems to put a minus sign on CoG
-        if (verbose) std::cout << "Mask CoG is: " << -moments->GetCenterOfGravity() << std::endl;
-        center = QI::Eigenify(-moments->GetCenterOfGravity());
+    QI_LOG(verbose, "Bound-pool T2:" << T2b.Get());
+    auto frqs = Eigen::ArrayXd::LinSpaced(frq_count.Get(), frq_start.Get(), frq_start.Get() + frq_spacing.Get()*(frq_count.Get() - 1));
+    QI_LOG(verbose, "Frequency count: " << frqs.rows());
+    Eigen::ArrayXd values;
+    if (shape_arg.Get() == "G") {
+        QI::Lineshapes::Gaussian ls;
+        values = ls.value(frqs, T2b.Get());
+    } else {
+        QI_FAIL("Unknown lineshape: " << shape_arg.Get());
     }
-    fit->SetCenter(center);
-    QI::VolumeF::SizeType size = input->GetLargestPossibleRegion().GetSize();
-    QI::VolumeF::SpacingType spacing = input->GetSpacing();
-    for (int i = 0; i < 3; i++) spacing[i] *= size[i];
-    double scale = (spacing/2).GetNorm();
-    fit->SetScale(scale);
-    fit->Update();
-    {
+    QI::Lineshapes::Splineshape lineshape(frqs, values, T2b);
+    {   // Ceral archives don't write until they are destroyed
         cereal::JSONOutputArchive output(std::cout);
-        QI::WriteCereal(output, "center", center);
-        QI::WriteCereal(output, "scale", scale);
-        QI::WriteCereal(output, "coeffs", fit->GetPolynomial().coeffs());
-        if (print_terms)
-            QI::WriteCereal(output, "terms", fit->GetPolynomial().get_terms());
-        QI::WriteCereal(output, "residual",  fit->GetResidual());
+        QI_CSAVE(output, lineshape);
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }
