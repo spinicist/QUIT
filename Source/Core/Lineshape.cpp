@@ -60,6 +60,7 @@ void save(cereal::JSONOutputArchive &ar, std::shared_ptr<QI::Lineshapes::Linesha
     #define QI_SAVE( NAME ) \
         (ls->name() == #NAME ) { ar(cereal::make_nvp(ls->name(), *std::static_pointer_cast< QI::Lineshapes::NAME >(ls))); }
     if QI_SAVE( Gaussian )
+    else if QI_SAVE( Splineshape )
     else { QI_FAIL("Unimplemented save for lineshape: " << ls->name()); }
     #undef QI_SAVE
 }
@@ -69,6 +70,7 @@ void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::Lineshapes::Lineshap
     #define QI_LOAD( NAME ) \
         (type == #NAME ) { QI::Lineshapes::NAME l; ar(l); ls = std::make_shared< QI::Lineshapes::NAME >(l); }
     if QI_LOAD( Gaussian )
+    else if QI_LOAD( Splineshape )
     else { QI_FAIL("Unimplemented load for lineshape: " << type); }
     #undef QI_LOAD
 }
