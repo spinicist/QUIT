@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     } else {
         QI_FAIL("Unknown lineshape: " << shape_arg.Get());
     }
-    QI::Lineshapes::Splineshape lineshape(frqs, values, T2b);
+    const auto lineshape = std::make_shared<QI::Lineshapes::Splineshape>(frqs, values, T2b);
     {   // Ceral archives don't write until they are destroyed
         cereal::JSONOutputArchive output(std::cout);
         QI_CSAVE(output, lineshape);
