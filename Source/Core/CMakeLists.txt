@@ -6,8 +6,8 @@ add_custom_command(OUTPUT version_depend_dummy
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PROPERTIES GENERATED TRUE HEADER_FILE_ONLY TRUE )
 
 add_library( qi_core
-             Macro.h Args.h IO.h CerealMacro.h CerealEigen.h ImageTypes.h
-             Util.cpp ThreadPool.cpp
+             Macro.h Args.h IO.h ImageTypes.h
+             Util.cpp ThreadPool.cpp JSON.cpp
              GoldenSection.cpp Masking.cpp
              Kernels.cpp Fit.cpp Spline.cpp
              RFPulse.cpp Lineshape.cpp )

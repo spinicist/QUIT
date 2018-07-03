@@ -14,7 +14,7 @@
 #include "Util.h"
 #include "Args.h"
 #include "Lineshape.h"
-#include "CerealMacro.h"
+#include "JSON.h"
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
@@ -41,11 +41,11 @@ int main(int argc, char **argv) {
     } else {
         QI_FAIL("Unknown lineshape: " << shape_arg.Get());
     }
-    const auto lineshape = std::make_shared<QI::Lineshapes::Splineshape>(frqs, values, T2b);
-    {   // Ceral archives don't write until they are destroyed
-        cereal::JSONOutputArchive output(std::cout);
-        QI_CSAVE(output, lineshape);
-    }
+    const auto lineshape = QI::Lineshapes::Splineshape(frqs, values, T2b);
+    rapidjson::Document doc;
+    doc.SetObject();
+    QI_JSONIFY(lineshape, doc);
+    QI::WriteJSON(std::cout, doc);
     QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

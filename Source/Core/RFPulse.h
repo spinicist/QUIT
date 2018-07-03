@@ -16,15 +16,12 @@
 
 #include <string>
 #include <iostream>
-#include <cereal/archives/json.hpp>
 
 namespace QI {
 
 struct RFPulse {
     double FAnom, Trf, intB1, intB1sq;
     std::string name;
-    void load(cereal::JSONInputArchive &ar);
-    void save(cereal::JSONOutputArchive &ar) const;
 };
 
 } // End namespace QI

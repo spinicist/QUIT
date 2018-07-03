@@ -10,9 +10,6 @@
 [submodule "External/eigen"]
 	path = External/eigen
 	url = https://github.com/eigenteam/eigen-git-mirror.git
-[submodule "External/cereal"]
-	path = External/cereal
-	url = https://github.com/USCiLab/cereal.git
 [submodule "ITK"]
 	shallow = true
 [submodule "External/NumericalIntegration"]
