@@ -116,7 +116,10 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         MCDSRCFunctor func(m_model, m_sequence, data, weights);
         QI::RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
         Eigen::ArrayXd pars(m_model->nParameters());
-        rc.optimise(pars);
+        if (!rc.optimise(pars)) {
+            return std::make_tuple(false, "Region contraction failed");
+        }
+        
         for (size_t i = 0; i < m_model->nParameters(); i++) {
             outputs[i] = pars[i];
         }

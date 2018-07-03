@@ -114,7 +114,7 @@ class RegionContraction {
         Eigen::ArrayXd width() const { return m_currentBounds.col(1) - m_currentBounds.col(0); }
         Eigen::ArrayXd midPoint() const { return (m_currentBounds.rowwise().sum() / 2.); }
 		
-        void optimise(Eigen::Ref<Eigen::ArrayXd> params) {
+        bool optimise(Eigen::Ref<Eigen::ArrayXd> params) {
             static std::atomic<bool> finiteWarning(false);
             static std::atomic<bool> constraintWarning(false);
             static std::atomic<bool> boundsWarning(false);
@@ -142,8 +142,7 @@ class RegionContraction {
 				warn_mtx.unlock();
 				params.setZero();
 				m_status = RCStatus::ErrorInvalid;
-
-				return;
+				return false;
 			}
 
 			if (m_debug) {
@@ -198,7 +197,7 @@ class RegionContraction {
 							warn_mtx.unlock();
 							params.setZero();
 							m_status = RCStatus::ErrorInvalid;
-							return;
+							return false;
 						}
 					} while (!m_f.constraint(tempSample));
 					
@@ -214,7 +213,7 @@ class RegionContraction {
 						warn_mtx.unlock();
 						params = retained.col(0);
 						m_status = RCStatus::ErrorResidual;
-						return;
+						return false;
 					}
 					samples.col(s) = tempSample;
 				}
@@ -277,6 +276,7 @@ class RegionContraction {
 			if (m_debug) {
                 std::cout << "Finished, contractions = " << m_contractions << std::endl;
 			}
+			return true;
 		}
 };
 
