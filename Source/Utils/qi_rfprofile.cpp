@@ -12,7 +12,6 @@
 #include <iostream>
 #include "Eigen/Dense"
 #include <unsupported/Eigen/Splines>
-#include <cereal/types/vector.hpp>
 
 #include "itkImageSource.h"
 #include "itkImageSliceIteratorWithIndex.h"
@@ -24,12 +23,11 @@
 #include "ImageIO.h"
 #include "IO.h"
 #include "Spline.h"
-#include "CerealMacro.h"
-#include "CerealEigen.h"
+#include "JSON.h"
 
 namespace itk {
 
-class ProfileImage : public ImageSource<QI::VectorVolumeF> {
+class ProfileImage : public ImageSource<QI::VolumeF> {
 public:
     using Self       = ProfileImage;
     using Superclass = ImageSource<QI::VectorVolumeF>;
@@ -49,12 +47,9 @@ public:
         }
         m_dim = d;
     }
-    void SetRF(const Eigen::ArrayXd pos, const std::vector<Eigen::ArrayXd> vals) {
-        m_splines.clear();
-        for (const auto &v : vals) {
-            m_splines.push_back(QI::SplineInterpolator(pos, v));
-            QI_LOG(m_debug, m_splines.back());
-        }
+    void SetRF(const Eigen::ArrayXd pos, const Eigen::ArrayXd vals) {
+        m_spline = QI::SplineInterpolator(pos, vals);
+        QI_LOG(m_debug, m_spline);
     }
 
     void SetMask(const QI::VolumeF *mask) { this->SetNthInput(1, const_cast<QI::VolumeF*>(mask)); }
@@ -63,7 +58,6 @@ public:
     
     void GenerateOutputInformation() ITK_OVERRIDE {
         auto output = this->GetOutput();
-        output->SetNumberOfComponentsPerPixel(m_splines.size());
         output->SetRegions(m_reference->GetLargestPossibleRegion());
         output->SetSpacing(m_reference->GetSpacing());
         output->SetDirection(m_reference->GetDirection());
@@ -73,7 +67,7 @@ public:
 
 protected:
     SmartPointer<QI::VolumeF> m_reference;
-    std::vector<QI::SplineInterpolator> m_splines;
+    QI::SplineInterpolator m_spline;
     bool m_debug = false, m_centerMask = false;
     int m_dim = 0;
 
@@ -82,7 +76,7 @@ protected:
     ~ProfileImage(){}
     void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
         auto output = this->GetOutput();
-        ImageSliceIteratorWithIndex<QI::VectorVolumeF> imageIt(output, region);
+        ImageSliceIteratorWithIndex<QI::VolumeF> imageIt(output, region);
         imageIt.SetFirstDirection((m_dim + 1) % 3);
         imageIt.SetSecondDirection((m_dim + 2) % 3);
         imageIt.GoToBegin();
@@ -105,7 +99,7 @@ protected:
             auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
             moments->SetImage(mask);
             moments->Compute();
-            if (m_debug) std::cout << "Mask CoG is: " << moments->GetCenterOfGravity() << std::endl;
+            QI_LOG(m_debug, "Mask CoG is: " << moments->GetCenterOfGravity());
             pt_center = moments->GetCenterOfGravity();
         } else {
             // Calculate geometric center
@@ -115,25 +109,20 @@ protected:
             }
             m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
         }
-        itk::VariableLengthVector<float> zero(m_splines.size()); zero.Fill(0.);
 
         itk::ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
         while(!imageIt.IsAtEnd()) {
             QI::VectorVolumeF::PointType pt, pt_rf;
             m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), pt);
             pt_rf = pt - pt_center;
-            itk::VariableLengthVector<float> vals(m_splines.size());
-
-            for (size_t i = 0; i < m_splines.size(); i++) {
-                vals[i] = m_splines[i](pt_rf[m_dim]);
-            }
-            QI_LOG(m_debug, "Slice co-ordinate: " << pt_rf << " Spline Point: " << pt_rf[m_dim] << " value: " << vals);
+            float val = m_spline(pt_rf[m_dim]);
+            QI_LOG(m_debug, "Slice co-ordinate: " << pt_rf << " Spline Point: " << pt_rf[m_dim] << " value: " << val);
             while (!imageIt.IsAtEndOfSlice()) {
                 while (!imageIt.IsAtEndOfLine()) {
                     if (!mask || maskIter.Get()) {
-                        imageIt.Set(vals * it_B1.Get());
+                        imageIt.Set(val * it_B1.Get());
                     } else {
-                        imageIt.Set(zero);
+                        imageIt.Set(0.);
                     }
                     ++imageIt;
                     ++it_B1;
@@ -182,24 +171,15 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
-    if (verbose) std::cout << "Reading image " << QI::CheckPos(b1plus_path) << std::endl;
+    QI_LOG(verbose, "Reading image " << QI::CheckPos(b1plus_path));
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 
-    cereal::JSONInputArchive input(std::cin);
-    Eigen::ArrayXd rf_pos;
-    std::vector<Eigen::ArrayXd> rf_vals;
-    if (verbose) std::cout << "Reading slab profile" << std::endl;
-    QI_CLOAD(input, rf_pos);
-    QI_CLOAD(input, rf_vals);
-    for (const auto &v : rf_vals) {
-        if (rf_pos.rows() != v.rows()) {
-            QI_FAIL("Number of points must match number of values");
-        };
-    }
-    if (verbose) {
-        std::cout << "Profile has " << rf_pos.rows() << " points." << std::endl;
-        if (verbose) std::cout << "Generating image" << std::endl;
-    }
+    QI_LOG(verbose, "Reading slab profile");
+    rapidjson::Document json = QI::ReadJSON(std::cin);
+    auto rf_pos = QI::ArrayFromJSON(json["rf_pos"]);
+    auto rf_vals = QI::ArrayFromJSON(json["rf_vals"]);
+
+    QI_LOG(verbose, "Profile has " << rf_pos.rows() << " points.\nGenerating image");
     auto image = itk::ProfileImage::New();
     image->SetDebug(debug);
     image->SetReference(reference);
@@ -210,7 +190,7 @@ int main(int argc, char **argv) {
     auto monitor = QI::GenericMonitor::New();
     image->AddObserver(itk::ProgressEvent(), monitor);
     image->Update();
-    if (verbose) std::cout << "Finished, writing output: " << QI::CheckPos(output_path) << std::endl;
-    QI::WriteVectorImage(image->GetOutput(), QI::CheckPos(output_path));
+    QI_LOG(verbose, "Finished, writing output: " << QI::CheckPos(output_path));
+    QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path));
     return EXIT_SUCCESS;
 }

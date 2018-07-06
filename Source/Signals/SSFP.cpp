@@ -66,10 +66,10 @@ VectorXcd One_SSFP_Echo(carrd &flip, carrd &phi, cdbl TR,
     et.real() = cos(-theta);
     et.imag() = sin(-theta);
     const ArrayXcd M = G*(1. - E2*et) / (1 - b*cos(theta));
-    /*std::cout << "f0: " << f0 << " TR: " << TR << " psi: " << psi << std::endl;
-    std::cout << "phi:   " << phi.transpose() << std::endl;
-    std::cout << "theta: " << theta.transpose() << std::endl;
-    std::cout << "phase: " << arg(M).transpose() << std::endl;*/
+    /*std::cout << "f0: " << f0 << " TR: " << TR << " psi: " << psi );
+    std::cout << "phi:   " << phi.transpose());
+    std::cout << "theta: " << theta.transpose());
+    std::cout << "phase: " << arg(M).transpose());*/
     return M;
 }
 

@@ -18,8 +18,8 @@
 #include "ImageIO.h"
 #include "IO.h"
 #include "ApplyTypes.h"
-#include "CerealMacro.h"
-#include "CerealEigen.h"
+#include "JSON.h"
+#include <rapidjson/reader.h>
 
 Eigen::ArrayXd Lorentzian(const double f0, const double fwhm, const double A, const Eigen::ArrayXd &f) {
     Eigen::ArrayXd x = (f0 - f) / (fwhm/2);
@@ -124,12 +124,11 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Opening file: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Opening file: " << QI::CheckPos(input_path));
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
 
-    cereal::JSONInputArchive input(std::cin);
-    Eigen::ArrayXd z_frqs;
-    QI_CLOAD(input, z_frqs);
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    Eigen::ArrayXd z_frqs = QI::ArrayFromJSON(input["z_frqs"]);
     std::shared_ptr<LorentzFit> algo = std::make_shared<LorentzFit>(z_frqs);
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
@@ -139,21 +138,19 @@ int main(int argc, char **argv) {
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing output." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing output.");
     std::string outPrefix = outarg.Get() + "LTZ_";
     for (size_t i = 0; i < algo->numOutputs(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }
     QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

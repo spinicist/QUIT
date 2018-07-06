@@ -59,14 +59,12 @@ int main(int argc, char **argv) {
     const double root_mean_sqr_diff = sqrt(mean_sqr_diff);
     const double rel_diff = (noise.Get() > 0) ? root_mean_sqr_diff / noise.Get() : root_mean_sqr_diff;
     const bool passed = rel_diff <= tolerance.Get();
-    if (verbose) {
-        std::cout << "Mean Square Diff: " << mean_sqr_diff
-                  << "\nRelative noise: " << noise.Get()
-                  << "\nSquare-root mean square diff: " << root_mean_sqr_diff
-                  << "\nRelative Diff: " << rel_diff
-                  << "\nTolerance: " << tolerance.Get()
-                  << "\nResult: " << (passed ? "Passed" : "Failed") << std::endl;
-    }
+    QI_LOG(verbose, "Mean Square Diff: " << mean_sqr_diff
+           << "\nRelative noise: " << noise.Get()
+           << "\nSquare-root mean square diff: " << root_mean_sqr_diff
+           << "\nRelative Diff: " << rel_diff
+           << "\nTolerance: " << tolerance.Get()
+           << "\nResult: " << (passed ? "Passed" : "Failed"));
     if (passed) {
         return EXIT_SUCCESS;
     } else {

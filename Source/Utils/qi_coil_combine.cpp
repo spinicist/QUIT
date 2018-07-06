@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Reading input image: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading input image: " << QI::CheckPos(input_path));
     auto input_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
     const auto sz = input_image->GetNumberOfComponentsPerPixel();
     const auto ncoils = coils_arg ? coils_arg.Get() : sz;
@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
     apply->SetSplitsPerThread(threads.Get());
     if (subregion) apply->SetSubregion(QI::RegionArg(subregion.Get()));
     if (ser_path) {
-        if (verbose) std::cout << "Reading COMPOSER reference image: " << ser_path.Get() << std::endl;
+        QI_LOG(verbose, "Reading COMPOSER reference image: " << ser_path.Get());
         auto ser_image = QI::ReadVectorImage(ser_path.Get());
         if (ser_image->GetNumberOfComponentsPerPixel() != ncoils) {
             QI_FAIL("Number of coil reference images does not match number of coils in data");
@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
         apply->SetConst(0, ser_image);
     } else {
         // Fall back to Hammond Method
-        if (verbose) std::cout << "Using Hammond method" << std::endl;
+        QI_LOG(verbose, "Using Hammond method" );
         QI::VectorVolumeXF::RegionType region;
         if (region_arg) {
             region = QI::RegionArg<QI::VolumeF::RegionType>(region_arg.Get());
@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
             region.GetModifiableIndex() = index;
             region.GetModifiableSize() = {{8, 8, 8}};
         }
-        if (verbose) std::cout << "Reference region is:\n" << region << std::endl;
+        QI_LOG(verbose, "Reference region is:\n" << region );
         auto roi = itk::RegionOfInterestImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF>::New();
         roi->SetRegionOfInterest(region);
         roi->SetInput(input_image);
@@ -200,22 +200,22 @@ int main(int argc, char **argv) {
         mean_filter->SetInput(roi->GetOutput());
         mean_filter->Update();
         auto roi_mean = mean_filter->GetResult();
-        if (verbose) std::cout << "Mean values: " << roi_mean << std::endl;
+        QI_LOG(verbose, "Mean values: " << roi_mean );
         itk::VariableLengthVector<float> phase(sz);
         for (size_t i = 0; i < sz; i++) {
             phase[i] = std::arg(roi_mean[i]);
         }
-        if (verbose) std::cout << "Mean phase: " << phase << std::endl;
+        QI_LOG(verbose, "Mean phase: " << phase );
         combine->setChannelPhases(phase);
     }
-    if (verbose) std::cout << "Correcting phase & combining" << std::endl;
+    QI_LOG(verbose, "Correcting phase & combining" );
     apply->Update();
     const std::string out_name = (outarg ? outarg.Get() : QI::StripExt(input_path.Get())) + "_combined" + QI::OutExt();
-    if (verbose) std::cout << "Writing output file " << out_name << std::endl;
+    QI_LOG(verbose, "Writing output file " << out_name );
     QI::WriteVectorImage(apply->GetOutput(0), out_name);
     if (save_corrected) {
         const std::string out_name = (outarg ? outarg.Get() : QI::StripExt(input_path.Get())) + "_corrected" + QI::OutExt();
-        if (verbose) std::cout << "Writing corrected coil file " << out_name << std::endl;
+        QI_LOG(verbose, "Writing corrected coil file " << out_name );
         QI::WriteVectorImage(apply->GetAllResidualsOutput(), out_name);
     }
     return EXIT_SUCCESS;

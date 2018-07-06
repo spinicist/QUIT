@@ -30,23 +30,21 @@ SSFP_PINC="180,180,180,180,180,180,180,180,0,0,0,0,0,0,0,0"
 SSFP_TR="0.005"
 
 SEQUENCE_GROUP="\
-    \"SequenceGroup\": {
-        \"sequences\": [
-            {
-                \"SPGR\": {
-                    \"TR\": $SPGR_TR,
-                    \"FA\": [$SPGR_FLIP]
-                }
-            },
-            {
-                \"SSFP\": {
-                    \"TR\": $SSFP_TR,
-                    \"FA\": [$SSFP_FLIP],
-                    \"PhaseInc\": [$SSFP_PINC]
-                }
+    \"Sequences\": [
+        {
+            \"SPGR\": {
+                \"TR\": $SPGR_TR,
+                \"FA\": [$SPGR_FLIP]
             }
-        ]
-    }
+        },
+        {
+            \"SSFP\": {
+                \"TR\": $SSFP_TR,
+                \"FA\": [$SSFP_FLIP],
+                \"PhaseInc\": [$SSFP_PINC]
+            }
+        }
+    ]
 "
 
 NOISE="0.002"
@@ -99,24 +97,22 @@ SSFP_PINC="180,180,180,180,180,180,180,180,0,0,0,0,0,0,0,0"
 SSFP_TR="0.008"
 
 SEQUENCE_GROUP="\
-    \"SequenceGroup\": {
-        \"sequences\": [
-            {
-                \"SPGREcho\": {
-                    \"TR\": $SPGR_TR,
-                    \"TE\": $SPGR_TE,
-                    \"FA\": [$SPGR_FLIP]
-                }
-            },
-            {
-                \"SSFPEcho\": {
-                    \"TR\": $SSFP_TR,
-                    \"FA\": [$SSFP_FLIP],
-                    \"PhaseInc\": [$SSFP_PINC]
-                }
+    \"Sequences\": [
+        {
+            \"SPGREcho\": {
+                \"TR\": $SPGR_TR,
+                \"TE\": $SPGR_TE,
+                \"FA\": [$SPGR_FLIP]
             }
-        ]
-    }
+        },
+        {
+            \"SSFPEcho\": {
+                \"TR\": $SSFP_TR,
+                \"FA\": [$SSFP_FLIP],
+                \"PhaseInc\": [$SSFP_PINC]
+            }
+        }
+    ]
 "
 
 NOISE="0.002"
@@ -170,23 +166,21 @@ SSFP_PINC="180,180,180,180,180,180,180,180,0,0,0,0,0,0,0,0"
 SSFP_TR="0.005"
 
 SEQUENCE_GROUP="\
-    \"SequenceGroup\": {
-        \"sequences\": [
-            {
-                \"SPGR\": {
-                    \"TR\": $SPGR_TR,
-                    \"FA\": [$SPGR_FLIP]
-                }
-            },
-            {
-                \"SSFP\": {
-                    \"TR\": $SSFP_TR,
-                    \"FA\": [$SSFP_FLIP],
-                    \"PhaseInc\": [$SSFP_PINC]
-                }
+    \"Sequences\": [
+        {
+            \"SPGR\": {
+                \"TR\": $SPGR_TR,
+                \"FA\": [$SPGR_FLIP]
             }
-        ]
-    }
+        },
+        {
+            \"SSFP\": {
+                \"TR\": $SSFP_TR,
+                \"FA\": [$SSFP_FLIP],
+                \"PhaseInc\": [$SSFP_PINC]
+            }
+        }
+    ]
 "
 
 NOISE="0.002"

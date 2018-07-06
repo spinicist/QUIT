@@ -15,7 +15,6 @@
 #define SEQUENCES_MTSAT_H
 
 #include "SequenceBase.h"
-#include "CerealEigen.h"
 #include "RFPulse.h"
 
 namespace QI {

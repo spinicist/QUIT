@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
 
-    if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_file) << std::endl;
+    QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_file));
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file));
 
     auto fid_volume = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
@@ -87,8 +87,8 @@ int main(int argc, char **argv) {
     B1->SetConstant2(alpha.Get());
     B1->Update();
     QI::WriteImage(dream->GetOutput(), out_prefix.Get() + "DREAM_angle" + QI::OutExt());
-    QI::WriteImage(B1->GetOutput(),  out_prefix.Get() + "DREAM_B1" + QI::OutExt());
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "DREAM_B1" + QI::OutExt());
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }
 

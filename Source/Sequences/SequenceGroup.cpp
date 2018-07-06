@@ -54,4 +54,20 @@ void SequenceGroup::addSequence(const std::shared_ptr<SequenceBase> &w) {
     sequences.push_back(w);
 }
 
+SequenceGroup::SequenceGroup(rapidjson::Value &json) {
+    assert(json.IsArray());
+    for (rapidjson::SizeType i = 0; i < json.Size(); i++) {
+        sequences.push_back(SequenceFromJSON(json[i]));
+    }
+}
+
+rapidjson::Value SequenceGroup::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kArrayType);
+    for (const auto &seq : sequences) {
+        auto aval = JSONFromSequence(seq, a);
+        json.PushBack(aval, a);
+    }
+    return json;
+}
+
 } // End namespace QI

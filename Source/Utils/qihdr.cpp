@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
         imageIO->SetFileName(std::string(fname));
         imageIO->ReadImageInformation();
         size_t dims = imageIO->GetNumberOfDimensions();
-        if (verbose) std::cout << "File:       " << std::string(fname) << std::endl;
+        QI_LOG(verbose, "File:       " << std::string(fname));
         if (print_all || verbose) std::cout << "Dimension:  "; if (print_all || print_dims) std::cout << dims << std::endl;
         if (print_all || verbose) std::cout << "Voxel Type: ";
         if (print_all || print_type) {
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
                     QI_EXCEPTION("Could not determine type of rename header field:" << hf);
                 }
             } else {
-                if (verbose) std::cout << "Header field not found: " << hf << std::endl;
+                QI_LOG(verbose, "Header field not found: " << hf);
             }
         }
     }

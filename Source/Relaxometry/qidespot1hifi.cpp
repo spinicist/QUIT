@@ -19,7 +19,6 @@
 #include "Util.h"
 #include "SPGRSequence.h"
 #include "MPRAGESequence.h"
-#include "SequenceCereal.h"
 #include "Args.h"
 #include "ImageIO.h"
 #include "ApplyTypes.h"
@@ -53,8 +52,8 @@ public:
         Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
         r = M0*sa*(1-E1)/denom - m_data;
         
-        // std::cout << "SPGR RESIDS" << std::endl;
-        // std::cout << r.transpose() << std::endl;
+        // std::cout << "SPGR RESIDS" );
+        // std::cout << r.transpose());
         if (jacobians && jacobians[0]) {
             Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), 3);
             j.col(0) = (1-E1)*sa/denom;
@@ -161,7 +160,7 @@ public:
         options.parameter_tolerance = 1e-4;
         // options.check_gradients = true;
         options.logging_type = ceres::SILENT;
-        // std::cout << "START P: " << p.transpose() << std::endl;
+        // std::cout << "START P: " << p.transpose());
         ceres::Solve(options, &problem, &summary);
         
         outputs[0] = spgr_pars[0] * scale;
@@ -204,13 +203,15 @@ int main(int argc, char **argv) {
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Reading SPGR file: " << QI::CheckPos(spgr_path) << std::endl;
+    QI_LOG(verbose, "Reading SPGR file: " << QI::CheckPos(spgr_path));
     auto spgrImg = QI::ReadVectorImage(QI::CheckPos(spgr_path));
-    cereal::JSONInputArchive input(std::cin);
-    auto spgr_sequence = QI::ReadSequence<QI::SPGRSequence>(input, verbose);
-    if (verbose) std::cout << "Reading MPRAGE file: " << QI::CheckPos(ir_path) << std::endl;
+    QI_LOG(verbose, "Reading SPGR sequence parameters");
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::SPGRSequence spgr_sequence(input["SPGR"]);
+    QI_LOG(verbose, "Reading MPRAGE file: " << QI::CheckPos(ir_path));
     auto irImg = QI::ReadVectorImage(QI::CheckPos(ir_path));
-    auto ir_sequence = QI::ReadSequence<QI::MPRAGESequence>(input, verbose);
+    QI_LOG(verbose, "Reading MPRAGE sequence parameters");
+    QI::MPRAGESequence ir_sequence(input["MPRAGE"]);
 
     auto apply = QI::ApplyF::New();
     auto hifi = std::make_shared<HIFIAlgo>(spgr_sequence, ir_sequence, clamp.Get());
@@ -223,12 +224,10 @@ int main(int argc, char **argv) {
     apply->SetInput(1, irImg);
     if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (verbose) std::cout << "Processing..." << std::endl;
+    QI_LOG(verbose, "Processing..." );
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files.");
     std::string out_prefix = args::get(outarg) + "HIFI_";
     QI::WriteImage(apply->GetOutput(0), out_prefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), out_prefix + "T1" + QI::OutExt());
@@ -237,6 +236,6 @@ int main(int argc, char **argv) {
     if (all_resids) {
         QI::WriteVectorImage(apply->GetAllResidualsOutput(), out_prefix + "all_residuals" + QI::OutExt());
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

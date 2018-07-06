@@ -60,12 +60,9 @@ void make_image() {
     if (size_arg)    QI::ArrayArg<SizeType, dim>(size_arg.Get(), imgSize);
     if (spacing_arg) QI::ArrayArg<SpacingType, dim>(spacing_arg.Get(), imgSpacing);
     if (origin_arg)  QI::ArrayArg<PointType, dim>(origin_arg.Get(), imgOrigin);
-
-    if (verbose) {
-        std::cout << "Size:    " << imgSize << std::endl;
-        std::cout << "Spacing: " << imgSpacing << std::endl;
-        std::cout << "Origin:  " << imgOrigin << std::endl;
-    }
+    QI_LOG(verbose, "Size:    " << imgSize <<
+                    "Spacing: " << imgSpacing <<
+                    "Origin:  " << imgOrigin);
     enum class FillTypes { Fill, Gradient, Steps };
     FillTypes fillType = FillTypes::Fill;
     float startVal = 0, deltaVal = 0, stopVal = 0;
@@ -73,7 +70,7 @@ void make_image() {
     if (fill_arg) {
         fillType = FillTypes::Fill;
         startVal = std::stod(fill_arg.Get());
-        if (verbose) std::cout << "Fill with constant value: " << startVal << std::endl;
+        QI_LOG(verbose, "Fill with constant value: " << startVal);
     } else if (grad_arg) {
         fillType = FillTypes::Gradient;
         std::istringstream stream(grad_arg.Get());
@@ -82,7 +79,7 @@ void make_image() {
         stream >> stopVal;
         deltaVal = (stopVal - startVal) / (imgSize[fillDim] - 1);
         stepLength = 1;
-        if (verbose) std::cout << "Fill with gradient " << startVal << "-" << stopVal << " on dim " << fillDim << std::endl;
+        QI_LOG(verbose, "Fill with gradient " << startVal << "-" << stopVal << " on dim " << fillDim);
     } else if (steps_arg) {
         fillType = FillTypes::Steps;
         std::istringstream stream(steps_arg.Get());
@@ -96,9 +93,9 @@ void make_image() {
         }
         stepLength = imgSize[fillDim] / steps;
         deltaVal = (stopVal - startVal) / (steps - 1);
-        if (verbose) std::cout << "Fill with " << steps << " steps " << startVal << "-" << stopVal << " on dim " << fillDim << std::endl;
+        QI_LOG(verbose, "Fill with " << steps << " steps " << startVal << "-" << stopVal << " on dim " << fillDim);
     }
-    if (verbose) std::cout << "Step length is " << stepLength << " delta value is " << deltaVal << std::endl;
+    QI_LOG(verbose, "Step length is " << stepLength << " delta value is " << deltaVal);
     imgRegion.SetIndex(imgIndex);
     imgRegion.SetSize(imgSize);
     newimg->SetRegions(imgRegion);
@@ -109,7 +106,7 @@ void make_image() {
     if (fillDim >= dim) QI_FAIL("Fill dimension is larger than image dimension");
     itk::ImageLinearIteratorWithIndex<ImageType> it(newimg, imgRegion);
     it.SetDirection(fillDim);
-    if (verbose) std::cout << "Filling..." << std::endl;
+    QI_LOG(verbose, "Filling...");
     it.GoToBegin();
     while (!it.IsAtEnd()) {
         float val = startVal;
@@ -127,7 +124,7 @@ void make_image() {
         }
     it.NextLine();
     }
-    if (verbose) std::cout << "Writing file to: " << QI::CheckPos(fName) << std::endl;
+    QI_LOG(verbose, "Writing file to: " << QI::CheckPos(fName));
     QI::WriteImage(newimg, QI::CheckPos(fName));
 }
 

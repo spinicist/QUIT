@@ -140,7 +140,7 @@ protected:
             if (threadId == 0)
                 progress.CompletedPixel(); // We can get away with this because enqueue blocks if the queue is full
         }
-        //std::cout << "End " << __PRETTY_FUNCTION__ << std::endl;
+        //std::cout << "End " << __PRETTY_FUNCTION__ );
     }
 
 private:
@@ -174,19 +174,17 @@ int main(int argc, char **argv) {
     args::Flag     two_pass(parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2',"2pass"});
     QI::ParseArgs(parser, argc, argv, verbose);
     
-    if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inFile = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
     size_t nVols = inFile->GetNumberOfComponentsPerPixel() / ph_incs.Get();
-    if (verbose) {
-        std::cout << "Number of phase increments is " << ph_incs.Get() << std::endl;
-        std::cout << "Number of volumes to process is " << nVols << std::endl;
-    }
+    QI_LOG(verbose, "Number of phase increments is " << ph_incs.Get() <<
+                    "Number of volumes to process is " << nVols );
 
     std::shared_ptr<QI::BandAlgo> algo = nullptr;
     std::string suffix = "";
     if (method.Get() == "G") {
         suffix = "GS";
-        if (verbose) std::cout << "Geometric solution selected" << std::endl;
+        QI_LOG(verbose, "Geometric solution selected" );
         auto g = std::make_shared<QI::GSAlgo>();
         g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
         if (regularise.Get() == "L") {
@@ -196,8 +194,7 @@ int main(int argc, char **argv) {
         } else if (regularise.Get() == "N") {
             g->setRegularise(QI::RegEnum::None);
         } else {
-            std::cerr << "Invalid regularisation " << regularise.Get() << " selected." << std::endl;
-            return EXIT_FAILURE;
+            QI_FAIL("Invalid regularisation " << regularise.Get() << " selected.");
         }
         algo = g;
     } else if (method.Get() == "X") {
@@ -209,10 +206,9 @@ int main(int argc, char **argv) {
     } else if (method.Get() == "M") {
         suffix = "Max"; algo = std::make_shared<QI::MaxAlgo>();
     } else {
-        std::cerr << "Invalid method " << method.Get() << " selected." << std::endl;
-        return EXIT_FAILURE;
+        QI_FAIL("Invalid method " << method.Get() << " selected.");
     }
-    if (verbose) std::cout << suffix << " method selected." << std::endl;
+    QI_LOG(verbose, suffix << " method selected." );
     algo->setPhases(ph_incs.Get());
     algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
     algo->setReorderPhase(ph_order);
@@ -224,8 +220,8 @@ int main(int argc, char **argv) {
     pass1->SetPoolsize(num_threads.Get());
     pass1->SetSplitsPerThread(num_threads.Get()); // Unbalanced algorithm
     pass1->SetVerbose(verbose);
+    QI_LOG(verbose, "1st pass");
     if (verbose) {
-        std::cout << "1st pass" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         pass1->AddObserver(itk::ProgressEvent(), monitor);
     }
@@ -241,8 +237,8 @@ int main(int argc, char **argv) {
         pass2->SetInput(inFile);
         pass2->SetPass1(pass1->GetOutput(0));
         if (mask) pass2->SetMask(QI::ReadImage(mask.Get()));
+        QI_LOG(verbose, "2nd pass");
         if (verbose) {
-            std::cout << "2nd pass" << std::endl;
             auto monitor = QI::GenericMonitor::New();
             pass2->AddObserver(itk::ProgressEvent(), monitor);
         }
@@ -251,14 +247,14 @@ int main(int argc, char **argv) {
     } else {
         output = pass1->GetOutput(0);
     }
-    std::string prefix = (out_arg ? out_arg.Get() : QI::StripExt(input_path.Get()) );
+    std::string prefix = (out_arg ? out_arg.Get() : QI::StripExt(input_path.Get()));
     std::string outname = prefix + "_" + suffix + QI::OutExt();
-    if (verbose) std::cout << "Output filename: " << outname << std::endl;
+    QI_LOG(verbose, "Output filename: " << outname );
     if (magnitude) {
         QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(output, outname);
     } else {
         QI::WriteVectorImage(output, outname);
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

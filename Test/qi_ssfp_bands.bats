@@ -19,17 +19,15 @@ setup() {
     "T2": "T2$EXT",
     "f0": "f0$EXT",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SSFP": {
-                    "TR": 0.01,
-                    "FA": [30,30,30,30],
-                    "PhaseInc": [180,0,90,270]
-                }
+    "Sequences": [
+        {
+            "SSFP": {
+                "TR": 0.01,
+                "FA": [30,30,30,30],
+                "PhaseInc": [180,0,90,270]
             }
-        ]
-    }
+        }
+    ]
 }
 OUT
     qi_ssfp_bands ssfp_mag$EXT --method=M --magnitude --verbose
@@ -51,22 +49,20 @@ OUT
     "T2": "T2$EXT",
     "f0": "f0$EXT",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SSFP": {
-                    "TR": 0.01,
-                    "FA": [30,30,30,30],
-                    "PhaseInc": [180,0,90,270]
-                }
-            },{
-                "SSFPGS": {
-                    "TR": 0.01,
-                    "FA": [30]
-                }
+    "Sequences": [
+        {
+            "SSFP": {
+                "TR": 0.01,
+                "FA": [30,30,30,30],
+                "PhaseInc": [180,0,90,270]
             }
-        ]
-    }
+        },{
+            "SSFPGS": {
+                "TR": 0.01,
+                "FA": [30]
+            }
+        }
+    ]
 }
 OUT
 

@@ -366,20 +366,18 @@ qisignal --noise=0.01 simulated_spgr_image.nii.gz < input.json
     "T2": "",
     "f0": "",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SPGR": {
-                    "TR": 0.05,
-                    "FA": [3, 10]
-                }
+    "Sequences": [
+        {
+            "SPGR": {
+                "TR": 0.05,
+                "FA": [3, 10]
             }
-        ]
-    }
+        }
+    ]
 }
 ```
 
-The first set of inputs are the filenames for each parameter. Each model will have a different set of parameters. If a filename is not specified, a default value will be used in each voxel. After the parameters comes a `SequenceGroup` input, the sequences within must correspond to the image filenames given on the command line.
+The first set of inputs are the filenames for each parameter. Each model will have a different set of parameters. If a filename is not specified, a default value will be used in each voxel. After the parameters comes a `Sequences` input, the sequences within must correspond to the image filenames given on the command line.
 
 **Important Options**
 

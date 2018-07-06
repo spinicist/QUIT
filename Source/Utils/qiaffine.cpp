@@ -96,7 +96,7 @@ int Pipeline() {
         }
         if (!iss)
             QI_FAIL("Failed to read flip: " << flip.Get());
-        if (verbose) std::cout << "Flipping: " << flip_axes << std::endl;
+        QI_LOG(verbose, "Flipping: " << flip_axes );
         flip_filter->SetInput(image);
         flip_filter->SetFlipAxes(flip_axes);
         flip_filter->SetFlipAboutOrigin(false);
@@ -123,7 +123,7 @@ int Pipeline() {
     img_tfm->Scale(spacing);
     img_tfm->Translate(origin);
     if (scale) {
-        if (verbose) std::cout << "Scaling by factor " << scale.Get() << std::endl;
+        QI_LOG(verbose, "Scaling by factor " << scale.Get());
         img_tfm->Scale(scale.Get());
     }
     
@@ -131,22 +131,22 @@ int Pipeline() {
     if (rotate) {
         Eigen::Array3d angles; QI::ArrayArg<Eigen::Array3d, 3>(rotate.Get(), angles);
         tfm->SetRotation(angles[0]*M_PI/180., angles[1]*M_PI/180., angles[2]*M_PI/180.);
-        if (verbose) std::cout << "Rotation by: " << angles.transpose() << std::endl;
+        QI_LOG(verbose, "Rotation by: " << angles.transpose());
     }
     if (translate) {
         Euler::OffsetType offset; QI::ArrayArg<Euler::OffsetType, 3>(translate.Get(), offset);
         tfm->Translate(-offset);
-        if (verbose) std::cout << "Translate by: " << offset << std::endl;
+        QI_LOG(verbose, "Translate by: " << offset );
     }
     if (center) {
         Euler::OffsetType offset; offset.Fill(0.);
         if (center.Get() == "geo") {
-            if (verbose) std::cout << "Setting geometric center" << std::endl;
+            QI_LOG(verbose, "Setting geometric center" );
             for (int i = 0; i < 3; i++) {
                 offset[i] = origin[i]-spacing[i]*size[i] / 2;
             }
         } else if (center.Get() == "cog") {
-            if (verbose) std::cout << "Setting center to center of gravity" << std::endl;
+            QI_LOG(verbose, "Setting center to center of gravity" );
             auto moments = itk::ImageMomentsCalculator<TImage>::New();
             moments->SetImage(image);
             moments->Compute();
@@ -163,13 +163,13 @@ int Pipeline() {
         auto writer = itk::TransformFileWriterTemplate<double>::New();
         writer->SetInput(tfm);
         writer->SetFileName(tfm_path.Get());
-        if (verbose) std::cout << "Writing transform file: " << tfm_path.Get() << std::endl;
+        QI_LOG(verbose, "Writing transform file: " << tfm_path.Get());
         writer->Update();
     }
 
     img_tfm->Compose(tfm);
     itk::CenteredAffineTransform<double, 3>::MatrixType fmat = img_tfm->GetMatrix();
-    if (verbose) std::cout << "Final transform:\n" << fmat << std::endl;
+    QI_LOG(verbose, "Final transform:\n" << fmat );
     for (int i = 0; i < 3; i++) {
         fullOrigin[i] = img_tfm->GetOffset()[i];
     }
@@ -189,10 +189,10 @@ int Pipeline() {
 
     // Write out the edited file
     if (dest_path) {
-        if (verbose) std::cout << "Writing: " << dest_path.Get() << std::endl;
+        QI_LOG(verbose, "Writing: " << dest_path.Get());
         QI::WriteImage(image, dest_path.Get());
     } else {
-        if (verbose) std::cout << "Writing: " << source_path.Get() << std::endl;
+        QI_LOG(verbose, "Writing: " << source_path.Get());
         QI::WriteImage(image, source_path.Get());
     }
     return EXIT_SUCCESS;
@@ -200,7 +200,7 @@ int Pipeline() {
 
 int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading header for: " << QI::CheckPos(source_path) << std::endl;
+    QI_LOG(verbose, "Reading header for: " << QI::CheckPos(source_path));
     auto header = itk::ImageIOFactory::CreateImageIO(QI::CheckPos(source_path).c_str(), itk::ImageIOFactory::ReadMode);
     if (!header)  {
         QI_EXCEPTION("Failed to read header from: " << source_path.Get());
@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
     header->ReadImageInformation();
     auto dims  = header->GetNumberOfDimensions();
     auto dtype = header->GetComponentType();
-    if (verbose) std::cout << "Datatype is " << header->GetComponentTypeAsString( dtype ) << std::endl;
+    QI_LOG(verbose, "Datatype is " << header->GetComponentTypeAsString( dtype ));
 
     #define DIM_SWITCH( TYPE ) \
         switch (dims) { \

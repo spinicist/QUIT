@@ -23,7 +23,6 @@
 #include "ImageIO.h"
 #include "Args.h"
 #include "MultiEchoSequence.h"
-#include "SequenceCereal.h"
 #include "ApplyTypes.h"
 #include "ImageToVectorFilter.h"
 
@@ -190,24 +189,25 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> threshPD(parser, "THRESHOLD PD", "Only output maps when PD exceeds threshold value", {'t', "tresh"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inputFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
 
     std::shared_ptr<RelaxAlgo> algo = ITK_NULLPTR;
     switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<LogLinAlgo>(); if (verbose) std::cout << "LogLin algorithm selected." << std::endl; break;
-        case 'a': algo = std::make_shared<ARLOAlgo>(); if (verbose) std::cout << "ARLO algorithm selected." << std::endl; break;
-        case 'n': algo = std::make_shared<NonLinAlgo>(); if (verbose) std::cout << "Non-linear algorithm (Levenberg Marquardt) selected." << std::endl; break;
+        case 'l': algo = std::make_shared<LogLinAlgo>(); QI_LOG(verbose, "LogLin algorithm selected." ); break;
+        case 'a': algo = std::make_shared<ARLOAlgo>(); QI_LOG(verbose, "ARLO algorithm selected." ); break;
+        case 'n': algo = std::make_shared<NonLinAlgo>(); QI_LOG(verbose, "Non-linear algorithm (Levenberg Marquardt) selected." ); break;
         default:
-            std::cout << "Unknown algorithm type " << algorithm.Get() << std::endl;
-            return EXIT_FAILURE;
+            QI_FAIL("Unknown algorithm type " << algorithm.Get());
     }
     algo->setThresh(threshPD.Get());
     algo->setClamp(0, clampT2.Get());
     algo->setIterations(its.Get());
 
     // Gather input data
-    auto multiecho = QI::ReadSequence<QI::MultiEchoSequence>(std::cin, verbose);
+    QI_LOG(verbose, "Reading sequence parameters");
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::MultiEchoSequence multiecho(input["MultiEcho"]);
     size_t nVols = inputFile->GetLargestPossibleRegion().GetSize()[3] / multiecho.size();
     algo->setSequence(multiecho);
     auto apply = QI::ApplyF::New();
@@ -221,7 +221,7 @@ int main(int argc, char **argv) {
     layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
     PDoutput->SetLayout(layout);
     T2output->SetLayout(layout);
-    if (verbose) std::cout << "Processing" << std::endl;
+    QI_LOG(verbose, "Processing" );
     auto inputVector = SeriesToVectorF::New();
     inputVector->SetInput(inputFile);
     inputVector->SetBlockSize(multiecho.size());
@@ -241,7 +241,7 @@ int main(int argc, char **argv) {
         PDoutput->SetInput(i, PDimgs.at(i));
         T2output->SetInput(i, T2imgs.at(i));
     }
-    if (verbose) std::cout << "Writing output" << std::endl;
+    QI_LOG(verbose, "Writing output" );
     PDoutput->UpdateLargestPossibleRegion();
     T2output->UpdateLargestPossibleRegion();
     std::string outPrefix = outarg.Get() + "ME_";

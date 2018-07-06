@@ -30,11 +30,9 @@ qinewimage T2.nii --size "$SIZE" -f 0.1
 qinewimage R2.nii --size "$SIZE" -f 10
 
 SPIN_SEQUENCE="
-\"MultiEcho\" : {
+\"MultiEchoFlex\" : {
     \"TR\" : 2.5,
-    \"TE1\" : 0.00,
-    \"ESP\" : 0.01,
-    \"ETL\" : 9
+    \"TE\" : [ 0.00, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07 ]
 }
 "
 SPIN_FILE="me.nii"
@@ -46,13 +44,9 @@ qisignal --model=1 -v --noise=$NOISE $SPIN_FILE << END_SIG
     "T2" : "T2.nii",
     "f0" : "",
     "B1" : "",
-    "SequenceGroup" : {
-        "sequences" : [
-            {
-                $SPIN_SEQUENCE
-            }
-        ]
-    }
+    "Sequences" : [
+        { $SPIN_SEQUENCE }
+    ]
 }
 END_SIG
 

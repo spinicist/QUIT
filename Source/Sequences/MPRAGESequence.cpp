@@ -10,7 +10,6 @@
  */
 
 #include "MPRAGESequence.h"
-#include "CerealMacro.h"
 
 namespace QI {
 
@@ -20,24 +19,27 @@ Eigen::ArrayXcd MPRAGESequence::signal(std::shared_ptr<Model::ModelBase> m, cons
     return m->MPRAGE(par, FA, TR, ETL, k0, eta, TI, TD);
 }
 
-void MPRAGESequence::load(cereal::JSONInputArchive &ar) {
-    QI_CLOAD(ar, TR);
-    QI_CLOAD(ar, TI);
-    QI_CLOAD(ar, TD);
-    QI_CLOAD(ar, eta);
-    QI_CLOAD_DEGREES(ar, FA);
-    QI_CLOAD(ar, ETL);
-    QI_CLOAD(ar, k0);
+MPRAGESequence::MPRAGESequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    TI = json["TI"].GetDouble();
+    TD = json["TD"].GetDouble();
+    eta = json["eta"].GetDouble();
+    FA = json["FA"].GetDouble() * M_PI / 180;
+    ETL = json["ETL"].GetInt();
+    k0 = json["k0"].GetInt();
 }
 
-void MPRAGESequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_CSAVE(ar, TR);
-    QI_CSAVE(ar, TI);
-    QI_CSAVE(ar, TD);
-    QI_CSAVE(ar, eta);
-    QI_CSAVE_DEGREES(ar, FA);
-    QI_CSAVE(ar, ETL);
-    QI_CSAVE(ar, k0);
+rapidjson::Value MPRAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("TI", TI, a);
+    json.AddMember("TD", TD, a);
+    json.AddMember("eta", eta, a);
+    json.AddMember("FA", FA * 180 / M_PI, a);
+    json.AddMember("ETL", ETL, a);
+    json.AddMember("k0", k0, a);
+    return json;
 }
 
 /*
@@ -54,55 +56,28 @@ Eigen::ArrayXcd MP2RAGESequence::signal(const double M0, const double T1, const 
     return One_MP2RAGE(FA, TR, ETL, TD, M0, T1, B1, eta);
 }
 
-void MP2RAGESequence::load(cereal::JSONInputArchive &ar) {
-    double SegTR;
-    Eigen::Array2d TI;
-    QI_CLOAD(ar, TR);
-    QI_CLOAD(ar, SegTR);
-    QI_CLOAD(ar, TI);
-    QI_CLOAD(ar, ETL);
-    QI_CLOAD_DEGREES(ar, FA);
+MP2RAGESequence::MP2RAGESequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    auto TI = ArrayFromJSON(json["TI"]);
+    auto SegTR = json["SegTR"].GetDouble();
+    FA = json["FA"].GetDouble() * M_PI / 180;
+    ETL = json["ETL"].GetInt();
     TD[0] = TI[0];
     TD[1] = TI[1] - (ETL * TR) - TI[0];
     TD[2] = SegTR - (ETL * TR) - TI[1];
 }
 
-void MP2RAGESequence::save(cereal::JSONOutputArchive &ar) const {
+rapidjson::Value MP2RAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
     Eigen::Array2d TI{TD[0], TD[1] + (ETL * TR) + TD[0]};
     double SegTR = TI[1] + (ETL * TR) + TD[2];
-    QI_CSAVE(ar, TR);
-    QI_CSAVE(ar, SegTR);
-    QI_CSAVE(ar, TI);
-    QI_CSAVE(ar, ETL);
-    QI_CSAVE_DEGREES(ar, FA);
-}
-
-/*
- * MP3RAGE
- */
-
-Eigen::Index MP3RAGESequence::size() const { return 3; }
-
-Eigen::ArrayXcd MP3RAGESequence::signal(const std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
-    QI_FAIL("Not implemented");
-}
-
-Eigen::ArrayXcd MP3RAGESequence::signal(const double M0, const double T1, const double B1, const double eta) const {
-    return One_MP3RAGE(FA, TR, ETL, TD, M0, T1, B1, eta);
-}
-
-void MP3RAGESequence::load(cereal::JSONInputArchive &ar) {
-    QI_CLOAD(ar, TR);
-    QI_CLOAD(ar,  TD);
-    QI_CLOAD(ar, ETL);
-    QI_CLOAD_DEGREES(ar, FA);
-}
-
-void MP3RAGESequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_CSAVE(ar, TR);
-    QI_CSAVE(ar,  TD);
-    QI_CSAVE(ar, ETL);
-    QI_CSAVE_DEGREES(ar, FA);
+    rapidjson::Value json;
+    json.AddMember("TR", TR, a);
+    json.AddMember("SegTR", SegTR, a);
+    json.AddMember("TI", ArrayToJSON(TI, a), a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    json.AddMember("ETL", ETL, a);
+    return json;
 }
 
 } // End namespace QI

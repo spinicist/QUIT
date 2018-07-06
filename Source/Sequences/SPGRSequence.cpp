@@ -12,8 +12,8 @@
  */
 
 #include "SPGRSequence.h"
-#include "CerealMacro.h"
-#include "CerealEigen.h"
+#include "JSON.h"
+#include "Macro.h"
 
 namespace QI {
 
@@ -25,14 +25,17 @@ Eigen::ArrayXcd SPGRSequence::signal(std::shared_ptr<Model::ModelBase> m, const 
     return m->SPGR(p, FA, TR);
 }
 
-void SPGRSequence::load(cereal::JSONInputArchive &ar) {
-    QI_CLOAD(ar, TR);
-    QI_CLOAD_DEGREES(ar, FA);
+SPGRSequence::SPGRSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
 }
 
-void SPGRSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_CSAVE(ar, TR);
-    QI_CSAVE_DEGREES(ar, FA);
+rapidjson::Value SPGRSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    return json;
 }
 
 
@@ -44,16 +47,19 @@ Eigen::ArrayXcd SPGREchoSequence::signal(std::shared_ptr<Model::ModelBase> m, co
     return m->SPGREcho(p, FA, TR, TE);
 }
 
-void SPGREchoSequence::load(cereal::JSONInputArchive &ar) {
-    QI_CLOAD(ar, TR);
-    QI_CLOAD(ar, TE);
-    QI_CLOAD_DEGREES(ar, FA);
+SPGREchoSequence::SPGREchoSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    TE = json["TE"].GetDouble();
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
 }
 
-void SPGREchoSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_CSAVE(ar, TR);
-    QI_CSAVE(ar, TE);
-    QI_CSAVE_DEGREES(ar, FA);
+rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("TE", TE, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    return json;
 }
 
 /*
@@ -64,18 +70,21 @@ Eigen::ArrayXcd SPGRFiniteSequence::signal(std::shared_ptr<Model::ModelBase> m, 
     return m->SPGRFinite(p, FA, TR, Trf, TE);
 }
 
-void SPGRFiniteSequence::load(cereal::JSONInputArchive &ar) {
-    QI_CLOAD(ar, TR);
-    QI_CLOAD(ar, TE);
-    QI_CLOAD(ar, Trf);
-    QI_CLOAD_DEGREES(ar, FA);
+SPGRFiniteSequence::SPGRFiniteSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    TE = json["TE"].GetDouble();
+    Trf = json["Trf"].GetDouble();
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
 }
 
-void SPGRFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_CSAVE(ar, TR);
-    QI_CSAVE(ar, TE);
-    QI_CSAVE(ar, Trf);
-    QI_CSAVE_DEGREES(ar, FA);
+rapidjson::Value SPGRFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("TE", TE, a);
+    json.AddMember("Trf", Trf, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    return json;
 }
 
 } // End namespace QI

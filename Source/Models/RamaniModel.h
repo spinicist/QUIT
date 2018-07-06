@@ -13,10 +13,10 @@
 #define MODEL_RAMANI_H
 
 #include <memory>
-#include <cereal/archives/json.hpp>
 #include "ModelBase.h"
 #include "Lineshape.h"
 #include "RFPulse.h"
+#include "JSON.h"
 
 namespace QI {
 namespace Model {
@@ -26,8 +26,8 @@ DECLARE_MODEL_INTERFACE()
 protected:
     std::shared_ptr<Lineshapes::Lineshape> lineshape;
 public:
-    Ramani(cereal::JSONInputArchive &in);
     Eigen::VectorXd MTSat(cvecd &p, cdbl &FA, cdbl &TR, carrd &satf0, carrd &satflip, const RFPulse &pulse) const;
+    Ramani(rapidjson::Value &);
 };
 
 } // End namespace Model

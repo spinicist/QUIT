@@ -18,11 +18,10 @@
 #include "Args.h"
 #include "ApplyTypes.h"
 #include "MultiEchoSequence.h"
-#include "SequenceCereal.h"
 
 class ASEAlgo : public QI::ApplyF::Algorithm {
 protected:
-    const std::shared_ptr<QI::MultiEchoBase> m_sequence;
+    const QI::MultiEchoFlexSequence m_sequence;
     const int m_inputsize;
     const double m_B0;
     double m_Tc;
@@ -36,32 +35,32 @@ protected:
     const double Hb = 0.34 / kappa; // Hct = 0.34;
 
 public:
-    ASEAlgo(const std::shared_ptr<QI::MultiEchoBase> &seq, const int inputsize, const double B0, const QI::VolumeF::SpacingType voxsize) :
+    ASEAlgo(const QI::MultiEchoFlexSequence &seq, const int inputsize, const double B0, const QI::VolumeF::SpacingType voxsize) :
         m_sequence(seq), m_inputsize(inputsize), m_B0(B0), m_voxsize(voxsize)
     {
         // Nic Blockley uses Tc = 15 ms for 3T, scale for other field-strengths
         m_Tc = 0.015 / (B0 / 3);
-        const int above_Tc_count = (m_sequence->TE.abs() > m_Tc).count();
+        const int above_Tc_count = (m_sequence.TE.abs() > m_Tc).count();
         m_TE = Eigen::ArrayXd(above_Tc_count);
         Eigen::Index ind = 0;
-        m_TE0 = m_sequence->size();
-        for (Eigen::Index i = 0; i < m_sequence->size(); i++) {
-            if (m_sequence->TE[i] == 0) {
+        m_TE0 = m_sequence.size();
+        for (Eigen::Index i = 0; i < m_sequence.size(); i++) {
+            if (m_sequence.TE[i] == 0) {
                 m_TE0 = i;
             }
-            if (std::abs(m_sequence->TE[i]) > m_Tc) {
-                m_TE[ind] = std::abs(m_sequence->TE[i]);
+            if (std::abs(m_sequence.TE[i]) > m_Tc) {
+                m_TE[ind] = std::abs(m_sequence.TE[i]);
                 ind++;
             }
         }
-        if (m_TE0 == m_sequence->size()) {
+        if (m_TE0 == m_sequence.size()) {
             QI_FAIL("Did not find a zero echo-time in input");
         }
         // QI_DB( B0 );
         // QI_DB( m_Tc );
         // QI_DB( m_TE0 );
         // QI_DB( above_Tc_count );
-        // QI_DBVEC( m_sequence->TE );
+        // QI_DBVEC( m_sequence.TE );
         // QI_DBVEC( m_TE );
     }
 
@@ -115,16 +114,16 @@ public:
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override
     {
-        const Eigen::Map<const Eigen::ArrayXXf> input(inputs[0].GetDataPointer(), m_sequence->size(), inputs[0].Size() / m_sequence->size());
+        const Eigen::Map<const Eigen::ArrayXXf> input(inputs[0].GetDataPointer(), m_sequence.size(), inputs[0].Size() / m_sequence.size());
         Eigen::ArrayXd all_data = input.cast<double>().rowwise().mean();
         Eigen::ArrayXd data(m_TE.rows());
         Eigen::Index ind = 0;
         for (Eigen::Index i = 0; i < all_data.rows(); i++) {
-            if (std::abs(m_sequence->TE[i]) > m_Tc) {
+            if (std::abs(m_sequence.TE[i]) > m_Tc) {
                 double F = 1.0;
                 for (auto d = 0; d < 3; d++) {
                     const double grad = consts[d];
-                    const double x = grad * 2 * M_PI * m_voxsize[d] * m_sequence->TE[i] / 2;
+                    const double x = grad * 2 * M_PI * m_voxsize[d] * m_sequence.TE[i] / 2;
                     F *= std::abs(sinc(x));
                 }
                 data[ind] = all_data[i] / F;
@@ -173,12 +172,11 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> slice_arg(parser, "SLICE THICKNESS", "Slice-thickness for MFG calculation (useful if there was a slice gap)", {'s', "slice"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading ASE data from: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading ASE data from: " << QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
-    std::shared_ptr<QI::MultiEchoBase> sequence;
-    cereal::JSONInputArchive ar(std::cin);
-    load(ar, sequence);
+    rapidjson::Document json = QI::ReadJSON(std::cin);
+    QI::MultiEchoFlexSequence sequence(json["MultiEchoFlex"]);
     QI::VolumeF::SpacingType vox_size = input->GetSpacing();
     if (slice_arg) {
         vox_size[2]  = slice_arg.Get();
@@ -188,7 +186,7 @@ int main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(false);
-    if (verbose) std::cout << "Using " << threads.Get() << " threads" << std::endl;
+    QI_LOG(verbose, "Using " << threads.Get() << " threads" );
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, input);
@@ -199,19 +197,17 @@ int main(int argc, char **argv) {
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s");
     
     for (size_t i = 0; i < algo->numOutputs(); i++) {
         const std::string fname = outPrefix + "_" + algo->names()[i] + QI::OutExt();
-        std::cout << "Writing file: " << fname << std::endl;
+        QI_LOG(verbose, "Writing file: " << fname);
         QI::WriteImage(apply->GetOutput(i), fname);
     }
     return EXIT_SUCCESS;
