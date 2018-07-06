@@ -22,7 +22,6 @@ struct MultiEchoBase : SequenceBase {
     Eigen::Index size() const override;
     Eigen::ArrayXcd signal(std::shared_ptr<QI::Model::ModelBase> m, const Eigen::VectorXd &par) const override;
 };
-void load(cereal::JSONInputArchive &ar, std::shared_ptr<QI::MultiEchoBase> &sb);
 
 struct MultiEchoSequence : MultiEchoBase {
     double TE1, ESP;

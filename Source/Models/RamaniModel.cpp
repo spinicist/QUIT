@@ -10,7 +10,6 @@
  */
 
 #include "RamaniModel.h"
-#include "CerealMacro.h"
 
 using namespace std;
 using namespace Eigen;
@@ -18,8 +17,8 @@ using namespace Eigen;
 namespace QI {
 namespace Model {
 
-Ramani::Ramani(cereal::JSONInputArchive &in) {
-    QI_CLOAD(in, lineshape);
+Ramani::Ramani(rapidjson::Value &json_value) {
+    lineshape = QI::Lineshapes::LineshapeFromJSON(json_value["lineshape"]);
 }
 
 string Ramani::Name() const { return "qMT"; }

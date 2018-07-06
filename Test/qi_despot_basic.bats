@@ -23,16 +23,14 @@ qisignal --model=1 -v --noise=$NOISE $SPGR_FILE << OUT
     "T2": "",
     "f0": "",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SPGR": {
-                    "TR": $SPGR_TR,
-                    "FA": [$SPGR_FLIP]
-                }
+    "Sequences": [
+        {
+            "SPGR": {
+                "TR": $SPGR_TR,
+                "FA": [$SPGR_FLIP]
             }
-        ]
-    }
+        }
+    ]
 }
 OUT
 qidespot1 $SPGR_FILE --verbose <<OUT
@@ -69,17 +67,15 @@ qisignal --model=1 -v --noise=$NOISE $SSFP_FILE << OUT
     "T2": "T2$EXT",
     "f0": "",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SSFP": {
-                    "TR": $SSFP_TR,
-                    "FA": [$SSFP_FLIP],
-                    "PhaseInc": [$SSFP_PINC]
-                }
+    "Sequences": [
+        {
+            "SSFP": {
+                "TR": $SSFP_TR,
+                "FA": [$SSFP_FLIP],
+                "PhaseInc": [$SSFP_PINC]
             }
-        ]
-    }
+        }
+    ]
 }
 OUT
 qidespot2 T1.nii $SSFP_FILE --verbose <<OUT

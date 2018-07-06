@@ -41,9 +41,7 @@ cat >mtsat.json <<END_SIG
     "f_b": "f_b$EXT",
     "f0": "f0$EXT",
     "B1": "B1$EXT",
-    "SequenceGroup": {
-        "sequences": [ $MTSAT_SEQUENCE ]
-    }
+    "Sequences": [ $MTSAT_SEQUENCE ]
 }
 END_SIG
 
@@ -55,13 +53,11 @@ qisignal --model=Ramani -v -T1 --noise=$NOISE $MTSAT_FILE << END_SIG
     "T1_b": "T1_b$EXT",
     "T2_b": "T2_b$EXT",
     "k_bf": "k_bf$EXT",
-    "f_b": "f_b$EXT",   
+    "f_b": "f_b$EXT",
     "f0": "f0$EXT",
     "B1": "B1$EXT",
     "lineshape" : { "Gaussian" : {} },
-    "SequenceGroup": {
-        "sequences": [ $MTSAT_SEQUENCE ]
-    }
+    "Sequences": [ $MTSAT_SEQUENCE ]
 }
 END_SIG
 return 1

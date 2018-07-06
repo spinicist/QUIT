@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
     if (filters) {
         for (const auto &f: filters.Get()) {
             kernels.push_back(QI::ReadKernel(f));
-            if (verbose) std::cout << "Read kernel: " << *(kernels.back()) << std::endl;
+            QI_LOG(verbose, "Read kernel: " << *(kernels.back()));
         }
     } else {
         kernels.push_back(std::make_shared<QI::TukeyKernel>());
@@ -155,10 +155,10 @@ int main(int argc, char **argv) {
 
     QI::SeriesXF::Pointer vols;
     if (complex_in) {
-        if (verbose) std::cout << "Reading complex file: " << QI::CheckPos(in_path) << std::endl;
+        QI_LOG(verbose, "Reading complex file: " << QI::CheckPos(in_path));
         vols = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(in_path));
     } else {
-        if (verbose) std::cout << "Reading real file: " << QI::CheckPos(in_path) << std::endl;
+        QI_LOG(verbose, "Reading real file: " << QI::CheckPos(in_path));
         QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(in_path));
         auto cast = itk::CastImageFilter<QI::SeriesF, QI::SeriesXF>::New();
         cast->SetInput(rvols);
@@ -184,8 +184,7 @@ int main(int argc, char **argv) {
     auto region = vols->GetLargestPossibleRegion();
     const size_t nvols = region.GetSize()[3]; // Save for the loop
     if (filter_per_volume && nvols != kernels.size()) {
-        std::cerr << "Number of volumes (" << nvols << ") and kernels (" << kernels.size() << ") do not match for filter_per_volume option" << std::endl;
-        return EXIT_FAILURE;
+        QI_FAIL("Number of volumes (" << nvols << ") and kernels (" << kernels.size() << ") do not match for filter_per_volume option");
     }
     region.GetModifiableSize()[3] = 0;
     QI::VolumeXD::RegionType unpad_region;
@@ -206,7 +205,7 @@ int main(int argc, char **argv) {
 
     for (size_t i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
-        if (verbose) std::cout << "Processing volume " << i << std::endl;
+        QI_LOG(verbose, "Processing volume " << i );
 
         auto extract = TExtract::New();
         extract->SetInput(vols);
@@ -227,18 +226,18 @@ int main(int argc, char **argv) {
             fft_pad->SetInput(extract->GetOutput());
         }
         fft_pad->Update(); // Need to know the size of this to set up the kernel properly
-        if (verbose) std::cout << "After FFT padding size is: " << fft_pad->GetOutput()->GetLargestPossibleRegion().GetSize() << std::endl;
+        QI_LOG(verbose, "After FFT padding size is: " << fft_pad->GetOutput()->GetLargestPossibleRegion().GetSize());
         if (i == 0) {
             tkernel->SetRegion(fft_pad->GetOutput()->GetLargestPossibleRegion());
             tkernel->SetSpacing(fft_pad->GetOutput()->GetSpacing());
             tkernel->SetOrigin(fft_pad->GetOutput()->GetOrigin());
             tkernel->SetDirection(fft_pad->GetOutput()->GetDirection());
             tkernel->Update();
-            if (verbose) std::cout << "Created kernel, size is: " << tkernel->GetOutput()->GetLargestPossibleRegion().GetSize() << std::endl;
+            QI_LOG(verbose, "Created kernel, size is: " << tkernel->GetOutput()->GetLargestPossibleRegion().GetSize());
         }
         if (filter_per_volume) {
             tkernel->SetKernel(kernels.at(i));
-            if (verbose) std::cout << "Setting kernel to: " << *kernels.at(i) << std::endl;
+            QI_LOG(verbose, "Setting kernel to: " << *kernels.at(i));
         }
         auto forward = TFFT::New();
         forward->SetInput(fft_pad->GetOutput());
@@ -252,14 +251,14 @@ int main(int argc, char **argv) {
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
         inverse->SetInput(mult->GetOutput());
-        if (verbose) std::cout << "Filtering k-space" << std::endl;
+        QI_LOG(verbose, "Filtering k-space" );
         inverse->Update(); // If we don't have this update, next step fails
 
         auto unpadder = TUnpad::New();
         unpadder->SetDirectionCollapseToSubmatrix();
         unpadder->SetExtractionRegion(unpad_region);
         unpadder->SetInput(inverse->GetOutput());
-        if (verbose) std::cout << "Unpadding & tiling output" << std::endl;
+        QI_LOG(verbose, "Unpadding & tiling output" );
         unpadder->Update();
 
         QI::VolumeXF::Pointer v = unpadder->GetOutput();
@@ -278,7 +277,7 @@ int main(int argc, char **argv) {
             QI::WriteMagnitudeImage(cast_filter->GetOutput(), out_base + "_kspace_after" + QI::OutExt());
         }
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     tile->Update();
     auto dir = vols->GetDirection();
     auto spc = vols->GetSpacing();
@@ -289,15 +288,15 @@ int main(int argc, char **argv) {
 
     const std::string out_path = out_base + "_filtered" + QI::OutExt();
     if (complex_out) {
-        if (verbose) std::cout << "Saving complex output file: " << out_path << std::endl;
+        QI_LOG(verbose, "Saving complex output file: " << out_path );
         QI::WriteImage(vols, out_path);
     } else {
-        if (verbose) std::cout << "Saving real output file: " << out_path << std::endl;
+        QI_LOG(verbose, "Saving real output file: " << out_path );
         QI::WriteMagnitudeImage(vols, out_path);
     }
     if (save_kernel) {
         const std::string kernel_path = out_base + "_kernel" + QI::OutExt();
-        if (verbose) std::cout << "Saving filter kernel to: " << kernel_path << std::endl;
+        QI_LOG(verbose, "Saving filter kernel to: " << kernel_path );
         auto shift_filter = itk::FFTShiftImageFilter<QI::VolumeD, QI::VolumeD>::New();
         shift_filter->SetInput(tkernel->GetOutput());
         auto cast_filter = itk::CastImageFilter<QI::VolumeD, QI::VolumeF>::New();

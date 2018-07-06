@@ -28,7 +28,6 @@
 #include "Args.h"
 #include "ImageIO.h"
 
-#include "CerealMacro.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
 #include "MultiEchoSequence.h"
@@ -223,14 +222,14 @@ int main(int argc, char **argv) {
     }
 
     QI_LOG(verbose, "Reading input");
-    cereal::JSONInputArchive input(std::cin);
+    rapidjson::Document input = QI::ReadJSON(std::cin);
     std::shared_ptr<QI::Model::ModelBase> model = nullptr;
     if (model_arg.Get() == "1") { model = std::make_shared<QI::Model::OnePool>(); }
     else if (model_arg.Get() == "2") { model = std::make_shared<QI::Model::TwoPool>(); }
     else if (model_arg.Get() == "3") { model = std::make_shared<QI::Model::ThreePool>(); }
     else if (model_arg.Get() == "Ramani") { model = std::make_shared<QI::Model::Ramani>(input); }
     else { QI_FAIL("Unknown model specified: " << model_arg.Get()); }
-    if (verbose) std::cout << "Using " << model->Name() << " model." << std::endl;
+    QI_LOG(verbose, "Using " << model->Name() << " model.");
 
     if (seed) {
         std::srand(seed.Get());
@@ -253,15 +252,14 @@ int main(int argc, char **argv) {
         auto monitor = QI::GenericMonitor::New();
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
-    if (verbose) std::cout << "Reading model parameter filenames" << std::endl;
+    QI_LOG(verbose, "Reading model parameter filenames");
     for (size_t i = 0; i < model->nParameters(); i++) {
-        std::string par_filename;
-        std::string par_name = model->ParameterNames()[i];
-        QI_CLOAD_NAME(input, par_filename, par_name);
+        const std::string par_name = model->ParameterNames()[i];
+        const std::string par_filename = input[par_name].GetString();
         if (par_filename != "") {
             QI::VolumeF::Pointer param = QI::ReadImage(par_filename, verbose);
             if (reference) {
-                if (verbose) std::cout << "Resampling to reference" << std::endl;
+                QI_LOG(verbose, "Resampling to reference");
                 typedef itk::ResampleImageFilter<QI::VolumeF, QI::VolumeF, double> TResampler;
                 typedef itk::LinearInterpolateImageFunction<QI::VolumeF, double> TInterp;
                 typename TInterp::Pointer interp = TInterp::New();
@@ -279,22 +277,21 @@ int main(int argc, char **argv) {
                 calcSignal->SetInput(i, param);
             }
         } else {
-            if (verbose) std::cout << "Using default " << par_name << " value: " << model->Default()[i] << std::endl;
+            QI_LOG(verbose, "Using default " << par_name << " value: " << model->Default()[i]);
         }
     }
 
     /***************************************************************************
      * Set up sequences
      **************************************************************************/
-    if (verbose) std::cout << "Reading sequences" << std::endl;
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, false);
+    QI_LOG(verbose, "Reading sequences");
+    QI::SequenceGroup sequences(input["Sequences"]);
     if (verbose) {
         std::cout << "Found " << sequences.count() << " sequences to generate" << std::endl;
-        {
-            cereal::JSONOutputArchive archive(std::cout); // cereal archives do not flush their output until destructed
-            archive(cereal::make_nvp("SequenceGroup", sequences));
-        }
-        std::cout << std::endl;
+        rapidjson::Document doc;
+        doc.SetObject();
+        doc.AddMember("Sequences", sequences.toJSON(doc.GetAllocator()), doc.GetAllocator());
+        QI::WriteJSON(std::cout, doc);
     }
 
     if (filenames.Get().size() != sequences.count()) {
@@ -302,21 +299,21 @@ int main(int argc, char **argv) {
                 << " does not match sequences size " << sequences.count());
     }
     for (size_t i = 0; i < sequences.count(); i++) {
-        if (verbose) std::cout << "Simulating sequence: " << sequences[i]->name() << std::endl;
+        QI_LOG(verbose, "Simulating sequence: " << sequences[i]->name());
         calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         QI::VectorVolumeXF::Pointer output = calcSignal->GetOutput();
         output->DisconnectPipeline();
-        if (verbose) std::cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << std::endl;
+        QI_LOG(verbose, "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)");
         if (complex) {
-            if (verbose) std::cout << "Saving complex image: " << filenames.Get()[i] << std::endl;
+            QI_LOG(verbose, "Saving complex image: " << filenames.Get()[i]);
             QI::WriteVectorImage(output, outarg.Get() + filenames.Get()[i]);
         } else {
-            if (verbose) std::cout << "Saving magnitude image: " << filenames.Get()[i] << std::endl;
+            QI_LOG(verbose, "Saving magnitude image: " << filenames.Get()[i]);
             QI::WriteVectorMagnitudeImage(output, outarg.Get() + filenames.Get()[i]);
         }
     }
-    if (verbose) std::cout << "Finished all sequences." << std::endl;
+    QI_LOG(verbose, "Finished all sequences.");
     return EXIT_SUCCESS;
 }
 

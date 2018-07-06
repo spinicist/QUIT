@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     const auto lineshape = QI::Lineshapes::Splineshape(frqs, values, T2b);
     rapidjson::Document doc;
     doc.SetObject();
-    QI_JSONIFY(lineshape, doc);
+    doc.AddMember("lineshape", lineshape.toJSON(doc.GetAllocator()), doc.GetAllocator());
     QI::WriteJSON(std::cout, doc);
     QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;

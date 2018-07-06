@@ -14,7 +14,6 @@
 
 #include "SequenceBase.h"
 #include "Macro.h"
-#include "CerealEigen.h"
 
 namespace QI {
 

@@ -21,11 +21,10 @@ namespace QI {
 
 rapidjson::Document ReadJSON(std::istream &is);
 std::ostream &WriteJSON(std::ostream &os, const rapidjson::Document &doc);
-void AddArray(rapidjson::Value &, rapidjson::Document::AllocatorType &, const std::string &, const Eigen::ArrayXd &);
-} // End namespace QI
 
-#define QI_JSONIFY( object, doc ) \
-    auto value = object.jsonify(doc.GetAllocator()); \
-    doc.AddMember( #object, value, doc.GetAllocator());
+rapidjson::Value ArrayToJSON(const Eigen::ArrayXd &, rapidjson::Document::AllocatorType &, const double &scale = 1);
+Eigen::ArrayXd ArrayFromJSON(const rapidjson::Value &, const double &scale = 1);
+
+} // End namespace QI
 
 #endif // QUIT_JSON_H

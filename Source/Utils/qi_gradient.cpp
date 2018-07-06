@@ -30,11 +30,11 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading data from: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading data from: " << QI::CheckPos(input_path));
     auto image = QI::ReadImage(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     
-    if (verbose) std::cout << "Calculating derivatives of image" << std::endl;
+    QI_LOG(verbose, "Calculating derivatives of image" );
     auto grad = itk::DerivativeImageFilter<QI::VolumeF, QI::VolumeF>::New();
     grad->SetInput(image);
     grad->SetDirection(0);

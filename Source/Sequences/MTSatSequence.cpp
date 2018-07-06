@@ -12,7 +12,7 @@
  */
 
 #include "MTSatSequence.h"
-#include "CerealMacro.h"
+#include "Macro.h"
 
 namespace QI {
 
@@ -28,20 +28,24 @@ Eigen::ArrayXcd MTSatSequence::signal(std::shared_ptr<Model::ModelBase> m, const
     }
 }
 
-void MTSatSequence::load(cereal::JSONInputArchive &ar) {
-    QI_CLOAD(ar, TR);
-    QI_CLOAD(ar, FA);
-    QI_CLOAD(ar, pulse);
-    QI_CLOAD(ar, sat_f0);
-    QI_CLOAD_DEGREES(ar, sat_angle);
+MTSatSequence::MTSatSequence(const rapidjson::Value &json) :
+    pulse(json["pulse"])
+{
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    FA = json["FA"].GetDouble() * M_PI / 180;
+    sat_f0 = ArrayFromJSON(json["sat_f0"]);
+    sat_angle = ArrayFromJSON(json["sat_angle"], M_PI / 180);
 }
 
-void MTSatSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_CSAVE(ar, TR);
-    QI_CSAVE(ar, FA);
-    QI_CSAVE(ar, pulse);
-    QI_CSAVE(ar, sat_f0);
-    QI_CSAVE_DEGREES(ar, sat_angle);
+rapidjson::Value MTSatSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("FA", FA * 180 / M_PI, a);
+    json.AddMember("pulse", pulse.toJSON(a), a);
+    json.AddMember("sat_f0", ArrayToJSON(sat_f0, a), a);
+    json.AddMember("sat_angle", ArrayToJSON(sat_angle, a, 180 / M_PI), a);
+    return json;
 }
 
 } // End namespace QI

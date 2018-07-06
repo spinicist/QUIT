@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
 
-    if (verbose) std::cout << "Reading phase file: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading phase file: " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
 
     typedef itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF> TExtract;
@@ -70,13 +70,13 @@ int main(int argc, char **argv) {
     auto unwrapFilter = itk::UnwrapPathPhaseFilter::New();
     for (size_t i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
-        if (verbose) std::cout << "Processing volume " << i << std::endl;
+        QI_LOG(verbose, "Processing volume " << i );
         extract->SetExtractionRegion(region);
         extract->Update();
-        if (verbose) std::cout << "Calculating reliabilty" << std::endl;
+        QI_LOG(verbose, "Calculating reliabilty" );
         reliabilityFilter->SetInput(extract->GetOutput());
         reliabilityFilter->Update();
-        if (verbose) std::cout << "Unwrapping phase" << std::endl;
+        QI_LOG(verbose, "Unwrapping phase" );
         unwrapFilter->SetInput(extract->GetOutput());
         unwrapFilter->SetReliability(reliabilityFilter->GetOutput());
         unwrapFilter->Update();
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
     inFile->DisconnectPipeline();
 
     std::string outname = (outarg ? outarg.Get() : (QI::StripExt(input_path.Get())) + "_unwrapped" + QI::OutExt());
-    if (verbose) std::cout << "Writing output: " << outname << std::endl;
+    QI_LOG(verbose, "Writing output: " << outname );
     QI::WriteImage(inFile, outname);
 
     return EXIT_SUCCESS;

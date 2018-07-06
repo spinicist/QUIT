@@ -111,11 +111,9 @@ END_FM
 
 qimcdespot -v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii -M3 -S $NTHREADS <<END_MCD
 {
-    "SequenceGroup": {
-        "sequences": [
-            { $SPGR_SEQ },
-            { $SSFP_SEQ }
-        ]
-    }
+    "Sequences": [
+        { $SPGR_SEQ },
+        { $SSFP_SEQ }
+    ]
 }
 END_MCD

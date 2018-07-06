@@ -33,13 +33,11 @@ qisignal --model=1 -v --noise=$NOISE $SPIN_FILE << END_SIG
     "T2" : "T2.nii",
     "f0" : "f0.nii",
     "B1" : "B1.nii",
-    "SequenceGroup" : {
-        "sequences" : [
-            {
-                $SPIN_SEQUENCE
-            }
-        ]
-    }
+    "Sequences" : [
+        {
+            $SPIN_SEQUENCE
+        }
+    ]
 }
 END_SIG
 

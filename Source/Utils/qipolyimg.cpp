@@ -21,8 +21,7 @@
 #include "Args.h"
 #include "ImageIO.h"
 #include "IO.h"
-#include "CerealMacro.h"
-#include "CerealEigen.h"
+#include "JSON.h"
 
 namespace itk {
 
@@ -71,7 +70,7 @@ protected:
         const auto mask = this->GetMask();
         itk::ImageRegionConstIterator<TImage> maskIter;
         if (mask) {
-            //if (m_verbose) std::cout << "Counting voxels in mask..." << std::endl;
+            //if (m_verbose) std::cout << "Counting voxels in mask..." );
             maskIter = itk::ImageRegionConstIterator<TImage>(mask, output->GetLargestPossibleRegion());
             maskIter.GoToBegin();
         }
@@ -110,27 +109,21 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
-    if (verbose) std::cout << "Reading reference image " << QI::CheckPos(ref_path) << std::endl;
-    QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));
-
-    Eigen::Array3d center;
-    double scale;
-    Eigen::ArrayXd coeffs;
-    {
-        if (verbose) std::cout << "Reading polynomial" << std::endl;
-        cereal::JSONInputArchive output(std::cin);
-        QI_CLOAD(output, center);
-        QI_CLOAD(output, scale);
-        QI_CLOAD(output, coeffs);
-    }
-    if (verbose) std::cout << "Center point is: " << center.transpose() << "\nScale is: " << scale << std::endl;
+    QI_LOG(verbose, "Reading reference image " << QI::CheckPos(ref_path));
+    QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));    
+    QI_LOG(verbose, "Reading polynomial" );
+    rapidjson::Document json = QI::ReadJSON(std::cin);
+    Eigen::Array3d center = QI::ArrayFromJSON(json["center"]);
+    double scale = json["scale"].GetDouble();
+    Eigen::ArrayXd coeffs = QI::ArrayFromJSON(json["coeffs"]);
+    QI_LOG(verbose, "Center point is: " << center.transpose() << "\nScale is: " << scale );
 
     QI::Polynomial<3> poly(order.Get());
     if (coeffs.rows() != poly.nterms()) {
         QI_EXCEPTION("Require " + std::to_string(poly.nterms()) + " terms for " + std::to_string(order.Get()) + " order polynomial");
     }
     poly.setCoeffs(coeffs);
-    if (verbose) std::cout << "Generating image" << std::endl;
+    QI_LOG(verbose, "Generating image" );
     auto image = itk::PolynomialImage::New();
     image->SetReferenceImage(reference);
     image->SetPolynomial(poly);
@@ -139,6 +132,6 @@ int main(int argc, char **argv) {
     image->SetScale(scale);
     image->Update();
     QI::WriteImage(image->GetOutput(), out_path.Get());
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

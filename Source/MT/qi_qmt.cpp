@@ -17,7 +17,6 @@
 #include "ApplyTypes.h"
 #include "Models.h"
 #include "MTSatSequence.h"
-#include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
@@ -187,13 +186,13 @@ public:
         options.parameter_tolerance = 1e-4;
         // options.check_gradients = true;
         options.logging_type = ceres::SILENT;
-        // std::cout << "START P: " << p.transpose() << std::endl;
+        // std::cout << "START P: " << p.transpose());
         ceres::Solve(options, &problem, &summary);
         
         outputs[0] = p[0] * indata.maxCoeff();
         outputs[1] = p[1];
         if (!summary.IsSolutionUsable()) {
-            std::cout << summary.FullReport() << std::endl;
+            std::cout << summary.FullReport());
         }
         its = summary.iterations.size();
         residual = summary.final_cost * indata.maxCoeff();
@@ -229,13 +228,13 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampT1(parser, "CLAMP T1", "Clamp T1 between 0 and value", {'t',"clampT1"}, std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Opening SPGR file: " << QI::CheckPos(spgr_path) << std::endl;
+    QI_LOG(verbose, "Opening SPGR file: " << QI::CheckPos(spgr_path));
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(spgr_path));
     std::shared_ptr<D1Algo> algo;
     switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<D1LLS>();  if (verbose) std::cout << "LLS algorithm selected." << std::endl; break;
-        case 'w': algo = std::make_shared<D1WLLS>(); if (verbose) std::cout << "WLLS algorithm selected." << std::endl; break;
-        case 'n': algo = std::make_shared<D1NLLS>(); if (verbose) std::cout << "NLLS algorithm selected." << std::endl; break;
+        case 'l': algo = std::make_shared<D1LLS>();  QI_LOG(verbose, "LLS algorithm selected." ); break;
+        case 'w': algo = std::make_shared<D1WLLS>(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+        case 'n': algo = std::make_shared<D1NLLS>(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
     }
     algo->setIterations(its.Get());
     if (clampPD) algo->setClampPD(1e-6, clampPD.Get());
@@ -253,14 +252,14 @@ int main(int argc, char **argv) {
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     if (verbose) {
-        std::cout << "Processing" << std::endl;
+        std::cout << "Processing" );
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
     if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
+        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" );
+        std::cout << "Writing results files." );
     }
     std::string outPrefix = outarg.Get() + "D1_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
@@ -272,6 +271,6 @@ int main(int argc, char **argv) {
     if (its) {
         QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

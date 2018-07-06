@@ -16,7 +16,6 @@
 #include "ImageIO.h"
 #include "Args.h"
 #include "ApplyTypes.h"
-#include "SequenceCereal.h"
 
 class ZShimSoS : public QI::ApplyVectorF::Algorithm {
 protected:
@@ -50,18 +49,11 @@ public:
                std::vector<TOutput> &outputs, TOutput &/* Unused */,
                TInput &/* Unused */, TIterations &/* Unused */) const override
     {
-        if (m_debug) std::cout << "Input: " << inputs[0] << "\n" << "Input size: " << m_inputsize << " zshims: " << m_zshims << " rows: " << (m_inputsize / m_zshims) << std::endl;
-        Eigen::Map<const Eigen::MatrixXf> input(inputs[0].GetDataPointer(), m_zshims,  m_inputsize / m_zshims);
-        if (m_debug) std::cout << "Mapped input:\n" << input << std::endl;
-        // Eigen::Map<Eigen::ArrayXf> output(outputs[0].GetDataPointer(), m_inputsize / m_zshims);
+        Eigen::Map<const Eigen::MatrixXf> input(inputs[0].GetDataPointer(), m_zshims, m_inputsize / m_zshims);
         Eigen::VectorXf output = input.colwise().norm();
-        if (m_debug) std::cout << "Eigen output: " << output.transpose() << std::endl;
-        if (m_debug) std::cout << "outputSize() " << this->outputSize() << std::endl;
-        if (m_debug) std::cout << "outputs " << outputs << " [0] " << outputs[0] << std::endl;
         for (size_t i = 0; i < this->outputSize(); i++) {
             outputs[0][i] = output[i];
         }
-        if (m_debug) std::cout << "Output: " << outputs[0] << std::endl;
         return std::make_tuple(true, "");
     }
 };
@@ -82,7 +74,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> zshims(parser, "ZSHIMS", "Number of Z-Shims (default 8)", {'z', "zshims"}, 8);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading Z-Shim data from: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading Z-Shim data from: " << QI::CheckPos(input_path));
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     auto algo = std::make_shared<ZShimSoS>(input->GetNumberOfComponentsPerPixel(), zshims.Get(), debug);
@@ -90,7 +82,7 @@ int main(int argc, char **argv) {
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(false);
-    if (verbose) std::cout << "Using " << threads.Get() << " threads" << std::endl;
+    QI_LOG(verbose, "Using " << threads.Get() << " threads" );
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, input);
@@ -98,17 +90,15 @@ int main(int argc, char **argv) {
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s");
     const std::string fname = outPrefix + "_" + algo->names()[0] + QI::OutExt();
-    std::cout << "Writing file: " << fname << std::endl;
+    QI_LOG(verbose, "Writing file: " << fname);
     QI::WriteVectorImage(apply->GetOutput(0), fname);
     return EXIT_SUCCESS;
 }

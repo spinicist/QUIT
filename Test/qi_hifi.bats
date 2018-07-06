@@ -26,12 +26,10 @@ qisignal --model=1 -v --noise=$NOISE $SPGR_FILE $MPRAGE_FILE << SIGNAL
     "T2": "",
     "f0": "",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            { $SPGR },
-            { $MPRAGE }
-        ]
-    }
+    "Sequences": [
+        { $SPGR },
+        { $MPRAGE }
+    ]
 }
 SIGNAL
 

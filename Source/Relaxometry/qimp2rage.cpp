@@ -25,7 +25,6 @@
 #include "ImageIO.h"
 #include "Args.h"
 #include "MPRAGESequence.h"
-#include "SequenceCereal.h"
 #include "Masking.h"
 
 template<class T> class MP2Functor {
@@ -92,9 +91,8 @@ public:
             double c = con(sig[0], sig[1]);
             m_T1.push_back(T1);
             m_con.push_back(c);
-            //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose() << std::endl;
+            //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose());
         }
-        std::cout << "Lookup table has " << m_T1.size() << " entries" << std::endl;
     }
 
 protected:
@@ -106,7 +104,7 @@ protected:
     ~MPRAGELookUpFilter() {}
 
     DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) override {
-        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
+        //std::cout <<  __PRETTY_FUNCTION__ );
         if (idx == 0) {
             DataObject::Pointer output = (TImage::New()).GetPointer();
             return output.GetPointer();
@@ -117,7 +115,7 @@ protected:
     }
 
     void ThreadedGenerateData(const RegionType &region, ThreadIdType /* Unused */) ITK_OVERRIDE {
-        //std::cout <<  __PRETTY_FUNCTION__ << std::endl;
+        //std::cout <<  __PRETTY_FUNCTION__ );
         ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
         ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
 
@@ -132,7 +130,7 @@ protected:
                     best_index = i;
                 }
             }
-            //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose() << std::endl;
+            //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose());
             outputIter.Set(m_T1[best_index]);
             ++inputIter;
             ++outputIter;
@@ -158,7 +156,7 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
 
-    if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
 
     auto ti_1 = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
@@ -175,32 +173,34 @@ int main(int argc, char **argv) {
 
     QI::VolumeI::Pointer mask_img = nullptr;
     if (automask) {
-        if (verbose) std::cout << "Calculating mask" << std::endl;
+        QI_LOG(verbose, "Calculating mask");
         auto SqrSumFilter = itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, SqrSumFunctor<float>>::New();
         SqrSumFilter->SetInput1(ti_1->GetOutput());
         SqrSumFilter->SetInput2(ti_2->GetOutput());
         SqrSumFilter->Update();
         mask_img = QI::ThresholdMask(SqrSumFilter->GetOutput(), 0.025);
     } else if (mask) {
-        if (verbose) std::cout << "Reading mask file: " << mask.Get() << std::endl;
+        QI_LOG(verbose, "Reading mask file: " << mask.Get());
         mask_img = QI::ReadImage<QI::VolumeI>(mask.Get());
     }
 
-    if (verbose) std::cout << "Generating MP2 contrasts" << std::endl;
+    QI_LOG(verbose, "Generating MP2 contrasts");
     auto MP2Filter = itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MP2Functor<float>>::New();
     MP2Filter->SetInput1(ti_1->GetOutput());
     MP2Filter->SetInput2(ti_2->GetOutput());
     MP2Filter->Update();
     std::string outName = outarg ? outarg.Get() : QI::StripExt(input_path.Get());
-    if (verbose) std::cout << "Calculating T1" << std::endl;
-    auto mp2rage_sequence = QI::ReadSequence<QI::MP2RAGESequence>(std::cin, verbose);
+    QI_LOG(verbose, "Reading sequence parameters");
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::MP2RAGESequence mp2rage_sequence(input["MP2RAGE"]);
+    QI_LOG(verbose, "Calculating T1");
     auto apply = itk::MPRAGELookUpFilter::New();
     apply->SetSequence(mp2rage_sequence);
     apply->SetInput(MP2Filter->GetOutput());
     apply->Update();
 
     if (mask_img) {
-        if (verbose) std::cout << "Masking outputs" << std::endl;
+        QI_LOG(verbose, "Masking outputs");
         auto masker = itk::MaskImageFilter<QI::VolumeF, QI::VolumeI>::New();
         auto add = itk::AddImageFilter<QI::VolumeF, QI::VolumeF>::New();
         add->SetInput(MP2Filter->GetOutput());
@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
         QI::WriteImage(MP2Filter->GetOutput(), outName + "_contrast" + QI::OutExt());
         QI::WriteImage(apply->GetOutput(0), outName + "_T1" + QI::OutExt());
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }
 

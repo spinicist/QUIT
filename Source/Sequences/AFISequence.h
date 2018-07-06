@@ -13,19 +13,13 @@
 #define SEQUENCES_AFI_H
 
 #include "SequenceBase.h"
-#include <cereal/cereal.hpp>
 
 namespace QI {
 
 struct AFISequence : SequenceBase {
     double FA, TR1, TR2;
     Eigen::Index size() const override { return 2; }
-    Eigen::ArrayXcd signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &par) const override;
-
-    template<typename Archive>
-    void serialize(Archive &archive) {
-        archive(CEREAL_NVP(FA), CEREAL_NVP(TR1), CEREAL_NVP(TR2));
-    }
+    QI_SEQUENCE_DECLARE( AFI )
 };
 
 } // End namespace QI

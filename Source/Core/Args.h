@@ -22,7 +22,7 @@ namespace QI {
 void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose) {
     try {
         parser.ParseCLI(argc, argv);
-        if (verbose) std::cout << "Starting " << argv[0] << " " << QI::GetVersion() << std::endl;
+        QI_LOG(verbose,  "Starting " << argv[0] << " " << QI::GetVersion());
     } catch (args::Help) {
         std::cout << parser;
         exit(EXIT_SUCCESS);

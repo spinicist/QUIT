@@ -24,27 +24,28 @@ namespace Lineshapes {
 struct Lineshape {
     virtual std::string name() const = 0;
     virtual Eigen::ArrayXd value(const Eigen::ArrayXd &f, const double T2b) const = 0;
-    virtual rapidjson::Value jsonify(rapidjson::Document::AllocatorType &a) const = 0;
-    // virtual void unserialize(rapidjson::Document &doc) const = 0;
+    virtual rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const = 0;
 };
+std::shared_ptr<Lineshape> LineshapeFromJSON(rapidjson::Value &);
 
 struct Gaussian : Lineshape {
     virtual std::string name() const override { return "Gaussian"; };
     virtual Eigen::ArrayXd value(const Eigen::ArrayXd &f, const double T2b) const override;
-    virtual rapidjson::Value jsonify(rapidjson::Document::AllocatorType &a) const override;;
-    // void save(rapidjson::Document &doc) const override;
+    virtual rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const override;
+    Gaussian() = default;
+    Gaussian(const rapidjson::Value &);
 };
 
 struct Splineshape : Lineshape {
     double T2b_nominal = 1e-6;
     Eigen::ArrayXd frequencies, values;
     SplineInterpolator m_spline;
-    Splineshape(const Eigen::ArrayXd &f0, const Eigen::ArrayXd &vals, const double T2b);
-    Splineshape() = default;
     virtual std::string name() const override { return "Splineshape"; };
     virtual Eigen::ArrayXd value(const Eigen::ArrayXd &f, const double T2b) const override;
-    virtual rapidjson::Value jsonify(rapidjson::Document::AllocatorType &a) const override;
-    // void save(cereal::JSONOutputArchive &ar) const override;
+    virtual rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const override;
+    Splineshape() = default;
+    Splineshape(const rapidjson::Value &);
+    Splineshape(const Eigen::ArrayXd &f0, const Eigen::ArrayXd &vals, const double T2b);
 };
 
 } // End namespace Lineshapes

@@ -13,7 +13,6 @@
 #define SEQUENCES_CASL_H
 
 #include "SequenceBase.h"
-#include <cereal/cereal.hpp>
 
 namespace QI {
 

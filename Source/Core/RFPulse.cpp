@@ -15,20 +15,22 @@
 
 namespace QI {
 
-// void RFPulse::load(cereal::JSONInputArchive &ar) {
-//     QI_CLOAD(ar, Trf);
-//     QI_CLOAD(ar, intB1);
-//     QI_CLOAD(ar, intB1sq);
-//     QI_CLOAD(ar, name);
-//     QI_CLOAD_DEGREES(ar, FAnom);
-// }
+RFPulse::RFPulse(const rapidjson::Value &json) {
+    Trf = json["Trf"].GetDouble();
+    intB1 = json["intB1"].GetDouble();
+    intB1sq = json["intB1sq"].GetDouble();
+    name = json["name"].GetString();
+    FAnom = json["FAnom"].GetDouble() * M_PI / 180;
+}
 
-// void RFPulse::save(cereal::JSONOutputArchive &ar) const {
-//     QI_CSAVE(ar, Trf);
-//     QI_CSAVE(ar, intB1);
-//     QI_CSAVE(ar, intB1sq);
-//     QI_CSAVE(ar, name);
-//     QI_CSAVE_DEGREES(ar, FAnom);
-// }
+rapidjson::Value RFPulse::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json_val(rapidjson::kObjectType);
+    json_val.AddMember("Trf", Trf, a);
+    json_val.AddMember("intB1", intB1, a);
+    json_val.AddMember("intB1sq", intB1sq, a);
+    json_val.AddMember("name", name, a);
+    json_val.AddMember("FAnom", FAnom * 180 / M_PI, a);
+    return json_val;
+}
 
 } // End namespace QI

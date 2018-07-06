@@ -18,7 +18,6 @@
 
 #include "Models.h"
 #include "SSFPSequence.h"
-#include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
@@ -236,27 +235,28 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'t',"clampT2"}, std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << std::endl;
+    QI_LOG(verbose, "Reading T1 Map from: " << QI::CheckPos(t1_path));
     auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
 
-    if (verbose) std::cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << std::endl;
+    QI_LOG(verbose, "Opening SSFP file: " << QI::CheckPos(ssfp_path));
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
 
     std::shared_ptr<D2Algo> algo;
     switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<D2LLS>();  if (verbose) std::cout << "LLS algorithm selected." << std::endl; break;
-        case 'w': algo = std::make_shared<D2WLLS>(); if (verbose) std::cout << "WLLS algorithm selected." << std::endl; break;
-        case 'n': algo = std::make_shared<D2NLLS>(); if (verbose) std::cout << "NLLS algorithm selected." << std::endl; break;
+        case 'l': algo = std::make_shared<D2LLS>();  QI_LOG(verbose, "LLS algorithm selected." ); break;
+        case 'w': algo = std::make_shared<D2WLLS>(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+        case 'n': algo = std::make_shared<D2NLLS>(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
     }
 
     algo->setIterations(its);
     if (clampPD) algo->setClampPD(0, clampPD.Get());
     if (clampT2) algo->setClampT2(0, clampT2.Get());
+    rapidjson::Document input = QI::ReadJSON(std::cin);
     std::shared_ptr<QI::SSFPBase> ssfp;
     if (ellipse) {
-        ssfp = std::make_shared<QI::SSFPGSSequence>(QI::ReadSequence<QI::SSFPGSSequence>(std::cin, verbose));
+        ssfp = std::make_shared<QI::SSFPGSSequence>(input["SSFPGS"]);
     } else {
-        ssfp = std::make_shared<QI::SSFPSequence>(QI::ReadSequence<QI::SSFPSequence>(std::cin, verbose));
+        ssfp = std::make_shared<QI::SSFPSequence>(input["SSFP"]);
     }
     algo->setSequence(ssfp);
     algo->setElliptical(ellipse);
@@ -269,18 +269,14 @@ int main(int argc, char **argv) {
     apply->SetConst(0, T1);
     if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "apply setup complete. Processing." << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files.");
     std::string outPrefix = outarg.Get() + "D2_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
@@ -288,6 +284,6 @@ int main(int argc, char **argv) {
     if (resids) {
         QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
-    if (verbose) std::cout << "All done." << std::endl;
+    QI_LOG(verbose, "All done." );
     return EXIT_SUCCESS;
 }

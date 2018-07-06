@@ -56,12 +56,10 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
-    if (verbose) std::cout << "Opening input file " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
-    if (verbose) {
-        std::cout << "Nominal flip-angle is " << nom_flip.Get() << " degrees." << std::endl;
-        std::cout << "TR2:TR1 ratio is " << tr_ratio.Get() << std::endl;
-    }
+    QI_LOG(verbose, "Nominal flip-angle is " << nom_flip.Get() << " degrees." <<
+                    "TR2:TR1 ratio is " << tr_ratio.Get());
     auto volume1 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto volume2 = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto region = inFile->GetLargestPossibleRegion();
@@ -85,9 +83,9 @@ int main(int argc, char **argv) {
     B1->SetInput1(afi->GetOutput());
     B1->SetConstant2(nom_flip.Get());
     B1->Update();
-    QI::WriteImage(B1->GetOutput(),  out_prefix.Get() + "AFI_B1" + QI::OutExt());
+    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "AFI_B1" + QI::OutExt());
     if (save_angle) QI::WriteImage(afi->GetOutput(), out_prefix.Get() + "AFI_angle" + QI::OutExt());
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }
 
