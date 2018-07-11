@@ -9,6 +9,25 @@ Below are a few introductory notes for anyone who wants to compile QUIT from sou
 
 WARNING - You will require a recent compiler for DESPOT as it uses C++11 features. GCC 4.8.0 is a MINIMUM as earlier versions do not support C++11 threads - however you will not be able to build the `Stats` module without GCC 5.0.0 or later. Clang 3.1 will also work. You can find out the version of your system gcc by running `gcc -v`.
 
+## Installing GCC 5
+
+Most Linux systems currently ship with GCC 4.8 or lower as their system compiler. It will make your
+life much easier if you have GCC 5 or higher installed. Joost Kuijer has kindly provided the 
+following recipe for installing GCC 5 in a user directory and using it to compile QUIT.
+
+1. Follow the GCC guide here: https://gcc.gnu.org/wiki/InstallingGCC
+2. Before running the easy_build script let cmake know about the new compiler:
+```
+export PATH=$HOME/GCC-5.5.0/bin:$PATH
+export LD_LIBRARY_PATH=$HOME/GCC-5.5.0/lib:$HOME/GCC-5.5.0/lib64:$LD_LIBRARY_PATH
+export CC=$HOME/GCC-5.5.0/bin/gcc
+export CXX=$HOME/GCC-5.5.0/bin/g++
+```
+3. Before executing the compiled code also do (you can add this line to your `.bashrc` file:
+```
+export LD_LIBRARY_PATH=$HOME/GCC-5.5.0/lib:$HOME/GCC-5.5.0/lib64:$LD_LIBRARY_PATH
+```
+
 ## External Libraries
 
 QUIT is built using several C++ libraries. These are currently included in the project as git submodules. The easiest way to initialise these is with the `easy_build.sh` script. However, if you are already have some of them available you may wish to not run the script and instead configure them yourself. This is discussed further below. The libraries are:
