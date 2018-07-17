@@ -18,17 +18,17 @@
 namespace QI {
 
 struct MPRAGESequence : SequenceBase {
-    double TR, FA, eta, TI, TD;
-    int ETL, k0;
+    double TR = 0.0, FA = 0.0, eta = 0.0, TI = 0.0, TD = 0.0;
+    int ETL = 0, k0 = 0;
     QI_SEQUENCE_DECLARE(MPRAGE);
     Eigen::Index size() const override;
 };
 
 struct MP2RAGESequence : SequenceBase {
-    double TR;
-    int ETL;
+    double TR = 0.0;
+    int ETL = 0;
     Eigen::ArrayXd FA;
-    Eigen::Array3d TD;
+    Eigen::Array3d TD = Eigen::Array3d::Zero();
 
     QI_SEQUENCE_DECLARE(MP2RAGE);
     Eigen::Index size() const override;

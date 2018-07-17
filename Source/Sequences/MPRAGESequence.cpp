@@ -71,7 +71,7 @@ MP2RAGESequence::MP2RAGESequence(const rapidjson::Value &json) {
 rapidjson::Value MP2RAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
     Eigen::Array2d TI{TD[0], TD[1] + (ETL * TR) + TD[0]};
     double SegTR = TI[1] + (ETL * TR) + TD[2];
-    rapidjson::Value json;
+    rapidjson::Value json(rapidjson::kObjectType);
     json.AddMember("TR", TR, a);
     json.AddMember("SegTR", SegTR, a);
     json.AddMember("TI", ArrayToJSON(TI, a), a);

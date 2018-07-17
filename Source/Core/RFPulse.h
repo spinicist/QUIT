@@ -20,7 +20,7 @@
 namespace QI {
 
 struct RFPulse {
-    double FAnom, Trf, intB1, intB1sq;
+    double FAnom = 0.0, Trf = 0.0, intB1 = 0.0, intB1sq = 0.0;
     std::string name;
 
     rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const;
