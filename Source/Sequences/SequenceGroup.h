@@ -29,6 +29,7 @@ struct SequenceGroup : SequenceBase {
 
     void addSequence(const std::shared_ptr<SequenceBase> &s);
     SequenceGroup(rapidjson::Value &);
+    SequenceGroup() = default;
     rapidjson::Value toJSON(rapidjson::Document::AllocatorType &) const override;
 };
 

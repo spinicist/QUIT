@@ -25,6 +25,7 @@ struct RFPulse {
 
     rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const;
     RFPulse(const rapidjson::Value &);
+    RFPulse() = default;
 };
 
 } // End namespace QI
