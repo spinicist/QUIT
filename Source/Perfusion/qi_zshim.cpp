@@ -68,12 +68,12 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Output progress messages", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debug messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<int> zshims(parser, "ZSHIMS", "Number of Z-Shims (default 8)", {'z', "zshims"}, 8);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI_LOG(verbose, "Reading Z-Shim data from: " << QI::CheckPos(input_path));
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
@@ -83,8 +83,6 @@ int main(int argc, char **argv) {
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(false);
     QI_LOG(verbose, "Using " << threads.Get() << " threads" );
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, input);
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) {

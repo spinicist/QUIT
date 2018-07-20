@@ -55,7 +55,9 @@ public:
     typedef typename ImageType::PointType      PointType;
 
 protected:
-    KernelSource(){}
+    KernelSource(){
+        this->DynamicMultiThreadingOff();
+    }
     ~KernelSource(){}
     RegionType    m_Region;
     SpacingType   m_Spacing;
@@ -89,14 +91,14 @@ protected:
         output->SetOrigin(m_Origin);
     }
 
-    void ThreadedGenerateData(const RegionType & /* Unused */, ThreadIdType /* Unused */) ITK_OVERRIDE {
+    void DynamicThreadedGenerateData(const RegionType &outputRegion) ITK_OVERRIDE {
         const auto startIndex = m_Region.GetIndex();
         const Eigen::Array3d sz{static_cast<double>(m_Region.GetSize()[0]),
                                 static_cast<double>(m_Region.GetSize()[1]),
                                 static_cast<double>(m_Region.GetSize()[2])};
         const Eigen::Array3d hsz = sz / 2;
         const Eigen::Array3d sp{m_Spacing[0], m_Spacing[1], m_Spacing[2]};
-        itk::ImageRegionIterator<ImageType> outIt(this->GetOutput(), m_Region);
+        itk::ImageRegionIterator<ImageType> outIt(this->GetOutput(), outputRegion);
         outIt.GoToBegin();
         while(!outIt.IsAtEnd()) {
             const auto I = outIt.GetIndex() - startIndex; // Might be padded to a negative start
@@ -131,7 +133,7 @@ int main(int argc, char **argv) {
     args::Positional<std::string> in_path(parser, "INPUT", "Input file.");
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<int> zero_padding(parser, "ZEROPAD", "Zero-pad volume by N voxels in each direction", {'z', "zero_pad"}, 0);
     args::Flag complex_in(parser, "COMPLEX_IN", "Input data is complex", {"complex_in"});
@@ -140,8 +142,8 @@ int main(int argc, char **argv) {
     args::Flag save_kspace(parser, "KSPACE", "Save k-space before & after filtering", {"save_kspace"});
     args::Flag filter_per_volume(parser, "FILTER_PER_VOL", "Instead of concatenating multiple filters, use one per volume", {"filter_per_volume"});
     args::ValueFlagList<std::string> filters(parser, "FILTER", "Specify a filter to use (can be multiple)", {'f', "filter"});
-    QI::ParseArgs(parser, argc, argv, verbose);
-    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
 
     std::vector<std::shared_ptr<QI::FilterKernel>> kernels;
     if (filters) {

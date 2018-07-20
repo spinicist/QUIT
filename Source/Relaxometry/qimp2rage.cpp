@@ -110,7 +110,7 @@ protected:
             return output.GetPointer();
         } else {
             std::cerr << "No output " << idx << std::endl;
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -149,12 +149,12 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Path to complex MP-RAGE data");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag     automask(parser, "AUTOMASK", "Create a mask from the sum of squares image", {'a', "automask"});
-    QI::ParseArgs(parser, argc, argv, verbose);
-    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
 
     QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));

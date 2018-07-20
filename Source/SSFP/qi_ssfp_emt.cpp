@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> T2r_us(parser, "T2r", "T2r (in microseconds, default 12)", {"T2r"}, 12);
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag     all_residuals(parser, "RESIDUALS", "Write out all residuals", {'r',"all_resids"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI_LOG(verbose, "Opening file: " << QI::CheckPos(G_path));
     auto G = QI::ReadVectorImage<float>(QI::CheckPos(G_path));
     QI_LOG(verbose, "Opening file: " << QI::CheckPos(a_path));
@@ -49,8 +49,6 @@ int main(int argc, char **argv) {
     auto algo = std::make_shared<QI::MTFromEllipse>(seq, T2r_us.Get() * 1e-6, debug);
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get()*2);
     apply->SetOutputAllResiduals(all_residuals);
     apply->SetInput(0, G);
     apply->SetInput(1, a);

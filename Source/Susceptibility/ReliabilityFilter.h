@@ -38,7 +38,7 @@ protected:
     ~PhaseReliabilityFilter() {}
 
     float wrap(float voxel_value);
-    void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE;
+    void DynamicThreadedGenerateData(const TRegion &region) ITK_OVERRIDE;
 
 private:
     PhaseReliabilityFilter(const Self &); //purposely not implemented

@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
     args::PositionalList<std::string> input_paths(parser, "INPUT FILES", "Input image files");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> f0(parser, "f0", "f0 map (Hertz)", {'f', "f0"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<char> algorithm(parser, "ALGO", "Select (S)tochastic or (G)aussian Region Contraction", {'a', "algo"}, 'G');
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i',"its"}, 4);
     args::ValueFlag<char> field(parser, "FIELD STRENGTH", "Specify field-strength for fitting regions - 3/7/u for user input", {'t', "tesla"}, '3');
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     std::vector<QI::VectorVolumeF::Pointer> images;
     for (auto &input_path : QI::CheckList(input_paths)) {
@@ -224,8 +224,6 @@ int main(int argc, char **argv) {
     }
     apply->SetOutputAllResiduals(resids);
     apply->SetVerbose(verbose);
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get() < 8 ? 8 : threads.Get()); // mcdespot with a mask & threads is a very unbalanced algorithm
     for (size_t i = 0; i < images.size(); i++) {
         apply->SetInput(i, images[i]);
     }

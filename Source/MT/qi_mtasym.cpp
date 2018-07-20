@@ -76,12 +76,12 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> f0(parser, "OFF RESONANCE", "Specify off-resonance frequency", {'f', "f0"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Opening file: " << QI::CheckPos(input_path));
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
@@ -93,7 +93,6 @@ int main(int argc, char **argv) {
     std::shared_ptr<MTAsym> algo = std::make_shared<MTAsym>(z_frqs, a_frqs);
     auto apply = QI::ApplyVectorF::New();
     apply->SetAlgorithm(algo);
-    apply->SetPoolsize(threads.Get());
     apply->SetInput(0, data);
     if (mask) {
         QI_LOG(verbose, "Setting mask image: " << mask.Get());

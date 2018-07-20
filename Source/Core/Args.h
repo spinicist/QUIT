@@ -33,6 +33,23 @@ void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::
     }
 }
 
+void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose, args::ValueFlag<int> &threads) {
+    try {
+        parser.ParseCLI(argc, argv);
+        QI_LOG(verbose,  "Starting " << argv[0] << " " << QI::GetVersion());
+        itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
+    } catch (args::Help) {
+        std::cout << parser;
+        exit(EXIT_SUCCESS);
+    } catch (args::ParseError e) {
+        QI_FAIL(e.what() << std::endl << parser);
+    } catch (args::ValidationError e) {
+        QI_FAIL(e.what() << std::endl << parser);
+    }
+}
+
+void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose, args::ValueFlag<int> &threads);
+
 template<typename T>
 T CheckPos(args::Positional<T> &a) {
     if (a) {

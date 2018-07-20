@@ -15,7 +15,6 @@
 
 #include "itkImageSource.h"
 #include "itkImageSliceIteratorWithIndex.h"
-#include "itkProgressReporter.h"
 #include "itkImageMomentsCalculator.h"
 #include "ImageTypes.h"
 #include "Util.h"
@@ -71,10 +70,9 @@ protected:
     bool m_debug = false, m_centerMask = false;
     int m_dim = 0;
 
-    ProfileImage(){
-    }
-    ~ProfileImage(){}
-    void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
+    ProfileImage() {}
+    ~ProfileImage() {}
+    void DynamicThreadedGenerateData(const TRegion &region) ITK_OVERRIDE {
         auto output = this->GetOutput();
         ImageSliceIteratorWithIndex<QI::VolumeF> imageIt(output, region);
         imageIt.SetFirstDirection((m_dim + 1) % 3);
@@ -110,7 +108,6 @@ protected:
             m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
         }
 
-        itk::ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
         while(!imageIt.IsAtEnd()) {
             QI::VectorVolumeF::PointType pt, pt_rf;
             m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), pt);
@@ -128,9 +125,6 @@ protected:
                     ++it_B1;
                     if (mask) {
                         ++maskIter;
-                    }
-                    if (threadId == 0) {
-                        progress.CompletedPixel();
                     }
                 }
                 imageIt.NextLine();
@@ -162,15 +156,15 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag     centerMask(parser, "CENTER ON MASK", "Set the center of the slab to the center of the mask", {'c', "center"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::ValueFlag<int> dimension(parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 2);
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
+    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
     QI_LOG(verbose, "Reading image " << QI::CheckPos(b1plus_path));
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 

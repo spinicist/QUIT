@@ -60,5 +60,5 @@ qisignal --model=Ramani -v -T1 --noise=$NOISE $MTSAT_FILE << END_SIG
     "Sequences": [ $MTSAT_SEQUENCE ]
 }
 END_SIG
-return 1
+
 }

@@ -47,6 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const std::vector<T>& vec) {
 
 namespace QI {
 
+int GetDefaultThreads();                            //!< Return the number of threads in the $QUIT_THREADS environment variable
 const std::string &GetVersion();                    //!< Return the version of the QI library
 const std::string &OutExt();                        //!< Return the extension stored in $QUIT_EXT
 std::string StripExt(const std::string &filename);  //!< Remove the extension from a filename

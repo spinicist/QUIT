@@ -7,7 +7,6 @@
 #include "itkVariableLengthVector.h"
 #include "itkVectorImage.h"
 #include "itkTimeProbe.h"
-#include "ThreadPool.h"
 
 namespace itk{
 
@@ -21,6 +20,7 @@ public:
     typedef TOutputImage_ TOutputImage;
     typedef TConstImage_  TConstImage;
     typedef TMaskImage_   TMaskImage;
+    static const int OutputImageDimension = TOutputImage::ImageDimension;
 
     typedef typename TInputImage::PixelType  TInputPixel;
     typedef typename TOutputImage::PixelType TOutputPixel;
@@ -70,8 +70,6 @@ public:
     void SetMask(const TMaskImage *mask);
     typename TMaskImage::ConstPointer GetMask() const;
 
-    void SetPoolsize(const size_t nThreads);
-    void SetSplitsPerThread(const size_t nSplits);
     void SetSubregion(const TRegion &sr); 
     void SetVerbose(const bool v);
     void SetOutputAllResiduals(const bool r); 
@@ -90,7 +88,6 @@ protected:
 
     std::shared_ptr<Algorithm> m_algorithm;
     bool m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
-    size_t m_poolsize = 1, m_splitsPerThread = 1;
     TRegion m_subregion;
 
     RealTimeClock::TimeStampType m_elapsedTime = 0.0;
@@ -102,7 +99,7 @@ protected:
     virtual void GenerateData() ITK_OVERRIDE;
     /* Doing my own threading so override both of these */
     virtual void GenerateOutputInformation() ITK_OVERRIDE;
-    virtual void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE;
+    virtual void DynamicThreadedGenerateData(const TRegion &region) ITK_OVERRIDE;
 
 private:
     ApplyAlgorithmFilter(const Self &); //purposely not implemented

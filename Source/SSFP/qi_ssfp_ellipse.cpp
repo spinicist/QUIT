@@ -29,13 +29,13 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI_LOG(verbose, "Opening file: " << QI::CheckPos(ssfp_path));
     auto data = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ssfp_path));
     rapidjson::Document input = QI::ReadJSON(std::cin);
@@ -47,8 +47,6 @@ int main(int argc, char **argv) {
     }
     QI::ApplyVectorXFVectorF::Pointer apply = QI::ApplyVectorXFVectorF::New();
     apply->SetAlgorithm(algo);
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get()*2);
     apply->SetInput(0, data);
     if (mask) {
         QI_LOG(verbose, "Reading mask: " << mask.Get());

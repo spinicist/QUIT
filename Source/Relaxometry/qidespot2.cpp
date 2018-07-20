@@ -222,7 +222,7 @@ int main(int argc, char **argv) {
     args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Path to SSFP data");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i',"its"}, 15);
     args::ValueFlag<float> clampPD(parser, "CLAMP PD", "Clamp PD between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'t',"clampT2"}, std::numeric_limits<float>::infinity());
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Reading T1 Map from: " << QI::CheckPos(t1_path));
     auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
@@ -264,7 +264,6 @@ int main(int argc, char **argv) {
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);
-    apply->SetPoolsize(threads.Get());
     apply->SetInput(0, data);
     apply->SetConst(0, T1);
     if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));

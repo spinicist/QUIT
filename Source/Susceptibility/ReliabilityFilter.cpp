@@ -36,7 +36,7 @@ float PhaseReliabilityFilter::wrap(float voxel_value) {
     }
 }
 
-void PhaseReliabilityFilter::ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) {
+void PhaseReliabilityFilter::DynamicThreadedGenerateData(const TRegion &region) {
     using TIter = ImageRegionIterator<TImage>;
     using TCNIter = ConstNeighborhoodIterator<TImage>;
     using TOffset = TCNIter::OffsetType;

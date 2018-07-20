@@ -80,7 +80,7 @@ protected:
     }
     ~MinEnergyFilter() {}
 
-    void ThreadedGenerateData(const TInputImage::RegionType &region, ThreadIdType threadId) ITK_OVERRIDE {
+    void DynamicThreadedGenerateData(const TInputImage::RegionType &region) ITK_OVERRIDE {
         //std::cout <<  __PRETTY_FUNCTION__ << endl;
         ConstNeighborhoodIterator<TInputImage>::RadiusType radius;
         radius.Fill(1);
@@ -92,7 +92,6 @@ protected:
             maskIter = ImageRegionConstIterator<TMask>(m, region);
         }
         ImageRegionIterator<TOutputImage> outputIter(this->GetOutput(), region);
-        ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
         VariableLengthVector<std::complex<float>> output(m_flips);
         size_t phase_stride = m_flips;
         size_t flip_stride = 1;
@@ -137,8 +136,6 @@ protected:
             if (m) {
                 ++maskIter;
             }
-            if (threadId == 0)
-                progress.CompletedPixel(); // We can get away with this because enqueue blocks if the queue is full
         }
         //std::cout << "End " << __PRETTY_FUNCTION__ );
     }
@@ -163,7 +160,7 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<std::string> out_arg(parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
-    args::ValueFlag<int> num_threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag     alt_order(parser, "ALTERNATE", "Opposing phase-incs alternate (default is 2 blocks)", {"alt-order"});
     args::Flag     ph_order(parser, "PHASE 1st", "Data order is phase, then flip-angle (default opposite)", {"ph-order"});
@@ -172,7 +169,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> method(parser, "METHOD", "Choose banding-removal method. G = Geometric Solution, X = Complex Average, R = Root Mean Square, M = Maximum, N = Mean Magnitude. Default = G", {"method"},"G");
     args::ValueFlag<std::string> regularise(parser, "REGULARISE", "Chose regularisation method for GS. M = Magnitude, L = Line, N = None", {"regularise"}, "L");
     args::Flag     two_pass(parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2',"2pass"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
     
     QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inFile = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
@@ -217,8 +214,6 @@ int main(int argc, char **argv) {
     pass1->SetAlgorithm(algo);
     if (mask) pass1->SetMask(QI::ReadImage(mask.Get()));
     pass1->SetInput(0, inFile);
-    pass1->SetPoolsize(num_threads.Get());
-    pass1->SetSplitsPerThread(num_threads.Get()); // Unbalanced algorithm
     pass1->SetVerbose(verbose);
     QI_LOG(verbose, "1st pass");
     if (verbose) {
@@ -229,7 +224,6 @@ int main(int argc, char **argv) {
     QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
     if (two_pass) {
         suffix += "2";
-        itk::MultiThreader::SetGlobalDefaultNumberOfThreads(num_threads.Get());
         auto pass2 = itk::MinEnergyFilter::New();
         pass2->SetPhases(ph_incs.Get());
         pass2->setReorderBlock(alt_order);

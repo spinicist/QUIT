@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "ASL_FILE", "Input ASL file");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag average(parser, "AVERAGE", "Average the time-series", {'a', "average"});
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> alpha(parser, "ALPHA", "Labelling efficiency, default 0.9", {'a', "alpha"}, 0.9);
     args::ValueFlag<double> lambda(parser, "LAMBDA", "Blood-brain partition co-efficent, default 0.9 mL/g", {'l', "lambda"}, 0.9);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI_LOG(verbose, "Reading ASL data from: " << QI::CheckPos(input_path));
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
 
@@ -152,8 +152,6 @@ int main(int argc, char **argv) {
     apply->SetConst(1, PD_image);
     apply->SetOutputAllResiduals(false);
     QI_LOG(verbose, "Using " << threads.Get() << " threads" );
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, input);
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) {

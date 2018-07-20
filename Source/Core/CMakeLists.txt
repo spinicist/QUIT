@@ -7,7 +7,7 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PRO
 
 add_library( qi_core
              Macro.h Args.h IO.h ImageTypes.h
-             Util.cpp ThreadPool.cpp JSON.cpp
+             Util.cpp JSON.cpp
              GoldenSection.cpp Masking.cpp
              Kernels.cpp Fit.cpp Spline.cpp
              RFPulse.cpp Lineshape.cpp )

@@ -7,7 +7,7 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkProgressReporter.h"
 #include "itkImageRegionSplitterSlowDimension.h"
-
+#include "itkMultiThreaderBase.h"
 #include "ApplyAlgorithmFilter.h"
 
 namespace itk {
@@ -34,24 +34,6 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetAlgorithm(const std::shared_ptr<Al
 
 template<typename TI, typename TO, typename TC, typename TM>
 auto ApplyAlgorithmFilter<TI, TO, TC, TM>::GetAlgorithm() const -> std::shared_ptr<const Algorithm>{ return m_algorithm; }
-
-template<typename TI, typename TO, typename TC, typename TM>
-void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetPoolsize(const size_t n) {
-    if (n > 0) {
-        m_poolsize = n;
-    } else {
-        m_poolsize = std::thread::hardware_concurrency();
-    }
-}
-
-template<typename TI, typename TO, typename TC, typename TM>
-void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetSplitsPerThread(const size_t n) {
-    if (n > 0) {
-        m_splitsPerThread = n;
-    } else {
-        m_splitsPerThread = m_poolsize;
-    }
-}
 
 template<typename TI, typename TO, typename TC, typename TM>
 void ApplyAlgorithmFilter<TI, TO, TC, TM>::SetSubregion(const TRegion &sr) {
@@ -220,39 +202,23 @@ void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateOutputInformation() {
 
 template<typename TI, typename TO, typename TC, typename TM>
 void ApplyAlgorithmFilter<TI, TO, TC, TM>::GenerateData() {
-    auto fullRegion = this->GetInput(0)->GetLargestPossibleRegion();
+    auto region = this->GetInput(0)->GetLargestPossibleRegion();
     if (m_hasSubregion) {
-        if (fullRegion.IsInside(m_subregion)) {
-            fullRegion = m_subregion;
+        if (region.IsInside(m_subregion)) {
+            region = m_subregion;
         } else {
             itkExceptionMacro("Specified subregion is not entirely inside image.");
         }
     }
 
-    auto splitter = ImageRegionSplitterSlowDimension::New();
-    auto splits = splitter->GetNumberOfSplits(fullRegion, m_poolsize * m_splitsPerThread);
-    if (m_verbose) std::cout << "Number of splits: " << splits << std::endl;
-    TimeProbe clock;
-    clock.Start();
-    {   // Use scope-based instantiation to wait for the threadpool to stop
-        QI::ThreadPool threadPool(m_poolsize);
-        for (unsigned int split = 0; split < splits; split++) {
-            auto task = [=] {
-                auto thread_region = fullRegion;
-                splitter->GetSplit(split, splits, thread_region);
-                this->ThreadedGenerateData(thread_region, split);
-            };
-            threadPool.enqueue(task);
-            if (m_verbose) std::cout << "Starting split " << split << std::endl;
-        }
-    }
-    clock.Stop();
-    m_elapsedTime = clock.GetTotal();
-    if (m_verbose) std::cout << "Finished all splits" << std::endl;
+    this->GetMultiThreader()->template ParallelizeImageRegion<OutputImageDimension>(
+        region,
+        [this](const typename TOutputImage::RegionType &outputRegion) { this->DynamicThreadedGenerateData(outputRegion); },
+        this);
 }
 
 template<typename TI, typename TO, typename TC, typename TM>
-void ApplyAlgorithmFilter<TI, TO, TC, TM>::ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) {
+void ApplyAlgorithmFilter<TI, TO, TC, TM>::DynamicThreadedGenerateData(const TRegion &region) {
     ImageRegionConstIterator<TMaskImage> maskIter;
     const auto mask = this->GetMask();
     if (mask) {

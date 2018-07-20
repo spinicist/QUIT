@@ -24,7 +24,6 @@
 
 #include "Models.h"
 #include "Util.h"
-#include "ThreadPool.h"
 #include "Args.h"
 #include "ImageIO.h"
 
@@ -121,7 +120,7 @@ protected:
     SignalsFilter() {}
     ~SignalsFilter(){}
 
-    void ThreadedGenerateData(const OutputImageRegionType &region, itk::ThreadIdType threadId) ITK_OVERRIDE {
+    void DynamicThreadedGenerateData(const OutputImageRegionType &region) ITK_OVERRIDE {
         std::vector<itk::ImageRegionConstIterator<TImage>> inIters(m_model->nParameters());
         for (size_t i = 0; i < m_model->nParameters(); i++) {
             if (this->GetInput(i))
@@ -134,13 +133,8 @@ protected:
         }
         itk::ImageRegionIterator<TCVImage> outputIter(this->GetOutput(), region);
         
-        if (threadId == 0)
-            m_clock.Reset();
         while(!outputIter.IsAtEnd()) {
             if (!mask || maskIter.Get()) {
-                if (threadId == 0) {
-                    m_clock.Start();
-                }
                 Eigen::VectorXd parameters = m_model->Default();
                 for (size_t i = 0; i < inIters.size(); i++) {
                     if (this->GetInput(i))
@@ -159,9 +153,6 @@ protected:
                 Eigen::VectorXcf floatData = allData.cast<std::complex<float>>();
                 itk::VariableLengthVector<std::complex<float>> dataVector(floatData.data(), m_sequence->size());
                 outputIter.Set(dataVector);
-                if (threadId == 0) {
-                    m_clock.Stop();
-                }
             }
             if (mask) {
                 ++maskIter;
@@ -171,11 +162,6 @@ protected:
                     ++inIters[i];
             }
             ++outputIter;
-        }
-        if (threadId == 0) {
-            m_evaluations = m_clock.GetNumberOfStops();
-            m_meanTime = m_clock.GetMean();
-            m_totalTime = m_clock.GetTotal();
         }
     }
 
@@ -207,7 +193,7 @@ int main(int argc, char **argv) {
     args::PositionalList<std::string> filenames(parser, "OUTPUT FILES", "Output file names");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> ref_arg(parser, "REFERENCE", "Resample inputs to this reference space", {'r', "ref"});
@@ -215,7 +201,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> seed(parser, "SEED", "Seed noise RNG with specific value", {'s', "seed"}, -1);
     args::ValueFlag<std::string> model_arg(parser, "MODEL", "Choose model (1/2/3/MT) default 1", {'M',"model"}, "1");
     args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
     if (!filenames) {
         std::cerr << "No output filenames specified. Use --help to see usage." << std::endl;
         return EXIT_FAILURE;
@@ -243,7 +229,7 @@ int main(int argc, char **argv) {
     SignalsFilter::Pointer calcSignal = SignalsFilter::New();
     calcSignal->SetModel(model);
     calcSignal->SetSigma(noise.Get());
-    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
+    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (mask) calcSignal->SetMask(QI::ReadImage(mask.Get(), verbose));
 
     QI::VolumeF::Pointer reference = ITK_NULLPTR;

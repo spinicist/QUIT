@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Input multi-echo data");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i',"its"}, 15);
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> threshPD(parser, "THRESHOLD PD", "Only output maps when PD exceeds threshold value", {'t', "tresh"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inputFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
@@ -211,8 +211,6 @@ int main(int argc, char **argv) {
     size_t nVols = inputFile->GetLargestPossibleRegion().GetSize()[3] / multiecho.size();
     algo->setSequence(multiecho);
     auto apply = QI::ApplyF::New();
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get()); // Unbalanced algorithm
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
 
     auto PDoutput = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();

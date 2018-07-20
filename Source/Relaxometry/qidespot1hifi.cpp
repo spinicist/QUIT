@@ -196,12 +196,12 @@ int main(int argc, char **argv) {
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag     all_resids(parser, "ALL RESIDUALS", "Output individual residuals in addition to the Sum-of-Squares", {'r',"resids"});
     args::ValueFlag<float> clamp(parser, "CLAMP", "Clamp output T1 values to this value", {'c', "clamp"}, std::numeric_limits<float>::infinity());
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Reading SPGR file: " << QI::CheckPos(spgr_path));
     auto spgrImg = QI::ReadVectorImage(QI::CheckPos(spgr_path));
@@ -217,8 +217,6 @@ int main(int argc, char **argv) {
     auto hifi = std::make_shared<HIFIAlgo>(spgr_sequence, ir_sequence, clamp.Get());
     apply->SetAlgorithm(hifi);
     apply->SetOutputAllResiduals(all_resids);
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get());
     apply->SetVerbose(verbose);
     apply->SetInput(0, spgrImg);
     apply->SetInput(1, irImg);

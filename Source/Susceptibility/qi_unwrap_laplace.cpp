@@ -76,7 +76,7 @@ protected:
             return output.GetPointer();
         } else {
             std::cerr << "No output " << idx << std::endl;
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -261,14 +261,14 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<int> erode(parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"}, 1);
     args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
     
-    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
+    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
 
     QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage(QI::CheckPos(input_path));

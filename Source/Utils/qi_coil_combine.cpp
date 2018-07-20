@@ -148,14 +148,14 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file to coil-combine");
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> region_arg(parser, "REGION", "Region to average phase for Hammond method, default is 8x8x8 cube at center", {'r', "region"});
     args::ValueFlag<std::string> ser_path(parser, "COMPOSER", "Short Echo Time reference file for COMPOSER method", {'c', "composer"});
     args::ValueFlag<int> coils_arg(parser, "COILS", "Number of coils (default is number of volumes)", {'C', "coils"});
     args::Flag     save_corrected(parser, "SAVE COILS", "Save the individual coil images after phase correction", {'s', "save"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Reading input image: " << QI::CheckPos(input_path));
     auto input_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
@@ -167,8 +167,6 @@ int main(int argc, char **argv) {
     apply->SetInput(0, input_image);
     apply->SetOutputAllResiduals(save_corrected);
     apply->SetVerbose(verbose);
-    apply->SetPoolsize(threads.Get());
-    apply->SetSplitsPerThread(threads.Get());
     if (subregion) apply->SetSubregion(QI::RegionArg(subregion.Get()));
     if (ser_path) {
         QI_LOG(verbose, "Reading COMPOSER reference image: " << ser_path.Get());

@@ -76,13 +76,13 @@ int main(int argc, char **argv) {
     args::Positional<std::string> b_filename(parser, "b", "Ellipse parameter b");
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    QI::ParseArgs(parser, argc, argv, verbose);
-    itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
     QI_LOG(verbose, "Opening G: " << QI::CheckPos(G_filename));
     auto G = QI::ReadVectorImage(QI::CheckPos(G_filename));
     QI_LOG(verbose, "Opening a: " << QI::CheckPos(a_filename));
@@ -94,7 +94,6 @@ int main(int argc, char **argv) {
     auto algo = std::make_shared<PLANET>(seq);
     auto apply = QI::ApplyVectorF::New();
     apply->SetAlgorithm(algo);
-    apply->SetPoolsize(threads.Get());
     apply->SetInput(0, G);
     apply->SetInput(1, a);
     apply->SetInput(2, b);

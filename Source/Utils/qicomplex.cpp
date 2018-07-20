@@ -97,7 +97,7 @@ args::ArgumentParser parser(
 
 args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
 args::Flag     use_double(parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
 args::Flag     fixge(parser, "FIX_GE", "Negate alternate slices (fixes lack of FFT shift)", {"fixge"});
 args::Flag     negate(parser, "NEGATE", "Negate entire volume", {"negate"});
@@ -234,8 +234,8 @@ void Run() {
 }
 
 int main(int argc, char **argv) {
-    QI::ParseArgs(parser, argc, argv, verbose);
-    itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (use_double) {
         QI_LOG(verbose, "Using double precision" );
         Run<double>();
