@@ -2,43 +2,45 @@
 # Simple test scripts for QUIT programs
 
 setup() {
-    load $BATS_TEST_DIRNAME/common.bash
-    init_tests
-}
-
-@test "DESPOT1-HIFI" {
-
+load $BATS_TEST_DIRNAME/common.bash
+init_tests
 # Setup parameters
 SPGR_FILE="spgr$EXT"
 MPRAGE_FILE="mprage$EXT"
 SPGR=' "SPGR": { "TR": 0.01, "FA": [3, 20] }'
-echo $SPGR
 MPRAGE=' "MPRAGE": { "FA": 5, "TR": 0.01, "TI": 0.45, "TD": 0, "eta": 1, "ETL": 64, "k0": 0 }'
-
 SIZE="16,16,16"
-NOISE="0.01"
-qinewimage --size "$SIZE" -g "1 0.8 1.0" PD$EXT
-qinewimage --size "$SIZE" -g "0 0.5 1.5" T1$EXT
-qisignal --model=1 -v --noise=$NOISE $SPGR_FILE $MPRAGE_FILE << SIGNAL
+NOISE="0.001"
+TOL="70"
+cat > hifi.json <<OUT
 {
-    "PD": "PD$EXT",
-    "T1": "T1$EXT",
-    "T2": "",
-    "f0": "",
-    "B1": "",
-    "Sequences": [
-        { $SPGR },
-        { $MPRAGE }
-    ]
+    $SPGR,
+    $MPRAGE
 }
-SIGNAL
-
-qidespot1hifi --verbose $SPGR_FILE $MPRAGE_FILE <<HIFI
+OUT
+cat > simulate_hifi.json <<OUT
 {
-    $SPGR, $MPRAGE
+    "PDFile": "PD$EXT",
+    "T1File": "T1$EXT",
+    "B1File": "B1$EXT",
+    $SPGR,
+    $MPRAGE
 }
-HIFI
+OUT
+}
 
-qidiff --baseline=T1.nii --input=HIFI_T1.nii --noise=$NOISE --tolerance=40 --verbose
+@test "DESPOT1HIFI-Simulate" {
+qinewimage --size "$SIZE" -g "0 0.8 1.0" PD$EXT
+[ -e PD$EXT ]
+qinewimage --size "$SIZE" -g "1 0.5 1.5" T1$EXT
+[ -e T1$EXT ]
+qinewimage --size "$SIZE" -g "2 0.5 1.5" B1$EXT
+[ -e B1$EXT ]
+qidespot1hifi --verbose --simulate=$NOISE $SPGR_FILE $MPRAGE_FILE < simulate_hifi.json
+}
 
+@test "DESPOT1HIFI" {
+qidespot1hifi --verbose $SPGR_FILE $MPRAGE_FILE < hifi.json
+qidiff --baseline=T1.nii --input=HIFI_T1.nii --noise=$NOISE --tolerance=$TOL --verbose
+qidiff --baseline=B1.nii --input=HIFI_B1.nii --noise=$NOISE --tolerance=$TOL --verbose
 }

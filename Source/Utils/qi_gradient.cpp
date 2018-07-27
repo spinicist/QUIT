@@ -10,13 +10,12 @@
  */
 
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include "itkDerivativeImageFilter.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
-#include "ApplyTypes.h"
 
 /*
  * Main

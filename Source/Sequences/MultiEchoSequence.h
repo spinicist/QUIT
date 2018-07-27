@@ -20,17 +20,16 @@ struct MultiEchoBase : SequenceBase {
     double TR;
     Eigen::ArrayXd TE;
     Eigen::Index size() const override;
-    Eigen::ArrayXcd signal(std::shared_ptr<QI::Model::ModelBase> m, const Eigen::VectorXd &par) const override;
 };
 
 struct MultiEchoSequence : MultiEchoBase {
     double TE1, ESP;
     int ETL;
-    QI_SEQUENCE_DECLARE_NOSIG(MultiEcho);
+    QI_SEQUENCE_DECLARE(MultiEcho);
 };
 
 struct MultiEchoFlexSequence : MultiEchoBase {
-    QI_SEQUENCE_DECLARE_NOSIG(MultiEchoFlex);
+    QI_SEQUENCE_DECLARE(MultiEchoFlex);
 };
 
 } // End namespace QI

@@ -70,6 +70,7 @@ template void WriteImage<VolumeI>(const VolumeI *ptr, const std::string &path);
 template void WriteImage<VolumeUC>(const VolumeUC *ptr, const std::string &path);
 template void WriteImage<SeriesF>(const SeriesF *ptr, const std::string &path);
 template void WriteImage<SeriesD>(const SeriesD *ptr, const std::string &path);
+template void WriteImage<SeriesI>(const SeriesI *ptr, const std::string &path);
 template void WriteImage<SeriesXF>(const SeriesXF *ptr, const std::string &path);
 template void WriteImage<SeriesXD>(const SeriesXD *ptr, const std::string &path);
 template void WriteImage<VolumeF>(const itk::SmartPointer<VolumeF> ptr, const std::string &path);

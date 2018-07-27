@@ -2,15 +2,15 @@
 # Tests for perfusion (ASL)
 
 setup() {
-    load $BATS_TEST_DIRNAME/common.bash
-    init_tests
+load $BATS_TEST_DIRNAME/common.bash
+init_tests
 }
 
 @test "Perfusion (ASL)" {
 
 SIZE="32,32,32,2"
-qinewimage --verbose --dims=4 --size="$SIZE" --step="3 1 1.06 2" asl.nii
-qi_asl --verbose asl.nii <<END_INPUT
+qinewimage --verbose --dims=4 --size="$SIZE" --step="3 1 1.06 2" asl$EXT
+qi_asl --verbose asl$EXT <<END_INPUT
 {
     "CASL" : {
         "TR": 4.0,
@@ -24,10 +24,10 @@ END_INPUT
 @test "Perfusion (ASE)" {
 # Currently, this test uses a T2 decay curve as the input and checks that R2' is equal to 1/T2
 SIZE="16,16,16"
-qinewimage PD.nii --size "$SIZE" -f 1
-qinewimage T1.nii --size "$SIZE" -f 1
-qinewimage T2.nii --size "$SIZE" -f 0.1
-qinewimage R2.nii --size "$SIZE" -f 10
+qinewimage PD$EXT --size="$SIZE" -f 1
+qinewimage T1$EXT --size="$SIZE" -f 1
+qinewimage T2$EXT --size="$SIZE" -f 0.1
+qinewimage R2$EXT --size="$SIZE" -f 10
 
 SPIN_SEQUENCE="
 \"MultiEchoFlex\" : {
@@ -35,18 +35,13 @@ SPIN_SEQUENCE="
     \"TE\" : [ 0.00, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07 ]
 }
 "
-SPIN_FILE="me.nii"
+SPIN_FILE="me$EXT"
 NOISE="0.02"
-qisignal --model=1 -v --noise=$NOISE $SPIN_FILE << END_SIG
+qimultiecho --verbose --simulate=$NOISE $SPIN_FILE << END_SIG
 {
-    "PD" : "PD.nii",
-    "T1" : "T1.nii",
-    "T2" : "T2.nii",
-    "f0" : "",
-    "B1" : "",
-    "Sequences" : [
-        { $SPIN_SEQUENCE }
-    ]
+    "PDFile" : "PD$EXT",
+    "T2File" : "T2$EXT",
+    $SPIN_SEQUENCE
 }
 END_SIG
 
@@ -55,6 +50,13 @@ qi_ase_oef --verbose $SPIN_FILE << END_INPUT
     $SPIN_SEQUENCE
 }
 END_INPUT
-qidiff --baseline=R2.nii --input=me_R2prime.nii --noise=$NOISE --tolerance=5 --verbose
+qidiff --baseline=R2$EXT --input=me_R2prime$EXT --noise=$NOISE --tolerance=5 --verbose
+}
 
+@test "Perfusion (Z-Shim)" {
+# Pythagoras 3,4,5 triangle!
+qinewimage zshim_in$EXT --dims=4 --size="2,2,2,2" --step="3 3 4 2"
+qinewimage zshim_ref$EXT --size="2,2,2" --fill="5"
+qi_zshim --verbose --zshims=2 zshim_in$EXT
+qidiff --baseline=zshim_ref$EXT --input=zshim_in_zshim$EXT --abs --tolerance=0.1 --verbose
 }

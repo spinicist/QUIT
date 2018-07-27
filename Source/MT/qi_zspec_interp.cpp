@@ -10,57 +10,37 @@
  */
 
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
 #include "JSON.h"
 #include "Spline.h"
-#include "ApplyTypes.h"
+#include "itkBinaryFunctorImageFilter.h"
 
-class InterpZSpec : public QI::ApplyVectorF::Algorithm {
-protected:
-    Eigen::ArrayXd m_ifrqs, m_ofrqs;
-    TOutput m_zero;
     
-public:
-    InterpZSpec(const Eigen::ArrayXd &z, const Eigen::ArrayXd &a) :
-        m_ifrqs(z), m_ofrqs(a)
-    {
-        m_zero = TOutput(m_ofrqs.rows()); m_zero.Fill(0.);
-    }
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 1; }
-    size_t numOutputs() const override { return 1; }
-    size_t dataSize() const override { return m_ifrqs.rows(); }
-    size_t outputSize() const override {
-        return m_ofrqs.rows();
-    }
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def{{0.0f}};
-        return def;
-    }
-    TOutput zero() const override {
-        return m_zero;
-    }
-    const std::vector<std::string> & names() const {
-        static std::vector<std::string> _names = {"asymmetry"};
-        return _names;
-    }
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TOutput & /* Unused */,
-               TInput & /* Unused */, TIterations & /* Unused */) const override
-    {
-        const Eigen::Map<const Eigen::ArrayXf> zdata(inputs[0].GetDataPointer(), m_ifrqs.rows());
+struct InterpFunctor {
+    Eigen::ArrayXd m_ifrqs, m_ofrqs;
+
+    InterpFunctor() = default;
+    InterpFunctor(const Eigen::ArrayXd &ifrq, const Eigen::ArrayXd &ofrq) :
+        m_ifrqs(ifrq),
+        m_ofrqs(ofrq)
+    {};
+
+    ~InterpFunctor() {};
+    bool operator!=(const InterpFunctor &) const { return true; }
+    bool operator==(const InterpFunctor &other) const { return !(*this != other); }
+    inline itk::VariableLengthVector<float> operator()(const itk::VariableLengthVector<float> &vec, const float &f0) const {
+        const Eigen::Map<const Eigen::ArrayXf> zdata(vec.GetDataPointer(), vec.Size());
         QI::SplineInterpolator zspec(m_ifrqs, zdata.cast<double>());
-        double f0 = consts.at(0);
+        itk::VariableLengthVector<float> output(m_ofrqs.rows());
         for (int f = 0; f < m_ofrqs.rows(); f++) {
             const double frq = m_ofrqs[f] + f0;
-            outputs.at(0)[f] = zspec(frq);
+            output[f] = zspec(frq);
         }
-        return std::make_tuple(true, "");
+        return output;
     }
 };
 
@@ -79,37 +59,25 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Opening file: " << QI::CheckPos(input_path));
-    auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
+    auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path), verbose);
 
     QI_LOG(verbose, "Reading input frequences");
     rapidjson::Document json = QI::ReadJSON(std::cin);
     auto i_frqs = QI::ArrayFromJSON(json["input_freqs"]);
     auto o_frqs = QI::ArrayFromJSON(json["output_freqs"]);
-    std::shared_ptr<InterpZSpec> algo = std::make_shared<InterpZSpec>(i_frqs, o_frqs);
-    auto apply = QI::ApplyVectorF::New();
-    apply->SetAlgorithm(algo);
-    apply->SetInput(0, data);
-    if (mask) {
-        QI_LOG(verbose, "Setting mask image: " << mask.Get());
-        apply->SetMask(QI::ReadImage(mask.Get()));
-    }
-    if (f0) {
-        QI_LOG(verbose, "Setting f0 image: " << f0.Get());
-        apply->SetConst(0, QI::ReadImage(f0.Get()));
-    }
-    if (subregion) {
-        apply->SetSubregion(QI::RegionArg(subregion.Get()));
-    }
+    InterpFunctor functor(i_frqs, o_frqs);
+    auto filter = itk::BinaryFunctorImageFilter<QI::VectorVolumeF,
+                                                QI::VolumeF,
+                                                QI::VectorVolumeF,
+                                                InterpFunctor>::New();
+    filter->SetFunctor(functor);
+    filter->SetInput1(data);
+    filter->SetInput2(QI::ReadImage(f0.Get(), verbose));
     QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s\n");
+    filter->Update();
     std::string outname = outarg ? outarg.Get() : QI::StripExt(input_path.Get()) + "_interp" + QI::OutExt();
     QI_LOG(verbose, "Writing output: " << outname);
-    QI::WriteVectorImage(apply->GetOutput(0), outname);
+    QI::WriteVectorImage(filter->GetOutput(), outname);
     QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

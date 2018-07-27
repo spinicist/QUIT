@@ -21,14 +21,10 @@ Eigen::Index SPGRBase::size() const {
     return FA.rows();
 }
 
-Eigen::ArrayXcd SPGRSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return m->SPGR(p, FA, TR);
-}
-
 SPGRSequence::SPGRSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
-    FA = ArrayFromJSON(json["FA"], M_PI / 180);
+    TR = QI::GetMember(json, "TR").GetDouble();
+    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
 }
 
 rapidjson::Value SPGRSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -43,15 +39,11 @@ rapidjson::Value SPGRSequence::toJSON(rapidjson::Document::AllocatorType &a) con
  * With echo-time correction
  */
 
-Eigen::ArrayXcd SPGREchoSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return m->SPGREcho(p, FA, TR, TE);
-}
-
 SPGREchoSequence::SPGREchoSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
-    TE = json["TE"].GetDouble();
-    FA = ArrayFromJSON(json["FA"], M_PI / 180);
+    TR = QI::GetMember(json, "TR").GetDouble();
+    TE = QI::GetMember(json, "TE").GetDouble();
+    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
 }
 
 rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -65,17 +57,12 @@ rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a)
 /*
  * With echo-time and finite-pulse corrections
  */
-
-Eigen::ArrayXcd SPGRFiniteSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return m->SPGRFinite(p, FA, TR, Trf, TE);
-}
-
 SPGRFiniteSequence::SPGRFiniteSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
-    TE = json["TE"].GetDouble();
-    Trf = json["Trf"].GetDouble();
-    FA = ArrayFromJSON(json["FA"], M_PI / 180);
+    TR = QI::GetMember(json, "TR").GetDouble();
+    TE = QI::GetMember(json, "TE").GetDouble();
+    Trf = QI::GetMember(json, "Trf").GetDouble();
+    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
 }
 
 rapidjson::Value SPGRFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {

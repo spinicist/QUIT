@@ -10,46 +10,41 @@
  */
 
 #include "Banding.h"
+#include "Macro.h"
 
 namespace QI {
 
-void BandAlgo::setPhases(const size_t p) {
+/*
+ * Helper Functions
+ */
+template<typename T> inline T cdot(const std::complex<T> &a, const std::complex<T> &b) {
+    return real(a)*real(b) + imag(a)*imag(b);
+}
+
+BandFunctor::BandFunctor(const int isz, const int p, const bool rp, const bool rb) :
+    m_phaseFirst(rp), m_reorderBlock(rb)
+{
     if (p < 4)
         QI_EXCEPTION("Must have a minimum of 4 phase-cycling patterns.");
     if ((p % 2) != 0)
         QI_EXCEPTION("Number of phases must be even.");
     m_phases = p;
-    m_lines = m_phases / 2;;
+    m_lines = m_phases / 2;
+    m_flips = isz / m_phases;
 }
 
-void BandAlgo::setInputSize(const size_t s) {
-    m_flips = s / m_phases;
-    m_zero.SetSize(m_flips);
-    m_zero.Fill(std::complex<float>(0.));
-}
-
-std::vector<float> BandAlgo::defaultConsts() const {
-    std::vector<float> def;
-    return def;
-}
-BandAlgo::TOutput BandAlgo::zero() const {
-    return m_zero;
-}
-
-BandAlgo::TStatus BandAlgo::apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
-                     const TIndex & /* Unused */,
-                     std::vector<TOutput> &outputs, TOutput & /* Unused */,
-                     TInput & /* Unused */, TIterations & /* Unused */) const
+itk::VariableLengthVector<std::complex<float>> BandFunctor::operator()(const itk::VariableLengthVector<std::complex<float>> &vec) const
 {
     size_t phase_stride = m_flips;
     size_t flip_stride = 1;
     if (m_phaseFirst)
         std::swap(phase_stride, flip_stride);
+    itk::VariableLengthVector<std::complex<float>> output(m_flips);
     for (size_t f = 0; f < m_flips; f++) {
-        const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(inputs[0].GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride));
-        outputs[0][f] = this->applyFlip(vf);
+        const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(vec.GetDataPointer() + f*flip_stride, m_phases, Eigen::InnerStride<>(phase_stride));
+        output[f] = this->applyFlip(vf);
     }
-    return std::make_tuple(true, "");
+    return output;
 }
 
 std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::ArrayXcd &b, RegEnum regularise) {
@@ -91,7 +86,28 @@ std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::Arr
     return static_cast<std::complex<float>>(sum / N);
 }
 
-std::complex<float> GSAlgo::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+std::complex<float> CSFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    return vf.mean();
+}
+
+std::complex<float> MagMeanFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    return vf.abs().mean();
+}
+
+std::complex<float> RMSFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    float sum = vf.abs().square().sum();
+    return std::complex<float>(sqrt(sum / vf.rows()), 0.);
+}
+
+std::complex<float> MaxFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    std::complex<float> max = std::numeric_limits<std::complex<float>>::lowest();
+    for (int i = 0; i < vf.rows(); i++) {
+        if (std::abs(vf[i]) > std::abs(max)) max = vf[i];
+    }
+    return max;
+}
+
+std::complex<float> GSFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
     Eigen::ArrayXcd a(m_lines);
     Eigen::ArrayXcd b(m_lines);
     Eigen::ArrayXcd full = vf.cast<std::complex<double>>();

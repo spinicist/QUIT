@@ -1,5 +1,5 @@
 /*
- *  apply_main.cpp
+ *  qidespot2.cpp
  *
  *  Created by Tobias Wood on 23/01/2012.
  *  Copyright (c) 2012-2013 Tobias Wood.
@@ -10,113 +10,112 @@
  *
  */
 
+#include <array>
 #include <iostream>
+#include <Eigen/Core>
+#include "ceres/ceres.h"
 
-#include <Eigen/Dense>
-#include <unsupported/Eigen/LevenbergMarquardt>
-#include <unsupported/Eigen/NumericalDiff>
-
-#include "Models.h"
+#include "Model.h"
+#include "FitFunction.h"
+#include "ModelFitFilter.h"
+#include "SimulateModel.h"
 #include "SSFPSequence.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
-#include "ApplyTypes.h"
 
-//******************************************************************************
-// Algorithm Subclasses
-//******************************************************************************
-class D2Algo : public QI::ApplyF::Algorithm {
-protected:
-    const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
-    std::shared_ptr<QI::SSFPBase> m_sequence;
-    size_t m_iterations = 15;
-    bool m_elliptical = false;
-    double m_loPD = -std::numeric_limits<double>::infinity();
-    double m_hiPD = std::numeric_limits<double>::infinity();
-    double m_loT2 = -std::numeric_limits<double>::infinity();
-    double m_hiT2 = std::numeric_limits<double>::infinity();
+using namespace std::literals;
 
-public:
-    void setIterations(size_t n) { m_iterations = n; }
-    void setSequence(std::shared_ptr<QI::SSFPBase> &s) { m_sequence = s; }
-    void setElliptical(bool e) { m_elliptical = e; }
-    void setClampT2(double lo, double hi) { m_loT2 = lo; m_hiT2 = hi; }
-    void setClampPD(double lo, double hi) { m_loPD = lo; m_hiPD = hi; }
-    size_t numInputs() const override { return m_sequence->count(); }
-    size_t numConsts() const override { return 2; }  // T1, B1
-    size_t numOutputs() const override { return 2; } // PD, T2
-    size_t dataSize() const override { return m_sequence->size(); }
-    float zero() const override { return 0.; }
+struct DESPOT2 : QI::Model<2, 2, QI::SSFPSequence> {
+    static std::array<const std::string, NV> varying_names;
+    static std::array<const std::string, NF> fixed_names;
+    static const QI_ARRAYN(double, NF) fixed_defaults;
+    bool elliptical = false;
 
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def(2, 1.0f); // T1, B1
-        return def;
+    template<typename Derived>
+    auto signal(const Eigen::ArrayBase<Derived> &v,
+                const QI_ARRAYN(double, NF) &f,
+                const QI::SSFPSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+    {
+        using T = typename Derived::Scalar;
+        const T &PD = v[0];
+        const T &T2 = v[1];
+        const double &T1 = f[0];
+        const double &B1 = f[1];
+        const double E1 = exp(-s->TR / T1);
+        const T E2 = exp(-s->TR / T2);
+
+        const QI_ARRAY(double) alpha = s->FA * B1;
+        const QI_ARRAY(T) denom = elliptical ? (1.0 - E1*E2*E2-(E1-E2*E2)*cos(alpha))
+                                             : (1.0 - E1*E2 - (E1 - E2)*cos(alpha));
+        const QI_ARRAY(T) numer = PD*sqrt(E2)*(1.0 - E1)*sin(alpha);
+        return numer / denom;
     }
 };
+std::array<const std::string, 2> DESPOT2::varying_names{{"PD"s, "T2"s}};
+std::array<const std::string, 2> DESPOT2::fixed_names{{"T1"s, "B1"s}};
+const QI_ARRAYN(double, 2) DESPOT2::fixed_defaults{1.0, 1.0};
 
-class D2LLS : public D2Algo {
-public:
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
+using DESPOT2Fit = QI::FitFunction<DESPOT2>;
+
+struct DESPOT2LLS : DESPOT2Fit {
+    QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT2::NV) &outputs,
+                          ResidualType &residual, std::vector<QI_ARRAY(ResidualType)> &residuals, FlagType &iterations) const override
     {
-        const double T1 = consts[0];
-        const double B1 = consts[1];
-        const double TR = m_sequence->TR;
+        const Eigen::ArrayXd &data = inputs[0];
+        const double &T1 = fixed[0];
+        const double &B1 = fixed[1];
+        const double &TR = sequence->TR;
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
-        const Eigen::ArrayXd angles = (m_sequence->FA * B1);
-        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::ArrayXd data = indata.cast<double>();
-        Eigen::VectorXd Y = data / angles.sin();
+        const Eigen::ArrayXd angles = (sequence->FA * B1);
+
+        Eigen::VectorXd Y = data / sin(angles);
         Eigen::MatrixXd X(Y.rows(), 2);
-        X.col(0) = data / angles.tan();
+        X.col(0) = data / tan(angles);
         X.col(1).setOnes();
         Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        if (m_elliptical) {
+        if (model.elliptical) {
             T2 = 2. * TR / log((b[0]*E1 - 1.) / (b[0] - E1));
             E2 = exp(-TR / T2);
             PD = b[1] * (1. - E1*E2*E2) / (sqrt(E2) * (1. - E1));
         } else {
             T2 = TR / log((b[0]*E1 - 1.)/(b[0] - E1));
             E2 = exp(-TR / T2);
-            PD = b[1] * (1. - E1*E2) / (1. - E1);
+            PD = b[1] * (1. - E1*E2) / (sqrt(E2) * (1. - E1));
         }
-        Eigen::VectorXd p(5); p << PD, T1, T2, 0, B1;
-        Eigen::ArrayXd theory = m_sequence->signal(m_model, p).abs();
-        Eigen::ArrayXf r = (data.array() - theory).cast<float>();
+        outputs << QI::Clamp(PD, model.bounds_lo[0], model.bounds_hi[0]),
+                   QI::Clamp(T2, model.bounds_lo[1], model.bounds_hi[1]);
+        Eigen::ArrayXd r = data - model.signal(outputs, fixed, sequence);
+        if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
+            residuals[0] = r;
+        }
         residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        outputs[0] = QI::Clamp(PD, m_loPD, m_hiPD);
-        outputs[1] = QI::Clamp(T2, m_loT2, m_hiT2);
-        its = 1;
+        iterations = 1;
         return std::make_tuple(true, "");
     }
 };
 
-class D2WLLS : public D2Algo {
-public:
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
+struct DESPOT2WLLS : DESPOT2Fit {
+    QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT2::NV) &outputs,
+                          ResidualType &residual, std::vector<QI_ARRAY(ResidualType)> &residuals, FlagType &iterations) const override
     {
-        const double T1 = consts[0];
-        const double B1 = consts[1];
-        const double TR = m_sequence->TR;
+        const Eigen::ArrayXd &data = inputs[0];
+        const double &T1 = fixed[0];
+        const double &B1 = fixed[1];
+        const double TR = sequence->TR;
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
-        const Eigen::ArrayXd angles = (m_sequence->FA * B1);
-        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::ArrayXd data = indata.cast<double>();
+        const Eigen::ArrayXd angles = (sequence->FA * B1);
+
         Eigen::VectorXd Y = data / angles.sin();
         Eigen::MatrixXd X(Y.rows(), 2);
         X.col(0) = data / angles.tan();
         X.col(1).setOnes();
         Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        if (m_elliptical) {
+        if (model.elliptical) {
             T2 = 2. * TR / log((b[0]*E1 - 1.) / (b[0] - E1));
             E2 = exp(-TR / T2);
             PD = b[1] * (1. - E1*E2*E2) / (sqrt(E2) * (1. - E1));
@@ -125,15 +124,15 @@ public:
             E2 = exp(-TR / T2);
             PD = b[1] * (1. - E1*E2) / (1. - E1);
         }
-        Eigen::VectorXd W(m_sequence->size());
-        for (size_t n = 0; n < m_iterations; n++) {
-            if (m_elliptical) {
+        Eigen::VectorXd W(sequence->size());
+        for (iterations = 0; iterations < max_iterations; iterations++) {
+            if (model.elliptical) {
                 W = ((1. - E1*E2) * angles.sin() / (1. - E1*E2*E2 - (E1 - E2*E2)*angles.cos())).square();
             } else {
                 W = ((1. - E1*E2) * angles.sin() / (1. - E1*E2 - (E1 - E2)*angles.cos())).square();
             }
             b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
-            if (m_elliptical) {
+            if (model.elliptical) {
                 T2 = 2. * TR / log((b[0]*E1 - 1.) / (b[0] - E1));
                 E2 = exp(-TR / T2);
                 PD = b[1] * (1. - E1*E2*E2) / (sqrt(E2) * (1. - E1));
@@ -143,71 +142,66 @@ public:
                 PD = b[1] * (1. - E1*E2) / (1. - E1);
             }
         }
-        Eigen::VectorXd p(5); p << PD, T1, T2, 0, B1;
-        Eigen::ArrayXd theory = m_sequence->signal(m_model, p).abs();
-        Eigen::ArrayXf r = (data.array() - theory).cast<float>();
+        outputs[0] = QI::Clamp(PD, model.bounds_lo[0], model.bounds_hi[0]);
+        outputs[1] = QI::Clamp(T2, model.bounds_lo[1], model.bounds_hi[1]);
+        Eigen::Array2d v{PD, T2};
+        Eigen::ArrayXd r = data - model.signal(v, fixed, sequence);
+        if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
+            residuals[0] = r;
+        }
         residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        outputs[0] = QI::Clamp(PD, m_loPD, m_hiPD);
-        outputs[1] = QI::Clamp(T2, m_loT2, m_hiT2);
-        its = m_iterations;
         return std::make_tuple(true, "");
     }
 };
 
-//******************************************************************************
-// T2 Only Functor
-//******************************************************************************
-class D2Functor : public Eigen::DenseFunctor<double> {
-    public:
-        const Eigen::ArrayXd m_data;
-        const std::shared_ptr<QI::SequenceBase> m_sequence;
-        const double m_T1, m_B1;
-        const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
+struct DESPOT2NLLS : DESPOT2Fit {
+    DESPOT2NLLS() {
+        model.bounds_lo[0] = 1e-6; // Don't go negative PD
+        model.bounds_lo[1] = 1e-3; // The sqrt(E2) term goes crazy for T2 below this
+    }
 
-        D2Functor(const double T1, const std::shared_ptr<QI::SequenceBase> s, const Eigen::ArrayXd &d, const double B1, const bool /* Unused */, const bool /* Unused */) :
-            DenseFunctor<double>(3, s->size()),
-            m_data(d), m_sequence(s),
-            m_T1(T1), m_B1(B1)
-        {
-            assert(static_cast<size_t>(m_data.rows()) == values());
-        }
-
-        int operator()(const Eigen::Ref<Eigen::VectorXd> &params, Eigen::Ref<Eigen::ArrayXd> diffs) const {
-            eigen_assert(diffs.size() == values());
-            Eigen::ArrayXd fullparams(5);
-            fullparams << params(0), m_T1, params(1), params(2), m_B1;
-            Eigen::ArrayXcd s = m_sequence->signal(m_model, fullparams);
-            diffs = s.abs() - m_data;
-            return 0;
-        }
-};
-
-class D2NLLS : public D2Algo {
-public:
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT2::NV) &p,
+                          ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
     {
-        const double T1 = consts[0];
-        const double B1 = consts[1];
-        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::ArrayXd data = indata.cast<double>();
-        D2Functor f(T1, m_sequence, data, B1, false, false);
-        Eigen::NumericalDiff<D2Functor> nDiff(f);
-        Eigen::LevenbergMarquardt<Eigen::NumericalDiff<D2Functor>> lm(nDiff);
-        lm.setMaxfev(m_iterations * (m_sequence->size() + 1));
-        Eigen::VectorXd p(2); p << data.array().maxCoeff() * 5., 0.1;
-        lm.minimize(p);
-        outputs[0] = QI::Clamp(p[0], m_loPD, m_hiPD);
-        outputs[1] = QI::Clamp(p[1], m_loT2, m_hiT2);
-        Eigen::VectorXd fullp(5); fullp << outputs[0], T1, outputs[1], 0, B1; // Assume on-resonance
-        Eigen::ArrayXd theory = m_sequence->signal(m_model, fullp).abs(); // Sequence will already be elliptical if necessary
-        Eigen::ArrayXf r = (data.array() - theory).cast<float>();
-        residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        its = lm.iterations();
+        const double &scale = inputs[0].maxCoeff();
+        if (scale < std::numeric_limits<double>::epsilon()) {
+            p << 0.0, 0.0;
+            residual = 0;
+            return std::make_tuple(false, "Maximum data value was not positive");
+        }
+        const Eigen::ArrayXd data = inputs[0] / scale;
+        p << 10., 0.1;
+        ceres::Problem problem;
+        using Cost     = QI::ModelCost<DESPOT2>;
+        using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, DESPOT2::NV>;
+        auto *cost = new Cost(model, sequence, fixed, data);
+        auto *auto_cost = new AutoCost(cost, sequence->size());
+        problem.AddResidualBlock(auto_cost, NULL, p.data());
+        problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0] / scale);
+        problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0] / scale);
+        problem.SetParameterLowerBound(p.data(), 1, model.bounds_lo[1]);
+        problem.SetParameterUpperBound(p.data(), 1, std::min(model.bounds_hi[1], fixed[0])); // T2 cannot be > T1
+        ceres::Solver::Options options;
+        ceres::Solver::Summary summary;
+        options.max_num_iterations = max_iterations;
+        options.function_tolerance = 1e-5;
+        options.gradient_tolerance = 1e-6;
+        options.parameter_tolerance = 1e-4;
+        options.logging_type = ceres::SILENT;
+        ceres::Solve(options, &problem, &summary);
+        p[0] = p[0] * scale;
+        if (!summary.IsSolutionUsable()) {
+            return std::make_tuple(false, summary.FullReport());
+        }
+        iterations = summary.iterations.size();
+        residual = summary.final_cost * scale;
+        if (residuals.size() > 0) {
+            std::vector<double> r_temp(data.size());
+            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
+            for (size_t i = 0; i < r_temp.size(); i++)
+                residuals[0][i] = r_temp[i] * scale;
+        }
         return std::make_tuple(true, "");
     }
 };
@@ -229,60 +223,72 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/w/n)", {'a',"algo"}, 'l');
-    args::Flag ellipse(parser, "ELLIPTICAL", "Data is band-free ellipse / geometric solution", {'e',"ellipse"});
+    args::Flag gs_arg(parser, "GS", "Data is band-free geometric solution / ellipse data", {'g',"gs"});
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i',"its"}, 15);
     args::ValueFlag<float> clampPD(parser, "CLAMP PD", "Clamp PD between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'t',"clampT2"}, std::numeric_limits<float>::infinity());
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI_LOG(verbose, "Reading T1 Map from: " << QI::CheckPos(t1_path));
-    auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
-
-    QI_LOG(verbose, "Opening SSFP file: " << QI::CheckPos(ssfp_path));
-    auto data = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
-
-    std::shared_ptr<D2Algo> algo;
-    switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<D2LLS>();  QI_LOG(verbose, "LLS algorithm selected." ); break;
-        case 'w': algo = std::make_shared<D2WLLS>(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
-        case 'n': algo = std::make_shared<D2NLLS>(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
-    }
-
-    algo->setIterations(its);
-    if (clampPD) algo->setClampPD(0, clampPD.Get());
-    if (clampT2) algo->setClampT2(0, clampT2.Get());
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    std::shared_ptr<QI::SSFPBase> ssfp;
-    if (ellipse) {
-        ssfp = std::make_shared<QI::SSFPGSSequence>(input["SSFPGS"]);
+    QI_LOG(verbose, "Reading sequence information");
+    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::SSFPSequence ssfp(QI::GetMember(input, "SSFP"));
+    
+    if (simulate) {
+        DESPOT2 model;
+        if (gs_arg) model.elliptical = true;
+        QI::SimulateModel<DESPOT2, false>(input, model, {&ssfp}, {QI::CheckPos(t1_path), B1.Get()}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
     } else {
-        ssfp = std::make_shared<QI::SSFPSequence>(input["SSFP"]);
+        DESPOT2Fit *d2 = nullptr;
+        switch (algorithm.Get()) {
+            case 'l': d2 = new DESPOT2LLS();  QI_LOG(verbose, "LLS algorithm selected." ); break;
+            case 'w': d2 = new DESPOT2WLLS(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+            case 'n': d2 = new DESPOT2NLLS(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
+        }
+        if (clampPD) {
+            d2->model.bounds_lo[0] = 1e-6;
+            d2->model.bounds_hi[0] = clampPD.Get();
+        }
+        if (clampT2) {
+            d2->model.bounds_lo[1] = 1e-6;
+            d2->model.bounds_hi[1] = clampT2.Get();
+        }
+        if (its) d2->max_iterations = its.Get();
+        d2->sequence = &ssfp;
+        if (gs_arg) {
+            QI_LOG(verbose, "GS Mode selected");
+            d2->model.elliptical = true;
+        }
+        auto fit = itk::ModelFitFilter<DESPOT2Fit>::New();
+        fit->SetVerbose(verbose);
+        fit->SetFitFunction(d2);
+        fit->SetOutputAllResiduals(resids);
+        fit->SetInput(0, QI::ReadVectorImage(QI::CheckPos(ssfp_path), verbose));
+        fit->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));
+        if (B1) fit->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
+        if (mask) fit->SetMask(QI::ReadImage(mask.Get(), verbose));
+        if (subregion) fit->SetSubregion(QI::RegionArg(args::get(subregion)));
+        QI_LOG(verbose, "Processing");
+        if (verbose) {
+            auto monitor = QI::GenericMonitor::New();
+            fit->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        fit->Update();
+        QI_LOG(verbose, "Elapsed time was " << fit->GetTotalTime() << "s" <<
+                        "Writing results files.");
+        std::string outPrefix = outarg.Get() + "D2_";
+        for (int i = 0; i < d2->n_outputs(); i++) {
+            QI::WriteImage(fit->GetOutput(i), outPrefix + d2->model.varying_names.at(i) + QI::OutExt());
+        }
+        QI::WriteImage(fit->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        if (resids) {
+            QI::WriteVectorImage(fit->GetResidualsOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        }
+        if (its) {
+            QI::WriteImage(fit->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
+        }
+        QI_LOG(verbose, "Finished." );
     }
-    algo->setSequence(ssfp);
-    algo->setElliptical(ellipse);
-
-    auto apply = QI::ApplyF::New();
-    apply->SetAlgorithm(algo);
-    apply->SetOutputAllResiduals(resids);
-    apply->SetInput(0, data);
-    apply->SetConst(0, T1);
-    if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
-                    "Writing results files.");
-    std::string outPrefix = outarg.Get() + "D2_";
-    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
-    QI::WriteImage(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
-    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    if (resids) {
-        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
-    }
-    QI_LOG(verbose, "All done." );
     return EXIT_SUCCESS;
 }

@@ -52,8 +52,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
-
     QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_file));
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file));
 

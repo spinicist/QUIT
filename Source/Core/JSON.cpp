@@ -10,6 +10,8 @@
  *
  */
 
+#include <fstream>
+
 #include "JSON.h"
 #include "rapidjson/istreamwrapper.h"
 #include "rapidjson/ostreamwrapper.h"
@@ -30,6 +32,15 @@ rapidjson::Document ReadJSON(std::istream &is) {
                 rapidjson::GetParseError_En(doc.GetParseError()));
     }
     return doc;
+}
+
+rapidjson::Document ReadJSON(const std::string &path) {
+    std::ifstream ifs(path);
+    if (ifs) {
+        return ReadJSON(ifs);
+    } else {
+        QI_FAIL("Error opening JSON file: " << path);
+    }
 }
 
 std::ostream &WriteJSON(std::ostream &os, const rapidjson::Document &doc) {
@@ -58,6 +69,14 @@ Eigen::ArrayXd ArrayFromJSON(const rapidjson::Value &json_array, const double &s
             array[i] = json_array[i].GetDouble() * scale;
         }
         return array;
+}
+
+const rapidjson::Value &GetMember(const rapidjson::Value &json, const std::string &key) {
+    if (json.HasMember(key)) {
+        return json[key];
+    } else {
+        QI_FAIL("Missing JSON member: " << key);
+    }
 }
 
 } // End namespace QI

@@ -9,6 +9,7 @@
  *
  */
 
+#include "Macro.h"
 #include "SequenceBase.h"
 #include "AFISequence.h"
 #include "CASLSequence.h"
@@ -22,18 +23,18 @@ using namespace std::string_literals;
 
 namespace QI {
 
-std::shared_ptr<SequenceBase> SequenceFromJSON(rapidjson::Value &json) {
-    rapidjson::Value::MemberIterator seq = json.MemberBegin();
+SequenceBase *SequenceFromJSON(const rapidjson::Value &json) {
+    rapidjson::Value::ConstMemberIterator seq = json.MemberBegin();
     #define CHECK_MAKE( NAME ) \
-        (seq->name.GetString() == #NAME ## s ) { return std::make_shared<QI::NAME ## Sequence>(seq->value); }
+        (seq->name.GetString() == #NAME ## s ) { NAME ## Sequence *ptr = new NAME ## Sequence(seq->value); return ptr; }
     if CHECK_MAKE( SPGR )
     else if CHECK_MAKE( SPGREcho )
-    else if CHECK_MAKE( SPGRFinite )
+    // else if CHECK_MAKE( SPGRFinite )
     else if CHECK_MAKE( MPRAGE )
     else if CHECK_MAKE( SSFP )
     else if CHECK_MAKE( SSFPEcho )
-    else if CHECK_MAKE( SSFPFinite )
-    else if CHECK_MAKE( SSFPGS )
+    // else if CHECK_MAKE( SSFPFinite )
+    // else if CHECK_MAKE( SSFPGS )
     else if CHECK_MAKE( SSFPMT )
     else if CHECK_MAKE( MTSat )
     else if CHECK_MAKE( MultiEcho )
@@ -43,18 +44,18 @@ std::shared_ptr<SequenceBase> SequenceFromJSON(rapidjson::Value &json) {
     #undef CHECK_MAKE
 }
 
-rapidjson::Value JSONFromSequence(const std::shared_ptr<SequenceBase> &s, rapidjson::Document::AllocatorType &a) {
+rapidjson::Value JSONFromSequence(const SequenceBase *s, rapidjson::Document::AllocatorType &a) {
     rapidjson::Value json(rapidjson::kObjectType);
     #define MAKE_JSON( NAME ) \
-        (s->name() == #NAME ) { json.AddMember(#NAME, std::static_pointer_cast< QI::NAME ## Sequence >(s)->toJSON(a), a); }
+        (s->name() == #NAME ) { json.AddMember(#NAME, dynamic_cast< const NAME ## Sequence * >(s)->toJSON(a), a); }
     if MAKE_JSON( SPGR )
     else if MAKE_JSON( SPGREcho )
-    else if MAKE_JSON( SPGRFinite )
+    // else if MAKE_JSON( SPGRFinite )
     else if MAKE_JSON( MPRAGE )
     else if MAKE_JSON( SSFP )
     else if MAKE_JSON( SSFPEcho )
-    else if MAKE_JSON( SSFPFinite )
-    else if MAKE_JSON( SSFPGS )
+    // else if MAKE_JSON( SSFPFinite )
+    // else if MAKE_JSON( SSFPGS )
     else if MAKE_JSON( SSFPMT )
     else if MAKE_JSON( MTSat )
     else if MAKE_JSON( MultiEcho )
@@ -71,11 +72,6 @@ size_t SequenceBase::count() const{
 
 Eigen::ArrayXd SequenceBase::weights(const double /* Unused */) const {
     return Eigen::ArrayXd::Ones(size()); // Default weights are constant
-}
-
-Eigen::ArrayXd SequenceBase::signal_magnitude(const std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    Eigen::ArrayXcd c_signal = this->signal(m, p);
-    return c_signal.abs();
 }
 
 } // End namespace QI

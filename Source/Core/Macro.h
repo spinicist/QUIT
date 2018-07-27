@@ -42,6 +42,9 @@
     exit(EXIT_FAILURE);          \
 }
 
+#define QI_ARRAY( T ) Eigen::Array<T, Eigen::Dynamic, 1>
+#define QI_ARRAYN( T, N ) Eigen::Array<T, N, 1>
+
 #define QI_LOG( vb, msg ) if ( vb ) std::cerr << msg << std::endl;
 #define QI_DB( x ) std::cout << #x << ": " << x << std::endl;
 #define QI_DBMAT( x ) std::cout << #x << "\n" << x << std::endl;

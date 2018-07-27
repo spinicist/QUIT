@@ -32,7 +32,6 @@ struct MP2RAGESequence : SequenceBase {
 
     QI_SEQUENCE_DECLARE(MP2RAGE);
     Eigen::Index size() const override;
-    Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
 };
 
 } // End namespace QI

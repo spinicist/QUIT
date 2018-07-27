@@ -1,32 +1,30 @@
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10.2 FATAL_ERROR)
 project(QUIT CXX)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 include(CMakeToolsHelpers OPTIONAL)
 
 set( CMAKE_CXX_FLAGS "-Wall -Wextra" )
-set( Args_DIR "${PROJECT_SOURCE_DIR}/External/Args"
-     CACHE PATH "Path to Args library (usually External/Args" )
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
      CACHE PATH "Path to external library includes (usually External/include" )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 
-if( NOT DEFINED EIGEN3_INCLUDE_DIRS )
+if( NOT DEFINED EIGEN3_INCLUDE_DIR )
     find_package( Eigen3 REQUIRED )
 endif()
-message( STATUS "Found Eigen in ${EIGEN3_INCLUDE_DIRS}" )
-include_directories( SYSTEM ${EIGEN3_INCLUDE_DIRS} )
+message( STATUS "Found Eigen in ${EIGEN3_INCLUDE_DIR}" )
+include_directories( SYSTEM ${EIGEN3_INCLUDE_DIR} )
 
 if( NOT DEFINED CERES_INCLUDE_DIRS )
-    find_package( Ceres 1.12.0 REQUIRED COMPONENTS C++11 )
+    find_package( Ceres 1.14.0 )
 endif()
 include_directories( SYSTEM ${CERES_INCLUDE_DIRS} )
 
-find_package(ITK 4.10.0 REQUIRED
+find_package(ITK 5.0.0 REQUIRED
               COMPONENTS
                 ITKBinaryMathematicalMorphology ITKCommon ITKConnectedComponents
                 ITKFFT ITKIOImageBase ITKIONRRD ITKIONIFTI
@@ -36,7 +34,7 @@ find_package(ITK 4.10.0 REQUIRED
                 ITKMathematicalMorphology ITKOptimizers ITKRegistrationCommon
                 ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
 include( ${ITK_USE_FILE} )
-include_directories( SYSTEM ${Args_DIR} ${External_Include_DIR} )
+include_directories( SYSTEM ${External_Include_DIR} )
 
 OPTION(BUILD_SHARED_LIBS "Build shared libraries." OFF)
 

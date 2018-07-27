@@ -14,10 +14,6 @@
 
 namespace QI {
 
-Eigen::ArrayXcd AFISequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    return m->AFI(p, FA, TR1, TR2);
-}
-
 AFISequence::AFISequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
     TR1 = json["TR1"].GetDouble();

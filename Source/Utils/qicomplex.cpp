@@ -235,7 +235,6 @@ void Run() {
 
 int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (use_double) {
         QI_LOG(verbose, "Using double precision" );
         Run<double>();

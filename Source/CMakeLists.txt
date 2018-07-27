@@ -1,8 +1,5 @@
 add_subdirectory( Core )
-add_subdirectory( Filters )
 add_subdirectory( ImageIO )
-add_subdirectory( Signals )
-add_subdirectory( Models )
 add_subdirectory( Sequences )
 add_subdirectory( CoreProgs )
 add_subdirectory( MT )

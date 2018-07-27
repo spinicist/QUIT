@@ -10,7 +10,7 @@
  */
 
 #include <iostream>
-#include "Eigen/Dense"
+#include <Eigen/Core>
 
 #include "itkImageToImageFilter.h"
 #include "itkImageRegionConstIterator.h"

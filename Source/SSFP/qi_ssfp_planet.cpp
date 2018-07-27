@@ -9,61 +9,89 @@
  *
  */
 
+#include <array>
 #include <iostream>
 
-#include <Eigen/Dense>
-#include "ceres/ceres.h"
+#include <Eigen/Core>
 
-#include "ApplyTypes.h"
 #include "SSFPSequence.h"
+#include "SimulateModel.h"
+#include "ModelFitFilter.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
 
-struct PLANET : public QI::ApplyVectorF::Algorithm {
-    const QI::SSFPGSSequence &m_seq;
+using namespace std::literals;
 
-    size_t numInputs() const override { return 3; }
-    size_t numConsts() const override { return 1; }
-    size_t numOutputs() const override { return 3; }
-    size_t dataSize() const override { return m_seq.FA.rows() * 3; }
-    size_t outputSize() const override { return m_seq.FA.rows(); }
-    TOutput zero() const override {
-        TOutput zero(m_seq.FA.rows());
-        zero.Fill(0.);
-        return zero;
-    }
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def(1, 1.0); // B1
-        return def;
-    }
-    const std::vector<std::string> & names() const {
-        static std::vector<std::string> _names = {"T1", "T2", "PD"};
-        return _names;
-    }
-    PLANET(const QI::SSFPGSSequence &s) : m_seq(s) {}
+struct PLANETModel {
+    using DataType = double;
+    using ParameterType = double;
+    using SequenceType = QI::SSFPSequence;
+    static const int NV = 3;
+    static const int NF = 1;
+    static const int NO = 3;
+    static std::array<const std::string, NV> varying_names;
+    static std::array<const std::string, NF> fixed_names;
+    static const QI_ARRAYN(double, NF) fixed_defaults;
 
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &/*Unused*/,
-               std::vector<TOutput> &outputs, TOutput &/*Unused*/,
-               TInput &/*Unused*/, TIterations &/*Unused*/) const override
+    auto signals(const Eigen::ArrayBase<QI_ARRAYN(double, NV)> &v,
+                 const QI_ARRAYN(double, NF) &f,
+                 const QI::SSFPSequence *s) const -> std::vector<QI_ARRAY(double)>
     {
-        Eigen::Map<const Eigen::ArrayXf> G(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::Map<const Eigen::ArrayXf> a(inputs[1].GetDataPointer(), inputs[0].Size());
-        Eigen::Map<const Eigen::ArrayXf> b(inputs[2].GetDataPointer(), inputs[0].Size());
-        const float b1 = consts[0];
-        const Eigen::ArrayXf cosa = cos(b1 * m_seq.FA.cast<float>());
-        const Eigen::ArrayXf sina = sin(b1 * m_seq.FA.cast<float>());
-        const Eigen::ArrayXf T1 = -m_seq.TR / log((a*(1. + cosa - a*b*cosa) - b)/(a*(1. + cosa - a*b) - b*cosa));
-        const Eigen::ArrayXf T2 = -m_seq.TR / log(a);
-        const Eigen::ArrayXf E1 = exp(-m_seq.TR / T1);
-        const Eigen::ArrayXf E2 = a; // For simplicity copying formulas
-        const Eigen::ArrayXf PD = G * (1. - E1*cosa - E2*E2*(E1 - cosa)) / (sqrt(E2)*(1. - E1)*sina);
-        for (int i = 0; i < m_seq.FA.rows(); i++) {
-            outputs[0][i] = T1[i];
-            outputs[1][i] = T2[i];
-            outputs[2][i] = PD[i];
-        }
+        const double &PD = v[0];
+        const double &T1 = v[1];
+        const double &T2 = v[2];
+        const double &B1 = f[0];
+        const double E1 = exp(-s->TR / T1);
+        const double E2 = exp(-s->TR / T2);
+        const Eigen::ArrayXd alpha = B1 * s->FA;
+        const Eigen::ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
+        const Eigen::ArrayXd G = PD*sqrt(E2)*(1 - E1)*sin(alpha)/d;
+        const Eigen::ArrayXd a = Eigen::ArrayXd::Constant(s->size(), E2);
+        const Eigen::ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
+        std::vector<QI_ARRAY(double)> outputs = {G, a, b};
+        return outputs;
+    }
+};
+std::array<const std::string, 3> PLANETModel::varying_names{{"PD"s, "T1"s, "T2"s}};
+std::array<const std::string, 1> PLANETModel::fixed_names{{"B1"s}};
+const QI_ARRAYN(double, 1) PLANETModel::fixed_defaults{1.0};
+
+struct PLANETFit {
+    static const bool Blocked = true;
+    static const bool Indexed = false;
+    using InputType = double;
+    using OutputType = double;
+    using ResidualType = double;
+    using FlagType = int;
+    using ModelType = PLANETModel;
+    QI::SSFPSequence *sequence;
+    ModelType model;
+
+    int n_inputs() const  { return 3; }
+    int input_size(const int /* Unused */) const { return 1; }
+    int n_fixed() const { return 1; }
+    int n_outputs() const { return 3; }
+
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, PLANETModel::NV) &out,
+                          ResidualType &/* Unused */, std::vector<Eigen::ArrayXd> &/* Unused */,
+                          FlagType &/* Unused */, const int block) const
+    {
+        const double &G = inputs[0][0];
+        const double &a = inputs[1][0];
+        const double &b = inputs[2][0];
+        const double b1 = fixed[0];
+        const double cosa = cos(b1 * sequence->FA(block));
+        const double sina = sin(b1 * sequence->FA(block));
+        const double T1 = -sequence->TR / log((a*(1. + cosa - a*b*cosa) - b)/(a*(1. + cosa - a*b) - b*cosa));
+        const double T2 = -sequence->TR / log(a);
+        const double E1 = exp(-sequence->TR / T1);
+        const double E2 = a; // For simplicity copying formulas
+        const double PD = G * (1. - E1*cosa - E2*E2*(E1 - cosa)) / (sqrt(E2)*(1. - E1)*sina);
+        out[0] = PD;
+        out[1] = T1;
+        out[2] = T2;
         return std::make_tuple(true, "");
     }
 };
@@ -81,39 +109,45 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
-    QI_LOG(verbose, "Opening G: " << QI::CheckPos(G_filename));
-    auto G = QI::ReadVectorImage(QI::CheckPos(G_filename));
-    QI_LOG(verbose, "Opening a: " << QI::CheckPos(a_filename));
-    auto a = QI::ReadVectorImage(QI::CheckPos(a_filename));
-    QI_LOG(verbose, "Opening b: " << QI::CheckPos(b_filename));
-    auto b = QI::ReadVectorImage(QI::CheckPos(b_filename));
-    rapidjson::Document json = QI::ReadJSON(std::cin);
-    QI::SSFPGSSequence seq(json["SSFPGS"]);
-    auto algo = std::make_shared<PLANET>(seq);
-    auto apply = QI::ApplyVectorF::New();
-    apply->SetAlgorithm(algo);
-    apply->SetInput(0, G);
-    apply->SetInput(1, a);
-    apply->SetInput(2, b);
-    if (B1) apply->SetConst(0, QI::ReadImage(B1.Get()));
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (subregion) {
-        apply->SetSubregion(QI::RegionArg(subregion.Get()));
+    QI::CheckPos(G_filename);
+    QI::CheckPos(a_filename);
+    QI::CheckPos(b_filename);
+
+   QI_LOG(verbose, "Reading sequence information");
+    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::SSFPSequence ssfp(QI::GetMember(input, "SSFP"));
+    if (simulate) {
+        PLANETModel model;
+        QI::SimulateModel<PLANETModel, true>(input, model, {&ssfp}, {B1.Get()}, {G_filename.Get(), a_filename.Get(), b_filename.Get()}, verbose, simulate.Get());
+    } else {
+        PLANETFit fit;
+        fit.sequence = &ssfp;
+        auto fit_filter = itk::ModelFitFilter<PLANETFit>::New();
+        fit_filter->SetVerbose(verbose);
+        fit_filter->SetFitFunction(&fit);
+        fit_filter->SetInput(0, QI::ReadVectorImage(G_filename.Get(), verbose));
+        fit_filter->SetInput(1, QI::ReadVectorImage(a_filename.Get(), verbose));
+        fit_filter->SetInput(2, QI::ReadVectorImage(b_filename.Get(), verbose));
+        fit_filter->SetBlocks(ssfp.size());
+        if (B1) fit_filter->SetFixed(0, QI::ReadImage(B1.Get(), verbose));
+        if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
+        if (subregion) fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        QI_LOG(verbose, "Processing");
+        if (verbose) {
+            auto monitor = QI::GenericMonitor::New();
+            fit_filter->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        fit_filter->Update();
+        QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s\n" <<
+                        "Writing results files.");
+        std::string outPrefix = out_prefix.Get() + "PLANET_";
+        for (int i = 0; i < PLANETModel::NV; i++) {
+            QI::WriteVectorImage(fit_filter->GetOutput(i), outPrefix + PLANETModel::varying_names.at(i) + QI::OutExt());
+        }
+        QI_LOG(verbose, "Finished." );
     }
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s");
-    std::string outPrefix = out_prefix.Get() + "PLANET_";
-    for (size_t i = 0; i < algo->numOutputs(); i++) {
-        QI_LOG(verbose, "Writing output: " << outPrefix + algo->names().at(i) + QI::OutExt());
-        QI::WriteVectorImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
-    }
-    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

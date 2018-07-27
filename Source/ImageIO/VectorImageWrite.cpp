@@ -76,6 +76,7 @@ template void WriteVectorImage<VectorVolumeF>(const VectorVolumeF *img, const st
 template void WriteVectorImage<VectorVolumeXF>(const VectorVolumeXF *img, const std::string &path);
 template void WriteVectorImage<VectorVolumeF>(const itk::SmartPointer<VectorVolumeF> &ptr, const std::string &path);
 template void WriteVectorImage<VectorVolumeXF>(const itk::SmartPointer<VectorVolumeXF> &ptr, const std::string &path);
+template void WriteVectorImage<VectorVolumeI>(const itk::SmartPointer<VectorVolumeI> &ptr, const std::string &path);
 template void WriteVectorMagnitudeImage<VectorVolumeXF>(const VectorVolumeXF *ptr, const std::string &path);
 template void WriteVectorMagnitudeImage<VectorVolumeXF>(const itk::SmartPointer<VectorVolumeXF> &ptr, const std::string &path);
 template void WriteScaledVectorImage<VectorVolumeF>(const VectorVolumeF *img, const VolumeF *simg, const std::string &path);

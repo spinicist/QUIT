@@ -20,14 +20,6 @@ Eigen::Index MTSatSequence::size() const {
     return sat_f0.rows();
 }
 
-Eigen::ArrayXcd MTSatSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
-    if (auto rm = std::dynamic_pointer_cast<Model::Ramani>(m)) {
-        return rm->MTSat(p, FA, TR, sat_f0, sat_angle, pulse);
-    } else {
-        QI_FAIL("Dyanmic pointer cast to Ramani model failed");
-    }
-}
-
 MTSatSequence::MTSatSequence(const rapidjson::Value &json) :
     pulse(json["pulse"])
 {

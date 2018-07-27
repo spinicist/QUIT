@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
     args::Flag     save_angle(parser, "SAVE ANGLE", "Write out the actual flip-angle as well as B1", {'s', "save"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
     QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     QI_LOG(verbose, "Nominal flip-angle is " << nom_flip.Get() << " degrees." <<

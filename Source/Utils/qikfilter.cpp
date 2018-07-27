@@ -12,7 +12,7 @@
 #include <memory>
 #include <iostream>
 #include <sstream>
-#include "Eigen/Dense"
+#include "Eigen/Core"
 
 #include "itkImageSource.h"
 #include "itkConstNeighborhoodIterator.h"
@@ -143,7 +143,6 @@ int main(int argc, char **argv) {
     args::Flag filter_per_volume(parser, "FILTER_PER_VOL", "Instead of concatenating multiple filters, use one per volume", {"filter_per_volume"});
     args::ValueFlagList<std::string> filters(parser, "FILTER", "Specify a filter to use (can be multiple)", {'f', "filter"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
 
     std::vector<std::shared_ptr<QI::FilterKernel>> kernels;
     if (filters) {

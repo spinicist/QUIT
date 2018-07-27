@@ -13,8 +13,7 @@
 #define QI_FIT_H
 
 #include <iostream>
-
-#include "Eigen/Dense"
+#include <Eigen/Core>
 
 namespace QI {
 

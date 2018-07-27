@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-#include "Eigen/Dense"
+#include "Eigen/Core"
 #include <unsupported/Eigen/Splines>
 
 namespace QI {

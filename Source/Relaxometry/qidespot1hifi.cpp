@@ -12,171 +12,170 @@
  *
  */
 
+#include <array>
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "ceres/ceres.h"
 
-#include "Util.h"
+#include "Model.h"
+#include "FitFunction.h"
+#include "ModelFitFilter.h"
+#include "SimulateModel.h"
 #include "SPGRSequence.h"
 #include "MPRAGESequence.h"
+#include "OnePoolSignals.h"
+#include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
-#include "ApplyTypes.h"
 
-class SPGRCost : public ceres::CostFunction {
-protected:
-    const QI::SPGRSequence &m_seq;
-    const Eigen::ArrayXd m_data;
+using namespace std::literals;
 
-public:
-    SPGRCost(const QI::SPGRSequence &s, const Eigen::ArrayXd &data) :
-        m_seq(s), m_data(data)
+struct HIFIModel {
+    using SequenceType  = QI::SequenceBase;
+    using DataType      = double;
+    using ParameterType = double;
+
+    static const int NV = 3;
+    static const int NF = 0;
+    static std::array<const std::string, 3> varying_names;
+    static std::array<const std::string, 0> fixed_names;
+    static const QI_ARRAYN(double, 0) fixed_defaults;
+
+    QI_ARRAYN(double, 3) bounds_lo = QI_ARRAYN(double, NV)::Constant(1.0e-4);
+    QI_ARRAYN(double, 3) bounds_hi = QI_ARRAYN(double, NV)::Constant(std::numeric_limits<double>::infinity());
+
+    template<typename Derived>
+    auto spgr_signal(const Eigen::ArrayBase<Derived> &v,
+                        const QI_ARRAYN(double, NF) &/* Unused */,
+                        const QI::SPGRSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
     {
-        mutable_parameter_block_sizes()->push_back(3);
-        set_num_residuals(data.size());
+        return QI::SPGRSignal(v[0], v[1], v[2], s);
     }
 
-    bool Evaluate(double const* const* p,
-                  double* resids,
-                  double** jacobians) const override
+    template<typename Derived>
+    auto mprage_signal(const Eigen::ArrayBase<Derived> &v,
+                        const QI_ARRAYN(double, NF) &/* Unused */,
+                        const QI::MPRAGESequence *s) const -> QI_ARRAY(typename Derived::Scalar)
     {
-        const double &M0 = p[0][0];
-        const double &T1 = p[0][1];
-        const double &B1 = p[0][2];
+        return QI::MPRAGESignal(v[0], v[1], v[2], s);
+    }
 
-        const Eigen::ArrayXd sa = sin(B1 * m_seq.FA);
-        const Eigen::ArrayXd ca = cos(B1 * m_seq.FA);
-        const double E1 = exp(-m_seq.TR / T1);
-        const Eigen::ArrayXd denom = (1.-E1*ca);
-        
-        Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
-        r = M0*sa*(1-E1)/denom - m_data;
-        
-        // std::cout << "SPGR RESIDS" );
-        // std::cout << r.transpose());
-        if (jacobians && jacobians[0]) {
-            Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), 3);
-            j.col(0) = (1-E1)*sa/denom;
-            j.col(1) = E1*M0*m_seq.TR*(ca-1.)*sa/((denom*T1).square());
-            j.col(2) = M0*m_seq.FA*(1.-E1)*(ca-E1)/denom.square();
+    template<typename Derived>
+    auto signal(const Eigen::ArrayBase<Derived> &v,
+                const QI_ARRAYN(double, NF) &f,
+                const QI::SequenceBase *s) const -> QI_ARRAY(typename Derived::Scalar)
+    {
+        const QI::SPGRSequence *spgr = dynamic_cast<const QI::SPGRSequence *>(s);
+        if (spgr) return spgr_signal(v, f, spgr);
+        const QI::MPRAGESequence *mprage = dynamic_cast<const QI::MPRAGESequence *>(s);
+        if (mprage) return mprage_signal(v, f, mprage);
+        QI_FAIL("Given pointer was not to SPGRSequence or MPRAGESequence");
+    }
+};
+std::array<const std::string, 3> HIFIModel::varying_names{{"PD"s, "T1"s, "B1"s}};
+std::array<const std::string, 0> HIFIModel::fixed_names{{}};
+const QI_ARRAYN(double, 0) HIFIModel::fixed_defaults{};
+
+struct HIFISPGRCost {
+    const HIFIModel &model;
+    const QI::SPGRSequence *sequence;
+    const QI_ARRAY(double) data;
+
+    template<typename T>
+    bool operator() (const T *const vin, T* rin) const {
+        Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
+        const Eigen::Map<const QI_ARRAYN(T, 3)> v(vin);
+        QI_ARRAYN(double, 0) fixed;
+        const auto calc = model.spgr_signal(v, fixed, sequence);
+        r = data - calc;
+        return true;
+    }
+};
+
+struct HIFIMPRAGECost {
+    const HIFIModel &model;
+    const QI::MPRAGESequence *sequence;
+    const QI_ARRAY(double) data;
+
+    template<typename T>
+    bool operator() (const T *const vin, T* rin) const {
+        Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
+        const Eigen::Map<const QI_ARRAYN(T, 3)> v(vin);
+        QI_ARRAYN(double, 0) fixed;
+        const auto calc = model.mprage_signal(v, fixed, sequence);
+        r = data - calc;
+        return true;
+    }
+};
+
+struct HIFIFit {
+    static const bool Blocked = false;
+    static const bool Indexed = false;
+    using InputType = double;
+    using OutputType = double;
+    using ResidualType = double;
+    using FlagType = int;
+    using ModelType = HIFIModel;
+    QI::SPGRSequence *spgr_sequence;
+    QI::MPRAGESequence *mprage_sequence;
+    HIFIModel model;
+
+    int n_inputs() const  { return 2; }
+    int input_size(const int i) const {
+        switch (i) {
+        case 0: return spgr_sequence->size();
+        case 1: return mprage_sequence->size();
+        default: QI_FAIL("Invalid input " << i << " size requested");
         }
-        return true;
     }
-};
+    int n_fixed() const { return 0; }
+    int n_outputs() const { return 3; }
 
-// Use AutoDiff for this
-class IRCostFunction  {
-protected:
-    const QI::MPRAGESequence &m_seq;
-    const Eigen::ArrayXd m_data;
-
-public:
-    IRCostFunction(const QI::MPRAGESequence &s, const Eigen::ArrayXd &data) :
-        m_seq(s), m_data(data)
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &/* Unused */, QI_ARRAYN(OutputType, HIFIModel::NV) &v,
+                          ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const
     {
-    }
-
-    template<typename T> bool operator() (const T* const p1, T* r) const
-    {
-        const T &M0 = p1[0];
-        const T &T1 = p1[1];
-        const T &B1 = p1[2];
-        const double eta = -1.0; // Inversion efficiency defined as -1 < eta < 0
-
-        const double TIs = m_seq.TI - m_seq.TR*m_seq.k0; // Adjust TI for k0
-        const T T1s = 1. / (1./T1 - log(cos(m_seq.FA * B1))/m_seq.TR);
-        const T M0s = M0 * (1. - exp(-m_seq.TR/T1)) / (1. - exp(-m_seq.TR/T1s));
-        const T A_1 = M0s*(1. - exp(-(m_seq.ETL*m_seq.TR)/T1s));
-
-        const T A_2 = M0*(1. - exp(-m_seq.TD/T1));
-        const T A_3 = M0*(1. - exp(-TIs/T1));
-        const T B_1 = exp(-(m_seq.ETL*m_seq.TR)/T1s);
-        const T B_2 = exp(-m_seq.TD/T1);
-        const T B_3 = eta*exp(-TIs/T1);
-
-        const T A = A_3 + A_2*B_3 + A_1*B_2*B_3;
-        const T B = B_1*B_2*B_3;
-        const T M1 = A / (1. - B);
-
-        r[0] = m_data[0] - (M0s + (M1 - M0s)*exp(-(m_seq.k0*m_seq.TR)/T1s)) * sin(m_seq.FA * B1);
-        return true;
-    }
-};
-
-class HIFIAlgo : public QI::ApplyF::Algorithm {
-private:
-    const QI::SPGRSequence &m_spgr;
-    const QI::MPRAGESequence &m_mprage;
-    double m_lo = 0;
-    double m_hi = std::numeric_limits<double>::infinity();
-public:
-    HIFIAlgo(const QI::SPGRSequence &s, const QI::MPRAGESequence &m, const float hi) :
-        m_spgr(s), m_mprage(m), m_hi(hi)
-    {}
-    size_t numInputs() const override  { return 2; }
-    size_t numConsts() const override  { return 0; }
-    size_t numOutputs() const override { return 3; }
-    size_t dataSize() const override   { return m_spgr.size() + m_mprage.size(); }
-    float zero() const override { return 0.f; }
-
-    std::vector<float> defaultConsts() const override {
-        // No constants for HIFI
-        std::vector<float> def(0);
-        return def;
-    }
-
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &, // No constants, remove name to silence compiler warnings
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
-    {
-        Eigen::Map<const Eigen::ArrayXf> spgr_in(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::Map<const Eigen::ArrayXf> ir_in(inputs[1].GetDataPointer(), inputs[1].Size());
-        double scale = std::max(spgr_in.maxCoeff(), ir_in.maxCoeff());
+        double scale = std::max(inputs[0].maxCoeff(), inputs[1].maxCoeff());
         if (scale < std::numeric_limits<double>::epsilon()) {
-            outputs[0] = 0;
-            outputs[1] = 0;
-            outputs[2] = 0;
-            residual = 0;
+            v << 0.0, 0.0, 0.0;
+            residual = 0.0;
             return std::make_tuple(false, "Maximum data value was zero or less");
         }
-        const Eigen::ArrayXd spgr_data = spgr_in.cast<double>() / scale;
-        const Eigen::ArrayXd ir_data = ir_in.cast<double>() / scale;
-        double spgr_pars[] = {10., 1., 1.}; // PD, T1, B1
+        const Eigen::ArrayXd spgr_data = inputs[0] / scale;
+        const Eigen::ArrayXd mprage_data = inputs[1] / scale;
+        v << 10., 1., 1.; // PD, T1, B1
         ceres::Problem problem;
-        problem.AddResidualBlock(new SPGRCost(m_spgr, spgr_data), NULL, spgr_pars);
-        ceres::CostFunction *IRCost = new ceres::AutoDiffCostFunction<IRCostFunction, 1, 3>(new IRCostFunction(m_mprage, ir_data));
-        problem.AddResidualBlock(IRCost, NULL, spgr_pars);
-        problem.SetParameterLowerBound(spgr_pars, 0, 1.);
-        problem.SetParameterLowerBound(spgr_pars, 1, 0.001);
-        problem.SetParameterUpperBound(spgr_pars, 1, 5.0);
-        problem.SetParameterLowerBound(spgr_pars, 2, 0.1);
-        problem.SetParameterUpperBound(spgr_pars, 2, 2.0);
+        using AutoSPGRType = ceres::AutoDiffCostFunction<HIFISPGRCost, ceres::DYNAMIC, HIFIModel::NV>;
+        using AutoMPRAGEType = ceres::AutoDiffCostFunction<HIFIMPRAGECost, ceres::DYNAMIC, HIFIModel::NV>;
+        auto *spgr_cost = new AutoSPGRType(new HIFISPGRCost{model, spgr_sequence, spgr_data}, spgr_sequence->size());
+        auto *mprage_cost = new AutoMPRAGEType(new HIFIMPRAGECost{model, mprage_sequence, mprage_data}, mprage_sequence->size());
+        problem.AddResidualBlock(spgr_cost, NULL, v.data());
+        problem.AddResidualBlock(mprage_cost, NULL, v.data());
+        for (int i = 0; i < 3; i++) {
+            problem.SetParameterLowerBound(v.data(), i, model.bounds_lo[i]);
+            problem.SetParameterUpperBound(v.data(), i, model.bounds_hi[i]);
+        }
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
         options.max_num_iterations = 50;
         options.function_tolerance = 1e-5;
         options.gradient_tolerance = 1e-6;
         options.parameter_tolerance = 1e-4;
-        // options.check_gradients = true;
         options.logging_type = ceres::SILENT;
-        // std::cout << "START P: " << p.transpose());
         ceres::Solve(options, &problem, &summary);
-        
-        outputs[0] = spgr_pars[0] * scale;
-        outputs[1] = QI::Clamp(spgr_pars[1], m_lo, m_hi);
-        outputs[2] = spgr_pars[2];
         if (!summary.IsSolutionUsable()) {
             return std::make_tuple(false, summary.FullReport());
         }
-        its = summary.iterations.size();
+        v[0] = v[0] * scale;
+        iterations = summary.iterations.size();
         residual = summary.final_cost * scale;
-        if (resids.Size() > 0) {
-            std::vector<double> r_temp(spgr_data.size() + 1);
+        if (residuals.size() > 0) {
+            std::vector<double> r_temp(spgr_sequence->size() + mprage_sequence->size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (size_t i = 0; i < r_temp.size(); i++) {
-                resids[i] = r_temp[i];
-            }
+            for (int i = 0; i < spgr_sequence->size(); i++)
+                residuals[0][i] = r_temp[i] * scale;
+            for (int i = 0; i < mprage_sequence->size(); i++)
+                residuals[1][i] = r_temp[i + spgr_sequence->size()] * scale;
         }
         return std::make_tuple(true, "");
     }
@@ -190,7 +189,7 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser("Calculates T1 and B1 maps from SPGR & IR-SPGR or MP-RAGE data.\nhttp://github.com/spinicist/QUIT");
     
     args::Positional<std::string> spgr_path(parser, "SPGR_FILE", "Input SPGR file");
-    args::Positional<std::string> ir_path(parser, "IRSPGR_FILE", "Input IR-SPGR or MP-RAGE file");
+    args::Positional<std::string> mprage_path(parser, "MPRAGE_FILE", "Input MP-RAGE file");
     
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
@@ -201,39 +200,47 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI_LOG(verbose, "Reading SPGR file: " << QI::CheckPos(spgr_path));
-    auto spgrImg = QI::ReadVectorImage(QI::CheckPos(spgr_path));
-    QI_LOG(verbose, "Reading SPGR sequence parameters");
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    QI::SPGRSequence spgr_sequence(input["SPGR"]);
-    QI_LOG(verbose, "Reading MPRAGE file: " << QI::CheckPos(ir_path));
-    auto irImg = QI::ReadVectorImage(QI::CheckPos(ir_path));
-    QI_LOG(verbose, "Reading MPRAGE sequence parameters");
-    QI::MPRAGESequence ir_sequence(input["MPRAGE"]);
+    QI_LOG(verbose, "Reading sequence information");
+    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::SPGRSequence spgrSequence(QI::GetMember(input, "SPGR"));
+    QI::MPRAGESequence mprageSequence(QI::GetMember(input, "MPRAGE"));
 
-    auto apply = QI::ApplyF::New();
-    auto hifi = std::make_shared<HIFIAlgo>(spgr_sequence, ir_sequence, clamp.Get());
-    apply->SetAlgorithm(hifi);
-    apply->SetOutputAllResiduals(all_resids);
-    apply->SetVerbose(verbose);
-    apply->SetInput(0, spgrImg);
-    apply->SetInput(1, irImg);
-    if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    QI_LOG(verbose, "Processing..." );
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
-                    "Writing results files.");
-    std::string out_prefix = args::get(outarg) + "HIFI_";
-    QI::WriteImage(apply->GetOutput(0), out_prefix + "PD" + QI::OutExt());
-    QI::WriteImage(apply->GetOutput(1), out_prefix + "T1" + QI::OutExt());
-    QI::WriteImage(apply->GetOutput(2), out_prefix + "B1" + QI::OutExt());
-    QI::WriteImage(apply->GetResidualOutput(), out_prefix + "residual"  + QI::OutExt());
-    if (all_resids) {
-        QI::WriteVectorImage(apply->GetAllResidualsOutput(), out_prefix + "all_residuals" + QI::OutExt());
+    if (simulate) {
+        HIFIModel model;
+        QI::SimulateModel<HIFIModel, false>(input, model, {&spgrSequence, &mprageSequence}, {}, {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, verbose, simulate.Get());
+    } else {
+        HIFIFit hifi_fit;
+        hifi_fit.spgr_sequence = &spgrSequence;
+        hifi_fit.mprage_sequence = &mprageSequence;
+        auto fit_filter = itk::ModelFitFilter<HIFIFit>::New();
+        fit_filter->SetVerbose(verbose);
+        fit_filter->SetFitFunction(&hifi_fit);
+        fit_filter->SetOutputAllResiduals(resids);
+        fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(spgr_path), verbose));
+        fit_filter->SetInput(1, QI::ReadVectorImage(QI::CheckPos(mprage_path), verbose));
+        if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
+        if (subregion) fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        QI_LOG(verbose, "Processing");
+        if (verbose) {
+            auto monitor = QI::GenericMonitor::New();
+            fit_filter->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        fit_filter->Update();
+        QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s\n" <<
+                        "Writing results files.");
+        std::string outPrefix = outarg.Get() + "HIFI_";
+        for (int i = 0; i < hifi_fit.model.NV; i++) {
+            QI::WriteImage(fit_filter->GetOutput(i), outPrefix + hifi_fit.model.varying_names.at(i) + QI::OutExt());
+        }
+        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        if (resids) {
+            QI::WriteVectorImage(fit_filter->GetResidualsOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        }
+        QI_LOG(verbose, "Finished." );
     }
-    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

@@ -267,8 +267,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> erode(parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"}, 1);
     args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    
-    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
 
     QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage(QI::CheckPos(input_path));

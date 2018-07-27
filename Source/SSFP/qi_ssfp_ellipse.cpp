@@ -10,15 +10,15 @@
  */
 
 #include <iostream>
-#include <Eigen/Dense>
-#include <Eigen/Eigenvalues>
-#include "args.hxx"
+#include <Eigen/Core>
 
+#include "DirectFit.h"
+#include "HyperFit.h"
+#include "ModelFitFilter.h"
+#include "SimulateModel.h"
 #include "Util.h"
-#include "ImageIO.h"
 #include "Args.h"
-#include "DirectAlgo.h"
-#include "HyperAlgo.h"
+#include "ImageIO.h"
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
@@ -32,48 +32,52 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    QI_LOG(verbose, "Opening file: " << QI::CheckPos(ssfp_path));
-    auto data = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ssfp_path));
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    QI::SSFPEllipseSequence seq(input["SSFPEllipse"]);
-    std::shared_ptr<QI::EllipseAlgo> algo;
-    switch (algorithm.Get()) {
-    case 'h': algo = std::make_shared<QI::HyperAlgo>(seq, debug); break;
-    case 'd': algo = std::make_shared<QI::DirectAlgo>(seq, debug); break;
+    QI::CheckPos(ssfp_path);
+    QI_LOG(verbose, "Reading sequence information");
+    rapidjson::Document json_input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::SSFPSequence ssfp(QI::GetMember(json_input, "SSFP"));
+    if (simulate) {
+        QI::EllipseModel model;
+        QI::SimulateModel<QI::EllipseModel, false>(json_input, model, {&ssfp}, {}, {ssfp_path.Get()}, verbose, simulate.Get());
+    } else {    
+        auto input = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ssfp_path), verbose);
+        QI::EllipseFit *fit = nullptr;
+        switch (algorithm.Get()) {
+        case 'h': fit = new QI::HyperFit(&ssfp); break;
+        case 'd': fit = new QI::DirectFit(&ssfp); break;
+        }
+        auto fit_filter = itk::ModelFitFilter<QI::EllipseFit>::New();
+        fit_filter->SetFitFunction(fit);
+        fit_filter->SetInput(0, input);
+        fit_filter->SetVerbose(verbose);
+        fit_filter->SetBlocks(input->GetNumberOfComponentsPerPixel() / ssfp.size());
+        if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
+        if (subregion) fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        QI_LOG(verbose, "Processing");
+        if (verbose) {
+            auto monitor = QI::GenericMonitor::New();
+            fit_filter->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        fit_filter->Update();
+        QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s\n" <<
+                        "Writing results files.");
+        std::string outPrefix = outarg.Get() + "ES_";
+        for (int i = 0; i < QI::EllipseModel::NV; i++) {
+            QI::WriteVectorImage(fit_filter->GetOutput(i), outPrefix + QI::EllipseModel::varying_names.at(i) + QI::OutExt());
+        }
+        // QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        // if (resids) {
+        //     QI::WriteVectorImage(fit_filter->GetResidualsOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        // }
+        // if (its) {
+        //     QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
+        // }
+        QI_LOG(verbose, "Finished." );
     }
-    QI::ApplyVectorXFVectorF::Pointer apply = QI::ApplyVectorXFVectorF::New();
-    apply->SetAlgorithm(algo);
-    apply->SetInput(0, data);
-    if (mask) {
-        QI_LOG(verbose, "Reading mask: " << mask.Get());
-        apply->SetMask(QI::ReadImage(mask.Get()));
-    }
-    if (B1) apply->SetConst(0, QI::ReadImage(B1.Get()));
-    apply->SetVerbose(verbose);
-    if (subregion) {
-        apply->SetSubregion(QI::RegionArg(args::get(subregion)));
-    }
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
-                    "Writing results files.");
-    std::string outPrefix;
-    outPrefix = outarg.Get() + "ES_";
-    for (size_t i = 0; i < algo->numOutputs(); i++) {
-        std::string outName = outPrefix + algo->names().at(i) + QI::OutExt();
-        QI_LOG(verbose, "Writing: " << outName );
-        QI::WriteVectorImage(apply->GetOutput(i), outName);
-    }
-    QI_LOG(verbose, "Writing total residuals." );
-    QI::WriteVectorImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

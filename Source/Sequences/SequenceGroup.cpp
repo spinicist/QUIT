@@ -17,7 +17,11 @@ size_t SequenceGroup::count() const {
     return sequences.size();
 }
 
-std::shared_ptr<SequenceBase> &SequenceGroup::operator[](const size_t i) {
+const SequenceBase *SequenceGroup::at(const size_t i) const {
+    return sequences.at(i);
+}
+
+const SequenceBase *SequenceGroup::operator[](const size_t i) const {
     return sequences.at(i);
 }
 
@@ -26,18 +30,6 @@ Eigen::Index SequenceGroup::size() const {
     for (auto& sig : sequences)
         sz += sig->size();
     return sz;
-}
-
-Eigen::ArrayXcd SequenceGroup::signal(std::shared_ptr<Model::ModelBase> m,
-                                      const Eigen::VectorXd &p) const {
-    Eigen::ArrayXcd result(size());
-    size_t start = 0;
-    for (auto &sig : sequences) {
-        Eigen::ArrayXcd thisResult = sig->signal(m, p);
-        result.segment(start, sig->size()) = thisResult;
-        start += sig->size();
-    }
-    return result;
 }
 
 Eigen::ArrayXd SequenceGroup::weights(const double f0) const {
@@ -50,11 +42,11 @@ Eigen::ArrayXd SequenceGroup::weights(const double f0) const {
     return weights;
 }
 
-void SequenceGroup::addSequence(const std::shared_ptr<SequenceBase> &w) {
-    sequences.push_back(w);
+void SequenceGroup::addSequence(const SequenceBase *s) {
+    sequences.push_back(s);
 }
 
-SequenceGroup::SequenceGroup(rapidjson::Value &json) {
+SequenceGroup::SequenceGroup(const rapidjson::Value &json) {
     assert(json.IsArray());
     for (rapidjson::SizeType i = 0; i < json.Size(); i++) {
         sequences.push_back(SequenceFromJSON(json[i]));

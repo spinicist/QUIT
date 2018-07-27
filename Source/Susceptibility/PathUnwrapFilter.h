@@ -17,6 +17,7 @@
 #ifndef PATH_UNWRAP_FILTER_H
 #define PATH_UNWRAP_FILTER_H
 
+#include <memory>
 #include "itkImageToImageFilter.h"
 #include "ImageTypes.h"
 

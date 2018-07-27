@@ -10,6 +10,7 @@
  */
 
 #ifndef QUIT_IMAGEIO_H
+#define QUIT_IMAGEIO_H
 
 #include <string>
 #include "ImageTypes.h"
@@ -41,7 +42,7 @@ template<typename TImg>
 extern void WriteScaledImage(const itk::SmartPointer<TImg> &ptr, const itk::SmartPointer<QI::VolumeF> &sptr, const std::string &path);
 
 template<typename TPixel = float>
-extern auto ReadVectorImage(const std::string &path) -> typename itk::VectorImage<TPixel, 3>::Pointer;
+extern auto ReadVectorImage(const std::string &path, const bool verbose = false) -> typename itk::VectorImage<TPixel, 3>::Pointer;
 
 template<typename TVImg>
 extern void WriteVectorImage(const TVImg *img, const std::string &path);

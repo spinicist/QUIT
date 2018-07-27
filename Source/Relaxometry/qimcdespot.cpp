@@ -10,122 +10,113 @@
  *
  */
 
-#include <fstream>
-#include <Eigen/Dense>
-#include <unsupported/Eigen/LevenbergMarquardt>
-#include <unsupported/Eigen/NumericalDiff>
+#include <array>
+#include <iostream>
+#include <Eigen/Core>
+#include "ceres/ceres.h"
 
-#include "itkTimeProbe.h"
-
-#include "ApplyTypes.h"
+#include "Model.h"
+#include "FitFunction.h"
+#include "ModelFitFilter.h"
+#include "SimulateModel.h"
+#include "SPGRSequence.h"
+#include "SSFPSequence.h"
+#include "TwoPoolModel.h"
+#include "ThreePoolModel.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
-#include "IO.h"
-#include "Models.h"
-#include "SequenceGroup.h"
 #include "RegionContraction.h"
 
+template<typename Model>
 struct MCDSRCFunctor {
-    const QI::SequenceGroup &m_sequence;
-    const Eigen::ArrayXd m_data, m_weights;
-    const std::shared_ptr<QI::Model::ModelBase> m_model;
+    const QI::SequenceGroup *sequences;
+    const Eigen::ArrayXd data, weights;
+    const QI_ARRAYN(double, Model::NF) fixed;
+    const Model model;
 
-    MCDSRCFunctor(std::shared_ptr<QI::Model::ModelBase> m, QI::SequenceGroup &s,
+    MCDSRCFunctor(Model m, QI::SequenceGroup *s, const QI_ARRAYN(double, Model::NF) &f,
                   const Eigen::ArrayXd &d, const Eigen::ArrayXd &w) :
-        m_sequence(s), m_data(d), m_weights(w), m_model(m)
+        sequences(s), data(d), weights(w), fixed(f), model(m)
     {
-        assert(static_cast<size_t>(m_data.rows()) == m_sequence.size());
+        assert(static_cast<size_t>(data.rows()) == sequences->size());
     }
 
-    int inputs() const { return m_model->nParameters(); }
-    int values() const { return m_sequence.size(); }
+    int inputs() const { return Model::NV; }
+    int values() const { return sequences->size(); }
 
-    bool constraint(const Eigen::VectorXd &params) const {
-        return m_model->ValidParameters(params);
+    bool constraint(const QI_ARRAYN(double, Model::NV) &varying) const {
+        return model.valid(varying);
     }
 
-    Eigen::ArrayXd residuals(const Eigen::Ref<Eigen::VectorXd> &params) const {
-        const Eigen::ArrayXd s = (m_sequence.signal(m_model, params)).abs();
-        return m_data - s;
+    Eigen::ArrayXd residuals(const QI_ARRAYN(double, Model::NV) &varying) const {
+        Eigen::ArrayXd signals(sequences->size());
+        int index = 0;
+        for (size_t i = 0; i < sequences->count(); i++) {
+            signals.segment(index, sequences->at(i)->size()) = model.signal(varying, fixed, sequences->at(i));
+            index += sequences->at(i)->size();
+        }
+        return data - signals;
     }
-    double operator()(const Eigen::Ref<Eigen::VectorXd> &params) const {
-        return (residuals(params) * m_weights).square().sum();
+    double operator()(const QI_ARRAYN(double, Model::NV) &varying) const {
+        return (residuals(varying) * weights).square().sum();
     }
 };
 
-struct SRCAlgo : public QI::ApplyF::Algorithm {
-    Eigen::ArrayXXd m_bounds;
-    std::shared_ptr<QI::Model::ModelBase> m_model = nullptr;
-    QI::SequenceGroup &m_sequence;
-    QI::Model::FieldStrength m_tesla = QI::Model::FieldStrength::Three;
-    int m_iterations = 0;
-    size_t m_samples = 5000, m_retain = 50;
-    bool m_gauss = true;
+template<typename Model>
+struct SRCFit  {
+    static const bool Blocked = false;
+    static const bool Indexed = false;
+    using InputType = double;
+    using OutputType = double;
+    using ResidualType = double;
+    using FlagType = int;
+    using ModelType = Model;
+    QI::SequenceGroup *sequences = nullptr;
+    Model model;
 
-    SRCAlgo(std::shared_ptr<QI::Model::ModelBase>&m, Eigen::ArrayXXd &b,
-            QI::SequenceGroup &s, int mi) :
-        m_bounds(b), m_model(m), m_sequence(s), m_iterations(mi)
-    {}
+    int n_inputs() const { return sequences->count(); }
+    int input_size(const int i) const { return sequences->at(i)->size(); }
+    int n_fixed() const { return Model::NF; }
+    int n_outputs() const { return Model::NV; }
+    
+    int max_iterations = 5;
+    size_t src_samples = 5000, src_retain = 50;
+    bool src_gauss = true;
 
-    size_t numInputs() const override  { return m_sequence.count(); }
-    size_t numOutputs() const override { return m_model->nParameters(); }
-    size_t dataSize() const override   { return m_sequence.size(); }
-
-    void setModel(std::shared_ptr<QI::Model::ModelBase> &m) { m_model = m; }
-    void setSequence(QI::SequenceGroup &s) { m_sequence = s; }
-    void setBounds(Eigen::ArrayXXd &b) { m_bounds = b; }
-    void setIterations(const int i) { m_iterations = i; }
-    float zero() const override { return 0.f; }
-
-    void setGauss(bool g) { m_gauss = g; }
-    size_t numConsts() const override  { return 2; }
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def(2);
-        def[0] = NAN; def[1] = 1.0f; // f0, B1
-        return def;
-    }
-
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, Model::NV) &v,
+                          ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const
     {
-        Eigen::ArrayXd data(dataSize());
+        Eigen::ArrayXd data(sequences->size());
         int dataIndex = 0;
         for (size_t i = 0; i < inputs.size(); i++) {
-            Eigen::Map<const Eigen::ArrayXf> this_data(inputs[i].GetDataPointer(), inputs[i].Size());
-            if (m_model->scaleToMean()) {
-                data.segment(dataIndex, this_data.rows()) = this_data.cast<double>() / this_data.abs().mean();
+            if (model.scale_to_mean) {
+                data.segment(dataIndex, inputs[i].rows()) = inputs[i] / inputs[i].mean();
             } else {
-                data.segment(dataIndex, this_data.rows()) = this_data.cast<double>();
+                data.segment(dataIndex, inputs[i].rows()) = inputs[i];
             }
-            dataIndex += this_data.rows();
+            dataIndex += inputs[i].rows();
         }
-        Eigen::ArrayXd thresh(m_model->nParameters()); thresh.setConstant(0.05);
-        const double f0 = consts[0];
-        const double B1 = consts[1];
-        Eigen::ArrayXXd localBounds = m_bounds;
-        Eigen::ArrayXd weights = Eigen::ArrayXd::Ones(m_sequence.size());
-        if (std::isfinite(f0)) { // We have an f0 map, add it to the fitting bounds
-            localBounds.row(m_model->ParameterIndex("f0")) += f0;
-            weights = m_sequence.weights(f0);
-        }
-        localBounds.row(m_model->ParameterIndex("B1")).setConstant(B1);
-        MCDSRCFunctor func(m_model, m_sequence, data, weights);
-        QI::RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
-        Eigen::ArrayXd pars(m_model->nParameters());
-        if (!rc.optimise(pars)) {
+        QI_ARRAYN(double, Model::NV) thresh = QI_ARRAYN(double, Model::NV)::Constant(0.05);
+        const double &f0 = fixed[0];
+        Eigen::ArrayXd weights = sequences->weights(f0);
+        using Functor = MCDSRCFunctor<Model>;
+        Functor func(model, sequences, fixed, data, weights);
+        QI::RegionContraction<Functor> rc(func, model.bounds_lo, model.bounds_hi, thresh, src_samples, src_retain, max_iterations, 0.02, src_gauss, false);
+        if (!rc.optimise(v)) {
             return std::make_tuple(false, "Region contraction failed");
         }
-        
-        for (size_t i = 0; i < m_model->nParameters(); i++) {
-            outputs[i] = pars[i];
-        }
-        Eigen::ArrayXf r = func.residuals(pars).cast<float>();
+        auto r = func.residuals(v);
         residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        its = rc.contractions();
+        if (residuals.size() > 0) {
+            int index = 0;
+            for (size_t i = 0; i < sequences->count(); i++) {
+                residuals[i] = r.segment(index, sequences->at(i)->size());
+                index += sequences->at(i)->size();
+            }
+        }
+        iterations = rc.contractions();
         return std::make_tuple(true, "");
     }
 };
@@ -148,115 +139,80 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<std::string> modelarg(parser, "MODEL", "Select model to fit - 1/2/2nex/3/3_f0/3nex, default 3", {'M', "model"}, "3");
+    args::ValueFlag<int> modelarg(parser, "MODEL", "Select model to fit - 2/3, default 3", {'M', "model"}, 3);
     args::Flag scale(parser, "SCALE", "Normalize signals to mean (a good idea)", {'S', "scale"});
-    args::ValueFlag<char> algorithm(parser, "ALGO", "Select (S)tochastic or (G)aussian Region Contraction", {'a', "algo"}, 'G');
+    args::Flag use_src(parser, "SRC", "Use flat prior (stochastic region contraction), not gaussian", {"SRC"});
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i',"its"}, 4);
-    args::ValueFlag<char> field(parser, "FIELD STRENGTH", "Specify field-strength for fitting regions - 3/7/u for user input", {'t', "tesla"}, '3');
+    args::Flag bounds(parser, "BOUNDS", "Specify bounds in input", {"bounds"});
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
+    QI::CheckList(input_paths);
 
-    std::vector<QI::VectorVolumeF::Pointer> images;
-    for (auto &input_path : QI::CheckList(input_paths)) {
-        QI_LOG(verbose, "Reading file: " << input_path );
-        auto image = QI::ReadVectorImage<float>(input_path);
-        image->DisconnectPipeline(); // This step is really important.
-        images.push_back(image);
-    }
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    QI::SequenceGroup sequences(input["Sequences"]);
-    if (sequences.count() != images.size()) {
-        QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
-    }
+    QI_LOG(verbose, "Reading sequences");
+    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::SequenceGroup sequences(QI::GetMember(input, "Sequences"));
 
-    std::shared_ptr<QI::Model::ModelBase> model = nullptr;
-    if (modelarg.Get() == "1")         { model = std::make_shared<QI::Model::OnePool>(); }
-    else if (modelarg.Get() == "2")    { model = std::make_shared<QI::Model::TwoPool>(); }
-    else if (modelarg.Get() == "2nex") { model = std::make_shared<QI::Model::TwoPool_NoExchange>(); }
-    else if (modelarg.Get() == "3")    { model = std::make_shared<QI::Model::ThreePool>(); }
-    else if (modelarg.Get() == "3_f0") { model = std::make_shared<QI::Model::ThreePool_f0>(); }
-    else if (modelarg.Get() == "3nex") { model = std::make_shared<QI::Model::ThreePool_NoExchange>(); }
-    else {
-        QI_FAIL("Invalid model " << modelarg.Get() << " specified.");
-    }
-    QI_LOG(verbose, "Using " << model->Name() << " model.");
-    if (scale) {
-        QI_LOG(verbose, "Mean-scaling selected");
-        model->setScaleToMean(scale);
-    }
+    auto process = [&](auto model, const std::string &prefix) {
+        if (simulate) {
+            QI::SimulateModel<decltype(model), false>(input, model, sequences.sequences, {f0.Get(), B1.Get()}, input_paths.Get(), verbose, simulate.Get());
+        } else {
+            using FitType = SRCFit<decltype(model)>;
+            FitType src;
+            src.sequences = &sequences;
+            src.model.scale_to_mean = scale.Get();
+            src.src_gauss = !use_src;
+            if (bounds) {
+                src.model.bounds_lo = QI::ArrayFromJSON(input["lower_bounds"]);
+                src.model.bounds_hi = QI::ArrayFromJSON(input["upper_bounds"]);
+            }
+            QI_LOG(verbose, "Low bounds: " << src.model.bounds_lo.transpose() <<
+                            "\nHigh bounds: " << src.model.bounds_hi.transpose());
 
-    Eigen::ArrayXXd bounds = model->Bounds(QI::Model::FieldStrength::Three);
-    Eigen::ArrayXd start = model->Default(QI::Model::FieldStrength::Three);
-    switch (field.Get()) {
-        case '3':
-            bounds = model->Bounds(QI::Model::FieldStrength::Three);
-            start = model->Default(QI::Model::FieldStrength::Three);
-            break;
-        case '7':
-            bounds = model->Bounds(QI::Model::FieldStrength::Seven);
-            start = model->Bounds(QI::Model::FieldStrength::Seven);
-            break;
-        case 'u': {
-            auto lower_bounds = QI::ArrayFromJSON(input["lower_bounds"]);
-            auto upper_bounds = QI::ArrayFromJSON(input["upper_bounds"]);
-            bounds.col(0) = lower_bounds;
-            bounds.col(1) = upper_bounds;
-        } break;
+            auto fit_filter = itk::ModelFitFilter<FitType>::New();
+            fit_filter->SetVerbose(verbose);
+            fit_filter->SetFitFunction(&src);
+            fit_filter->SetOutputAllResiduals(resids);
+            for (size_t i = 0; i < input_paths.Get().size(); i++) {
+                fit_filter->SetInput(i, QI::ReadVectorImage(input_paths.Get().at(i), verbose));
+            }
+            if (f0) fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
+            if (B1) fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
+            if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
+            if (subregion) fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+            QI_LOG(verbose, "Processing");
+            if (verbose) {
+                auto monitor = QI::GenericMonitor::New();
+                fit_filter->AddObserver(itk::ProgressEvent(), monitor);
+            }
+            fit_filter->Update();
+            QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s\n" <<
+                            "Writing results files.");
+            std::string outPrefix = outarg.Get() + prefix;
+            for (int i = 0; i < src.n_outputs(); i++) {
+                QI::WriteImage(fit_filter->GetOutput(i), outPrefix + src.model.varying_names.at(i) + QI::OutExt());
+            }
+            QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+            if (resids) {
+                QI::WriteVectorImage(fit_filter->GetResidualsOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+            }
+            if (its) {
+                QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
+            }
+            QI_LOG(verbose, "Finished." );
+        }
+    };
+    switch (modelarg.Get()) {
+    case 2: {
+        QI::TwoPoolModel model;
+        process(model, "2C_");
+    } break;
+    case 3: {
+        QI::ThreePoolModel model;
+        process(model, "3C_");
+    } break;
     default:
-        QI_FAIL("Unknown boundaries type " << field.Get());
+        QI_FAIL("Unknow model specifier: " << modelarg.Get());
     }
-
-    auto apply = QI::ApplyF::New();
-    switch (algorithm.Get()) {
-        case 'S': {
-            QI_LOG(verbose, "Using SRC algorithm" );
-            std::shared_ptr<SRCAlgo> algo = std::make_shared<SRCAlgo>(model, bounds, sequences, its.Get());
-            algo->setGauss(false);
-            apply->SetAlgorithm(algo);
-        } break;
-        case 'G': {
-            QI_LOG(verbose, "Using GRC algorithm" );
-            std::shared_ptr<SRCAlgo> algo = std::make_shared<SRCAlgo>(model, bounds, sequences, its.Get());
-            algo->setGauss(true);
-            apply->SetAlgorithm(algo);
-        } break;
-        default:
-            QI_FAIL("Unknown algorithm type " << algorithm.Get());
-    }
-    apply->SetOutputAllResiduals(resids);
-    apply->SetVerbose(verbose);
-    for (size_t i = 0; i < images.size(); i++) {
-        apply->SetInput(i, images[i]);
-    }
-    if (f0) apply->SetConst(0, QI::ReadImage(f0.Get()));
-    if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
-
-    // Need this here so the bounds.txt file will have the correct prefix
-    std::string outPrefix = outarg.Get() + model->Name() + "_";
-    std::ofstream boundsFile(outPrefix + "bounds.txt");
-    boundsFile << "Names: ";
-    for (size_t p = 0; p < model->nParameters(); p++) {
-        boundsFile << model->ParameterNames()[p] << "\t";
-    }
-    boundsFile << std::endl << "Bounds:\n" << bounds.transpose() << std::endl;
-    boundsFile.close();
-    QI_LOG(verbose, "Bounds:\n" <<  bounds.transpose());
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
-                    "Writing results files.");
-    for (size_t i = 0; i < model->nParameters(); i++) {
-        QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
-    }
-    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    if (resids) {
-        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
-    }
-    QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
     return EXIT_SUCCESS;
 }

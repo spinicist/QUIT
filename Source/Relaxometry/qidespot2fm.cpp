@@ -10,116 +10,102 @@
  *
  */
 
+#include <array>
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "ceres/ceres.h"
 
-#include "Macro.h"
-#include "Util.h"
-#include "ImageIO.h"
-#include "Args.h"
-#include "Models.h"
-#include "ApplyTypes.h"
+#include "Model.h"
+#include "FitFunction.h"
+#include "ModelFitFilter.h"
+#include "SimulateModel.h"
 #include "SSFPSequence.h"
+#include "Util.h"
+#include "Args.h"
+#include "ImageIO.h"
 
-class FMCost : public ceres::CostFunction {
-private:
-    const Eigen::ArrayXd &m_data;
-    double m_T1, m_B1;
-    QI::SSFPSequence m_sequence;
+using namespace std::literals;
 
-public:
-    FMCost(const Eigen::ArrayXd &d, const QI::SSFPSequence &s,
-           const double T1, const double B1) :
-        m_data(d), m_T1(T1), m_B1(B1), m_sequence(s)
+using FMModel = QI::Model<3, 2, QI::SSFPSequence>;
+template<> std::array<const std::string, 3> FMModel::varying_names{{"PD"s, "T2"s, "f0"s}};
+template<> std::array<const std::string, 2> FMModel::fixed_names{{"T1"s, "B1"s}};
+template<> const QI_ARRAYN(double, 2) FMModel::fixed_defaults{1.0, 1.0};
+template<> template<typename Derived>
+auto FMModel::signal(const Eigen::ArrayBase<Derived> &v,
+                     const QI_ARRAYN(double, NF) &f,
+                     const QI::SSFPSequence *s) const -> QI_ARRAY(typename Derived::Scalar) {
+    using T = typename Derived::Scalar;
+    const T &PD = v[0];
+    const T &T2 = v[1];
+    const T &f0 = v[2];
+    const double &T1 = f[0];
+    const double &B1 = f[1];
+    const double E1 = exp(-s->TR / T1);
+    const T      E2 = exp(-s->TR / T2);
+    const T      psi = 2. * M_PI * f0 * s->TR;
+    const QI_ARRAY(double) alpha = s->FA * B1;
+    const QI_ARRAY(T) d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
+    const QI_ARRAY(T) G = -PD*(1. - E1)*sin(alpha)/d;
+    const QI_ARRAY(T) b = E2*(1. - E1)*(1.+cos(alpha))/d;
+
+    const QI_ARRAY(T) theta = s->PhaseInc + psi;
+    const QI_ARRAY(T) cos_th = cos(theta);
+    const QI_ARRAY(T) sin_th = sin(theta);
+    const T cos_psi = cos(psi);
+    const T sin_psi = sin(psi);
+    const QI_ARRAY(T) re_m = (cos_psi - E2*(cos_th*cos_psi - sin_th*sin_psi)) * G / (1.0 - b*cos_th);
+    const QI_ARRAY(T) im_m = (sin_psi - E2*(cos_th*sin_psi + sin_th*cos_psi)) * G / (1.0 - b*cos_th);
+    return sqrt(re_m.square() + im_m.square());
+}
+
+using FMFit = QI::FitFunction<FMModel>;
+
+struct FMNLLS : FMFit {
+    bool asymmetric = false;
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                            const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, FMModel::NV) &bestP,
+                            ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
     {
-        mutable_parameter_block_sizes()->push_back(3);
-        set_num_residuals(d.size());
-    }
-
-    Eigen::ArrayXd residuals(const Eigen::VectorXd &p) const {
-        Eigen::ArrayXd s = QI::One_SSFP_Echo_Magnitude(m_sequence.FA, m_sequence.PhaseInc, m_sequence.TR, p[0], m_T1, p[1], p[2], m_B1);
-        Eigen::ArrayXd diff = s - m_data;
-        return diff;
-    }
-
-    bool Evaluate(double const* const* parameters,
-                  double* resids,
-                  double** jacobians) const override
-    {
-        Eigen::Map<const Eigen::Array3d> p(parameters[0]);
-        Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
-        r = residuals(p);
-        if (jacobians && jacobians[0]) {
-            Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), p.size());
-            j = QI::One_SSFP_Echo_Derivs(m_sequence.FA, m_sequence.PhaseInc, m_sequence.TR, p[0], m_T1, p[1], p[2], m_B1);
-        }
-        return true;
-    }
-
-};
-
-class LM_FM : public QI::ApplyF::Algorithm {
-protected:
-    QI::SSFPSequence m_sequence;
-    bool m_asymmetric = false, m_debug = false;
-public:
-    LM_FM(QI::SSFPSequence s, const bool a, const bool d) :
-        m_sequence(s), m_asymmetric(a), m_debug(d)
-    {}
-
-    size_t numInputs() const override  { return m_sequence.count(); }
-    size_t numConsts() const override  { return 2; }
-    size_t numOutputs() const override { return 3; }
-    size_t dataSize() const override   { return m_sequence.size(); }
-    float zero() const override { return 0.f; }
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def(2, 1.0f); // T1 & B1
-        return def;
-    }
-
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
-    {
-        const double T1 = consts[0];
-        const double B1 = consts[1];
-        if (std::isfinite(T1) && (T1 > m_sequence.TR)) {
+        const double &T1 = fixed[0];
+        if (std::isfinite(T1) && (T1 > sequence->TR)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
-            Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-            Eigen::ArrayXd data = indata.cast<double>() / indata.maxCoeff();
+            const double scale = inputs[0].maxCoeff();
+            const Eigen::ArrayXd data = inputs[0] / scale;
 
-            std::vector<double> f0_starts = {0, 0.4/m_sequence.TR};
-            if (this->m_asymmetric) {
-                f0_starts.push_back(0.2/m_sequence.TR);
-                f0_starts.push_back(-0.2/m_sequence.TR);
-                f0_starts.push_back(-0.4/m_sequence.TR);
+            std::vector<double> f0_starts = {0, 0.4/sequence->TR};
+            if (this->asymmetric) {
+                f0_starts.push_back(0.2/sequence->TR);
+                f0_starts.push_back(-0.2/sequence->TR);
+                f0_starts.push_back(-0.4/sequence->TR);
             }
 
             double best = std::numeric_limits<double>::infinity();
-            Eigen::Array3d p, bestP;
+            Eigen::Array3d p;
             ceres::Problem problem;
-            problem.AddResidualBlock(new FMCost(data, m_sequence, T1, B1), NULL, p.data());
+            using Cost = QI::ModelCost<FMModel>;
+            using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, FMModel::NV>;
+            auto *cost = new Cost(model, sequence, fixed, data);
+            auto *auto_cost = new AutoCost(cost, sequence->size());
+            problem.AddResidualBlock(auto_cost, NULL, p.data());
             problem.SetParameterLowerBound(p.data(), 0, 1.);
-            problem.SetParameterLowerBound(p.data(), 1, m_sequence.TR);
+            problem.SetParameterLowerBound(p.data(), 1, sequence->TR);
             problem.SetParameterUpperBound(p.data(), 1, T1);
-            if (this->m_asymmetric) {
-                problem.SetParameterLowerBound(p.data(), 2, -0.5/m_sequence.TR);
+            if (this->asymmetric) {
+                problem.SetParameterLowerBound(p.data(), 2, -0.5/sequence->TR);
             } else {
                 problem.SetParameterLowerBound(p.data(), 2, 0.0);
             }
-            problem.SetParameterUpperBound(p.data(), 2, 0.5/m_sequence.TR);
+            problem.SetParameterUpperBound(p.data(), 2, 0.5/sequence->TR);
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;
-            options.max_num_iterations = 75;
+            options.max_num_iterations = max_iterations;
             options.function_tolerance = 1e-6;
             options.gradient_tolerance = 1e-7;
             options.parameter_tolerance = 1e-5;
-            if (!m_debug) options.logging_type = ceres::SILENT;
+            options.logging_type = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                p = {5., std::max(0.1 * T1, 1.5*m_sequence.TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                p = {5., std::max(0.1 * T1, 1.5*sequence->TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
                     return std::make_tuple(false, summary.FullReport());
@@ -128,30 +114,26 @@ public:
                 if (r < best) {
                     best = r;
                     bestP = p;
-                    its = summary.iterations.size();
+                    residual = summary.final_cost * scale;
+                    iterations = summary.iterations.size();
                 }
             }
-            QI_LOG(m_debug, summary.FullReport());
-            outputs[0] = bestP[0] * indata.maxCoeff();
-            outputs[1] = bestP[1];
-            outputs[2] = bestP[2];
-            
-            residual = best * indata.maxCoeff();
-            if (resids.Size() > 0) {
-                assert(resids.Size() == data.size());
+            bestP[0] = bestP[0] * scale;
+            if (!summary.IsSolutionUsable()) {
+                return std::make_tuple(false, summary.FullReport());
+            }
+            if (residuals.size() > 0) {
                 std::vector<double> r_temp(data.size());
                 p = bestP; // Make sure the correct parameters are in the block
                 problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
                 for (size_t i = 0; i < r_temp.size(); i++)
-                    resids[i] = r_temp[i];
+                    residuals[i] = r_temp[i] * scale;
             }
         } else {
-            outputs[0] = 0.;
-            outputs[1] = 0.;
-            outputs[2] = 0.;
+            bestP << 0.0, 0.0, 0.0;
             residual = 0;
-            resids.Fill(0.);
-            its = 0;
+            iterations = 0;
+            return std::make_tuple(false, "T1 was either infinite or shorter than TR");
         }
         return std::make_tuple(true, "");
     }
@@ -175,44 +157,52 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag asym(parser, "ASYM", "Fit +/- off-resonance frequency", {'A', "asym"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
-    args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
+    args::ValueFlag<int> its(parser, "ITERS", "Max iterations for NLLS (default 75)", {'i',"its"}, 75);
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI_LOG(verbose, "Reading T1 Map from: " << QI::CheckPos(t1_path));
-    auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
-    QI_LOG(verbose, "Opening SSFP file: " << QI::CheckPos(ssfp_path));
-    auto ssfpData = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
-    QI_LOG(verbose, "Reading sequence");
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    QI::SSFPSequence ssfp_sequence(input["SSFP"]);
-    auto apply = QI::ApplyF::New();
-    std::shared_ptr<LM_FM> algo = std::make_shared<LM_FM>(ssfp_sequence, asym, debug);
-    apply->SetVerbose(verbose);
-    apply->SetAlgorithm(algo);
-    apply->SetOutputAllResiduals(resids);
-    QI_LOG(verbose, "Using " << threads.Get() << " threads" );
-    apply->SetInput(0, ssfpData);
-    apply->SetConst(0, T1);
-    if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
-                    "Writing results files." );
-    std::string outPrefix = args::get(outarg) + "FM_";
-    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
-    QI::WriteImage(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
-    QI::WriteImage(apply->GetOutput(2), outPrefix + "f0" + QI::OutExt());
-    QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "its" + QI::OutExt());
-    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    if (resids) {
-        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
+    QI_LOG(verbose, "Reading sequence information");
+    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::SSFPSequence ssfp(QI::GetMember(input, "SSFP"));
+    if (simulate) {
+        FMModel model;
+        QI::SimulateModel<FMModel, false>(input, model, {&ssfp}, {QI::CheckPos(t1_path), B1.Get()}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
+    } else {
+        FMNLLS fm;
+        fm.sequence = &ssfp;
+        fm.max_iterations = its.Get();
+        fm.asymmetric = asym.Get();
+        auto fit_filter = itk::ModelFitFilter<FMNLLS>::New();
+        fit_filter->SetVerbose(verbose);
+        fit_filter->SetFitFunction(&fm);
+        fit_filter->SetOutputAllResiduals(resids);
+        fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(ssfp_path), verbose));
+        fit_filter->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));
+        if (B1) fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
+        if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
+        if (subregion) fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        QI_LOG(verbose, "Processing");
+        if (verbose) {
+            auto monitor = QI::GenericMonitor::New();
+            fit_filter->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        fit_filter->Update();
+        QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s" <<
+                        "Writing results files.");
+        std::string outPrefix = outarg.Get() + "FM_";
+        for (int i = 0; i < fm.n_outputs(); i++) {
+            QI::WriteImage(fit_filter->GetOutput(i), outPrefix + fm.model.varying_names.at(i) + QI::OutExt());
+        }
+        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        if (resids) {
+            QI::WriteVectorImage(fit_filter->GetResidualsOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        }
+        if (its) {
+            QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
+        }
+        QI_LOG(verbose, "Finished." );
     }
     return EXIT_SUCCESS;
 }

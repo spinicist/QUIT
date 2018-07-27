@@ -19,7 +19,7 @@
 #include <atomic>
 #include <cmath>
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 
 #include "Util.h"
 
@@ -74,14 +74,18 @@ class RegionContraction {
 
     public:
         RegionContraction(Functor_t &f,
-                          const Eigen::Ref<Eigen::ArrayXXd> &startBounds, const Eigen::ArrayXd &thresh,
+                          const Eigen::ArrayXd &loBounds, const Eigen::ArrayXd &hiBounds, const Eigen::ArrayXd &thresh,
                           const int nS = 5000, const int nR = 50, const int maxContractions = 10,
                           const double expand = 0., const bool gauss = false, const bool debug = false, const int seed = -1) :
-                m_f(f), m_startBounds(startBounds), m_currentBounds(startBounds),
+                m_f(f),
                 m_threshes(thresh), m_nS(nS), m_nR(nR),
                 m_maxContractions(maxContractions), m_contractions(0), m_expand(expand),
                 m_status(RCStatus::NotStarted), m_gaussian(gauss), m_debug(debug)
 		{
+			m_startBounds = Eigen::ArrayXXd(loBounds.rows(), 2);
+			m_startBounds.col(0) = loBounds;
+			m_startBounds.col(1) = hiBounds;
+			m_currentBounds = m_startBounds;
 			eigen_assert(f.inputs() == startBounds.rows());
 			eigen_assert(startBounds.cols() == 2);
 			eigen_assert(thresh.rows() == f.inputs());

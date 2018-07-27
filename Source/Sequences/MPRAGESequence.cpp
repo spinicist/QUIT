@@ -15,10 +15,6 @@ namespace QI {
 
 Eigen::Index MPRAGESequence::size() const { return 1; }
 
-Eigen::ArrayXcd MPRAGESequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &par) const {
-    return m->MPRAGE(par, FA, TR, ETL, k0, eta, TI, TD);
-}
-
 MPRAGESequence::MPRAGESequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
     TR = json["TR"].GetDouble();
@@ -47,14 +43,6 @@ rapidjson::Value MPRAGESequence::toJSON(rapidjson::Document::AllocatorType &a) c
  */
 
 Eigen::Index MP2RAGESequence::size() const { return 2; }
-
-Eigen::ArrayXcd MP2RAGESequence::signal(const std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
-    QI_FAIL("Not implemented");
-}
-
-Eigen::ArrayXcd MP2RAGESequence::signal(const double M0, const double T1, const double B1, const double eta) const {
-    return One_MP2RAGE(FA, TR, ETL, TD, M0, T1, B1, eta);
-}
 
 MP2RAGESequence::MP2RAGESequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());

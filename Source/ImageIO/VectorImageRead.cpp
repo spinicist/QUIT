@@ -19,7 +19,7 @@
 namespace QI {
 
 template<typename TPixel>
-auto ReadVectorImage(const std::string &path) -> typename itk::VectorImage<TPixel, 3>::Pointer {
+auto ReadVectorImage(const std::string &path, const bool verbose) -> typename itk::VectorImage<TPixel, 3>::Pointer {
     typedef itk::Image<TPixel, 4> TSeries;
     typedef itk::VectorImage<TPixel, 3> TVector;
     typedef itk::ImageToVectorFilter<TSeries> TToVector;
@@ -27,14 +27,15 @@ auto ReadVectorImage(const std::string &path) -> typename itk::VectorImage<TPixe
     auto img = ReadImage<TSeries>(path);
     auto convert = TToVector::New();
     convert->SetInput(img);
+    QI_LOG( verbose, "Reading image: " << path );
     convert->Update();
     typename TVector::Pointer vols = convert->GetOutput();
     vols->DisconnectPipeline();
     return vols;
 }
 
-template auto ReadVectorImage<float>(const std::string &path) -> typename itk::VectorImage<float, 3>::Pointer;
-template auto ReadVectorImage<std::complex<float>>(const std::string &path) -> typename itk::VectorImage<std::complex<float>, 3>::Pointer;
+template auto ReadVectorImage<float>(const std::string &path, const bool verbose) -> typename itk::VectorImage<float, 3>::Pointer;
+template auto ReadVectorImage<std::complex<float>>(const std::string &path, const bool verbose) -> typename itk::VectorImage<std::complex<float>, 3>::Pointer;
 
 } // End namespace QUIT
 

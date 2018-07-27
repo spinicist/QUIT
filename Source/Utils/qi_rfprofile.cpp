@@ -10,7 +10,7 @@
  */
 
 #include <iostream>
-#include "Eigen/Dense"
+#include "Eigen/Core"
 #include <unsupported/Eigen/Splines>
 
 #include "itkImageSource.h"
@@ -164,7 +164,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> dimension(parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 2);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
     QI_LOG(verbose, "Reading image " << QI::CheckPos(b1plus_path));
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 

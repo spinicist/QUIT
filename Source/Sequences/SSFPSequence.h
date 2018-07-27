@@ -25,14 +25,12 @@ struct SSFPBase : SequenceBase {
 
 struct SSFPSequence : SSFPBase {
     Eigen::ArrayXd PhaseInc;
-
     QI_SEQUENCE_DECLARE(SSFP);
     Eigen::ArrayXd weights(const double f0) const override;
 };
 
 struct SSFPEchoSequence : SSFPSequence {
     QI_SEQUENCE_DECLARE(SSFPEcho);
-    Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &par) const override;
 };
 
 struct SSFPFiniteSequence : SSFPBase {
@@ -47,14 +45,8 @@ struct SSFPGSSequence : SSFPBase {
     QI_SEQUENCE_DECLARE(SSFPGS);
 };
 
-struct SSFPEllipseSequence : SSFPBase {
-    Eigen::ArrayXd PhaseInc;
-    QI_SEQUENCE_DECLARE(SSFPEllipse);
-    Eigen::Index size() const override;
-};
-
 struct SSFPMTSequence : SequenceBase {
-    Eigen::ArrayXd FA, TR, Trf, intB1, PhaseInc;
+    Eigen::ArrayXd FA, TR, Trf, intB1;
     QI_SEQUENCE_DECLARE(SSFPMT);
     Eigen::Index size() const override;
 };

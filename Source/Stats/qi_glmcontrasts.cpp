@@ -21,46 +21,83 @@
 #include "itkDivideImageFilter.h"
 #include "MeanImageFilter.h"
 
-#include "ApplyTypes.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
 
-class ContrastsAlgorithm : public QI::ApplyF::Algorithm {
-protected:
-    Eigen::MatrixXd m_mat;
-    bool m_scale;
+class ContrastsFilter : public itk::ImageToImageFilter<QI::VectorVolumeF, QI::VolumeF> {
 public:
-    ContrastsAlgorithm(const Eigen::MatrixXd &d, const Eigen::MatrixXd &c, const bool s = false) :
-        m_scale(s)
-    {
-        m_mat = c * ((d.transpose() * d).inverse()) * d.transpose();
+    /** Standard class typedefs. */
+    typedef ContrastsFilter                    Self;
+    typedef ImageToImageFilter<QI::VectorVolumeF, QI::VolumeF> Superclass;
+    typedef itk::SmartPointer<Self>            Pointer;
+    typedef typename QI::VolumeF::RegionType   RegionType;
+    
+    itkNewMacro(Self);
+    itkTypeMacro(Self, Superclass);
+
+    void GenerateOutputInformation() ITK_OVERRIDE {
+        Superclass::GenerateOutputInformation();
+        auto input     = this->GetInput(0);
+        auto region    = input->GetLargestPossibleRegion();
+        auto spacing   = input->GetSpacing();
+        auto origin    = input->GetOrigin();
+        auto direction = input->GetDirection();
+        for (int i = 0; i < m_mat.rows(); i++) {
+            auto op = this->GetOutput(i);
+            op->SetRegions(region);
+            op->SetSpacing(spacing);
+            op->SetOrigin(origin);
+            op->SetDirection(direction);
+            op->Allocate(true);
+        }
     }
 
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return m_mat.rows(); }
-    size_t dataSize() const override { return m_mat.cols(); }
-    float zero() const override { return 0.f; }
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def;
-        return def;
-    }
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst & /* Unused */,
-               TInput & /* Unused */, TIterations & /* Unused */) const override
+    void SetMatrix(const Eigen::MatrixXd &d, const Eigen::MatrixXd &c, const bool s = false)
     {
-        Eigen::Map<const Eigen::VectorXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::VectorXd c = m_mat * indata.cast<double>();
-        if (m_scale) {
-            c /= indata.mean();
-        }
-        for (int i = 0; i < m_mat.rows(); i++) {
-            outputs[i] = c[i];
-        }
-        return std::make_tuple(true, "");
+        m_scale = s;
+        m_mat = c * ((d.transpose() * d).inverse()) * d.transpose();
+        this->SetNumberOfRequiredOutputs(m_mat.rows());
     }
+
+protected:
+    bool m_scale = false;
+    Eigen::MatrixXd m_mat;
+
+    ContrastsFilter() {
+        this->SetNumberOfRequiredInputs(1);
+    }
+    ~ContrastsFilter() {}
+
+    void DynamicThreadedGenerateData(const RegionType &region) ITK_OVERRIDE {
+        const auto input_image = this->GetInput(0);
+        itk::ImageRegionConstIterator<QI::VectorVolumeF> input_iter(input_image, region);
+        input_iter.GoToBegin();
+        std::vector<itk::ImageRegionIterator<QI::VolumeF>> out_iters(m_mat.rows());
+        for (int i = 0; i < m_mat.rows(); i++) {
+            out_iters.at(i) = itk::ImageRegionIterator<QI::VolumeF>(this->GetOutput(i), region);
+            out_iters.at(i).GoToBegin();
+        }
+        
+        while(!input_iter.IsAtEnd()) {
+            const auto input_vec = input_iter.Get();
+
+            Eigen::Map<const Eigen::VectorXf> indata(input_vec.GetDataPointer(), input_vec.Size());
+            Eigen::VectorXd c = m_mat * indata.cast<double>();
+            if (m_scale) {
+                c /= indata.mean();
+            }
+            for (int i = 0; i < m_mat.rows(); i++) {
+                out_iters[i].Set(c[i]);
+                ++out_iters[i];
+            }
+            ++input_iter;
+        }
+    }
+
+private:
+    ContrastsFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 };
 
 /*
@@ -77,7 +114,6 @@ int main(int argc, char **argv) {
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag fraction(parser, "FRACTION", "Output contrasts as fraction of grand mean", {'F',"frac"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
@@ -96,16 +132,14 @@ int main(int argc, char **argv) {
                 ") does not match contrasts (" << contrasts.cols() << ")");
     }
 
-    auto con_algo = std::make_shared<ContrastsAlgorithm>(design_matrix, contrasts, fraction);
-    auto apply = QI::ApplyF::New();
-    apply->SetAlgorithm(con_algo);
-    apply->SetInput(0, merged);
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
+    auto con_filter = ContrastsFilter::New();
+    con_filter->SetMatrix(design_matrix, contrasts, fraction);
+    con_filter->SetInput(0, merged);
     QI_LOG(verbose, "Calculating contrasts" );
-    apply->Update();
+    con_filter->Update();
     for (int c = 0; c < contrasts.rows(); c++) {
         QI_LOG(verbose, "Writing contrast " << (c + 1));
-        QI::WriteImage(apply->GetOutput(c), outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt());
+        QI::WriteImage(con_filter->GetOutput(c), outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt());
     }
 }
 

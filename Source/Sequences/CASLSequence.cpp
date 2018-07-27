@@ -29,8 +29,4 @@ rapidjson::Value CASLSequence::toJSON(rapidjson::Document::AllocatorType &a) con
     return json;
 }
 
-Eigen::ArrayXcd CASLSequence::signal(const std::shared_ptr<QI::Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
-    QI_FAIL("Not Implemented");
-}
-
 } // End namespace QI

@@ -13,20 +13,10 @@
 #define QI_BANDING_H
 
 #include <complex>
-#include "Eigen/Dense"
-
-#include "Macro.h"
-#include "ApplyTypes.h"
-#include "Util.h"
+#include "Eigen/Core"
+#include "itkVariableLengthVector.h"
 
 namespace QI {
-
-/*
- * Helper Functions
- */
-template<typename T> inline T cdot(const std::complex<T> &a, const std::complex<T> &b) {
-    return real(a)*real(b) + imag(a)*imag(b);
-}
 
 template<typename Derived>
 void SplitBlocks(const Eigen::ArrayBase<Derived> &full, Eigen::ArrayBase<Derived> &a, Eigen::ArrayBase<Derived> &b, const bool reorder) {
@@ -44,67 +34,42 @@ void SplitBlocks(const Eigen::ArrayBase<Derived> &full, Eigen::ArrayBase<Derived
 enum class RegEnum { None = 0, Line, Magnitude };
 std::complex<float> GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::ArrayXcd &b, RegEnum r);
 
-class BandAlgo : public ApplyVectorXF::Algorithm {
-protected:
+struct BandFunctor {
     size_t m_flips, m_lines, m_crossings, m_phases = 4;
     bool m_phaseFirst = false, m_reorderBlock = false;
-    TOutput m_zero;
-public:
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return 1; }
-    size_t dataSize() const override { return m_flips * m_phases; }
-    size_t outputSize() const override { return m_flips; }
-    void setPhases(const size_t p);
-    void setInputSize(const size_t s);
-    void setReorderPhase(const bool p) { m_phaseFirst = p; }
-    void setReorderBlock(const bool b) { m_reorderBlock = b; }
-    std::vector<float> defaultConsts() const override;
-    TOutput zero() const override;
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIterations &its) const override;
+
+    BandFunctor() = default;
+    BandFunctor(const int isz, const int p, const bool rp, const bool rb);
+
+    bool operator!=(const BandFunctor &) const { return true; }
+    bool operator==(const BandFunctor &other) const { return !(*this != other); }
+    itk::VariableLengthVector<std::complex<float>> operator()(const itk::VariableLengthVector<std::complex<float>> &vec) const;
     virtual std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const = 0;
 };
 
-class CSAlgo : public BandAlgo {
-public:
-    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override {
-        return vf.mean();
-    }
+struct CSFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
 };
 
-class MagMeanAlgo : public BandAlgo {
-public:
-    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override {
-        return vf.abs().mean();
-    }
+struct MagMeanFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
 };
 
-class RMSAlgo : public BandAlgo {
-public:
-    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override {
-        float sum = vf.abs().square().sum();
-        return std::complex<float>(sqrt(sum / vf.rows()), 0.);
-    }
+struct RMSFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
 };
 
-class MaxAlgo : public BandAlgo {
-public:
-    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override {
-        std::complex<float> max = std::numeric_limits<std::complex<float>>::lowest();
-        for (int i = 0; i < vf.rows(); i++) {
-            if (std::abs(vf[i]) > std::abs(max)) max = vf[i];
-        }
-        return max;
-    }
+struct MaxFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
 };
 
-class GSAlgo : public BandAlgo {
-protected:
+struct GSFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
     RegEnum m_Regularise = RegEnum::Line;
-public:
     const RegEnum &regularise()       { return m_Regularise; }
     void setRegularise(const RegEnum &r) { m_Regularise = r;}
     std::complex<float> applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;

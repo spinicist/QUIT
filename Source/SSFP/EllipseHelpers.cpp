@@ -41,14 +41,6 @@ Eigen::ArrayXd Unwrap(const Eigen::ArrayXd &x) {
 }
 
 
-void SemiaxesToHoff(const double A, const double B, const double c,
-                    double &G, double &a, double &b) {
-    b = (-c*A + sqrt(c*c*A*A - (c*c + B*B)*(A*A - B*B)))/(c*c + B*B);
-    a = B / (b*B + c*sqrt(1-b*b));
-    G = c*(1 - b*b)/(1 - a*b);
-}
-
-
 void EllipseToMRI(const double a, const double b, const double c, const double th, const double TR, const double flip,
                   float &M0, float &T1, float &T2, float &df0, const bool debug) {
     const double cosf = cos(flip);

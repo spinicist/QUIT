@@ -17,18 +17,18 @@ using namespace std::string_literals;
 namespace QI {
 namespace Lineshapes {
 
-std::shared_ptr<Lineshape> LineshapeFromJSON(rapidjson::Value &json) {
+Lineshape *LineshapeFromJSON(rapidjson::Value &json) {
     rapidjson::Value::MemberIterator ls = json.MemberBegin();
-    if (ls->name.GetString() == "Gaussian"s) { return std::make_shared<Gaussian>(ls->value); }
-    else if (ls->name.GetString() == "Splineshape"s) { return std::make_shared<Splineshape>(ls->value); }
+    if (ls->name.GetString() == "Gaussian"s) { return new Gaussian(ls->value); }
+    else if (ls->name.GetString() == "Splineshape"s) { return new Splineshape(ls->value); }
     else {
         QI_FAIL("Unknown lineshape: " << ls->name.GetString());
     }
 }
 
-Eigen::ArrayXd Gaussian::value(const Eigen::ArrayXd &df0, const double T2b) const {
-    return sqrt(M_PI_2) * T2b * exp(-pow(2.0*M_PI*df0*T2b,2.0)/2.0);
-}
+// Eigen::ArrayXd Gaussian::value(const Eigen::ArrayXd &df0, const double T2b) const {
+//     return sqrt(M_PI_2) * T2b * exp(-pow(2.0*M_PI*df0*T2b,2.0)/2.0);
+// }
 
 rapidjson::Value Gaussian::toJSON(rapidjson::Document::AllocatorType &/* Unused */) const {
     rapidjson::Value value(rapidjson::kObjectType);
@@ -46,11 +46,11 @@ Splineshape::Splineshape(const Eigen::ArrayXd &f0, const Eigen::ArrayXd &vals, c
     this->m_spline = SplineInterpolator(f0, vals);
 }
 
-Eigen::ArrayXd Splineshape::value(const Eigen::ArrayXd &f, const double T2b) const {
-    auto scale = T2b / T2b_nominal;
-    auto sf = f * scale;
-    return m_spline(sf) * scale;
-}
+// Eigen::ArrayXd Splineshape::value(const Eigen::ArrayXd &f, const double T2b) const {
+//     auto scale = T2b / T2b_nominal;
+//     auto sf = f * scale;
+//     return m_spline(sf) * scale;
+// }
 
 rapidjson::Value Splineshape::toJSON(rapidjson::Document::AllocatorType &a) const {
     rapidjson::Value value(rapidjson::kObjectType);

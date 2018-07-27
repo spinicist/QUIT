@@ -12,77 +12,64 @@
 #include <iostream>
 #include <Eigen/Dense>
 
-#include "itkDerivativeImageFilter.h"
+#include "Model.h"
+#include "FitFunction.h"
+#include "ModelFitFilter.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
-#include "ApplyTypes.h"
 #include "MultiEchoSequence.h"
 
-class ASEAlgo : public QI::ApplyF::Algorithm {
-protected:
-    const QI::MultiEchoFlexSequence m_sequence;
-    const int m_inputsize;
-    const double m_B0;
-    double m_Tc;
-    const QI::VolumeF::SpacingType m_voxsize;
-    Eigen::ArrayXd m_TE; // Local copy excluding values below Tc
-    Eigen::Index m_TE0;
+using namespace std::literals;
+
+using ASEModel = QI::Model<4, 3, QI::MultiEchoFlexSequence>;
+template<> std::array<const std::string, 4> ASEModel::varying_names{{"R2prime"s, "DBV"s, "OEF"s, "dHb"s}};
+template<> std::array<const std::string, 3> ASEModel::fixed_names{{"grad_x"s, "grad_y"s, "grad_z"s}};
+template<> const QI_ARRAYN(double, 3) ASEModel::fixed_defaults{0.0, 0.0, 0.0};
+
+using ASEFit = QI::FitFunction<ASEModel>;
+
+struct ASELLS : ASEFit {
+    const double B0;
+    const QI::VolumeF::SpacingType voxsize;
+    Eigen::ArrayXd TE_above_Tc;
+    Eigen::ArrayXi TE_indices, TE0_indices;
     // Constants for calculations
     const double kappa = 0.03; // Conversion factor
     const double gamma = 42.577e6; // Gyromagnetic Ratio
     const double delta_X0 = 0.264e-6; // Difference in susceptibility of oxy and fully de-oxy blood
     const double Hb = 0.34 / kappa; // Hct = 0.34;
 
-public:
-    ASEAlgo(const QI::MultiEchoFlexSequence &seq, const int inputsize, const double B0, const QI::VolumeF::SpacingType voxsize) :
-        m_sequence(seq), m_inputsize(inputsize), m_B0(B0), m_voxsize(voxsize)
+    ASELLS(QI::MultiEchoFlexSequence *seq, const double B0, const QI::VolumeF::SpacingType voxsize) :
+        ASEFit(seq), B0(B0), voxsize(voxsize)
     {
         // Nic Blockley uses Tc = 15 ms for 3T, scale for other field-strengths
-        m_Tc = 0.015 / (B0 / 3);
-        const int above_Tc_count = (m_sequence.TE.abs() > m_Tc).count();
-        m_TE = Eigen::ArrayXd(above_Tc_count);
-        Eigen::Index ind = 0;
-        m_TE0 = m_sequence.size();
-        for (Eigen::Index i = 0; i < m_sequence.size(); i++) {
-            if (m_sequence.TE[i] == 0) {
-                m_TE0 = i;
-            }
-            if (std::abs(m_sequence.TE[i]) > m_Tc) {
-                m_TE[ind] = std::abs(m_sequence.TE[i]);
-                ind++;
-            }
-        }
-        if (m_TE0 == m_sequence.size()) {
+        const int Tc = 0.015 / (B0 / 3);
+        const int above_Tc_count = (seq->TE.abs() > Tc).count();
+        const int zero_count = (seq->TE.abs() == 0.0).count();
+        if (zero_count == 0) {
             QI_FAIL("Did not find a zero echo-time in input");
         }
-        // QI_DB( B0 );
-        // QI_DB( m_Tc );
-        // QI_DB( m_TE0 );
-        // QI_DB( above_Tc_count );
-        // QI_DBVEC( m_sequence.TE );
-        // QI_DBVEC( m_TE );
+        if (above_Tc_count == 0) {
+            QI_FAIL("No echo-times above critical value");
+        }
+        TE_above_Tc = Eigen::ArrayXd(above_Tc_count);
+        TE_indices = Eigen::ArrayXi(above_Tc_count);
+        TE0_indices = Eigen::ArrayXi(zero_count);
+        int zero_index = 0, index = 0;
+        for (Eigen::Index i = 0; i < seq->size(); i++) {
+            if (seq->TE(i) == 0.0) {
+                TE0_indices(zero_index) = i;
+                zero_index++;
+            }
+            if (std::abs(seq->TE(i)) > Tc) {
+                TE_indices(index) = i;
+                TE_above_Tc(index) = std::abs(seq->TE(i));
+                index++;
+            }
+        }
     }
 
-    size_t numInputs() const override  { return 1; }
-    size_t numConsts() const override  { return 3; }
-    size_t numOutputs() const override { return 4; }
-    size_t dataSize() const override   { return m_inputsize; }
-    size_t outputSize() const override { return 1; }
-    TOutput zero() const override {
-        TOutput z{0};
-        return z;
-    }
-
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def(3, 0.0); // No field gradients
-        return def;
-    }
-
-    const std::vector<std::string> &names() const {
-        static std::vector<std::string> _names = {"R2prime", "DBV", "OEF", "dHb"};
-        return _names;
-    }
 
     double sinc(const double x) const {
         static double const taylor_0_bound = std::numeric_limits<double>::epsilon();
@@ -108,47 +95,43 @@ public:
             return result;
         }
     }
-    
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex & /* Unused */,
-               std::vector<TOutput> &outputs, TOutput &residual,
-               TInput &resids, TIterations &its) const override
+
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, ASEModel::NV) &outputs,
+                          ResidualType &/*Unused*/, std::vector<Eigen::ArrayXd> &/*Unused*/, FlagType &/*Unused*/) const override
     {
-        const Eigen::Map<const Eigen::ArrayXXf> input(inputs[0].GetDataPointer(), m_sequence.size(), inputs[0].Size() / m_sequence.size());
-        Eigen::ArrayXd all_data = input.cast<double>().rowwise().mean();
-        Eigen::ArrayXd data(m_TE.rows());
-        Eigen::Index ind = 0;
-        for (Eigen::Index i = 0; i < all_data.rows(); i++) {
-            if (std::abs(m_sequence.TE[i]) > m_Tc) {
-                double F = 1.0;
-                for (auto d = 0; d < 3; d++) {
-                    const double grad = consts[d];
-                    const double x = grad * 2 * M_PI * m_voxsize[d] * m_sequence.TE[i] / 2;
-                    F *= std::abs(sinc(x));
-                }
-                data[ind] = all_data[i] / F;
-                ind++;
+        const Eigen::ArrayXd &all_data = inputs[0];
+        Eigen::ArrayXd data = Eigen::ArrayXd(TE_indices.rows());
+        for (Eigen::Index i = 0; i < TE_indices.rows(); i++) {
+            double F = 1.0;
+            for (auto d = 0; d < 3; d++) {
+                const double grad = fixed[d];
+                const double x = grad * 2 * M_PI * voxsize[d] * sequence->TE[TE_indices[i]] / 2;
+                F *= std::abs(sinc(x));
             }
+            data[i] = all_data[TE_indices[i]] / F;
         }
 
-        Eigen::MatrixXd X(m_TE.rows(), 2);
-        X.col(0) = m_TE;
+        Eigen::MatrixXd X(TE_above_Tc.rows(), 2);
+        X.col(0) = TE_above_Tc;
         X.col(1).setOnes();
         Eigen::VectorXd Y = data.log();
         Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        double sumTE0 = 0;
+        for (int i = 0; i < TE0_indices.rows(); i++) {
+            sumTE0 += data(TE0_indices[i]);
+        }
+        const double logTE0 = log(sumTE0 / TE0_indices.rows());
         const double R2prime = -b[0];
         const double logS0_linear = b[1];
-        const double DBV = logS0_linear - log(data[m_TE0]);
-        const double dHb = 3*R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * m_B0);
+        const double DBV = logS0_linear - logTE0;
+        const double dHb = 3*R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * B0);
         const double OEF = dHb / Hb;
 
         outputs[0] = R2prime;
         outputs[1] = DBV*100;
         outputs[2] = OEF*100;
         outputs[3] = dHb;
-        residual = 0;
-        resids.Fill(0.);
-        its = 0;
         return std::make_tuple(true, "");
     }
 };
@@ -181,32 +164,32 @@ int main(int argc, char **argv) {
     if (slice_arg) {
         vox_size[2]  = slice_arg.Get();
     }
-    std::shared_ptr<ASEAlgo> algo = std::make_shared<ASEAlgo>(sequence, input->GetNumberOfComponentsPerPixel(), B0.Get(), vox_size);
-    auto apply = QI::ApplyF::New();
-    apply->SetVerbose(verbose);
-    apply->SetAlgorithm(algo);
-    apply->SetOutputAllResiduals(false);
+    ASELLS fit(&sequence, B0.Get(), vox_size);
+    auto fit_filter = itk::ModelFitFilter<ASEFit>::New();
+    fit_filter->SetVerbose(verbose);
+    fit_filter->SetFitFunction(&fit);
+    fit_filter->SetOutputAllResiduals(false);
     QI_LOG(verbose, "Using " << threads.Get() << " threads" );
-    apply->SetInput(0, input);
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (gradx) apply->SetConst(0, QI::ReadImage(gradx.Get()));
-    if (grady) apply->SetConst(1, QI::ReadImage(grady.Get()));
-    if (gradz) apply->SetConst(2, QI::ReadImage(gradz.Get()));
+    fit_filter->SetInput(0, input);
+    if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get()));
+    if (gradx) fit_filter->SetFixed(0, QI::ReadImage(gradx.Get()));
+    if (grady) fit_filter->SetFixed(1, QI::ReadImage(grady.Get()));
+    if (gradz) fit_filter->SetFixed(2, QI::ReadImage(gradz.Get()));
     if (subregion) {
-        apply->SetSubregion(QI::RegionArg(args::get(subregion)));
+        fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
     }
     QI_LOG(verbose, "Processing");
     if (verbose) {
         auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
+        fit_filter->AddObserver(itk::ProgressEvent(), monitor);
     }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s");
+    fit_filter->Update();
+    QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s");
     
-    for (size_t i = 0; i < algo->numOutputs(); i++) {
-        const std::string fname = outPrefix + "_" + algo->names()[i] + QI::OutExt();
+    for (size_t i = 0; i < ASEModel::NV; i++) {
+        const std::string fname = outPrefix + "_" + ASEModel::varying_names[i] + QI::OutExt();
         QI_LOG(verbose, "Writing file: " << fname);
-        QI::WriteImage(apply->GetOutput(i), fname);
+        QI::WriteImage(fit_filter->GetOutput(i), fname);
     }
     return EXIT_SUCCESS;
 }

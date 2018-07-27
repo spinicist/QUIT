@@ -173,55 +173,66 @@ int main(int argc, char **argv) {
     
     QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inFile = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
-    size_t nVols = inFile->GetNumberOfComponentsPerPixel() / ph_incs.Get();
+    const size_t nVols = inFile->GetNumberOfComponentsPerPixel();
     QI_LOG(verbose, "Number of phase increments is " << ph_incs.Get() <<
-                    "Number of volumes to process is " << nVols );
-
-    std::shared_ptr<QI::BandAlgo> algo = nullptr;
+                    "\nNumber of volumes to process is " << nVols );
+    QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
     std::string suffix = "";
     if (method.Get() == "G") {
         suffix = "GS";
         QI_LOG(verbose, "Geometric solution selected" );
-        auto g = std::make_shared<QI::GSAlgo>();
-        g->setInputSize(inFile->GetNumberOfComponentsPerPixel());
+        QI::GSFunctor gs(nVols, ph_incs.Get(), ph_order, alt_order);
         if (regularise.Get() == "L") {
-            suffix += "L"; g->setRegularise(QI::RegEnum::Line);
+            suffix += "L"; gs.setRegularise(QI::RegEnum::Line);
         } else if (regularise.Get() == "M") {
-            suffix += "M"; g->setRegularise(QI::RegEnum::Magnitude);
+            suffix += "M"; gs.setRegularise(QI::RegEnum::Magnitude);
         } else if (regularise.Get() == "N") {
-            g->setRegularise(QI::RegEnum::None);
+            gs.setRegularise(QI::RegEnum::None);
         } else {
             QI_FAIL("Invalid regularisation " << regularise.Get() << " selected.");
         }
-        algo = g;
+        QI_LOG(verbose, suffix << " method selected." );
+        auto pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::GSFunctor>::New();
+        pass1->SetFunctor(gs);
+        pass1->SetInput(inFile);
+        pass1->Update();
+        output = pass1->GetOutput();
     } else if (method.Get() == "X") {
-        suffix = "CS"; algo = std::make_shared<QI::CSAlgo>();
+        suffix = "CS";
+        QI::CSFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
+        auto pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::CSFunctor>::New();
+        pass1->SetFunctor(functor);
+        pass1->SetInput(inFile);
+        pass1->Update();
+        output = pass1->GetOutput();
     } else if (method.Get() == "R") {
-        suffix = "RMS"; algo = std::make_shared<QI::RMSAlgo>();
+        suffix = "RMS";
+        QI::RMSFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
+        auto pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::RMSFunctor>::New();
+        pass1->SetFunctor(functor);
+        pass1->SetInput(inFile);
+        pass1->Update();
+        output = pass1->GetOutput();
     } else if (method.Get() == "N") {
-        suffix = "MagMean"; algo = std::make_shared<QI::MagMeanAlgo>();
+        suffix = "MagMean";
+        QI::MagMeanFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
+        auto pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::MagMeanFunctor>::New();
+        pass1->SetFunctor(functor);
+        pass1->SetInput(inFile);
+        pass1->Update();
+        output = pass1->GetOutput();
     } else if (method.Get() == "M") {
-        suffix = "Max"; algo = std::make_shared<QI::MaxAlgo>();
+        suffix = "Max";
+        QI::MaxFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
+        auto pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::MaxFunctor>::New();
+        pass1->SetFunctor(functor);
+        pass1->SetInput(inFile);
+        pass1->Update();
+        output = pass1->GetOutput();
     } else {
         QI_FAIL("Invalid method " << method.Get() << " selected.");
     }
-    QI_LOG(verbose, suffix << " method selected." );
-    algo->setPhases(ph_incs.Get());
-    algo->setInputSize(inFile->GetNumberOfComponentsPerPixel());
-    algo->setReorderPhase(ph_order);
-    algo->setReorderBlock(alt_order);
-    auto pass1 = QI::ApplyVectorXF::New();
-    pass1->SetAlgorithm(algo);
-    if (mask) pass1->SetMask(QI::ReadImage(mask.Get()));
-    pass1->SetInput(0, inFile);
-    pass1->SetVerbose(verbose);
-    QI_LOG(verbose, "1st pass");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        pass1->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    pass1->Update();
-    QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
+
     if (two_pass) {
         suffix += "2";
         auto pass2 = itk::MinEnergyFilter::New();
@@ -229,7 +240,7 @@ int main(int argc, char **argv) {
         pass2->setReorderBlock(alt_order);
         pass2->setReorderPhase(ph_order);
         pass2->SetInput(inFile);
-        pass2->SetPass1(pass1->GetOutput(0));
+        pass2->SetPass1(output);
         if (mask) pass2->SetMask(QI::ReadImage(mask.Get()));
         QI_LOG(verbose, "2nd pass");
         if (verbose) {
@@ -238,8 +249,6 @@ int main(int argc, char **argv) {
         }
         pass2->Update();
         output = pass2->GetOutput();
-    } else {
-        output = pass1->GetOutput(0);
     }
     std::string prefix = (out_arg ? out_arg.Get() : QI::StripExt(input_path.Get()));
     std::string outname = prefix + "_" + suffix + QI::OutExt();

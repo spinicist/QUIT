@@ -13,7 +13,7 @@
 #define QI_ELLIPSE_HELPERS_H
 
 #include <complex>
-#include "Eigen/Dense"
+#include "Eigen/Core"
 
 #include "Macro.h"
 #include "ApplyTypes.h"
@@ -51,20 +51,7 @@ Eigen::Array<T, Eigen::Dynamic, 1> EllipseToSignal(const T &G, const T &a, const
     return result;
 }
 
-/*
- * Calculate the parameters G, a & b for SSFP Ellipse
- */
-template<typename T>
-Eigen::Array<T, 3, 1> EllipseGab(const T &T1, const T &T2, const T &TR, const T &alpha) {
-    const T E1 = exp(-TR/T1);
-    const T E2 = exp(-TR/T2);
-    const T d = (1 - E1*cos(alpha) - (E2*E2)*(E1 - cos(alpha)));
-    const T G = sin(alpha)*(1 - E1)/d;
-    const T a = E2;
-    const T b = E2*(1 - E1)*(1 + cos(alpha)) / d;
-    Eigen::Array<T, 3, 1> ret; ret << G, a, b;
-    return ret;
-}
+
 
 } // End namespace QI
 

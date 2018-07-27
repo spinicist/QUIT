@@ -4,8 +4,8 @@ Below are a few introductory notes for anyone who wants to compile QUIT from sou
 
 ## Basic Requirements
 
-1. A C++11 compliant compiler (GCC 4.8.0+, Clang 3.1+)
-2. CMake version 3.2 or higher (http://www.cmake.org)
+1. A C++17 compliant compiler (GCC 7.0.0+, Clang 3.9+)
+2. CMake version 3.10.2 or higher (http://www.cmake.org)
 
 WARNING - You will require a recent compiler for DESPOT as it uses C++11 features. GCC 4.8.0 is a MINIMUM as earlier versions do not support C++11 threads - however you will not be able to build the `Stats` module without GCC 5.0.0 or later. Clang 3.1 will also work. You can find out the version of your system gcc by running `gcc -v`.
 
@@ -74,12 +74,10 @@ QUIT programs are tested using the Bash Automated Test System [(BATS)](http://gi
 
 Most QUIT programs are tested by generating ground-truth parameter files with `qinewimage`, feeding these into `qisignal` to generate simulated MR images with added noise, and then running the particular QUIT program to calculate some parameter maps, then comparing these to the ground-truth with `qidiff`. `qidiff` calculates figure-of-merit based on noise factors, i.e. they are a measure of how much the signal noise is amplified in the final maps. In this way the tests also serve to illustrate the quality of the methods as well as whether the programs run correctly. For programs where a ground-truth image cannot be generated easily, the tests at least ensure that the program runs and does not crash.
 
-## The ApplyAlgorithmFilter
+## The ModelFitFilter
 
-The core part of QUIT is the `ApplyAlgorithmFilter` and its child-class `Algorithm`, found in `/Source/Filters/`. This is a sub-class of the ITK `ImageToImageFilter`. The vast majority of QUIT programs declare an `Algorithm` sub-class and use this to process the data. `ApplyAlgorithmFilter` abstracts out most of the heavy lifting of extracting voxel-wise data from multiple inputs and writing it out to multiple outputs, leaving the `Algorithm` to process a single-voxel.
-
-An `Algorithm` defines the number of expected inputs and their size, the number of 'constants' or fixed-parameters, and the number of outputs. It would be preferable if `Algorithm` also defined the types of these, and then `Algorithm` was passed as a template-type to `ApplyAlgorithmFilter`, e.g. `ApplyAlgorithmFilter<DESPOT1Algorithm>`. However, due to an `itk::Image<itk::VariableLengthVector, 3>` being different to an `itk::VectorImage<float, 3>` this is not possible. Instead, `ApplyAlgorithmFilter` takes the input and output types as template parameters, and defines a child-class that has these types available to it. It is these child-classes that developers should sub-class. Several are predefined in the `ApplyTypes.h` file.
+The core part of QUIT is the `ModelFitFilter` and its dependent type `FitFunction`, found in `/Source/Core/`. This is a sub-class of the ITK `ImageToImageFilter`. The vast majority of QUIT programs declare an `Algorithm` sub-class and use this to process the data. `ModelFitFilter` abstracts out most of the heavy lifting of extracting voxel-wise data from multiple inputs and writing it out to multiple outputs, leaving the `FitFunction` to process a single-voxel. A `FitFunction` defines the number of expected inputs and their size, the number of fixed parameters, and the number of outputs.
 
 ## Example: qidespot1
 
-The structure of `qidespot1` is similar to most QUIT programs, and is a good example of most features. At the start are the includes (obviously). After that several `Algorithm` subclasses are defined, as well as a Ceres cost-function. The Ceres documentation is excellent, so refer to that for more information. After all the `Algorithm` classes are defined, the main program body begins. At the start of the program, all the command-line options are defined and then parsed. Then the various inputs are read and passed to the `ApplyAlgorithmFilter`, which is then updated. Finally, the outputs are written back to disk.
+The structure of `qidespot1` is similar to most QUIT programs, and is a good example of most features. At the start are the includes (obviously). After that several `FitFunction` subclasses are defined, as well as a Ceres cost-function. The Ceres documentation is excellent, so refer to that for more information. After all the `FitFunction` classes are defined, the main program body begins. At the start of the program, all the command-line options are defined and then parsed. Then the various inputs are read and passed to the `ModelFitFilter`, which is then updated. Finally, the outputs are written back to disk.

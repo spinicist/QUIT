@@ -18,8 +18,10 @@
 namespace QI {
 
 typedef itk::Image<unsigned char, 3> VolumeUC;
-typedef itk::Image<int, 3> VolumeI;
 typedef itk::Image<unsigned int, 3> VolumeUI;
+typedef itk::Image<int, 3> VolumeI;
+typedef itk::Image<int, 4> SeriesI;
+typedef itk::VectorImage<int, 3> VectorVolumeI;
 
 typedef itk::Image<float, 3> VolumeF;
 typedef itk::Image<float, 4> SeriesF;

@@ -24,7 +24,6 @@ real volumes followed by all complex volumes. The number of coils/volumes in the
 two files must match.
 
 Options:
-    -c      Specify number of coils
     -m      Output magnitude/phase instead of complex final file
     -o      Specify output prefix (otherwise use input basename)
     -t      Keep temporary files
@@ -36,10 +35,8 @@ OUTPUT_MAG=""
 VERBOSE=""
 EXT=".nii.gz"
 IMG_ROOT=""
-NCOILS=""
 while getopts "c:mo:tv" opt; do
     case $opt in
-        c) NCOILS="--coils=$OPTARG";;
         m) OUTPUT_MAG="1";;
         o) IMG_ROOT="$OPTARG";;
         t) KEEP_TEMP="1";;
@@ -92,10 +89,10 @@ antsApplyTransforms --dimensionality 3 --input-image-type 3 \
     --transform $TEMP/reg0GenericAffine.mat --float
 
 qicomplex --realimag $IMG -X $TEMP/${IMG_ROOT}_x${EXT}
-qicomplex --realimag $TEMP/${SER_ROOT}_resamp${EXT} -P $TEMP/${SER_ROOT}_ph${EXT}
+qicomplex --realimag $TEMP/${SER_ROOT}_resamp${EXT} -X $TEMP/${SER_ROOT}_x${EXT}
 
 log "Combining coil images"
-qi_coil_combine $TEMP/${IMG_ROOT}_x${EXT} --verbose $NCOILS --composer=$TEMP/${SER_ROOT}_ph${EXT} --out ${IMG_ROOT}
+qi_coil_combine $TEMP/${IMG_ROOT}_x${EXT} --verbose --composer=$TEMP/${SER_ROOT}_x${EXT} --out ${IMG_ROOT}
 if [ -n "$OUTPUT_MAG" ]; then
     log "Writing magnitude/phase output"
     qicomplex -x ${IMG_ROOT}_combined${EXT} -M ${IMG_ROOT}_combined_mag${EXT} -P ${IMG_ROOT}_combined_ph${EXT}

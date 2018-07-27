@@ -18,17 +18,17 @@
 namespace QI {
 
 struct SequenceGroup : SequenceBase {
-    std::vector<std::shared_ptr<SequenceBase>> sequences;
-    std::shared_ptr<SequenceBase> &operator[](const size_t i);
+    std::vector<const SequenceBase *> sequences;
+    const SequenceBase *at(const size_t i) const;
+    const SequenceBase *operator[](const size_t i) const;
 
     std::string &name() const override { static std::string name = "SequenceGroup"; return name; }
     size_t count() const override;
     Eigen::Index size() const override;
-    Eigen::ArrayXcd signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;
 
-    void addSequence(const std::shared_ptr<SequenceBase> &s);
-    SequenceGroup(rapidjson::Value &);
+    void addSequence(const SequenceBase *s);
+    SequenceGroup(const rapidjson::Value &);
     rapidjson::Value toJSON(rapidjson::Document::AllocatorType &) const override;
 };
 

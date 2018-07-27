@@ -10,90 +10,73 @@
  */
 
 #include <iostream>
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "ceres/ceres.h"
 
 #include "Util.h"
 #include "Args.h"
+#include "Model.h"
+#include "FitFunction.h"
+#include "ModelFitFilter.h"
+#include "SimulateModel.h"
+#include "MTSatSequence.h"
 #include "ImageIO.h"
-#include "IO.h"
-#include "ApplyTypes.h"
 #include "JSON.h"
-#include <rapidjson/reader.h>
 
-Eigen::ArrayXd Lorentzian(const double f0, const double fwhm, const double A, const Eigen::ArrayXd &f) {
-    Eigen::ArrayXd x = (f0 - f) / (fwhm/2);
-    Eigen::ArrayXd s = A / (1. + x.square());
+using namespace std::literals;
+
+using LorentzModel = QI::Model<4, 0, QI::MTSatSequence>;
+template<> std::array<const std::string, 4> LorentzModel::varying_names{{"PD"s, "f0"s, "fwhm"s, "A"s}};
+template<> std::array<const std::string, 0> LorentzModel::fixed_names{{}};
+template<> const QI_ARRAYN(double, 0) LorentzModel::fixed_defaults{};
+template<> template<typename Derived>
+auto LorentzModel::signal(const Eigen::ArrayBase<Derived> &v,
+                     const QI_ARRAYN(double, NF) &/* Unused */,
+                     const QI::MTSatSequence *seq) const -> QI_ARRAY(typename Derived::Scalar)
+{   
+    using T = typename Derived::Scalar;
+    const T &PD = v[0];
+    const T &f0 = v[1];
+    const T &fwhm = v[2];
+    const T &A = v[3];
+    const auto x = (f0 - seq->sat_f0) / (fwhm/2.0);
+    const auto L = A / (1.0 + x.square());
+    const auto s = PD * (1.0 - L);
     return s;
 }
 
-class ZCost {
-private:
-    Eigen::ArrayXd m_frqs, m_zspec;
-public:
-
-    ZCost(const Eigen::ArrayXd &f, const Eigen::ArrayXd &z) :
-          m_frqs(f), m_zspec(z)
-    {}
-
-    bool operator() (double const* const* p, double* resids) const {
-        const Eigen::ArrayXd L = Lorentzian(p[0][0], p[0][1], p[0][2], m_frqs);
-        const Eigen::ArrayXd invL = p[0][3] * (1. - L);
-        Eigen::Map<Eigen::ArrayXd> r(resids, m_frqs.size());
-        r = (invL - m_zspec);
-        return true;
-    }
-};
-
-class LorentzFit : public QI::ApplyF::Algorithm {
-protected:
-    Eigen::ArrayXd m_zfrqs;
-
-public:
-    LorentzFit(const Eigen::ArrayXd &zf) : m_zfrqs(zf) { }
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 0; }
-    size_t numOutputs() const override { return 4; }
-    size_t dataSize() const override { return m_zfrqs.rows(); }
-    size_t outputSize() const override { return 1; }
-    std::vector<float> defaultConsts() const override {
-        std::vector<float> def(0, 1.0f);
-        return def;
-    }
-    TOutput zero() const override { return 0; }
-    const std::vector<std::string> & names() const {
-        static std::vector<std::string> _names = {"f0", "w", "sat", "PD"};
-        return _names;
-    }
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TOutput &residual,
-               TInput & /* Unused */, TIterations & /* Unused */) const override
+struct LorentzFit : QI::FitFunction<LorentzModel> {
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, LorentzModel::NV) &p,
+                          ResidualType &residual, std::vector<Eigen::ArrayXd> &/* Unused */, FlagType &/* Unused */) const override
     {
-        const Eigen::Map<const Eigen::ArrayXf> z_spec(inputs[0].GetDataPointer(), m_zfrqs.size());
+        const double scale = inputs[0].maxCoeff();
+        const Eigen::ArrayXd &z_spec = inputs[0] / scale;
 
         // Find closest indices to -2/+2 PPM and only fit Lorentzian between them
-        Eigen::ArrayXf::Index indP2, indM2;
-        (m_zfrqs + 2.0).abs().minCoeff(&indM2);
-        (m_zfrqs - 2.0).abs().minCoeff(&indP2);
-        if (indM2 > indP2)
-            std::swap(indM2, indP2);
-        Eigen::ArrayXf::Index sz = indP2 - indM2;
-        const double scale = z_spec.segment(indM2,sz).maxCoeff();
-        auto *cost = new ceres::DynamicNumericDiffCostFunction<ZCost>(new ZCost(m_zfrqs.segment(indM2,sz).cast<double>(), z_spec.segment(indM2,sz).cast<double>() / scale));
-        cost->AddParameterBlock(4);
-        cost->SetNumResiduals(sz);
-        Eigen::Array4d p{0.0, 2.0, 0.9, 2.0};
+        // Eigen::ArrayXd::Index indP2, indM2;
+        // (m_zfrqs + 2.0).abs().minCoeff(&indM2);
+        // (m_zfrqs - 2.0).abs().minCoeff(&indP2);
+        // if (indM2 > indP2)
+        //     std::swap(indM2, indP2);
+        // Eigen::ArrayXd::Index sz = indP2 - indM2;
+        // const double scale = z_spec.segment(indM2,sz).maxCoeff();
+        using LCost    = QI::ModelCost<LorentzModel>;
+        using AutoCost = ceres::AutoDiffCostFunction<LCost, ceres::DYNAMIC, LorentzModel::NV>;
+        auto *cost = new LCost(model, sequence, fixed, z_spec);
+                            //   m_zfrqs.segment(indM2,sz).cast<double>(), z_spec.segment(indM2,sz).cast<double>() / scale);
+        auto *auto_cost = new AutoCost(cost, sequence->size());
+        p << 2.0, 0.0, 2.0, 0.9;
         ceres::Problem problem;
-        problem.AddResidualBlock(cost, NULL, p.data());
-        problem.SetParameterLowerBound(p.data(), 0, -2.0);
-        problem.SetParameterUpperBound(p.data(), 0, 2.0);
-        problem.SetParameterLowerBound(p.data(), 1, 0.001);
-        problem.SetParameterUpperBound(p.data(), 1, 100.0);
-        problem.SetParameterLowerBound(p.data(), 2, 0.1);
-        problem.SetParameterUpperBound(p.data(), 2, 1.0);
+        problem.AddResidualBlock(auto_cost, NULL, p.data());
+        problem.SetParameterLowerBound(p.data(), 0, 0.1);
+        problem.SetParameterUpperBound(p.data(), 0, 10.0);
+        problem.SetParameterLowerBound(p.data(), 1, -2.0);
+        problem.SetParameterUpperBound(p.data(), 1, 2.0);
+        problem.SetParameterLowerBound(p.data(), 2, 0.001);
+        problem.SetParameterUpperBound(p.data(), 2, 100.0);
         problem.SetParameterLowerBound(p.data(), 3, 0.1);
-        problem.SetParameterUpperBound(p.data(), 3, 10.0);
+        problem.SetParameterUpperBound(p.data(), 3, 1.0);
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
         options.max_num_iterations = 50;
@@ -101,10 +84,7 @@ public:
         options.gradient_tolerance = 1e-6;
         options.parameter_tolerance = 1e-4;
         ceres::Solve(options, &problem, &summary);
-        outputs.at(0) = p[0];
-        outputs.at(1) = p[1];
-        outputs.at(2) = p[2];
-        outputs.at(3) = p[3] * scale;
+        p[0] *= scale;
         residual = summary.final_cost;
         return std::make_tuple(true, "");
     }
@@ -121,35 +101,41 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
-    QI_LOG(verbose, "Opening file: " << QI::CheckPos(input_path));
-    auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
-
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    Eigen::ArrayXd z_frqs = QI::ArrayFromJSON(input["z_frqs"]);
-    std::shared_ptr<LorentzFit> algo = std::make_shared<LorentzFit>(z_frqs);
-    auto apply = QI::ApplyF::New();
-    apply->SetAlgorithm(algo);
-    apply->SetInput(0, data);
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (subregion) {
-        apply->SetSubregion(QI::RegionArg(subregion.Get()));
+    QI::CheckPos(input_path);
+    QI_LOG(verbose, "Reading sequence information");
+    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::MTSatSequence mtsat(QI::GetMember(input, "MTSAT"));
+    if (simulate) {
+        LorentzModel model;
+        QI::SimulateModel<LorentzModel, false>(input, model, {&mtsat}, {}, {input_path.Get()}, verbose, simulate.Get());
+    } else {
+        LorentzFit fit;
+        fit.sequence = &mtsat;
+        auto fit_filter = itk::ModelFitFilter<LorentzFit>::New();
+        fit_filter->SetVerbose(verbose);
+        fit_filter->SetFitFunction(&fit);
+        fit_filter->SetInput(0, QI::ReadVectorImage(input_path.Get(), verbose));
+        if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
+        if (subregion) fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        QI_LOG(verbose, "Processing");
+        if (verbose) {
+            auto monitor = QI::GenericMonitor::New();
+            fit_filter->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        fit_filter->Update();
+        QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s\n" <<
+                        "Writing results files.");
+        std::string outPrefix = outarg.Get() + "LTZ_";
+        for (int i = 0; i < LorentzModel::NV; i++) {
+            QI::WriteImage(fit_filter->GetOutput(i), outPrefix + LorentzModel::varying_names.at(i) + QI::OutExt());
+        }
+        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        QI_LOG(verbose, "Finished." );
     }
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
-                    "Writing output.");
-    std::string outPrefix = outarg.Get() + "LTZ_";
-    for (size_t i = 0; i < algo->numOutputs(); i++) {
-        QI::WriteImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
-    }
-    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
+
 }

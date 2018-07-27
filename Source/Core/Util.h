@@ -20,7 +20,6 @@
 #include <functional>
 #include <mutex>
 #include <vector>
-
 #include <Eigen/Core>
 
 #include "itkVector.h"

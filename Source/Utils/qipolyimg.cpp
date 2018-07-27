@@ -10,7 +10,7 @@
  */
 
 #include <iostream>
-#include "Eigen/Dense"
+#include "Eigen/Core"
 
 #include "itkImageSource.h"
 #include "itkImageRegionIteratorWithIndex.h"
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> order(parser, "ORDER", "Specify the polynomial order (default 2)", {'o',"order"}, 2);
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
+
     QI_LOG(verbose, "Reading reference image " << QI::CheckPos(ref_path));
     QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));    
     QI_LOG(verbose, "Reading polynomial" );

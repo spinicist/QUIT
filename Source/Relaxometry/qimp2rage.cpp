@@ -19,7 +19,6 @@
 #include "itkMaskImageFilter.h"
 #include "itkAddImageFilter.h"
 
-#include "ApplyAlgorithmFilter.h"
 #include "ImageTypes.h"
 #include "Util.h"
 #include "ImageIO.h"
@@ -81,13 +80,42 @@ public:
         this->SetNthInput(0, const_cast<TImage*>(img));
     }
 
+    Eigen::Array2cd One_MP2RAGE(const double &M0, const double &T1, const double &B1, const QI::MP2RAGESequence &s) {
+        const double R1 = 1. / T1;
+        const Eigen::Array2d R1s = R1 - log(cos(B1 * s.FA))/s.TR;
+        const Eigen::Array2d M0s = M0 * (1. - exp(-s.TR*R1)) / (1. - exp(-s.TR*R1s));
+        const double tau = s.ETL * s.TR;
+
+        const Eigen::Array3d B = exp(-s.TD*R1);
+        const Eigen::Array3d A = M0*(1. - B);
+
+        const Eigen::Array2d D = exp(-tau*R1s);
+        const Eigen::Array2d C = M0s*(1. - D);
+
+        Eigen::Array2d Mm;
+        const double eta = 1.0;
+        const double denominator = (1 + eta*B[0]*D[0]*B[1]*D[1]*B[2]);
+        Mm[0] = (A[0]-eta*B[0]*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*C[0])))) / denominator;
+        Mm[1] = (A[1]+B[1]*(C[0]+D[0]*(A[0]-eta*B[0]*(A[2]+B[2]*C[1])))) / denominator;
+        //Mss = -eta*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*(C[0]+D[0]*A[0])))) / denominator;
+
+        //cout << "denom " << denominator << " Mm " << Mm.transpose() << endl;
+
+        Eigen::Array2cd Me = Eigen::Array2cd::Zero();
+        Me.real() = Mm * sin(B1 * s.FA);
+        /*cout << "alpha " << alpha.transpose() << " B1 " << B1 << endl;
+        cout << "sin(B1 * alpha) " << sin(B1 * alpha).transpose() << endl;
+        cout << "Me " << Me.transpose() << endl;*/
+        return Me;
+    }
+
     void SetSequence(QI::MP2RAGESequence &sequence) {
         MP2Functor<double> con;
         m_T1.clear();
         m_con.clear();
         for (float T1 = 0.25; T1 < 4.3; T1 += 0.001) {
             Eigen::Array3d tp; tp << T1, 1.0, 1.0; // Fix B1 and eta
-            Eigen::Array2cd sig = sequence.signal(1., T1, 1.0, 1.0);
+            Eigen::Array2cd sig = One_MP2RAGE(1., T1, 1., sequence);
             double c = con(sig[0], sig[1]);
             m_T1.push_back(T1);
             m_con.push_back(c);
@@ -154,7 +182,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag     automask(parser, "AUTOMASK", "Create a mask from the sum of squares image", {'a', "automask"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
 
     QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));

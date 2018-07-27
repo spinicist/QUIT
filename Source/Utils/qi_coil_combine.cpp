@@ -9,84 +9,170 @@
  *
  */
 
+#include <array>
+#include <iostream>
+#include <Eigen/Core>
+
 #include "Util.h"
-#include "ImageIO.h"
-#include "ApplyTypes.h"
 #include "Args.h"
+#include "ImageIO.h"
 
 #include "itkRegionOfInterestImageFilter.h"
 #include "itkStatisticsImageFilter.h"
 
-//******************************************************************************
-// Algorithm Subclasses
-//******************************************************************************
-typedef itk::ApplyAlgorithmFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::VectorVolumeF, QI::VolumeF> TApplyCombine;
-class ComplexCombine : public TApplyCombine::Algorithm {
-protected:
-    const size_t m_insize = 0, m_coils = 0, m_outsize = 0;
-    TOutput m_zero;
-    std::vector<TConst> m_channel_phase;
+class CoilCombineFilter : public itk::ImageToImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF> {
 public:
-    ComplexCombine(const int insize, const int coils) :
-        m_insize(insize), m_coils(coils), m_outsize(insize / coils)
-    {
-        TConst temp(m_coils);
-        m_channel_phase.clear();
-        m_channel_phase.push_back(temp);
-        m_zero = TOutput(m_outsize);
-        m_zero.Fill(std::complex<float>(0, 0));
-        // QI_DB(m_insize)
-        // QI_DB(m_coils)
-        // QI_DB(m_outsize)
+    /** Standard class typedefs. */
+    typedef QI::VectorVolumeXF     TImage;
+
+    typedef CoilCombineFilter                  Self;
+    typedef ImageToImageFilter<TImage, TImage> Superclass;
+    typedef itk::SmartPointer<Self>            Pointer;
+    typedef typename TImage::RegionType        RegionType;
+    typedef typename TImage::PixelType         PixelType;
+    
+    itkNewMacro(Self);
+    itkTypeMacro(Self, Superclass);
+
+    void GenerateOutputInformation() ITK_OVERRIDE {
+        Superclass::GenerateOutputInformation();
+        auto input     = this->GetInput(0);
+        auto region    = input->GetLargestPossibleRegion();
+        auto spacing   = input->GetSpacing();
+        auto origin    = input->GetOrigin();
+        auto direction = input->GetDirection();
+        m_coils = this->GetInput(1)->GetNumberOfComponentsPerPixel();
+        m_images_per_coil = input->GetNumberOfComponentsPerPixel() / m_coils;
+        auto op = this->GetOutput(0);
+        op->SetRegions(region);
+        op->SetSpacing(spacing);
+        op->SetOrigin(origin);
+        op->SetDirection(direction);
+        op->SetNumberOfComponentsPerPixel(m_images_per_coil);
+        op->Allocate(true);
     }
-    void setChannelPhases(const TConst &ph) {
-        if (ph.Size() != m_coils) {
-            QI_FAIL("Number of channel reference phases " << ph.Size() << " not equal to number of input coils " << m_coils);
+
+protected:
+    int m_coils = 1, m_images_per_coil = 1;
+
+    CoilCombineFilter() {
+        this->SetNumberOfRequiredInputs(2);
+    }
+    ~CoilCombineFilter() {}
+
+    void DynamicThreadedGenerateData(const RegionType &region) ITK_OVERRIDE {
+        const auto input_image = this->GetInput(0);
+        const auto ref_image   = this->GetInput(1);
+        auto output_image = this->GetOutput();
+        itk::ImageRegionConstIterator<QI::VectorVolumeXF> input_iter(input_image,region);
+        itk::ImageRegionConstIterator<QI::VectorVolumeXF> ref_iter(ref_image,region);
+        itk::ImageRegionIterator<QI::VectorVolumeXF> output_iter(output_image,region);
+        input_iter.GoToBegin();
+        ref_iter.GoToBegin();
+        output_iter.GoToBegin();
+        
+        while(!input_iter.IsAtEnd()) {
+            const auto input_vec = input_iter.Get();
+            const auto ref_vec = ref_iter.Get();
+
+            Eigen::Map<const Eigen::ArrayXXcf> data(input_vec.GetDataPointer(), m_images_per_coil, m_coils);
+            Eigen::Map<const Eigen::ArrayXcf> ref(ref_vec.GetDataPointer(), m_coils);
+            const Eigen::ArrayXcf correction = ref / ref.abs();
+            // Remove phase
+            const Eigen::ArrayXXcf phase_corrected = data.rowwise() / correction.transpose();
+            // Then average
+            const Eigen::ArrayXcf averaged = phase_corrected.rowwise().sum() / m_coils;
+
+            for (int i = 0; i < m_images_per_coil; i++) {
+                output_iter.Get()[i] = averaged[i];
+            }
+
+            ++input_iter;
+            ++ref_iter;
+            ++output_iter;
         }
-        m_channel_phase.clear();
-        m_channel_phase.push_back(ph);
-    }
-    size_t numInputs() const override { return 1; }
-    size_t numConsts() const override { return 1; }
-    size_t numOutputs() const override { return 1; }
-    size_t dataSize() const override { return m_insize; }
-    size_t outputSize() const override { return m_outsize; }
-    std::vector<TConst> defaultConsts() const override {
-        return m_channel_phase;
-    }
-    TOutput zero() const override {
-        return m_zero;
     }
 
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TOutput & /* Unused */,
-               TInput &resids, TIterations &its) const override
-    {
-        Eigen::Map<const Eigen::ArrayXXcf> in_data(inputs[0].GetDataPointer(), m_outsize, m_coils);
-        Eigen::ArrayXXcd data = in_data.cast<std::complex<double>>();
+private:
+    CoilCombineFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
+};
 
-        Eigen::Map<const Eigen::ArrayXf> in_phase(consts[0].GetDataPointer(), m_coils);
-        Eigen::ArrayXd ph   = in_phase.cast<double>();
-        Eigen::ArrayXcd correction(m_coils);
-        correction.real() = ph.cos();
-        correction.imag() = ph.sin();
+class HammondCombineFilter : public itk::ImageToImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF> {
+public:
+    /** Standard class typedefs. */
+    typedef QI::VectorVolumeXF     TImage;
 
-        // Remove phase
-        Eigen::ArrayXXcd phase_corrected = data.rowwise() / correction.transpose();
-        // Then average
-        Eigen::ArrayXcd averaged = phase_corrected.rowwise().sum() / m_coils;
+    typedef HammondCombineFilter                  Self;
+    typedef ImageToImageFilter<TImage, TImage> Superclass;
+    typedef itk::SmartPointer<Self>            Pointer;
+    typedef typename TImage::RegionType        RegionType;
+    typedef typename TImage::PixelType         PixelType;
+    
+    itkNewMacro(Self);
+    itkTypeMacro(Self, Superclass);
 
-        for (size_t i = 0; i < m_outsize; i++) {
-            outputs[0][i] = averaged[i];
+    void GenerateOutputInformation() ITK_OVERRIDE {
+        Superclass::GenerateOutputInformation();
+        auto input     = this->GetInput(0);
+        auto region    = input->GetLargestPossibleRegion();
+        auto spacing   = input->GetSpacing();
+        auto origin    = input->GetOrigin();
+        auto direction = input->GetDirection();
+
+        m_coils = m_hammond_ref.rows();
+        m_images_per_coil = input->GetNumberOfComponentsPerPixel() / m_coils;
+        auto op = this->GetOutput(0);
+        op->SetRegions(region);
+        op->SetSpacing(spacing);
+        op->SetOrigin(origin);
+        op->SetDirection(direction);
+        op->SetNumberOfComponentsPerPixel(m_images_per_coil);
+        op->Allocate(true);
+    }
+
+    void SetHammondRef(const Eigen::ArrayXcf &h) {
+        m_hammond_ref = h / h.abs();
+    }
+
+protected:
+    int m_coils = 1, m_images_per_coil = 1;
+    Eigen::ArrayXcf m_hammond_ref;
+
+    HammondCombineFilter() {
+        this->SetNumberOfRequiredInputs(1);
+    }
+    ~HammondCombineFilter() {}
+
+    void DynamicThreadedGenerateData(const RegionType &region) ITK_OVERRIDE {
+        const auto input_image = this->GetInput(0);
+        auto output_image = this->GetOutput();
+        itk::ImageRegionConstIterator<QI::VectorVolumeXF> input_iter(input_image,region);
+        itk::ImageRegionIterator<QI::VectorVolumeXF> output_iter(output_image,region);
+        input_iter.GoToBegin();
+        output_iter.GoToBegin();
+        
+        while(!input_iter.IsAtEnd()) {
+            const auto input_vec = input_iter.Get();
+
+            Eigen::Map<const Eigen::ArrayXXcf> data(input_vec.GetDataPointer(), m_images_per_coil, m_coils);
+            // Remove phase
+            const Eigen::ArrayXXcf phase_corrected = data.rowwise() / m_hammond_ref.transpose();
+            // Then average
+            const Eigen::ArrayXcf averaged = phase_corrected.rowwise().sum() / m_coils;
+
+            for (int i = 0; i < m_images_per_coil; i++) {
+                output_iter.Get()[i] = averaged[i];
+            }
+
+            ++input_iter;
+            ++output_iter;
         }
-        Eigen::ArrayXcf pcf = (Eigen::Map<Eigen::ArrayXcd>(phase_corrected.data(), m_insize)).cast<std::complex<float>>();
-        for (size_t i = 0; i < resids.Size(); i++) { // resids will be zero-length if not saving residuals
-            resids[i] = pcf[i];
-        }
-        its = 1;
-        return std::make_tuple(true, "");
     }
+
+private:
+    HammondCombineFilter(const Self &); //purposely not implemented
+    void operator=(const Self &);  //purposely not implemented
 };
 
 class ComplexVectorMeanFilter : public itk::ImageToImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF> {
@@ -152,29 +238,22 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> region_arg(parser, "REGION", "Region to average phase for Hammond method, default is 8x8x8 cube at center", {'r', "region"});
     args::ValueFlag<std::string> ser_path(parser, "COMPOSER", "Short Echo Time reference file for COMPOSER method", {'c', "composer"});
-    args::ValueFlag<int> coils_arg(parser, "COILS", "Number of coils (default is number of volumes)", {'C', "coils"});
-    args::Flag     save_corrected(parser, "SAVE COILS", "Save the individual coil images after phase correction", {'s', "save"});
-    args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<int> coils_arg(parser, "COILS", "Number of coils for Hammond method (default is number of volumes)", {'C', "coils"}, -1);
+    args::ValueFlag<int> ref_vol(parser, "VOLUME", "Volume to use as reference for Hammond method (default is 1)", {'V', "vol"}, 1);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Reading input image: " << QI::CheckPos(input_path));
     auto input_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
-    const auto sz = input_image->GetNumberOfComponentsPerPixel();
-    const auto ncoils = coils_arg ? coils_arg.Get() : sz;
-    auto combine = std::make_shared<ComplexCombine>(sz, ncoils);
-    auto apply = TApplyCombine::New();
-    apply->SetAlgorithm(combine);
-    apply->SetInput(0, input_image);
-    apply->SetOutputAllResiduals(save_corrected);
-    apply->SetVerbose(verbose);
-    if (subregion) apply->SetSubregion(QI::RegionArg(subregion.Get()));
+    QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
     if (ser_path) {
         QI_LOG(verbose, "Reading COMPOSER reference image: " << ser_path.Get());
-        auto ser_image = QI::ReadVectorImage(ser_path.Get());
-        if (ser_image->GetNumberOfComponentsPerPixel() != ncoils) {
-            QI_FAIL("Number of coil reference images does not match number of coils in data");
-        }
-        apply->SetConst(0, ser_image);
+        auto ser_image = QI::ReadVectorImage<std::complex<float>>(ser_path.Get());
+        auto combine = CoilCombineFilter::New();
+        combine->SetInput(input_image);
+        combine->SetInput(1, ser_image);
+        QI_LOG(verbose, "Applying COMPOSER");
+        combine->Update();
+        output = combine->GetOutput();
     } else {
         // Fall back to Hammond Method
         QI_LOG(verbose, "Using Hammond method" );
@@ -199,23 +278,26 @@ int main(int argc, char **argv) {
         mean_filter->Update();
         auto roi_mean = mean_filter->GetResult();
         QI_LOG(verbose, "Mean values: " << roi_mean );
-        itk::VariableLengthVector<float> phase(sz);
-        for (size_t i = 0; i < sz; i++) {
-            phase[i] = std::arg(roi_mean[i]);
+
+        Eigen::Map<const Eigen::ArrayXcf> mean(roi_mean.GetDataPointer(), roi_mean.Size(), 1);
+        Eigen::ArrayXcf hammond_ref(coils_arg.Get());
+        const int images_per_coil = mean.rows() / coils_arg.Get();
+        for (int i = 0; i < coils_arg.Get(); i++) {
+            hammond_ref(i) = mean(ref_vol.Get() + i * images_per_coil);
         }
-        QI_LOG(verbose, "Mean phase: " << phase );
-        combine->setChannelPhases(phase);
+        QI_LOG(verbose, "Hammond ref: " << hammond_ref.transpose());
+        auto hammond = HammondCombineFilter::New();
+        hammond->SetInput(input_image);
+        hammond->SetHammondRef(hammond_ref);
+        QI_LOG(verbose, "Applying Hammond method");
+        hammond->Update();
+        output = hammond->GetOutput();
+        // fit_filter->SetFixed(0, phase);
     }
     QI_LOG(verbose, "Correcting phase & combining" );
-    apply->Update();
     const std::string out_name = (outarg ? outarg.Get() : QI::StripExt(input_path.Get())) + "_combined" + QI::OutExt();
     QI_LOG(verbose, "Writing output file " << out_name );
-    QI::WriteVectorImage(apply->GetOutput(0), out_name);
-    if (save_corrected) {
-        const std::string out_name = (outarg ? outarg.Get() : QI::StripExt(input_path.Get())) + "_corrected" + QI::OutExt();
-        QI_LOG(verbose, "Writing corrected coil file " << out_name );
-        QI::WriteVectorImage(apply->GetAllResidualsOutput(), out_name);
-    }
+    QI::WriteVectorImage(output, out_name);
     return EXIT_SUCCESS;
 }
 

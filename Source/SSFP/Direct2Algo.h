@@ -12,7 +12,7 @@
 #ifndef QI_ELLIPSE_DIRECT2_H
 #define QI_ELLIPSE_DIRECT2_H
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "EllipseAlgo.h"
 
 namespace QI {

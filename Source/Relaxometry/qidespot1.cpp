@@ -9,203 +9,145 @@
  *
  */
 
+#include <array>
 #include <iostream>
-
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "ceres/ceres.h"
 
-#include "ApplyTypes.h"
-#include "Models.h"
+#include "Model.h"
+#include "FitFunction.h"
+#include "ModelFitFilter.h"
+#include "SimulateModel.h"
 #include "SPGRSequence.h"
+#include "OnePoolSignals.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
 
-//******************************************************************************
-// Algorithm Subclasses
-//******************************************************************************
-class D1Algo : public QI::ApplyF::Algorithm {
-public:
-    static const int DefaultIterations = 15;
-protected:
-    const std::shared_ptr<QI::Model::ModelBase> m_model = std::make_shared<QI::Model::OnePool>();
-    QI::SPGRSequence m_sequence;
-    int m_iterations = DefaultIterations;
-    double m_loPD = -std::numeric_limits<double>::infinity();
-    double m_hiPD = std::numeric_limits<double>::infinity();
-    double m_loT1 = -std::numeric_limits<double>::infinity();
-    double m_hiT1 = std::numeric_limits<double>::infinity();
+using namespace std::literals;
 
-public:
-    void setIterations(int n) { m_iterations = n; }
-    size_t getIterations() { return m_iterations; }
-    void setSequence(QI::SPGRSequence &s) { m_sequence = s; }
-    void setClampT1(double lo, double hi) { m_loT1 = lo; m_hiT1 = hi; }
-    void setClampPD(double lo, double hi) { m_loPD = lo; m_hiPD = hi; }
-    size_t numInputs() const override { return m_sequence.count(); }
-    size_t numConsts() const override { return 1; }
-    size_t numOutputs() const override { return 2; }
-    size_t dataSize() const override { return m_sequence.size(); }
-    float zero() const override { return 0.f; }
-    std::vector<float> defaultConsts() const override {
-        // B1
-        std::vector<float> def(1, 1.0f);
-        return def;
-    }
-};
+using DESPOT1 = QI::Model<2, 1, QI::SPGRSequence>;
+template<> std::array<const std::string, 2> DESPOT1::varying_names{{"PD"s, "T1"s}};
+template<> std::array<const std::string, 1> DESPOT1::fixed_names{{"B1"s}};
+template<> const QI_ARRAYN(double, 1) DESPOT1::fixed_defaults{1.0};
+template<> template<typename Derived>
+auto DESPOT1::signal(const Eigen::ArrayBase<Derived> &v,
+                     const QI_ARRAYN(double, NF) &f,
+                     const QI::SPGRSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+{
+    return QI::SPGRSignal(v[0], v[1], f[0], s);
+}
 
-class D1LLS : public D1Algo {
-public:
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
+using DESPOT1Fit = QI::FitFunction<DESPOT1>;
+
+struct DESPOT1LLS : DESPOT1Fit {
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT1::NV) &outputs,
+                          ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
     {
-        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::ArrayXd data = indata.cast<double>();
-        double B1 = consts[0];
-        Eigen::ArrayXd flip = m_sequence.FA * B1;
-        Eigen::VectorXd Y = data / flip.sin();
-        Eigen::MatrixXd X(Y.rows(), 2);
-        X.col(0) = data / flip.tan();
-        X.col(1).setOnes();
-        Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        outputs[0] = QI::Clamp(b[1] / (1. - b[0]), m_loPD, m_hiPD);
-        outputs[1] = QI::Clamp(-m_sequence.TR / log(b[0]), m_loT1, m_hiT1);
-        Eigen::ArrayXd theory = QI::One_SPGR(m_sequence.FA, m_sequence.TR, outputs[0], outputs[1], B1).array().abs();
-        Eigen::ArrayXf r = (data.array() - theory).cast<float>();
-        residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        its = 1;
-        return std::make_tuple(true, "");
-    }
-};
-
-class D1WLLS : public D1Algo {
-public:
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
-    {
-        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        Eigen::ArrayXd data = indata.cast<double>();
-        double B1 = consts[0];
-        Eigen::ArrayXd flip = m_sequence.FA * B1;
+        const Eigen::ArrayXd &data = inputs[0];
+        const double &B1 = fixed[0];
+        Eigen::ArrayXd flip = sequence->FA * B1;
         Eigen::VectorXd Y = data / flip.sin();
         Eigen::MatrixXd X(Y.rows(), 2);
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         Eigen::Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        Eigen::Array2d out;
-        out[1] = -m_sequence.TR / log(b[0]);
-        out[0] = b[1] / (1. - b[0]);
-        for (its = 0; its < m_iterations; its++) {
-            Eigen::VectorXd W = (flip.sin() / (1. - (exp(-m_sequence.TR/outputs[1])*flip.cos()))).square();
+        outputs << QI::Clamp(b[1] / (1. - b[0]), model.bounds_lo[0], model.bounds_hi[0]),
+                   QI::Clamp(-sequence->TR / log(b[0]), model.bounds_lo[1], model.bounds_hi[1]);
+        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed, sequence);
+        if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
+            residuals[0] = temp_residuals;
+        }
+        residual = sqrt(temp_residuals.square().sum() / temp_residuals.rows());
+        iterations = 1;
+        return std::make_tuple(true, "");
+    }
+};
+
+struct DESPOT1WLLS : DESPOT1Fit {
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT1::NV) &outputs,
+                          ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
+    {
+        const Eigen::ArrayXd &data = inputs[0];
+        const double &B1 = fixed[0];
+        Eigen::ArrayXd flip = sequence->FA * B1;
+        Eigen::VectorXd Y = data / flip.sin();
+        Eigen::MatrixXd X(Y.rows(), 2);
+        X.col(0) = data / flip.tan();
+        X.col(1).setOnes();
+        Eigen::Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        Eigen::Array2d out{b[1] / (1. - b[0]), -sequence->TR / log(b[0])};
+        for (iterations = 0; iterations < max_iterations; iterations++) {
+            Eigen::VectorXd W = (flip.sin() / (1. - (exp(-sequence->TR/out[1])*flip.cos()))).square();
             b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
-            Eigen::Array2d newOut;
-            newOut[1] = -m_sequence.TR / log(b[0]);
-            newOut[0] = b[1] / (1. - b[0]);
+            Eigen::Array2d newOut{b[1] / (1. - b[0]), -sequence->TR / log(b[0])};
             if (newOut.isApprox(out))
                 break;
             else
                 out = newOut;
         }
-        outputs[0] = QI::Clamp(out[0], m_loPD, m_hiPD);
-        outputs[1] = QI::Clamp(out[1], m_loT1, m_hiT1);
-        Eigen::ArrayXd theory = QI::One_SPGR(m_sequence.FA, m_sequence.TR, outputs[0], outputs[1], B1).array().abs();
-        Eigen::ArrayXf r = (data.array() - theory).cast<float>();
-        residual = sqrt(r.square().sum() / r.rows());
-        resids = itk::VariableLengthVector<float>(r.data(), r.rows());
+        // std::cout << "PD " << out[0] << " T1 " << out[1] << std::endl;
+        outputs << QI::Clamp(out[0], model.bounds_lo[0], model.bounds_hi[0]),
+                   QI::Clamp(out[1], model.bounds_lo[1], model.bounds_hi[1]);
+        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed.cast<double>(), sequence);
+        if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
+            residuals[0] = temp_residuals;
+        }
+        residual = sqrt(temp_residuals.square().sum() / temp_residuals.rows());
         return std::make_tuple(true, "");
     }
 };
 
-class T1Cost : public ceres::CostFunction {
-protected:
-    const QI::SPGRSequence m_seq;
-    const Eigen::ArrayXd m_data;
-    const double m_B1;
-
-public:
-    T1Cost(const QI::SPGRSequence cs, const Eigen::ArrayXd &data, const double B1) :
-        m_seq(cs), m_data(data), m_B1(B1)
-    {
-        mutable_parameter_block_sizes()->push_back(2);
-        set_num_residuals(data.size());
+struct DESPOT1NLLS : DESPOT1Fit {
+    DESPOT1NLLS() {
+        // Do not let these go negative for non-linear fitting
+        model.bounds_lo[0] = 1e-6;
+        model.bounds_lo[1] = 1e-6;
     }
 
-    bool Evaluate(double const* const* parameters,
-                  double* resids,
-                  double** jacobians) const override
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT1::NV) &p,
+                          ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
     {
-        Eigen::Map<const Eigen::Array2d> p(parameters[0]);
-        Eigen::Map<Eigen::ArrayXd> r(resids, m_data.size());
-        Eigen::ArrayXd s = QI::One_SPGR(m_seq.FA, m_seq.TR, p[0], p[1], m_B1).array().abs();
-        r = s - m_data;
-        if (jacobians && jacobians[0]) {
-            Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>> j(jacobians[0], m_data.size(), p.size());
-            j = QI::One_SPGR_Magnitude_Derivs(m_seq.FA, m_seq.TR, p[0], p[1], m_B1);
-        }
-        return true;
-    }
-
-
-};
-
-class D1NLLS : public D1Algo {
-public:
-    D1NLLS() {
-        m_loT1 = 1e-6;
-        m_loPD = 1e-6;
-    }
-
-    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
-               const TIndex &, // Unused
-               std::vector<TOutput> &outputs, TConst &residual,
-               TInput &resids, TIterations &its) const override
-    {
-        Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
-        const double B1 = consts[0];
-        const double scale = indata.maxCoeff();
+        const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
-            outputs[0] = 0;
-            outputs[1] = 0;
+            p << 0.0, 0.0;
             residual = 0;
-            return std::make_tuple(false, "Maximum data value was zero or less");
+            return std::make_tuple(false, "Maximum data value was not positive");
         }
-        const Eigen::ArrayXd data = indata.cast<double>() / scale;
-        Eigen::Array2d p; p << 10., 1.;
+        const Eigen::ArrayXd data = inputs[0] / scale;
+        p << 10., 1.;
         ceres::Problem problem;
-        problem.AddResidualBlock(new T1Cost(m_sequence, data, B1), NULL, p.data());
-        problem.SetParameterLowerBound(p.data(), 0, m_loPD / scale);
-        problem.SetParameterUpperBound(p.data(), 0, m_hiPD / scale);
-        problem.SetParameterLowerBound(p.data(), 1, m_loT1);
-        problem.SetParameterUpperBound(p.data(), 1, m_hiT1);
+        using Cost     = QI::ModelCost<DESPOT1>;
+        using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, DESPOT1::NV>;
+        auto *cost = new Cost(model, sequence, fixed, data);
+        auto *auto_cost = new AutoCost(cost, sequence->size());
+        problem.AddResidualBlock(auto_cost, NULL, p.data());
+        problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0] / scale);
+        problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0] / scale);
+        problem.SetParameterLowerBound(p.data(), 1, model.bounds_lo[1]);
+        problem.SetParameterUpperBound(p.data(), 1, model.bounds_hi[1]);
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
-        options.max_num_iterations = 50;
+        options.max_num_iterations = max_iterations;
         options.function_tolerance = 1e-5;
         options.gradient_tolerance = 1e-6;
         options.parameter_tolerance = 1e-4;
-        // options.check_gradients = true;
         options.logging_type = ceres::SILENT;
-        // std::cout << "START P: " << p.transpose());
         ceres::Solve(options, &problem, &summary);
-        
-        outputs[0] = p[0] * indata.maxCoeff();
-        outputs[1] = p[1];
+        p[0] = p[0] * scale;
         if (!summary.IsSolutionUsable()) {
             return std::make_tuple(false, summary.FullReport());
         }
-        its = summary.iterations.size();
-        residual = summary.final_cost * indata.maxCoeff();
-        if (resids.Size() > 0) {
-            assert(resids.Size() == data.size());
+        iterations = summary.iterations.size();
+        residual = summary.final_cost * scale;
+        if (residuals.size() > 0) {
             std::vector<double> r_temp(data.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
             for (size_t i = 0; i < r_temp.size(); i++)
-                resids[i] = r_temp[i];
+                residuals[0][i] = r_temp[i] * scale;
         }
         return std::make_tuple(true, "");
     }
@@ -230,48 +172,62 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i',"its"}, 15);
     args::ValueFlag<float> clampPD(parser, "CLAMP PD", "Clamp PD between 0 and value", {'p',"clampPD"}, std::numeric_limits<float>::infinity());
     args::ValueFlag<float> clampT1(parser, "CLAMP T1", "Clamp T1 between 0 and value", {'t',"clampT1"}, std::numeric_limits<float>::infinity());
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> simulate(parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)", {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-
-    QI_LOG(verbose, "Opening SPGR file: " << QI::CheckPos(spgr_path));
-    auto data = QI::ReadVectorImage<float>(QI::CheckPos(spgr_path));
-    std::shared_ptr<D1Algo> algo;
-    switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<D1LLS>();  QI_LOG(verbose, "LLS algorithm selected." ); break;
-        case 'w': algo = std::make_shared<D1WLLS>(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
-        case 'n': algo = std::make_shared<D1NLLS>(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
+    QI::CheckPos(spgr_path);
+    QI_LOG(verbose, "Reading sequence information");
+    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    QI::SPGRSequence spgrSequence(QI::GetMember(input, "SPGR"));
+    if (simulate) {
+        DESPOT1 model;
+        QI::SimulateModel<DESPOT1, false>(input, model, {&spgrSequence}, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());
+    } else {
+        DESPOT1Fit *d1 = nullptr;
+        switch (algorithm.Get()) {
+            case 'l': d1 = new DESPOT1LLS();  QI_LOG(verbose, "LLS algorithm selected." ); break;
+            case 'w': d1 = new DESPOT1WLLS(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+            case 'n': d1 = new DESPOT1NLLS(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
+            default: QI_FAIL("Unknown algorithm type: " << algorithm.Get());
+        }
+        if (clampPD) {
+            d1->model.bounds_lo[0] = 1e-6;
+            d1->model.bounds_hi[0] = clampPD.Get();
+        }
+        if (clampT1) {
+            d1->model.bounds_lo[1] = 1e-6;
+            d1->model.bounds_hi[1] = clampT1.Get();
+        }
+        if (its) d1->max_iterations = its.Get();
+        d1->sequence = &spgrSequence;
+        auto fit = itk::ModelFitFilter<DESPOT1Fit>::New();
+        fit->SetVerbose(verbose);
+        fit->SetFitFunction(d1);
+        fit->SetOutputAllResiduals(resids);
+        fit->SetInput(0, QI::ReadVectorImage(spgr_path.Get(), verbose));
+        if (B1) fit->SetFixed(0, QI::ReadImage(B1.Get(), verbose));
+        if (mask) fit->SetMask(QI::ReadImage(mask.Get(), verbose));
+        if (subregion) fit->SetSubregion(QI::RegionArg(args::get(subregion)));
+        QI_LOG(verbose, "Processing");
+        if (verbose) {
+            auto monitor = QI::GenericMonitor::New();
+            fit->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        fit->Update();
+        QI_LOG(verbose, "Elapsed time was " << fit->GetTotalTime() << "s\n" <<
+                        "Writing results files.");
+        std::string outPrefix = outarg.Get() + "D1_";
+        for (int i = 0; i < d1->n_outputs(); i++) {
+            QI::WriteImage(fit->GetOutput(i), outPrefix + d1->model.varying_names.at(i) + QI::OutExt());
+        }
+        QI::WriteImage(fit->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        if (resids) {
+            QI::WriteVectorImage(fit->GetResidualsOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        }
+        if (its) {
+            QI::WriteImage(fit->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
+        }
+        QI_LOG(verbose, "Finished." );
     }
-    algo->setIterations(its.Get());
-    if (clampPD) algo->setClampPD(1e-6, clampPD.Get());
-    if (clampT1) algo->setClampT1(1e-6, clampT1.Get());
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    QI::SPGRSequence spgrSequence(input["SPGR"]);
-    algo->setSequence(spgrSequence);
-    auto apply = QI::ApplyF::New();
-    apply->SetVerbose(verbose);
-    apply->SetAlgorithm(algo);
-    apply->SetOutputAllResiduals(resids);
-    apply->SetInput(0, data);
-    if (B1) apply->SetConst(0, QI::ReadImage(B1.Get()));
-    if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        apply->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    apply->Update();
-    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
-                    "Writing results files.");
-    std::string outPrefix = outarg.Get() + "D1_";
-    QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
-    QI::WriteImage(apply->GetOutput(1), outPrefix + "T1" + QI::OutExt());
-    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-    if (resids) {
-        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
-    }
-    if (its) {
-        QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
-    }
-    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

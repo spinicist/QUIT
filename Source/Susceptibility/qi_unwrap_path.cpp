@@ -45,7 +45,6 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPUT PREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<std::string> maskarg(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
 
     QI_LOG(verbose, "Reading phase file: " << QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
