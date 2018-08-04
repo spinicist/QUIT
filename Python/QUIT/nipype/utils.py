@@ -7,6 +7,19 @@ Implementation of nipype interfaces for QUIT utilities.
 Currently implemented:
     - qisignal
 
+To be implemented:
+    - qi_coil_combine
+    - qi_gradient
+    - qi_rfprofile
+    - qiaffine
+    - qicomplex
+    - qihdr
+    - qikfilter
+    - qimask
+    - qipolyfit
+    - qipolyimg
+    - qisplitsubjects
+
 Requires that the QUIT tools are in your your system path
 
 """
