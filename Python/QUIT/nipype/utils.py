@@ -20,6 +20,9 @@ To be implemented:
     - qipolyimg
     - qisplitsubjects
 
+To be moved:
+    - qisignal should now be in CoreProgs
+
 Requires that the QUIT tools are in your your system path
 
 """
