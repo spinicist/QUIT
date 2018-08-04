@@ -33,7 +33,7 @@ public:
         return _names;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex & /* Unused */,
                std::vector<TOutput> &outputs, TConst & /* Unused */,
                TInput & /* Unused */, TIterations & /* Unused */) const override
@@ -41,8 +41,8 @@ public:
         outputs[0] = 100. * (1. - (inputs[0][3] + inputs[0][4]) / (2. * inputs[0][2]));
         outputs[1] = 100. * (1. - (inputs[0][0] + inputs[0][1]) / (2. * inputs[0][2]));
         outputs[2] = outputs[1] - outputs[0];
-        outputs[3] = 100. * (1. - (inputs[0][3] - inputs[0][4]) / inputs[0][2]);
-        return true;
+        outputs[3] = 100. * (inputs[0][3] - inputs[0][4]) / inputs[0][2];
+        return std::make_tuple(true, "");
     }
 };
 
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
-    if (verbose) std::cout << "Opening MT file " << QI::CheckPos(input_file) << std::endl;
+    QI_LOG(verbose, "Opening MT file " << QI::CheckPos(input_file));
     auto volumes = QI::ReadVectorImage(QI::CheckPos(input_file));
     auto algo = std::make_shared<DMTR>();
     auto apply = QI::ApplyF::New();
@@ -71,21 +71,19 @@ int main(int argc, char **argv) {
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s");
     std::string outPrefix = out_prefix.Get() + "DMT_";
     for (size_t i = 0; i < algo->numOutputs(); i++) {
-        if (verbose) std::cout << "Writing output: " << outPrefix + algo->names().at(i) + QI::OutExt() << std::endl;
+        QI_LOG(verbose, "Writing output: " << outPrefix + algo->names().at(i) + QI::OutExt());
         QI::WriteImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }
 

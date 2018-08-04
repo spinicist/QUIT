@@ -30,17 +30,15 @@ qisignal --verbose --model=1 --noise=$NOISE $SSFP_FILE << END_SIG
     "T2": "T2$EXT",
     "f0": "f0$EXT",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SSFP": {
-                    "TR": $SSFP_TR,
-                    "FA": [$SSFP_FLIP],
-                    "PhaseInc": [$SSFP_PINC]
-                }
+    "Sequences": [
+        {
+            "SSFP": {
+                "TR": $SSFP_TR,
+                "FA": [$SSFP_FLIP],
+                "PhaseInc": [$SSFP_PINC]
             }
-        ]
-    }
+        }
+    ]
 }
 END_SIG
 

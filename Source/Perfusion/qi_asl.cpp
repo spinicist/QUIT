@@ -17,7 +17,6 @@
 #include "Args.h"
 #include "ApplyTypes.h"
 #include "CASLSequence.h"
-#include "SequenceCereal.h"
 
 class CASLAlgo : public QI::ApplyVectorF::Algorithm {
 protected:
@@ -65,7 +64,7 @@ public:
         return def;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &index, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override
@@ -98,7 +97,7 @@ public:
         residual.Fill(0.);
         resids.Fill(0.);
         its = 0;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -123,22 +122,23 @@ int main(int argc, char **argv) {
     args::ValueFlag<double> lambda(parser, "LAMBDA", "Blood-brain partition co-efficent, default 0.9 mL/g", {'l', "lambda"}, 0.9);
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading ASL data from: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading ASL data from: " << QI::CheckPos(input_path));
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
 
     QI::VolumeF::Pointer PD_image = ITK_NULLPTR;
     if (PD_path) {
-        if (verbose) std::cout << "Reading proton density map: " << PD_path.Get() << std::endl;
+        QI_LOG(verbose, "Reading proton density map: " << PD_path.Get());
         PD_image = QI::ReadImage(PD_path.Get());
     }
 
     QI::VolumeF::Pointer T1_tissue = ITK_NULLPTR;
     if (T1_tissue_path) {
-        if (verbose) std::cout << "Reading tissue T1 map: " << T1_tissue_path.Get() << std::endl;
+        QI_LOG(verbose, "Reading tissue T1 map: " << T1_tissue_path.Get());
         T1_tissue = QI::ReadImage(T1_tissue_path.Get());
     }
-
-    auto sequence = QI::ReadSequence<QI::CASLSequence>(std::cin, verbose);
+    rapidjson::Document json = QI::ReadJSON(std::cin);
+    QI::CASLSequence sequence(json["CASL"]);
+    std::cout << sequence.post_label_delay.transpose() << std::endl;
     const auto n_slices = input->GetLargestPossibleRegion().GetSize()[2];
     if (slice_time && (n_slices != static_cast<size_t>(sequence.post_label_delay.rows()))) {
         QI_FAIL("Number of post-label delays " << sequence.post_label_delay.rows() << " does not match number of slices " << n_slices);
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
     apply->SetConst(0, T1_tissue);
     apply->SetConst(1, PD_image);
     apply->SetOutputAllResiduals(false);
-    if (verbose) std::cout << "Using " << threads.Get() << " threads" << std::endl;
+    QI_LOG(verbose, "Using " << threads.Get() << " threads" );
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get());
     apply->SetInput(0, input);
@@ -159,16 +159,14 @@ int main(int argc, char **argv) {
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(args::get(subregion)));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files.");
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     QI::WriteVectorImage(apply->GetOutput(0), outPrefix + "_CBF" + QI::OutExt());
     return EXIT_SUCCESS;

@@ -125,10 +125,10 @@ void Run() {
     typename TXImage::Pointer imgX = ITK_NULLPTR;
 
     if (in_real) {
-        if (verbose) std::cout << "Reading real file: " << in_real.Get() << std::endl;
+        QI_LOG(verbose, "Reading real file: " << in_real.Get());
         img1 = QI::ReadImage<TImage>(in_real.Get());
         if (in_imag) {
-            if (verbose) std::cout << "Reading imaginary file: " << in_imag.Get() << std::endl;
+            QI_LOG(verbose, "Reading imaginary file: " << in_imag.Get());
             img2 = QI::ReadImage<TImage>(in_imag.Get());
         } else {
             QI_FAIL("Must set real and imaginary inputs together");
@@ -140,10 +140,10 @@ void Run() {
         imgX = compose->GetOutput();
         imgX->DisconnectPipeline();
     } else if (in_mag) {
-        if (verbose) std::cout << "Reading magnitude file: " << in_mag.Get() << std::endl;
+        QI_LOG(verbose, "Reading magnitude file: " << in_mag.Get());
         img1 = QI::ReadImage<TImage>(in_mag.Get());
         if (in_pha) {
-            if (verbose) std::cout << "Reading phase file: " << in_pha.Get() << std::endl;
+            QI_LOG(verbose, "Reading phase file: " << in_pha.Get());
             img2 = QI::ReadImage<TImage>(in_pha.Get());
         } else {
             QI_FAIL("Must set magnitude and phase inputs together");
@@ -155,10 +155,10 @@ void Run() {
         imgX = compose->GetOutput();
         imgX->DisconnectPipeline();
     } else if (in_complex) {
-        if (verbose) std::cout << "Reading complex file: " << in_complex.Get() << std::endl;
+        QI_LOG(verbose, "Reading complex file: " << in_complex.Get());
         imgX = QI::ReadImage<TXImage>(in_complex.Get());
     } else if (in_realimag) {
-        if (verbose) std::cout << "Reading real/imaginary file: " << in_realimag.Get() << std::endl;
+        QI_LOG(verbose, "Reading real/imaginary file: " << in_realimag.Get());
         auto img_both = QI::ReadImage<TImage>(in_realimag.Get());
         auto real_region = img_both->GetLargestPossibleRegion();
         auto imag_region = img_both->GetLargestPossibleRegion();
@@ -186,8 +186,8 @@ void Run() {
     }
 
     if (fixge || negate) {
-        if (verbose && negate) std::cout << "Negating values" << std::endl;
-        if (verbose && fixge)  std::cout << "Fixing GE lack of FFT-shift bug" << std::endl;
+        if (verbose && negate) std::cerr << "Negating values" << std::endl;
+        if (verbose && fixge)  std::cerr << "Fixing GE lack of FFT-shift bug" << std::endl;
         auto fix = itk::NegateFilter<TXImage>::New();
         fix->SetInput(imgX);
         fix->SetNegate(negate, fixge);
@@ -196,7 +196,7 @@ void Run() {
         imgX->DisconnectPipeline();
     }
 
-    if (verbose) std::cout << "Writing output files" << std::endl;
+    QI_LOG(verbose, "Writing output files" );
     typename TWriter::Pointer write = TWriter::New();
 
     if (out_mag) {
@@ -204,31 +204,31 @@ void Run() {
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_mag.Get());
-        if (verbose) std::cout << "Wrote magnitude image " << out_mag.Get() << std::endl;
+        QI_LOG(verbose, "Wrote magnitude image " << out_mag.Get());
     }
     if (out_pha) {
         auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_pha.Get());
-        if (verbose) std::cout << "Wrote phase image " << out_pha.Get() << std::endl;
+        QI_LOG(verbose, "Wrote phase image " << out_pha.Get());
     }
     if (out_real) {
         auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_real.Get());
-        if (verbose) std::cout << "Wrote real image " << out_real.Get() << std::endl;
+        QI_LOG(verbose, "Wrote real image " << out_real.Get());
     }
     if (out_imag) {
         auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_imag.Get());
-        if (verbose) std::cout << "Wrote imaginary image " << out_imag.Get() << std::endl;
+        QI_LOG(verbose, "Wrote imaginary image " << out_imag.Get());
     }
     if (out_complex) {
-        if (verbose) std::cout << "Writing complex image " << out_complex.Get() << std::endl;
+        QI_LOG(verbose, "Writing complex image " << out_complex.Get());
         QI::WriteImage(imgX, out_complex.Get());
     }
 }
@@ -237,10 +237,10 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
     if (use_double) {
-        if (verbose) std::cout << "Using double precision" << std::endl;
+        QI_LOG(verbose, "Using double precision" );
         Run<double>();
     } else {
-        if (verbose) std::cout << "Using float precision" << std::endl;
+        QI_LOG(verbose, "Using float precision" );
         Run<float>();
     }
     return EXIT_SUCCESS;

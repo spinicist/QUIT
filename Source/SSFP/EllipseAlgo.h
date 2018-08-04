@@ -51,7 +51,7 @@ public:
         return def;
     }
     TOutput zero() const override { return m_zero; }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override;

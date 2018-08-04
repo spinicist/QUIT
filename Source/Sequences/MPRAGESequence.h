@@ -14,36 +14,24 @@
 
 #include "SequenceBase.h"
 #include "Macro.h"
-#include "EigenCereal.h"
 
 namespace QI {
 
 struct MPRAGESequence : SequenceBase {
-    double TR, FA, eta, TI, TD;
-    int ETL, k0;
+    double TR = 0.0, FA = 0.0, eta = 0.0, TI = 0.0, TD = 0.0;
+    int ETL = 0, k0 = 0;
     QI_SEQUENCE_DECLARE(MPRAGE);
-    size_t size() const override;
+    Eigen::Index size() const override;
 };
 
 struct MP2RAGESequence : SequenceBase {
-    double TR;
-    int ETL;
+    double TR = 0.0;
+    int ETL = 0;
     Eigen::ArrayXd FA;
-    Eigen::Array3d TD;
+    Eigen::Array3d TD = Eigen::Array3d::Zero();
 
     QI_SEQUENCE_DECLARE(MP2RAGE);
-    size_t size() const override;
-    Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
-};
-
-class MP3RAGESequence : SequenceBase {
-    double TR;
-    int ETL;
-    Eigen::ArrayXd FA;
-    Eigen::ArrayXd TD;
-
-    QI_SEQUENCE_DECLARE(MP3RAGE);
-    size_t size() const override;
+    Eigen::Index size() const override;
     Eigen::ArrayXcd signal(const double M0, const double T1, const double B1, const double eta) const;
 };
 

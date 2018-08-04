@@ -48,7 +48,7 @@ args::ValueFlagList<double> scales(parser, "SCALE", "Divide ROI values by scale 
  */
 void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names) {
     if (label_list_path) {
-        if (verbose) std::cout << "Opening label list file: " << label_list_path.Get() << std::endl;
+        QI_LOG(verbose, "Opening label list file: " << label_list_path.Get());
         std::ifstream file(label_list_path.Get());
         if (!file) {
             QI_EXCEPTION("Could not open label list file: " << label_list_path.Get());
@@ -59,24 +59,24 @@ void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names)
             std::getline(file, temp);
             temp.erase(std::remove(temp.begin(), temp.end(), '\r'), temp.end()); // Deal with rogue ^M characters
             label_names.push_back(temp);
-            if (verbose) std::cout << "Read label: " << label_numbers.back() << ", name: " << label_names.back() << std::endl;
+            QI_LOG(verbose, "Read label: " << label_numbers.back() << ", name: " << label_names.back());
         }
     } else {
         TStatsFilter::Pointer label_filter = TStatsFilter::New();
-        if (verbose) std::cout << "Reading first label file to determine labels: " << QI::CheckList(in_paths).at(0) << std::endl;
+        QI_LOG(verbose, "Reading first label file to determine labels: " << QI::CheckList(in_paths).at(0));
         label_filter->SetLabelInput(QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0)));
         label_filter->SetInput(QI::ReadImage<QI::VolumeF>(QI::CheckList(in_paths).at(0))); // Dummy value because ITK complains input primary is not set
         label_filter->Update();
         label_numbers = label_filter->GetValidLabelValues();
         std::sort(label_numbers.begin(), label_numbers.end());
         if (verbose) {
-            std::cout << "Found the following labels:" << std::endl;
+            std::cout << "Found the following labels:\n";
             for (auto &l : label_numbers) std::cout << l << " ";
             std::cout << std::endl;
         }
     }
     if (ignore_zero) {
-        if (verbose) std::cout << "Removing zero from label list." << std::endl;
+        QI_LOG(verbose, "Removing zero from label list.");
         label_numbers.erase(std::remove(label_numbers.begin(), label_numbers.end(), 0), label_numbers.end());
     }
 }
@@ -91,7 +91,7 @@ std::vector<std::vector<std::string>> GetHeaders(size_t n_files) {
     std::vector<std::vector<std::string>> headers(header_paths.Get().size(), std::vector<std::string>());
     for (size_t h = 0; h < headers.size(); h++) {
         const std::string header_path = header_paths.Get().at(h);
-        if (verbose) std::cout << "Reading header file: " << header_path << std::endl;
+        QI_LOG(verbose, "Reading header file: " << header_path);
         std::ifstream header_file(header_path);
         if (!header_file) {
             QI_EXCEPTION("Failed to open header file: " << header_path);
@@ -122,13 +122,13 @@ void GetValues(const int n_files, const TLabels &labels, const std::vector<doubl
     QI::VolumeF::Pointer value_img = ITK_NULLPTR;
     for (int f = 0; f < n_files; f++) {
         if (volumes) {
-            if (verbose) std::cout << "Reading label file: " << in_paths.Get().at(f) << std::endl;
+            QI_LOG(verbose, "Reading label file: " << in_paths.Get().at(f));
             label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
             value_img = QI::ReadImage(in_paths.Get().at(f)); // Dummy image
         } else {
-            if (verbose) std::cout << "Reading label file: " << in_paths.Get().at(f) << std::endl;
+            QI_LOG(verbose, "Reading label file: " << in_paths.Get().at(f));
             label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
-            if (verbose) std::cout << "Reading value file: " << in_paths.Get().at(f + n_files) << std::endl;
+            QI_LOG(verbose, "Reading value file: " << in_paths.Get().at(f + n_files));
             value_img = QI::ReadImage(in_paths.Get().at(f + n_files));
         }
         double vox_volume = QI::VoxelVolume(label_img);
@@ -151,15 +151,14 @@ int main(int argc, char **argv) {
 
     size_t n_files = QI::CheckList(in_paths).size();
     if (volumes) {
-        if (verbose) std::cout << "There are " << n_files << " input images, finding ROI volumes" << std::endl;
+        QI_LOG(verbose, "There are " << n_files << " input images, finding ROI volumes");
     } else {
         // For ROI values, we have label and value image pairs
         if (n_files % 2 != 0) {
-            std::cerr << "Require an even number of input images when finding ROI values" << std::endl;
-            return EXIT_FAILURE;
+            QI_FAIL("Require an even number of input images when finding ROI values");
         }
         n_files = n_files / 2;
-        if (verbose) std::cout << "There are " << n_files << " input image pairs, finding mean ROI values" << std::endl;
+        QI_LOG(verbose, "There are " << n_files << " input image pairs, finding mean ROI values");
     }
     // Setup label number list
     TLabels labels;
@@ -188,7 +187,7 @@ int main(int argc, char **argv) {
     std::vector<std::vector<double>> mean_table, sigma_table, volume_table;
     GetValues(n_files, labels, scale_list, mean_table, sigma_table, volume_table);
 
-    if (verbose) std::cout << "Writing CSV: " << std::endl;
+    QI_LOG(verbose, "Writing CSV: ");
     if (precision) std::cout << std::fixed << std::setprecision(precision.Get());
     if (transpose) {
         if (print_names) {

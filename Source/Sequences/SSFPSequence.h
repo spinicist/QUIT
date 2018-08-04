@@ -14,14 +14,13 @@
 
 #include "SequenceBase.h"
 #include "Macro.h"
-#include "EigenCereal.h"
 
 namespace QI {
 
 struct SSFPBase : SequenceBase {
     double TR;
     Eigen::ArrayXd FA;
-    size_t size() const override;
+    Eigen::Index size() const override;
 };
 
 struct SSFPSequence : SSFPBase {
@@ -33,7 +32,7 @@ struct SSFPSequence : SSFPBase {
 
 struct SSFPEchoSequence : SSFPSequence {
     QI_SEQUENCE_DECLARE(SSFPEcho);
-    Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    Eigen::ArrayXd signal_magnitude(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &par) const override;
 };
 
 struct SSFPFiniteSequence : SSFPBase {
@@ -51,13 +50,13 @@ struct SSFPGSSequence : SSFPBase {
 struct SSFPEllipseSequence : SSFPBase {
     Eigen::ArrayXd PhaseInc;
     QI_SEQUENCE_DECLARE(SSFPEllipse);
-    size_t size() const override;
+    Eigen::Index size() const override;
 };
 
 struct SSFPMTSequence : SequenceBase {
     Eigen::ArrayXd FA, TR, Trf, intB1, PhaseInc;
     QI_SEQUENCE_DECLARE(SSFPMT);
-    size_t size() const override;
+    Eigen::Index size() const override;
 };
 
 } // End namespace QI

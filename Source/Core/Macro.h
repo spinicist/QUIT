@@ -42,7 +42,8 @@
     exit(EXIT_FAILURE);          \
 }
 
-#define QI_DB( x ) std::cout << "\n" << #x << ": " << x << std::endl;
-#define QI_DBMAT( x ) std::cout << "\n" << #x << "\n" << x << std::endl;
-#define QI_DBVEC( x ) std::cout << "\n" << #x << ": " << x.transpose() << std::endl;
+#define QI_LOG( vb, msg ) if ( vb ) std::cerr << msg << std::endl;
+#define QI_DB( x ) std::cout << #x << ": " << x << std::endl;
+#define QI_DBMAT( x ) std::cout << #x << "\n" << x << std::endl;
+#define QI_DBVEC( x ) std::cout << #x << ": " << x.transpose() << std::endl;
 #endif // QI_MACRO_H

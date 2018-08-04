@@ -1,4 +1,4 @@
-set( PROGRAMS qinewimage qisignal qidiff )
+set( PROGRAMS qinewimage qisignal qisequence qidiff )
 
 foreach( PROGRAM ${PROGRAMS} )
     add_executable( ${PROGRAM} ${PROGRAM}.cpp )

@@ -16,53 +16,36 @@
 #include <vector>
 #include <memory>
 #include <Eigen/Core>
-#include <cereal/archives/json.hpp>
 #include "Models.h"
+#include "JSON.h"
 
 namespace QI {
 
 struct SequenceBase {
     virtual std::string &name() const = 0;
-    virtual size_t size() const = 0;
-    virtual Eigen::ArrayXcd signal(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const = 0;
-    virtual void load(cereal::JSONInputArchive &ar) = 0;
-    virtual void save(cereal::JSONOutputArchive &ar) const = 0;
+    virtual Eigen::Index size() const = 0;
+    virtual Eigen::ArrayXcd signal(const std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const = 0;
+    virtual rapidjson::Value toJSON(rapidjson::Document::AllocatorType &) const = 0;
 
     virtual size_t count() const;
     virtual Eigen::ArrayXd weights(double f0 = 0.0) const;
-    virtual Eigen::ArrayXd  signal_magnitude(const std::shared_ptr<Model> m, const Eigen::VectorXd &p) const;
+    virtual Eigen::ArrayXd  signal_magnitude(const std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const;
 };
+std::shared_ptr<SequenceBase> SequenceFromJSON(rapidjson::Value &);
+rapidjson::Value JSONFromSequence(const std::shared_ptr<SequenceBase> &, rapidjson::Document::AllocatorType &);
 
-#define QI_SEQUENCE_DECLARE( N ) \
-    std::string &name() const override { static std::string name = #N; return name; }\
-    Eigen::ArrayXcd signal(std::shared_ptr<QI::Model> m, const Eigen::VectorXd &par) const override;\
-    void load(cereal::JSONInputArchive &ar) override;\
-    void save(cereal::JSONOutputArchive &ar) const override;
+#define QI_SEQUENCE_DECLARE( NAME ) \
+    std::string &name() const override { static std::string name = #NAME; return name; }\
+    Eigen::ArrayXcd signal(std::shared_ptr<QI::Model::ModelBase> m, const Eigen::VectorXd &par) const override;\
+    NAME ## Sequence (const rapidjson::Value &);\
+    NAME ## Sequence () = default;\
+    rapidjson::Value toJSON(rapidjson::Document::AllocatorType &) const override;
 
-#define QI_SEQUENCE_LOAD( X ) \
-    try {\
-        ar(cereal::make_nvp(#X, X));\
-    } catch (cereal::RapidJSONException &e) {\
-        std::cerr << "Error parsing parameter " << #X << " for sequence " << name() << ": " << e.what();\
-        exit(EXIT_FAILURE);\
-    };
-
-#define QI_SEQUENCE_LOAD_DEGREES( X ) \
-    Eigen::ArrayXd X ## _degrees;\
-    try {\
-        ar(cereal::make_nvp(#X, X ## _degrees));\
-        X = X ## _degrees * M_PI / 180.;\
-    } catch (cereal::RapidJSONException &e) {\
-        std::cerr << "Error parsing parameter " << #X << " for sequence " << name() << ": " << e.what() << std::endl;\
-        exit(EXIT_FAILURE);\
-    }
-
-#define QI_SEQUENCE_SAVE( X )\
-    ar(cereal::make_nvp(#X, X));
-
-#define QI_SEQUENCE_SAVE_DEGREES( X ) \
-    Eigen::ArrayXd X ## _degrees = X * 180. / M_PI;\
-    ar(cereal::make_nvp(#X, X ## _degrees));\
+#define QI_SEQUENCE_DECLARE_NOSIG( NAME ) \
+    std::string &name() const override { static std::string name = #NAME; return name; }\
+    NAME ## Sequence (const rapidjson::Value &);\
+    NAME ## Sequence () = default;\
+    rapidjson::Value toJSON(rapidjson::Document::AllocatorType &) const override;
 
 } // End namespace QI
 

@@ -17,10 +17,10 @@
 namespace QI {
 
 template<typename TImg = QI::VolumeF>
-extern auto ReadImage(const std::string &path) -> typename TImg::Pointer;
+extern auto ReadImage(const std::string &path, const bool verbose = false) -> typename TImg::Pointer;
 
 template<typename TImg = QI::VolumeF>
-extern auto ReadMagnitudeImage(const std::string &path) -> typename TImg::Pointer;
+extern auto ReadMagnitudeImage(const std::string &path, const bool verbose = false) -> typename TImg::Pointer;
 
 template<typename TImg>
 extern void WriteImage(const TImg *ptr, const std::string &path);

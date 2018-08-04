@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 project(QUIT CXX)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
@@ -9,8 +9,9 @@ include(CMakeToolsHelpers OPTIONAL)
 set( CMAKE_CXX_FLAGS "-Wall -Wextra" )
 set( Args_DIR "${PROJECT_SOURCE_DIR}/External/Args"
      CACHE PATH "Path to Args library (usually External/Args" )
-set( Cereal_DIR "${PROJECT_SOURCE_DIR}/External/cereal/include"
-     CACHE PATH "Path to Cereal library (usually External/Cereal/include" )
+add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
+set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
+     CACHE PATH "Path to external library includes (usually External/include" )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 
@@ -35,7 +36,7 @@ find_package(ITK 4.10.0 REQUIRED
                 ITKMathematicalMorphology ITKOptimizers ITKRegistrationCommon
                 ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
 include( ${ITK_USE_FILE} )
-include_directories( SYSTEM ${Args_DIR} ${Cereal_DIR} )
+include_directories( SYSTEM ${Args_DIR} ${External_Include_DIR} )
 
 OPTION(BUILD_SHARED_LIBS "Build shared libraries." OFF)
 

@@ -48,7 +48,7 @@ public:
         static std::vector<std::string> _names = {"asymmetry"};
         return _names;
     }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput & /* Unused */,
                TInput & /* Unused */, TIterations & /* Unused */) const override
@@ -64,7 +64,7 @@ public:
             const double neg = zspec(nfrq);
             outputs.at(0)[f] = ((pos - neg)/ref);
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -83,12 +83,12 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Opening file: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Opening file: " << QI::CheckPos(input_path));
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
 
-    if (verbose) std::cout << "Enter Z-Spectrum Frequencies: " << std::endl;
+    QI_LOG(verbose, "Enter Z-Spectrum Frequencies: " );
     Eigen::ArrayXf z_frqs; QI::ReadArray(std::cin, z_frqs);
-    if (verbose) std::cout << "Enter Asymmetry Frequencies: " << std::endl;
+    QI_LOG(verbose, "Enter Asymmetry Frequencies: " );
     Eigen::ArrayXf a_frqs; QI::ReadArray(std::cin, a_frqs); // Asymmetry output
     std::shared_ptr<MTAsym> algo = std::make_shared<MTAsym>(z_frqs, a_frqs);
     auto apply = QI::ApplyVectorF::New();
@@ -96,31 +96,29 @@ int main(int argc, char **argv) {
     apply->SetPoolsize(threads.Get());
     apply->SetInput(0, data);
     if (mask) {
-        if (verbose) std::cout << "Setting mask image: " << mask.Get() << std::endl;
+        QI_LOG(verbose, "Setting mask image: " << mask.Get());
         apply->SetMask(QI::ReadImage(mask.Get()));
     }
     if (f0) {
-        if (verbose) std::cout << "Setting f0 image: " << f0.Get() << std::endl;
+        QI_LOG(verbose, "Setting f0 image: " << f0.Get());
         apply->SetConst(0, QI::ReadImage(f0.Get()));
     }
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing output." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing output.");
     std::string outPrefix = outarg.Get() + "MT_";
     for (size_t i = 0; i < algo->numOutputs(); i++) {
         QI::WriteVectorImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }
     
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

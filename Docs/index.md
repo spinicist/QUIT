@@ -12,6 +12,14 @@ Welcome to the QUantitative Imaging Tools, a collection of C++ programs for anal
 * [Stats / GLM](Stats.md)
 * [Utilities](Utilities.md)
 
+## Citing
+
+QUIT has been published in the Journal of Open Source Software. If you use it, please cite the [paper](https://doi.org/10.21105/joss.00656) in the following way:
+
+`Wood, (2018). QUIT: QUantitative Imaging Tools. Journal of Open Source Software, 3(26), 656, https://doi.org/10.21105/joss.00656`
+
+Thank you.
+
 ## Installation
 
 Pre-compiled binaries are provided for Linux and Mac OS X in a .tar.gz archive from the [releases page](http://github.com/spinicist/QUIT/releases "Releases").
@@ -75,7 +83,7 @@ The first line shows that DESPOT1 expects a single input image, in this case SPG
 ~: qidespot1 some_spgr_data.nii.gz
 ```
 
-Nothing will happen. This is because most imaging formats do not store parameters that are required for quantitative imaging, e.g. the repetition time and flip-angles in their headers. QUIT programs hence expect to read this information in a text file passed to `stdin`. If you create a small text file `spgr.txt` containing the following:
+Nothing will happen. This is because most imaging formats do not store parameters that are required for quantitative imaging, e.g. the repetition time and flip-angles in their headers. QUIT programs hence expect to read this information in a text file passed to `stdin`. If you create a small text file `spgr.json` containing the following:
 
 ```json
 {
@@ -89,7 +97,7 @@ Nothing will happen. This is because most imaging formats do not store parameter
 and run the following:
 
 ```bash
-~: qidespot1 some_spgr_data.nii.gz < spgr.txt
+~: qidespot1 some_spgr_data.nii.gz < spgr.json
 ```
 
 then (provided your input data does contain two volumes corresponding to flip-angles 3 and 18 degrees) then DESPOT1 will run, and you should see two files created (`D1_T1.nii.gz` and `D1_PD.nii.gz`). If you want to see what the programs are doing while running, specify the `--verbose` or `-v` options.

@@ -18,7 +18,6 @@
 
 #include "Models.h"
 #include "SSFPSequence.h"
-#include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
@@ -29,7 +28,7 @@
 //******************************************************************************
 class D2Algo : public QI::ApplyF::Algorithm {
 protected:
-    const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+    const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
     std::shared_ptr<QI::SSFPBase> m_sequence;
     size_t m_iterations = 15;
     bool m_elliptical = false;
@@ -58,7 +57,7 @@ public:
 
 class D2LLS : public D2Algo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -93,13 +92,13 @@ public:
         outputs[0] = QI::Clamp(PD, m_loPD, m_hiPD);
         outputs[1] = QI::Clamp(T2, m_loT2, m_hiT2);
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
 class D2WLLS : public D2Algo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -152,7 +151,7 @@ public:
         outputs[0] = QI::Clamp(PD, m_loPD, m_hiPD);
         outputs[1] = QI::Clamp(T2, m_loT2, m_hiT2);
         its = m_iterations;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -164,7 +163,7 @@ class D2Functor : public Eigen::DenseFunctor<double> {
         const Eigen::ArrayXd m_data;
         const std::shared_ptr<QI::SequenceBase> m_sequence;
         const double m_T1, m_B1;
-        const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+        const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
 
         D2Functor(const double T1, const std::shared_ptr<QI::SequenceBase> s, const Eigen::ArrayXd &d, const double B1, const bool /* Unused */, const bool /* Unused */) :
             DenseFunctor<double>(3, s->size()),
@@ -186,7 +185,7 @@ class D2Functor : public Eigen::DenseFunctor<double> {
 
 class D2NLLS : public D2Algo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -209,7 +208,7 @@ public:
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = lm.iterations();
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -236,30 +235,32 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value", {'t',"clampT2"}, std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose);
 
+    QI_LOG(verbose, "Reading T1 Map from: " << QI::CheckPos(t1_path));
+    auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
+
+    QI_LOG(verbose, "Opening SSFP file: " << QI::CheckPos(ssfp_path));
+    auto data = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
+
     std::shared_ptr<D2Algo> algo;
     switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<D2LLS>();  if (verbose) std::cout << "LLS algorithm selected." << std::endl; break;
-        case 'w': algo = std::make_shared<D2WLLS>(); if (verbose) std::cout << "WLLS algorithm selected." << std::endl; break;
-        case 'n': algo = std::make_shared<D2NLLS>(); if (verbose) std::cout << "NLLS algorithm selected." << std::endl; break;
+        case 'l': algo = std::make_shared<D2LLS>();  QI_LOG(verbose, "LLS algorithm selected." ); break;
+        case 'w': algo = std::make_shared<D2WLLS>(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+        case 'n': algo = std::make_shared<D2NLLS>(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
     }
 
     algo->setIterations(its);
     if (clampPD) algo->setClampPD(0, clampPD.Get());
     if (clampT2) algo->setClampT2(0, clampT2.Get());
+    rapidjson::Document input = QI::ReadJSON(std::cin);
     std::shared_ptr<QI::SSFPBase> ssfp;
     if (ellipse) {
-        ssfp = std::make_shared<QI::SSFPGSSequence>(QI::ReadSequence<QI::SSFPGSSequence>(std::cin, verbose));
+        ssfp = std::make_shared<QI::SSFPGSSequence>(input["SSFPGS"]);
     } else {
-        ssfp = std::make_shared<QI::SSFPSequence>(QI::ReadSequence<QI::SSFPSequence>(std::cin, verbose));
+        ssfp = std::make_shared<QI::SSFPSequence>(input["SSFP"]);
     }
     algo->setSequence(ssfp);
     algo->setElliptical(ellipse);
 
-    if (verbose) std::cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << std::endl;
-    auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
-
-    if (verbose) std::cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << std::endl;
-    auto data = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);
@@ -268,25 +269,21 @@ int main(int argc, char **argv) {
     apply->SetConst(0, T1);
     if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "apply setup complete. Processing." << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files.");
     std::string outPrefix = outarg.Get() + "D2_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual" + QI::OutExt());
+    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (resids) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
-    if (verbose) std::cout << "All done." << std::endl;
+    QI_LOG(verbose, "All done." );
     return EXIT_SUCCESS;
 }

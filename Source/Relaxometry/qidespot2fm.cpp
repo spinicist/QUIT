@@ -14,13 +14,13 @@
 #include <Eigen/Dense>
 #include "ceres/ceres.h"
 
+#include "Macro.h"
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
 #include "Models.h"
 #include "ApplyTypes.h"
 #include "SSFPSequence.h"
-#include "SequenceCereal.h"
 
 class FMCost : public ceres::CostFunction {
 private:
@@ -78,7 +78,7 @@ public:
         return def;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -110,7 +110,7 @@ public:
             } else {
                 problem.SetParameterLowerBound(p.data(), 2, 0.0);
             }
-            problem.SetParameterUpperBound(p.data(), 2,  0.5/m_sequence.TR);
+            problem.SetParameterUpperBound(p.data(), 2, 0.5/m_sequence.TR);
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;
             options.max_num_iterations = 75;
@@ -122,11 +122,7 @@ public:
                 p = {5., std::max(0.1 * T1, 1.5*m_sequence.TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
-                    std::cerr << summary.FullReport() << std::endl;
-                    std::cerr << "T1: " << T1 << " B1: " << B1 << std::endl;
-                    std::cerr << "Parameters: " << p.transpose() << std::endl;
-                    std::cerr << "Data: " << indata.transpose() << std::endl;
-                    return false;
+                    return std::make_tuple(false, summary.FullReport());
                 }
                 double r = summary.final_cost;
                 if (r < best) {
@@ -135,7 +131,7 @@ public:
                     its = summary.iterations.size();
                 }
             }
-            if (m_debug) std::cout << summary.FullReport() << std::endl;
+            QI_LOG(m_debug, summary.FullReport());
             outputs[0] = bestP[0] * indata.maxCoeff();
             outputs[1] = bestP[1];
             outputs[2] = bestP[2];
@@ -157,7 +153,7 @@ public:
             resids.Fill(0.);
             its = 0;
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -183,18 +179,19 @@ int main(int argc, char **argv) {
     args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Reading T1 Map from: " << QI::CheckPos(t1_path) << std::endl;
+    QI_LOG(verbose, "Reading T1 Map from: " << QI::CheckPos(t1_path));
     auto T1 = QI::ReadImage(QI::CheckPos(t1_path));
-    if (verbose) std::cout << "Opening SSFP file: " << QI::CheckPos(ssfp_path) << std::endl;
+    QI_LOG(verbose, "Opening SSFP file: " << QI::CheckPos(ssfp_path));
     auto ssfpData = QI::ReadVectorImage<float>(QI::CheckPos(ssfp_path));
-
-    auto ssfp_sequence = QI::ReadSequence<QI::SSFPSequence>(std::cin, verbose);
+    QI_LOG(verbose, "Reading sequence");
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::SSFPSequence ssfp_sequence(input["SSFP"]);
     auto apply = QI::ApplyF::New();
     std::shared_ptr<LM_FM> algo = std::make_shared<LM_FM>(ssfp_sequence, asym, debug);
     apply->SetVerbose(verbose);
     apply->SetAlgorithm(algo);
     apply->SetOutputAllResiduals(resids);
-    if (verbose) std::cout << "Using " << threads.Get() << " threads" << std::endl;
+    QI_LOG(verbose, "Using " << threads.Get() << " threads" );
     apply->SetPoolsize(threads.Get());
     apply->SetSplitsPerThread(threads.Get()); // Fairly unbalanced algorithm
     apply->SetInput(0, ssfpData);
@@ -202,24 +199,22 @@ int main(int argc, char **argv) {
     if (B1) apply->SetConst(1, QI::ReadImage(B1.Get()));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files." );
     std::string outPrefix = args::get(outarg) + "FM_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T2" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(2), outPrefix + "f0" + QI::OutExt());
     QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "its" + QI::OutExt());
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual" + QI::OutExt());
+    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (resids) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
     return EXIT_SUCCESS;
 }

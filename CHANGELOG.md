@@ -1,5 +1,16 @@
 # QUIT Changelog
 
+## Version 2.0.2
+
+Mostly another bug-fix release, but also to celebrate acceptance by [JOSS](https://doi.org/10.21105/joss.00656)
+
+Notable changes:
+
+1. Added a new Z-shim calculation tool
+2. Scaling of residuals by the PD in DESPOT tools has been *removed*
+
+(Yes, this changelog is missing from the actual v2.0.2 tag and downloads. Whoops)
+
 ## Version 2.0.1
 
 A bug-fix release
@@ -13,7 +24,7 @@ A bug-fix release
 
 This was a major upgrade from QUIT 1.1 with a lot of improvements and new features. Principal changes were:
 
-1. Introduction of proper (documentation)[https://spinicist.github.io/QUIT]
+1. Introduction of proper [documentation](https://spinicist.github.io/QUIT)
 2. A switch to JSON as the input file format
 3. Standardisation of input arguments across all tools
 4. Introduction of a lot of new methods, including ASL, phase unwrapping and SSFP ellipse methods

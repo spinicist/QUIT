@@ -14,12 +14,12 @@
 #define FA_PHASE_CHECK()\
     if (FA.rows() != PhaseInc.rows()) {\
         QI_FAIL("While reading " << this->name() << " number of phase increments " << PhaseInc.rows() <<\
-                " did not match the number of flip angles " << FA.rows() );\
+                " did not match the number of flip angles " << FA.rows());\
     }
 
 namespace QI {
 
-size_t SSFPBase::size() const {
+Eigen::Index SSFPBase::size() const {
     return FA.rows();
 }
 
@@ -29,42 +29,45 @@ Eigen::ArrayXd SSFPSequence::weights(const double f0) const {
     return weights;
 }
 
-Eigen::ArrayXcd SSFPSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFP(p, FA, TR, PhaseInc);
 }
 
-void SSFPSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+SSFPSequence::SSFPSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
+    PhaseInc = ArrayFromJSON(json["PhaseInc"], M_PI / 180);
     FA_PHASE_CHECK()
 }
 
-void SSFPSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+rapidjson::Value SSFPSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
+    return json;
 }
 
-Eigen::ArrayXcd SSFPEchoSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPEchoSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFPEcho(p, FA, TR, PhaseInc);
 }
 
-Eigen::ArrayXd SSFPEchoSequence::signal_magnitude(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXd SSFPEchoSequence::signal_magnitude(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFPEchoMagnitude(p, FA, TR, PhaseInc);
 }
 
-void SSFPEchoSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
-    FA_PHASE_CHECK()
+SSFPEchoSequence::SSFPEchoSequence(const rapidjson::Value &json) :
+    SSFPSequence(json)
+{
 }
 
-void SSFPEchoSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+rapidjson::Value SSFPEchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
+    return json;
 }
 
 Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
@@ -73,84 +76,97 @@ Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
     return weights;
 }
 
-Eigen::ArrayXcd SSFPFiniteSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPFiniteSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFPFinite(p, FA, TR, Trf, PhaseInc);
 }
 
-void SSFPFiniteSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+SSFPFiniteSequence::SSFPFiniteSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    Trf = json["Trf"].GetDouble();
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
+    PhaseInc = ArrayFromJSON(json["PhaseInc"], M_PI / 180);
     FA_PHASE_CHECK()
 }
 
-void SSFPFiniteSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    ar(cereal::make_nvp("Trf", Trf));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+rapidjson::Value SSFPFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("Trf", Trf, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
+    return json;
 }
 
-Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model> m, const Eigen::VectorXd &p) const {
+Eigen::ArrayXcd SSFPGSSequence::signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &p) const {
     return m->SSFP_GS(p, FA, TR);
 }
 
-void SSFPGSSequence::load(cereal::JSONInputArchive &ar) {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_LOAD_DEGREES( FA );
+SSFPGSSequence::SSFPGSSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
 }
 
-void SSFPGSSequence::save(cereal::JSONOutputArchive &ar) const {
-    ar(cereal::make_nvp("TR", TR));
-    QI_SEQUENCE_SAVE_DEGREES( FA );
+rapidjson::Value SSFPGSSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    return json;
+
 }
 
-Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
+Eigen::ArrayXcd SSFPEllipseSequence::signal(std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 
-size_t SSFPEllipseSequence::size() const {
+Eigen::Index SSFPEllipseSequence::size() const {
     return FA.rows() * PhaseInc.rows();
 }
 
-void SSFPEllipseSequence::load(cereal::JSONInputArchive &ar) {
-    QI_SEQUENCE_LOAD( TR );
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+SSFPEllipseSequence::SSFPEllipseSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = json["TR"].GetDouble();
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
+    PhaseInc = ArrayFromJSON(json["PhaseInc"], M_PI / 180);
 }
 
-void SSFPEllipseSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_SEQUENCE_SAVE( TR );
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+rapidjson::Value SSFPEllipseSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", TR, a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
+    return json;
 }
 
-Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
+Eigen::ArrayXcd SSFPMTSequence::signal(std::shared_ptr<Model::ModelBase> /* Unused */, const Eigen::VectorXd & /* Unused */) const {
     QI_FAIL("Not implemented");
 }
 
-size_t SSFPMTSequence::size() const {
+Eigen::Index SSFPMTSequence::size() const {
     return FA.rows();
 }
 
-void SSFPMTSequence::load(cereal::JSONInputArchive &ar) {
-    QI_SEQUENCE_LOAD( TR );
-    QI_SEQUENCE_LOAD( Trf );
-    QI_SEQUENCE_LOAD( intB1 );
-    QI_SEQUENCE_LOAD_DEGREES( FA );
-    QI_SEQUENCE_LOAD_DEGREES( PhaseInc );
+SSFPMTSequence::SSFPMTSequence(const rapidjson::Value &json) {
+    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    TR = ArrayFromJSON(json["TR"]);
+    Trf = ArrayFromJSON(json["Trf"]);
+    intB1 = ArrayFromJSON(json["intB1"]);
+    FA = ArrayFromJSON(json["FA"], M_PI / 180);
+    PhaseInc = ArrayFromJSON(json["PhaseInc"], M_PI / 180);
     if ((TR.rows() != Trf.rows()) || (TR.rows() != intB1.rows()) || (TR.rows() != FA.rows())) {
         QI_FAIL("One on more parameters had differing lengths, TR had " << TR.rows() << ", Trf had " << Trf.rows() << ", intB1 had " << intB1.rows() << ", FA had " << FA.rows());
     }
 }
 
-void SSFPMTSequence::save(cereal::JSONOutputArchive &ar) const {
-    QI_SEQUENCE_SAVE( TR );
-    QI_SEQUENCE_SAVE( Trf );
-    QI_SEQUENCE_SAVE( intB1 );
-    QI_SEQUENCE_SAVE_DEGREES( FA );
-    QI_SEQUENCE_SAVE_DEGREES( PhaseInc );
+rapidjson::Value SSFPMTSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kObjectType);
+    json.AddMember("TR", ArrayToJSON(TR, a), a);
+    json.AddMember("Trf", ArrayToJSON(Trf, a), a);
+    json.AddMember("intB1", ArrayToJSON(intB1, a), a);
+    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
+    return json;
 }
 
 } // End namespace QI

@@ -12,22 +12,22 @@
 #include <iostream>
 #include "Eigen/Dense"
 #include <unsupported/Eigen/Splines>
-#include <cereal/types/vector.hpp>
 
 #include "itkImageSource.h"
 #include "itkImageSliceIteratorWithIndex.h"
-#include "itkMaskImageFilter.h"
+#include "itkProgressReporter.h"
+#include "itkImageMomentsCalculator.h"
 #include "ImageTypes.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
 #include "IO.h"
 #include "Spline.h"
-#include "EigenCereal.h"
+#include "JSON.h"
 
 namespace itk {
 
-class ProfileImage : public ImageSource<QI::VectorVolumeF> {
+class ProfileImage : public ImageSource<QI::VolumeF> {
 public:
     using Self       = ProfileImage;
     using Superclass = ImageSource<QI::VectorVolumeF>;
@@ -40,20 +40,24 @@ public:
     void SetReference(const SmartPointer<QI::VolumeF> ref) {
         m_reference = ref;
     }
-
-    void SetRF(const Eigen::ArrayXd pos, const std::vector<Eigen::ArrayXd> vals) {
-        m_splines.clear();
-        for (const auto &v : vals) {
-            m_splines.push_back(QI::SplineInterpolator(pos, v));
+    void SetDebug(const bool d) { m_debug = d; }
+    void SetDim(const int d) { 
+        if ((m_dim < 0) || (m_dim > 2)) {
+            QI_FAIL("Invalid dimension for RF profile, must be 0-2");
         }
+        m_dim = d;
+    }
+    void SetRF(const Eigen::ArrayXd pos, const Eigen::ArrayXd vals) {
+        m_spline = QI::SplineInterpolator(pos, vals);
+        QI_LOG(m_debug, m_spline);
     }
 
     void SetMask(const QI::VolumeF *mask) { this->SetNthInput(1, const_cast<QI::VolumeF*>(mask)); }
+    void SetCenterMask(const bool cm) { this->m_centerMask = cm; }
     typename QI::VolumeF::ConstPointer GetMask() const { return static_cast<const QI::VolumeF *>(this->ProcessObject::GetInput(1)); }
     
     void GenerateOutputInformation() ITK_OVERRIDE {
         auto output = this->GetOutput();
-        output->SetNumberOfComponentsPerPixel(m_splines.size());
         output->SetRegions(m_reference->GetLargestPossibleRegion());
         output->SetSpacing(m_reference->GetSpacing());
         output->SetDirection(m_reference->GetDirection());
@@ -63,20 +67,22 @@ public:
 
 protected:
     SmartPointer<QI::VolumeF> m_reference;
-    std::vector<QI::SplineInterpolator> m_splines;
+    QI::SplineInterpolator m_spline;
+    bool m_debug = false, m_centerMask = false;
+    int m_dim = 0;
 
     ProfileImage(){
     }
     ~ProfileImage(){}
     void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE {
         auto output = this->GetOutput();
-        ImageSliceIteratorWithIndex<QI::VectorVolumeF> imageIt(output, region);
-        imageIt.SetFirstDirection(0);
-        imageIt.SetSecondDirection(1);
+        ImageSliceIteratorWithIndex<QI::VolumeF> imageIt(output, region);
+        imageIt.SetFirstDirection((m_dim + 1) % 3);
+        imageIt.SetSecondDirection((m_dim + 2) % 3);
         imageIt.GoToBegin();
         ImageSliceIteratorWithIndex<QI::VolumeF> it_B1(m_reference, region);
-        it_B1.SetFirstDirection(0);
-        it_B1.SetSecondDirection(1);
+        it_B1.SetFirstDirection((m_dim + 1) % 3);
+        it_B1.SetSecondDirection((m_dim + 2) % 3);
         it_B1.GoToBegin();
 
         const auto mask = this->GetMask();
@@ -88,30 +94,35 @@ protected:
             maskIter.GoToBegin();
         }
 
-        // Calculate geometric center
-        QI::VectorVolumeF::IndexType idx_center;
-        for (int i = 0; i < 3; i++) {
-            idx_center[i] = m_reference->GetLargestPossibleRegion().GetSize()[i] / 2;
+        QI::VectorVolumeF::PointType pt_center;
+        if (mask && m_centerMask) {
+            auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
+            moments->SetImage(mask);
+            moments->Compute();
+            QI_LOG(m_debug, "Mask CoG is: " << moments->GetCenterOfGravity());
+            pt_center = moments->GetCenterOfGravity();
+        } else {
+            // Calculate geometric center
+            QI::VectorVolumeF::IndexType idx_center;
+            for (int i = 0; i < 3; i++) {
+                idx_center[i] = m_reference->GetLargestPossibleRegion().GetSize()[i] / 2;
+            }
+            m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
         }
-        QI::VectorVolumeF::PointType pt_center; m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
-        itk::VariableLengthVector<float> zero(m_splines.size()); zero.Fill(0.);
 
-        ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
+        itk::ProgressReporter progress(this, threadId, region.GetNumberOfPixels(), 10);
         while(!imageIt.IsAtEnd()) {
             QI::VectorVolumeF::PointType pt, pt_rf;
             m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), pt);
             pt_rf = pt - pt_center;
-            itk::VariableLengthVector<float> vals(m_splines.size());
-
-            for (size_t i = 0; i < m_splines.size(); i++) {
-                vals[i] = m_splines[i](pt_rf[2]);
-            }
+            float val = m_spline(pt_rf[m_dim]);
+            QI_LOG(m_debug, "Slice co-ordinate: " << pt_rf << " Spline Point: " << pt_rf[m_dim] << " value: " << val);
             while (!imageIt.IsAtEndOfSlice()) {
                 while (!imageIt.IsAtEndOfLine()) {
                     if (!mask || maskIter.Get()) {
-                        imageIt.Set(vals * it_B1.Get());
+                        imageIt.Set(val * it_B1.Get());
                     } else {
-                        imageIt.Set(zero);
+                        imageIt.Set(0.);
                     }
                     ++imageIt;
                     ++it_B1;
@@ -154,36 +165,32 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::Flag     centerMask(parser, "CENTER ON MASK", "Set the center of the slab to the center of the mask", {'c', "center"});
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
+    args::ValueFlag<int> dimension(parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 2);
     QI::ParseArgs(parser, argc, argv, verbose);
 
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
-    if (verbose) std::cout << "Reading image " << QI::CheckPos(b1plus_path) << std::endl;
+    QI_LOG(verbose, "Reading image " << QI::CheckPos(b1plus_path));
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 
-    cereal::JSONInputArchive input(std::cin);
-    Eigen::ArrayXd rf_pos;
-    std::vector<Eigen::ArrayXd> rf_vals;
-    if (verbose) std::cout << "Reading slab profile" << std::endl;
-    QI::ReadCereal(input, "rf_pos", rf_pos);
-    QI::ReadCereal(input, "rf_vals", rf_vals);
-    for (const auto &v : rf_vals) {
-        if (rf_pos.rows() != v.rows()) {
-            QI_FAIL("Number of points must match number of values");
-        };
-    }
-    if (verbose) {
-        std::cout << "Profile has " << rf_pos.rows() << " points." << std::endl;
-        if (verbose) std::cout << "Generating image" << std::endl;
-    }
+    QI_LOG(verbose, "Reading slab profile");
+    rapidjson::Document json = QI::ReadJSON(std::cin);
+    auto rf_pos = QI::ArrayFromJSON(json["rf_pos"]);
+    auto rf_vals = QI::ArrayFromJSON(json["rf_vals"]);
+
+    QI_LOG(verbose, "Profile has " << rf_pos.rows() << " points.\nGenerating image");
     auto image = itk::ProfileImage::New();
+    image->SetDebug(debug);
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
+    image->SetDim(dimension.Get());
+    image->SetCenterMask(centerMask);
     if (mask) image->SetMask(QI::ReadImage(mask.Get()));
     auto monitor = QI::GenericMonitor::New();
     image->AddObserver(itk::ProgressEvent(), monitor);
     image->Update();
-    if (verbose) std::cout << "Finished, writing output: " << QI::CheckPos(output_path) << std::endl;
-    QI::WriteVectorImage(image->GetOutput(), QI::CheckPos(output_path));
+    QI_LOG(verbose, "Finished, writing output: " << QI::CheckPos(output_path));
+    QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path));
     return EXIT_SUCCESS;
 }

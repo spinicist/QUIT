@@ -23,7 +23,6 @@
 #include "ImageIO.h"
 #include "Args.h"
 #include "MultiEchoSequence.h"
-#include "SequenceCereal.h"
 #include "ApplyTypes.h"
 #include "ImageToVectorFilter.h"
 
@@ -34,7 +33,7 @@ typedef itk::ImageToVectorFilter<QI::SeriesF> SeriesToVectorF;
  */
 class RelaxAlgo : public QI::ApplyF::Algorithm {
 private:
-    const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+    const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
 protected:
     QI::MultiEchoSequence m_sequence;
     double m_clampLo = -std::numeric_limits<double>::infinity();
@@ -77,7 +76,7 @@ public:
 
 class LogLinAlgo: public RelaxAlgo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -94,13 +93,13 @@ public:
         double T2 = -1 / b[0];
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
 class ARLOAlgo : public RelaxAlgo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -108,18 +107,19 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         Eigen::ArrayXd data = indata.cast<double>();
         const double dTE_3 = (m_sequence.ESP / 3);
-        double si2sum = 0, sidisum = 0;
-        for (size_t i = 0; i < m_sequence.size() - 2; i++) {
+        double si2sum = 0, di2sum = 0, sidisum = 0;
+        for (Eigen::Index i = 0; i < m_sequence.size() - 2; i++) {
             const double si = dTE_3 * (data(i) + 4*data(i+1) + data(i+2));
             const double di = data(i) - data(i+2);
             si2sum += si*si;
+            di2sum += di*di;
             sidisum += si*di;
         }
-        double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*si2sum + sidisum);
+        double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*di2sum + sidisum);
         double PD = (data.array() / exp(-m_sequence.TE / T2)).mean();
         clamp_and_threshold(data, outputs, residual, resids, PD, T2);
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -127,7 +127,7 @@ class RelaxFunctor : public Eigen::DenseFunctor<double> {
     protected:
         const QI::MultiEchoSequence m_sequence;
         const Eigen::ArrayXd m_data;
-        const std::shared_ptr<QI::SCD> m_model = std::make_shared<QI::SCD>();
+        const std::shared_ptr<QI::Model::OnePool> m_model = std::make_shared<QI::Model::OnePool>();
 
     public:
         RelaxFunctor(const QI::MultiEchoSequence &cs, const Eigen::ArrayXd &data) :
@@ -149,7 +149,7 @@ class RelaxFunctor : public Eigen::DenseFunctor<double> {
 
 class NonLinAlgo : public RelaxAlgo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -166,7 +166,7 @@ public:
         lm.minimize(p);
         clamp_and_threshold(data, outputs, residual, resids, p[0], p[1]);
         its = lm.iterations();
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -189,24 +189,25 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> threshPD(parser, "THRESHOLD PD", "Only output maps when PD exceeds threshold value", {'t', "tresh"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Opening input file: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Opening input file: " << QI::CheckPos(input_path));
     auto inputFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
 
     std::shared_ptr<RelaxAlgo> algo = ITK_NULLPTR;
     switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<LogLinAlgo>(); if (verbose) std::cout << "LogLin algorithm selected." << std::endl; break;
-        case 'a': algo = std::make_shared<ARLOAlgo>(); if (verbose) std::cout << "ARLO algorithm selected." << std::endl; break;
-        case 'n': algo = std::make_shared<NonLinAlgo>(); if (verbose) std::cout << "Non-linear algorithm (Levenberg Marquardt) selected." << std::endl; break;
+        case 'l': algo = std::make_shared<LogLinAlgo>(); QI_LOG(verbose, "LogLin algorithm selected." ); break;
+        case 'a': algo = std::make_shared<ARLOAlgo>(); QI_LOG(verbose, "ARLO algorithm selected." ); break;
+        case 'n': algo = std::make_shared<NonLinAlgo>(); QI_LOG(verbose, "Non-linear algorithm (Levenberg Marquardt) selected." ); break;
         default:
-            std::cout << "Unknown algorithm type " << algorithm.Get() << std::endl;
-            return EXIT_FAILURE;
+            QI_FAIL("Unknown algorithm type " << algorithm.Get());
     }
     algo->setThresh(threshPD.Get());
     algo->setClamp(0, clampT2.Get());
     algo->setIterations(its.Get());
 
     // Gather input data
-    auto multiecho = QI::ReadSequence<QI::MultiEchoSequence>(std::cin, verbose);
+    QI_LOG(verbose, "Reading sequence parameters");
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::MultiEchoSequence multiecho(input["MultiEcho"]);
     size_t nVols = inputFile->GetLargestPossibleRegion().GetSize()[3] / multiecho.size();
     algo->setSequence(multiecho);
     auto apply = QI::ApplyF::New();
@@ -220,7 +221,7 @@ int main(int argc, char **argv) {
     layout[0] = layout[1] = layout[2] = 1; layout[3] = nVols;
     PDoutput->SetLayout(layout);
     T2output->SetLayout(layout);
-    if (verbose) std::cout << "Processing" << std::endl;
+    QI_LOG(verbose, "Processing" );
     auto inputVector = SeriesToVectorF::New();
     inputVector->SetInput(inputFile);
     inputVector->SetBlockSize(multiecho.size());
@@ -240,7 +241,7 @@ int main(int argc, char **argv) {
         PDoutput->SetInput(i, PDimgs.at(i));
         T2output->SetInput(i, T2imgs.at(i));
     }
-    if (verbose) std::cout << "Writing output" << std::endl;
+    QI_LOG(verbose, "Writing output" );
     PDoutput->UpdateLargestPossibleRegion();
     T2output->UpdateLargestPossibleRegion();
     std::string outPrefix = outarg.Get() + "ME_";

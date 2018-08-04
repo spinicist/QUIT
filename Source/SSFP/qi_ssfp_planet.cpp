@@ -16,7 +16,6 @@
 
 #include "ApplyTypes.h"
 #include "SSFPSequence.h"
-#include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
@@ -44,7 +43,7 @@ struct PLANET : public QI::ApplyVectorF::Algorithm {
     }
     PLANET(const QI::SSFPGSSequence &s) : m_seq(s) {}
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &/*Unused*/,
                std::vector<TOutput> &outputs, TOutput &/*Unused*/,
                TInput &/*Unused*/, TIterations &/*Unused*/) const override
@@ -65,7 +64,7 @@ struct PLANET : public QI::ApplyVectorF::Algorithm {
             outputs[1][i] = T2[i];
             outputs[2][i] = PD[i];
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -84,13 +83,14 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose);
     itk::MultiThreader::SetGlobalDefaultNumberOfThreads(threads.Get());
-    if (verbose) std::cout << "Opening G: " << QI::CheckPos(G_filename) << std::endl;
+    QI_LOG(verbose, "Opening G: " << QI::CheckPos(G_filename));
     auto G = QI::ReadVectorImage(QI::CheckPos(G_filename));
-    if (verbose) std::cout << "Opening a: " << QI::CheckPos(a_filename) << std::endl;
+    QI_LOG(verbose, "Opening a: " << QI::CheckPos(a_filename));
     auto a = QI::ReadVectorImage(QI::CheckPos(a_filename));
-    if (verbose) std::cout << "Opening b: " << QI::CheckPos(b_filename) << std::endl;
+    QI_LOG(verbose, "Opening b: " << QI::CheckPos(b_filename));
     auto b = QI::ReadVectorImage(QI::CheckPos(b_filename));
-    auto seq = QI::ReadSequence<QI::SSFPGSSequence>(std::cin, verbose);
+    rapidjson::Document json = QI::ReadJSON(std::cin);
+    QI::SSFPGSSequence seq(json["SSFPGS"]);
     auto algo = std::make_shared<PLANET>(seq);
     auto apply = QI::ApplyVectorF::New();
     apply->SetAlgorithm(algo);
@@ -103,20 +103,18 @@ int main(int argc, char **argv) {
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s");
     std::string outPrefix = out_prefix.Get() + "PLANET_";
     for (size_t i = 0; i < algo->numOutputs(); i++) {
-        if (verbose) std::cout << "Writing output: " << outPrefix + algo->names().at(i) + QI::OutExt() << std::endl;
+        QI_LOG(verbose, "Writing output: " << outPrefix + algo->names().at(i) + QI::OutExt());
         QI::WriteVectorImage(apply->GetOutput(i), outPrefix + algo->names().at(i) + QI::OutExt());
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

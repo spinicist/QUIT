@@ -21,14 +21,14 @@ std::shared_ptr<SequenceBase> &SequenceGroup::operator[](const size_t i) {
     return sequences.at(i);
 }
 
-size_t SequenceGroup::size() const {
+Eigen::Index SequenceGroup::size() const {
     size_t sz = 0;
     for (auto& sig : sequences)
         sz += sig->size();
     return sz;
 }
 
-Eigen::ArrayXcd SequenceGroup::signal(std::shared_ptr<Model> m,
+Eigen::ArrayXcd SequenceGroup::signal(std::shared_ptr<Model::ModelBase> m,
                                       const Eigen::VectorXd &p) const {
     Eigen::ArrayXcd result(size());
     size_t start = 0;
@@ -52,6 +52,22 @@ Eigen::ArrayXd SequenceGroup::weights(const double f0) const {
 
 void SequenceGroup::addSequence(const std::shared_ptr<SequenceBase> &w) {
     sequences.push_back(w);
+}
+
+SequenceGroup::SequenceGroup(rapidjson::Value &json) {
+    assert(json.IsArray());
+    for (rapidjson::SizeType i = 0; i < json.Size(); i++) {
+        sequences.push_back(SequenceFromJSON(json[i]));
+    }
+}
+
+rapidjson::Value SequenceGroup::toJSON(rapidjson::Document::AllocatorType &a) const {
+    rapidjson::Value json(rapidjson::kArrayType);
+    for (const auto &seq : sequences) {
+        auto aval = JSONFromSequence(seq, a);
+        json.PushBack(aval, a);
+    }
+    return json;
 }
 
 } // End namespace QI

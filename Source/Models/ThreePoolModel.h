@@ -1,7 +1,7 @@
 /*
- *  DESPOT_3C.h
+ *  ThreePoolModel.h
  *
- *  Copyright (c) 2016 Tobias Wood.
+ *  Copyright (c) 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,25 +9,15 @@
  *
  */
 
-#ifndef MODELS_DESPOT_3C_H
-#define MODELS_DESPOT_3C_H
+#ifndef MODEL_THREEPOOL_H
+#define MODEL_THREEPOOL_H
 
-#include "Model.h"
+#include "ModelBase.h"
 
 namespace QI {
-    
- class MCD3 : public Model {
-	DECLARE_MODEL_INTERFACE()
+namespace Model {
 
-    virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
-    virtual Eigen::VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
-    virtual Eigen::VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
-    virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
-    virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
-    virtual Eigen::VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
-};
-
-class MCD3_f0 : public Model {
+class ThreePool : public ModelBase {
     DECLARE_MODEL_INTERFACE()
 
     virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
@@ -38,7 +28,18 @@ class MCD3_f0 : public Model {
     virtual Eigen::VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
 };
 
-class MCD3_NoEx : public Model {
+class ThreePool_f0 : public ModelBase {
+    DECLARE_MODEL_INTERFACE()
+
+    virtual Eigen::VectorXcd SPGR(cvecd &params, carrd &a, cdbl TR) const override;
+    virtual Eigen::VectorXcd SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const override;
+    virtual Eigen::VectorXcd SPGRFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, cdbl TE) const override;
+    virtual Eigen::VectorXcd SSFP(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
+    virtual Eigen::VectorXcd SSFPFinite(cvecd &params, carrd &a, cdbl TR, cdbl T_rf, carrd &phi) const override;
+};
+
+class ThreePool_NoExchange : public ModelBase {
     DECLARE_MODEL_INTERFACE()
 
     virtual Eigen::VectorXcd SPGR(cvecd &p, carrd &a, cdbl TR) const override;
@@ -47,6 +48,7 @@ class MCD3_NoEx : public Model {
     virtual Eigen::VectorXcd SSFPEcho(cvecd &params, carrd &a, cdbl TR, carrd &phi) const override;
 };
 
+} // End namespace Model
 } // End namespace QI
 
-#endif // MODELS_DESPOT_3C_H
+#endif // MODEL_THREEPOOL_H

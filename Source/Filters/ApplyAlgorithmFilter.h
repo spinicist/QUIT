@@ -2,6 +2,7 @@
 #define APPLYALGOFILTER_H
 
 #include <vector>
+#include <tuple>
 #include "itkImageToImageFilter.h"
 #include "itkVariableLengthVector.h"
 #include "itkVectorImage.h"
@@ -43,18 +44,19 @@ public:
         using TConst = TConstPixel;
         using TIndex = ApplyAlgorithmFilter::TIndex;           // Make TIndex available to algorithm subclasses
         using TIterations = ApplyAlgorithmFilter::TIterations; // Make TIterations available to algorithm subclasses
+        typedef std::tuple<bool, std::string> TStatus;         // Allow a return message when fitting fails
         virtual size_t numInputs() const = 0;  // The number of inputs that will be concatenated into the data vector
         virtual size_t numConsts() const = 0;  // Number of constant input parameters/variables
         virtual size_t numOutputs() const = 0; // Number of output parameters/variables
         virtual size_t outputSize() const { return 1; }; // Size outputs, overload for vector outputs
         virtual size_t dataSize() const = 0;   // The expected size of the concatenated input
         virtual std::vector<TConst> defaultConsts() const = 0;    // Give some default constants for when the user does not supply them
-        virtual bool apply(const std::vector<TInput> &inputs,
-                           const std::vector<TConst> &consts,
-                           const TIndex &index,
-                           std::vector<TOutput> &outputs,
-                           TOutput &residual, TInput &resids,
-                           TIterations &iterations) const = 0; // Apply the algorithm to the data from one voxel. Return false to indicate algorithm failed.
+        virtual TStatus apply(const std::vector<TInput> &inputs,
+                              const std::vector<TConst> &consts,
+                              const TIndex &index,
+                              std::vector<TOutput> &outputs,
+                              TOutput &residual, TInput &resids,
+                              TIterations &iterations) const = 0; // Apply the algorithm to the data from one voxel. Return false to indicate algorithm failed.
         virtual TOutput zero() const = 0; // Hack, to supply a zero for masked voxels
     };
 

@@ -22,7 +22,7 @@
 #include "Polynomial.h"
 #include "Args.h"
 #include "Fit.h"
-#include "EigenCereal.h"
+#include "JSON.h"
 
 namespace itk {
 
@@ -76,7 +76,7 @@ protected:
         ImageRegionConstIterator<TImage> maskIter;
         int N = 0;
         if (mask) {
-            //if (m_verbose) std::cout << "Counting voxels in mask..." << std::endl;
+            //if (m_verbose) std::cout << "Counting voxels in mask..." );
             maskIter = ImageRegionConstIterator<TImage>(mask, region);
             maskIter.GoToBegin();
             while (!maskIter.IsAtEnd()) {
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string>  mask_path(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
 
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading input from: " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading input from: " << QI::CheckPos(input_path));
     auto input = QI::ReadImage(QI::CheckPos(input_path));
     auto fit = itk::PolynomialFitImageFilter::New();
     QI::Polynomial<3> poly(order.Get());
@@ -140,14 +140,14 @@ int main(int argc, char **argv) {
     fit->SetRobust(robust);
     Eigen::Array3d center = Eigen::Array3d::Zero();
     if (mask_path) {
-        if (verbose) std::cout << "Reading mask from: " << mask_path.Get() << std::endl;
+        QI_LOG(verbose, "Reading mask from: " << mask_path.Get());
         auto mask_image = QI::ReadImage(mask_path.Get());
         fit->SetMask(mask_image);
         auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
         moments->SetImage(mask_image);
         moments->Compute();
         // ITK seems to put a minus sign on CoG
-        if (verbose) std::cout << "Mask CoG is: " << -moments->GetCenterOfGravity() << std::endl;
+        QI_LOG(verbose, "Mask CoG is: " << -moments->GetCenterOfGravity());
         center = QI::Eigenify(-moments->GetCenterOfGravity());
     }
     fit->SetCenter(center);
@@ -157,16 +157,16 @@ int main(int argc, char **argv) {
     double scale = (spacing/2).GetNorm();
     fit->SetScale(scale);
     fit->Update();
-    // itk::Point does not have symmetric operator<< and operator>>
-    {
-        cereal::JSONOutputArchive output(std::cout);
-        QI::WriteCereal(output, "center", center);
-        QI::WriteCereal(output, "scale", scale);
-        QI::WriteCereal(output, "coeffs", fit->GetPolynomial().coeffs());
-        if (print_terms)
-            QI::WriteCereal(output, "terms", fit->GetPolynomial().get_terms());
-        QI::WriteCereal(output, "residual",  fit->GetResidual());
-    }
-    if (verbose) std::cout << "Finished." << std::endl;
+    rapidjson::Document doc;
+    doc.SetObject();
+    auto &a = doc.GetAllocator();
+    doc.AddMember("center", QI::ArrayToJSON(center, a), a);
+    doc.AddMember("scale", scale, a);
+    doc.AddMember("coeffs", QI::ArrayToJSON(fit->GetPolynomial().coeffs(), a), a);
+    if (print_terms)
+        doc.AddMember("terms", fit->GetPolynomial().get_terms(), a);
+    QI::WriteJSON(std::cout, doc);
+    QI_LOG(verbose, "Residual: " << fit->GetResidual());
+    QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

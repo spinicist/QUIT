@@ -12,10 +12,7 @@
 #ifndef SEQUENCES_GROUP_H
 #define SEQUENCES_GROUP_H
 
-#include <cereal/types/vector.hpp>
-#include <cereal/archives/json.hpp>
 #include "SequenceBase.h"
-#include "SequenceCereal.h"
 #include "Macro.h"
 
 namespace QI {
@@ -26,20 +23,14 @@ struct SequenceGroup : SequenceBase {
 
     std::string &name() const override { static std::string name = "SequenceGroup"; return name; }
     size_t count() const override;
-    size_t size() const override;
-    Eigen::ArrayXcd signal(std::shared_ptr<Model> m, const Eigen::VectorXd &par) const override;
+    Eigen::Index size() const override;
+    Eigen::ArrayXcd signal(std::shared_ptr<Model::ModelBase> m, const Eigen::VectorXd &par) const override;
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;
 
     void addSequence(const std::shared_ptr<SequenceBase> &s);
-
-    void save(cereal::JSONOutputArchive &archive) const override {
-        archive(CEREAL_NVP(sequences));
-    }
-
-    void load(cereal::JSONInputArchive &archive) override {
-        archive(CEREAL_NVP(sequences));
-    }
-
+    SequenceGroup(rapidjson::Value &);
+    SequenceGroup() = default;
+    rapidjson::Value toJSON(rapidjson::Document::AllocatorType &) const override;
 };
 
 } // End namespace QI

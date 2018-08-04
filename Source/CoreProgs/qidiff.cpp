@@ -31,13 +31,11 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> input_path(parser, "INPUT", "Input file for difference", {"input"});
     args::ValueFlag<std::string> baseline_path(parser, "BASELINE", "Baseline file for difference", {"baseline"});
     args::ValueFlag<double>      tolerance(parser, "TOLERANCE", "Tolerance (mean percent difference)", {"tolerance"}, 0);
-    args::ValueFlag<double>      noise(parser, "NOISE", "Added noise level, tolerance is relative to this", {"noise"}, 1);
+    args::ValueFlag<double>      noise(parser, "NOISE", "Added noise level, tolerance is relative to this", {"noise"}, 0);
     args::Flag                   absolute(parser, "ABSOLUTE", "Use absolute difference, not relative (avoids 0/0 problems)", {'a', "abs"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Reading input: " << QI::CheckValue(input_path) << std::endl;
-    if (verbose) std::cout << "Reading baseline: " << QI::CheckValue(baseline_path) << std::endl;
-    auto input = QI::ReadImage(QI::CheckValue(input_path));
-    auto baseline = QI::ReadImage(QI::CheckValue(baseline_path));
+    auto input = QI::ReadImage(QI::CheckValue(input_path), verbose);
+    auto baseline = QI::ReadImage(QI::CheckValue(baseline_path), verbose);
     
     auto diff = itk::SubtractImageFilter<QI::VolumeF>::New();
     diff->SetInput1(input);
@@ -59,16 +57,14 @@ int main(int argc, char **argv) {
 
     const double mean_sqr_diff = stats->GetMean();
     const double root_mean_sqr_diff = sqrt(mean_sqr_diff);
-    const double rel_diff = root_mean_sqr_diff / noise.Get();
+    const double rel_diff = (noise.Get() > 0) ? root_mean_sqr_diff / noise.Get() : root_mean_sqr_diff;
     const bool passed = rel_diff <= tolerance.Get();
-    if (verbose) {
-        std::cout << "Mean Square Diff: " << mean_sqr_diff
-                  << "\nRelative noise: " << noise.Get()
-                  << "\nSquare-root mean square diff: " << root_mean_sqr_diff
-                  << "\nRelative Diff: " << rel_diff
-                  << "\nTolerance: " << tolerance.Get()
-                  << "\nResult: " << (passed ? "Passed" : "Failed") << std::endl;
-    }
+    QI_LOG(verbose, "Mean Square Diff: " << mean_sqr_diff
+           << "\nRelative noise: " << noise.Get()
+           << "\nSquare-root mean square diff: " << root_mean_sqr_diff
+           << "\nRelative Diff: " << rel_diff
+           << "\nTolerance: " << tolerance.Get()
+           << "\nResult: " << (passed ? "Passed" : "Failed"));
     if (passed) {
         return EXIT_SUCCESS;
     } else {

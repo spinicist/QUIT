@@ -46,7 +46,7 @@ public:
         std::vector<float> def;
         return def;
     }
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> & /* Unused */,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst & /* Unused */,
                TInput & /* Unused */, TIterations & /* Unused */) const override
@@ -59,7 +59,7 @@ public:
         for (int i = 0; i < m_mat.rows(); i++) {
             outputs[i] = c[i];
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -81,21 +81,19 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Reading input file " << QI::CheckPos(input_path) << std::endl;
+    QI_LOG(verbose, "Reading input file " << QI::CheckPos(input_path));
     QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
-    if (verbose) std::cout << "Reading design matrix" << QI::CheckPos(design_path) << std::endl;
+    QI_LOG(verbose, "Reading design matrix" << QI::CheckPos(design_path));
     Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(QI::CheckPos(design_path));
-    if (verbose) std::cout << "Reading contrasts file" << QI::CheckPos(contrasts_path) << std::endl;
+    QI_LOG(verbose, "Reading contrasts file" << QI::CheckPos(contrasts_path));
     Eigen::ArrayXXd contrasts     = QI::ReadArrayFile(QI::CheckPos(contrasts_path));
     if (design_matrix.rows() != merged->GetNumberOfComponentsPerPixel()) {
-        std::cerr << "Number of rows in design matrix (" << design_matrix.rows()
-                  << ") does not match number of volumes in image (" << merged->GetNumberOfComponentsPerPixel() << ")" << std::endl;
-        return EXIT_FAILURE;
+        QI_FAIL("Number of rows in design matrix (" << design_matrix.rows() <<
+                ") does not match number of volumes in image (" << merged->GetNumberOfComponentsPerPixel() << ")");
     }
     if (design_matrix.cols() != contrasts.cols()) {
-        std::cerr << "Number of columns in design matrix (" << design_matrix.cols()
-                  << ") does not match contrasts (" << contrasts.cols() << ")" << std::endl;
-        return EXIT_FAILURE;
+        QI_FAIL("Number of columns in design matrix (" << design_matrix.cols() <<
+                ") does not match contrasts (" << contrasts.cols() << ")");
     }
 
     auto con_algo = std::make_shared<ContrastsAlgorithm>(design_matrix, contrasts, fraction);
@@ -103,10 +101,10 @@ int main(int argc, char **argv) {
     apply->SetAlgorithm(con_algo);
     apply->SetInput(0, merged);
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
-    if (verbose) std::cout << "Calculating contrasts" << std::endl;
+    QI_LOG(verbose, "Calculating contrasts" );
     apply->Update();
     for (int c = 0; c < contrasts.rows(); c++) {
-        if (verbose) std::cout << "Writing contrast " << (c + 1) << std::endl;
+        QI_LOG(verbose, "Writing contrast " << (c + 1));
         QI::WriteImage(apply->GetOutput(c), outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt());
     }
 }

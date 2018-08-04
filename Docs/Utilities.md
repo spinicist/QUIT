@@ -62,7 +62,7 @@ This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excita
 **Example Command Line**
 
 ```bash
-qi_rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.txt
+qi_rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.json
 ```
 
 **Example Input File**
@@ -354,7 +354,7 @@ Generates simulated images using signal equations. Used for the QUIT tests - whi
 **Example Command Line**
 
 ```bash
-qisignal --noise=0.01 simulated_spgr_image.nii.gz < input.txt
+qisignal --noise=0.01 simulated_spgr_image.nii.gz < input.json
 ```
 
 **Example Input File**
@@ -366,20 +366,18 @@ qisignal --noise=0.01 simulated_spgr_image.nii.gz < input.txt
     "T2": "",
     "f0": "",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SPGR": {
-                    "TR": 0.05,
-                    "FA": [3, 10]
-                }
+    "Sequences": [
+        {
+            "SPGR": {
+                "TR": 0.05,
+                "FA": [3, 10]
             }
-        ]
-    }
+        }
+    ]
 }
 ```
 
-The first set of inputs are the filenames for each parameter. Each model will have a different set of parameters. If a filename is not specified, a default value will be used in each voxel. After the parameters comes a `SequenceGroup` input, the sequences within must correspond to the image filenames given on the command line.
+The first set of inputs are the filenames for each parameter. Each model will have a different set of parameters. If a filename is not specified, a default value will be used in each voxel. After the parameters comes a `Sequences` input, the sequences within must correspond to the image filenames given on the command line.
 
 **Important Options**
 

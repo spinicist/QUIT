@@ -1,7 +1,7 @@
 /*
- *  DESPOT_2C.cpp
+ *  TwoPoolModel.cpp
  *
- *  Copyright (c) 2016 Tobias Wood.
+ *  Copyright (c) 2018 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,25 +9,26 @@
  *
  */
 
-#include "DESPOT_2C.h"
+#include "TwoPoolModel.h"
 
 using namespace std;
 using namespace Eigen;
 
 namespace QI {
+namespace Model {
 
 /*****************************************************************************/
 /* Two Component DESPOT                                                      */
 /*****************************************************************************/
 
-string MCD2::Name() const { return "2C"; }
-size_t MCD2::nParameters() const { return 9; }
-const vector<string> & MCD2::ParameterNames() const {
+string TwoPool::Name() const { return "2C"; }
+size_t TwoPool::nParameters() const { return 9; }
+const vector<string> & TwoPool::ParameterNames() const {
 	static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "tau_m", "f_m", "f0", "B1"};
 	return n;
 }
 
-ArrayXXd MCD2::Bounds(const FieldStrength f) const {
+ArrayXXd TwoPool::Bounds(const FieldStrength f) const {
 	size_t nP = nParameters();
 	ArrayXXd b(nP, 2);
 	switch (f) {
@@ -44,7 +45,7 @@ ArrayXXd MCD2::Bounds(const FieldStrength f) const {
 	return b;
 }
 
-ArrayXd MCD2::Default(const FieldStrength f) const {
+ArrayXd TwoPool::Default(const FieldStrength f) const {
     ArrayXd p(nParameters());
     switch (f) {
     case FieldStrength::Three: p << 1.0, 0.4,  0.02, 1.0, 0.08, 0.18, 0.1, 0., 1.0; break;
@@ -54,7 +55,7 @@ ArrayXd MCD2::Default(const FieldStrength f) const {
     return p;
 }
 
-bool MCD2::ValidParameters(cvecd &params) const {
+bool TwoPool::ValidParameters(cvecd &params) const {
 	// Negative T1/T2 makes no sense
 	if ((params[1] <= 0.) || (params[2] <= 0.))
 		return false;
@@ -66,27 +67,27 @@ bool MCD2::ValidParameters(cvecd &params) const {
 	}
 }
 
-VectorXcd MCD2::SPGR(cvecd &p, carrd &a, cdbl TR) const {
+VectorXcd TwoPool::SPGR(cvecd &p, carrd &a, cdbl TR) const {
 	return scale(Two_SPGR(a, TR, p[0], p[1], p[3], p[5], p[6], p[8]));
 }
 
-VectorXcd MCD2::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
+VectorXcd TwoPool::SPGREcho(cvecd &p, carrd &a, cdbl TR, cdbl TE) const {
     return scale(Two_SPGR_Echo(a, TR, TE, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
 }
 
-VectorXcd MCD2::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
+VectorXcd TwoPool::SPGRFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, cdbl TE) const {
 	return scale(Two_SSFP_Finite(a, true, TR, Trf, TE, 0, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
 }
 
-VectorXcd MCD2::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+VectorXcd TwoPool::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
     return scale(Two_SSFP(a, phi, TR, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
 }
 
-VectorXcd MCD2::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+VectorXcd TwoPool::SSFPEcho(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
     return scale(Two_SSFP_Echo(a, phi, TR, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[7], p[8]));
 }
 
-VectorXcd MCD2::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
+VectorXcd TwoPool::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) const {
      ArrayXcd s(a.rows() * phi.rows());
      ArrayXcd::Index start = 0;
      for (ArrayXcd::Index i = 0; i < phi.rows(); i++) {
@@ -100,14 +101,14 @@ VectorXcd MCD2::SSFPFinite(cvecd &p, carrd &a, cdbl TR, cdbl Trf, carrd &phi) co
 /* Two Component DESPOT w/o exchange                                         */
 /*****************************************************************************/
 
-string MCD2_NoEx::Name() const { return "2C_NoEx"; }
-size_t MCD2_NoEx::nParameters() const { return 8; }
-const vector<string> & MCD2_NoEx::ParameterNames() const {
+string TwoPool_NoExchange::Name() const { return "2C_NoEx"; }
+size_t TwoPool_NoExchange::nParameters() const { return 8; }
+const vector<string> & TwoPool_NoExchange::ParameterNames() const {
     static vector<string> n{"PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "f_m", "f0", "B1"};
     return n;
 }
 
-ArrayXXd MCD2_NoEx::Bounds(const FieldStrength f) const {
+ArrayXXd TwoPool_NoExchange::Bounds(const FieldStrength f) const {
     size_t nP = nParameters();
     ArrayXXd b(nP, 2);
     switch (f) {
@@ -118,7 +119,7 @@ ArrayXXd MCD2_NoEx::Bounds(const FieldStrength f) const {
     return b;
 }
 
-ArrayXd MCD2_NoEx::Default(const FieldStrength f) const {
+ArrayXd TwoPool_NoExchange::Default(const FieldStrength f) const {
     ArrayXd p(nParameters());
     switch (f) {
     case FieldStrength::Three: p << 1.0, 0.5, 0.02, 1.0, 0.080, 0.1, 0., 1.0; break;
@@ -128,7 +129,7 @@ ArrayXd MCD2_NoEx::Default(const FieldStrength f) const {
     return p;
 }
 
-bool MCD2_NoEx::ValidParameters(cvecd &params) const {
+bool TwoPool_NoExchange::ValidParameters(cvecd &params) const {
     // Negative T1/T2 makes no sense
     if ((params[1] <= 0.) || (params[2] <= 0.))
         return false;
@@ -140,14 +141,15 @@ bool MCD2_NoEx::ValidParameters(cvecd &params) const {
     }
 }
 
-VectorXcd MCD2_NoEx::SPGR(cvecd &p, carrd &a, cdbl TR) const {
+VectorXcd TwoPool_NoExchange::SPGR(cvecd &p, carrd &a, cdbl TR) const {
     return scale(One_SPGR(a, TR, p[0]*p[5], p[1], p[7]) +
                  One_SPGR(a, TR, p[0]*(1-p[5]), p[3], p[7]));
 }
 
-VectorXcd MCD2_NoEx::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
+VectorXcd TwoPool_NoExchange::SSFP(cvecd &p, carrd &a, cdbl TR, carrd &phi) const {
     return scale(One_SSFP(a, phi, TR, p[0]*p[5], p[1], p[2], p[6], p[7]) +
                  One_SSFP(a, phi, TR, p[0]*(1-p[5]), p[3], p[4], p[6], p[7]));
 }
 
+} // End namespace Model
 } // End namespace QI

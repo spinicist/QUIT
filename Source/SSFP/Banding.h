@@ -61,7 +61,7 @@ public:
     void setReorderBlock(const bool b) { m_reorderBlock = b; }
     std::vector<float> defaultConsts() const override;
     TOutput zero() const override;
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TOutput &residual,
                TInput &resids, TIterations &its) const override;

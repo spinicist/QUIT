@@ -20,17 +20,15 @@ setup() {
     "T2": "T2$EXT",
     "f0": "f0$EXT",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SSFPEcho": {
-                    "TR": 0.01,
-                    "FA": [30,30,30,30,30,30],
-                    "PhaseInc": [180,240,300,0,60,120]
-                }
+    "Sequences": [
+        {
+            "SSFPEcho": {
+                "TR": 0.01,
+                "FA": [30,30,30,30,30,30],
+                "PhaseInc": [180,240,300,0,60,120]
             }
-        ]
-    }
+        }
+    ]
 }
 INPUT
     qi_ssfp_ellipse ssfp$EXT --verbose --algo=d << INPUT
@@ -70,17 +68,15 @@ INPUT
     "T2": "T2$EXT",
     "f0": "f0$EXT",
     "B1": "",
-    "SequenceGroup": {
-        "sequences": [
-            {
-                "SSFPEcho": {
-                    "TR": 0.01,
-                    "FA": [16,16,16,16,16,16,32,32,32,32,32,32],
-                    "PhaseInc": [180,240,300,0,60,120,180,240,300,0,60,120]
-                }
+    "Sequences": [
+        {
+            "SSFPEcho": {
+                "TR": 0.01,
+                "FA": [16,16,16,16,16,16,32,32,32,32,32,32],
+                "PhaseInc": [180,240,300,0,60,120,180,240,300,0,60,120]
             }
-        ]
-    }
+        }
+    ]
 }
 INPUT
     qi_ssfp_ellipse ssfp$EXT --verbose --algo=d << INPUT
@@ -104,7 +100,7 @@ INPUT
 }
 INPUT
     # No proper ground truth here, compare the methods to each other
-    qidiff --baseline=T1$EXT --input=EMT_T1f$EXT --noise=$NOISE --tolerance=40 --verbose
-    qidiff --baseline=T2$EXT --input=EMT_T2f$EXT --noise=$NOISE --tolerance=35 --verbose
+    qidiff --baseline=T1$EXT --input=EMT_T1_f$EXT --noise=$NOISE --tolerance=40 --verbose
+    qidiff --baseline=T2$EXT --input=EMT_T2_f$EXT --noise=$NOISE --tolerance=35 --verbose
     qidiff --baseline=PD$EXT --input=EMT_M0$EXT --noise=$NOISE --tolerance=20 --verbose
 }

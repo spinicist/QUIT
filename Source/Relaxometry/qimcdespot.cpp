@@ -22,17 +22,16 @@
 #include "Args.h"
 #include "ImageIO.h"
 #include "IO.h"
-#include "Model.h"
+#include "Models.h"
 #include "SequenceGroup.h"
 #include "RegionContraction.h"
-#include "EigenCereal.h"
 
 struct MCDSRCFunctor {
     const QI::SequenceGroup &m_sequence;
     const Eigen::ArrayXd m_data, m_weights;
-    const std::shared_ptr<QI::Model> m_model;
+    const std::shared_ptr<QI::Model::ModelBase> m_model;
 
-    MCDSRCFunctor(std::shared_ptr<QI::Model> m, QI::SequenceGroup &s,
+    MCDSRCFunctor(std::shared_ptr<QI::Model::ModelBase> m, QI::SequenceGroup &s,
                   const Eigen::ArrayXd &d, const Eigen::ArrayXd &w) :
         m_sequence(s), m_data(d), m_weights(w), m_model(m)
     {
@@ -57,14 +56,14 @@ struct MCDSRCFunctor {
 
 struct SRCAlgo : public QI::ApplyF::Algorithm {
     Eigen::ArrayXXd m_bounds;
-    std::shared_ptr<QI::Model> m_model = nullptr;
+    std::shared_ptr<QI::Model::ModelBase> m_model = nullptr;
     QI::SequenceGroup &m_sequence;
-    QI::FieldStrength m_tesla = QI::FieldStrength::Three;
+    QI::Model::FieldStrength m_tesla = QI::Model::FieldStrength::Three;
     int m_iterations = 0;
     size_t m_samples = 5000, m_retain = 50;
     bool m_gauss = true;
 
-    SRCAlgo(std::shared_ptr<QI::Model>&m, Eigen::ArrayXXd &b,
+    SRCAlgo(std::shared_ptr<QI::Model::ModelBase>&m, Eigen::ArrayXXd &b,
             QI::SequenceGroup &s, int mi) :
         m_bounds(b), m_model(m), m_sequence(s), m_iterations(mi)
     {}
@@ -73,7 +72,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
     size_t numOutputs() const override { return m_model->nParameters(); }
     size_t dataSize() const override   { return m_sequence.size(); }
 
-    void setModel(std::shared_ptr<QI::Model> &m) { m_model = m; }
+    void setModel(std::shared_ptr<QI::Model::ModelBase> &m) { m_model = m; }
     void setSequence(QI::SequenceGroup &s) { m_sequence = s; }
     void setBounds(Eigen::ArrayXXd &b) { m_bounds = b; }
     void setIterations(const int i) { m_iterations = i; }
@@ -87,7 +86,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         return def;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -116,7 +115,10 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         MCDSRCFunctor func(m_model, m_sequence, data, weights);
         QI::RegionContraction<MCDSRCFunctor> rc(func, localBounds, thresh, m_samples, m_retain, m_iterations, 0.02, m_gauss, false);
         Eigen::ArrayXd pars(m_model->nParameters());
-        rc.optimise(pars);
+        if (!rc.optimise(pars)) {
+            return std::make_tuple(false, "Region contraction failed");
+        }
+        
         for (size_t i = 0; i < m_model->nParameters(); i++) {
             outputs[i] = pars[i];
         }
@@ -124,7 +126,7 @@ struct SRCAlgo : public QI::ApplyF::Algorithm {
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = rc.contractions();
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -155,75 +157,70 @@ int main(int argc, char **argv) {
 
     std::vector<QI::VectorVolumeF::Pointer> images;
     for (auto &input_path : QI::CheckList(input_paths)) {
-        if (verbose) std::cout << "Reading file: " << input_path << std::endl;
+        QI_LOG(verbose, "Reading file: " << input_path );
         auto image = QI::ReadVectorImage<float>(input_path);
         image->DisconnectPipeline(); // This step is really important.
         images.push_back(image);
     }
-    cereal::JSONInputArchive input(std::cin);
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, verbose);
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::SequenceGroup sequences(input["Sequences"]);
     if (sequences.count() != images.size()) {
         QI_FAIL("Sequence group size " << sequences.count() << " does not match images size " << images.size());
     }
 
-    std::shared_ptr<QI::Model> model = nullptr;
-    if (modelarg.Get() == "1")         { model = std::make_shared<QI::SCD>(); }
-    else if (modelarg.Get() == "2")    { model = std::make_shared<QI::MCD2>(); }
-    else if (modelarg.Get() == "2nex") { model = std::make_shared<QI::MCD2_NoEx>(); }
-    else if (modelarg.Get() == "3")    { model = std::make_shared<QI::MCD3>(); }
-    else if (modelarg.Get() == "3_f0") { model = std::make_shared<QI::MCD3_f0>(); }
-    else if (modelarg.Get() == "3nex") { model = std::make_shared<QI::MCD3_NoEx>(); }
+    std::shared_ptr<QI::Model::ModelBase> model = nullptr;
+    if (modelarg.Get() == "1")         { model = std::make_shared<QI::Model::OnePool>(); }
+    else if (modelarg.Get() == "2")    { model = std::make_shared<QI::Model::TwoPool>(); }
+    else if (modelarg.Get() == "2nex") { model = std::make_shared<QI::Model::TwoPool_NoExchange>(); }
+    else if (modelarg.Get() == "3")    { model = std::make_shared<QI::Model::ThreePool>(); }
+    else if (modelarg.Get() == "3_f0") { model = std::make_shared<QI::Model::ThreePool_f0>(); }
+    else if (modelarg.Get() == "3nex") { model = std::make_shared<QI::Model::ThreePool_NoExchange>(); }
     else {
-        std::cerr << "Invalid model " << modelarg.Get() << " specified." << std::endl;
-        return EXIT_FAILURE;
+        QI_FAIL("Invalid model " << modelarg.Get() << " specified.");
     }
-    if (verbose) std::cout << "Using " << model->Name() << " model." << std::endl;
-    if (verbose && scale) std::cout << "Mean-scaling selected" << std::endl;
-    model->setScaleToMean(scale);
+    QI_LOG(verbose, "Using " << model->Name() << " model.");
+    if (scale) {
+        QI_LOG(verbose, "Mean-scaling selected");
+        model->setScaleToMean(scale);
+    }
 
-    Eigen::ArrayXXd bounds = model->Bounds(QI::FieldStrength::Three);
-    Eigen::ArrayXd start = model->Default(QI::FieldStrength::Three);
+    Eigen::ArrayXXd bounds = model->Bounds(QI::Model::FieldStrength::Three);
+    Eigen::ArrayXd start = model->Default(QI::Model::FieldStrength::Three);
     switch (field.Get()) {
         case '3':
-            bounds = model->Bounds(QI::FieldStrength::Three);
-            start = model->Default(QI::FieldStrength::Three);
+            bounds = model->Bounds(QI::Model::FieldStrength::Three);
+            start = model->Default(QI::Model::FieldStrength::Three);
             break;
         case '7':
-            bounds = model->Bounds(QI::FieldStrength::Seven);
-            start = model->Bounds(QI::FieldStrength::Seven);
+            bounds = model->Bounds(QI::Model::FieldStrength::Seven);
+            start = model->Bounds(QI::Model::FieldStrength::Seven);
             break;
         case 'u': {
-            Eigen::ArrayXd temp;
-            if (verbose) std::cout << "Enter lower bounds" << std::endl;
-            QI::ReadCereal(input, "lower_bounds", temp);
-            bounds.col(0) = temp;
-            if (verbose) std::cout << "Enter upper bounds" << std::endl;
-            QI::ReadCereal(input, "upper_bounds", temp);
-            bounds.col(1) = temp;
+            auto lower_bounds = QI::ArrayFromJSON(input["lower_bounds"]);
+            auto upper_bounds = QI::ArrayFromJSON(input["upper_bounds"]);
+            bounds.col(0) = lower_bounds;
+            bounds.col(1) = upper_bounds;
         } break;
     default:
-        std::cerr << "Unknown boundaries type " << field.Get() << std::endl;
-        return EXIT_FAILURE;
-        break;
+        QI_FAIL("Unknown boundaries type " << field.Get());
     }
 
     auto apply = QI::ApplyF::New();
     switch (algorithm.Get()) {
         case 'S': {
-            if (verbose) std::cout << "Using SRC algorithm" << std::endl;
+            QI_LOG(verbose, "Using SRC algorithm" );
             std::shared_ptr<SRCAlgo> algo = std::make_shared<SRCAlgo>(model, bounds, sequences, its.Get());
             algo->setGauss(false);
             apply->SetAlgorithm(algo);
         } break;
         case 'G': {
-            if (verbose) std::cout << "Using GRC algorithm" << std::endl;
+            QI_LOG(verbose, "Using GRC algorithm" );
             std::shared_ptr<SRCAlgo> algo = std::make_shared<SRCAlgo>(model, bounds, sequences, its.Get());
             algo->setGauss(true);
             apply->SetAlgorithm(algo);
         } break;
         default:
-            std::cerr << "Unknown algorithm type " << algorithm.Get() << std::endl;
-            return EXIT_FAILURE;
+            QI_FAIL("Unknown algorithm type " << algorithm.Get());
     }
     apply->SetOutputAllResiduals(resids);
     apply->SetVerbose(verbose);
@@ -239,35 +236,29 @@ int main(int argc, char **argv) {
 
     // Need this here so the bounds.txt file will have the correct prefix
     std::string outPrefix = outarg.Get() + model->Name() + "_";
-    if (verbose) {
-        std::cout << "Bounds:\n" <<  bounds.transpose() << std::endl;
-        std::ofstream boundsFile(outPrefix + "bounds.txt");
-        boundsFile << "Names: ";
-        for (size_t p = 0; p < model->nParameters(); p++) {
-            boundsFile << model->ParameterNames()[p] << "\t";
-        }
-        boundsFile << std::endl << "Bounds:\n" << bounds.transpose() << std::endl;
-        boundsFile.close();
+    std::ofstream boundsFile(outPrefix + "bounds.txt");
+    boundsFile << "Names: ";
+    for (size_t p = 0; p < model->nParameters(); p++) {
+        boundsFile << model->ParameterNames()[p] << "\t";
     }
-
+    boundsFile << std::endl << "Bounds:\n" << bounds.transpose() << std::endl;
+    boundsFile.close();
+    QI_LOG(verbose, "Bounds:\n" <<  bounds.transpose());
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files.");
     for (size_t i = 0; i < model->nParameters(); i++) {
         QI::WriteImage(apply->GetOutput(i), outPrefix + model->ParameterNames()[i] + QI::OutExt());
     }
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual" + QI::OutExt());
+    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (resids) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
     QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
     return EXIT_SUCCESS;
 }
-

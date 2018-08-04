@@ -1,5 +1,5 @@
 /*
- *  qdespot1.cpp - Part of QUantitative Imaging Tools
+ *  qidespot1.cpp - Part of QUantitative Imaging Tools
  *
  *  Copyright (c) 2015 Tobias Wood.
  *
@@ -17,7 +17,6 @@
 #include "ApplyTypes.h"
 #include "Models.h"
 #include "SPGRSequence.h"
-#include "SequenceCereal.h"
 #include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
@@ -29,7 +28,7 @@ class D1Algo : public QI::ApplyF::Algorithm {
 public:
     static const int DefaultIterations = 15;
 protected:
-    const std::shared_ptr<QI::Model> m_model = std::make_shared<QI::SCD>();
+    const std::shared_ptr<QI::Model::ModelBase> m_model = std::make_shared<QI::Model::OnePool>();
     QI::SPGRSequence m_sequence;
     int m_iterations = DefaultIterations;
     double m_loPD = -std::numeric_limits<double>::infinity();
@@ -57,7 +56,7 @@ public:
 
 class D1LLS : public D1Algo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -78,13 +77,13 @@ public:
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
         its = 1;
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
 class D1WLLS : public D1Algo {
 public:
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -118,7 +117,7 @@ public:
         Eigen::ArrayXf r = (data.array() - theory).cast<float>();
         residual = sqrt(r.square().sum() / r.rows());
         resids = itk::VariableLengthVector<float>(r.data(), r.rows());
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -161,7 +160,7 @@ public:
         m_loPD = 1e-6;
     }
 
-    bool apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
+    TStatus apply(const std::vector<TInput> &inputs, const std::vector<TConst> &consts,
                const TIndex &, // Unused
                std::vector<TOutput> &outputs, TConst &residual,
                TInput &resids, TIterations &its) const override
@@ -169,11 +168,11 @@ public:
         Eigen::Map<const Eigen::ArrayXf> indata(inputs[0].GetDataPointer(), inputs[0].Size());
         const double B1 = consts[0];
         const double scale = indata.maxCoeff();
-        if (scale < 0) {
+        if (scale < std::numeric_limits<double>::epsilon()) {
             outputs[0] = 0;
             outputs[1] = 0;
             residual = 0;
-            return false;
+            return std::make_tuple(false, "Maximum data value was zero or less");
         }
         const Eigen::ArrayXd data = indata.cast<double>() / scale;
         Eigen::Array2d p; p << 10., 1.;
@@ -191,13 +190,13 @@ public:
         options.parameter_tolerance = 1e-4;
         // options.check_gradients = true;
         options.logging_type = ceres::SILENT;
-        // std::cout << "START P: " << p.transpose() << std::endl;
+        // std::cout << "START P: " << p.transpose());
         ceres::Solve(options, &problem, &summary);
         
         outputs[0] = p[0] * indata.maxCoeff();
         outputs[1] = p[1];
         if (!summary.IsSolutionUsable()) {
-            std::cout << summary.FullReport() << std::endl;
+            return std::make_tuple(false, summary.FullReport());
         }
         its = summary.iterations.size();
         residual = summary.final_cost * indata.maxCoeff();
@@ -208,7 +207,7 @@ public:
             for (size_t i = 0; i < r_temp.size(); i++)
                 resids[i] = r_temp[i];
         }
-        return true;
+        return std::make_tuple(true, "");
     }
 };
 
@@ -233,18 +232,19 @@ int main(int argc, char **argv) {
     args::ValueFlag<float> clampT1(parser, "CLAMP T1", "Clamp T1 between 0 and value", {'t',"clampT1"}, std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    if (verbose) std::cout << "Opening SPGR file: " << QI::CheckPos(spgr_path) << std::endl;
+    QI_LOG(verbose, "Opening SPGR file: " << QI::CheckPos(spgr_path));
     auto data = QI::ReadVectorImage<float>(QI::CheckPos(spgr_path));
     std::shared_ptr<D1Algo> algo;
     switch (algorithm.Get()) {
-        case 'l': algo = std::make_shared<D1LLS>();  if (verbose) std::cout << "LLS algorithm selected." << std::endl; break;
-        case 'w': algo = std::make_shared<D1WLLS>(); if (verbose) std::cout << "WLLS algorithm selected." << std::endl; break;
-        case 'n': algo = std::make_shared<D1NLLS>(); if (verbose) std::cout << "NLLS algorithm selected." << std::endl; break;
+        case 'l': algo = std::make_shared<D1LLS>();  QI_LOG(verbose, "LLS algorithm selected." ); break;
+        case 'w': algo = std::make_shared<D1WLLS>(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+        case 'n': algo = std::make_shared<D1NLLS>(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
     }
     algo->setIterations(its.Get());
     if (clampPD) algo->setClampPD(1e-6, clampPD.Get());
     if (clampT1) algo->setClampT1(1e-6, clampT1.Get());
-    auto spgrSequence = QI::ReadSequence<QI::SPGRSequence>(std::cin, verbose);
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::SPGRSequence spgrSequence(input["SPGR"]);
     algo->setSequence(spgrSequence);
     auto apply = QI::ApplyF::New();
     apply->SetVerbose(verbose);
@@ -256,26 +256,24 @@ int main(int argc, char **argv) {
     if (B1) apply->SetConst(0, QI::ReadImage(B1.Get()));
     if (mask) apply->SetMask(QI::ReadImage(mask.Get()));
     if (subregion) apply->SetSubregion(QI::RegionArg(args::get(subregion)));
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files.");
     std::string outPrefix = outarg.Get() + "D1_";
     QI::WriteImage(apply->GetOutput(0), outPrefix + "PD" + QI::OutExt());
     QI::WriteImage(apply->GetOutput(1), outPrefix + "T1" + QI::OutExt());
-    QI::WriteScaledImage(apply->GetResidualOutput(), apply->GetOutput(0), outPrefix + "residual" + QI::OutExt());
+    QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (resids) {
-        QI::WriteScaledVectorImage(apply->GetAllResidualsOutput(), apply->GetOutput(0), outPrefix + "all_residuals" + QI::OutExt());
+        QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
     if (its) {
         QI::WriteImage(apply->GetIterationsOutput(), outPrefix + "iterations" + QI::OutExt());
     }
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished." );
     return EXIT_SUCCESS;
 }

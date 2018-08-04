@@ -17,7 +17,6 @@
 #include "IO.h"
 #include "Args.h"
 #include "MTFromEllipse.h"
-#include "SequenceCereal.h"
 
 int main(int argc, char **argv) {
     Eigen::initParallel();
@@ -38,20 +37,16 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
     args::Flag     all_residuals(parser, "RESIDUALS", "Write out all residuals", {'r',"all_resids"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    if (verbose) std::cout << "Opening file: " << QI::CheckPos(G_path) << std::endl;
+    QI_LOG(verbose, "Opening file: " << QI::CheckPos(G_path));
     auto G = QI::ReadVectorImage<float>(QI::CheckPos(G_path));
-    if (verbose) std::cout << "Opening file: " << QI::CheckPos(a_path) << std::endl;
+    QI_LOG(verbose, "Opening file: " << QI::CheckPos(a_path));
     auto a = QI::ReadVectorImage<float>(QI::CheckPos(a_path));
-    if (verbose) std::cout << "Opening file: " << QI::CheckPos(b_path) << std::endl;
+    QI_LOG(verbose, "Opening file: " << QI::CheckPos(b_path));
     auto b = QI::ReadVectorImage<float>(QI::CheckPos(b_path));
-
-    cereal::JSONInputArchive input(std::cin);
-    auto seq = QI::ReadSequence<QI::SSFPMTSequence>(input, verbose);
-    if (verbose) {
-        std::cout << "T2r " << T2r_us.Get() << "us" << std::endl;
-    }
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    QI::SSFPMTSequence seq(input["SSFPMT"]);
+    QI_LOG(verbose, "T2r " << T2r_us.Get() << "us");
     auto algo = std::make_shared<QI::MTFromEllipse>(seq, T2r_us.Get() * 1e-6, debug);
-
     auto apply = QI::ApplyF::New();
     apply->SetAlgorithm(algo);
     apply->SetPoolsize(threads.Get());
@@ -68,29 +63,27 @@ int main(int argc, char **argv) {
     if (subregion) {
         apply->SetSubregion(QI::RegionArg(subregion.Get()));
     }
+    QI_LOG(verbose, "Processing");
     if (verbose) {
-        std::cout << "Processing" << std::endl;
         auto monitor = QI::GenericMonitor::New();
         apply->AddObserver(itk::ProgressEvent(), monitor);
     }
     apply->Update();
-    if (verbose) {
-        std::cout << "Elapsed time was " << apply->GetTotalTime() << "s" << std::endl;
-        std::cout << "Writing results files." << std::endl;
-    }
+    QI_LOG(verbose, "Elapsed time was " << apply->GetTotalTime() << "s" <<
+                    "Writing results files.");
     std::string outPrefix = outarg.Get() + "EMT_";
     for (size_t i = 0; i < algo->numOutputs(); i++) {
         std::string outName = outPrefix + algo->names().at(i) + QI::OutExt();
-        if (verbose) std::cout << "Writing: " << outName << std::endl;
+        QI_LOG(verbose, "Writing: " << outName);
         QI::WriteImage(apply->GetOutput(i), outName);
     }
-    if (verbose) std::cout << "Writing total residual." << std::endl;
+    QI_LOG(verbose, "Writing total residual.");
     QI::WriteImage(apply->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
     if (all_residuals) {
-        if (verbose) std::cout << "Writing individual residuals." << std::endl;
+        QI_LOG(verbose, "Writing individual residuals.");
         QI::WriteVectorImage(apply->GetAllResidualsOutput(), outPrefix + "all_residuals" + QI::OutExt());
     }
 
-    if (verbose) std::cout << "Finished." << std::endl;
+    QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

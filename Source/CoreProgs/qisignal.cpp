@@ -22,18 +22,18 @@
 
 #include "VectorToImageFilter.h"
 
-#include "Model.h"
+#include "Models.h"
 #include "Util.h"
 #include "ThreadPool.h"
 #include "Args.h"
 #include "ImageIO.h"
 
-#include "EigenCereal.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
 #include "MultiEchoSequence.h"
 #include "AFISequence.h"
 #include "MPRAGESequence.h"
+#include "MTSatSequence.h"
 #include "SequenceGroup.h"
 
 /*
@@ -46,7 +46,7 @@ typedef itk::VectorImage<std::complex<float>, 3> TCVImage;
 class SignalsFilter : public itk::ImageToImageFilter<TImage, TCVImage> {
 protected:
     std::shared_ptr<QI::SequenceBase> m_sequence;
-    std::shared_ptr<QI::Model> m_model;
+    std::shared_ptr<QI::Model::ModelBase> m_model;
     double m_sigma = 0.0;
     itk::TimeProbe m_clock;
     itk::RealTimeClock::TimeStampType m_meanTime = 0.0, m_totalTime = 0.0;
@@ -94,7 +94,7 @@ public:
         this->SetNumberOfRequiredOutputs(1);
         this->SetNthOutput(0, this->MakeOutput(0));
     }
-    void SetModel(std::shared_ptr<QI::Model> m) {
+    void SetModel(std::shared_ptr<QI::Model::ModelBase> m) {
         m_model = m;
         this->SetNumberOfRequiredInputs(1);
     }
@@ -213,22 +213,23 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> ref_arg(parser, "REFERENCE", "Resample inputs to this reference space", {'r', "ref"});
     args::ValueFlag<float> noise(parser, "NOISE", "Add complex noise with std=value", {'N',"noise"}, 0.);
     args::ValueFlag<int> seed(parser, "SEED", "Seed noise RNG with specific value", {'s', "seed"}, -1);
-    args::ValueFlag<int> model_arg(parser, "MODEL", "Choose number of components in model 1/2/3, default 1", {'M',"model"}, 1);
+    args::ValueFlag<std::string> model_arg(parser, "MODEL", "Choose model (1/2/3/MT) default 1", {'M',"model"}, "1");
     args::Flag     complex(parser, "COMPLEX", "Save complex images", {'x',"complex"});
     QI::ParseArgs(parser, argc, argv, verbose);
     if (!filenames) {
         std::cerr << "No output filenames specified. Use --help to see usage." << std::endl;
         return EXIT_FAILURE;
     }
-    std::shared_ptr<QI::Model> model = nullptr;
-    switch (model_arg.Get()) {
-        case 1: model = std::make_shared<QI::SCD>(); break;
-        case 2: model = std::make_shared<QI::MCD2>(); break;
-        case 3: model = std::make_shared<QI::MCD3>(); break;
-        default:
-            QI_FAIL("Unknown number of components: " << model_arg.Get());
-    }
-    if (verbose) std::cout << "Using " << model->Name() << " model." << std::endl;
+
+    QI_LOG(verbose, "Reading input");
+    rapidjson::Document input = QI::ReadJSON(std::cin);
+    std::shared_ptr<QI::Model::ModelBase> model = nullptr;
+    if (model_arg.Get() == "1") { model = std::make_shared<QI::Model::OnePool>(); }
+    else if (model_arg.Get() == "2") { model = std::make_shared<QI::Model::TwoPool>(); }
+    else if (model_arg.Get() == "3") { model = std::make_shared<QI::Model::ThreePool>(); }
+    else if (model_arg.Get() == "Ramani") { model = std::make_shared<QI::Model::Ramani>(input); }
+    else { QI_FAIL("Unknown model specified: " << model_arg.Get()); }
+    QI_LOG(verbose, "Using " << model->Name() << " model.");
 
     if (seed) {
         std::srand(seed.Get());
@@ -243,31 +244,22 @@ int main(int argc, char **argv) {
     calcSignal->SetModel(model);
     calcSignal->SetSigma(noise.Get());
     itk::MultiThreader::SetGlobalMaximumNumberOfThreads(threads.Get());
-    if (mask) {
-        if (verbose) std::cout << "Reading mask: " << mask.Get() << std::endl;
-        calcSignal->SetMask(QI::ReadImage(mask.Get()));
-    }
+    if (mask) calcSignal->SetMask(QI::ReadImage(mask.Get(), verbose));
 
     QI::VolumeF::Pointer reference = ITK_NULLPTR;
-    if (ref_arg) {
-        if (verbose) std::cout << "Reading reference image: " << ref_arg.Get() << std::endl;
-        reference = QI::ReadImage(ref_arg.Get());
-    }
+    if (ref_arg) reference = QI::ReadImage(ref_arg.Get(), verbose);
     if (verbose) {
         auto monitor = QI::GenericMonitor::New();
         calcSignal->AddObserver(itk::ProgressEvent(), monitor);
     }
-    if (verbose) std::cout << "Reading model parameter filenames" << std::endl;
-    cereal::JSONInputArchive input(std::cin);
+    QI_LOG(verbose, "Reading model parameter filenames");
     for (size_t i = 0; i < model->nParameters(); i++) {
-        std::string par_filename;
-        std::string par_name = model->ParameterNames()[i];
-        QI::ReadCereal(input, par_name, par_filename);
+        const std::string par_name = model->ParameterNames()[i];
+        const std::string par_filename = input[par_name].GetString();
         if (par_filename != "") {
-            if (verbose) std::cout << "Opening " << par_filename << std::endl;
-            QI::VolumeF::Pointer param = QI::ReadImage(par_filename);
+            QI::VolumeF::Pointer param = QI::ReadImage(par_filename, verbose);
             if (reference) {
-                if (verbose) std::cout << "Resampling to reference" << std::endl;
+                QI_LOG(verbose, "Resampling to reference");
                 typedef itk::ResampleImageFilter<QI::VolumeF, QI::VolumeF, double> TResampler;
                 typedef itk::LinearInterpolateImageFunction<QI::VolumeF, double> TInterp;
                 typename TInterp::Pointer interp = TInterp::New();
@@ -285,40 +277,43 @@ int main(int argc, char **argv) {
                 calcSignal->SetInput(i, param);
             }
         } else {
-            if (verbose) std::cout << "Using default " << par_name << " value: " << model->Default()[i] << std::endl;
+            QI_LOG(verbose, "Using default " << par_name << " value: " << model->Default()[i]);
         }
     }
 
     /***************************************************************************
      * Set up sequences
      **************************************************************************/
-    if (verbose) std::cout << "Reading sequences" << std::endl;
-    auto sequences = QI::ReadSequence<QI::SequenceGroup>(input, false);
+    QI_LOG(verbose, "Reading sequences");
+    QI::SequenceGroup sequences(input["Sequences"]);
     if (verbose) {
         std::cout << "Found " << sequences.count() << " sequences to generate" << std::endl;
-        cereal::JSONOutputArchive archive(std::cout); // cereal archives do not flush their output until destructed
-        archive(cereal::make_nvp("SequenceGroup", sequences));
+        rapidjson::Document doc;
+        doc.SetObject();
+        doc.AddMember("Sequences", sequences.toJSON(doc.GetAllocator()), doc.GetAllocator());
+        QI::WriteJSON(std::cout, doc);
     }
+
     if (filenames.Get().size() != sequences.count()) {
         QI_FAIL("Input filenames size " << filenames.Get().size()
                 << " does not match sequences size " << sequences.count());
     }
     for (size_t i = 0; i < sequences.count(); i++) {
-        if (verbose) std::cout << "Simulating sequence: " << sequences[i]->name() << std::endl;
+        QI_LOG(verbose, "Simulating sequence: " << sequences[i]->name());
         calcSignal->SetSequence(sequences[i]);
         calcSignal->Update();
         QI::VectorVolumeXF::Pointer output = calcSignal->GetOutput();
         output->DisconnectPipeline();
-        if (verbose) std::cout << "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)" << std::endl;
+        QI_LOG(verbose, "Mean evaluation time: " << calcSignal->GetMeanTime() << " s ( " << calcSignal->GetEvaluations() << " voxels)");
         if (complex) {
-            if (verbose) std::cout << "Saving complex image: " << filenames.Get()[i] << std::endl;
+            QI_LOG(verbose, "Saving complex image: " << filenames.Get()[i]);
             QI::WriteVectorImage(output, outarg.Get() + filenames.Get()[i]);
         } else {
-            if (verbose) std::cout << "Saving magnitude image: " << filenames.Get()[i] << std::endl;
+            QI_LOG(verbose, "Saving magnitude image: " << filenames.Get()[i]);
             QI::WriteVectorMagnitudeImage(output, outarg.Get() + filenames.Get()[i]);
         }
     }
-    if (verbose) std::cout << "Finished all sequences." << std::endl;
+    QI_LOG(verbose, "Finished all sequences.");
     return EXIT_SUCCESS;
 }
 

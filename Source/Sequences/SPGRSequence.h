@@ -15,31 +15,26 @@
 #define SEQUENCES_SPGR_H
 
 #include "SequenceBase.h"
-#include "cereal/cereal.hpp"
-#include "EigenCereal.h"
 
 namespace QI {
 
 struct SPGRBase : SequenceBase {
     Eigen::ArrayXd FA;
-    size_t size() const override;
+    Eigen::Index size() const override;
 };
 
 struct SPGRSequence : SPGRBase {
     double TR;
-    
     QI_SEQUENCE_DECLARE(SPGR);
 };
 
 struct SPGREchoSequence : SPGRBase {
     double TR, TE;
-    Eigen::ArrayXd FA;
     QI_SEQUENCE_DECLARE(SPGREcho);
 };
 
 struct SPGRFiniteSequence : SPGRBase {
     double TR, TE, Trf;
-    Eigen::ArrayXd FA;
     QI_SEQUENCE_DECLARE(SPGRFinite);
 };
 
