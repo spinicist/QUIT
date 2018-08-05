@@ -6,6 +6,16 @@ Implementation of nipype interfaces for QUIT relaxometry utilities.
 
 Currently implemented:
     - qidespot1
+    - qidespot1hifi
+    - qidespot2
+    - qidespot2fm
+
+To be implemented:
+    - qimcdespot
+    - qimp2rage
+    - qimultiecho
+    - qidream
+    - qiafi
 
 Requires that the QUIT tools are in your your system path
 
@@ -13,6 +23,7 @@ Requires that the QUIT tools are in your your system path
 
 from __future__ import (print_function, division, unicode_literals,
                         absolute_import)
+import os
 
 from nipype.interfaces.base import CommandLineInputSpec, CommandLine, TraitedSpec, File, traits, isdefined
 import json
@@ -336,63 +347,47 @@ class QiDespot2FM(CommandLine):
         return outputs
 
 ############################ qimcdespot ############################
-
-class QiDespot2FMInputSpec(CommandLineInputSpec):
+# < To be implemented > #
+class QiMcDespotInputSpec(CommandLineInputSpec):
     # Inputs
-
-    t1_map = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path to T1 map')
-    ssfp_file = File(exists=True, argstr='%s', mandatory=True,
-        position=1, desc='Path to SSFP data')
-    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
-        xor=['param_dict'], mandatory=True, exists=True)
-    param_dict = traits.Dict(desc='dictionary trait', position=2, 
-        argstr='', mandatory=True, xor=['param_file'])
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+        position=0, desc='Input file')
+    # <Add more inputs here>
 
     # Options
-    verbose = traits.Bool(desc='Print more information', argstr='-v')
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
-    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='-A')
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
-    algo = traits.Enum("LLS","WLS","NLS", desc="Choose algorithm", argstr="--algo=%d")
+    # <Add in options here>
+    
+    # Commonly used options
     environ = {'QUIT_EXT':'NIFTI_GZ'}
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
 
-class QiDespot2FMOutputSpec(TraitedSpec):
-    t2_map = File(desc="Path to T2 map")
-    pd_map = File(desc="Path to PD map")
-    f0_map = File(desc="Path to f0 (off-resonance) map")
-    residual_map = File(desc="Path to residual map")
-
-class QiDespot2FM(CommandLine):
+class QiMcDespotOutputSpec(TraitedSpec):
+    # Specify which outputs there are
+    out_file = File(desc="Output file")
+    
+class QiMcDespot(CommandLine):
     """
-    Run DESPOT2-FM analysis
+    Interace for qimcdespot
 
-    Example
+    Example 1
     -------
-    >>> from QUIT.nipype.relaxometry import QiDespot2FM
-    >>> params = {'SSFP': {'TR':5E-3, 'FA':[10,10,50,50], 'PhaseInc':[180,180,0,0] }
-    >>> fm = QiDespot2FM(prefix='nipype_', param_dict=params)
-    >>> fm.inputs.in_file = 'SSFP.nii.gz'
-    >>> fm.inputs.t1_file = 'D1_T1.nii.gz'
-    >>> fm_res = fm.run()
-    >>> print(fm_res.outputs)
-
+    >>> from QUIT.nipype.relaxometry import QiMcDespot
+    >>> interface = QiMcDespot(prefix='nipype_', param_file='spgr_params.json')
+    
     """
 
-    _cmd = 'qidespot2fm'
-    input_spec = QiDespot2FMInputSpec
-    output_spec = QiDespot2FMOutputSpec
+    _cmd = 'qimcdespot'
+    input_spec = QiMcDespotInputSpec
+    output_spec = QiMcDespotOutputSpec
 
+    # If the command requires a json input file
     def _format_arg(self, name, spec, value):
         if name == 'param_dict':
             with open('_tmp_input.json', 'w') as outfile:
                 json.dump(value, outfile)
             return "< _tmp_input.json"
 
-        return super(QiDespot2FM, self)._format_arg(name, spec, value)
+        return super(QiMcDespot, self)._format_arg(name, spec, value)
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
@@ -400,11 +395,227 @@ class QiDespot2FM(CommandLine):
         prefix = ''
         if self.inputs.prefix:
             prefix = self.inputs.prefix
-            
-        outputs['t2_map'] = prefix + 'FM_T2.nii.gz'
-        outputs['pd_map'] = prefix + 'FM_PD.nii.gz'
-        outputs['f0_map'] = prefix + 'FM_f0.nii.gz'
         
-        if self.inputs.residuals:
-            outputs['residual_map'] = prefix + 'FM_residual.nii.gz'
+        # Specify output files
+        outputs['out_file'] = os.path.abspath(prefix + 'out_file.nii.gz')
+        
+        return outputs
+
+############################ qimp2rage ############################
+# < To be implemented > #
+class QiMp2rageInputSpec(CommandLineInputSpec):
+    # Inputs
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+        position=0, desc='Input file')
+    # <Add more inputs here>
+
+    # Options
+    # <Add in options here>
+    
+    # Commonly used options
+    environ = {'QUIT_EXT':'NIFTI_GZ'}
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
+
+class QiMp2rageOutputSpec(TraitedSpec):
+    # Specify which outputs there are
+    out_file = File(desc="Output file")
+    
+class QiMp2rage(CommandLine):
+    """
+    Interface for qimp2rage
+
+    Example 1
+    -------
+    >>> from QUIT.nipype.relaxometry import QiMp2rage
+    >>> interface = QiMp2rage(prefix='nipype_', param_file='spgr_params.json')
+    
+    """
+
+    _cmd = 'qimp2rage'
+    input_spec = QiMp2rageInputSpec
+    output_spec = QiMp2rageOutputSpec
+
+    # If the command requires a json input file
+    def _format_arg(self, name, spec, value):
+        if name == 'param_dict':
+            with open('_tmp_input.json', 'w') as outfile:
+                json.dump(value, outfile)
+            return "< _tmp_input.json"
+
+        return super(QiMp2rage, self)._format_arg(name, spec, value)
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        
+        prefix = ''
+        if self.inputs.prefix:
+            prefix = self.inputs.prefix
+        
+        # Specify output files
+        outputs['out_file'] = os.path.abspath(prefix + 'out_file.nii.gz')
+        
+        return outputs
+
+############################ qimultiecho ############################
+# < To be implemented > #
+class QiMultiechoInputSpec(CommandLineInputSpec):
+    # Inputs
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+        position=0, desc='Input file')
+    # <Add more inputs here>
+
+    # Options
+    # <Add in options here>
+    
+    # Commonly used options
+    environ = {'QUIT_EXT':'NIFTI_GZ'}
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
+
+class QiMultiechoOutputSpec(TraitedSpec):
+    # Specify which outputs there are
+    out_file = File(desc="Output file")
+    
+class QiMultiecho(CommandLine):
+    """
+    help for myInterface
+
+    Example 1
+    -------
+    >>> from QUIT.nipype.relaxometry import QiMultiecho
+    >>> interface = QiMultiecho(prefix='nipype_', param_file='spgr_params.json')
+    
+    """
+
+    _cmd = 'qimultiecho'
+    input_spec = QiMultiechoInputSpec
+    output_spec = QiMultiechoOutputSpec
+
+    # If the command requires a json input file
+    def _format_arg(self, name, spec, value):
+        if name == 'param_dict':
+            with open('_tmp_input.json', 'w') as outfile:
+                json.dump(value, outfile)
+            return "< _tmp_input.json"
+
+        return super(QiMultiecho, self)._format_arg(name, spec, value)
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        
+        prefix = ''
+        if self.inputs.prefix:
+            prefix = self.inputs.prefix
+        
+        # Specify output files
+        outputs['out_file'] = os.path.abspath(prefix + 'out_file.nii.gz')
+        
+        return outputs
+
+############################ qidream ############################
+# < To be implemented > #
+class QiDreamInputSpec(CommandLineInputSpec):
+    # Inputs
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+        position=0, desc='Input file')
+    # <Add more inputs here>
+
+    # Options
+    # <Add in options here>
+    
+    # Commonly used options
+    environ = {'QUIT_EXT':'NIFTI_GZ'}
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
+
+class QiDreamOutputSpec(TraitedSpec):
+    # Specify which outputs there are
+    out_file = File(desc="Output file")
+    
+class QiDream(CommandLine):
+    """
+    Interface for qidream
+
+    Example 1
+    -------
+    >>> from QUIT.nipype.relaxometry import QiDream
+    >>> interface = QiDream(prefix='nipype_', param_file='spgr_params.json')
+    
+    """
+
+    _cmd = 'qidream'
+    input_spec = QiDreamInputSpec
+    output_spec = QiDreamOutputSpec
+
+    # If the command requires a json input file
+    def _format_arg(self, name, spec, value):
+        if name == 'param_dict':
+            with open('_tmp_input.json', 'w') as outfile:
+                json.dump(value, outfile)
+            return "< _tmp_input.json"
+
+        return super(QiDream, self)._format_arg(name, spec, value)
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        
+        prefix = ''
+        if self.inputs.prefix:
+            prefix = self.inputs.prefix
+        
+        # Specify output files
+        outputs['out_file'] = os.path.abspath(prefix + 'out_file.nii.gz')
+        
+        return outputs
+############################ qiafi ############################
+# < To be implemented > #
+class QiAfiInputSpec(CommandLineInputSpec):
+    # Inputs
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+        position=0, desc='Input file')
+    # <Add more inputs here>
+
+    # Options
+    # <Add in options here>
+    
+    # Commonly used options
+    environ = {'QUIT_EXT':'NIFTI_GZ'}
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
+
+class QiAfiOutputSpec(TraitedSpec):
+    # Specify which outputs there are
+    out_file = File(desc="Output file")
+    
+class QiAfi(CommandLine):
+    """
+    help for myInterface
+
+    Example 1
+    -------
+    >>> from QUIT.nipype.relaxometry import QiAfi
+    >>> interface = QiAfi(prefix='nipype_', param_file='spgr_params.json')
+    
+    """
+
+    _cmd = 'qiafi'
+    input_spec = QiAfiInputSpec
+    output_spec = QiAfiOutputSpec
+
+    # If the command requires a json input file
+    def _format_arg(self, name, spec, value):
+        if name == 'param_dict':
+            with open('_tmp_input.json', 'w') as outfile:
+                json.dump(value, outfile)
+            return "< _tmp_input.json"
+
+        return super(QiAfi, self)._format_arg(name, spec, value)
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        
+        prefix = ''
+        if self.inputs.prefix:
+            prefix = self.inputs.prefix
+        
+        # Specify output files
+        outputs['out_file'] = os.path.abspath(prefix + 'out_file.nii.gz')
+        
         return outputs
