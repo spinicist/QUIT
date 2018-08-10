@@ -4,12 +4,15 @@
 """The quit module provides classes for interfacing with the `QUIT
 <https://github.com/spinicist/QUIT>`_ command line tools.  
 
+Heavily inspired by the FSL base class
 """
+
 from __future__ import (print_function, division, unicode_literals,
                         absolute_import)
 
 from glob import glob
 import os
+import json
 
 from nipype import logging
 from nipype.utils.filemanip import fname_presuffix
@@ -18,15 +21,18 @@ from nipype.interfaces.base import (traits, isdefined, CommandLine, CommandLineI
 from nipype.external.due import BibTeX
 
 
-
 class QUITCommandInputSpec(CommandLineInputSpec):
     """
     Base Input Specification for all QUIT Commands
     """
+    
+    # Inputs that are common to all program
+    verbose = traits.Bool(desc='Print more information', argstr='-v')
+    environ = {'QUIT_EXT':'NIFTI_GZ'}
 
-class FSLCommand(CommandLine):
-    """Base support for QUIT commands.
-
+class QUITCommand(CommandLine):
+    """
+    Base support for QUIT commands.
     """
 
     input_spec = QUITCommandInputSpec
@@ -50,4 +56,38 @@ class FSLCommand(CommandLine):
         'tags': ['implementation'],
     }]
 
-   
+    def _add_prefix(self, full_path):
+        """
+        Add prefix to file in full_path
+        """
+        if self.inputs.prefix:
+            p,f = os.path.split(full_path)
+            return os.path.join(p, self.inputs.prefix + f)
+        else:
+            return full_path
+
+    def _process_params(self, name, spec, value):
+        """
+        Make parameter dictionary into a .json file for input to interface
+        """
+        if name == 'param_dict':
+            with open('_tmp_input.json', 'w') as outfile:
+                json.dump(value, outfile)
+            return "< _tmp_input.json"
+
+        return super()._format_arg(name, spec, value)
+
+
+
+def check_QUIT():
+    """
+    Check if QUIT is installed
+    """
+    pass
+
+def version_QUIT():
+    """
+    Check QUIT version
+    """
+    pass
+
