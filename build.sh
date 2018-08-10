@@ -15,11 +15,13 @@
 WD=$PWD
 
 # Command line options
+INSTALL=""          # Install as well as build
 QUIT_INSTALL_DIR="" # User can specify install directory (mainly for Travis)
 NUM_THREADS="2"     # Specify number of threads during make/ninja
 NATIVE=""           # Specifieds march=native
 while getopts "p:j:n" opt; do
     case $opt in
+        i) INSTALL="install";;
         p) QUIT_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=$OPTARG";;
         j) NUM_THREADS="$OPTARG";;
         n) NATIVE="-DCMAKE_CXX_FLAGS=-march=native";;
@@ -99,11 +101,8 @@ $BUILDCMD
 cd $WD
 # Now build QUIT
 
-if [ -z "$QUIT_INSTALL_DIR" ]; then
-    BUILDCMD="$BUILDCMD install"
-fi
-
 QUIT_BLD_DIR="$BUILD_DIR"
+BUILDCMD="$BUILDCMD $INSTALL"
 QUIT_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE\
     -DEIGEN3_INCLUDE_DIR=$EIGEN_DIR\
     -DCeres_DIR=$CERES_BUILD_DIR\
