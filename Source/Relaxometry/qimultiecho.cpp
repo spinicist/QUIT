@@ -40,7 +40,7 @@ auto MultiEcho::signal(const Eigen::ArrayBase<Derived> &p,
 }
 template<> std::array<const std::string, 2> MultiEcho::varying_names{{"PD"s, "T2"s}};
 template<> std::array<const std::string, 0> MultiEcho::fixed_names{{}};
-template<> const QI_ARRAYN(double, 0) MultiEcho::fixed_defaults;
+template<> const QI_ARRAYN(double, 0) MultiEcho::fixed_defaults{};
 
 using MultiEchoFit = QI::BlockFitFunction<MultiEcho>;
 

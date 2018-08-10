@@ -74,7 +74,7 @@ public:
         m_fit = a;
         this->SetNumberOfRequiredInputs(m_fit->n_inputs());
         this->SetNumberOfRequiredOutputs(m_fit->n_outputs()+ResidualsOutputOffset);
-        for (int i = 0; i < (m_fit->n_outputs()+ResidualsOutputOffset); i++) {
+        for (int i = 0; i < (m_fit->n_outputs()+ResidualsOutputOffset+m_fit->n_inputs()); i++) {
             this->SetNthOutput(i, this->MakeOutput(i));
         }
     }
@@ -138,7 +138,7 @@ public:
         }
     }
 
-    TOutputImage    *GetOutput(const int i) {
+    TOutputImage *GetOutput(const int i) {
         if (i < m_fit->n_outputs()) {
             return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(i));
         } else {
@@ -146,7 +146,7 @@ public:
         }
     }
 
-    TResidualImage  *GetResidualOutput() {
+    TResidualImage *GetResidualOutput() {
         return dynamic_cast<TResidualImage *>(this->ProcessObject::GetOutput(m_fit->n_outputs()+ResidualOutputOffset));
     }
 
@@ -154,7 +154,7 @@ public:
         return dynamic_cast<TResidualsImage *>(this->ProcessObject::GetOutput(m_fit->n_outputs()+ResidualsOutputOffset+i));
     }
 
-    TFlagImage      *GetFlagOutput() {
+    TFlagImage *GetFlagOutput() {
         return dynamic_cast<TFlagImage *>(this->ProcessObject::GetOutput(m_fit->n_outputs()+FlagOutputOffset));
     }
 
@@ -225,7 +225,7 @@ protected:
                 r->SetSpacing(spacing);
                 r->SetOrigin(origin);
                 r->SetDirection(direction);
-                r->SetNumberOfComponentsPerPixel(m_fit->input_size(i));
+                r->SetNumberOfComponentsPerPixel(m_fit->input_size(i) * m_blocks);
                 r->Allocate(true);
             }
         }
@@ -328,7 +328,7 @@ protected:
                     std::vector<ResidualArray> residuals; // Leave size 0 if user doesn't want them
                     if (m_allResiduals) {
                         for (int i = 0; i < m_fit->n_inputs(); i++) {
-                            const int block_size = m_fit->input_size(i) / m_blocks;
+                            const int block_size = m_fit->input_size(i);
                             residuals.push_back(ResidualArray::Zero(block_size));
                         }
                     }
@@ -364,7 +364,7 @@ protected:
                     if (m_allResiduals) {
                         for (int i = 0; i < m_fit->n_inputs(); i++) {
                             const int block_start = m_fit->input_size(i) * b;
-                            for (int j = 0; j < m_fit->input_size(i); i++) {
+                            for (int j = 0; j < m_fit->input_size(i); j++) {
                                 residuals_iters[i].Get()[j + block_start] = residuals[i][j];
                             }
                         }

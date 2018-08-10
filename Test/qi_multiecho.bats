@@ -43,17 +43,17 @@ qimultiecho --verbose --simulate=$NOISE $SPIN_FILE < simulate_me.json
 }
 
 @test "MultiEcho-LLS" {
-qimultiecho --verbose $SPIN_FILE < me.json
+qimultiecho --verbose --resids $SPIN_FILE < me.json
 qidiff --baseline=T2$EXT --input=ME_T2$EXT --noise=$NOISE --tolerance=$TOL --verbose
 }
 
 @test "MultiEcho-ARLO" {
-qimultiecho --verbose --algo=a $SPIN_FILE < me.json
+qimultiecho --verbose --resids --algo=a $SPIN_FILE < me.json
 qidiff --baseline=T2$EXT --input=ME_T2$EXT --noise=$NOISE --tolerance=$TOL --verbose
 }
 
 @test "MultiEcho-NLLS" {
-qimultiecho --verbose --algo=n $SPIN_FILE < me.json
+qimultiecho --verbose --resids --algo=n $SPIN_FILE < me.json
 qidiff --baseline=T2$EXT --input=ME_T2$EXT --noise=$NOISE --tolerance=$TOL --verbose
 }
 
@@ -67,19 +67,19 @@ qimultiecho --verbose --simulate=$NOISE me2$EXT < simulate_me2.json
 }
 
 @test "MultiEcho-MultiVolume-LLS" {
-qimultiecho --verbose me2$EXT < me.json
+qimultiecho --verbose --resids me2$EXT < me.json
 qidiff --baseline=T2$EXT --input=ME_T2$EXT --noise=$NOISE --tolerance=$TOL --verbose
 [ $( qihdr --size=4 ME_T2$EXT) -eq "2" ]
 }
 
 @test "MultiEcho-MultiVolume-ARLO" {
-qimultiecho --verbose --algo=a me2$EXT < me.json
+qimultiecho --verbose --resids --algo=a me2$EXT < me.json
 qidiff --baseline=T2$EXT --input=ME_T2$EXT --noise=$NOISE --tolerance=$TOL --verbose
 [ $( qihdr --size=4 ME_T2$EXT) -eq "2" ]
 }
 
 @test "MultiEcho-MultiVolume-NLLS" {
-qimultiecho --verbose --algo=n me2$EXT < me.json
+qimultiecho --verbose --resids --algo=n me2$EXT < me.json
 qidiff --baseline=T2$EXT --input=ME_T2$EXT --noise=$NOISE --tolerance=$TOL --verbose
 [ $( qihdr --size=4 ME_T2$EXT) -eq "2" ]
 }
