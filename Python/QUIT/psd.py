@@ -8,14 +8,18 @@ Implements a QUIT sequences for easy prototyping of sequences in Python
 import json
 import os
 
-
 class SequenceGroup(object):
     """
     Implementation of a Sequence Group for composite sequences such as mcDESPOT
     """
 
     def __init__(self, sequences=None):
-        self.seq_group = {}
+        self.seq_group = {
+            'SequenceGroup':{
+                'sequences':[]
+                }
+            }
+
         if len(sequences) > 0:
             for seq in sequences:
                 self.add_sequence(seq)
@@ -27,10 +31,11 @@ class SequenceGroup(object):
         if len(d.keys()) > 1:
             print('Sequence can only have one key')
         
-        if list(d.keys())[0] in self.seq_group.keys():
-            print('Sequence is already in the group. Not added')
-        else:
-            self.seq_group.update(d)
+        # if list(d.keys())[0] in self.seq_group.keys():
+        #     print('Sequence is already in the group. Not added')
+        # else:
+        
+        self.seq_group['SequenceGroup']['sequences'].append(d)
 
     def save_json(self, filename):
         if os.path.exists(filename):
@@ -85,7 +90,7 @@ class MPRAGE(Sequence):
         self.params['eta'] = eta
         self.params['FA'] = FA
         self.params['etl'] = etl
-        self.params['k0']
+        self.params['k0'] = k0
 
 class MTSat(Sequence):
 

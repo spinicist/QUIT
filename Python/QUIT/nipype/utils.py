@@ -5,28 +5,27 @@
 Implementation of nipype interfaces for QUIT utilities.
 
 Implemented:
-    - qi_coil_combine
-
-To be implemented:
-    - qi_rfprofile
     - qiaffine
+    - qimask
+    - qi_rfprofile
+    
+To be implemented:
+    - qi_coil_combine
     - qicomplex
     - qihdr
     - qikfilter
-    - qimask
     - qipolyfit
     - qipolyimg
 
 Requires that the QUIT tools are in your your system path
-
 """
 
 from __future__ import (print_function, division, unicode_literals,
                         absolute_import)
 
 from nipype.interfaces.base import CommandLineInputSpec, CommandLine, TraitedSpec, File, traits, isdefined
-from quit_nipype_utils import parse_param_dict
-from QUIT.nipype.base import QUITCommand, QUITCommandInputSpec
+# from quit_nipype_utils import parse_param_dict
+from .base import QUITCommand, QUITCommandInputSpec
 
 import json
 import os
@@ -193,3 +192,22 @@ class QiMask(CommandLine):
         outputs['mask_file'] = os.path.abspath(output_fname)        
 
         return outputs
+
+
+############################ qi_coil_combine ############################
+# < To be implemented > #
+
+############################ qicomplex ############################
+# < To be implemented > #
+
+############################ qihdr ############################
+# < To be implemented > #
+
+############################ qikfilter ############################
+# < To be implemented > #
+
+############################ qipolyfit ############################
+# < To be implemented > #
+
+############################ qipolyimg ############################
+# < To be implemented > #

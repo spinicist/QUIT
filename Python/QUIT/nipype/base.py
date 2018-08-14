@@ -78,7 +78,6 @@ class QUITCommand(CommandLine):
         return super()._format_arg(name, spec, value)
 
 
-
 def check_QUIT():
     """
     Check if QUIT is installed

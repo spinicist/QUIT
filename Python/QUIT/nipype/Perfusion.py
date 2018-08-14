@@ -12,3 +12,12 @@ To be implemented:
 Requires that the QUIT tools are in your your system path
 
 """
+
+############################ qi_ase_oef ############################
+# < To be implemented > #
+
+############################ qi_asl ############################
+# < To be implemented > #
+
+############################ qi_zshim ############################
+# < To be implemented > #
