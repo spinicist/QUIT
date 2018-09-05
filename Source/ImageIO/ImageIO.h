@@ -24,10 +24,10 @@ template<typename TImg = QI::VolumeF>
 extern auto ReadMagnitudeImage(const std::string &path, const bool verbose = false) -> typename TImg::Pointer;
 
 template<typename TImg>
-extern void WriteImage(const TImg *ptr, const std::string &path);
+extern void WriteImage(const TImg *ptr, const std::string &path, const bool verbose = false);
 
 template<typename TImg>
-extern void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string &path);
+extern void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string &path, const bool verbose = false);
 
 template<typename TImg>
 extern void WriteMagnitudeImage(const TImg *ptr, const std::string &path);

@@ -25,7 +25,7 @@ auto ReadImage(const std::string &path, const bool verbose) -> typename TImg::Po
     typedef itk::ImageFileReader<TImg> TReader;
     typename TReader::Pointer file = TReader::New();
     file->SetFileName(path);
-    QI_LOG( verbose, "Reading image: " << path );
+    QI_LOG(verbose, "Reading image: " << path);
     file->Update();
     typename TImg::Pointer img = file->GetOutput();
     if (!img) {
@@ -38,7 +38,7 @@ auto ReadImage(const std::string &path, const bool verbose) -> typename TImg::Po
 template<typename TImg>
 auto ReadMagnitudeImage(const std::string &path, const bool verbose) -> typename TImg::Pointer {
     typedef itk::Image<std::complex<typename TImg::PixelType>, TImg::ImageDimension> TComplex;
-    QI_LOG( verbose, "Reading image: " << path );
+    QI_LOG(verbose, "Reading image: " << path);
     auto x_img = QI::ReadImage<TComplex>(path, verbose);
     auto magFilter = itk::ComplexToModulusImageFilter<TComplex, TImg>::New();
     magFilter->SetInput(x_img);
