@@ -163,8 +163,8 @@ int main(int argc, char **argv) {
             src.model.scale_to_mean = scale.Get();
             src.src_gauss = !use_src;
             if (bounds) {
-                src.model.bounds_lo = QI::ArrayFromJSON(input["lower_bounds"]);
-                src.model.bounds_hi = QI::ArrayFromJSON(input["upper_bounds"]);
+                src.model.bounds_lo = QI::ArrayFromJSON(input, "lower_bounds");
+                src.model.bounds_hi = QI::ArrayFromJSON(input, "upper_bounds");
             }
             QI_LOG(verbose, "Low bounds: " << src.model.bounds_lo.transpose() <<
                             "\nHigh bounds: " << src.model.bounds_hi.transpose());

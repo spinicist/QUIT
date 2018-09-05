@@ -169,8 +169,8 @@ int main(int argc, char **argv) {
 
     QI_LOG(verbose, "Reading slab profile");
     rapidjson::Document json = QI::ReadJSON(std::cin);
-    auto rf_pos = QI::ArrayFromJSON(json["rf_pos"]);
-    auto rf_vals = QI::ArrayFromJSON(json["rf_vals"]);
+    auto rf_pos = QI::ArrayFromJSON(json, "rf_pos");
+    auto rf_vals = QI::ArrayFromJSON(json, "rf_vals");
 
     QI_LOG(verbose, "Profile has " << rf_pos.rows() << " points.\nGenerating image");
     auto image = itk::ProfileImage::New();

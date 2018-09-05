@@ -18,7 +18,7 @@ CASLSequence::CASLSequence(const rapidjson::Value& json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
     TR = json["TR"].GetDouble();
     label_time = json["label_time"].GetDouble();
-    post_label_delay = ArrayFromJSON(json["post_label_delay"]);
+    post_label_delay = ArrayFromJSON(json, "post_label_delay");
 }
 
 rapidjson::Value CASLSequence::toJSON(rapidjson::Document::AllocatorType &a) const {

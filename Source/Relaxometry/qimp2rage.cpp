@@ -14,7 +14,8 @@
 #include <string>
 #include <complex>
 
-#include "itkBinaryFunctorImageFilter.h"
+#include "itkUnaryGeneratorImageFilter.h"
+#include "itkBinaryGeneratorImageFilter.h"
 #include "itkExtractImageFilter.h"
 #include "itkMaskImageFilter.h"
 #include "itkAddImageFilter.h"
@@ -25,152 +26,39 @@
 #include "Args.h"
 #include "MPRAGESequence.h"
 #include "Masking.h"
+#include "Spline.h"
 
-template<class T> class MP2Functor {
-public:
-    MP2Functor() {}
-    ~MP2Functor() {}
-    bool operator!=(const MP2Functor &) const { return false; }
-    bool operator==(const MP2Functor &other) const { return !(*this != other); }
-
-    inline T operator()(const std::complex<T> &ti1, const std::complex<T> &ti2) const
-    {
-        const T a1 = abs(ti1);
-        const T a2 = abs(ti2);
-        return real((conj(ti1)*ti2)/(a1*a1 + a2*a2));
-    }
-};
-
-template<class T> class SqrSumFunctor {
-public:
-    SqrSumFunctor() {}
-    ~SqrSumFunctor() {}
-    bool operator!=(const SqrSumFunctor &) const { return false; }
-    bool operator==(const SqrSumFunctor &other) const { return !(*this != other); }
-
-    inline T operator()(const std::complex<T> &ti1, const std::complex<T> &ti2) const
-    {
-        const T a1 = abs(ti1);
-        const T a2 = abs(ti2);
-        return a1*a1 + a2*a2;
-    }
-};
-
-namespace itk {
-
-class MPRAGELookUpFilter : public ImageToImageFilter<QI::VolumeF, QI::VolumeF>
+inline float MP2Contrast(const std::complex<float> ti1, 
+                         const std::complex<float> ti2,
+                         const float beta = 0.0f)
 {
-public:
+    const float a1 = abs(ti1);
+    const float a2 = abs(ti2);
+    return (std::real(std::conj(ti1)*ti2) - beta)/(std::norm(a1) + std::norm(a2) + 2*beta);
+}
 
-protected:
-    std::vector<float> m_T1, m_con;
+Eigen::Array2cf One_MP2RAGE(const double &M0, const double &T1, const double &B1, const QI::MP2RAGESequence &s) {
+    const double R1 = 1. / T1;
+    const Eigen::Array2d R1s = R1 - log(cos(B1 * s.FA))/s.TR;
+    const Eigen::Array2d M0s = M0 * (1. - exp(-s.TR*R1)) / (1. - exp(-s.TR*R1s));
+    const double tau = s.ETL * s.TR;
 
-public:
-    /** Standard class typedefs. */
-    typedef QI::VolumeF                        TImage;
-    typedef MPRAGELookUpFilter                 Self;
-    typedef ImageToImageFilter<TImage, TImage> Superclass;
-    typedef SmartPointer<Self>                 Pointer;
-    typedef typename TImage::RegionType        RegionType;
+    const Eigen::Array3d B = exp(-s.TD*R1);
+    const Eigen::Array3d A = M0*(1. - B);
 
-    itkNewMacro(Self); /** Method for creation through the object factory. */
-    itkTypeMacro(MPRAGELookUpFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
+    const Eigen::Array2d D = exp(-tau*R1s);
+    const Eigen::Array2d C = M0s*(1. - D);
 
-    void SetInput(const TImage *img) ITK_OVERRIDE {
-        this->SetNthInput(0, const_cast<TImage*>(img));
-    }
+    Eigen::Array2d Mm;
+    const double eta = 1.0;
+    const double denominator = (1 + eta*B[0]*D[0]*B[1]*D[1]*B[2]);
+    Mm[0] = (A[0]-eta*B[0]*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*C[0])))) / denominator;
+    Mm[1] = (A[1]+B[1]*(C[0]+D[0]*(A[0]-eta*B[0]*(A[2]+B[2]*C[1])))) / denominator;
 
-    Eigen::Array2cd One_MP2RAGE(const double &M0, const double &T1, const double &B1, const QI::MP2RAGESequence &s) {
-        const double R1 = 1. / T1;
-        const Eigen::Array2d R1s = R1 - log(cos(B1 * s.FA))/s.TR;
-        const Eigen::Array2d M0s = M0 * (1. - exp(-s.TR*R1)) / (1. - exp(-s.TR*R1s));
-        const double tau = s.ETL * s.TR;
-
-        const Eigen::Array3d B = exp(-s.TD*R1);
-        const Eigen::Array3d A = M0*(1. - B);
-
-        const Eigen::Array2d D = exp(-tau*R1s);
-        const Eigen::Array2d C = M0s*(1. - D);
-
-        Eigen::Array2d Mm;
-        const double eta = 1.0;
-        const double denominator = (1 + eta*B[0]*D[0]*B[1]*D[1]*B[2]);
-        Mm[0] = (A[0]-eta*B[0]*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*C[0])))) / denominator;
-        Mm[1] = (A[1]+B[1]*(C[0]+D[0]*(A[0]-eta*B[0]*(A[2]+B[2]*C[1])))) / denominator;
-        //Mss = -eta*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*(C[0]+D[0]*A[0])))) / denominator;
-
-        //cout << "denom " << denominator << " Mm " << Mm.transpose() << endl;
-
-        Eigen::Array2cd Me = Eigen::Array2cd::Zero();
-        Me.real() = Mm * sin(B1 * s.FA);
-        /*cout << "alpha " << alpha.transpose() << " B1 " << B1 << endl;
-        cout << "sin(B1 * alpha) " << sin(B1 * alpha).transpose() << endl;
-        cout << "Me " << Me.transpose() << endl;*/
-        return Me;
-    }
-
-    void SetSequence(QI::MP2RAGESequence &sequence) {
-        MP2Functor<double> con;
-        m_T1.clear();
-        m_con.clear();
-        for (float T1 = 0.25; T1 < 4.3; T1 += 0.001) {
-            Eigen::Array3d tp; tp << T1, 1.0, 1.0; // Fix B1 and eta
-            Eigen::Array2cd sig = One_MP2RAGE(1., T1, 1., sequence);
-            double c = con(sig[0], sig[1]);
-            m_T1.push_back(T1);
-            m_con.push_back(c);
-            //cout << m_pars.back().transpose() << " : " << m_cons.back().transpose());
-        }
-    }
-
-protected:
-    MPRAGELookUpFilter() {
-        this->SetNumberOfRequiredInputs(1);
-        this->SetNumberOfRequiredOutputs(1);
-        this->SetNthOutput(0, this->MakeOutput(0));
-    }
-    ~MPRAGELookUpFilter() {}
-
-    DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) override {
-        //std::cout <<  __PRETTY_FUNCTION__ );
-        if (idx == 0) {
-            DataObject::Pointer output = (TImage::New()).GetPointer();
-            return output.GetPointer();
-        } else {
-            std::cerr << "No output " << idx << std::endl;
-            return nullptr;
-        }
-    }
-
-    void ThreadedGenerateData(const RegionType &region, ThreadIdType /* Unused */) ITK_OVERRIDE {
-        //std::cout <<  __PRETTY_FUNCTION__ );
-        ImageRegionConstIterator<TImage> inputIter(this->GetInput(), region);
-        ImageRegionIterator<TImage> outputIter(this->GetOutput(), region);
-
-        while(!inputIter.IsAtEnd()) {
-            const double ival = inputIter.Get();
-            double best_distance = std::numeric_limits<double>::max();
-            int best_index = 0;
-            for (int i = m_T1.size(); i > 0; i--) {
-                double distance = fabs(m_con[i] - ival);
-                if (distance < best_distance) {
-                    best_distance = distance;
-                    best_index = i;
-                }
-            }
-            //cout << "Best index " << best_index << " distance " << best_distance << " pars " << outputs.transpose() << " data " << data_inputs.transpose() << " cons" << m_cons[best_index].transpose());
-            outputIter.Set(m_T1[best_index]);
-            ++inputIter;
-            ++outputIter;
-        }
-    }
-
-private:
-    MPRAGELookUpFilter(const Self &); //purposely not implemented
-    void operator=(const Self &);  //purposely not implemented
-};
-
-} // End namespace itk
+    Eigen::Array2cf Me = Eigen::Array2cf::Zero();
+    Me.real() = (Mm * sin(B1 * s.FA)).cast<float>();
+    return Me;
+}
 
 int main(int argc, char **argv) {
     args::ArgumentParser parser("Calculates T1/B1 maps from MP2/3-RAGE data\nhttp://github.com/spinicist/QUIT");
@@ -179,8 +67,9 @@ int main(int argc, char **argv) {
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    args::Flag     automask(parser, "AUTOMASK", "Create a mask from the sum of squares image", {'a', "automask"});
+    args::ValueFlag<std::string> seq_arg(parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> beta_arg(parser, "BETA", "Regularisation factor for robust contrast calculation (https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0099676)", {'b', "beta"}, 0.0);
+    args::Flag t1(parser, "T1", "Calculate T1 map via spline look-up", {'t', "t1"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI_LOG(verbose, "Opening input file " << QI::CheckPos(input_path));
@@ -198,52 +87,50 @@ int main(int argc, char **argv) {
     ti_2->SetDirectionCollapseToSubmatrix();
     ti_2->SetInput(inFile);
 
-    QI::VolumeI::Pointer mask_img = nullptr;
-    if (automask) {
-        QI_LOG(verbose, "Calculating mask");
-        auto SqrSumFilter = itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, SqrSumFunctor<float>>::New();
-        SqrSumFilter->SetInput1(ti_1->GetOutput());
-        SqrSumFilter->SetInput2(ti_2->GetOutput());
-        SqrSumFilter->Update();
-        mask_img = QI::ThresholdMask(SqrSumFilter->GetOutput(), 0.025);
-    } else if (mask) {
-        QI_LOG(verbose, "Reading mask file: " << mask.Get());
-        mask_img = QI::ReadImage<QI::VolumeI>(mask.Get());
-    }
-
     QI_LOG(verbose, "Generating MP2 contrasts");
-    auto MP2Filter = itk::BinaryFunctorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF, MP2Functor<float>>::New();
+    using BinaryFilter = itk::BinaryGeneratorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF>;
+    auto MP2Filter = BinaryFilter::New();
     MP2Filter->SetInput1(ti_1->GetOutput());
     MP2Filter->SetInput2(ti_2->GetOutput());
+    const float &beta = beta_arg.Get();
+    MP2Filter->SetFunctor( [&](const std::complex<float> &p1, const std::complex<float> &p2) { return MP2Contrast(p1, p2, beta); });
     MP2Filter->Update();
-    std::string outName = outarg ? outarg.Get() : QI::StripExt(input_path.Get());
-    QI_LOG(verbose, "Reading sequence parameters");
-    rapidjson::Document input = QI::ReadJSON(std::cin);
-    QI::MP2RAGESequence mp2rage_sequence(input["MP2RAGE"]);
-    QI_LOG(verbose, "Calculating T1");
-    auto apply = itk::MPRAGELookUpFilter::New();
-    apply->SetSequence(mp2rage_sequence);
-    apply->SetInput(MP2Filter->GetOutput());
-    apply->Update();
+    const std::string out_prefix = outarg ? outarg.Get() : QI::StripExt(input_path.Get());
+    QI::WriteImage(MP2Filter->GetOutput(), out_prefix + "_MP2" + QI::OutExt(), verbose);
 
-    if (mask_img) {
-        QI_LOG(verbose, "Masking outputs");
-        auto masker = itk::MaskImageFilter<QI::VolumeF, QI::VolumeI>::New();
-        auto add = itk::AddImageFilter<QI::VolumeF, QI::VolumeF>::New();
-        add->SetInput(MP2Filter->GetOutput());
-        add->SetConstant(0.5);
-        masker->SetInput(add->GetOutput());
-        masker->SetMaskImage(mask_img);
-        masker->Update();
-        QI::WriteImage(masker->GetOutput(), outName + "_contrast" + QI::OutExt());
-        masker->SetInput(apply->GetOutput());
-        masker->Update();
-        QI::WriteImage(masker->GetOutput(0), outName + "_T1" + QI::OutExt());
-    } else {
-        QI::WriteImage(MP2Filter->GetOutput(), outName + "_contrast" + QI::OutExt());
-        QI::WriteImage(apply->GetOutput(0), outName + "_T1" + QI::OutExt());
+    if (t1) {
+        QI_LOG(verbose, "Reading sequence information");
+        rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+        QI::MP2RAGESequence mp2rage_sequence(input["MP2RAGE"]);
+        QI_LOG(verbose, "Building look-up spline");
+        int num_entries = 20;
+        Eigen::ArrayXd T1_values = Eigen::ArrayXd::LinSpaced(num_entries, 0.1, 4.0);
+        Eigen::ArrayXd MP2_values(num_entries);
+        for (int i = 0; i < num_entries; i++) {
+            const auto sig = One_MP2RAGE(1., T1_values[i], 1., mp2rage_sequence);
+            const float mp2 = MP2Contrast(sig[0], sig[1]);
+            if ((i > 0) && (mp2 > MP2_values[i - 1])) {
+                num_entries = i;
+                break;
+            } else {
+                MP2_values[i] = mp2;
+            }
+        }
+        QI::SplineInterpolator mp2_to_t1(MP2_values.head(num_entries), T1_values.head(num_entries));
+        if (beta) {
+            QI_LOG(verbose, "Recalculating unregularised MP2 image");
+            MP2Filter->SetFunctor( [&](const std::complex<float> &p1, const std::complex<float> &p2) { return MP2Contrast(p1, p2, 0.0); });
+            MP2Filter->Update();
+        }
+        using UnaryFilter = itk::UnaryGeneratorImageFilter<QI::VolumeF, QI::VolumeF>;
+        auto T1LookupFilter = UnaryFilter::New();
+        T1LookupFilter->SetInput(MP2Filter->GetOutput());
+        auto lookup = [&](const float &p) { return mp2_to_t1(p); };
+        T1LookupFilter->SetFunctor(lookup);
+        QI_LOG(verbose, "Calculating T1");
+        T1LookupFilter->Update();
+        QI::WriteImage(T1LookupFilter->GetOutput(), out_prefix + "_MP2_T1" + QI::OutExt(), verbose);
     }
     QI_LOG(verbose, "Finished.");
     return EXIT_SUCCESS;
 }
-

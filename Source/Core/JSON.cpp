@@ -62,21 +62,20 @@ rapidjson::Value ArrayToJSON(const Eigen::ArrayXd &array,
     return json_array;
 }
 
-Eigen::ArrayXd ArrayFromJSON(const rapidjson::Value &json_array, const double &scale) {
-        if (!json_array.IsArray()) QI_FAIL("Failed to read JSON array");
-        Eigen::ArrayXd array(json_array.Size());
-        for (rapidjson::SizeType i = 0; i < json_array.Size(); i++) {
-            array[i] = json_array[i].GetDouble() * scale;
-        }
-        return array;
+Eigen::ArrayXd ArrayFromJSON(const rapidjson::Value &json, const std::string &key, const double &scale) {
+    if (!json.HasMember(key)) QI_FAIL("Missing JSON member: " << key);
+    const auto &json_array = json[key];
+    if (!json_array.IsArray()) QI_FAIL("JSON member " << key << " is not an array");
+    Eigen::ArrayXd array(json_array.Size());
+    for (rapidjson::SizeType i = 0; i < json_array.Size(); i++) {
+        array[i] = json_array[i].GetDouble() * scale;
+    }
+    return array;
 }
 
 const rapidjson::Value &GetMember(const rapidjson::Value &json, const std::string &key) {
-    if (json.HasMember(key)) {
-        return json[key];
-    } else {
-        QI_FAIL("Missing JSON member: " << key);
-    }
+    if (!json.HasMember(key)) QI_FAIL("Missing JSON member: " << key);
+    return json[key];
 }
 
 } // End namespace QI

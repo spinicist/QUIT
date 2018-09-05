@@ -27,7 +27,7 @@ struct MPRAGESequence : SequenceBase {
 struct MP2RAGESequence : SequenceBase {
     double TR;
     int ETL;
-    Eigen::ArrayXd FA;
+    Eigen::Array2d FA;
     Eigen::Array3d TD;
 
     QI_SEQUENCE_DECLARE(MP2RAGE);

@@ -31,9 +31,9 @@ Eigen::ArrayXd SSFPSequence::weights(const double f0) const {
 
 SSFPSequence::SSFPSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = QI::GetMember(json, "TR").GetDouble();
-    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
-    PhaseInc = ArrayFromJSON(QI::GetMember(json, "PhaseInc"), M_PI / 180);
+    TR = GetMember(json, "TR").GetDouble();
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
+    PhaseInc = ArrayFromJSON(json, "PhaseInc", M_PI / 180);
     FA_PHASE_CHECK()
 }
 
@@ -66,10 +66,10 @@ Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
 
 SSFPFiniteSequence::SSFPFiniteSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = QI::GetMember(json, "TR").GetDouble();
-    Trf = QI::GetMember(json, "Trf").GetDouble();
-    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
-    PhaseInc = ArrayFromJSON(QI::GetMember(json, "PhaseInc"), M_PI / 180);
+    TR = GetMember(json, "TR").GetDouble();
+    Trf = GetMember(json, "Trf").GetDouble();
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
+    PhaseInc = ArrayFromJSON(json, "PhaseInc", M_PI / 180);
     FA_PHASE_CHECK()
 }
 
@@ -84,8 +84,8 @@ rapidjson::Value SSFPFiniteSequence::toJSON(rapidjson::Document::AllocatorType &
 
 SSFPGSSequence::SSFPGSSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = QI::GetMember(json, "TR").GetDouble();
-    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
+    TR = GetMember(json, "TR").GetDouble();
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
 }
 
 rapidjson::Value SSFPGSSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -102,10 +102,10 @@ Eigen::Index SSFPMTSequence::size() const {
 
 SSFPMTSequence::SSFPMTSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = ArrayFromJSON(QI::GetMember(json, "TR"));
-    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
-    Trf = ArrayFromJSON(QI::GetMember(json, "Trf"));
-    intB1 = ArrayFromJSON(QI::GetMember(json, "intB1"));
+    TR = ArrayFromJSON(json, "TR");
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
+    Trf = ArrayFromJSON(json, "Trf");
+    intB1 = ArrayFromJSON(json, "intB1");
     if ((TR.rows() != Trf.rows()) || (TR.rows() != intB1.rows()) || (TR.rows() != FA.rows())) {
         QI_FAIL("One on more parameters had differing lengths, TR had " << TR.rows() << ", Trf had " << Trf.rows() << ", intB1 had " << intB1.rows() << ", FA had " << FA.rows());
     }

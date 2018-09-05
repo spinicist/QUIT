@@ -62,8 +62,8 @@ rapidjson::Value Splineshape::toJSON(rapidjson::Document::AllocatorType &a) cons
 
 Splineshape::Splineshape(const rapidjson::Value &val) {
     T2b_nominal = val["T2b_nominal"].GetDouble();
-    frequencies = ArrayFromJSON(val["frequencies"]);
-    values = ArrayFromJSON(val["values"]);
+    frequencies = ArrayFromJSON(val, "frequencies");
+    values = ArrayFromJSON(val, "values");
 }
 
 } // End namespace Lineshapes

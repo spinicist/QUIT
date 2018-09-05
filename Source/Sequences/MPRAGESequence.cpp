@@ -17,13 +17,14 @@ Eigen::Index MPRAGESequence::size() const { return 1; }
 
 MPRAGESequence::MPRAGESequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
-    TI = json["TI"].GetDouble();
-    TD = json["TD"].GetDouble();
-    eta = json["eta"].GetDouble();
-    FA = json["FA"].GetDouble() * M_PI / 180;
-    ETL = json["ETL"].GetInt();
-    k0 = json["k0"].GetInt();
+    TR = GetMember(json, "TR").GetDouble();
+    TI = GetMember(json, "TI").GetDouble();
+    TD = GetMember(json, "TD").GetDouble();
+    k0 = GetMember(json, "k0").GetInt();
+    FA = GetMember(json, "FA").GetDouble() * M_PI / 180;
+    ETL = GetMember(json, "ETL").GetInt();
+    eta = GetMember(json, "eta").GetDouble();
+
 }
 
 rapidjson::Value MPRAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -46,11 +47,11 @@ Eigen::Index MP2RAGESequence::size() const { return 2; }
 
 MP2RAGESequence::MP2RAGESequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
-    auto TI = ArrayFromJSON(json["TI"]);
+    TR = GetMember(json, "TR").GetDouble();
+    auto TI = ArrayFromJSON(json, "TI");
     auto SegTR = json["SegTR"].GetDouble();
-    FA = json["FA"].GetDouble() * M_PI / 180;
-    ETL = json["ETL"].GetInt();
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
+    ETL = GetMember(json, "ETL").GetInt();
     TD[0] = TI[0];
     TD[1] = TI[1] - (ETL * TR) - TI[0];
     TD[2] = SegTR - (ETL * TR) - TI[1];

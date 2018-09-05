@@ -26,8 +26,8 @@ MTSatSequence::MTSatSequence(const rapidjson::Value &json) :
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
     TR = json["TR"].GetDouble();
     FA = json["FA"].GetDouble() * M_PI / 180;
-    sat_f0 = ArrayFromJSON(json["sat_f0"]);
-    sat_angle = ArrayFromJSON(json["sat_angle"], M_PI / 180);
+    sat_f0 = ArrayFromJSON(json, "sat_f0");
+    sat_angle = ArrayFromJSON(json, "sat_angle", M_PI / 180);
 }
 
 rapidjson::Value MTSatSequence::toJSON(rapidjson::Document::AllocatorType &a) const {

@@ -23,8 +23,8 @@ Eigen::Index SPGRBase::size() const {
 
 SPGRSequence::SPGRSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = QI::GetMember(json, "TR").GetDouble();
-    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
+    TR = GetMember(json, "TR").GetDouble();
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
 }
 
 rapidjson::Value SPGRSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -41,9 +41,9 @@ rapidjson::Value SPGRSequence::toJSON(rapidjson::Document::AllocatorType &a) con
 
 SPGREchoSequence::SPGREchoSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = QI::GetMember(json, "TR").GetDouble();
-    TE = QI::GetMember(json, "TE").GetDouble();
-    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
+    TR = GetMember(json, "TR").GetDouble();
+    TE = GetMember(json, "TE").GetDouble();
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
 }
 
 rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -59,10 +59,10 @@ rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a)
  */
 SPGRFiniteSequence::SPGRFiniteSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = QI::GetMember(json, "TR").GetDouble();
-    TE = QI::GetMember(json, "TE").GetDouble();
-    Trf = QI::GetMember(json, "Trf").GetDouble();
-    FA = ArrayFromJSON(QI::GetMember(json, "FA"), M_PI / 180);
+    TR = GetMember(json, "TR").GetDouble();
+    TE = GetMember(json, "TE").GetDouble();
+    Trf = GetMember(json, "Trf").GetDouble();
+    FA = ArrayFromJSON(json, "FA", M_PI / 180);
 }
 
 rapidjson::Value SPGRFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {

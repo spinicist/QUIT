@@ -47,8 +47,8 @@ rapidjson::Value MultiEchoSequence::toJSON(rapidjson::Document::AllocatorType &a
  */
 MultiEchoFlexSequence::MultiEchoFlexSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    if (json["TR"].IsDouble()) { TR = json["TR"].GetDouble(); } else { QI_FAIL("Did not find double member TR in MultiEchoFlex sequence") };
-    if (json["TE"].IsArray()) { TE = ArrayFromJSON(json["TE"]); } else { QI_FAIL("Did not find array member TE in MultiEchoFlex sequence") };
+    TR = json["TR"].GetDouble();
+    TE = ArrayFromJSON(json, "TE");
 }
 
 rapidjson::Value MultiEchoFlexSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
