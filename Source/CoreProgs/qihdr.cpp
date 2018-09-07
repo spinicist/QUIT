@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
                     end_dim = print_size.Get();
                 }
                 if (print_all || verbose) std::cout << "Size:       ";
-                if (print_all || print_size) { for (int i = start_dim; i < end_dim; i++) std::cout << imageIO->GetDimensions(i) << "\t"; std::cout << std::endl; }
+                if (print_all || print_size) { for (int i = start_dim; i < end_dim; i++) { std::cout << imageIO->GetDimensions(i); if (i < (end_dim - 1)) std::cout << ","; } std::cout << std::endl; }
             }
         }
         if (print_all || print_spacing) {
