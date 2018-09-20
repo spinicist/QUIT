@@ -15,16 +15,20 @@
 WD=$PWD
 
 # Command line options
+CERES="ceres"       # Skip CERES
+CHECKOUT="checkout" # Skip git checkout step
 INSTALL=""          # Install as well as build
 QUIT_INSTALL_DIR="" # User can specify install directory (mainly for Travis)
 NUM_THREADS="2"     # Specify number of threads during make/ninja
 NATIVE=""           # Specifieds march=native
-while getopts "p:j:n" opt; do
+while getopts "cij:np:" opt; do
     case $opt in
+        c) CERES="";;
+        g) CHECKOUT="";;
         i) INSTALL="install";;
-        p) QUIT_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=$OPTARG";;
         j) NUM_THREADS="$OPTARG";;
         n) NATIVE="-DCMAKE_CXX_FLAGS=-march=native";;
+        p) QUIT_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=$OPTARG";;
     esac
 done
 
@@ -38,7 +42,9 @@ else
 fi
 
 # Initialise submodules
-git submodule update --init
+if [ -z "$CHECKOUT" ]; then
+    git submodule update --init
+fi
 EXTERNAL="$WD/External"
 cd $EXTERNAL
 
@@ -59,16 +65,18 @@ CERES_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE $CXX_STANDARD\
             -DEXPORT_BUILD_DIR=ON\
             -DGFLAGS=OFF -DLAPACK=OFF -DMINIGLOG=ON\
             -DSUITESPARSE=OFF -DACCELERATESPARSE=OFF"
-mkdir -p $CERES_BUILD_DIR
-cd $CERES_BUILD_DIR
-cmake $CERES_DIR $CERES_OPTS
-$BUILDCMD
+if [ -z "$CERES" ]; then
+    mkdir -p $CERES_BUILD_DIR
+    cd $CERES_BUILD_DIR
+    cmake $CERES_DIR $CERES_OPTS
+    $BUILDCMD
+fi
 
 # ITK
 ITK_DIR="$EXTERNAL/ITK"
 ITK_BUILD_DIR="$ITK_DIR/$BUILD_DIR"
-ITK_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE $CXX_STANDARD -DCMAKE_CXX_FLAGS=-fpermissive
-           -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF\
+ITK_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE -DCMAKE_CXX_STANDARD=14 -DCMAKE_CXX_FLAGS=-fpermissive
+           -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DGDCM_USE_COREFOUNDATION_LIBRARY=OFF \
            -DITK_BUILD_DEFAULT_MODULES=OFF\
            -DITKGroup_Core=OFF -DModule_ITKCommon=ON\
            -DModule_ITKIONIFTI=ON -DModule_ITKIONRRD=ON\
