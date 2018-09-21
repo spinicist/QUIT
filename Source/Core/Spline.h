@@ -28,7 +28,7 @@ public:
     typedef Eigen::Spline<double, 1> TSpline;
 
     SplineInterpolator();
-    SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y);
+    SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y, const int order = 3);
     double operator()(const double &x) const;
     Eigen::ArrayXd operator()(const Eigen::ArrayXd &x) const;
     void print(std::ostream &ostr) const;

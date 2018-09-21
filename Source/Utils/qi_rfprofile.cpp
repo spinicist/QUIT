@@ -155,7 +155,6 @@ int main(int argc, char **argv) {
     
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -174,14 +173,16 @@ int main(int argc, char **argv) {
 
     QI_LOG(verbose, "Profile has " << rf_pos.rows() << " points.\nGenerating image");
     auto image = itk::ProfileImage::New();
-    image->SetDebug(debug);
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
     image->SetDim(dimension.Get());
     image->SetCenterMask(centerMask);
+    image->SetDebug(true);
     if (mask) image->SetMask(QI::ReadImage(mask.Get()));
-    auto monitor = QI::GenericMonitor::New();
-    image->AddObserver(itk::ProgressEvent(), monitor);
+    if (verbose) {
+        auto monitor = QI::GenericMonitor::New();
+        image->AddObserver(itk::ProgressEvent(), monitor);
+    }
     image->Update();
     QI_LOG(verbose, "Finished, writing output: " << QI::CheckPos(output_path));
     QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path));

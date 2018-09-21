@@ -31,6 +31,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPUT", "Change ouput filename (default is input_interp)", {'o', "out"});
     args::ValueFlag<std::string> f0_arg(parser, "OFF RESONANCE", "Specify off-resonance frequency (units must match input)", {'f', "f0"});
+    args::ValueFlag<int> order(parser, "ORDER", "Spline order for interpolation (default 3)", {'O', "order"}, 3);
     args::Flag     asym(parser, "ASYMMETRY", "Output asymmetry (M+ - M-)", {'a', "asym"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
@@ -43,7 +44,8 @@ int main(int argc, char **argv) {
     auto out_freqs = QI::ArrayFromJSON(json, "output_freqs");
     QI_LOG(verbose, "Input frequencies: " << in_freqs.transpose() << "\nOutput frequencies: " << out_freqs.transpose());
     if (asym) QI_LOG(verbose, "Asymmetry output selected");
-    
+    if (order) QI_LOG(verbose, "Spline order: " << order.Get());
+
     QI::VolumeF::Pointer f0_image = f0_arg ? QI::ReadImage(f0_arg.Get(), verbose) : nullptr;
 
     auto output = QI::VectorVolumeF::New();
@@ -63,7 +65,7 @@ int main(int argc, char **argv) {
 
             for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it, ++out_it) {
                 const Eigen::Map<const Eigen::ArrayXf> zdata(in_it.Get().GetDataPointer(), in_freqs.rows());
-                QI::SplineInterpolator zspec(in_freqs, zdata.cast<double>());
+                QI::SplineInterpolator zspec(in_freqs, zdata.cast<double>(), order.Get());
                 itk::VariableLengthVector<float> output(out_freqs.rows());
                 float f0 = f0_image ? f0_it.Get() : 0.0;
                 for (int f = 0; f < out_freqs.rows(); f++) {

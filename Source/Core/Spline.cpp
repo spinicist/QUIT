@@ -24,7 +24,7 @@ SplineInterpolator::SplineInterpolator() :
 
 
 
-SplineInterpolator::SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y) {
+SplineInterpolator::SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y, const int order) {
     if (x.size() != y.size()) {
         QI_FAIL("Input vectors to spline must be same size");
     }
@@ -42,7 +42,7 @@ SplineInterpolator::SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd c
     m_min = sx[0];
     m_width = sx[sx.size()-1] - m_min;
     const Eigen::ArrayXd scaledx = (sx - m_min) / m_width;
-    m_spline = Eigen::SplineFitting<TSpline>::Interpolate(sy.transpose(), std::min<int>(x.rows() - 1, 3), scaledx.transpose());
+    m_spline = Eigen::SplineFitting<TSpline>::Interpolate(sy.transpose(), std::min<int>(x.rows() - 1, order), scaledx.transpose());
 }
 
 double SplineInterpolator::scale(const double &x) const {
