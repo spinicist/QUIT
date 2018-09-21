@@ -16,20 +16,20 @@
 namespace QI {
 
 RFPulse::RFPulse(const rapidjson::Value &json) {
-    Trf = json["Trf"].GetDouble();
-    intB1 = json["intB1"].GetDouble();
-    intB1sq = json["intB1sq"].GetDouble();
-    name = json["name"].GetString();
-    FAnom = json["FAnom"].GetDouble() * M_PI / 180;
+    FA = QI::GetMember(json, "FA").GetDouble() * M_PI / 180;
+    Trf = QI::GetMember(json, "Trf").GetDouble();
+    p1 = QI::GetMember(json, "p1").GetDouble();
+    p2 = QI::GetMember(json, "p2").GetDouble();
+    name = QI::GetMember(json, "name").GetString();
 }
 
 rapidjson::Value RFPulse::toJSON(rapidjson::Document::AllocatorType &a) const {
     rapidjson::Value json_val(rapidjson::kObjectType);
     json_val.AddMember("Trf", Trf, a);
-    json_val.AddMember("intB1", intB1, a);
-    json_val.AddMember("intB1sq", intB1sq, a);
+    json_val.AddMember("p1", p1, a);
+    json_val.AddMember("p2", p2, a);
     json_val.AddMember("name", name, a);
-    json_val.AddMember("FAnom", FAnom * 180 / M_PI, a);
+    json_val.AddMember("FA", FA * 180 / M_PI, a);
     return json_val;
 }
 

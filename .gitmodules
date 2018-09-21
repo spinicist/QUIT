@@ -9,6 +9,3 @@
 	url = https://github.com/eigenteam/eigen-git-mirror.git
 [submodule "ITK"]
 	shallow = true
-[submodule "External/NumericalIntegration"]
-	path = External/NumericalIntegration
-	url = https://github.com/tbs1980/NumericalIntegration.git

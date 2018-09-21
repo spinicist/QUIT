@@ -77,7 +77,7 @@ struct ScaledNLLSFitFunction : FitFunction<ModelType_, FT> {
             return std::make_tuple(false, "Maximum data value was not positive");
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
-        p << 10., 1., 0.1, 12.e-6, 5.0, 0.1;
+        p << this->model.start;
         ceres::Problem problem;
         using Cost     = ModelCost<typename ScaledNLLSFitFunction::ModelType>;
         using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ScaledNLLSFitFunction::ModelType::NV>;

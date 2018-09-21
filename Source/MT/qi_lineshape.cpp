@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag                    verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<std::string>  shape_arg(parser, "LINESHAPE", "Choose lineshape (Gauss/Lorentzian/Super-lorentzian)", {'l', "lineshape"}, "G");
-    args::ValueFlag<double>       T2b(parser, "T2 BOUND", "Choose bound-pool T2 (default 10µs)", {'t', "T2b"}, 10e-6);
+    args::ValueFlag<double>       T2b(parser, "T2 BOUND", "Choose nominal bound-pool T2 (default 10µs)", {'t', "T2b"}, 10e-6);
     args::ValueFlag<double>       frq_count(parser, "FREQUENCY COUNT", "Number of frequencies (default 10)", {'n', "frq_count"}, 10);
     args::ValueFlag<double>       frq_start(parser, "FREQUENCY START", "First saturation frequency (default 1000 Hz)", {'s', "frq_start"}, 1e3);
     args::ValueFlag<double>       frq_spacing(parser, "FREQUENCY SPACING", "Spacing of frequencies (default 1000 Hz)", {'p', "frq_space"}, 1e3);
@@ -35,13 +35,16 @@ int main(int argc, char **argv) {
     auto frqs = Eigen::ArrayXd::LinSpaced(frq_count.Get(), frq_start.Get(), frq_start.Get() + frq_spacing.Get()*(frq_count.Get() - 1));
     QI_LOG(verbose, "Frequency count: " << frqs.rows());
     Eigen::ArrayXd values;
-    if (shape_arg.Get() == "G") {
-        QI::Lineshapes::Gaussian ls;
-        values = ls.value(frqs, T2b.Get());
+    if (shape_arg.Get() == "Gaussian") {
+        values = QI::Gaussian(frqs, T2b.Get());
+    } else if (shape_arg.Get() == "Lorentzian") {
+        values = QI::Lorentzian(frqs, T2b.Get());
+    } else if (shape_arg.Get() == "SuperLorentzian") {
+        values = QI::SuperLorentzian(frqs, T2b.Get());
     } else {
         QI_FAIL("Unknown lineshape: " << shape_arg.Get());
     }
-    const auto lineshape = QI::Lineshapes::Splineshape(frqs, values, T2b);
+    const auto lineshape = QI::InterpLineshape(frq_start.Get(), frq_spacing.Get(), frq_count.Get(), values, T2b.Get());
     rapidjson::Document doc;
     doc.SetObject();
     doc.AddMember("lineshape", lineshape.toJSON(doc.GetAllocator()), doc.GetAllocator());

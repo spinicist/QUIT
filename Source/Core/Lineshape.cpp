@@ -15,56 +15,34 @@
 using namespace std::string_literals;
 
 namespace QI {
-namespace Lineshapes {
 
-Lineshape *LineshapeFromJSON(rapidjson::Value &json) {
-    rapidjson::Value::MemberIterator ls = json.MemberBegin();
-    if (ls->name.GetString() == "Gaussian"s) { return new Gaussian(ls->value); }
-    else if (ls->name.GetString() == "Splineshape"s) { return new Splineshape(ls->value); }
-    else {
-        QI_FAIL("Unknown lineshape: " << ls->name.GetString());
-    }
-}
+InterpLineshape::InterpLineshape(const double fmin, const double fstep, const int fcount,
+                                 const Eigen::ArrayXd &vals, const double T2) :
+    T2_nominal{T2},
+    freq_min{fmin}, freq_step{fstep}, freq_count{fcount},
+    values{vals},
+    grid(&values[0], 0, values.rows()),
+    interpolator{grid}
+{}
 
-// Eigen::ArrayXd Gaussian::value(const Eigen::ArrayXd &df0, const double T2b) const {
-//     return sqrt(M_PI_2) * T2b * exp(-pow(2.0*M_PI*df0*T2b,2.0)/2.0);
-// }
+InterpLineshape::InterpLineshape(const rapidjson::Value &val) :
+    T2_nominal{QI::GetMember(val, "T2_nominal").GetDouble()},
+    freq_min{QI::GetMember(val, "freq_min").GetDouble()},
+    freq_step{QI::GetMember(val, "freq_step").GetDouble()},
+    freq_count{QI::GetMember(val, "freq_count").GetInt()},
+    values{ArrayFromJSON(val, "values")},
+    grid(&values[0], 0, values.rows()),
+    interpolator{grid}
+{}
 
-rapidjson::Value Gaussian::toJSON(rapidjson::Document::AllocatorType &/* Unused */) const {
+rapidjson::Value InterpLineshape::toJSON(rapidjson::Document::AllocatorType &a) const {
     rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("T2_nominal", T2_nominal, a);
+    value.AddMember("freq_min", freq_min, a);
+    value.AddMember("freq_step", freq_step, a);
+    value.AddMember("freq_count", freq_count, a);
+    value.AddMember("values", ArrayToJSON(values, a), a);
     return value;
 }
 
-Gaussian::Gaussian(const rapidjson::Value &/* Unused */) {
-
-}
-
-Splineshape::Splineshape(const Eigen::ArrayXd &f0, const Eigen::ArrayXd &vals, const double T2b) {
-    this->T2b_nominal = T2b;
-    this->frequencies = f0;
-    this->values = vals;
-    this->m_spline = SplineInterpolator(f0, vals);
-}
-
-// Eigen::ArrayXd Splineshape::value(const Eigen::ArrayXd &f, const double T2b) const {
-//     auto scale = T2b / T2b_nominal;
-//     auto sf = f * scale;
-//     return m_spline(sf) * scale;
-// }
-
-rapidjson::Value Splineshape::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value value(rapidjson::kObjectType);
-    value.AddMember("T2b_nominal", T2b_nominal, a);
-    value.AddMember("frequencies", ArrayToJSON(frequencies, a), a);
-    value.AddMember("value", ArrayToJSON(values, a), a);
-    return value;
-}
-
-Splineshape::Splineshape(const rapidjson::Value &val) {
-    T2b_nominal = val["T2b_nominal"].GetDouble();
-    frequencies = ArrayFromJSON(val, "frequencies");
-    values = ArrayFromJSON(val, "values");
-}
-
-} // End namespace Lineshapes
 } // End namespace QI

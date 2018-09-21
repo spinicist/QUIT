@@ -86,8 +86,8 @@ class RegionContraction {
 			m_startBounds.col(0) = loBounds;
 			m_startBounds.col(1) = hiBounds;
 			m_currentBounds = m_startBounds;
-			eigen_assert(f.inputs() == startBounds.rows());
-			eigen_assert(startBounds.cols() == 2);
+			eigen_assert(f.inputs() == m_startBounds.rows());
+			eigen_assert(m_startBounds.cols() == 2);
 			eigen_assert(thresh.rows() == f.inputs());
 			eigen_assert((thresh >= 0.).all() && (thresh <= 1.).all());
 

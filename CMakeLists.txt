@@ -14,10 +14,11 @@ include(CMakeToolsHelpers OPTIONAL)
 
 set( CMAKE_CXX_FLAGS "-Wall -Wextra" )
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
-set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
-     CACHE PATH "Path to external library includes (usually External/include" )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
+set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
+     CACHE PATH "Path to external library includes (usually External/include" )
+include_directories( SYSTEM ${External_Include_DIR} )
 
 if( NOT DEFINED EIGEN3_INCLUDE_DIR )
     find_package( Eigen3 REQUIRED )
@@ -40,7 +41,6 @@ find_package(ITK 5.0.0 REQUIRED
                 ITKMathematicalMorphology ITKOptimizers ITKRegistrationCommon
                 ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
 include( ${ITK_USE_FILE} )
-include_directories( SYSTEM ${External_Include_DIR} )
 
 OPTION(BUILD_SHARED_LIBS "Build shared libraries." OFF)
 

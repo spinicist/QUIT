@@ -46,7 +46,17 @@
 #define QI_ARRAYN( T, N ) Eigen::Array<T, N, 1>
 
 #define QI_LOG( vb, msg ) if ( vb ) std::cerr << msg << std::endl;
+
+#ifdef QI_DEBUG_BUILD
 #define QI_DB( x ) std::cout << #x << ": " << x << std::endl;
 #define QI_DBMAT( x ) std::cout << #x << "\n" << x << std::endl;
 #define QI_DBVEC( x ) std::cout << #x << ": " << x.transpose() << std::endl;
+#define QI_DBVECT( x ) std::cout << #x << ":\n" << x << std::endl;
+#else
+#define QI_DB( x )
+#define QI_DMAT( x )
+#define QI_DBVEC( x )
+#define QI_DBVECT( x )
+#endif
+
 #endif // QI_MACRO_H

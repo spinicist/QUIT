@@ -153,7 +153,6 @@ struct EMTFit {
         // f_b is converted to F internally so don't convert here
         residual = summary.final_cost;
         if (residuals.size() > 0) {
-            assert(residuals.Size() == (G.size() + a.size() + b.size()));
             std::vector<double> r_temp(G.size() + a.size() + b.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
             for (int i = 0; i < G.size(); i++)
