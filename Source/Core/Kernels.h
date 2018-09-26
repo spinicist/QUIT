@@ -27,6 +27,7 @@ protected:
 public:
     virtual void print(std::ostream &ostr) const = 0;
     virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const = 0;
+    virtual ~FilterKernel() = default;
 };
 
 class TukeyKernel : public FilterKernel
