@@ -38,13 +38,11 @@ struct CASLFit {
     using FlagType     = int;   // Iterations
     using ModelType    = CASLModel;
     using SequenceType = QI::CASLSequence;
-    const SequenceType *CASL;
+    ModelType &model;
     const double T1_blood, alpha, lambda;
-    ModelType    model;
 
-    CASLFit() = default;
-    CASLFit(const SequenceType *c, const double &t, const double &a, const double &l) :
-        CASL(c), T1_blood(t), alpha(a), lambda(l)
+    CASLFit(ModelType &c, const double &t, const double &a, const double &l) :
+        model(c), T1_blood(t), alpha(a), lambda(l)
     {}
     int n_inputs() const  { return 1; }
     int input_size(const int /* Unused */) const { return 2; }
@@ -61,11 +59,11 @@ struct CASLFit {
 
         const double diff = control - label;
         const double T1_tissue = fixed[0];
-        const double PD_correction = (T1_tissue == 0.0) ? 1.0 : (1 - exp(-CASL->TR / T1_tissue));
+        const double PD_correction = (T1_tissue == 0.0) ? 1.0 : (1 - exp(-model.sequence.TR / T1_tissue));
         const double PD = ((fixed[1] == 0.0) ? control : fixed[1]) / PD_correction;
-        const double PLD = (CASL->post_label_delay.rows() > 1) ? CASL->post_label_delay[voxel[2]] : CASL->post_label_delay[0];
+        const double PLD = (model.sequence.post_label_delay.rows() > 1) ? model.sequence.post_label_delay[voxel[2]] : model.sequence.post_label_delay[0];
         const double CBF = (6000 * lambda * diff * exp(PLD / T1_blood)) / 
-                           (2. * alpha * T1_blood * PD * (1. - exp(-CASL->label_time / T1_blood)));
+                           (2. * alpha * T1_blood * PD * (1. - exp(-model.sequence.label_time / T1_blood)));
         outputs[0] = CBF;
         return std::make_tuple(true, "");
     }
@@ -112,11 +110,10 @@ int main(int argc, char **argv) {
     QI_LOG(verbose, "Reading sequence parameters");
     rapidjson::Document json = QI::ReadJSON(std::cin);
     QI::CASLSequence sequence(json["CASL"]);
-
-    CASLFit casl_fit{&sequence, T1_blood.Get(), alpha.Get(), lambda.Get()};
-    auto fit_filter = itk::ModelFitFilter<CASLFit>::New();
+    CASLModel model{sequence};
+    CASLFit casl_fit{model, T1_blood.Get(), alpha.Get(), lambda.Get()};
+    auto fit_filter = itk::ModelFitFilter<CASLFit>::New(&casl_fit);
     fit_filter->SetVerbose(verbose);
-    fit_filter->SetFitFunction(&casl_fit);
     fit_filter->SetInput(0, input);
     if (PD_path) fit_filter->SetFixed(0, QI::ReadImage(PD_path.Get(), verbose));
     if (T1_tissue_path) fit_filter->SetFixed(1, QI::ReadImage(T1_tissue_path.Get(), verbose));

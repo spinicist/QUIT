@@ -68,6 +68,8 @@ qinewimage --size "$SIZE" -g "1 -25. 25." f0$EXT
 qinewimage --size "$SIZE" -f "1" B1$EXT
 [ -e B1$EXT ]
 qimcdespot --verbose --simulate=$NOISE --model=2 --f0=f0$EXT --B1=B1$EXT $SPGR_FILE $SSFP_FILE < simulate_2p.json
+[ -e $SPGR_FILE ]
+[ -e $SSFP_FILE ]
 }
 
 @test "mcDESPOT Two Pool" {

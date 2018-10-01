@@ -34,9 +34,23 @@ public:
     using Superclass = ImageToImageFilter<QI::VolumeF, OutputImageType>;
     using Pointer    = SmartPointer<Self>;
     using RegionType = typename OutputImageType::RegionType;
-    using SequenceType = typename ModelType::SequenceType;
-    itkNewMacro(Self); /** Method for creation through the object factory. */
+    QI_ForwardNewMacro(Self);
     itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
+
+    ModelSimFilter(const ModelType &m) :
+        m_model{m}
+    {
+        this->SetNumberOfRequiredInputs(ModelType::NV);
+        if constexpr(MultiOutput) {
+            this->SetNumberOfRequiredOutputs(ModelType::NO);
+            for (size_t i = 0; i < ModelType::NO; i++) {
+                this->SetNthOutput(i, this->MakeOutput(i));
+            }
+        } else {
+            this->SetNumberOfRequiredOutputs(1);
+            this->SetNthOutput(0, this->MakeOutput(0));
+        }
+    }
 
     void SetVarying(unsigned int i, const QI::VolumeF *image) {
         if (static_cast<int>(i) < ModelType::NV) {
@@ -83,27 +97,6 @@ public:
         return dynamic_cast<OutputImageType *>(this->ProcessObject::GetOutput(i));
     }
 
-    void SetModel(const ModelType &m) {
-        m_model = m;
-        this->SetNumberOfRequiredInputs(ModelType::NV);
-        if constexpr(MultiOutput) {
-            this->SetNumberOfRequiredOutputs(ModelType::NO);
-            for (size_t i = 0; i < ModelType::NO; i++) {
-                this->SetNthOutput(i, this->MakeOutput(i));
-            }
-        }
-    }
-
-    void SetSequences(const std::vector<const SequenceType *> &s) {
-        m_sequences = s;
-        if constexpr(!MultiOutput) {
-            this->SetNumberOfRequiredOutputs(s.size());
-            for (size_t i = 0; i < s.size(); i++) {
-                this->SetNthOutput(i, this->MakeOutput(i));
-            }
-        }
-    }
-
     void SetNoise(const double s) { m_sigma = s; }
     RealTimeClock::TimeStampType GetTotalTime() const { return m_totalTime; }
     RealTimeClock::TimeStampType GetMeanTime() const { return m_meanTime; }
@@ -115,7 +108,6 @@ private:
 
 protected:
     ModelType m_model;
-    std::vector<const SequenceType *> m_sequences;
     double m_sigma = 0.0;
     TimeProbe m_clock;
     RealTimeClock::TimeStampType m_meanTime = 0.0, m_totalTime = 0.0;
@@ -145,9 +137,9 @@ protected:
             op->SetOrigin(ip->GetOrigin());
             op->SetDirection(ip->GetDirection());
             if constexpr(MultiOutput) {
-                op->SetNumberOfComponentsPerPixel(m_sequences[0]->size());
+                op->SetNumberOfComponentsPerPixel(m_model.size(i));
             } else {
-                op->SetNumberOfComponentsPerPixel(m_sequences[i]->size());
+                op->SetNumberOfComponentsPerPixel(m_model.sequence.size());
             }
             op->Allocate(true);
         }
@@ -190,7 +182,7 @@ protected:
                 }
 
                 if constexpr(MultiOutput) {
-                    const auto signals = m_model.signals(varying, fixed, m_sequences[0]);
+                    const auto signals = m_model.signals(varying, fixed);
                     for (size_t i = 0; i < signals.size(); i++) {
                         const auto output = add_noise<typename ModelType::DataType>(signals[i], m_sigma);
                         const auto output_io = output.template cast<OutputPixelType>().eval();
@@ -198,13 +190,11 @@ protected:
                         output_iters[i].Set(data_out);
                     }
                 } else {
-                    for (size_t i = 0; i < m_sequences.size(); i++) {
-                        const auto signal = m_model.signal(varying, fixed, m_sequences[i]);
-                        const auto output = add_noise<typename ModelType::DataType>(signal, m_sigma);
-                        const auto output_io = output.template cast<OutputPixelType>().eval();
-                        VariableLengthVector<OutputPixelType> data_out(output_io.data(), output_io.rows());
-                        output_iters[i].Set(data_out);
-                    }
+                    const auto signal = m_model.signal(varying, fixed);
+                    const auto output = add_noise<typename ModelType::DataType>(signal, m_sigma);
+                    const auto output_io = output.template cast<OutputPixelType>().eval();
+                    VariableLengthVector<OutputPixelType> data_out(output_io.data(), output_io.rows());
+                    output_iters[0].Set(data_out);
                 }
             }
             if (mask) {

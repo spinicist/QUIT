@@ -39,10 +39,15 @@ struct Model {
     VaryingArray bounds_lo = VaryingArray::Constant(1.e-12); // Don't actually use zero because that causes problems for Ceres
     VaryingArray bounds_hi = VaryingArray::Constant(std::numeric_limits<ParameterType>::infinity());
 
+    const SequenceType &sequence;
+
+    Model(const SequenceType &s) :
+        sequence{s}
+    {}
+
     template<typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying,
-                const FixedArray &fixed,
-                const SequenceType *s) const -> QI_ARRAY(typename Derived::Scalar);
+                const FixedArray &fixed) const -> QI_ARRAY(typename Derived::Scalar);
 };
 
 /*
@@ -55,12 +60,11 @@ struct ModelCost {
     using FixedArray = typename Model::FixedArray;
     using DataArray  = QI_ARRAY(typename Model::DataType);
     const Model    &model;
-    const Sequence *sequence;
     const FixedArray fixed;
     const QI_ARRAY(typename Model::DataType) data;
 
-    ModelCost(const Model &m, const Sequence *s, const FixedArray &f, const DataArray &d) :
-        model(m), sequence(s), fixed(f), data(d)
+    ModelCost(const Model &m, const FixedArray &f, const DataArray &d) :
+        model(m), fixed(f), data(d)
     {
     }
 
@@ -68,7 +72,7 @@ struct ModelCost {
     bool operator() (const T *const vin, T* rin) const {
         Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
         const Eigen::Map<const QI_ARRAYN(T, Model::NV)> v(vin);
-        const auto calc = model.signal(v, fixed, sequence);
+        const auto calc = model.signal(v, fixed);
         r = data - calc;
         return true;
     }

@@ -31,21 +31,21 @@ template<> std::array<const std::string, 0> LorentzModel::fixed_names{{}};
 template<> const QI_ARRAYN(double, 0) LorentzModel::fixed_defaults{};
 template<> template<typename Derived>
 auto LorentzModel::signal(const Eigen::ArrayBase<Derived> &v,
-                     const QI_ARRAYN(double, NF) &/* Unused */,
-                     const QI::MTSatSequence *seq) const -> QI_ARRAY(typename Derived::Scalar)
+                     const QI_ARRAYN(double, NF) &/* Unused */) const -> QI_ARRAY(typename Derived::Scalar)
 {   
     using T = typename Derived::Scalar;
     const T &PD = v[0];
     const T &f0 = v[1];
     const T &fwhm = v[2];
     const T &A = v[3];
-    const auto x = (f0 - seq->sat_f0) / (fwhm/2.0);
+    const auto x = (f0 - sequence.sat_f0) / (fwhm/2.0);
     const auto L = A / (1.0 + x.square());
     const auto s = PD * (1.0 - L);
     return s;
 }
 
 struct LorentzFit : QI::FitFunction<LorentzModel> {
+    using FitFunction::FitFunction;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, LorentzModel::NV) &p,
                           ResidualType &residual, std::vector<Eigen::ArrayXd> &/* Unused */, FlagType &/* Unused */) const override
@@ -63,9 +63,9 @@ struct LorentzFit : QI::FitFunction<LorentzModel> {
         // const double scale = z_spec.segment(indM2,sz).maxCoeff();
         using LCost    = QI::ModelCost<LorentzModel>;
         using AutoCost = ceres::AutoDiffCostFunction<LCost, ceres::DYNAMIC, LorentzModel::NV>;
-        auto *cost = new LCost(model, sequence, fixed, z_spec);
+        auto *cost = new LCost(model, fixed, z_spec);
                             //   m_zfrqs.segment(indM2,sz).cast<double>(), z_spec.segment(indM2,sz).cast<double>() / scale);
-        auto *auto_cost = new AutoCost(cost, sequence->size());
+        auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
         p << 2.0, 0.0, 2.0, 0.9;
         ceres::Problem problem;
         problem.AddResidualBlock(auto_cost, NULL, p.data());
@@ -109,15 +109,13 @@ int main(int argc, char **argv) {
     QI_LOG(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::MTSatSequence mtsat(QI::GetMember(input, "MTSAT"));
+    LorentzModel model{mtsat};
     if (simulate) {
-        LorentzModel model;
-        QI::SimulateModel<LorentzModel, false>(input, model, {&mtsat}, {}, {input_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<LorentzModel, false>(input, model, {}, {input_path.Get()}, verbose, simulate.Get());
     } else {
-        LorentzFit fit;
-        fit.sequence = &mtsat;
-        auto fit_filter = itk::ModelFitFilter<LorentzFit>::New();
+        LorentzFit fit{model};
+        auto fit_filter = itk::ModelFitFilter<LorentzFit>::New(&fit);
         fit_filter->SetVerbose(verbose);
-        fit_filter->SetFitFunction(&fit);
         fit_filter->SetInput(0, QI::ReadVectorImage(input_path.Get(), verbose));
         if (mask) fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
         if (subregion) fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));

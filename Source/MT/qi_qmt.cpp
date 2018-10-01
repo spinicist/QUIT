@@ -28,7 +28,7 @@
 
 using namespace std::literals;
 
-struct RamaniInnerModel {
+struct RamaniReducedModel {
     using SequenceType = QI::MTSatSequence;
     using DataType = double;
     using ParameterType = double;
@@ -41,17 +41,29 @@ struct RamaniInnerModel {
     static std::array<const std::string, NF> fixed_names;
     static const FixedArray fixed_defaults;
 
-    VaryingArray start;
-    VaryingArray bounds_lo = VaryingArray::Constant(1.0e-12);
-    VaryingArray bounds_hi = VaryingArray::Constant(std::numeric_limits<ParameterType>::infinity());
+    SequenceType &sequence;
+    const QI::Lineshapes lineshape;
+    const std::shared_ptr<QI::InterpLineshape> interp = nullptr;
 
-    QI::Lineshapes lineshape = QI::Lineshapes::Gaussian;
-    std::shared_ptr<QI::InterpLineshape> interp = nullptr;
+    VaryingArray bounds_lo;
+    VaryingArray bounds_hi;
+    VaryingArray start;
+
+    RamaniReducedModel(SequenceType &s, const QI::Lineshapes ls, const std::shared_ptr<QI::InterpLineshape> &i) :
+        sequence{s}, lineshape{ls}, interp{i}
+    {
+            //{"R*M0a"s, "f/(R_a*(1-f))"s, "T2_b"s, "T1_a/T2_a"s, "gM0_a"s}
+        start << 10.0, 0.1, 10.e-6, 25., 1.;
+        // bounds_lo.setConstant(1.0e-12);
+        // bounds_hi.setConstant(std::numeric_limits<double>::infinity());
+        bounds_lo << 2, 1.e-12, 1.e-6, 1, 0.5;
+        bounds_hi << 1e2, 1, 100.e-6, 50., 1.5;
+        // bounds_hi << 100, 1, 50.e-6, 75, 1.5;
+    }
 
     template<typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &v,
-                            const FixedArray &f,
-                            const QI::MTSatSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+                const FixedArray &f) const -> QI_ARRAY(typename Derived::Scalar)
     {
         // Use Ramani's notation
         const auto &Rb      = 1.0; // Fix
@@ -65,39 +77,32 @@ struct RamaniInnerModel {
 
         QI_ARRAY(typename Derived::Scalar) lsv;
         switch (lineshape) {
-        case QI::Lineshapes::Gaussian: lsv = QI::Gaussian((s->sat_f0 + f0), T2b); break;
-        case QI::Lineshapes::Lorentzian: lsv = QI::Lorentzian((s->sat_f0 + f0), T2b); break;
-        case QI::Lineshapes::SuperLorentzian: lsv = QI::SuperLorentzian((s->sat_f0 + f0), T2b); break;
-        case QI::Lineshapes::Interpolated: lsv = (*interp)((s->sat_f0 + f0), T2b); break;
+        case QI::Lineshapes::Gaussian: lsv = QI::Gaussian((sequence.sat_f0 + f0), T2b); break;
+        case QI::Lineshapes::Lorentzian: lsv = QI::Lorentzian((sequence.sat_f0 + f0), T2b); break;
+        case QI::Lineshapes::SuperLorentzian: lsv = QI::SuperLorentzian((sequence.sat_f0 + f0), T2b); break;
+        case QI::Lineshapes::Interpolated: lsv = (*interp)((sequence.sat_f0 + f0), T2b); break;
         }
 
-        const auto w_cwpe = (B1 * s->sat_angle / s->pulse.p1) * sqrt(s->pulse.p2 / (s->pulse.Trf * s->TR));
+        const auto w_cwpe = (B1 * sequence.sat_angle / sequence.pulse.p1) * sqrt(sequence.pulse.p2 / (sequence.pulse.Trf * sequence.TR));
         const auto R_rfb = M_PI * (w_cwpe * w_cwpe) * lsv;
         
         const auto S = gM0a * (Rb*RM0a*fterm + R_rfb + Rb + RM0a) /
-            ((RM0a*fterm)*(Rb + R_rfb) + (1.0 + pow(w_cwpe / (2*M_PI*s->sat_f0),2.0)*T1a_T2a)*(R_rfb + Rb + RM0a));
-        QI_DBVEC(s->sat_angle);
-        QI_DBVEC(s->sat_f0);
-        // QI_DBVECT(lsv);
-        // QI_DBVECT(w_cwpe);
-        QI_DBVECT(v);
-        QI_DBVEC(f);
-        QI_DBVECT(R_rfb);
-        QI_DBVECT(S)
+            ((RM0a*fterm)*(Rb + R_rfb) + (1.0 + pow(w_cwpe / (2*M_PI*sequence.sat_f0),2.0)*T1a_T2a)*(R_rfb + Rb + RM0a));
         return S;
     }
 };
-std::array<const std::string, 5> RamaniInnerModel::varying_names{{"R*M0a"s, "f/(R_a*(1-f))"s, "T2_b"s, "T1_a/T2_a"s, "gM0_a"s}};
-std::array<const std::string, 2> RamaniInnerModel::fixed_names{{"f0"s, "B1"s}};
-const QI_ARRAYN(double, 2) RamaniInnerModel::fixed_defaults{0.0, 1.0};
+std::array<const std::string, 5> RamaniReducedModel::varying_names{{"R*M0a"s, "f/(R_a*(1-f))"s, "T2_b"s, "T1_a/T2_a"s, "gM0_a"s}};
+std::array<const std::string, 2> RamaniReducedModel::fixed_names{{"f0"s, "B1"s}};
+const QI_ARRAYN(double, 2) RamaniReducedModel::fixed_defaults{0.0, 1.0};
 
-struct RamaniOuterModel {
+struct RamaniFullModel {
     using SequenceType = QI::MTSatSequence;
     using DataType = double;
     using ParameterType = double;
     
     static const int NV = 6;
     static const int NF = 3;
+    static const int NO = 2;
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);
     static std::array<const std::string, NV> varying_names;
@@ -107,106 +112,88 @@ struct RamaniOuterModel {
     VaryingArray bounds_lo = VaryingArray::Constant(1.0e-12);
     VaryingArray bounds_hi = VaryingArray::Constant(std::numeric_limits<ParameterType>::infinity());
 
-    QI::Lineshapes lineshape = QI::Lineshapes::Gaussian;
-    std::shared_ptr<QI::InterpLineshape> interp = nullptr;
+    RamaniReducedModel reduced;
+    const SequenceType &sequence;
+    
+    RamaniFullModel(SequenceType &s, const QI::Lineshapes ls, const std::shared_ptr<QI::InterpLineshape> &interp = nullptr) :
+        reduced{s, ls, interp}, sequence{s}
+    { }
 
-    template<typename Derived>
-    auto signal(const Eigen::ArrayBase<Derived> &v,
-                            const FixedArray &f,
-                            const QI::MTSatSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
-    {
-        const auto &PD   = v[0];
-        const auto &T1_f = v[1];
-        const auto &T2_f = v[2];
-        const auto &T1_b = 1.0; // Fix
-        const auto &T2_b = v[3];
-        const auto &k_bf = v[4];
-        const auto &f_b  = v[5];
-        const auto &f0   = f[0];
-        const auto &B1   = f[1];
-
-        QI_DB(PD);
-        QI_DB(T1_f);
-        QI_DB(T2_f);
-        QI_DB(T1_b);
-        QI_DB(T2_b);
-        QI_DB(k_bf);
-        QI_DB(f_b);
-        QI_ARRAY(typename Derived::Scalar) lsv;
-        switch (lineshape) {
-        case QI::Lineshapes::Gaussian: lsv = QI::Gaussian((s->sat_f0 + f0), T2_b); break;
-        case QI::Lineshapes::Lorentzian: lsv = QI::Lorentzian((s->sat_f0 + f0), T2_b); break;
-        case QI::Lineshapes::SuperLorentzian: lsv = QI::SuperLorentzian((s->sat_f0 + f0), T2_b); break;
-        case QI::Lineshapes::Interpolated: lsv = (*interp)((s->sat_f0 + f0), T2_b); break;
+    int size(int i) {
+        if (i == 0) {
+            return sequence.size();
+        } else {
+            return 1;
         }
-        const auto w_cwpe = (B1 * s->sat_angle / s->pulse.p1) * sqrt(s->pulse.p2 / (s->pulse.Trf * s->TR));
-        const auto R_rfb = (w_cwpe * w_cwpe) * M_PI * lsv;
-        const auto R1_f = 1. / T1_f;
-        const auto R1_b = 1. / T1_b;
-        
-        const auto f_f = 1.0 - f_b;
-        const auto k_fb = k_bf * (f_b / f_f);
-        const auto M0_f = PD * f_f;
-        const auto M0_b = PD * f_b;
+    }
 
-        const auto S = M0_f * (R1_b * (k_fb * M0_b / R1_f) + R_rfb + R1_b + k_fb*M0_f) /
-            ((k_fb * M0_b / R1_f) * (R1_b + R_rfb) + (1.0 + pow(w_cwpe / (2*M_PI*s->sat_f0),2.0) / (R1_f * T2_f))*(R_rfb + R1_b + k_fb*M0_f));
-        QI_DBVEC(s->sat_angle);
-        QI_DBVEC(s->sat_f0);
-        QI_DBVECT(lsv);
-        QI_DBVECT(w_cwpe);
-        QI_DBVECT(R_rfb);
-        QI_DB(R1_f);
-        QI_DB(R1_b);
-        QI_DB(f_f);
-        QI_DB(k_fb);
-        QI_DB(M0_f);
-        QI_DB(M0_b);
-        QI_DBVECT(S)
-        return S;
+    auto signals(const QI_ARRAY(double) &varying,
+                 const FixedArray &fixed) const -> std::vector<QI_ARRAY(double)>
+    {
+        RamaniReducedModel::VaryingArray reduced_v;
+        const auto &PD   = varying[0];
+        const auto &T1_f = varying[1];
+        const auto &T2_f = varying[2];
+        const auto &T1_b = 1.0; // Fixed
+        const auto &T2_b = varying[3];
+        const auto &k_bf = varying[4];
+        const auto &f_b  = varying[5];
+
+        const auto &R1a  = 1/T1_f;
+        const auto &R1b  = 1/T1_b;
+        const auto &RM0a = k_bf * (1.0 - f_b) / f_b;
+        const auto &RM0b = k_bf;
+        const auto &fterm = f_b * T1_f / (1.0 - f_b);
+        const auto &T1a_T2a = T1_f / T2_f;
+        const auto &gM0a = PD;
+
+        reduced_v[0] = RM0a;
+        reduced_v[1] = fterm;
+        reduced_v[2] = T2_b;
+        reduced_v[3] = T1a_T2a;
+        reduced_v[4] = gM0a;
+
+        Eigen::ArrayXd T1obs(1);
+        T1obs << 2/(RM0b + R1a + RM0a + R1b - sqrt(pow(RM0b + R1a - RM0a - R1b, 2) + 4*RM0a*RM0b));
+        return {reduced.signal(reduced_v, fixed.head(2)), T1obs};
     }
 };
-std::array<const std::string, 6> RamaniOuterModel::varying_names{{"PD"s, "T1_f"s, "T2_f"s, "T2_b"s, "k_bf"s, "f_b"s}};
-std::array<const std::string, 3> RamaniOuterModel::fixed_names{{"f0"s, "B1"s, "T1_app"}};
-const QI_ARRAYN(double, 3) RamaniOuterModel::fixed_defaults{0.0, 1.0, 1.0};
+std::array<const std::string, 6> RamaniFullModel::varying_names{{"PD"s, "T1_f"s, "T2_f"s, "T2_b"s, "k_bf"s, "f_b"s}};
+std::array<const std::string, 3> RamaniFullModel::fixed_names{{"f0"s, "B1"s, "T1_app"}};
+const QI_ARRAYN(double, 3) RamaniFullModel::fixed_defaults{0.0, 1.0, 1.0};
 
-struct RamaniFitFunction : QI::FitFunction<RamaniOuterModel> {
-    int max_iterations = 50;
+struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
+    using FitFunction::FitFunction;
+
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
-                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, RamaniOuterModel::NV) &p,
+                          const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, RamaniFullModel::NV) &p,
                           ResidualType &residual,
                           std::vector<QI_ARRAY(ResidualType)> &residuals,
                           FlagType &iterations) const override
     {
         const double &scale = inputs[0].maxCoeff();
+        p = RamaniFullModel::VaryingArray::Zero();
+        residual = 0;
         if (scale < std::numeric_limits<double>::epsilon()) {
-            p = RamaniOuterModel::VaryingArray::Zero();
-            residual = 0;
             return std::make_tuple(false, "Maximum data value was not positive");
         }
-        const Eigen::ArrayXd data = inputs[0] / scale;
-
-        RamaniInnerModel imodel;
-        imodel.lineshape = this->model.lineshape;
-        if (imodel.lineshape == QI::Lineshapes::Interpolated) {
-            imodel.interp = this->model.interp;
+        const auto T1_obs = fixed[2];
+        if (!std::isfinite(T1_obs) || (T1_obs < 1.e-12)) {
+            return std::make_tuple(false, "T1 Observed was not finite and positive");
         }
-        RamaniInnerModel::VaryingArray inner_p;
-        //{"R*M0a"s, "f/(R_a*(1-f))"s, "T2_b"s, "T1_a/T2_a"s, "gM0_a"s}
-        inner_p << 10.0, 0.1, 10.e-6, 15., 1.;
-        QI_DBVEC(data);
+
+        const Eigen::ArrayXd data = inputs[0] / scale;
+        RamaniReducedModel::VaryingArray inner_p = model.reduced.start;
         QI_DBVEC(inner_p);
         ceres::Problem problem;
-        using Cost     = QI::ModelCost<RamaniInnerModel>;
-        using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, RamaniInnerModel::NV>;
-        auto *cost = new Cost(imodel, this->sequence, fixed.head(2), data);
-        auto *auto_cost = new AutoCost(cost, this->sequence->size());
+        using Cost     = QI::ModelCost<RamaniReducedModel>;
+        using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, RamaniReducedModel::NV>;
+        auto *cost = new Cost(model.reduced, fixed.head(2), data);
+        auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, inner_p.data());
-        problem.SetParameterLowerBound(inner_p.data(), 4, this->model.bounds_lo[0] / scale);
-        problem.SetParameterUpperBound(inner_p.data(), 4, this->model.bounds_hi[0] / scale);
-        for (int i = 0; i < 4; i++) {
-            problem.SetParameterLowerBound(inner_p.data(), i, this->model.bounds_lo[i]);
-            problem.SetParameterUpperBound(inner_p.data(), i, this->model.bounds_hi[i]);
+        for (int i = 0; i < 5; i++) {
+            problem.SetParameterLowerBound(inner_p.data(), i, this->model.reduced.bounds_lo[i]);
+            problem.SetParameterUpperBound(inner_p.data(), i, this->model.reduced.bounds_hi[i]);
         }
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
@@ -220,7 +207,6 @@ struct RamaniFitFunction : QI::FitFunction<RamaniOuterModel> {
             return std::make_tuple(false, summary.FullReport());
         }
         // Convert from the fitted parameters to useful ones
-        const auto T1_obs = fixed[2];
         const auto R_obs = 1 / T1_obs;
         const auto &Rb      = 1.0; // Fix
         const auto &RM0a    = inner_p[0];
@@ -228,7 +214,9 @@ struct RamaniFitFunction : QI::FitFunction<RamaniOuterModel> {
         const auto &T2b     = inner_p[2];
         const auto &T1a_T2a = inner_p[3];
         const auto &gM0a    = inner_p[4];
-        const auto Ra = R_obs / (1.0 + ((RM0a*fterm * (Rb - R_obs))/(Rb - R_obs + RM0a)));
+        const auto Ra = ((Rb < R_obs) && (Rb - R_obs + RM0a) > 0) ? 
+                        R_obs :
+                        R_obs / (1.0 + ((RM0a*fterm * (Rb - R_obs))/(Rb - R_obs + RM0a)));
         const auto f = fterm*Ra / (1.0 + fterm*Ra);
         const auto k_bf = RM0a * f / (1.0 - f);
         //{"R*M0a"s, "f/(R_a*(1-f))"s, "T2_b"s, "T1_a/T2_a"s, "gM0_a"s}
@@ -262,13 +250,13 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Calculates qMT maps from Gradient Echo Saturation data\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> mtsat_path(parser, "MTSAT FILE", "Path to MT-Sat data");
+    args::Positional<std::string> T1(parser, "T1", "T1 map (seconds) file");
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> f0(parser, "f0", "f0 map (Hz) file", {'f', "f0"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
-    args::ValueFlag<std::string> T1(parser, "T1", "T1 map (seconds) file", {'t', "T1"});
     args::ValueFlag<std::string> lineshape_arg(parser, "LINESHAPE", "Either Gaussian, Lorentzian, Superlorentzian, or a .json file generated by qi_lineshape", {'l', "lineshape"}, "Gaussian");
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> subregion(parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK", {'s', "subregion"});
@@ -298,20 +286,17 @@ int main(int argc, char **argv) {
         interp = std::make_shared<QI::InterpLineshape>(QI::GetMember(ls_file, "lineshape"));
         lineshape = QI::Lineshapes::Interpolated;
     }
-
+    
+    RamaniFullModel model{mtsat_sequence, lineshape, interp};
     if (simulate) {
-        RamaniOuterModel model;
-        QI::SimulateModel<RamaniOuterModel, false>(input, model, {&mtsat_sequence}, {f0.Get(), B1.Get()}, {mtsat_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<RamaniFullModel, true>(input, model, {f0.Get(), B1.Get(), ""}, {mtsat_path.Get(), T1.Get()}, verbose, simulate.Get());
     } else {
-        RamaniFitFunction fit;
-        fit.model.lineshape = lineshape;
-        fit.model.interp = interp;
-        fit.sequence = &mtsat_sequence;
-        auto fit_filter = itk::ModelFitFilter<RamaniFitFunction>::New();
+        RamaniFitFunction fit{model};
+        auto fit_filter = itk::ModelFitFilter<RamaniFitFunction>::New(&fit);
         fit_filter->SetVerbose(verbose);
-        fit_filter->SetFitFunction(&fit);
         fit_filter->SetOutputAllResiduals(resids);
         fit_filter->SetInput(0, QI::ReadVectorImage(mtsat_path.Get(), verbose));
+        fit_filter->SetNumberOfWorkUnits(threads.Get());
         if (f0) fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
         if (B1) fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
         if (T1) fit_filter->SetFixed(2, QI::ReadImage(T1.Get(), verbose));
@@ -326,8 +311,8 @@ int main(int argc, char **argv) {
         QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s\n" <<
                         "Writing results files.");
         std::string outPrefix = outarg.Get() + "QMT_";
-        for (int i = 0; i < RamaniOuterModel::NV; i++) {
-            QI::WriteImage(fit_filter->GetOutput(i), outPrefix + RamaniOuterModel::varying_names.at(i) + QI::OutExt());
+        for (int i = 0; i < RamaniFullModel::NV; i++) {
+            QI::WriteImage(fit_filter->GetOutput(i), outPrefix + RamaniFullModel::varying_names.at(i) + QI::OutExt());
         }
         QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
         if (resids) {

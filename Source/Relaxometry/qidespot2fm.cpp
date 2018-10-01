@@ -32,23 +32,22 @@ template<> std::array<const std::string, 2> FMModel::fixed_names{{"T1"s, "B1"s}}
 template<> const QI_ARRAYN(double, 2) FMModel::fixed_defaults{1.0, 1.0};
 template<> template<typename Derived>
 auto FMModel::signal(const Eigen::ArrayBase<Derived> &v,
-                     const QI_ARRAYN(double, NF) &f,
-                     const QI::SSFPSequence *s) const -> QI_ARRAY(typename Derived::Scalar) {
+                     const QI_ARRAYN(double, NF) &f) const -> QI_ARRAY(typename Derived::Scalar) {
     using T = typename Derived::Scalar;
     const T &PD = v[0];
     const T &T2 = v[1];
     const T &f0 = v[2];
     const double &T1 = f[0];
     const double &B1 = f[1];
-    const double E1 = exp(-s->TR / T1);
-    const T      E2 = exp(-s->TR / T2);
-    const T      psi = 2. * M_PI * f0 * s->TR;
-    const QI_ARRAY(double) alpha = s->FA * B1;
+    const double E1 = exp(-sequence.TR / T1);
+    const T      E2 = exp(-sequence.TR / T2);
+    const T      psi = 2. * M_PI * f0 * sequence.TR;
+    const QI_ARRAY(double) alpha = sequence.FA * B1;
     const QI_ARRAY(T) d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
     const QI_ARRAY(T) G = -PD*(1. - E1)*sin(alpha)/d;
     const QI_ARRAY(T) b = E2*(1. - E1)*(1.+cos(alpha))/d;
 
-    const QI_ARRAY(T) theta = s->PhaseInc + psi;
+    const QI_ARRAY(T) theta = sequence.PhaseInc + psi;
     const QI_ARRAY(T) cos_th = cos(theta);
     const QI_ARRAY(T) sin_th = sin(theta);
     const T cos_psi = cos(psi);
@@ -61,23 +60,24 @@ auto FMModel::signal(const Eigen::ArrayBase<Derived> &v,
 using FMFit = QI::FitFunction<FMModel>;
 
 struct FMNLLS : FMFit {
+    using FMFit::FMFit;
     bool asymmetric = false;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                             const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, FMModel::NV) &bestP,
                             ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
     {
         const double &T1 = fixed[0];
-        if (std::isfinite(T1) && (T1 > sequence->TR)) {
+        if (std::isfinite(T1) && (T1 > model.sequence.TR)) {
             // Improve scaling by dividing the PD down to something sensible.
             // This gets scaled back up at the end.
             const double scale = inputs[0].maxCoeff();
             const Eigen::ArrayXd data = inputs[0] / scale;
 
-            std::vector<double> f0_starts = {0, 0.4/sequence->TR};
+            std::vector<double> f0_starts = {0, 0.4/model.sequence.TR};
             if (this->asymmetric) {
-                f0_starts.push_back(0.2/sequence->TR);
-                f0_starts.push_back(-0.2/sequence->TR);
-                f0_starts.push_back(-0.4/sequence->TR);
+                f0_starts.push_back(0.2/model.sequence.TR);
+                f0_starts.push_back(-0.2/model.sequence.TR);
+                f0_starts.push_back(-0.4/model.sequence.TR);
             }
 
             double best = std::numeric_limits<double>::infinity();
@@ -85,18 +85,18 @@ struct FMNLLS : FMFit {
             ceres::Problem problem;
             using Cost = QI::ModelCost<FMModel>;
             using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, FMModel::NV>;
-            auto *cost = new Cost(model, sequence, fixed, data);
-            auto *auto_cost = new AutoCost(cost, sequence->size());
+            auto *cost = new Cost(model, fixed, data);
+            auto *auto_cost = new AutoCost(cost, model.sequence.size());
             problem.AddResidualBlock(auto_cost, NULL, p.data());
             problem.SetParameterLowerBound(p.data(), 0, 1.);
-            problem.SetParameterLowerBound(p.data(), 1, sequence->TR);
+            problem.SetParameterLowerBound(p.data(), 1, model.sequence.TR);
             problem.SetParameterUpperBound(p.data(), 1, T1);
             if (this->asymmetric) {
-                problem.SetParameterLowerBound(p.data(), 2, -0.5/sequence->TR);
+                problem.SetParameterLowerBound(p.data(), 2, -0.5/model.sequence.TR);
             } else {
                 problem.SetParameterLowerBound(p.data(), 2, 0.0);
             }
-            problem.SetParameterUpperBound(p.data(), 2, 0.5/sequence->TR);
+            problem.SetParameterUpperBound(p.data(), 2, 0.5/model.sequence.TR);
             ceres::Solver::Options options;
             ceres::Solver::Summary summary;
             options.max_num_iterations = max_iterations;
@@ -105,7 +105,7 @@ struct FMNLLS : FMFit {
             options.parameter_tolerance = 1e-5;
             options.logging_type = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                p = {5., std::max(0.1 * T1, 1.5*sequence->TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                p = {5., std::max(0.1 * T1, 1.5*model.sequence.TR), f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
                     return std::make_tuple(false, summary.FullReport());
@@ -166,17 +166,15 @@ int main(int argc, char **argv) {
     QI_LOG(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence ssfp(QI::GetMember(input, "SSFP"));
+    FMModel model{ssfp};
     if (simulate) {
-        FMModel model;
-        QI::SimulateModel<FMModel, false>(input, model, {&ssfp}, {QI::CheckPos(t1_path), B1.Get()}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
+        QI::SimulateModel<FMModel, false>(input, model, {QI::CheckPos(t1_path), B1.Get()}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
     } else {
-        FMNLLS fm;
-        fm.sequence = &ssfp;
+        FMNLLS fm{model};
         fm.max_iterations = its.Get();
         fm.asymmetric = asym.Get();
-        auto fit_filter = itk::ModelFitFilter<FMNLLS>::New();
+        auto fit_filter = itk::ModelFitFilter<FMNLLS>::New(&fm);
         fit_filter->SetVerbose(verbose);
-        fit_filter->SetFitFunction(&fm);
         fit_filter->SetOutputAllResiduals(resids);
         fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(ssfp_path), verbose));
         fit_filter->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));

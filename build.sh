@@ -42,7 +42,7 @@ else
 fi
 
 # Initialise submodules
-if [ -z "$CHECKOUT" ]; then
+if [ -n "$CHECKOUT" ]; then
     git submodule update --init
 fi
 EXTERNAL="$WD/External"
@@ -65,7 +65,7 @@ CERES_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE $CXX_STANDARD\
             -DEXPORT_BUILD_DIR=ON\
             -DGFLAGS=OFF -DLAPACK=OFF -DMINIGLOG=ON\
             -DSUITESPARSE=OFF -DACCELERATESPARSE=OFF"
-if [ -z "$CERES" ]; then
+if [ -n "$CERES" ]; then
     mkdir -p $CERES_BUILD_DIR
     cd $CERES_BUILD_DIR
     cmake $CERES_DIR $CERES_OPTS

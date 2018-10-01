@@ -25,21 +25,26 @@ namespace QI {
 struct TwoPoolModel {
     using DataType      = double;
     using ParameterType = double;
-    using SequenceType  = QI::SequenceBase;
+    using SequenceType  = QI::SequenceGroup;
 
     static const int NV = 7;
     static const int NF = 2;
+    static const int NO = 2;
     static std::array<const std::string, 7> varying_names;
     static std::array<const std::string, 2> fixed_names;
     static const QI_ARRAYN(double, 2) fixed_defaults;
 
+    const SequenceType &sequence;
     bool scale_to_mean = false;
 
     QI_ARRAYN(double, 7) bounds_lo;
     QI_ARRAYN(double, 7) bounds_hi;
 
-    TwoPoolModel();
+    TwoPoolModel(const SequenceType &s, const bool scale);
     bool valid(const QI_ARRAYN(double, NV) &params) const; // For SRC
+    int size(int i) {
+        return sequence.at(i)->size();
+    }
 
     Eigen::MatrixXd SSFP2(const Eigen::ArrayXd &varying,
                           const QI_ARRAYN(double, NF) &fixed,
@@ -61,9 +66,16 @@ struct TwoPoolModel {
                                const QI_ARRAYN(double, NF) &fixed,
                                const QI::SSFPEchoSequence *s) const;
 
-    virtual Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
-                                  const QI_ARRAYN(double, NF) &fixed,
-                                  const QI::SequenceBase *s) const;
+    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) &fixed,
+                          const QI::SequenceBase *s) const;
+
+    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) &fixed) const;
+
+    std::vector<Eigen::ArrayXd> signals(const Eigen::ArrayXd &varying,
+                                        const QI_ARRAYN(double, NF) &fixed) const;
+
 };
 
 } // End namespace QI

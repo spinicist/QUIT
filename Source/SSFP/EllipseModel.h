@@ -43,17 +43,21 @@ struct EllipseModel {
     static std::array<const std::string, NF> fixed_names;
     static const FixedArray fixed_defaults;
 
+    const SequenceType &sequence;
+
+    EllipseModel(const SequenceType &s) :
+        sequence{s}
+    {}
+
     // QI_ARRAYN(double, NV) bounds_lo = QI_ARRAYN(double, NV)::Constant(-std::numeric_limits<double>::infinity());
     // QI_ARRAYN(double, NV) bounds_hi = QI_ARRAYN(double, NV)::Constant(std::numeric_limits<double>::infinity());
 
     auto signal(const VaryingArray &v,
-                const FixedArray &/*Unused*/,
-                const QI::SSFPSequence *s) const -> QI_ARRAY(std::complex<double>);
+                const FixedArray &/*Unused*/) const -> QI_ARRAY(std::complex<double>);
 
     template<typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &v,
-                const FixedArray &/*Unused*/,
-                const QI::SSFPSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+                const FixedArray &/*Unused*/) const -> QI_ARRAY(typename Derived::Scalar)
     {
         using T = typename Derived::Scalar;
         using ArrayXT = Eigen::Array<T, Eigen::Dynamic, 1>;
@@ -62,7 +66,7 @@ struct EllipseModel {
         const T &b = v[2];
         const T &theta0 = v[3];
         const T &psi0 = v[4];
-        const ArrayXT theta = theta0 - s->PhaseInc;
+        const ArrayXT theta = theta0 - sequence.PhaseInc;
         const T psi = theta0/2.0 + psi0;
         const ArrayXT cos_th = cos(theta);
         const ArrayXT sin_th = sin(theta);

@@ -102,12 +102,12 @@ QI::FitReturnType HyperFit::fit(const std::vector<Eigen::ArrayXcd> &inputs,
     const Eigen::ArrayXd ct = (vert.real() - c) / A;
     const Eigen::VectorXd rhs = (ct - b) / (b*ct - 1);
     Eigen::MatrixXd lhs(rhs.rows(), 2);
-    lhs.col(0) = cos(sequence->PhaseInc);
-    lhs.col(1) = sin(sequence->PhaseInc);
+    lhs.col(0) = cos(model.sequence.PhaseInc);
+    lhs.col(1) = sin(model.sequence.PhaseInc);
     const Eigen::VectorXd K = QI::LeastSquares(lhs, rhs);
     const double theta_0 = atan2(K[1], K[0]);
     const double psi_0 = std::arg(std::polar(1.0, theta_te) / std::polar(1.0, theta_0/2));
-    outputs << G * scale, a, b, theta_0  / (2*M_PI*sequence->TR), psi_0;
+    outputs << G * scale, a, b, theta_0  / (2*M_PI*model.sequence.TR), psi_0;
     return std::make_tuple(true, "");
 }
 

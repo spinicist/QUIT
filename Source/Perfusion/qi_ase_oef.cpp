@@ -40,13 +40,13 @@ struct ASELLS : ASEFit {
     const double delta_X0 = 0.264e-6; // Difference in susceptibility of oxy and fully de-oxy blood
     const double Hb = 0.34 / kappa; // Hct = 0.34;
 
-    ASELLS(QI::MultiEchoFlexSequence *seq, const double B0, const QI::VolumeF::SpacingType voxsize) :
-        ASEFit(seq), B0(B0), voxsize(voxsize)
+    ASELLS(ASEModel &m, const double B0, const QI::VolumeF::SpacingType voxsize) :
+        ASEFit(m), B0(B0), voxsize(voxsize)
     {
         // Nic Blockley uses Tc = 15 ms for 3T, scale for other field-strengths
         const int Tc = 0.015 / (B0 / 3);
-        const int above_Tc_count = (seq->TE.abs() > Tc).count();
-        const int zero_count = (seq->TE.abs() == 0.0).count();
+        const int above_Tc_count = (model.sequence.TE.abs() > Tc).count();
+        const int zero_count = (model.sequence.TE.abs() == 0.0).count();
         if (zero_count == 0) {
             QI_FAIL("Did not find a zero echo-time in input");
         }
@@ -57,14 +57,14 @@ struct ASELLS : ASEFit {
         TE_indices = Eigen::ArrayXi(above_Tc_count);
         TE0_indices = Eigen::ArrayXi(zero_count);
         int zero_index = 0, index = 0;
-        for (Eigen::Index i = 0; i < seq->size(); i++) {
-            if (seq->TE(i) == 0.0) {
+        for (Eigen::Index i = 0; i < model.sequence.size(); i++) {
+            if (model.sequence.TE(i) == 0.0) {
                 TE0_indices(zero_index) = i;
                 zero_index++;
             }
-            if (std::abs(seq->TE(i)) > Tc) {
+            if (std::abs(model.sequence.TE(i)) > Tc) {
                 TE_indices(index) = i;
-                TE_above_Tc(index) = std::abs(seq->TE(i));
+                TE_above_Tc(index) = std::abs(model.sequence.TE(i));
                 index++;
             }
         }
@@ -106,7 +106,7 @@ struct ASELLS : ASEFit {
             double F = 1.0;
             for (auto d = 0; d < 3; d++) {
                 const double grad = fixed[d];
-                const double x = grad * 2 * M_PI * voxsize[d] * sequence->TE[TE_indices[i]] / 2;
+                const double x = grad * 2 * M_PI * voxsize[d] * model.sequence.TE[TE_indices[i]] / 2;
                 F *= std::abs(sinc(x));
             }
             data[i] = all_data[TE_indices[i]] / F;
@@ -164,10 +164,10 @@ int main(int argc, char **argv) {
     if (slice_arg) {
         vox_size[2]  = slice_arg.Get();
     }
-    ASELLS fit(&sequence, B0.Get(), vox_size);
-    auto fit_filter = itk::ModelFitFilter<ASEFit>::New();
+    ASEModel model{sequence};
+    ASELLS fit(model, B0.Get(), vox_size);
+    auto fit_filter = itk::ModelFitFilter<ASEFit>::New(&fit);
     fit_filter->SetVerbose(verbose);
-    fit_filter->SetFitFunction(&fit);
     fit_filter->SetOutputAllResiduals(false);
     QI_LOG(verbose, "Using " << threads.Get() << " threads" );
     fit_filter->SetInput(0, input);

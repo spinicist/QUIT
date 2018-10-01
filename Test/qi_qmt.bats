@@ -2,63 +2,69 @@
 # Tests for mcDESPOT
 
 setup() {
-    load $BATS_TEST_DIRNAME/common.bash
-    init_tests
+load $BATS_TEST_DIRNAME/common.bash
+init_tests
+# Setup parameters
+MTSAT_FILE="mtsat$EXT"
+T1OBS_FILE="t1_obs$EXT"
+MTSAT_SEQUENCE=''
+NOISE="0.002"
+TOL=40
+cat >mtsat.json <<END_SIG
+{
+    "PDFile": "PD$EXT",
+    "T1_fFile": "T1_f$EXT",
+    "T2_fFile": "T2_f$EXT",
+    "T2_bFile": "T2_b$EXT",
+    "k_bfFile": "k_bf$EXT",
+    "f_bFile": "f_b$EXT",
+    "f0File": "f0$EXT",
+    "B1File": "B1$EXT",
+    "MTSat": {
+        "TR": 0.055,
+        "sat_f0": [56360, 47180, 12060, 1000, 1000, 2750, 2770, 2790, 2890, 1000, 1000],
+        "sat_angle": [332, 628, 628, 332, 333, 628, 628, 628, 628, 628, 628],
+        "pulse": { "name": "Gauss", "Trf": 0.015, "p1": 0.416, "p2": 0.295 }
+    }
+}
+END_SIG
 }
 
-# @test "qMT Ramani" {
-# SIZE="3,3,3"
-# qinewimage --size "$SIZE" -f "1.0" PD$EXT
-# qinewimage --size "$SIZE" -f "0.1" T1_f$EXT
-# qinewimage --size "$SIZE" -f "0.00001" T2_f$EXT
-# qinewimage --size "$SIZE" -f "1.00" T1_b$EXT
-# qinewimage --size "$SIZE" -f "0.08" T2_b$EXT
-# qinewimage --size "$SIZE" -f "6" k_bf$EXT
-# qinewimage --size "$SIZE" -g "0 0.05 0.25" f_b$EXT
-# qinewimage --size "$SIZE" -g "1 0. 200." f0$EXT
-# qinewimage --size "$SIZE" -g "2 0.75 1.25" B1$EXT
+@test "qMT Lineshapes" {
+qi_lineshape --lineshape=Gaussian --frq_start=500 --frq_space=500 --frq_count=150 > gauss.json
+[ -e gauss.json ]
+qi_lineshape --lineshape=Lorentzian --frq_start=500 --frq_space=500 --frq_count=150 > lorentz.json
+[ -e lorentz.json ]
+qi_lineshape --lineshape=SuperLorentzian --frq_start=500 --frq_space=500 --frq_count=150 > superlorentz.json
+[ -e superlorentz.json ]
+}
 
+@test "qMT Ramani Simulate" {
+SIZE="10,10,10"
+qinewimage --size "$SIZE" -f "1.0" PD$EXT
+[ -e PD$EXT ]
+qinewimage --size "$SIZE" -f "1.0" T1_f$EXT
+[ -e T1_f$EXT ]
+qinewimage --size "$SIZE" -f "0.03" T2_f$EXT
+[ -e T2_f$EXT ]
+qinewimage --size "$SIZE" -f "0.00001" T2_b$EXT
+[ -e T2_b$EXT ]
+qinewimage --size "$SIZE" -g "1 0.5 1.5" k_bf$EXT
+[ -e k_bf$EXT ]
+qinewimage --size "$SIZE" -g "0 0.05 0.25" f_b$EXT
+[ -e f_b$EXT ]
+qinewimage --size "$SIZE" -f "0.0" f0$EXT
+[ -e f0$EXT ]
+qinewimage --size "$SIZE" -g "2 0.8 1.1" B1$EXT
+[ -e B1$EXT ]
 
-# # Setup parameters
-# MTSAT_FILE="mtsat$EXT"
-# MTSAT_SEQUENCE='{ "MTSat": {
-#     "TR": 30,
-#     "FA": 5,
-#     "sat_f0": [1000, 5000, 10000, 1000, 5000, 10000],
-#     "sat_angle": [360, 360, 360, 720, 720, 720],
-#     "pulse": { "name": "Gauss", "FAnom": 90, "Trf": 15, "intB1": 0.005904, "intB1sq": 0.005904 }
-# }}'
-# NOISE="0.002"
+qi_qmt --verbose --simulate=$NOISE --lineshape=superlorentz.json --file=mtsat.json $MTSAT_FILE $T1OBS_FILE
+[ -e $MTSAT_FILE ]
+[ -e $T1OBS_FILE ]
+}
 
-# cat >mtsat.json <<END_SIG
-# {
-#     "PD": "PD$EXT",
-#     "T1_f": "T1_f$EXT",
-#     "T2_f": "T2_f$EXT",
-#     "T1_b": "T1_b$EXT",
-#     "T2_b": "T2_b$EXT",
-#     "k_bf": "k_bf$EXT",
-#     "f_b": "f_b$EXT",
-#     "f0": "f0$EXT",
-#     "B1": "B1$EXT",
-#     "Sequences": [ $MTSAT_SEQUENCE ]
-# }
-# END_SIG
-
-# qisignal --model=Ramani -v -T1 --noise=$NOISE $MTSAT_FILE << END_SIG
-# {
-#     "PD": "PD$EXT",
-#     "T1_f": "T1_f$EXT",
-#     "T2_f": "T2_f$EXT",
-#     "T1_b": "T1_b$EXT",
-#     "T2_b": "T2_b$EXT",
-#     "k_bf": "k_bf$EXT",
-#     "f_b": "f_b$EXT",
-#     "f0": "f0$EXT",
-#     "B1": "B1$EXT",
-#     "lineshape" : { "Gaussian" : {} },
-#     "Sequences": [ $MTSAT_SEQUENCE ]
-# }
-# END_SIG
-
-# }
+@test "qMT Ramani" {
+qi_qmt --verbose --lineshape=superlorentz.json --file=mtsat.json $MTSAT_FILE $T1OBS_FILE
+qidiff --verbose --baseline=f_b$EXT --input=QMT_f_b$EXT --noise=$NOISE --tolerance=$TOL
+qidiff --verbose --baseline=k_bf$EXT --input=QMT_k_bf$EXT --noise=$NOISE --tolerance=$TOL
+}

@@ -14,12 +14,6 @@ NOISE="0.001"
 TOL="70"
 cat > hifi.json <<OUT
 {
-    $SPGR,
-    $MPRAGE
-}
-OUT
-cat > simulate_hifi.json <<OUT
-{
     "PDFile": "PD$EXT",
     "T1File": "T1$EXT",
     "B1File": "B1$EXT",
@@ -36,7 +30,7 @@ qinewimage --size "$SIZE" -g "1 0.5 1.5" T1$EXT
 [ -e T1$EXT ]
 qinewimage --size "$SIZE" -g "2 0.5 1.5" B1$EXT
 [ -e B1$EXT ]
-qidespot1hifi --verbose --simulate=$NOISE $SPGR_FILE $MPRAGE_FILE < simulate_hifi.json
+qidespot1hifi --verbose --simulate=$NOISE $SPGR_FILE $MPRAGE_FILE < hifi.json
 }
 
 @test "DESPOT1HIFI" {

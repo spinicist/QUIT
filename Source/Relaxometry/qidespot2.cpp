@@ -34,18 +34,17 @@ struct DESPOT2 : QI::Model<2, 2, QI::SSFPSequence> {
 
     template<typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &v,
-                const QI_ARRAYN(double, NF) &f,
-                const QI::SSFPSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+                const QI_ARRAYN(double, NF) &f) const -> QI_ARRAY(typename Derived::Scalar)
     {
         using T = typename Derived::Scalar;
         const T &PD = v[0];
         const T &T2 = v[1];
         const double &T1 = f[0];
         const double &B1 = f[1];
-        const double E1 = exp(-s->TR / T1);
-        const T E2 = exp(-s->TR / T2);
+        const double E1 = exp(-sequence.TR / T1);
+        const T E2 = exp(-sequence.TR / T2);
 
-        const QI_ARRAY(double) alpha = s->FA * B1;
+        const QI_ARRAY(double) alpha = sequence.FA * B1;
         const QI_ARRAY(T) denom = elliptical ? (1.0 - E1*E2*E2-(E1-E2*E2)*cos(alpha))
                                              : (1.0 - E1*E2 - (E1 - E2)*cos(alpha));
         const QI_ARRAY(T) numer = PD*sqrt(E2)*(1.0 - E1)*sin(alpha);
@@ -59,6 +58,7 @@ const QI_ARRAYN(double, 2) DESPOT2::fixed_defaults{1.0, 1.0};
 using DESPOT2Fit = QI::FitFunction<DESPOT2>;
 
 struct DESPOT2LLS : DESPOT2Fit {
+    using DESPOT2Fit::DESPOT2Fit;
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT2::NV) &outputs,
                           ResidualType &residual, std::vector<QI_ARRAY(ResidualType)> &residuals, FlagType &iterations) const override
@@ -66,10 +66,10 @@ struct DESPOT2LLS : DESPOT2Fit {
         const Eigen::ArrayXd &data = inputs[0];
         const double &T1 = fixed[0];
         const double &B1 = fixed[1];
-        const double &TR = sequence->TR;
+        const double &TR = model.sequence.TR;
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
-        const Eigen::ArrayXd angles = (sequence->FA * B1);
+        const Eigen::ArrayXd angles = (model.sequence.FA * B1);
 
         Eigen::VectorXd Y = data / sin(angles);
         Eigen::MatrixXd X(Y.rows(), 2);
@@ -87,7 +87,7 @@ struct DESPOT2LLS : DESPOT2Fit {
         }
         outputs << QI::Clamp(PD, model.bounds_lo[0], model.bounds_hi[0]),
                    QI::Clamp(T2, model.bounds_lo[1], model.bounds_hi[1]);
-        Eigen::ArrayXd r = data - model.signal(outputs, fixed, sequence);
+        Eigen::ArrayXd r = data - model.signal(outputs, fixed);
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
             residuals[0] = r;
         }
@@ -98,6 +98,7 @@ struct DESPOT2LLS : DESPOT2Fit {
 };
 
 struct DESPOT2WLLS : DESPOT2Fit {
+    using DESPOT2Fit::DESPOT2Fit;
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT2::NV) &outputs,
                           ResidualType &residual, std::vector<QI_ARRAY(ResidualType)> &residuals, FlagType &iterations) const override
@@ -105,10 +106,10 @@ struct DESPOT2WLLS : DESPOT2Fit {
         const Eigen::ArrayXd &data = inputs[0];
         const double &T1 = fixed[0];
         const double &B1 = fixed[1];
-        const double TR = sequence->TR;
+        const double TR = model.sequence.TR;
         const double E1 = exp(-TR / T1);
         double PD, T2, E2;
-        const Eigen::ArrayXd angles = (sequence->FA * B1);
+        const Eigen::ArrayXd angles = (model.sequence.FA * B1);
 
         Eigen::VectorXd Y = data / angles.sin();
         Eigen::MatrixXd X(Y.rows(), 2);
@@ -124,7 +125,7 @@ struct DESPOT2WLLS : DESPOT2Fit {
             E2 = exp(-TR / T2);
             PD = b[1] * (1. - E1*E2) / (1. - E1);
         }
-        Eigen::VectorXd W(sequence->size());
+        Eigen::VectorXd W(model.sequence.size());
         for (iterations = 0; iterations < max_iterations; iterations++) {
             if (model.elliptical) {
                 W = ((1. - E1*E2) * angles.sin() / (1. - E1*E2*E2 - (E1 - E2*E2)*angles.cos())).square();
@@ -145,7 +146,7 @@ struct DESPOT2WLLS : DESPOT2Fit {
         outputs[0] = QI::Clamp(PD, model.bounds_lo[0], model.bounds_hi[0]);
         outputs[1] = QI::Clamp(T2, model.bounds_lo[1], model.bounds_hi[1]);
         Eigen::Array2d v{PD, T2};
-        Eigen::ArrayXd r = data - model.signal(v, fixed, sequence);
+        Eigen::ArrayXd r = data - model.signal(v, fixed);
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
             residuals[0] = r;
         }
@@ -155,7 +156,9 @@ struct DESPOT2WLLS : DESPOT2Fit {
 };
 
 struct DESPOT2NLLS : DESPOT2Fit {
-    DESPOT2NLLS() {
+    DESPOT2NLLS(DESPOT2 &m) :
+        DESPOT2Fit{m}
+    {
         model.bounds_lo[0] = 1e-6; // Don't go negative PD
         model.bounds_lo[1] = 1e-3; // The sqrt(E2) term goes crazy for T2 below this
     }
@@ -175,8 +178,8 @@ struct DESPOT2NLLS : DESPOT2Fit {
         ceres::Problem problem;
         using Cost     = QI::ModelCost<DESPOT2>;
         using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, DESPOT2::NV>;
-        auto *cost = new Cost(model, sequence, fixed, data);
-        auto *auto_cost = new AutoCost(cost, sequence->size());
+        auto *cost = new Cost(model, fixed, data);
+        auto *auto_cost = new AutoCost(cost, model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
         problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0] / scale);
         problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0] / scale);
@@ -234,17 +237,16 @@ int main(int argc, char **argv) {
     QI_LOG(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence ssfp(QI::GetMember(input, "SSFP"));
-    
+    DESPOT2 model{ssfp};
     if (simulate) {
-        DESPOT2 model;
         if (gs_arg) model.elliptical = true;
-        QI::SimulateModel<DESPOT2, false>(input, model, {&ssfp}, {QI::CheckPos(t1_path), B1.Get()}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
+        QI::SimulateModel<DESPOT2, false>(input, model, {QI::CheckPos(t1_path), B1.Get()}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
     } else {
         DESPOT2Fit *d2 = nullptr;
         switch (algorithm.Get()) {
-            case 'l': d2 = new DESPOT2LLS();  QI_LOG(verbose, "LLS algorithm selected." ); break;
-            case 'w': d2 = new DESPOT2WLLS(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
-            case 'n': d2 = new DESPOT2NLLS(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
+            case 'l': d2 = new DESPOT2LLS(model);  QI_LOG(verbose, "LLS algorithm selected." ); break;
+            case 'w': d2 = new DESPOT2WLLS(model); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+            case 'n': d2 = new DESPOT2NLLS(model); QI_LOG(verbose, "NLLS algorithm selected." ); break;
         }
         if (clampPD) {
             d2->model.bounds_lo[0] = 1e-6;
@@ -255,14 +257,12 @@ int main(int argc, char **argv) {
             d2->model.bounds_hi[1] = clampT2.Get();
         }
         if (its) d2->max_iterations = its.Get();
-        d2->sequence = &ssfp;
         if (gs_arg) {
             QI_LOG(verbose, "GS Mode selected");
             d2->model.elliptical = true;
         }
-        auto fit = itk::ModelFitFilter<DESPOT2Fit>::New();
+        auto fit = itk::ModelFitFilter<DESPOT2Fit>::New(d2);
         fit->SetVerbose(verbose);
-        fit->SetFitFunction(d2);
         fit->SetOutputAllResiduals(resids);
         fit->SetInput(0, QI::ReadVectorImage(QI::CheckPos(ssfp_path), verbose));
         fit->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));

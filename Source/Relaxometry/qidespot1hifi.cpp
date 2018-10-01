@@ -23,6 +23,7 @@
 #include "SimulateModel.h"
 #include "SPGRSequence.h"
 #include "MPRAGESequence.h"
+#include "SequenceGroup.h"
 #include "OnePoolSignals.h"
 #include "Util.h"
 #include "Args.h"
@@ -31,45 +32,52 @@
 using namespace std::literals;
 
 struct HIFIModel {
-    using SequenceType  = QI::SequenceBase;
+    using SequenceType  = QI::SequenceGroup;
     using DataType      = double;
     using ParameterType = double;
 
     static const int NV = 3;
     static const int NF = 0;
+    static const int NO = 2;
+
     static std::array<const std::string, 3> varying_names;
     static std::array<const std::string, 0> fixed_names;
     static const QI_ARRAYN(double, 0) fixed_defaults;
 
+    QI::SPGRSequence spgr;
+    QI::MPRAGESequence mprage;
+
     QI_ARRAYN(double, 3) bounds_lo = QI_ARRAYN(double, NV)::Constant(1.0e-4);
     QI_ARRAYN(double, 3) bounds_hi = QI_ARRAYN(double, NV)::Constant(std::numeric_limits<double>::infinity());
 
+    int size(int i) {
+        if (i == 0) {
+            return spgr.size();
+        } else if (i == 1) {
+            return mprage.size();
+        } else {
+            QI_FAIL("Invalid output size " << i);
+        }
+    }
+
     template<typename Derived>
     auto spgr_signal(const Eigen::ArrayBase<Derived> &v,
-                        const QI_ARRAYN(double, NF) &/* Unused */,
-                        const QI::SPGRSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+                        const QI_ARRAYN(double, NF) &/* Unused */) const -> QI_ARRAY(typename Derived::Scalar)
     {
-        return QI::SPGRSignal(v[0], v[1], v[2], s);
+        return QI::SPGRSignal(v[0], v[1], v[2], spgr);
     }
 
     template<typename Derived>
     auto mprage_signal(const Eigen::ArrayBase<Derived> &v,
-                        const QI_ARRAYN(double, NF) &/* Unused */,
-                        const QI::MPRAGESequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+                        const QI_ARRAYN(double, NF) &/* Unused */) const -> QI_ARRAY(typename Derived::Scalar)
     {
-        return QI::MPRAGESignal(v[0], v[1], v[2], s);
+        return QI::MPRAGESignal(v[0], v[1], v[2], mprage);
     }
 
-    template<typename Derived>
-    auto signal(const Eigen::ArrayBase<Derived> &v,
-                const QI_ARRAYN(double, NF) &f,
-                const QI::SequenceBase *s) const -> QI_ARRAY(typename Derived::Scalar)
+    auto signals(const QI_ARRAYN(double, NV) &v,
+                 const QI_ARRAYN(double, NF) &f) const -> std::vector<QI_ARRAY(double)>
     {
-        const QI::SPGRSequence *spgr = dynamic_cast<const QI::SPGRSequence *>(s);
-        if (spgr) return spgr_signal(v, f, spgr);
-        const QI::MPRAGESequence *mprage = dynamic_cast<const QI::MPRAGESequence *>(s);
-        if (mprage) return mprage_signal(v, f, mprage);
-        QI_FAIL("Given pointer was not to SPGRSequence or MPRAGESequence");
+        return {spgr_signal(v, f), mprage_signal(v, f)};
     }
 };
 std::array<const std::string, 3> HIFIModel::varying_names{{"PD"s, "T1"s, "B1"s}};
@@ -78,7 +86,6 @@ const QI_ARRAYN(double, 0) HIFIModel::fixed_defaults{};
 
 struct HIFISPGRCost {
     const HIFIModel &model;
-    const QI::SPGRSequence *sequence;
     const QI_ARRAY(double) data;
 
     template<typename T>
@@ -86,7 +93,7 @@ struct HIFISPGRCost {
         Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
         const Eigen::Map<const QI_ARRAYN(T, 3)> v(vin);
         QI_ARRAYN(double, 0) fixed;
-        const auto calc = model.spgr_signal(v, fixed, sequence);
+        const auto calc = model.spgr_signal(v, fixed);
         r = data - calc;
         return true;
     }
@@ -94,7 +101,6 @@ struct HIFISPGRCost {
 
 struct HIFIMPRAGECost {
     const HIFIModel &model;
-    const QI::MPRAGESequence *sequence;
     const QI_ARRAY(double) data;
 
     template<typename T>
@@ -102,7 +108,7 @@ struct HIFIMPRAGECost {
         Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
         const Eigen::Map<const QI_ARRAYN(T, 3)> v(vin);
         QI_ARRAYN(double, 0) fixed;
-        const auto calc = model.mprage_signal(v, fixed, sequence);
+        const auto calc = model.mprage_signal(v, fixed);
         r = data - calc;
         return true;
     }
@@ -116,15 +122,13 @@ struct HIFIFit {
     using ResidualType = double;
     using FlagType = int;
     using ModelType = HIFIModel;
-    QI::SPGRSequence *spgr_sequence;
-    QI::MPRAGESequence *mprage_sequence;
     HIFIModel model;
 
     int n_inputs() const  { return 2; }
     int input_size(const int i) const {
         switch (i) {
-        case 0: return spgr_sequence->size();
-        case 1: return mprage_sequence->size();
+        case 0: return model.spgr.size();
+        case 1: return model.mprage.size();
         default: QI_FAIL("Invalid input " << i << " size requested");
         }
     }
@@ -147,8 +151,8 @@ struct HIFIFit {
         ceres::Problem problem;
         using AutoSPGRType = ceres::AutoDiffCostFunction<HIFISPGRCost, ceres::DYNAMIC, HIFIModel::NV>;
         using AutoMPRAGEType = ceres::AutoDiffCostFunction<HIFIMPRAGECost, ceres::DYNAMIC, HIFIModel::NV>;
-        auto *spgr_cost = new AutoSPGRType(new HIFISPGRCost{model, spgr_sequence, spgr_data}, spgr_sequence->size());
-        auto *mprage_cost = new AutoMPRAGEType(new HIFIMPRAGECost{model, mprage_sequence, mprage_data}, mprage_sequence->size());
+        auto *spgr_cost = new AutoSPGRType(new HIFISPGRCost{model, spgr_data}, model.spgr.size());
+        auto *mprage_cost = new AutoMPRAGEType(new HIFIMPRAGECost{model, mprage_data}, model.mprage.size());
         problem.AddResidualBlock(spgr_cost, NULL, v.data());
         problem.AddResidualBlock(mprage_cost, NULL, v.data());
         for (int i = 0; i < 3; i++) {
@@ -170,12 +174,12 @@ struct HIFIFit {
         iterations = summary.iterations.size();
         residual = summary.final_cost * scale;
         if (residuals.size() > 0) {
-            std::vector<double> r_temp(spgr_sequence->size() + mprage_sequence->size());
+            std::vector<double> r_temp(model.spgr.size() + model.mprage.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (int i = 0; i < spgr_sequence->size(); i++)
+            for (int i = 0; i < model.spgr.size(); i++)
                 residuals[0][i] = r_temp[i] * scale;
-            for (int i = 0; i < mprage_sequence->size(); i++)
-                residuals[1][i] = r_temp[i + spgr_sequence->size()] * scale;
+            for (int i = 0; i < model.mprage.size(); i++)
+                residuals[1][i] = r_temp[i + model.spgr.size()] * scale;
         }
         return std::make_tuple(true, "");
     }
@@ -208,17 +212,13 @@ int main(int argc, char **argv) {
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SPGRSequence spgrSequence(QI::GetMember(input, "SPGR"));
     QI::MPRAGESequence mprageSequence(QI::GetMember(input, "MPRAGE"));
-
+    HIFIModel model{spgrSequence, mprageSequence};
     if (simulate) {
-        HIFIModel model;
-        QI::SimulateModel<HIFIModel, false>(input, model, {&spgrSequence, &mprageSequence}, {}, {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, verbose, simulate.Get());
+        QI::SimulateModel<HIFIModel, true>(input, model, {}, {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, verbose, simulate.Get());
     } else {
-        HIFIFit hifi_fit;
-        hifi_fit.spgr_sequence = &spgrSequence;
-        hifi_fit.mprage_sequence = &mprageSequence;
-        auto fit_filter = itk::ModelFitFilter<HIFIFit>::New();
+        HIFIFit hifi_fit{model};
+        auto fit_filter = itk::ModelFitFilter<HIFIFit>::New(&hifi_fit);
         fit_filter->SetVerbose(verbose);
-        fit_filter->SetFitFunction(&hifi_fit);
         fit_filter->SetOutputAllResiduals(resids);
         fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(spgr_path), verbose));
         fit_filter->SetInput(1, QI::ReadVectorImage(QI::CheckPos(mprage_path), verbose));

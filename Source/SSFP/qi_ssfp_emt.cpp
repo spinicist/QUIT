@@ -33,13 +33,16 @@ struct EMTModel {
     static std::array<const std::string, NV> varying_names;
     static std::array<const std::string, NF> fixed_names;
     static const QI_ARRAYN(double, NF) fixed_defaults;
-
+    const SequenceType &sequence;
     double T2_b = 12.e-6;
+
+    int size(int /* Unused */) {
+        return sequence.size();
+    }
 
     template<typename Derived>
     auto signals(const Eigen::ArrayBase<Derived> &v,
-                 const QI_ARRAYN(double, NF) &f,
-                 const QI::SSFPMTSequence *s) const -> std::vector<QI_ARRAY(typename Derived::Scalar)>
+                 const QI_ARRAYN(double, NF) &f) const -> std::vector<QI_ARRAY(typename Derived::Scalar)>
     {
         using T = typename Derived::Scalar;
         using ArrayXT = Eigen::Array<T, Eigen::Dynamic, 1>;
@@ -52,23 +55,23 @@ struct EMTModel {
         const double &f0_Hz = f[0];
         const double &B1 = f[1];
 
-        const ArrayXT E1f = (-s->TR/T1_f).exp();
-        const ArrayXT E2_f = (-s->TR/T2_f).exp();
-        const ArrayXT E2_fe = (-s->TR/(2.0*T2_f)).exp();
+        const ArrayXT E1f = (-sequence.TR/T1_f).exp();
+        const ArrayXT E2_f = (-sequence.TR/T2_f).exp();
+        const ArrayXT E2_fe = (-sequence.TR/(2.0*T2_f)).exp();
         const T k_fb = (F > 0.0) ? (k_bf / F) : T(0.0);
-        const ArrayXT E1_b = (-s->TR/T1_b).exp();
-        const ArrayXT fk = (-s->TR*(k_bf + k_fb)).exp();
+        const ArrayXT E1_b = (-sequence.TR/T1_b).exp();
+        const ArrayXT fk = (-sequence.TR*(k_bf + k_fb)).exp();
 
         const double G_gauss = (T2_b / sqrt(2.*M_PI))*exp(-pow(2.*M_PI*f0_Hz*T2_b,2) / 2.0);
-        const Eigen::ArrayXd WT = M_PI * (B1*B1 * s->intB1) * G_gauss; // # Product of W and Trf to save a division and multiplication
+        const Eigen::ArrayXd WT = M_PI * (B1*B1 * sequence.intB1) * G_gauss; // # Product of W and Trf to save a division and multiplication
         const Eigen::ArrayXd fw = (-WT).exp();
         const ArrayXT A = 1.0 + F - fw*E1_b*(F+fk);
         const ArrayXT B = 1.0 + fk*(F-fw*E1_b*(F+1.0));
         const ArrayXT C = F*(1.0-E1_b)*(1.0-fk);
 
-        const ArrayXT denom = (A - B*E1f*cos(B1 * s->FA) - (E2_f*E2_f)*(B*E1f-A*cos(B1 * s->FA)));
-        const ArrayXT Gp = M0*E2_fe*(sin(B1 * s->FA)*((1.0-E1f)*B+C))/denom;
-        const ArrayXT bp = (E2_f*(A-B*E1f)*(1.0+cos(B1 * s->FA)))/denom;
+        const ArrayXT denom = (A - B*E1f*cos(B1 * sequence.FA) - (E2_f*E2_f)*(B*E1f-A*cos(B1 * sequence.FA)));
+        const ArrayXT Gp = M0*E2_fe*(sin(B1 * sequence.FA)*((1.0-E1f)*B+C))/denom;
+        const ArrayXT bp = (E2_f*(A-B*E1f)*(1.0+cos(B1 * sequence.FA)))/denom;
         const ArrayXT ap = E2_f;
 
         return {Gp, ap, bp};
@@ -80,7 +83,6 @@ const QI_ARRAYN(double, 2) EMTModel::fixed_defaults{0.0, 1.0};
 
 struct EMTCost {
     const EMTModel           &model;
-    const QI::SSFPMTSequence *sequence;
     const QI_ARRAYN(double, EMTModel::NF) fixed;
     const QI_ARRAY(double) G, b;
 
@@ -88,7 +90,7 @@ struct EMTCost {
     bool operator() (const T *const vin, T* rin) const {
         Eigen::Map<QI_ARRAY(T)> r(rin, G.rows() + b.rows());
         const Eigen::Map<const QI_ARRAYN(T, EMTModel::NV)> v(vin);
-        const auto signals = model.signals(v, fixed, sequence);
+        const auto signals = model.signals(v, fixed);
         r.head(G.rows()) = G - signals[0];
         r.tail(b.rows()) = b - signals[2];
         return true;
@@ -103,11 +105,10 @@ struct EMTFit {
     using ResidualType = double;
     using FlagType = int;
     using ModelType = EMTModel;
-    QI::SSFPMTSequence *sequence;
-    ModelType model;
+    ModelType &model;
 
     int n_inputs() const  { return 3; }
-    int input_size(const int /* Unused */) const { return sequence->size(); }
+    int input_size(const int /* Unused */) const { return model.sequence.size(); }
     int n_fixed() const { return 2; }
     int n_outputs() const { return 5; }
 
@@ -120,10 +121,10 @@ struct EMTFit {
         const Eigen::ArrayXd &a = inputs[1];
         const Eigen::ArrayXd &b = inputs[2];
 
-        Eigen::ArrayXd T2_fs = (-sequence->TR / a.log());
+        Eigen::ArrayXd T2_fs = (-model.sequence.TR / a.log());
         const double T2_f = T2_fs.mean(); // Different TRs so have to average afterwards
 
-        auto *cost = new ceres::AutoDiffCostFunction<EMTCost, ceres::DYNAMIC, 5>(new EMTCost{model, sequence, fixed, G, b}, G.size() + b.size());
+        auto *cost = new ceres::AutoDiffCostFunction<EMTCost, ceres::DYNAMIC, 5>(new EMTCost{model, fixed, G, b}, G.size() + b.size());
         ceres::LossFunction *loss = new ceres::HuberLoss(1.0);
         p << 15.0, 0.05, 5.0, 1.2, T2_f;
         ceres::Problem problem;
@@ -157,7 +158,7 @@ struct EMTFit {
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
             for (int i = 0; i < G.size(); i++)
                 residuals[i] = r_temp[i];
-            Eigen::ArrayXd as = (-sequence->TR / T2_f).exp();
+            Eigen::ArrayXd as = (-model.sequence.TR / T2_f).exp();
             for (int i = 0; i < a.size(); i++) {
                 residuals[i + G.size()] = as[i] - a[i];
             }
@@ -199,16 +200,14 @@ int main(int argc, char **argv) {
    QI_LOG(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPMTSequence ssfp(QI::GetMember(input, "SSFPMT"));
+    EMTModel model{ssfp};
     if (simulate) {
-        EMTModel model;
-        QI::SimulateModel<EMTModel, true>(input, model, {&ssfp}, {B1.Get()}, {G_path.Get(), a_path.Get(), b_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<EMTModel, true>(input, model, {B1.Get()}, {G_path.Get(), a_path.Get(), b_path.Get()}, verbose, simulate.Get());
     } else {
-        EMTFit fit;
-        fit.sequence = &ssfp;
+        EMTFit fit{model};
         fit.model.T2_b = T2_b_us.Get() * 1e-6;
-        auto fit_filter = itk::ModelFitFilter<EMTFit>::New();
+        auto fit_filter = itk::ModelFitFilter<EMTFit>::New(&fit);
         fit_filter->SetVerbose(verbose);
-        fit_filter->SetFitFunction(&fit);
         fit_filter->SetInput(0, QI::ReadVectorImage(G_path.Get(), verbose));
         fit_filter->SetInput(1, QI::ReadVectorImage(a_path.Get(), verbose));
         fit_filter->SetInput(2, QI::ReadVectorImage(b_path.Get(), verbose));

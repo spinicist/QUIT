@@ -30,34 +30,28 @@
 
 template<typename Model>
 struct MCDSRCFunctor {
-    const QI::SequenceGroup *sequences;
     const Eigen::ArrayXd data, weights;
     const QI_ARRAYN(double, Model::NF) fixed;
-    const Model model;
+    const Model &model;
 
-    MCDSRCFunctor(Model m, QI::SequenceGroup *s, const QI_ARRAYN(double, Model::NF) &f,
+    MCDSRCFunctor(const Model &m, const QI_ARRAYN(double, Model::NF) &f,
                   const Eigen::ArrayXd &d, const Eigen::ArrayXd &w) :
-        sequences(s), data(d), weights(w), fixed(f), model(m)
+        data(d), weights(w), fixed(f), model(m)
     {
-        assert(static_cast<size_t>(data.rows()) == sequences->size());
+        assert(static_cast<size_t>(data.rows()) == model.sequence.size());
     }
 
     int inputs() const { return Model::NV; }
-    int values() const { return sequences->size(); }
+    int values() const { return model.sequence.size(); }
 
     bool constraint(const QI_ARRAYN(double, Model::NV) &varying) const {
         return model.valid(varying);
     }
 
     Eigen::ArrayXd residuals(const QI_ARRAYN(double, Model::NV) &varying) const {
-        Eigen::ArrayXd signals(sequences->size());
-        int index = 0;
-        for (size_t i = 0; i < sequences->count(); i++) {
-            signals.segment(index, sequences->at(i)->size()) = model.signal(varying, fixed, sequences->at(i));
-            index += sequences->at(i)->size();
-        }
-        return data - signals;
+        return data - model.signal(varying, fixed);
     }
+
     double operator()(const QI_ARRAYN(double, Model::NV) &varying) const {
         return (residuals(varying) * weights).square().sum();
     }
@@ -72,11 +66,10 @@ struct SRCFit  {
     using ResidualType = double;
     using FlagType = int;
     using ModelType = Model;
-    QI::SequenceGroup *sequences = nullptr;
-    Model model;
+    Model &model;
 
-    int n_inputs() const { return sequences->count(); }
-    int input_size(const int i) const { return sequences->at(i)->size(); }
+    int n_inputs() const { return model.sequence.count(); }
+    int input_size(const int i) const { return model.sequence.at(i)->size(); }
     int n_fixed() const { return Model::NF; }
     int n_outputs() const { return Model::NV; }
     
@@ -88,7 +81,7 @@ struct SRCFit  {
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, Model::NV) &v,
                           ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const
     {
-        Eigen::ArrayXd data(sequences->size());
+        Eigen::ArrayXd data(model.sequence.size());
         int dataIndex = 0;
         for (size_t i = 0; i < inputs.size(); i++) {
             if (model.scale_to_mean) {
@@ -100,9 +93,9 @@ struct SRCFit  {
         }
         QI_ARRAYN(double, Model::NV) thresh = QI_ARRAYN(double, Model::NV)::Constant(0.05);
         const double &f0 = fixed[0];
-        Eigen::ArrayXd weights = sequences->weights(f0);
+        Eigen::ArrayXd weights = model.sequence.weights(f0);
         using Functor = MCDSRCFunctor<Model>;
-        Functor func(model, sequences, fixed, data, weights);
+        Functor func(model, fixed, data, weights);
         QI::RegionContraction<Functor> rc(func, model.bounds_lo, model.bounds_hi, thresh, src_samples, src_retain, max_iterations, 0.02, src_gauss, false);
         if (!rc.optimise(v)) {
             return std::make_tuple(false, "Region contraction failed");
@@ -111,9 +104,9 @@ struct SRCFit  {
         residual = sqrt(r.square().sum() / r.rows());
         if (residuals.size() > 0) {
             int index = 0;
-            for (size_t i = 0; i < sequences->count(); i++) {
-                residuals[i] = r.segment(index, sequences->at(i)->size());
-                index += sequences->at(i)->size();
+            for (size_t i = 0; i < model.sequence.count(); i++) {
+                residuals[i] = r.segment(index, model.sequence.at(i)->size());
+                index += model.sequence.at(i)->size();
             }
         }
         iterations = rc.contractions();
@@ -155,12 +148,10 @@ int main(int argc, char **argv) {
 
     auto process = [&](auto model, const std::string &prefix) {
         if (simulate) {
-            QI::SimulateModel<decltype(model), false>(input, model, sequences.sequences, {f0.Get(), B1.Get()}, input_paths.Get(), verbose, simulate.Get());
+            QI::SimulateModel<decltype(model), true>(input, model, {f0.Get(), B1.Get()}, input_paths.Get(), verbose, simulate.Get());
         } else {
             using FitType = SRCFit<decltype(model)>;
-            FitType src;
-            src.sequences = &sequences;
-            src.model.scale_to_mean = scale.Get();
+            FitType src{model};
             src.src_gauss = !use_src;
             if (bounds) {
                 src.model.bounds_lo = QI::ArrayFromJSON(input, "lower_bounds");
@@ -169,9 +160,8 @@ int main(int argc, char **argv) {
             QI_LOG(verbose, "Low bounds: " << src.model.bounds_lo.transpose() <<
                             "\nHigh bounds: " << src.model.bounds_hi.transpose());
 
-            auto fit_filter = itk::ModelFitFilter<FitType>::New();
+            auto fit_filter = itk::ModelFitFilter<FitType>::New(&src);
             fit_filter->SetVerbose(verbose);
-            fit_filter->SetFitFunction(&src);
             fit_filter->SetOutputAllResiduals(resids);
             for (size_t i = 0; i < input_paths.Get().size(); i++) {
                 fit_filter->SetInput(i, QI::ReadVectorImage(input_paths.Get().at(i), verbose));
@@ -204,11 +194,11 @@ int main(int argc, char **argv) {
     };
     switch (modelarg.Get()) {
     case 2: {
-        QI::TwoPoolModel model;
+        QI::TwoPoolModel model{sequences, scale.Get()};
         process(model, "2C_");
     } break;
     case 3: {
-        QI::ThreePoolModel model;
+        QI::ThreePoolModel model{sequences, scale.Get()};
         process(model, "3C_");
     } break;
     default:

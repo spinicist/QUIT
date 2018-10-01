@@ -33,21 +33,25 @@ struct PLANETModel {
     static std::array<const std::string, NV> varying_names;
     static std::array<const std::string, NF> fixed_names;
     static const QI_ARRAYN(double, NF) fixed_defaults;
+    const SequenceType &sequence;
+
+    int size(int /* Unused */) {
+        return sequence.size();
+    }
 
     auto signals(const Eigen::ArrayBase<QI_ARRAYN(double, NV)> &v,
-                 const QI_ARRAYN(double, NF) &f,
-                 const QI::SSFPSequence *s) const -> std::vector<QI_ARRAY(double)>
+                 const QI_ARRAYN(double, NF) &f) const -> std::vector<QI_ARRAY(double)>
     {
         const double &PD = v[0];
         const double &T1 = v[1];
         const double &T2 = v[2];
         const double &B1 = f[0];
-        const double E1 = exp(-s->TR / T1);
-        const double E2 = exp(-s->TR / T2);
-        const Eigen::ArrayXd alpha = B1 * s->FA;
+        const double E1 = exp(-sequence.TR / T1);
+        const double E2 = exp(-sequence.TR / T2);
+        const Eigen::ArrayXd alpha = B1 * sequence.FA;
         const Eigen::ArrayXd d = (1. - E1*E2*E2-(E1-E2*E2)*cos(alpha));
         const Eigen::ArrayXd G = PD*sqrt(E2)*(1 - E1)*sin(alpha)/d;
-        const Eigen::ArrayXd a = Eigen::ArrayXd::Constant(s->size(), E2);
+        const Eigen::ArrayXd a = Eigen::ArrayXd::Constant(sequence.size(), E2);
         const Eigen::ArrayXd b = E2*(1. - E1)*(1.+cos(alpha))/d;
         std::vector<QI_ARRAY(double)> outputs = {G, a, b};
         return outputs;
@@ -65,7 +69,6 @@ struct PLANETFit {
     using ResidualType = double;
     using FlagType = int;
     using ModelType = PLANETModel;
-    QI::SSFPSequence *sequence;
     ModelType model;
 
     int n_inputs() const  { return 3; }
@@ -82,11 +85,11 @@ struct PLANETFit {
         const double &a = inputs[1][0];
         const double &b = inputs[2][0];
         const double b1 = fixed[0];
-        const double cosa = cos(b1 * sequence->FA(block));
-        const double sina = sin(b1 * sequence->FA(block));
-        const double T1 = -sequence->TR / log((a*(1. + cosa - a*b*cosa) - b)/(a*(1. + cosa - a*b) - b*cosa));
-        const double T2 = -sequence->TR / log(a);
-        const double E1 = exp(-sequence->TR / T1);
+        const double cosa = cos(b1 * model.sequence.FA(block));
+        const double sina = sin(b1 * model.sequence.FA(block));
+        const double T1 = -model.sequence.TR / log((a*(1. + cosa - a*b*cosa) - b)/(a*(1. + cosa - a*b) - b*cosa));
+        const double T2 = -model.sequence.TR / log(a);
+        const double E1 = exp(-model.sequence.TR / T1);
         const double E2 = a; // For simplicity copying formulas
         const double PD = G * (1. - E1*cosa - E2*E2*(E1 - cosa)) / (sqrt(E2)*(1. - E1)*sina);
         out[0] = PD;
@@ -119,15 +122,13 @@ int main(int argc, char **argv) {
    QI_LOG(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence ssfp(QI::GetMember(input, "SSFP"));
+    PLANETModel model{ssfp};
     if (simulate) {
-        PLANETModel model;
-        QI::SimulateModel<PLANETModel, true>(input, model, {&ssfp}, {B1.Get()}, {G_filename.Get(), a_filename.Get(), b_filename.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<PLANETModel, true>(input, model, {B1.Get()}, {G_filename.Get(), a_filename.Get(), b_filename.Get()}, verbose, simulate.Get());
     } else {
-        PLANETFit fit;
-        fit.sequence = &ssfp;
-        auto fit_filter = itk::ModelFitFilter<PLANETFit>::New();
+        PLANETFit fit{model};
+        auto fit_filter = itk::ModelFitFilter<PLANETFit>::New(&fit);
         fit_filter->SetVerbose(verbose);
-        fit_filter->SetFitFunction(&fit);
         fit_filter->SetInput(0, QI::ReadVectorImage(G_filename.Get(), verbose));
         fit_filter->SetInput(1, QI::ReadVectorImage(a_filename.Get(), verbose));
         fit_filter->SetInput(2, QI::ReadVectorImage(b_filename.Get(), verbose));

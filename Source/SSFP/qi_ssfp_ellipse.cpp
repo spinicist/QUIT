@@ -41,18 +41,17 @@ int main(int argc, char **argv) {
     QI_LOG(verbose, "Reading sequence information");
     rapidjson::Document json_input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence ssfp(QI::GetMember(json_input, "SSFP"));
+    QI::EllipseModel model{ssfp};
     if (simulate) {
-        QI::EllipseModel model;
-        QI::SimulateModel<QI::EllipseModel, false>(json_input, model, {&ssfp}, {}, {ssfp_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<QI::EllipseModel, false>(json_input, model, {}, {ssfp_path.Get()}, verbose, simulate.Get());
     } else {    
         auto input = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ssfp_path), verbose);
         QI::EllipseFit *fit = nullptr;
         switch (algorithm.Get()) {
-        case 'h': fit = new QI::HyperFit(&ssfp); break;
-        case 'd': fit = new QI::DirectFit(&ssfp); break;
+        case 'h': fit = new QI::HyperFit(model); break;
+        case 'd': fit = new QI::DirectFit(model); break;
         }
-        auto fit_filter = itk::ModelFitFilter<QI::EllipseFit>::New();
-        fit_filter->SetFitFunction(fit);
+        auto fit_filter = itk::ModelFitFilter<QI::EllipseFit>::New(fit);
         fit_filter->SetInput(0, input);
         fit_filter->SetVerbose(verbose);
         fit_filter->SetBlocks(input->GetNumberOfComponentsPerPixel() / ssfp.size());

@@ -26,24 +26,13 @@ struct DirectCost : ModelCost<EllipseModel> {
         const T &a = v[1];
         const T &b = v[2];
         if (b < 2.*a/(1. + a*a)) {
-            QI_ARRAY(T) m = model.signal(v, fixed, sequence);
+            QI_ARRAY(T) m = model.signal(v, fixed);
             Eigen::Map<QI_ARRAY(T)> r(rin, data.size()*2);
             r.head(data.size()) = m.head(data.size()) - data.real();
             r.tail(data.size()) = m.tail(data.size()) - data.imag();
-            // if (debug) {
-            //     Eigen::IOFormat numpy(4, 0, ", ", ",", "[", "]", "np.array(", ")");
-            //     Eigen::ArrayXd md(2*data.size()); for (int i = 0; i < 2*data.size(); i++) { md[i] = m[i].a; }
-            //     std::cout 
-            //         << "{ 'P': { 'G': " << G.a << ", 'a': " << a.a << " , 'b': " << b.a << " , 'th0': " << th0.a << " , 'psi0': " << psi0.a << "},"
-            //         << " 'M': { 'real': " << md.head(data.size()).transpose().format(numpy) << ", 'imag': " << md.tail(data.size()).transpose().format(numpy) << "},"
-            //         << " 'D': { 'real': " << data.real().transpose().format(numpy) << ", 'imag': " << data.imag().transpose().format(numpy) << "}}," << std::endl;
-            // }
             return true;
         } else {
-            // if (debug) {
-            //     std::cout << "*** ELLIPSE COST NOT EVALUATED - ELLIPSE WAS HORIZONTAL *** " 
-            //         << "G " << G << " a " << a << " b " << b << " th0 " << th0 << " psi0 " << psi0 << std::endl;
-            // }
+            /* ELLIPSE COST NOT EVALUATED - ELLIPSE WAS HORIZONTAL */
             return false;
         }
     }
@@ -59,14 +48,14 @@ QI::FitReturnType DirectFit::fit(const std::vector<Eigen::ArrayXcd> &inputs,
     const std::complex<double> c_mean = data.mean();
 
     using AutoCost = ceres::AutoDiffCostFunction<DirectCost, ceres::DYNAMIC, EllipseModel::NV>;
-    auto *cost = new DirectCost(model, sequence, fixed, data);
+    auto *cost = new DirectCost(model, fixed, data);
     auto *auto_cost = new AutoCost(cost, data.rows() * 2);
     ceres::LossFunction *loss = new ceres::HuberLoss(1.0);
     ceres::Problem problem;
     problem.AddResidualBlock(auto_cost, loss, p.data());
     const double not_zero = 1.0e-6;
     const double not_one  = 1.0 - not_zero;
-    const double max_a = exp(-sequence->TR / 5.0); // Set a sensible maximum on T2
+    const double max_a = exp(-model.sequence.TR / 5.0); // Set a sensible maximum on T2
     problem.SetParameterLowerBound(p.data(), 0, not_zero); problem.SetParameterUpperBound(p.data(), 0, not_one);
     problem.SetParameterLowerBound(p.data(), 1, not_zero); problem.SetParameterUpperBound(p.data(), 1, max_a);
     problem.SetParameterLowerBound(p.data(), 2, not_zero); problem.SetParameterUpperBound(p.data(), 2, not_one);

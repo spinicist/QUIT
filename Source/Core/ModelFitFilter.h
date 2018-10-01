@@ -61,17 +61,16 @@ public:
     using Superclass = ImageToImageFilter<TInputImage, TOutputImage>;
     using Pointer    = SmartPointer<Self>;
 
-    itkNewMacro(Self); /** Method for creation through the object factory. */
+    QI_ForwardNewMacro(Self);
     itkTypeMacro(ModelFitFilter, ImageToImageFilter); /** Run-time type information (and related methods). */
 
     static const int FlagOutputOffset = 0;
     static const int ResidualOutputOffset = 1;
     static const int ResidualsOutputOffset = 2;
 
-    ModelFitFilter() {}
-
-    void SetFitFunction(FitType const *a) {
-        m_fit = a;
+    ModelFitFilter(const FitType *f) :
+        m_fit(f)
+    {
         this->SetNumberOfRequiredInputs(m_fit->n_inputs());
         this->SetNumberOfRequiredOutputs(m_fit->n_outputs()+ResidualsOutputOffset);
         for (int i = 0; i < (m_fit->n_outputs()+ResidualsOutputOffset+m_fit->n_inputs()); i++) {
@@ -80,7 +79,6 @@ public:
     }
 
     void SetInput(unsigned int i, const TInputImage *image) override {
-        if (!m_fit) itkExceptionMacro("No algorithm set, do not know number of valid inputs");
         if (static_cast<int>(i) < m_fit->n_inputs()) {
             this->SetNthInput(i, const_cast<TInputImage*>(image));
         } else {
@@ -185,7 +183,7 @@ protected:
         return output.GetPointer();
     }
 
-    FitType const *m_fit = nullptr;
+    const FitType *m_fit;
     bool m_verbose = false, m_hasSubregion = false, m_allResiduals = false;
     TRegion m_subregion;
     int m_blocks = 1;
@@ -265,6 +263,7 @@ protected:
             region,
             [this](const typename TOutputImage::RegionType &outputRegion) { this->DynamicThreadedGenerateData(outputRegion); },
             this);
+        // DynamicThreadedGenerateData(region);
     }
 
     virtual void DynamicThreadedGenerateData(const TRegion &region) override {
@@ -345,7 +344,7 @@ protected:
                     }
 
                     if (!std::get<0>(status)) {
-                        std::cerr << "FT failed for voxel " << residual_iter.GetIndex() << ": " << std::get<1>(status) << std::endl;
+                        std::cerr << "Fit failed for voxel " << residual_iter.GetIndex() << ": " << std::get<1>(status) << std::endl;
                     }
 
                     if constexpr(Blocked) {

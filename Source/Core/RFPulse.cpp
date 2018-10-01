@@ -16,7 +16,6 @@
 namespace QI {
 
 RFPulse::RFPulse(const rapidjson::Value &json) {
-    FA = QI::GetMember(json, "FA").GetDouble() * M_PI / 180;
     Trf = QI::GetMember(json, "Trf").GetDouble();
     p1 = QI::GetMember(json, "p1").GetDouble();
     p2 = QI::GetMember(json, "p2").GetDouble();
@@ -29,7 +28,6 @@ rapidjson::Value RFPulse::toJSON(rapidjson::Document::AllocatorType &a) const {
     json_val.AddMember("p1", p1, a);
     json_val.AddMember("p2", p2, a);
     json_val.AddMember("name", name, a);
-    json_val.AddMember("FA", FA * 180 / M_PI, a);
     return json_val;
 }
 

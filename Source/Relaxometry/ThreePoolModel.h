@@ -27,29 +27,29 @@ namespace QI {
 struct ThreePoolModel {
     using DataType      = double;
     using ParameterType = double;
-    using SequenceType  = QI::SequenceBase;
+    using SequenceType  = QI::SequenceGroup;
 
     static const int NV = 10;
     static const int NF = 2;
+    static const int NO = 2;
     static std::array<const std::string, NV> varying_names;
     static std::array<const std::string, NF> fixed_names;
     static const QI_ARRAYN(double, NF) fixed_defaults;
 
+    const SequenceType &sequence;
     bool scale_to_mean = false;
+    TwoPoolModel two_pool;
 
     QI_ARRAYN(double, NV) bounds_lo;
     QI_ARRAYN(double, NV) bounds_hi;
 
-    ThreePoolModel();
+    ThreePoolModel(const SequenceType &s, const bool scale);
     bool valid(const QI_ARRAYN(double, NV) &params) const; // For SRC
-
-    TwoPoolModel two_pool;
+    int size(int i) {
+        return sequence.at(i)->size();
+    }
     Eigen::ArrayXd SSFP1(const double &PD, const double &T1, const double &T2,
                          const double &f0, const double &B1, const QI::SSFPSequence *s) const;
-
-    Eigen::MatrixXd SSFP2(const Eigen::ArrayXd &varying,
-                          const QI_ARRAYN(double, NF) &fixed,
-                          const QI::SSFPSequence *s) const; // Helper function for SSFP
 
     Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
                                const QI_ARRAYN(double, NF) &fixed,
@@ -67,9 +67,15 @@ struct ThreePoolModel {
                                const QI_ARRAYN(double, NF) &fixed,
                                const QI::SSFPEchoSequence *s) const;
 
-    virtual Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
-                                  const QI_ARRAYN(double, NF) &fixed,
-                                  const QI::SequenceBase *s) const;
+    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) &fixed,
+                          const QI::SequenceBase *s) const;
+
+    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) &fixed) const;
+
+    std::vector<Eigen::ArrayXd> signals(const Eigen::ArrayXd &varying,
+                                        const QI_ARRAYN(double, NF) &fixed) const;
 };
 
 } // End namespace QI

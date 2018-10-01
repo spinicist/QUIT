@@ -32,30 +32,30 @@ template<> std::array<const std::string, 1> DESPOT1::fixed_names{{"B1"s}};
 template<> const QI_ARRAYN(double, 1) DESPOT1::fixed_defaults{1.0};
 template<> template<typename Derived>
 auto DESPOT1::signal(const Eigen::ArrayBase<Derived> &v,
-                     const QI_ARRAYN(double, NF) &f,
-                     const QI::SPGRSequence *s) const -> QI_ARRAY(typename Derived::Scalar)
+                     const QI_ARRAYN(double, NF) &f) const -> QI_ARRAY(typename Derived::Scalar)
 {
-    return QI::SPGRSignal(v[0], v[1], f[0], s);
+    return QI::SPGRSignal(v[0], v[1], f[0], sequence);
 }
 
 using DESPOT1Fit = QI::FitFunction<DESPOT1>;
 
 struct DESPOT1LLS : DESPOT1Fit {
+    using DESPOT1Fit::DESPOT1Fit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT1::NV) &outputs,
                           ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
     {
         const Eigen::ArrayXd &data = inputs[0];
         const double &B1 = fixed[0];
-        Eigen::ArrayXd flip = sequence->FA * B1;
+        Eigen::ArrayXd flip = model.sequence.FA * B1;
         Eigen::VectorXd Y = data / flip.sin();
         Eigen::MatrixXd X(Y.rows(), 2);
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         Eigen::Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         outputs << QI::Clamp(b[1] / (1. - b[0]), model.bounds_lo[0], model.bounds_hi[0]),
-                   QI::Clamp(-sequence->TR / log(b[0]), model.bounds_lo[1], model.bounds_hi[1]);
-        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed, sequence);
+                   QI::Clamp(-model.sequence.TR / log(b[0]), model.bounds_lo[1], model.bounds_hi[1]);
+        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed);
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
             residuals[0] = temp_residuals;
         }
@@ -66,23 +66,24 @@ struct DESPOT1LLS : DESPOT1Fit {
 };
 
 struct DESPOT1WLLS : DESPOT1Fit {
+    using DESPOT1Fit::DESPOT1Fit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, DESPOT1::NV) &outputs,
                           ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const override
     {
         const Eigen::ArrayXd &data = inputs[0];
         const double &B1 = fixed[0];
-        Eigen::ArrayXd flip = sequence->FA * B1;
+        Eigen::ArrayXd flip = model.sequence.FA * B1;
         Eigen::VectorXd Y = data / flip.sin();
         Eigen::MatrixXd X(Y.rows(), 2);
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         Eigen::Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        Eigen::Array2d out{b[1] / (1. - b[0]), -sequence->TR / log(b[0])};
+        Eigen::Array2d out{b[1] / (1. - b[0]), -model.sequence.TR / log(b[0])};
         for (iterations = 0; iterations < max_iterations; iterations++) {
-            Eigen::VectorXd W = (flip.sin() / (1. - (exp(-sequence->TR/out[1])*flip.cos()))).square();
+            Eigen::VectorXd W = (flip.sin() / (1. - (exp(-model.sequence.TR/out[1])*flip.cos()))).square();
             b = (X.transpose() * W.asDiagonal() * X).partialPivLu().solve(X.transpose() * W.asDiagonal() * Y);
-            Eigen::Array2d newOut{b[1] / (1. - b[0]), -sequence->TR / log(b[0])};
+            Eigen::Array2d newOut{b[1] / (1. - b[0]), -model.sequence.TR / log(b[0])};
             if (newOut.isApprox(out))
                 break;
             else
@@ -91,7 +92,7 @@ struct DESPOT1WLLS : DESPOT1Fit {
         // std::cout << "PD " << out[0] << " T1 " << out[1] << std::endl;
         outputs << QI::Clamp(out[0], model.bounds_lo[0], model.bounds_hi[0]),
                    QI::Clamp(out[1], model.bounds_lo[1], model.bounds_hi[1]);
-        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed.cast<double>(), sequence);
+        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed.cast<double>());
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
             residuals[0] = temp_residuals;
         }
@@ -101,7 +102,9 @@ struct DESPOT1WLLS : DESPOT1Fit {
 };
 
 struct DESPOT1NLLS : DESPOT1Fit {
-    DESPOT1NLLS() {
+    DESPOT1NLLS(DESPOT1 &m) :
+        DESPOT1Fit(m)
+    {
         // Do not let these go negative for non-linear fitting
         model.bounds_lo[0] = 1e-6;
         model.bounds_lo[1] = 1e-6;
@@ -122,8 +125,8 @@ struct DESPOT1NLLS : DESPOT1Fit {
         ceres::Problem problem;
         using Cost     = QI::ModelCost<DESPOT1>;
         using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, DESPOT1::NV>;
-        auto *cost = new Cost(model, sequence, fixed, data);
-        auto *auto_cost = new AutoCost(cost, sequence->size());
+        auto *cost = new Cost(model, fixed, data);
+        auto *auto_cost = new AutoCost(cost, model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
         problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0] / scale);
         problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0] / scale);
@@ -179,15 +182,15 @@ int main(int argc, char **argv) {
     QI_LOG(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SPGRSequence spgrSequence(QI::GetMember(input, "SPGR"));
+    DESPOT1 model{spgrSequence};
     if (simulate) {
-        DESPOT1 model;
-        QI::SimulateModel<DESPOT1, false>(input, model, {&spgrSequence}, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<DESPOT1, false>(input, model, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());
     } else {
         DESPOT1Fit *d1 = nullptr;
         switch (algorithm.Get()) {
-            case 'l': d1 = new DESPOT1LLS();  QI_LOG(verbose, "LLS algorithm selected." ); break;
-            case 'w': d1 = new DESPOT1WLLS(); QI_LOG(verbose, "WLLS algorithm selected." ); break;
-            case 'n': d1 = new DESPOT1NLLS(); QI_LOG(verbose, "NLLS algorithm selected." ); break;
+            case 'l': d1 = new DESPOT1LLS(model);  QI_LOG(verbose, "LLS algorithm selected." ); break;
+            case 'w': d1 = new DESPOT1WLLS(model); QI_LOG(verbose, "WLLS algorithm selected." ); break;
+            case 'n': d1 = new DESPOT1NLLS(model); QI_LOG(verbose, "NLLS algorithm selected." ); break;
             default: QI_FAIL("Unknown algorithm type: " << algorithm.Get());
         }
         if (clampPD) {
@@ -199,10 +202,8 @@ int main(int argc, char **argv) {
             d1->model.bounds_hi[1] = clampT1.Get();
         }
         if (its) d1->max_iterations = its.Get();
-        d1->sequence = &spgrSequence;
-        auto fit = itk::ModelFitFilter<DESPOT1Fit>::New();
+        auto fit = itk::ModelFitFilter<DESPOT1Fit>::New(d1);
         fit->SetVerbose(verbose);
-        fit->SetFitFunction(d1);
         fit->SetOutputAllResiduals(resids);
         fit->SetInput(0, QI::ReadVectorImage(spgr_path.Get(), verbose));
         if (B1) fit->SetFixed(0, QI::ReadImage(B1.Get(), verbose));

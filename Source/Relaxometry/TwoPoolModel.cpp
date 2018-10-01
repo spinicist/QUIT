@@ -26,7 +26,9 @@ std::array<const std::string, 7> TwoPoolModel::varying_names{{"PD"s, "T1_m"s, "T
 std::array<const std::string, 2> TwoPoolModel::fixed_names{{"f0"s, "B1"s}};
 const QI_ARRAYN(double, 2) TwoPoolModel::fixed_defaults{0.0, 1.0};
 
-TwoPoolModel::TwoPoolModel() {
+TwoPoolModel::TwoPoolModel(const SequenceType &s, const bool scale) :
+    sequence{s}, scale_to_mean{scale}
+{
     bounds_lo << 1.0, 0.300, 0.010, 0.9, 0.040, 0.025, 0.001;
     bounds_hi << 1.0, 0.800, 0.030, 1.5, 0.150, 0.600, 0.35;
 }
@@ -56,6 +58,28 @@ auto TwoPoolModel::signal(const Eigen::ArrayXd &varying,
     const auto ssfpe = dynamic_cast<const QI::SSFPEchoSequence *>(s);
     if (ssfpe) return ssfp_signal(varying, fixed, ssfpe);
     QI_FAIL("Given pointer was not to SPGR/SPGREcho/SSFP/SSFPEcho");
+}
+
+auto TwoPoolModel::signal(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) &fixed) const -> Eigen::ArrayXd
+{
+    Eigen::ArrayXd signals(sequence.size());
+    int index = 0;
+    for (size_t i = 0; i < sequence.count(); i++) {
+        signals.segment(index, sequence.at(i)->size()) = signal(varying, fixed, sequence.at(i));
+        index += sequence.at(i)->size();
+    }
+    return signals;
+}
+
+auto TwoPoolModel::signals(const Eigen::ArrayXd &varying,
+                           const QI_ARRAYN(double, NF) &fixed) const -> std::vector<Eigen::ArrayXd>
+{
+    std::vector<Eigen::ArrayXd> signals(sequence.count());
+    for (size_t i = 0; i < sequence.count(); i++) {
+        signals[i] = signal(varying, fixed, sequence.at(i));
+    }
+    return signals;
 }
 
 Eigen::ArrayXd TwoPoolModel::spgr_signal(const Eigen::ArrayXd &varying,

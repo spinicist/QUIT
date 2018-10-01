@@ -36,7 +36,8 @@ void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::
 void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose, args::ValueFlag<int> &threads) {
     try {
         parser.ParseCLI(argc, argv);
-        QI_LOG(verbose,  "Starting " << argv[0] << " " << QI::GetVersion());
+        QI_LOG(verbose, "Starting " << argv[0] << " " << QI::GetVersion());
+        QI_LOG(verbose, "Setting maximum number of threads " << threads.Get());
         itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
     } catch (args::Help) {
         std::cout << parser;

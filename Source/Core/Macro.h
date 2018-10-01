@@ -59,4 +59,17 @@
 #define QI_DBVECT( x )
 #endif
 
+#define QI_ForwardNewMacro(x)                                  \
+  template<class... Args>                                      \
+  static Pointer New(Args &&... args)                          \
+    {                                                          \
+    Pointer smartPtr = ::itk::ObjectFactory< x >::Create();    \
+    if ( smartPtr == nullptr )                                 \
+      {                                                        \
+      smartPtr = new x(std::forward<Args>(args)...);           \
+      }                                                        \
+    smartPtr->UnRegister();                                    \
+    return smartPtr;                                           \
+    }
+
 #endif // QI_MACRO_H

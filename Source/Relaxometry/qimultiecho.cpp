@@ -30,13 +30,12 @@ using namespace std::literals;
 using MultiEcho = QI::Model<2, 0, QI::MultiEchoBase>;
 template<> template<typename Derived>
 auto MultiEcho::signal(const Eigen::ArrayBase<Derived> &p,
-                       const QI_ARRAYN(double, 0) &/*Unused*/,
-                       const QI::MultiEchoBase *s) const -> QI_ARRAY(typename Derived::Scalar)
+                       const QI_ARRAYN(double, 0) &/*Unused*/) const -> QI_ARRAY(typename Derived::Scalar)
 {
     using T = typename Derived::Scalar;
     const T &PD = p[0];
     const T &T2 = p[1];
-    return PD * exp(-s->TE / T2);
+    return PD * exp(-sequence.TE / T2);
 }
 template<> std::array<const std::string, 2> MultiEcho::varying_names{{"PD"s, "T2"s}};
 template<> std::array<const std::string, 0> MultiEcho::fixed_names{{}};
@@ -45,20 +44,20 @@ template<> const QI_ARRAYN(double, 0) MultiEcho::fixed_defaults{};
 using MultiEchoFit = QI::BlockFitFunction<MultiEcho>;
 
 struct MultiEchoLogLin : MultiEchoFit {
-public:
+    using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, MultiEcho::NV) &outputs,
                           ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations,
                           const int /*Unused*/) const override
     {
         const Eigen::ArrayXd &data = inputs[0];
-        Eigen::MatrixXd X(sequence->size(), 2);
-        X.col(0) = sequence->TE;
+        Eigen::MatrixXd X(model.sequence.size(), 2);
+        X.col(0) = model.sequence.TE;
         X.col(1).setOnes();
         Eigen::VectorXd Y = data.array().log();
         Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         outputs << exp(b[1]), -1 / b[0];
-        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed, sequence);
+        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed);
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
             residuals[0] = temp_residuals;
         }
@@ -69,17 +68,17 @@ public:
 };
 
 struct MultiEchoARLO : MultiEchoFit {
-public:
+    using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, MultiEcho::NV) &outputs,
                           ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations,
                           const int /*Unused*/) const override
     {
         const Eigen::ArrayXd &data = inputs[0];
-        const double ESP = sequence->TE[1] - sequence->TE[0];
+        const double ESP = model.sequence.TE[1] - model.sequence.TE[0];
         const double dTE_3 = (ESP / 3);
         double si2sum = 0, di2sum = 0, sidisum = 0;
-        for (Eigen::Index i = 0; i < sequence->size() - 2; i++) {
+        for (Eigen::Index i = 0; i < model.sequence.size() - 2; i++) {
             const double si = dTE_3 * (data(i) + 4*data(i+1) + data(i+2));
             const double di = data(i) - data(i+2);
             si2sum += si*si;
@@ -87,9 +86,9 @@ public:
             sidisum += si*di;
         }
         double T2 = (si2sum + dTE_3*sidisum) / (dTE_3*di2sum + sidisum);
-        double PD = (data.array() / exp(-sequence->TE / T2)).mean();
+        double PD = (data.array() / exp(-model.sequence.TE / T2)).mean();
         outputs << PD, T2;
-        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed, sequence);
+        const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed);
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
             residuals[0] = temp_residuals;
         }
@@ -100,6 +99,7 @@ public:
 };
 
 struct MultiEchoNLLS : MultiEchoFit {
+    using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &fixed, QI_ARRAYN(OutputType, MultiEcho::NV) &p,
                           ResidualType &residual, std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations,
@@ -116,8 +116,8 @@ struct MultiEchoNLLS : MultiEchoFit {
         ceres::Problem problem;
         using Cost     = QI::ModelCost<MultiEcho>;
         using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, MultiEcho::NV>;
-        auto *cost = new Cost(model, sequence, fixed, data);
-        auto *auto_cost = new AutoCost(cost, sequence->size());
+        auto *cost = new Cost(model, fixed, data);
+        auto *auto_cost = new AutoCost(cost, model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
         problem.SetParameterLowerBound(p.data(), 0, 1.0e-6);
         problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0] / scale);
@@ -176,22 +176,19 @@ int main(int argc, char **argv) {
     } else {
         QI_FAIL("Could not find MultiEcho or MultiEchoFlex in JSON input");
     }
+    MultiEcho model{*sequence};
     if (simulate) {
-        MultiEcho model;
-        QI::SimulateModel<MultiEcho, false>(input, model, {sequence}, {}, {QI::CheckPos(input_path)}, verbose, simulate.Get());
+        QI::SimulateModel<MultiEcho, false>(input, model, {}, {QI::CheckPos(input_path)}, verbose, simulate.Get());
     } else {
         MultiEchoFit *me = nullptr;
         switch (algorithm.Get()) {
-            case 'l': me = new MultiEchoLogLin(); QI_LOG(verbose, "LogLin algorithm selected." ); break;
-            case 'a': me = new MultiEchoARLO(); QI_LOG(verbose, "ARLO algorithm selected." ); break;
-            case 'n': me = new MultiEchoNLLS(); QI_LOG(verbose, "Non-linear algorithm (Levenberg Marquardt) selected." ); break;
+            case 'l': me = new MultiEchoLogLin(model); QI_LOG(verbose, "LogLin algorithm selected." ); break;
+            case 'a': me = new MultiEchoARLO(model); QI_LOG(verbose, "ARLO algorithm selected." ); break;
+            case 'n': me = new MultiEchoNLLS(model); QI_LOG(verbose, "Non-linear algorithm (Levenberg Marquardt) selected." ); break;
             default: QI_FAIL("Unknown algorithm type " << algorithm.Get());
         }
-        // size_t nVols = inputFile->GetLargestPossibleRegion().GetSize()[3] / multiecho.size();
-        me->sequence = sequence;
-        auto fit = itk::ModelFitFilter<MultiEchoFit>::New();
+        auto fit = itk::ModelFitFilter<MultiEchoFit>::New(me);
         fit->SetVerbose(verbose);
-        fit->SetFitFunction(me);
         fit->SetOutputAllResiduals(resids);
         auto input = QI::ReadVectorImage(input_path.Get(), verbose);
         fit->SetInput(0, input);

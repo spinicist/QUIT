@@ -35,16 +35,16 @@ struct FitFunctionBase {
     using SequenceType = typename ModelType::SequenceType;
     static const bool Blocked = Blocked_;
     static const bool Indexed = Indexed_;
-    const SequenceType *sequence;
-    ModelType     model;
+    ModelType &model;
     int max_iterations = 30;
     int n_inputs() const  { return 1; }
-    int input_size(const int /* Unused */) const { return sequence->size(); }
+    int input_size(const int /* Unused */) const { return model.sequence.size(); }
     int n_fixed() const { return ModelType::NF; }
     int n_outputs() const { return ModelType::NV; }
 
-    FitFunctionBase() = default;
-    FitFunctionBase(SequenceType *s) { sequence = s; }
+    FitFunctionBase(ModelType &m) :
+        model{m}
+    {}
 };
 
 template <typename ModelType, typename FlagType_ = int>
