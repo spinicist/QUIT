@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
     QI::SSFPMTSequence ssfp(QI::GetMember(input, "SSFPMT"));
     EMTModel model{ssfp};
     if (simulate) {
-        QI::SimulateModel<EMTModel, true>(input, model, {B1.Get()}, {G_path.Get(), a_path.Get(), b_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<EMTModel, true>(input, model, {f0.Get(), B1.Get()}, {G_path.Get(), a_path.Get(), b_path.Get()}, verbose, simulate.Get());
     } else {
         EMTFit fit{model};
         fit.model.T2_b = T2_b_us.Get() * 1e-6;
