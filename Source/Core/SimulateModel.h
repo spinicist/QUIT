@@ -43,10 +43,10 @@ void SimulateModel(rapidjson::Value &json, const Model &model,
     QI_LOG(verbose, "Simulating model");
     simulator->Update();
     if constexpr(MultiOutput) {
-        if (outpaths.size() != model.NO) {
-           QI_FAIL("Number of output paths " << outpaths.size() << " does not match number of outputs " << model.NO);
+        if (outpaths.size() != model.num_outputs()) {
+           QI_FAIL("Number of output paths " << outpaths.size() << " does not match number of outputs " << model.num_outputs());
         }
-        for (size_t i = 0; i < model.NO; i++) {
+        for (size_t i = 0; i < model.num_outputs(); i++) {
             QI_LOG(verbose, "Writing output image: " << outpaths[i]);
             QI::WriteVectorImage(simulator->GetOutput(i), outpaths[i]);
         }

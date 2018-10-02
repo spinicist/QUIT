@@ -29,14 +29,17 @@ struct EMTModel {
     using SequenceType = QI::SSFPMTSequence;
     static const int NV = 5;
     static const int NF = 2;
-    static const int NO = 3;
+
     static std::array<const std::string, NV> varying_names;
     static std::array<const std::string, NF> fixed_names;
     static const QI_ARRAYN(double, NF) fixed_defaults;
     const SequenceType &sequence;
     double T2_b = 12.e-6;
 
-    int size(int /* Unused */) {
+    size_t num_outputs() const {
+        return 3;
+    }
+    int output_size(int /* Unused */) {
         return sequence.size();
     }
 

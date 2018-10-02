@@ -42,8 +42,8 @@ public:
     {
         this->SetNumberOfRequiredInputs(ModelType::NV);
         if constexpr(MultiOutput) {
-            this->SetNumberOfRequiredOutputs(ModelType::NO);
-            for (size_t i = 0; i < ModelType::NO; i++) {
+            this->SetNumberOfRequiredOutputs(m_model.num_outputs());
+            for (size_t i = 0; i < m_model.num_outputs(); i++) {
                 this->SetNthOutput(i, this->MakeOutput(i));
             }
         } else {
@@ -137,7 +137,7 @@ protected:
             op->SetOrigin(ip->GetOrigin());
             op->SetDirection(ip->GetDirection());
             if constexpr(MultiOutput) {
-                op->SetNumberOfComponentsPerPixel(m_model.size(i));
+                op->SetNumberOfComponentsPerPixel(m_model.output_size(i));
             } else {
                 op->SetNumberOfComponentsPerPixel(m_model.sequence.size());
             }

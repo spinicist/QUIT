@@ -102,7 +102,7 @@ struct RamaniFullModel {
     
     static const int NV = 6;
     static const int NF = 3;
-    static const int NO = 2;
+    
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);
     static std::array<const std::string, NV> varying_names;
@@ -119,7 +119,10 @@ struct RamaniFullModel {
         reduced{s, ls, interp}, sequence{s}
     { }
 
-    int size(int i) {
+    size_t num_outputs() const {
+        return 2;
+    }
+    int output_size(int i) {
         if (i == 0) {
             return sequence.size();
         } else {

@@ -38,7 +38,6 @@ struct HIFIModel {
 
     static const int NV = 3;
     static const int NF = 0;
-    static const int NO = 2;
 
     static std::array<const std::string, 3> varying_names;
     static std::array<const std::string, 0> fixed_names;
@@ -50,7 +49,10 @@ struct HIFIModel {
     QI_ARRAYN(double, 3) bounds_lo = QI_ARRAYN(double, NV)::Constant(1.0e-4);
     QI_ARRAYN(double, 3) bounds_hi = QI_ARRAYN(double, NV)::Constant(std::numeric_limits<double>::infinity());
 
-    int size(int i) {
+    size_t num_outputs() const {
+        return 2;
+    }
+    int output_size(int i) {
         if (i == 0) {
             return spgr.size();
         } else if (i == 1) {

@@ -31,7 +31,6 @@ struct ThreePoolModel {
 
     static const int NV = 10;
     static const int NF = 2;
-    static const int NO = 2;
     static std::array<const std::string, NV> varying_names;
     static std::array<const std::string, NF> fixed_names;
     static const QI_ARRAYN(double, NF) fixed_defaults;
@@ -45,7 +44,10 @@ struct ThreePoolModel {
 
     ThreePoolModel(const SequenceType &s, const bool scale);
     bool valid(const QI_ARRAYN(double, NV) &params) const; // For SRC
-    int size(int i) {
+    size_t num_outputs() const {
+        return sequence.count();
+    }
+    int output_size(int i) {
         return sequence.at(i)->size();
     }
     Eigen::ArrayXd SSFP1(const double &PD, const double &T1, const double &T2,

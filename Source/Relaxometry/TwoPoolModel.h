@@ -29,7 +29,6 @@ struct TwoPoolModel {
 
     static const int NV = 7;
     static const int NF = 2;
-    static const int NO = 2;
     static std::array<const std::string, 7> varying_names;
     static std::array<const std::string, 2> fixed_names;
     static const QI_ARRAYN(double, 2) fixed_defaults;
@@ -42,7 +41,10 @@ struct TwoPoolModel {
 
     TwoPoolModel(const SequenceType &s, const bool scale);
     bool valid(const QI_ARRAYN(double, NV) &params) const; // For SRC
-    int size(int i) {
+    size_t num_outputs() const {
+        return sequence.count();
+    }
+    int output_size(int i) {
         return sequence.at(i)->size();
     }
 
