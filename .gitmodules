@@ -7,5 +7,3 @@
 [submodule "External/eigen"]
 	path = External/eigen
 	url = https://github.com/eigenteam/eigen-git-mirror.git
-[submodule "ITK"]
-	shallow = true
