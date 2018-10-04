@@ -64,7 +64,7 @@ This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excita
 
     qi_rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.json
 
-**Example Input File**
+**Example Command Line**
 
 .. code-block:: json
 
@@ -345,7 +345,7 @@ The file specified on the command line is the *output* file.
 
     Fill voxels with a gradient along the specified dimension, starting at the low value at one edge and finishing at the high value on the other. It is recommended to encase ``DIM,LOW,HIGH`` with quotation marks as they must be passed as a single string to be interpreted properly.
 
-- ``--step, -t "DIM,LOW,HIGH,STEPS"
+- ``--step, -t "DIM,LOW,HIGH,STEPS"``
 
     Similar to ``--grad``, but instead of a smooth gradient will with a number of discrete steps.
 
