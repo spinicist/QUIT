@@ -299,7 +299,6 @@ int main(int argc, char **argv) {
         fit_filter->SetVerbose(verbose);
         fit_filter->SetOutputAllResiduals(resids);
         fit_filter->SetInput(0, QI::ReadVectorImage(mtsat_path.Get(), verbose));
-        fit_filter->SetNumberOfWorkUnits(threads.Get());
         if (f0) fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
         if (B1) fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
         if (T1) fit_filter->SetFixed(2, QI::ReadImage(T1.Get(), verbose));

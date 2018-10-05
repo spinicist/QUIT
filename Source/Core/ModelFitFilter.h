@@ -259,6 +259,7 @@ protected:
             }
         }
 
+        this->GetMultiThreader()->SetNumberOfWorkUnits(this->GetNumberOfWorkUnits());
         this->GetMultiThreader()->template ParallelizeImageRegion<ImageDimension>(
             region,
             [this](const typename TOutputImage::RegionType &outputRegion) { this->DynamicThreadedGenerateData(outputRegion); },
