@@ -20,6 +20,7 @@
 #include "itkMaskImageFilter.h"
 #include "itkAddImageFilter.h"
 
+// #define QI_DEBUG_BUILD 1
 #include "ImageTypes.h"
 #include "Util.h"
 #include "ImageIO.h"
@@ -41,7 +42,7 @@ Eigen::Array2cf One_MP2RAGE(const double &M0, const double &T1, const double &B1
     const double R1 = 1. / T1;
     const Eigen::Array2d R1s = R1 - log(cos(B1 * s.FA))/s.TR;
     const Eigen::Array2d M0s = M0 * (1. - exp(-s.TR*R1)) / (1. - exp(-s.TR*R1s));
-    const double tau = s.ETL * s.TR;
+    const double tau = s.SegLength * s.TR;
 
     const Eigen::Array3d B = exp(-s.TD*R1);
     const Eigen::Array3d A = M0*(1. - B);
@@ -54,9 +55,18 @@ Eigen::Array2cf One_MP2RAGE(const double &M0, const double &T1, const double &B1
     const double denominator = (1 + eta*B[0]*D[0]*B[1]*D[1]*B[2]);
     Mm[0] = (A[0]-eta*B[0]*(A[2]+B[2]*(C[1]+D[1]*(A[1]+B[1]*C[0])))) / denominator;
     Mm[1] = (A[1]+B[1]*(C[0]+D[0]*(A[0]-eta*B[0]*(A[2]+B[2]*C[1])))) / denominator;
-
     Eigen::Array2cf Me = Eigen::Array2cf::Zero();
-    Me.real() = (Mm * sin(B1 * s.FA)).cast<float>();
+    Me.real() = ((M0s + (Mm - M0s)*exp(-s.TR*R1s*s.k0))*sin(B1 * s.FA)).cast<float>();
+    QI_DB( M0 )
+    QI_DB( T1 )
+    QI_DB( B1 )
+    QI_DBVEC( Mm )
+    QI_DBVEC( Me )
+    QI_DB( s.TR )
+    QI_DBVEC( s.TD )
+    QI_DBVEC( s.FA )
+    QI_DB( s.SegLength )
+    QI_DB( s.k0 )
     return Me;
 }
 
@@ -103,12 +113,13 @@ int main(int argc, char **argv) {
         rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
         QI::MP2RAGESequence mp2rage_sequence(input["MP2RAGE"]);
         QI_LOG(verbose, "Building look-up spline");
-        int num_entries = 20;
-        Eigen::ArrayXd T1_values = Eigen::ArrayXd::LinSpaced(num_entries, 0.1, 4.0);
+        int num_entries = 100;
+        Eigen::ArrayXd T1_values = Eigen::ArrayXd::LinSpaced(num_entries, 0.25, 4.0);
         Eigen::ArrayXd MP2_values(num_entries);
         for (int i = 0; i < num_entries; i++) {
             const auto sig = One_MP2RAGE(1., T1_values[i], 1., mp2rage_sequence);
             const float mp2 = MP2Contrast(sig[0], sig[1]);
+            QI_DB(mp2)
             if ((i > 0) && (mp2 > MP2_values[i - 1])) {
                 num_entries = i;
                 break;
@@ -116,6 +127,7 @@ int main(int argc, char **argv) {
                 MP2_values[i] = mp2;
             }
         }
+        QI_LOG(verbose, "There are " << num_entries << " entries in lookup table");
         QI::SplineInterpolator mp2_to_t1(MP2_values.head(num_entries), T1_values.head(num_entries));
         if (beta) {
             QI_LOG(verbose, "Recalculating unregularised MP2 image");

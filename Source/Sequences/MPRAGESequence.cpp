@@ -11,12 +11,15 @@
 
 #include "MPRAGESequence.h"
 
-namespace QI {
+namespace QI
+{
 
 Eigen::Index MPRAGESequence::size() const { return 1; }
 
-MPRAGESequence::MPRAGESequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+MPRAGESequence::MPRAGESequence(const rapidjson::Value &json)
+{
+    if (json.IsNull())
+        QI_FAIL("Could not read sequence: " << name());
     TR = GetMember(json, "TR").GetDouble();
     TI = GetMember(json, "TI").GetDouble();
     TD = GetMember(json, "TD").GetDouble();
@@ -24,10 +27,11 @@ MPRAGESequence::MPRAGESequence(const rapidjson::Value &json) {
     FA = GetMember(json, "FA").GetDouble() * M_PI / 180;
     ETL = GetMember(json, "ETL").GetInt();
     eta = GetMember(json, "eta").GetDouble();
-
 }
 
-rapidjson::Value MPRAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+rapidjson::Value
+MPRAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const
+{
     rapidjson::Value json(rapidjson::kObjectType);
     json.AddMember("TR", TR, a);
     json.AddMember("TI", TI, a);
@@ -45,27 +49,33 @@ rapidjson::Value MPRAGESequence::toJSON(rapidjson::Document::AllocatorType &a) c
 
 Eigen::Index MP2RAGESequence::size() const { return 2; }
 
-MP2RAGESequence::MP2RAGESequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+MP2RAGESequence::MP2RAGESequence(const rapidjson::Value &json)
+{
+    if (json.IsNull())
+        QI_FAIL("Could not read sequence: " << name());
     TR = GetMember(json, "TR").GetDouble();
     auto TI = ArrayFromJSON(json, "TI");
-    auto SegTR = json["SegTR"].GetDouble();
+    auto TRPrep = GetMember(json, "TRPrep").GetDouble();
     FA = ArrayFromJSON(json, "FA", M_PI / 180);
-    ETL = GetMember(json, "ETL").GetInt();
-    TD[0] = TI[0];
-    TD[1] = TI[1] - (ETL * TR) - TI[0];
-    TD[2] = SegTR - (ETL * TR) - TI[1];
+    SegLength = GetMember(json, "SegLength").GetInt();
+    k0 = GetMember(json, "k0").GetInt();
+    TD[0] = TI[0] - k0*TR;
+    TD[1] = TI[1] - (TI[0] + SegLength*TR);
+    TD[2] = TRPrep - (TI[1] + (SegLength - k0)*TR);
 }
 
-rapidjson::Value MP2RAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    Eigen::Array2d TI{TD[0], TD[1] + (ETL * TR) + TD[0]};
-    double SegTR = TI[1] + (ETL * TR) + TD[2];
+rapidjson::Value
+MP2RAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const
+{
+    Eigen::Array2d TI{TD[0], TD[1] + SegLength*TR + TD[0]};
+    double TRPrep = TI[1] + (SegLength - k0) * TR + TD[2];
     rapidjson::Value json;
     json.AddMember("TR", TR, a);
-    json.AddMember("SegTR", SegTR, a);
+    json.AddMember("TRPrep", TRPrep, a);
     json.AddMember("TI", ArrayToJSON(TI, a), a);
     json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    json.AddMember("ETL", ETL, a);
+    json.AddMember("SegLength", SegLength, a);
+    json.AddMember("k0", k0, a);
     return json;
 }
 

@@ -12,26 +12,26 @@
 #ifndef SEQUENCES_MPRAGE_H
 #define SEQUENCES_MPRAGE_H
 
-#include "SequenceBase.h"
 #include "Macro.h"
+#include "SequenceBase.h"
 
 namespace QI {
 
 struct MPRAGESequence : SequenceBase {
-    double TR, FA, eta, TI, TD;
-    int ETL, k0;
-    QI_SEQUENCE_DECLARE(MPRAGE);
-    Eigen::Index size() const override;
+  double TR, FA, eta, TI, TD;
+  int ETL, k0;
+  QI_SEQUENCE_DECLARE(MPRAGE);
+  Eigen::Index size() const override;
 };
 
 struct MP2RAGESequence : SequenceBase {
-    double TR;
-    int ETL;
-    Eigen::Array2d FA;
-    Eigen::Array3d TD;
+  double TR;
+  int SegLength, k0;
+  Eigen::Array2d FA;
+  Eigen::Array3d TD;
 
-    QI_SEQUENCE_DECLARE(MP2RAGE);
-    Eigen::Index size() const override;
+  QI_SEQUENCE_DECLARE(MP2RAGE);
+  Eigen::Index size() const override;
 };
 
 } // End namespace QI
