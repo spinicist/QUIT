@@ -21,17 +21,20 @@ This script calculates MTR / dcMTR from a time-series with 5 volumes:
 Use FSL
 
 Options:
-    -m MASK  Specify a mask
-    -o ORDER Change order of images REF P M PM MP
-    -v       Verbose mode (display progress)
+    -m MASK   Specify a mask
+    -o PREFIX Add an output prefix
+    -r ORDER  Change order of images REF P M PM MP
+    -v        Verbose mode (display progress)
 "
 MASK=""
 ORDER=(2 3 4 0 1)
+PREFIX=""
 VERBOSE=""
-while getopts "m:o:v" opt; do
+while getopts "m:o:r:v" opt; do
     case $opt in
         m) MASK="-mas $OPTARG";;
-        o) ORDER=($OPTARG);;
+        o) PREFIX="$OPTARG";;
+        r) ORDER=($OPTARG);;
         v) VERBOSE="-v";;
     esac
 done
@@ -60,10 +63,10 @@ MPVOL=${SPLIT_IMGS[${ORDER[3]}]}
 PMVOL=${SPLIT_IMGS[${ORDER[4]}]}
 
 log "Calculating ratios"
-fslmaths $PVOL -add $MVOL -div 2 -div $REFVOL -sub 1 -mul -100 -thr -100 -uthr 100 $MASK DMT_MTR
-fslmaths $PMVOL -add $MPVOL -div 2 -div $REFVOL -sub 1 -mul -100 -thr -100 -uthr 100 $MASK DMT_eMTR
-fslmaths DMT_eMTR -sub DMT_MTR -thr -100 -uthr 100 $MASK DMT_dcMTR
-fslmaths $PVOL -sub $MVOL -div $REFVOL -mul 100 -thr -100 -uthr 100 $MASK DMT_mtasym
+fslmaths $PVOL -add $MVOL -div 2 -div $REFVOL -sub 1 -mul -100 -thr -100 -uthr 100 $MASK ${PREFIX}DMT_MTR
+fslmaths $PMVOL -add $MPVOL -div 2 -div $REFVOL -sub 1 -mul -100 -thr -100 -uthr 100 $MASK ${PREFIX}DMT_eMTR
+fslmaths ${PREFIX}DMT_eMTR -sub ${PREFIX}DMT_MTR -thr -100 -uthr 100 $MASK ${PREFIX}DMT_dcMTR
+fslmaths $PVOL -sub $MVOL -div $REFVOL -mul 100 -thr -100 -uthr 100 $MASK ${PREFIX}DMT_mtasym
 
 log "Cleaning up"
 rm $MPVOL.nii* $PMVOL.nii* $REFVOL.nii* $PVOL.nii* $MVOL.nii*
