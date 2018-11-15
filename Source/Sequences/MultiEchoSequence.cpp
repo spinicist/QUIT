@@ -26,10 +26,10 @@ Eigen::Index MultiEchoBase::size() const {
  */
 MultiEchoSequence::MultiEchoSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
-    TE1 = json["TE1"].GetDouble();
-    ESP = json["ESP"].GetDouble();
-    ETL = json["ETL"].GetInt();
+    TR = GetMember(json, "TR").GetDouble();
+    TE1 = GetMember(json, "TE1").GetDouble();
+    ESP = GetMember(json, "ESP").GetDouble();
+    ETL = GetMember(json, "ETL").GetInt();
     TE = Eigen::ArrayXd::LinSpaced(ETL, TE1, TE1+ESP*(ETL - 1));
 }
 
@@ -47,7 +47,7 @@ rapidjson::Value MultiEchoSequence::toJSON(rapidjson::Document::AllocatorType &a
  */
 MultiEchoFlexSequence::MultiEchoFlexSequence(const rapidjson::Value &json) {
     if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
+    TR = GetMember(json, "TR").GetDouble();
     TE = ArrayFromJSON(json, "TE");
 }
 
