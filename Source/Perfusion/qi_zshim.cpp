@@ -15,35 +15,8 @@
 #include "Util.h"
 #include "ImageIO.h"
 #include "Args.h"
-#include "itkUnaryFunctorImageFilter.h"
-
-struct SoSFunctor {
-    int m_outsize = 0, m_zshims = 0;
-
-    SoSFunctor() = default;
-    SoSFunctor(const int isz, const int z) :
-        m_outsize(isz / z),
-        m_zshims(z)
-    {};
-    SoSFunctor &operator=(const SoSFunctor &other) {
-        m_outsize = other.m_outsize;
-        m_zshims = other.m_zshims;
-        return *this;
-    }
-
-    ~SoSFunctor() {};
-    bool operator!=(const SoSFunctor &) const { return true; }
-    bool operator==(const SoSFunctor &other) const { return !(*this != other); }
-    inline itk::VariableLengthVector<float> operator()(const itk::VariableLengthVector<float> &vec) const {
-        Eigen::Map<const Eigen::MatrixXf> input(vec.GetDataPointer(), m_zshims, m_outsize);
-        const Eigen::VectorXf output = input.colwise().norm();
-        itk::VariableLengthVector<float> out_vec(m_outsize);
-        for (int i = 0; i < m_outsize; i++) {
-            out_vec[i] = output[i];
-        }
-        return out_vec;
-    }
-};
+#include "itkImageRegionIterator.h"
+#include "itkImageRegionConstIterator.h"
 
 /*
  * Main
@@ -61,14 +34,34 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path), verbose);
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
-    SoSFunctor sos(input->GetNumberOfComponentsPerPixel(), zshims.Get());
-    auto sos_filter = itk::UnaryFunctorImageFilter<QI::VectorVolumeF, QI::VectorVolumeF, SoSFunctor>::New();
-    sos_filter->SetFunctor(sos);
-    sos_filter->SetInput(input);
+    const auto insize  = input->GetNumberOfComponentsPerPixel();
+    const auto outsize = insize / zshims.Get();
+
+    auto output = QI::VectorVolumeF::New();
+    output->CopyInformation(input);
+    output->SetRegions(input->GetBufferedRegion());
+    output->SetNumberOfComponentsPerPixel(outsize);
+    output->Allocate(true);
+
     QI_LOG(verbose, "Processing");
-    sos_filter->Update();
+    auto mt = itk::MultiThreaderBase::New();
+    mt->ParallelizeImageRegion<3>(input->GetBufferedRegion(),
+        [&](const QI::VectorVolumeF::RegionType &region) {
+            itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input, region);
+            itk::ImageRegionIterator<QI::VectorVolumeF> out_it(output, region);
+
+            for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it, ++out_it) {
+                const Eigen::Map<const Eigen::MatrixXf> input(in_it.Get().GetDataPointer(), zshims.Get(), outsize);
+                // std::cout << "***\n" << input << "\n" << std::endl;
+                const Eigen::VectorXf shimmed = input.colwise().norm();
+                // std::cout << shimmed.transpose() << std::endl;
+                itk::VariableLengthVector<float> itk_shimmed(shimmed.data(), outsize);
+                out_it.Set(itk_shimmed);
+            }
+        },
+        nullptr);
     const std::string fname = outPrefix + "_zshim" + QI::OutExt();
     QI_LOG(verbose, "Writing file: " << fname);
-    QI::WriteVectorImage(sos_filter->GetOutput(), fname);
+    QI::WriteVectorImage(output, fname);
     return EXIT_SUCCESS;
 }
