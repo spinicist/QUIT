@@ -109,7 +109,7 @@ END_FM
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
 
-qimcdespot -v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii -M3 -S $NTHREADS <<END_MCD
+qimcdespot -v -m $MASK_FILE -f FM_f0.nii -b POLY_B1.nii --bounds -M2 -S $SPGR_FILE $SSFP_FILE $NTHREADS <<END_MCD
 {
     "Sequences": [
         { $SPGR_SEQ },
