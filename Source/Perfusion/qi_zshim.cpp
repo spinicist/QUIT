@@ -31,11 +31,15 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<int> zshims(parser, "ZSHIMS", "Number of Z-Shims (default 8)", {'z', "zshims"}, 8);
+    args::ValueFlag<int> yshims(parser, "YSHIMS", "Number of Y-Shims (default 1)", {'y', "yshims"}, 1);
+    args::ValueFlag<int> zdrop(parser, "ZDROP", "Z-Shims to drop, default 0", {"zdrop"}, 0);
+    args::ValueFlag<int> ydrop(parser, "YDROP", "Y-Shims to drop, default 0", {"ydrop"}, 0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path), verbose);
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
-    const auto insize  = input->GetNumberOfComponentsPerPixel();
-    const auto outsize = insize / zshims.Get();
+    const int insize  = input->GetNumberOfComponentsPerPixel();
+    const auto gridsize = zshims.Get() * yshims.Get();
+    const auto outsize = insize / gridsize;
 
     auto output = QI::VectorVolumeF::New();
     output->CopyInformation(input);
@@ -51,11 +55,13 @@ int main(int argc, char **argv) {
             itk::ImageRegionIterator<QI::VectorVolumeF> out_it(output, region);
 
             for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it, ++out_it) {
-                const Eigen::Map<const Eigen::MatrixXf> input(in_it.Get().GetDataPointer(), zshims.Get(), outsize);
-                // std::cout << "***\n" << input << "\n" << std::endl;
-                const Eigen::VectorXf shimmed = input.colwise().norm();
-                // std::cout << shimmed.transpose() << std::endl;
-                itk::VariableLengthVector<float> itk_shimmed(shimmed.data(), outsize);
+                itk::VariableLengthVector<float> itk_shimmed(outsize);
+                for (auto out = 0; out < outsize; out++) {
+                    const Eigen::Map<const Eigen::MatrixXf> grid(in_it.Get().GetDataPointer() + gridsize*out, 
+                                                                 zshims.Get(),
+                                                                 yshims.Get());
+                    itk_shimmed[out] = grid.block(zdrop.Get(), ydrop.Get(), zshims.Get() - 2*zdrop.Get(), yshims.Get() - 2*ydrop.Get()).norm();
+                }
                 out_it.Set(itk_shimmed);
             }
         },

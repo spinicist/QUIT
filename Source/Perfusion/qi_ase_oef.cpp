@@ -22,14 +22,50 @@
 
 using namespace std::literals;
 
-using ASEModel = QI::Model<4, 3, QI::MultiEchoFlexSequence>;
-template<> std::array<const std::string, 4> ASEModel::varying_names{{"R2prime"s, "DBV"s, "OEF"s, "dHb"s}};
-template<> std::array<const std::string, 3> ASEModel::fixed_names{{"grad_x"s, "grad_y"s, "grad_z"s}};
-template<> const QI_ARRAYN(double, 3) ASEModel::fixed_defaults{0.0, 0.0, 0.0};
+struct ExpModel {
+    using SequenceType = QI::MultiEchoFlexSequence;
+    using DataType = double;
+    using ParameterType = double;
+    
+    static const int NV = 3;
+    static const int NF = 0;
+    using VaryingArray = QI_ARRAYN(ParameterType, NV);
+    using FixedArray   = QI_ARRAYN(ParameterType, NF);
+    const std::array<const std::string, NV> varying_names{{"S0"s, "R"s, "c"s}};
+    const std::array<const std::string, NF> fixed_names{{}};
+    const FixedArray fixed_defaults{};
 
-using ASEFit = QI::FitFunction<ASEModel>;
+    const SequenceType &sequence;
+    const VaryingArray start, bounds_lo, bounds_hi;
 
-struct ASELLS : ASEFit {
+    ExpModel(const SequenceType &s) :
+        sequence{s},
+        start{20.0, 1., 1.e-6},
+        bounds_lo{2.5, -20., 1.e-12},
+        bounds_hi{100., 20., 1.e-3}
+    {}
+
+    template<typename Derived>
+    auto signal(const Eigen::ArrayBase<Derived> &varying,
+                const FixedArray &/* Unused */) const -> QI_ARRAY(typename Derived::Scalar)
+    {
+        using T = typename Derived::Scalar;
+        const T &S0 = varying[0];
+        const T &R  = varying[1];
+        const T &c  = varying[2];
+        return S0 * exp(-sequence.TE * R) + c;
+    }
+};
+
+using ExpFit = QI::ScaledNLLSFitFunction<ExpModel>;
+
+using ASEModel = QI::Model<7, 3, QI::MultiEchoFlexSequence>;
+template<> std::array<const std::string, ASEModel::NV> ASEModel::varying_names{{"R2prime"s, "DBV"s, "OEF"s, "dHb"s, "noise"s, "S0prime"s, "S0"s}};
+template<> std::array<const std::string, ASEModel::NF> ASEModel::fixed_names{{"grad_x"s, "grad_y"s, "grad_z"s}};
+template<> const QI_ARRAYN(double, ASEModel::NF) ASEModel::fixed_defaults{0.0, 0.0, 0.0};
+
+using ASEFitBase = QI::FitFunction<ASEModel>;
+struct ASEFit : ASEFitBase {
     const double B0;
     const QI::VolumeF::SpacingType voxsize;
     Eigen::ArrayXd TE_above_Tc;
@@ -39,9 +75,11 @@ struct ASELLS : ASEFit {
     const double gamma = 42.577e6; // Gyromagnetic Ratio
     const double delta_X0 = 0.264e-6; // Difference in susceptibility of oxy and fully de-oxy blood
     const double Hb = 0.34 / kappa; // Hct = 0.34;
+    QI::MultiEchoFlexSequence exp_sequence;
 
-    ASELLS(ASEModel &m, const double B0, const QI::VolumeF::SpacingType voxsize) :
-        ASEFit(m), B0(B0), voxsize(voxsize)
+
+    ASEFit(ASEModel &m, const double B0, const QI::VolumeF::SpacingType voxsize, bool verbose = false) :
+        ASEFitBase(m), B0(B0), voxsize(voxsize)
     {
         // Nic Blockley uses Tc = 15 ms for 3T, scale for other field-strengths
         const int Tc = 0.015 / (B0 / 3);
@@ -68,6 +106,10 @@ struct ASELLS : ASEFit {
                 index++;
             }
         }
+        QI_LOG(verbose, "TE == 0 indices: " << TE0_indices.transpose());
+        QI_LOG(verbose, "TE > TC indices: " << TE_indices.transpose());
+        exp_sequence.TR = model.sequence.TR;
+        exp_sequence.TE = model.sequence.TE(TE_indices);
     }
 
 
@@ -112,26 +154,35 @@ struct ASELLS : ASEFit {
             data[i] = all_data[TE_indices[i]] / F;
         }
 
-        Eigen::MatrixXd X(TE_above_Tc.rows(), 2);
-        X.col(0) = TE_above_Tc;
-        X.col(1).setOnes();
-        Eigen::VectorXd Y = data.log();
-        Eigen::VectorXd b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
+        std::vector<Eigen::ArrayXd> exp_data{data};
+        Eigen::Array3d exp_pars;
+        double residual;
+        std::vector<Eigen::ArrayXd> residuals{Eigen::ArrayXd(TE_indices.rows())};
+        FlagType flag;
+        ExpModel exp_model{exp_sequence};
+        ExpFit exp_fit{exp_model};
+        exp_fit.fit({data}, Eigen::ArrayXd(), exp_pars, residual, residuals, flag);
+
         double sumTE0 = 0;
         for (int i = 0; i < TE0_indices.rows(); i++) {
             sumTE0 += data(TE0_indices[i]);
         }
         const double logTE0 = log(sumTE0 / TE0_indices.rows());
-        const double R2prime = -b[0];
-        const double logS0_linear = b[1];
+        const double R2prime = exp_pars[1];
+        const double logS0_linear = log(exp_pars[0]);
         const double DBV = logS0_linear - logTE0;
         const double dHb = 3*R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * B0);
         const double OEF = dHb / Hb;
+        const double noise = exp_pars[2];
+        const double S0p = exp_pars[0];
 
         outputs[0] = R2prime;
         outputs[1] = DBV*100;
         outputs[2] = OEF*100;
         outputs[3] = dHb;
+        outputs[4] = noise;
+        outputs[5] = S0p;
+        outputs[6] = sumTE0 / TE0_indices.rows();
         return std::make_tuple(true, "");
     }
 };
@@ -165,7 +216,7 @@ int main(int argc, char **argv) {
         vox_size[2]  = slice_arg.Get();
     }
     ASEModel model{sequence};
-    ASELLS fit(model, B0.Get(), vox_size);
+    ASEFit fit(model, B0.Get(), vox_size);
     auto fit_filter = itk::ModelFitFilter<ASEFit>::New(&fit);
     fit_filter->SetVerbose(verbose);
     fit_filter->SetOutputAllResiduals(false);

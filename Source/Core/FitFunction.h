@@ -61,8 +61,10 @@ struct FitFunction : FitFunctionBase<ModelType, false, false> {
                               ResidualType &residual, std::vector<QI_ARRAY(ResidualType)> &point_residuals, FlagType &flag) const = 0;
 };
 
-template <typename ModelType_, typename FT = int>
-struct ScaledNLLSFitFunction : FitFunction<ModelType_, FT> {
+template <typename ModelType, typename FlagType_ = int>
+struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
+    using Super = FitFunction<ModelType, FlagType_>;
+    using Super::Super;
     int max_iterations = 30;
     FitReturnType fit(const std::vector<QI_ARRAY(typename ScaledNLLSFitFunction::InputType)> &inputs,
                       const Eigen::ArrayXd &fixed, QI_ARRAYN(typename ScaledNLLSFitFunction::OutputType, ScaledNLLSFitFunction::ModelType::NV) &p,
@@ -81,8 +83,8 @@ struct ScaledNLLSFitFunction : FitFunction<ModelType_, FT> {
         ceres::Problem problem;
         using Cost     = ModelCost<typename ScaledNLLSFitFunction::ModelType>;
         using AutoCost = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ScaledNLLSFitFunction::ModelType::NV>;
-        auto *cost = new Cost(this->model, this->sequence, fixed, data);
-        auto *auto_cost = new AutoCost(cost, this->sequence->size());
+        auto *cost = new Cost(this->model, fixed, data);
+        auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
         problem.SetParameterLowerBound(p.data(), 0, this->model.bounds_lo[0] / scale);
         problem.SetParameterUpperBound(p.data(), 0, this->model.bounds_hi[0] / scale);
