@@ -308,14 +308,15 @@ The input file must be complex-valued.
     {
         "MP2RAGE" : {
             "TR" : 0.006,
-            "SegTR" : 5,
+            "TRPrep" : 5,
             "TI" : [0.9, 2],
-            "ETL": 128,
+            "SegLength" : 128,
+            "k0" : 64,
             "FA": [6, 8]
         }
     }
 
-``TR`` is the readout or echo-train repetition time, while ``SegTR`` is the segment or overall TR. ``ETL`` is the echo-train length or number of readouts in one segment.
+``TR`` is the readout or acquisition repetition time, while ``TRPrep`` is time between preparations/inversion pulses. ``SegLength`` is the number of readouts in one segment, and ``k0`` is the index within the segment when the center line of k-space is read. This is 0 for centric order, or :math:`SegLength / 2` for linear (default Siemens) order. There should be two values of ``TI`` and ``FA``.
 
 **Outputs**
 
