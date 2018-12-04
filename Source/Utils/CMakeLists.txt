@@ -1,9 +1,18 @@
 option( BUILD_UTILITIES "Build the utility programs" ON )
 if( ${BUILD_UTILITIES} )
     set( PROGRAMS
-        qicomplex qiaffine qimask qikfilter qi_pca
-        qipolyfit qipolyimg
-        qi_coil_combine qi_rfprofile qi_gradient )
+            qiaffine
+            qi_coil_combine
+            qicomplex
+            qi_gradient
+            qikfilter    
+            qimask
+            qi_pca
+            qipolyfit
+            qipolyimg
+            qi_rfprofile
+            qi_tvmask
+    )
 
     foreach(PROGRAM ${PROGRAMS})
         add_executable(${PROGRAM} ${PROGRAM}.cpp)
