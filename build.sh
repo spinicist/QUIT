@@ -18,6 +18,7 @@ WD=$PWD
 CERES="ceres"       # Skip CERES
 CHECKOUT="checkout" # Skip git checkout step
 INSTALL=""          # Install as well as build
+ITK="itk"           # Skip ITK
 QUIT_INSTALL_DIR="" # User can specify install directory (mainly for Travis)
 NUM_THREADS="2"     # Specify number of threads during make/ninja
 NATIVE=""           # Specifieds march=native
@@ -27,6 +28,7 @@ while getopts "cgij:np:" opt; do
         g) CHECKOUT="";;
         i) INSTALL="install";;
         j) NUM_THREADS="$OPTARG";;
+        k) ITK="";;
         n) NATIVE="-DCMAKE_CXX_FLAGS=-march=native";;
         p) QUIT_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=$OPTARG";;
     esac
@@ -101,12 +103,14 @@ ITK_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE -DCMAKE_CXX_STANDARD=17 
            -DModule_ITKSmoothing=ON\
            -DModule_ITKThresholding=ON\
            -DModule_ITKTransform=ON"
-mkdir -p $ITK_BUILD_DIR
-cd $ITK_BUILD_DIR
-cmake $ITK_DIR $ITK_OPTS
-$BUILDCMD
+if [ -n "$ITK" ]; then
+    mkdir -p $ITK_BUILD_DIR
+    cd $ITK_BUILD_DIR
+    cmake $ITK_DIR $ITK_OPTS
+    $BUILDCMD
+    cd $WD
+fi
 
-cd $WD
 # Now build QUIT
 
 QUIT_BLD_DIR="$BUILD_DIR"
