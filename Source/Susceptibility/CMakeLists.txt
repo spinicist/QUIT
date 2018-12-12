@@ -8,5 +8,8 @@ if( ${BUILD_SUSCEPTIBILITY} )
                         PathUnwrapFilter.cpp )
     target_link_libraries( qi_unwrap_path qi_imageio qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES} )
 
-    install( TARGETS qi_unwrap_laplace qi_unwrap_path RUNTIME DESTINATION bin )
+    add_executable(qi_fieldmap qi_fieldmap.cpp)
+    target_link_libraries(qi_fieldmap qi_imageio qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES})
+
+    install( TARGETS qi_unwrap_laplace qi_unwrap_path qi_fieldmap RUNTIME DESTINATION bin )
 endif()
