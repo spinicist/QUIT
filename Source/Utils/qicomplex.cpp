@@ -55,7 +55,7 @@ public:
         m_all = all;
         m_alternate = alternate;
     }
-    void ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) ITK_OVERRIDE {
+    void DynamicThreadedGenerateData(const TRegion &region) ITK_OVERRIDE {
         typedef typename TImage::PixelType PixelType;
         ImageSliceConstIteratorWithIndex<TImage> inIt(this->GetInput(), region);
         ImageSliceIteratorWithIndex<TImage>      outIt(this->GetOutput(), region);
