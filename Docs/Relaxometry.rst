@@ -29,7 +29,7 @@ This program implements the classic Driven Equilibrium Single-Pulse Observation 
 
     qidespot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -72,7 +72,7 @@ This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / I
 
     qidespot1hifi spgr_file.nii.gz irspgr_file.nii.gz --mask=mask_file.nii.gz < input.json
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -118,7 +118,7 @@ DESPOT2 uses SSFP data and a separate T1 map to calculate T2, using the same mat
 
     qidespot2 t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -168,7 +168,7 @@ DESPOT2-FM uses SSFP data with mulitple phase-increments (also called phase-cycl
 
 The input file should contain all SSFP images concatenated together as a 4D file. The preferred ordering is flip-angle, then phase-increment (i.e. all flip-angles at one phase-increment, then all flip-angles at the next phase-increment).
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -219,7 +219,7 @@ It is recommended to have an off-resonance map to stabilise the fitting. This ca
 
 The SSFP input file should contain all SSFP images concatenated together as a 4D file (see `qidespot2fm`_ above).
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -301,7 +301,7 @@ MP2RAGE adds a second inversion time to the standard T1w MPRAGE sequence. Combin
 
 The input file must be complex-valued.
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -345,7 +345,7 @@ Classic monoexponential decay fitting. Can be used to fit either T2 or T2*.
 
     qimultiecho input_file.nii.gz --algo=a < input.json
 
-**Example Command Line**
+**Example JSON File**
 
 For regularly spaced echoes:
 

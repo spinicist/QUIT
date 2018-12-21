@@ -54,7 +54,7 @@ Calculates Quantitative Magnetization Transfer parameters using the Ramani model
 
 Note that a T1 map is a required input to stabilise the fitting.
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -98,7 +98,7 @@ Interpolates a Z-spectrum to arbitrary precision. Can output asymmetry values in
 
 The off-resonance map units must match the input frequencies (e.g. either PPM or Hertz)
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -140,7 +140,7 @@ Fits a single Lorentzian to a Z-spectrum for B0 correction. Currently hard-coded
 
 The Z-spectrum must be a 4D file with each volume acquired at a different offset frequency.
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 

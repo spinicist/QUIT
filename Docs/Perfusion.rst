@@ -24,7 +24,7 @@ This program implements the standard equation to calculate CBF from either Conti
 
 The input file must contain pairs of label & control volumes. Currently the order of these is hard-coded to label, then control. The file can contain multiple pairs if you are studying timeseries data. The arguments are discussed further below. It is highly recommended to provide either a separated Proton Density reference image or a tissue T1 map.
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
@@ -83,7 +83,7 @@ Estimates the Oxygen Extraction Fraction (OEF) from Asymmetric Spin-Echo (ASE) d
     qi_ase_oef ase_file.nii.gz --B0=9.4 $DB --fmap=fieldmap.nii.gz <input.json
 
 
-**Example Command Line**
+**Example JSON File**
 
 .. code-block:: json
 
