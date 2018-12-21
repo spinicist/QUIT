@@ -104,7 +104,9 @@ END_D1
 
 echo "Processing FM"
 qidespot2fm -v --asym -m $MASK_FILE -b POLY_B1.nii D1_T1.nii $SSFP_MCF $NTHREADS <<END_FM
-$SSFP_SEQ
+{
+    $SSFP_SEQ
+}
 END_FM
 
 # Now process MCDESPOT, using the above files, B1 and f0 maps to remove as many parameters as possible.
