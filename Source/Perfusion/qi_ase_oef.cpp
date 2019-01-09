@@ -172,20 +172,19 @@ struct ASEFit : ASEFitBase {
         for (int i = 0; i < TE0_indices.rows(); i++) {
             sumTE0 += all_data(TE0_indices[i]);
         }
-        const double logTE0       = log(sumTE0 / TE0_indices.rows());
-        const double R2prime      = exp_pars[1];
-        const double logS0_linear = log(exp_pars[0]);
-        const double DBV          = logS0_linear - logTE0;
-        const double dHb          = 3 * R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * B0);
-        const double OEF          = dHb / Hb;
-        const double S0p          = exp_pars[0];
+        const double S0      = sumTE0 / TE0_indices.rows();
+        const double S0p     = exp_pars[0];
+        const double DBV     = log(S0p) - log(S0);
+        const double R2prime = exp_pars[1];
+        const double dHb     = 3 * R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * B0);
+        const double OEF     = dHb / Hb;
 
         outputs[0] = R2prime;
         outputs[1] = DBV * 100;
         outputs[2] = OEF * 100;
         outputs[3] = dHb;
         outputs[4] = S0p;
-        outputs[5] = sumTE0 / TE0_indices.rows();
+        outputs[5] = S0;
         QI_DB(sumTE0)
         QI_DB(logTE0)
         QI_DB(exp_pars[0])
