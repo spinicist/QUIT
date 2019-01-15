@@ -36,8 +36,6 @@ template <typename Model_, bool Blocked_ = false, bool Indexed_ = false> struct 
     int               max_iterations = 30;
     int               n_inputs() const { return 1; }
     int               input_size(const int /* Unused */) const { return model.sequence.size(); }
-    int               n_fixed() const { return ModelType::NF; }
-    int               n_outputs() const { return ModelType::NV; }
 
     FitFunctionBase(ModelType &m) : model{m} {}
 };

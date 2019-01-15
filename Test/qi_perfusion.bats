@@ -22,38 +22,83 @@ END_INPUT
 }
 
 @test "Perfusion (ASE)" {
-# Currently, this test uses a T2 decay curve as the input and checks that R2' is equal to 1/T2
-# and DBV is equal to zero
-SIZE="16,16,16"
-qinewimage PD$EXT --size="$SIZE" -f 1
-qinewimage T1$EXT --size="$SIZE" -f 1
-qinewimage T2$EXT --size="$SIZE" -f 0.1
-qinewimage R2$EXT --size="$SIZE" -f 10
-qinewimage DBV$EXT --size="$SIZE" -f 0.0
+SIZE="9,9,9"
+qinewimage S0$EXT --size="$SIZE" -f 100
+qinewimage dT$EXT --size="$SIZE" -g "0 -0.025 0.025"
+qinewimage OEF$EXT --size="$SIZE" -g "1 0.2 0.5"
+qinewimage DBV$EXT --size="$SIZE" -g "2 0.01 0.1"
 
-SPIN_SEQUENCE="
-\"MultiEchoFlex\" : {
-    \"TR\" : 2.5,
-    \"TE\" : [ 0.00, 0.00, 0.00, 0.05, 0.1, 0.15, 0.3, 0.45, 0.6 ]
+cat > input.json <<END
+{
+    "MultiEchoFlex" : {
+        "TR" : 2.5,
+        "TE" : [ -0.05, 
+                 -0.045,
+                 -0.04,
+                 -0.035,
+                 -0.03,
+                 -0.025,
+                 -0.02,
+                 -0.015,
+                 -0.01,
+                 -0.005,
+                  0.0,
+                  0.005,
+                  0.01,
+                  0.015,
+                  0.02,
+                  0.025,
+                  0.03,
+                  0.035,
+                  0.04,
+                  0.045,
+                  0.05 ]
+    },
+    "S0File" : "S0$EXT",
+    "dTFile" : "dT$EXT",
+    "OEFFile" : "OEF$EXT",
+    "DBVFile" : "DBV$EXT"
 }
-"
+END
+cat > input2.json <<END
+{
+    "MultiEchoFlex" : {
+        "TR" : 2.5,
+        "TE" : [ -0.05, 
+                 -0.045,
+                 -0.04,
+                 -0.035,
+                 -0.03,
+                 -0.025,
+                 -0.02,
+                 -0.015,
+                 -0.01,
+                 -0.005,
+                  0.0,
+                  0.005,
+                  0.01,
+                  0.015,
+                  0.02,
+                  0.025,
+                  0.03,
+                  0.035,
+                  0.04,
+                  0.045,
+                  0.05 ]
+    },
+    "S0File" : "me_S0$EXT",
+    "dTFile" : "me_dT$EXT",
+    "OEFFile" : "me_OEF$EXT",
+    "DBVFile" : "me_DBV$EXT"
+}
+END
 SPIN_FILE="me$EXT"
 NOISE="0.01"
-qimultiecho --verbose --simulate=$NOISE $SPIN_FILE << END_SIG
-{
-    "PDFile" : "PD$EXT",
-    "T2File" : "T2$EXT",
-    $SPIN_SEQUENCE
-}
-END_SIG
-
-qi_ase_oef --verbose $SPIN_FILE --threads=1 << END_INPUT
-{
-    $SPIN_SEQUENCE
-}
-END_INPUT
-qidiff --baseline=R2$EXT --input=me_R2prime$EXT --noise=$NOISE --tolerance=5 --verbose
-qidiff --baseline=DBV$EXT --input=me_DBV$EXT --noise=$NOISE --tolerance=250 --abs --verbose
+qi_ase_oef --verbose --simulate=$NOISE $SPIN_FILE --threads=1 < input.json
+qi_ase_oef --verbose $SPIN_FILE --threads=1 < input.json
+qi_ase_oef --verbose --simulate=$NOISE check.nii.gz --threads=1 < input2.json
+qidiff --baseline=OEF$EXT --input=me_OEF$EXT --noise=$NOISE --tolerance=5 --verbose
+qidiff --baseline=DBV$EXT --input=me_DBV$EXT --noise=$NOISE --tolerance=5 --verbose
 }
 
 @test "Perfusion (Z-Shim)" {

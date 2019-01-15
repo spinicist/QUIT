@@ -10,13 +10,13 @@ setup() {
 
 SIZE="32, 32, 32"
 qinewimage --size "$SIZE" --grad="1 0 1" grad$EXT
-qi_rfprofile grad.nii b1.nii --verbose <<INPUT
+cat > rf.json <<END
 {
     "rf_pos" :  [0, 1],
-    "rf_vals" : [ [0, 1],
-                  [1, 0] ]
+    "rf_vals" : [0, 1]
 }
-INPUT
+END
+qi_rfprofile grad$EXT b1$EXT --verbose --file=rf.json
 }
 
 @test "K-Space Filtering" {

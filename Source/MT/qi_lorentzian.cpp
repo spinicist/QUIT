@@ -140,21 +140,13 @@ int main(int argc, char **argv) {
                                                simulate.Get());
     } else {
         LorentzFit fit{model};
-        auto       fit_filter = itk::ModelFitFilter<LorentzFit>::New(&fit);
-        fit_filter->SetVerbose(verbose);
+        auto       fit_filter = itk::ModelFitFilter<LorentzFit>::New(&fit, verbose, false);
         fit_filter->SetInput(0, QI::ReadVectorImage(input_path.Get(), verbose));
         if (mask)
             fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
         if (subregion)
             fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
-        QI_LOG(verbose, "Processing");
-        if (verbose) {
-            auto monitor = QI::GenericMonitor::New();
-            fit_filter->AddObserver(itk::ProgressEvent(), monitor);
-        }
         fit_filter->Update();
-        QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s\n"
-                                            << "Writing results files.");
         std::string outPrefix = outarg.Get() + "LTZ_";
         for (int i = 0; i < LorentzModel::NV; i++) {
             QI::WriteImage(fit_filter->GetOutput(i),

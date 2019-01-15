@@ -28,8 +28,9 @@ struct Model {
     using DataType = DataType_;
     using ParameterType = double;
     
-    static const int NV = NV_;
-    static const int NF = NF_;
+    static constexpr int NV = NV_;
+    static constexpr int NF = NF_;
+    static constexpr int ND = 0;
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);
     static std::array<const std::string, NV> varying_names;

@@ -16,17 +16,14 @@
 
 namespace QI {
 
-Eigen::Index MTSatSequence::size() const {
-    return sat_f0.rows();
-}
+Eigen::Index MTSatSequence::size() const { return sat_f0.rows(); }
 
-MTSatSequence::MTSatSequence(const rapidjson::Value &json) :
-    pulse(json["pulse"])
-{
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = json["TR"].GetDouble();
-    FA = json["FA"].GetDouble() * M_PI / 180;
-    sat_f0 = ArrayFromJSON(json, "sat_f0");
+MTSatSequence::MTSatSequence(const rapidjson::Value &json) : pulse(json["pulse"]) {
+    if (json.IsNull())
+        QI_FAIL("Could not read sequence: " << name());
+    TR        = GetMember(json, "TR").GetDouble();
+    FA        = GetMember(json, "FA").GetDouble() * M_PI / 180;
+    sat_f0    = ArrayFromJSON(json, "sat_f0");
     sat_angle = ArrayFromJSON(json, "sat_angle", M_PI / 180);
 }
 

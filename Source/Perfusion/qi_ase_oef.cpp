@@ -20,180 +20,146 @@
 #include "Model.h"
 #include "ModelFitFilter.h"
 #include "MultiEchoSequence.h"
+#include "SimulateModel.h"
 #include "Util.h"
 
 using namespace std::literals;
 
-struct ExpModel {
+namespace {
+constexpr double kappa      = 0.03;                // Conversion factor
+constexpr double gyro_gamma = 2 * M_PI * 42.577e6; // Gyromagnetic Ratio
+constexpr double delta_X0   = 0.264e-6;            // Susc diff oxy and fully de-oxy blood
+constexpr double Hct        = 0.34;
+constexpr double Hb         = Hct / kappa;
+} // namespace
+
+struct ASEModel {
     using SequenceType  = QI::MultiEchoFlexSequence;
     using DataType      = double;
     using ParameterType = double;
 
-    static const int NV = 2;
-    static const int NF = 0;
+    static const int NV = 4;
+    static const int ND = 3;
+    static const int NF = 3;
     using VaryingArray  = QI_ARRAYN(ParameterType, NV);
+    using DerivedArray  = QI_ARRAYN(ParameterType, ND);
     using FixedArray    = QI_ARRAYN(ParameterType, NF);
-    const std::array<const std::string, NV> varying_names{{"S0"s, "R"s}};
+
+    const SequenceType &sequence;
+    const double        B0;
+
+    const std::array<const std::string, NV> varying_names{{"S0"s, "dT"s, "R2p"s, "DBV"s}};
+    const std::array<const std::string, ND> derived_names{{"Tc"s, "OEF"s, "dHb"s}};
     const std::array<const std::string, NF> fixed_names{{}};
     const FixedArray                        fixed_defaults{};
 
-    const SequenceType &sequence;
-    const VaryingArray  start, bounds_lo, bounds_hi;
-
-    ExpModel(const SequenceType &s)
-        : sequence{s}, start{1., 10.}, bounds_lo{0.1, -20.}, bounds_hi{10., 20.} {}
+    const VaryingArray start{0.98, 0., 1.0, 0.015};
+    const VaryingArray bounds_lo{0.1, -0.1, 0.25, 0.01};
+    const VaryingArray bounds_hi{2., 0.1, 10.0, 0.025};
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
         -> QI_ARRAY(typename Derived::Scalar) {
-        using T     = typename Derived::Scalar;
-        const T &S0 = varying[0];
-        const T &R  = varying[1];
-        QI_DB(S0)
-        QI_DB(R)
-        QI_DBVECT(S0 * exp(-sequence.TE * R))
-        return S0 * exp(-sequence.TE * R);
+        using T      = typename Derived::Scalar;
+        const T &S0  = varying[0];
+        const T &dT  = varying[1];
+        const T &R2p = varying[2];
+        const T &DBV = varying[3];
+
+        const auto dw = R2p / DBV;
+        const auto Tc = 1.5 * (1. / dw);
+
+        const auto aTE = (sequence.TE + dT).abs();
+        QI_ARRAY(T) S(sequence.size());
+        for (int i = 0; i < sequence.size(); i++) {
+            const auto tau = aTE(i);
+            if (tau < Tc) {
+                S(i) = S0 * exp(-(0.3) * (R2p * tau) * (R2p * tau) / DBV);
+            } else {
+                S(i) = S0 * exp(-tau * R2p + DBV);
+            }
+        }
+        return S;
+    }
+
+    void derived(const VaryingArray &varying, const FixedArray & /* Unused */,
+                 DerivedArray &      derived) const {
+        const auto &R2p = varying[2];
+        const auto &DBV = varying[3];
+
+        const auto dw  = R2p / DBV;
+        const auto Tc  = 1.5 * (1. / dw);
+        const auto OEF = dw / ((4. * M_PI / 3.) * gyro_gamma * B0 * delta_X0 * Hct);
+        const auto dHb = OEF * Hb;
+
+        derived[0] = Tc;
+        derived[1] = OEF;
+        derived[2] = dHb;
     }
 };
+using ASEFit = QI::ScaledNLLSFitFunction<ASEModel>;
 
-using ExpFit = QI::ScaledNLLSFitFunction<ExpModel>;
+struct ASEFixDBVModel {
+    using SequenceType  = QI::MultiEchoFlexSequence;
+    using DataType      = double;
+    using ParameterType = double;
 
-using ASEModel = QI::Model<6, 3, QI::MultiEchoFlexSequence>;
-template <>
-std::array<const std::string, ASEModel::NV> ASEModel::varying_names{
-    {"R2prime"s, "DBV"s, "OEF"s, "dHb"s, "S0prime"s, "S0"s}};
-template <>
-std::array<const std::string, ASEModel::NF> ASEModel::fixed_names{
-    {"grad_x"s, "grad_y"s, "grad_z"s}};
-template <> const QI_ARRAYN(double, ASEModel::NF) ASEModel::fixed_defaults{0.0, 0.0, 0.0};
+    static const int NV = 3;
+    static const int ND = 3;
+    static const int NF = 3;
+    using VaryingArray  = QI_ARRAYN(ParameterType, NV);
+    using DerivedArray  = QI_ARRAYN(ParameterType, ND);
+    using FixedArray    = QI_ARRAYN(ParameterType, NF);
 
-using ASEFitBase = QI::FitFunction<ASEModel>;
-struct ASEFit : ASEFitBase {
-    const double                   B0;
-    const QI::VolumeF::SpacingType voxsize;
-    Eigen::ArrayXd                 TE_above_Tc;
-    Eigen::ArrayXi                 TE_indices, TE0_indices;
-    // Constants for calculations
-    const double kappa    = 0.03;     // Conversion factor
-    const double gamma    = 42.577e6; // Gyromagnetic Ratio
-    const double delta_X0 = 0.264e-6; // Difference in susceptibility of oxy and fully de-oxy blood
-    const double Hb       = 0.34 / kappa; // Hct = 0.34;
-    QI::MultiEchoFlexSequence exp_sequence;
+    const SequenceType &sequence;
+    const double        B0, DBV;
 
-    ASEFit(ASEModel &m, const double B0, const QI::VolumeF::SpacingType voxsize,
-           bool verbose = false)
-        : ASEFitBase(m), B0(B0), voxsize(voxsize) {
-        // Nic Blockley uses Tc = 15 ms for 3T, scale for other field-strengths
-        const int Tc             = 0.015 / (B0 / 3);
-        const int above_Tc_count = (model.sequence.TE.abs() > Tc).count();
-        const int zero_count     = (model.sequence.TE.abs() == 0.0).count();
-        if (zero_count == 0) {
-            QI_FAIL("Did not find a zero echo-time in input");
-        }
-        if (above_Tc_count == 0) {
-            QI_FAIL("No echo-times above critical value");
-        }
-        TE_above_Tc    = Eigen::ArrayXd(above_Tc_count);
-        TE_indices     = Eigen::ArrayXi(above_Tc_count);
-        TE0_indices    = Eigen::ArrayXi(zero_count);
-        int zero_index = 0, index = 0;
-        for (Eigen::Index i = 0; i < model.sequence.size(); i++) {
-            if (model.sequence.TE(i) == 0.0) {
-                TE0_indices(zero_index) = i;
-                zero_index++;
-            }
-            if (std::abs(model.sequence.TE(i)) > Tc) {
-                TE_indices(index)  = i;
-                TE_above_Tc(index) = std::abs(model.sequence.TE(i));
-                index++;
+    const std::array<const std::string, NV> varying_names{{"S0"s, "dT"s, "R2p"s}};
+    const std::array<const std::string, ND> derived_names{{"Tc"s, "OEF"s, "dHb"s}};
+    const std::array<const std::string, NF> fixed_names{{}};
+    const FixedArray                        fixed_defaults{};
+
+    const VaryingArray start{0.98, 0., 1.0};
+    const VaryingArray bounds_lo{0.1, -0.1, 0.25};
+    const VaryingArray bounds_hi{2., 0.1, 10.0};
+
+    template <typename Derived>
+    auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
+        -> QI_ARRAY(typename Derived::Scalar) {
+        using T        = typename Derived::Scalar;
+        const T &  S0  = varying[0];
+        const T &  dT  = varying[1];
+        const T &  R2p = varying[2];
+        const auto dw  = R2p / DBV;
+        const auto Tc  = 1.5 * (1. / dw);
+
+        const auto aTE = (sequence.TE + dT).abs();
+        QI_ARRAY(T) S(sequence.size());
+        for (int i = 0; i < sequence.size(); i++) {
+            const auto tau = aTE(i);
+            if (tau < Tc) {
+                S(i) = S0 * exp(-(0.3) * (R2p * tau) * (R2p * tau) / DBV);
+            } else {
+                S(i) = S0 * exp(-tau * R2p + DBV);
             }
         }
-        QI_LOG(verbose, "TE == 0 indices: " << TE0_indices.transpose());
-        QI_LOG(verbose, "TE > TC indices: " << TE_indices.transpose());
-        exp_sequence.TR = model.sequence.TR;
-        exp_sequence.TE = model.sequence.TE(TE_indices);
+        return S;
     }
 
-    double sinc(const double x) const {
-        static double const taylor_0_bound = std::numeric_limits<double>::epsilon();
-        static double const taylor_2_bound = sqrt(taylor_0_bound);
-        static double const taylor_n_bound = sqrt(taylor_2_bound);
+    void derived(const VaryingArray &varying, const FixedArray & /* Unused */,
+                 DerivedArray &      derived) const {
+        const auto &R2p = varying[2];
+        const auto  dw  = R2p / DBV;
+        const auto  Tc  = 1.5 * (1. / dw);
+        const auto  OEF = dw / ((4. * M_PI / 3.) * gyro_gamma * B0 * delta_X0 * Hct);
+        const auto  dHb = OEF * Hb;
 
-        if (std::abs(x) >= taylor_n_bound) {
-            return (sin(x) / x);
-        } else {
-            // approximation by taylor series in x at 0 up to order 0
-            double result = 1;
-
-            if (abs(x) >= taylor_0_bound) {
-                double x2 = x * x;
-                // approximation by taylor series in x at 0 up to order 2
-                result -= x2 / 6;
-
-                if (abs(x) >= taylor_2_bound) {
-                    // approximation by taylor series in x at 0 up to order 4
-                    result += (x2 * x2) / 120;
-                }
-            }
-            return result;
-        }
-    }
-
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, ASEModel::NV) & outputs, ResidualType & /*Unused*/,
-                          std::vector<Eigen::ArrayXd> & /*Unused*/,
-                          FlagType & /*Unused*/) const override {
-        const Eigen::ArrayXd &all_data = inputs[0];
-        QI_DBVEC(model.sequence.TE)
-        QI_DBVEC(TE_indices)
-        QI_DBVEC(all_data)
-        Eigen::ArrayXd data = Eigen::ArrayXd(TE_indices.rows());
-        for (Eigen::Index i = 0; i < TE_indices.rows(); i++) {
-            double F = 1.0;
-            for (auto d = 0; d < 3; d++) {
-                const double grad = fixed[d];
-                const double x =
-                    grad * 2 * M_PI * voxsize[d] * model.sequence.TE[TE_indices[i]] / 2;
-                F *= std::abs(sinc(x));
-            }
-            data[i] = all_data[TE_indices[i]] / F;
-        }
-        QI_DBVEC(data)
-        std::vector<Eigen::ArrayXd> exp_data{data};
-        Eigen::Array2d              exp_pars;
-        double                      residual;
-        std::vector<Eigen::ArrayXd> residuals{Eigen::ArrayXd(TE_indices.rows())};
-        FlagType                    flag;
-        ExpModel                    exp_model{exp_sequence};
-        ExpFit                      exp_fit{exp_model};
-        exp_fit.fit({data}, Eigen::ArrayXd(), exp_pars, residual, residuals, flag);
-
-        double sumTE0 = 0;
-        for (int i = 0; i < TE0_indices.rows(); i++) {
-            sumTE0 += all_data(TE0_indices[i]);
-        }
-        const double S0      = sumTE0 / TE0_indices.rows();
-        const double S0p     = exp_pars[0];
-        const double DBV     = log(S0p) - log(S0);
-        const double R2prime = exp_pars[1];
-        const double dHb     = 3 * R2prime / (DBV * 4 * gamma * M_PI * delta_X0 * kappa * B0);
-        const double OEF     = dHb / Hb;
-
-        outputs[0] = R2prime;
-        outputs[1] = DBV * 100;
-        outputs[2] = OEF * 100;
-        outputs[3] = dHb;
-        outputs[4] = S0p;
-        outputs[5] = S0;
-        QI_DB(sumTE0)
-        QI_DB(logTE0)
-        QI_DB(exp_pars[0])
-        QI_DB(logS0_linear)
-        QI_DB(DBV)
-        QI_DB(R2prime)
-        return std::make_tuple(true, "");
+        derived[0] = Tc;
+        derived[1] = OEF;
+        derived[2] = dHb;
     }
 };
+using ASEFixDBVFit = QI::ScaledNLLSFitFunction<ASEFixDBVModel>;
 
 /*
  * Main
@@ -212,10 +178,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
                                       {'m', "mask"});
     args::ValueFlag<double> B0(parser, "B0", "Field-strength (Tesla), default 3", {'B', "B0"}, 3.0);
-    args::ValueFlag<std::string> gradx(
-        parser, "GRADX", "Gradient of field-map in x-direction for MFG correction", {'x', "gradx"});
-    args::ValueFlag<std::string> grady(
-        parser, "GRADY", "Gradient of field-map in y-direction for MFG correction", {'y', "grady"});
+    args::ValueFlag<double> DBV(parser, "DBV", "Fix DBV and only fit R2'", {'d', "DBV"}, 0.0);
     args::ValueFlag<std::string> gradz(
         parser, "GRADZ", "Gradient of field-map in z-direction for MFG correction", {'z', "gradz"});
     args::ValueFlag<double> slice_arg(
@@ -224,46 +187,83 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(
         parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
         {'s', "subregion"});
+    args::ValueFlag<std::string> json_file(parser, "FILE",
+                                           "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float>       simulate(
+        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
+        {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    QI_LOG(verbose, "Reading ASE data from: " << QI::CheckPos(input_path));
-    const std::string         outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
-    auto                      input     = QI::ReadVectorImage(QI::CheckPos(input_path));
-    rapidjson::Document       json      = QI::ReadJSON(std::cin);
+    rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MultiEchoFlexSequence sequence(json["MultiEchoFlex"]);
-    QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
-    if (slice_arg) {
-        vox_size[2] = slice_arg.Get();
-    }
-    ASEModel model{sequence};
-    ASEFit   fit(model, B0.Get(), vox_size);
-    auto     fit_filter = itk::ModelFitFilter<ASEFit>::New(&fit);
-    fit_filter->SetVerbose(verbose);
-    fit_filter->SetOutputAllResiduals(false);
-    QI_LOG(verbose, "Using " << threads.Get() << " threads");
-    fit_filter->SetInput(0, input);
-    if (mask)
-        fit_filter->SetMask(QI::ReadImage(mask.Get()));
-    if (gradx)
-        fit_filter->SetFixed(0, QI::ReadImage(gradx.Get()));
-    if (grady)
-        fit_filter->SetFixed(1, QI::ReadImage(grady.Get()));
-    if (gradz)
-        fit_filter->SetFixed(2, QI::ReadImage(gradz.Get()));
-    if (subregion) {
-        fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
-    }
-    QI_LOG(verbose, "Processing");
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        fit_filter->AddObserver(itk::ProgressEvent(), monitor);
-    }
-    fit_filter->Update();
-    QI_LOG(verbose, "Elapsed time was " << fit_filter->GetTotalTime() << "s");
 
-    for (size_t i = 0; i < ASEModel::NV; i++) {
-        const std::string fname = outPrefix + "_" + ASEModel::varying_names[i] + QI::OutExt();
-        QI_LOG(verbose, "Writing file: " << fname);
-        QI::WriteImage(fit_filter->GetOutput(i), fname);
+    if (simulate) {
+        ASEModel model{sequence, B0.Get()};
+        QI::SimulateModel<ASEModel, false>(json, model, {gradz.Get()}, {input_path.Get()}, verbose,
+                                           simulate.Get());
+    } else {
+        if (DBV) {
+            ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
+            ASEFixDBVFit   fit(model);
+            auto fit_filter = itk::ModelFitFilter<ASEFixDBVFit>::New(&fit, verbose, false);
+            QI_LOG(verbose, "Reading ASE data from: " << QI::CheckPos(input_path));
+            auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
+            // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
+            // if (slice_arg) {
+            //     vox_size[2] = slice_arg.Get();
+            // }
+            fit_filter->SetInput(0, input);
+            if (mask)
+                fit_filter->SetMask(QI::ReadImage(mask.Get()));
+            if (gradz)
+                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get()));
+            if (subregion) {
+                fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+            }
+            fit_filter->Update();
+
+            const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
+            for (size_t i = 0; i < model.NV; i++) {
+                const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
+                QI_LOG(verbose, "Writing file: " << fname);
+                QI::WriteImage(fit_filter->GetOutput(i), fname);
+            }
+            for (size_t i = 0; i < model.ND; i++) {
+                const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
+                QI_LOG(verbose, "Writing file: " << fname);
+                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname);
+            }
+        } else {
+            ASEModel model{sequence, B0.Get()};
+            ASEFit   fit(model);
+            auto     fit_filter = itk::ModelFitFilter<ASEFit>::New(&fit, verbose, false);
+            QI_LOG(verbose, "Reading ASE data from: " << QI::CheckPos(input_path));
+            auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
+            // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
+            // if (slice_arg) {
+            //     vox_size[2] = slice_arg.Get();
+            // }
+            fit_filter->SetInput(0, input);
+            if (mask)
+                fit_filter->SetMask(QI::ReadImage(mask.Get()));
+            if (gradz)
+                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get()));
+            if (subregion) {
+                fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+            }
+            fit_filter->Update();
+
+            const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
+            for (size_t i = 0; i < model.NV; i++) {
+                const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
+                QI_LOG(verbose, "Writing file: " << fname);
+                QI::WriteImage(fit_filter->GetOutput(i), fname);
+            }
+            for (size_t i = 0; i < model.ND; i++) {
+                const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
+                QI_LOG(verbose, "Writing file: " << fname);
+                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname);
+            }
+            return EXIT_SUCCESS;
+        }
     }
-    return EXIT_SUCCESS;
 }
