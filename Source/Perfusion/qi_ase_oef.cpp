@@ -10,7 +10,6 @@
  */
 
 #include <Eigen/Dense>
-#include <iostream>
 
 // #define QI_DEBUG_BUILD
 
@@ -25,37 +24,34 @@
 
 using namespace std::literals;
 
-namespace {
 constexpr double kappa      = 0.03;                // Conversion factor
 constexpr double gyro_gamma = 2 * M_PI * 42.577e6; // Gyromagnetic Ratio
 constexpr double delta_X0   = 0.264e-6;            // Susc diff oxy and fully de-oxy blood
 constexpr double Hct        = 0.34;
 constexpr double Hb         = Hct / kappa;
-} // namespace
 
 struct ASEModel {
     using SequenceType  = QI::MultiEchoFlexSequence;
     using DataType      = double;
     using ParameterType = double;
 
-    static const int NV = 4;
-    static const int ND = 3;
-    static const int NF = 3;
-    using VaryingArray  = QI_ARRAYN(ParameterType, NV);
-    using DerivedArray  = QI_ARRAYN(ParameterType, ND);
-    using FixedArray    = QI_ARRAYN(ParameterType, NF);
-
     const SequenceType &sequence;
     const double        B0;
 
+    static constexpr int NV = 4;
+    static constexpr int ND = 3;
+    static constexpr int NF = 1;
+    using VaryingArray      = QI_ARRAYN(ParameterType, NV);
+    using DerivedArray      = QI_ARRAYN(ParameterType, ND);
+    using FixedArray        = QI_ARRAYN(ParameterType, NF);
     const std::array<const std::string, NV> varying_names{{"S0"s, "dT"s, "R2p"s, "DBV"s}};
     const std::array<const std::string, ND> derived_names{{"Tc"s, "OEF"s, "dHb"s}};
     const std::array<const std::string, NF> fixed_names{{}};
     const FixedArray                        fixed_defaults{};
 
     const VaryingArray start{0.98, 0., 1.0, 0.015};
-    const VaryingArray bounds_lo{0.1, -0.1, 0.25, 0.01};
-    const VaryingArray bounds_hi{2., 0.1, 10.0, 0.025};
+    const VaryingArray bounds_lo{0.1, -0.1, 0.25, 0.001};
+    const VaryingArray bounds_hi{2., 0.1, 10.0, 0.05};
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
@@ -104,12 +100,12 @@ struct ASEFixDBVModel {
     using DataType      = double;
     using ParameterType = double;
 
-    static const int NV = 3;
-    static const int ND = 3;
-    static const int NF = 3;
-    using VaryingArray  = QI_ARRAYN(ParameterType, NV);
-    using DerivedArray  = QI_ARRAYN(ParameterType, ND);
-    using FixedArray    = QI_ARRAYN(ParameterType, NF);
+    static constexpr int NV = 3;
+    static constexpr int ND = 3;
+    static constexpr int NF = 1;
+    using VaryingArray      = QI_ARRAYN(ParameterType, NV);
+    using DerivedArray      = QI_ARRAYN(ParameterType, ND);
+    using FixedArray        = QI_ARRAYN(ParameterType, NF);
 
     const SequenceType &sequence;
     const double        B0, DBV;
@@ -204,8 +200,8 @@ int main(int argc, char **argv) {
         if (DBV) {
             ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
             ASEFixDBVFit   fit(model);
-            auto fit_filter = itk::ModelFitFilter<ASEFixDBVFit>::New(&fit, verbose, false);
-            QI_LOG(verbose, "Reading ASE data from: " << QI::CheckPos(input_path));
+            auto           fit_filter = QI::ModelFitFilter<ASEFixDBVFit>::New(&fit, verbose, false);
+            QI::Log(verbose, "Reading ASE data from: {}", QI::CheckPos(input_path));
             auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
             // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
             // if (slice_arg) {
@@ -224,19 +220,19 @@ int main(int argc, char **argv) {
             const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
             for (size_t i = 0; i < model.NV; i++) {
                 const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
-                QI_LOG(verbose, "Writing file: " << fname);
+                QI::Log(verbose, "Writing file: {}", fname);
                 QI::WriteImage(fit_filter->GetOutput(i), fname);
             }
             for (size_t i = 0; i < model.ND; i++) {
                 const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
-                QI_LOG(verbose, "Writing file: " << fname);
+                QI::Log(verbose, "Writing file: {}", fname);
                 QI::WriteImage(fit_filter->GetDerivedOutput(i), fname);
             }
         } else {
             ASEModel model{sequence, B0.Get()};
             ASEFit   fit(model);
-            auto     fit_filter = itk::ModelFitFilter<ASEFit>::New(&fit, verbose, false);
-            QI_LOG(verbose, "Reading ASE data from: " << QI::CheckPos(input_path));
+            auto     fit_filter = QI::ModelFitFilter<ASEFit>::New(&fit, verbose, false);
+            QI::Log(verbose, "Reading ASE data from: {}", QI::CheckPos(input_path));
             auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
             // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
             // if (slice_arg) {
@@ -255,12 +251,12 @@ int main(int argc, char **argv) {
             const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
             for (size_t i = 0; i < model.NV; i++) {
                 const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
-                QI_LOG(verbose, "Writing file: " << fname);
+                QI::Log(verbose, "Writing file: {}", fname);
                 QI::WriteImage(fit_filter->GetOutput(i), fname);
             }
             for (size_t i = 0; i < model.ND; i++) {
                 const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
-                QI_LOG(verbose, "Writing file: " << fname);
+                QI::Log(verbose, "Writing file: {}", fname);
                 QI::WriteImage(fit_filter->GetDerivedOutput(i), fname);
             }
             return EXIT_SUCCESS;

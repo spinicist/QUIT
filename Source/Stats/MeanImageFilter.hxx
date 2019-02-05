@@ -12,25 +12,25 @@
 #ifndef MEANIMAGEFILTER_HXX
 #define MEANIMAGEFILTER_HXX
 
+#include "itkImageRegionConstIterator.h"
+#include "itkImageRegionIterator.h"
+
 namespace itk {
 
-template<typename TInput>
-MeanImageFilter<TInput>::MeanImageFilter() {}
+template <typename TInput> MeanImageFilter<TInput>::MeanImageFilter() {}
 
-template<typename TInput>
-void MeanImageFilter<TInput>::SetNumberOfImages(const size_t n) {
-    //std::cout <<  __PRETTY_FUNCTION__ << endl;
+template <typename TInput> void MeanImageFilter<TInput>::SetNumberOfImages(const size_t n) {
+    // std::cout <<  __PRETTY_FUNCTION__ << endl;
     this->SetNumberOfRequiredInputs(n);
     this->SetNumberOfRequiredOutputs(1);
     this->SetNthOutput(0, this->MakeOutput(0));
 }
 
-template<typename TInput>
-void MeanImageFilter<TInput>::GenerateOutputInformation() {
-    //std::cout << __PRETTY_FUNCTION__ << std::endl;
-    typename Superclass::OutputImagePointer outputPtr = this->GetOutput();
+template <typename TInput> void MeanImageFilter<TInput>::GenerateOutputInformation() {
+    // std::cout << __PRETTY_FUNCTION__ << std::endl;
+    typename Superclass::OutputImagePointer     outputPtr = this->GetOutput();
     typename Superclass::InputImageConstPointer inputPtr  = this->GetInput();
-    if ( !outputPtr || !inputPtr ) {
+    if (!outputPtr || !inputPtr) {
         return;
     }
 
@@ -40,31 +40,32 @@ void MeanImageFilter<TInput>::GenerateOutputInformation() {
     outputPtr->SetOrigin(inputPtr->GetOrigin());
     outputPtr->SetDirection(inputPtr->GetDirection());
     outputPtr->Allocate();
-    //std::cout << "END " << __PRETTY_FUNCTION__ << std::endl;
+    // std::cout << "END " << __PRETTY_FUNCTION__ << std::endl;
 }
 
-template<typename TInput>
-void MeanImageFilter<TInput>::ThreadedGenerateData(const TRegion &region, ThreadIdType /* Unused */) {
-    //std::cout << __PRETTY_FUNCTION__ << std::endl;
-    size_t N = this->GetNumberOfRequiredInputs();
+template <typename TInput>
+void MeanImageFilter<TInput>::ThreadedGenerateData(const TRegion &region,
+                                                   ThreadIdType /* Unused */) {
+    // std::cout << __PRETTY_FUNCTION__ << std::endl;
+    size_t                                        N = this->GetNumberOfRequiredInputs();
     std::vector<ImageRegionConstIterator<TInput>> iters(N);
     for (size_t i = 0; i < N; i++) {
         iters[i] = ImageRegionConstIterator<TInput>(this->GetInput(i), region);
     }
     ImageRegionIterator<TOutput> outputIter(this->GetOutput(), region);
-    //TimeProbe clock;
-    //clock.Start();
-    while(!outputIter.IsAtEnd()) {
+    // TimeProbe clock;
+    // clock.Start();
+    while (!outputIter.IsAtEnd()) {
         double accumulator = 0.;
-        for (auto& it : iters) {
+        for (auto &it : iters) {
             accumulator += it.Get() / N;
             ++it;
         }
         outputIter.Set(accumulator);
         ++outputIter;
     }
-    //clock.Stop();
-    //std::cout << "END " << __PRETTY_FUNCTION__ << std::endl;
+    // clock.Stop();
+    // std::cout << "END " << __PRETTY_FUNCTION__ << std::endl;
 }
 
 } // End namespace itk

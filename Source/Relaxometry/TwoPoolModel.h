@@ -12,7 +12,6 @@
 #ifndef QI_TWOPOOLMODEL_H
 #define QI_TWOPOOLMODEL_H
 
-#include "Macro.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
 #include "SequenceGroup.h"

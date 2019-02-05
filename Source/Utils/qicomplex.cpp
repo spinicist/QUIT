@@ -9,8 +9,6 @@
  *
  */
 
-#include <iostream>
-
 #include "itkComplexToImaginaryImageFilter.h"
 #include "itkComplexToModulusImageFilter.h"
 #include "itkComplexToPhaseImageFilter.h"
@@ -30,8 +28,7 @@
 #include "Util.h"
 
 namespace itk {
-template <typename TImage>
-class NegateFilter : public InPlaceImageFilter<TImage> {
+template <typename TImage> class NegateFilter : public InPlaceImageFilter<TImage> {
   public:
     typedef NegateFilter                       Self;
     typedef InPlaceImageFilter<TImage>         Superclass;
@@ -60,7 +57,7 @@ class NegateFilter : public InPlaceImageFilter<TImage> {
     void DynamicThreadedGenerateData(const TRegion &region) ITK_OVERRIDE {
         typedef typename TImage::PixelType       PixelType;
         ImageSliceConstIteratorWithIndex<TImage> inIt(this->GetInput(), region);
-        ImageSliceIteratorWithIndex<TImage> outIt(this->GetOutput(), region);
+        ImageSliceIteratorWithIndex<TImage>      outIt(this->GetOutput(), region);
 
         inIt.SetFirstDirection(0);
         inIt.SetSecondDirection(1);
@@ -95,51 +92,35 @@ class NegateFilter : public InPlaceImageFilter<TImage> {
 } // End namespace itk
 
 /* Arguments defined here so they are available in the templated run function */
-args::ArgumentParser parser(
-    "Input is specified with lower case letters. A valid combination of inputs "
-    " must be specified, e.g. real & imaginary or magnitude & phase.\n"
-    "Output is specified with upper case letters. Any combination can be "
-    "given\n"
-    "http://github.com/spinicist/QUIT");
+args::ArgumentParser
+    parser("Input is specified with lower case letters. A valid combination of inputs "
+           " must be specified, e.g. real & imaginary or magnitude & phase.\n"
+           "Output is specified with upper case letters. Any combination can be "
+           "given\n"
+           "http://github.com/spinicist/QUIT");
 
 args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
-args::Flag           verbose(parser, "VERBOSE", "Print more information",
-                   {'v', "verbose"});
-args::ValueFlag<int> threads(parser, "THREADS",
-                             "Use N threads (default=4, 0=hardware limit)",
+args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
                              {'T', "threads"}, QI::GetDefaultThreads());
-args::Flag use_double(parser, "DOUBLE", "Process & output at double precision",
-                      {'d', "double"});
-args::Flag fixge(parser, "FIX_GE",
-                 "Negate alternate slices (fixes lack of FFT shift)",
-                 {"fixge"});
+args::Flag use_double(parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
+args::Flag fixge(parser, "FIX_GE", "Negate alternate slices (fixes lack of FFT shift)", {"fixge"});
 args::Flag negate(parser, "NEGATE", "Negate data (multiply by -1)", {"negate"});
-args::Flag conjugate(parser, "CONJUGATE", "Take conjugate of data",
-                     {"conjugate"});
-args::ValueFlag<std::string> in_mag(parser, "IN_MAG", "Input magnitude file",
-                                    {'m', "mag"});
-args::ValueFlag<std::string> in_pha(parser, "IN_PHA", "Input phase file",
-                                    {'p', "pha"});
-args::ValueFlag<std::string> in_real(parser, "IN_REAL", "Input real file",
-                                     {'r', "real"});
-args::ValueFlag<std::string> in_imag(parser, "IN_IMAG", "Input imaginary file",
-                                     {'i', "imag"});
-args::ValueFlag<std::string> in_complex(parser, "IN_CPLX", "Input complex file",
-                                        {'x', "complex"});
-args::ValueFlag<std::string> in_realimag(parser, "IN_REALIMAG",
-                                         "Input real & imaginary file",
+args::Flag conjugate(parser, "CONJUGATE", "Take conjugate of data", {"conjugate"});
+args::ValueFlag<std::string> in_mag(parser, "IN_MAG", "Input magnitude file", {'m', "mag"});
+args::ValueFlag<std::string> in_pha(parser, "IN_PHA", "Input phase file", {'p', "pha"});
+args::ValueFlag<std::string> in_real(parser, "IN_REAL", "Input real file", {'r', "real"});
+args::ValueFlag<std::string> in_imag(parser, "IN_IMAG", "Input imaginary file", {'i', "imag"});
+args::ValueFlag<std::string> in_complex(parser, "IN_CPLX", "Input complex file", {'x', "complex"});
+args::ValueFlag<std::string> in_realimag(parser, "IN_REALIMAG", "Input real & imaginary file",
                                          {'l', "realimag"});
 
-args::ValueFlag<std::string> out_mag(parser, "OUT_MAG", "Output magnitude file",
-                                     {'M', "MAG"});
-args::ValueFlag<std::string> out_pha(parser, "OUT_PHA", "Output phase file",
-                                     {'P', "PHA"});
-args::ValueFlag<std::string> out_real(parser, "OUT_REAL", "Output real file",
-                                      {'R', "REAL"});
-args::ValueFlag<std::string> out_imag(parser, "OUT_IMAG",
-                                      "Output imaginary file", {'I', "IMAG"});
-args::ValueFlag<std::string>
-    out_complex(parser, "OUT_CPLX", "Output complex file", {'X', "COMPLEX"});
+args::ValueFlag<std::string> out_mag(parser, "OUT_MAG", "Output magnitude file", {'M', "MAG"});
+args::ValueFlag<std::string> out_pha(parser, "OUT_PHA", "Output phase file", {'P', "PHA"});
+args::ValueFlag<std::string> out_real(parser, "OUT_REAL", "Output real file", {'R', "REAL"});
+args::ValueFlag<std::string> out_imag(parser, "OUT_IMAG", "Output imaginary file", {'I', "IMAG"});
+args::ValueFlag<std::string> out_complex(parser, "OUT_CPLX", "Output complex file",
+                                         {'X', "COMPLEX"});
 
 template <typename TPixel> void Run() {
     typedef itk::Image<TPixel, 4>               TImage;
@@ -150,13 +131,13 @@ template <typename TPixel> void Run() {
     typename TXImage::Pointer imgX = ITK_NULLPTR;
 
     if (in_real) {
-        QI_LOG(verbose, "Reading real file: " << in_real.Get());
+        QI::Log(verbose, "Reading real file: {}", in_real.Get());
         img1 = QI::ReadImage<TImage>(in_real.Get());
         if (in_imag) {
-            QI_LOG(verbose, "Reading imaginary file: " << in_imag.Get());
+            QI::Log(verbose, "Reading imaginary file: {}", in_imag.Get());
             img2 = QI::ReadImage<TImage>(in_imag.Get());
         } else {
-            QI_FAIL("Must set real and imaginary inputs together");
+            QI::Fail("Must set real and imaginary inputs together");
         }
         auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
         compose->SetInput(0, img1);
@@ -165,46 +146,41 @@ template <typename TPixel> void Run() {
         imgX = compose->GetOutput();
         imgX->DisconnectPipeline();
     } else if (in_mag) {
-        QI_LOG(verbose, "Reading magnitude file: " << in_mag.Get());
+        QI::Log(verbose, "Reading magnitude file: {}", in_mag.Get());
         img1 = QI::ReadImage<TImage>(in_mag.Get());
         if (in_pha) {
-            QI_LOG(verbose, "Reading phase file: " << in_pha.Get());
+            QI::Log(verbose, "Reading phase file: {}", in_pha.Get());
             img2 = QI::ReadImage<TImage>(in_pha.Get());
         } else {
-            QI_FAIL("Must set magnitude and phase inputs together");
+            QI::Fail("Must set magnitude and phase inputs together");
         }
-        auto compose =
-            itk::MagnitudeAndPhaseToComplexImageFilter<TImage, TImage,
-                                                       TXImage>::New();
+        auto compose = itk::MagnitudeAndPhaseToComplexImageFilter<TImage, TImage, TXImage>::New();
         compose->SetInput(0, img1);
         compose->SetInput(1, img2);
         compose->Update();
         imgX = compose->GetOutput();
         imgX->DisconnectPipeline();
     } else if (in_complex) {
-        QI_LOG(verbose, "Reading complex file: " << in_complex.Get());
+        QI::Log(verbose, "Reading complex file: {}", in_complex.Get());
         imgX = QI::ReadImage<TXImage>(in_complex.Get());
     } else if (in_realimag) {
-        QI_LOG(verbose, "Reading real/imaginary file: " << in_realimag.Get());
-        auto img_both    = QI::ReadImage<TImage>(in_realimag.Get());
-        auto real_region = img_both->GetLargestPossibleRegion();
-        auto imag_region = img_both->GetLargestPossibleRegion();
+        QI::Log(verbose, "Reading real/imaginary file: {}", in_realimag.Get());
+        auto img_both                       = QI::ReadImage<TImage>(in_realimag.Get());
+        auto real_region                    = img_both->GetLargestPossibleRegion();
+        auto imag_region                    = img_both->GetLargestPossibleRegion();
         real_region.GetModifiableSize()[3]  = real_region.GetSize()[3] / 2;
         imag_region.GetModifiableSize()[3]  = real_region.GetSize()[3];
         imag_region.GetModifiableIndex()[3] = real_region.GetSize()[3];
-        auto extract_real =
-            itk::RegionOfInterestImageFilter<TImage, TImage>::New();
+        auto extract_real = itk::RegionOfInterestImageFilter<TImage, TImage>::New();
         extract_real->SetRegionOfInterest(real_region);
         extract_real->SetInput(img_both);
         extract_real->Update();
-        auto extract_imag =
-            itk::RegionOfInterestImageFilter<TImage, TImage>::New();
+        auto extract_imag = itk::RegionOfInterestImageFilter<TImage, TImage>::New();
         extract_imag->SetRegionOfInterest(imag_region);
         extract_imag->SetInput(img_both);
         extract_imag->Update();
         /* Hack round ITK changing the origin */
-        extract_imag->GetOutput()->SetOrigin(
-            extract_real->GetOutput()->GetOrigin());
+        extract_imag->GetOutput()->SetOrigin(extract_real->GetOutput()->GetOrigin());
         auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
         compose->SetInput(0, extract_real->GetOutput());
         compose->SetInput(1, extract_imag->GetOutput());
@@ -212,7 +188,7 @@ template <typename TPixel> void Run() {
         imgX = compose->GetOutput();
         imgX->DisconnectPipeline();
     } else {
-        QI_FAIL("No input files specified, use --help to see usage");
+        QI::Fail("No input files specified, use --help to see usage");
     }
 
     if (fixge || negate || conjugate) {
@@ -228,7 +204,7 @@ template <typename TPixel> void Run() {
         imgX->DisconnectPipeline();
     }
 
-    QI_LOG(verbose, "Writing output files");
+    QI::Log(verbose, "Writing output files");
     typename TWriter::Pointer write = TWriter::New();
 
     if (out_mag) {
@@ -236,31 +212,31 @@ template <typename TPixel> void Run() {
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_mag.Get());
-        QI_LOG(verbose, "Wrote magnitude image " << out_mag.Get());
+        QI::Log(verbose, "Wrote magnitude image {}", out_mag.Get());
     }
     if (out_pha) {
         auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_pha.Get());
-        QI_LOG(verbose, "Wrote phase image " << out_pha.Get());
+        QI::Log(verbose, "Wrote phase image {}", out_pha.Get());
     }
     if (out_real) {
         auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_real.Get());
-        QI_LOG(verbose, "Wrote real image " << out_real.Get());
+        QI::Log(verbose, "Wrote real image {}", out_real.Get());
     }
     if (out_imag) {
         auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
         QI::WriteImage(o->GetOutput(), out_imag.Get());
-        QI_LOG(verbose, "Wrote imaginary image " << out_imag.Get());
+        QI::Log(verbose, "Wrote imaginary image {}", out_imag.Get());
     }
     if (out_complex) {
-        QI_LOG(verbose, "Writing complex image " << out_complex.Get());
+        QI::Log(verbose, "Writing complex image {}", out_complex.Get());
         QI::WriteImage(imgX, out_complex.Get());
     }
 }
@@ -268,10 +244,10 @@ template <typename TPixel> void Run() {
 int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     if (use_double) {
-        QI_LOG(verbose, "Using double precision");
+        QI::Log(verbose, "Using double precision");
         Run<double>();
     } else {
-        QI_LOG(verbose, "Using float precision");
+        QI::Log(verbose, "Using float precision");
         Run<float>();
     }
     return EXIT_SUCCESS;

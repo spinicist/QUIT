@@ -12,19 +12,23 @@
 #ifndef SEQUENCES_GROUP_H
 #define SEQUENCES_GROUP_H
 
-#include "SequenceBase.h"
 #include "Macro.h"
+#include "SequenceBase.h"
+#include <vector>
 
 namespace QI {
 
 struct SequenceGroup : SequenceBase {
     std::vector<const SequenceBase *> sequences;
-    const SequenceBase *at(const size_t i) const;
-    const SequenceBase *operator[](const size_t i) const;
+    const SequenceBase *              at(const size_t i) const;
+    const SequenceBase *              operator[](const size_t i) const;
 
-    std::string &name() const override { static std::string name = "SequenceGroup"; return name; }
-    size_t count() const override;
-    Eigen::Index size() const override;
+    std::string &name() const override {
+        static std::string name = "SequenceGroup";
+        return name;
+    }
+    size_t         count() const override;
+    Eigen::Index   size() const override;
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;
 
     void addSequence(const SequenceBase *s);

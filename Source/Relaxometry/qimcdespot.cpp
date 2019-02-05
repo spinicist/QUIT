@@ -13,7 +13,6 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include <array>
-#include <iostream>
 
 #include "Args.h"
 #include "FitFunction.h"
@@ -151,7 +150,7 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckList(input_paths);
 
-    QI_LOG(verbose, "Reading sequences");
+    QI::Log(verbose, "Reading sequences");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SequenceGroup   sequences(QI::GetMember(input, "Sequences"));
 
@@ -167,10 +166,10 @@ int main(int argc, char **argv) {
                 src.model.bounds_lo = QI::ArrayFromJSON(input, "lower_bounds");
                 src.model.bounds_hi = QI::ArrayFromJSON(input, "upper_bounds");
             }
-            QI_LOG(verbose, "Low bounds: " << src.model.bounds_lo.transpose()
-                                           << "\nHigh bounds: " << src.model.bounds_hi.transpose());
+            QI::Log(verbose, "Low bounds: {}", src.model.bounds_lo.transpose());
+            QI::Log(verbose, "High bounds: {}", src.model.bounds_hi.transpose());
 
-            auto fit_filter = itk::ModelFitFilter<FitType>::New(&src, verbose, resids);
+            auto fit_filter = QI::ModelFitFilter<FitType>::New(&src, verbose, resids);
             for (size_t i = 0; i < input_paths.Get().size(); i++) {
                 fit_filter->SetInput(i, QI::ReadVectorImage(input_paths.Get().at(i), verbose));
             }
@@ -197,7 +196,7 @@ int main(int argc, char **argv) {
                 QI::WriteImage(fit_filter->GetFlagOutput(),
                                outPrefix + "iterations" + QI::OutExt());
             }
-            QI_LOG(verbose, "Finished.");
+            QI::Log(verbose, "Finished.");
         }
     };
     switch (modelarg.Get()) {
@@ -210,7 +209,7 @@ int main(int argc, char **argv) {
         process(model, "3C_");
     } break;
     default:
-        QI_FAIL("Unknow model specifier: " << modelarg.Get());
+        QI::Fail("Unknown model specifier: {}", modelarg.Get());
     }
     return EXIT_SUCCESS;
 }

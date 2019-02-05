@@ -10,7 +10,6 @@
  */
 
 #include <Eigen/Core>
-#include <iostream>
 
 #include "Args.h"
 #include "CASLSequence.h"
@@ -121,12 +120,12 @@ int main(int argc, char **argv) {
                                    {'l', "lambda"}, 0.9);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path), verbose);
-    QI_LOG(verbose, "Reading sequence parameters");
+    QI::Log(verbose, "Reading sequence parameters");
     rapidjson::Document json = QI::ReadJSON(std::cin);
     QI::CASLSequence    sequence(json["CASL"]);
     CASLModel           model{sequence};
     CASLFit             casl_fit{model, T1_blood.Get(), alpha.Get(), lambda.Get()};
-    auto                fit_filter = itk::ModelFitFilter<CASLFit>::New(&casl_fit, verbose, false);
+    auto                fit_filter = QI::ModelFitFilter<CASLFit>::New(&casl_fit, verbose, false);
     fit_filter->SetInput(0, input);
     if (PD_path)
         fit_filter->SetFixed(0, QI::ReadImage(PD_path.Get(), verbose));
@@ -134,8 +133,8 @@ int main(int argc, char **argv) {
         fit_filter->SetFixed(1, QI::ReadImage(T1_tissue_path.Get(), verbose));
     const auto n_slices = input->GetLargestPossibleRegion().GetSize()[2];
     if (slice_time && (n_slices != static_cast<size_t>(sequence.post_label_delay.rows()))) {
-        QI_FAIL("Number of post-label delays " << sequence.post_label_delay.rows()
-                                               << " does not match number of slices " << n_slices);
+        QI::Fail("Number of post-label delays {} does not match number of slices {}",
+                 sequence.post_label_delay.rows(), n_slices);
     }
     fit_filter->SetBlocks(input->GetNumberOfComponentsPerPixel() / 2);
     if (mask)
@@ -153,6 +152,6 @@ int main(int argc, char **argv) {
     } else {
         QI::WriteVectorImage(fit_filter->GetOutput(0), outPrefix + "_CBF" + QI::OutExt());
     }
-    QI_LOG(verbose, "Finished.");
+    QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

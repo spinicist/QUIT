@@ -14,7 +14,7 @@
 
 #include <cmath>
 
-namespace itk {
+namespace QI {
 
 /*
  *  Helper struct for converting between double/float for processing & IO

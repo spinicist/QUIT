@@ -10,27 +10,26 @@
  */
 
 #include "MultiEchoSequence.h"
-#include "Macro.h"
+#include "Log.h"
 
 namespace QI {
 
 /*
  * Base
  */
-Eigen::Index MultiEchoBase::size() const {
-    return TE.rows();
-}
+Eigen::Index MultiEchoBase::size() const { return TE.rows(); }
 
 /*
  * Regularly spaced sequence
  */
 MultiEchoSequence::MultiEchoSequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = GetMember(json, "TR").GetDouble();
+    if (json.IsNull())
+        QI::Fail("Could not read sequence: {}", name());
+    TR  = GetMember(json, "TR").GetDouble();
     TE1 = GetMember(json, "TE1").GetDouble();
     ESP = GetMember(json, "ESP").GetDouble();
     ETL = GetMember(json, "ETL").GetInt();
-    TE = Eigen::ArrayXd::LinSpaced(ETL, TE1, TE1+ESP*(ETL - 1));
+    TE  = Eigen::ArrayXd::LinSpaced(ETL, TE1, TE1 + ESP * (ETL - 1));
 }
 
 rapidjson::Value MultiEchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -46,7 +45,8 @@ rapidjson::Value MultiEchoSequence::toJSON(rapidjson::Document::AllocatorType &a
  * Irregularly spaced sequence
  */
 MultiEchoFlexSequence::MultiEchoFlexSequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    if (json.IsNull())
+        QI::Fail("Could not read sequence: {}", name());
     TR = GetMember(json, "TR").GetDouble();
     TE = ArrayFromJSON(json, "TE");
 }

@@ -20,6 +20,10 @@ set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
      CACHE PATH "Path to external library includes (usually External/include" )
 include_directories( SYSTEM ${External_Include_DIR} )
 
+# Configure directory paths
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMake)
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${PROJECT_SOURCE_DIR}/CMake)
+
 if( NOT DEFINED EIGEN3_INCLUDE_DIR )
     find_package( Eigen3 REQUIRED )
 endif()
@@ -30,6 +34,13 @@ if( NOT DEFINED CERES_INCLUDE_DIRS )
     find_package( Ceres 1.14.0 )
 endif()
 include_directories( SYSTEM ${CERES_INCLUDE_DIRS} )
+
+# fmtlib: Sane output
+find_package(fmtlib REQUIRED CONFIG)
+if(fmtlib_FOUND)
+    add_library(fmtlib STATIC ${FMTLIB_SOURCES})
+    target_include_directories(fmtlib SYSTEM PUBLIC ${FMTLIB_INCLUDE_DIR})
+endif()
 
 find_package(ITK 5.0.0 REQUIRED
               COMPONENTS

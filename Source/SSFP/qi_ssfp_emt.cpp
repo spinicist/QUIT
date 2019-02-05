@@ -12,7 +12,6 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include <array>
-#include <iostream>
 
 #include "Args.h"
 #include "ImageIO.h"
@@ -209,7 +208,7 @@ int main(int argc, char **argv) {
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);
 
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPMTSequence  ssfp(QI::GetMember(input, "SSFPMT"));
     EMTModel            model{ssfp};
@@ -220,7 +219,7 @@ int main(int argc, char **argv) {
     } else {
         EMTFit fit{model};
         fit.model.T2_b  = T2_b_us.Get() * 1e-6;
-        auto fit_filter = itk::ModelFitFilter<EMTFit>::New(&fit, verbose, false);
+        auto fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, verbose, false);
         fit_filter->SetInput(0, QI::ReadVectorImage(G_path.Get(), verbose));
         fit_filter->SetInput(1, QI::ReadVectorImage(a_path.Get(), verbose));
         fit_filter->SetInput(2, QI::ReadVectorImage(b_path.Get(), verbose));
@@ -238,7 +237,7 @@ int main(int argc, char **argv) {
             QI::WriteImage(fit_filter->GetOutput(i),
                            outPrefix + EMTModel::varying_names.at(i) + QI::OutExt());
         }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

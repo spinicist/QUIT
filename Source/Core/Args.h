@@ -12,91 +12,58 @@
 #ifndef QI_ARGS_H
 #define QI_ARGS_H
 
-#include "args.hxx"
-#include "Macro.h"
 #include "ImageTypes.h"
-#include "Util.h"
+#include "Log.h"
+#include "args.hxx"
 
 namespace QI {
 
-void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose) {
-    try {
-        parser.ParseCLI(argc, argv);
-        QI_LOG(verbose,  "Starting " << argv[0] << " " << QI::GetVersion());
-    } catch (args::Help) {
-        std::cout << parser;
-        exit(EXIT_SUCCESS);
-    } catch (args::ParseError e) {
-        QI_FAIL(e.what() << std::endl << parser);
-    } catch (args::ValidationError e) {
-        QI_FAIL(e.what() << std::endl << parser);
-    }
-}
+void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose);
+void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose,
+               args::ValueFlag<int> &threads);
 
-void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose, args::ValueFlag<int> &threads) {
-    try {
-        parser.ParseCLI(argc, argv);
-        QI_LOG(verbose, "Starting " << argv[0] << " " << QI::GetVersion());
-        QI_LOG(verbose, "Setting maximum number of threads " << threads.Get());
-        itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
-    } catch (args::Help) {
-        std::cout << parser;
-        exit(EXIT_SUCCESS);
-    } catch (args::ParseError e) {
-        QI_FAIL(e.what() << std::endl << parser);
-    } catch (args::ValidationError e) {
-        QI_FAIL(e.what() << std::endl << parser);
-    }
-}
-
-void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose, args::ValueFlag<int> &threads);
-
-template<typename T>
-T CheckPos(args::Positional<T> &a) {
+template <typename T> T CheckPos(args::Positional<T> &a) {
     if (a) {
         return a.Get();
     } else {
-        QI_FAIL(a.Name() << " was not specified. Use --help to see usage.");
+        QI::Fail("{} was not specified. Use --help to see usage.", a.Name());
     }
 }
 
-template<typename T>
-std::vector<T> CheckList(args::PositionalList<T> &a) {
+template <typename T> std::vector<T> CheckList(args::PositionalList<T> &a) {
     if (a) {
         return a.Get();
     } else {
-        QI_FAIL("No values of " << a.Name() << " specified. Use --help to see usage.");
+        QI::Fail("No values of {} specified. Use --help to see usage.", a.Name());
     }
 }
 
-template<typename T>
-T CheckValue(args::ValueFlag<T> &v) {
+template <typename T> T CheckValue(args::ValueFlag<T> &v) {
     if (v) {
         return v.Get();
     } else {
-        QI_FAIL(v.Name() << " was not specified. Use --help to see usage.");
+        QI::Fail("{} was not specified. Use --help to see usage.", v.Name());
     }
 }
 
-template<typename TArray, const int size>
-void ArrayArg(const std::string &a, TArray &array) {
+template <typename TArray, const int size> void ArrayArg(const std::string &a, TArray &array) {
     std::istringstream iss(a);
-    std::string el;
+    std::string        el;
     for (int i = 0; i < size; i++) {
         std::getline(iss, el, ',');
         if (!iss) {
-            QI_FAIL("Failed to read array argument from string: " << a);
+            QI::Fail("Failed to read from array argument: {}", a);
         }
         array[i] = std::stoi(el);
     }
 }
 
-template<typename TRegion = typename QI::VolumeF::RegionType>
+template <typename TRegion = typename QI::VolumeF::RegionType>
 TRegion RegionArg(const std::string &a) {
-    std::istringstream iss(a);
-    std::string el;
+    std::istringstream          iss(a);
+    std::string                 el;
     typename TRegion::IndexType start;
-    typename TRegion::SizeType size;
+    typename TRegion::SizeType  size;
     for (size_t i = 0; i < TRegion::ImageDimension; i++) {
         std::getline(iss, el, ',');
         start[i] = std::stoi(el);

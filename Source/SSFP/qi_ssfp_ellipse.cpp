@@ -10,7 +10,6 @@
  */
 
 #include <Eigen/Core>
-#include <iostream>
 
 #include "Args.h"
 #include "DirectFit.h"
@@ -49,7 +48,7 @@ int main(int argc, char **argv) {
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(ssfp_path);
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document json_input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence    ssfp(QI::GetMember(json_input, "SSFP"));
     QI::EllipseModel    model{ssfp};
@@ -67,7 +66,7 @@ int main(int argc, char **argv) {
             fit = new QI::DirectFit(model);
             break;
         }
-        auto fit_filter = itk::ModelFitFilter<QI::EllipseFit>::New(fit, verbose, false);
+        auto fit_filter = QI::ModelFitFilter<QI::EllipseFit>::New(fit, verbose, false);
         fit_filter->SetInput(0, input);
         fit_filter->SetBlocks(input->GetNumberOfComponentsPerPixel() / ssfp.size());
         if (mask)
@@ -88,7 +87,7 @@ int main(int argc, char **argv) {
         // if (its) {
         //     QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
         // }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

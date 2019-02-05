@@ -25,8 +25,8 @@ END_INPUT
 SIZE="9,9,9"
 qinewimage S0$EXT --size="$SIZE" -f 100
 qinewimage dT$EXT --size="$SIZE" -g "0 -0.025 0.025"
-qinewimage OEF$EXT --size="$SIZE" -g "1 0.2 0.5"
-qinewimage DBV$EXT --size="$SIZE" -g "2 0.01 0.1"
+qinewimage R2p$EXT --size="$SIZE" -g "1 1.0 3.0"
+qinewimage DBV$EXT --size="$SIZE" -g "2 0.005 0.025"
 
 cat > input.json <<END
 {
@@ -56,49 +56,16 @@ cat > input.json <<END
     },
     "S0File" : "S0$EXT",
     "dTFile" : "dT$EXT",
-    "OEFFile" : "OEF$EXT",
+    "R2pFile" : "R2p$EXT",
     "DBVFile" : "DBV$EXT"
-}
-END
-cat > input2.json <<END
-{
-    "MultiEchoFlex" : {
-        "TR" : 2.5,
-        "TE" : [ -0.05, 
-                 -0.045,
-                 -0.04,
-                 -0.035,
-                 -0.03,
-                 -0.025,
-                 -0.02,
-                 -0.015,
-                 -0.01,
-                 -0.005,
-                  0.0,
-                  0.005,
-                  0.01,
-                  0.015,
-                  0.02,
-                  0.025,
-                  0.03,
-                  0.035,
-                  0.04,
-                  0.045,
-                  0.05 ]
-    },
-    "S0File" : "me_S0$EXT",
-    "dTFile" : "me_dT$EXT",
-    "OEFFile" : "me_OEF$EXT",
-    "DBVFile" : "me_DBV$EXT"
 }
 END
 SPIN_FILE="me$EXT"
 NOISE="0.01"
 qi_ase_oef --verbose --simulate=$NOISE $SPIN_FILE --threads=1 < input.json
 qi_ase_oef --verbose $SPIN_FILE --threads=1 < input.json
-qi_ase_oef --verbose --simulate=$NOISE check.nii.gz --threads=1 < input2.json
-qidiff --baseline=OEF$EXT --input=me_OEF$EXT --noise=$NOISE --tolerance=5 --verbose
-qidiff --baseline=DBV$EXT --input=me_DBV$EXT --noise=$NOISE --tolerance=5 --verbose
+qidiff --baseline=R2p$EXT --input=me_R2p$EXT --noise=$NOISE --tolerance=5 --verbose
+qidiff --baseline=DBV$EXT --input=me_DBV$EXT --noise=$NOISE --tolerance=10 --verbose
 }
 
 @test "Perfusion (Z-Shim)" {

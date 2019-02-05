@@ -16,14 +16,12 @@
 
 namespace itk {
 
-template<typename TInput>
-class MeanImageFilter : public ImageToImageFilter<TInput, TInput>
-{
-public:
-    static const size_t ImageDimension = TInput::ImageDimension;
-    typedef typename TInput::PixelType           TPixel;
-    typedef typename TInput::RegionType          TRegion;
-    typedef TInput                               TOutput;
+template <typename TInput> class MeanImageFilter : public ImageToImageFilter<TInput, TInput> {
+  public:
+    static const size_t                 ImageDimension = TInput::ImageDimension;
+    typedef typename TInput::PixelType  TPixel;
+    typedef typename TInput::RegionType TRegion;
+    typedef TInput                      TOutput;
 
     typedef MeanImageFilter                     Self;
     typedef ImageToImageFilter<TInput, TOutput> Superclass;
@@ -34,17 +32,19 @@ public:
 
     void SetNumberOfImages(size_t n);
 
-protected:
+  protected:
     MeanImageFilter();
-    ~MeanImageFilter(){}
+    ~MeanImageFilter() {}
 
-    void GenerateOutputInformation() ITK_OVERRIDE; // Because output will be different dimension to input
-    void ThreadedGenerateData(const TRegion &region, ThreadIdType threadId) ITK_OVERRIDE; // Does the work
-    //DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
+    void
+         GenerateOutputInformation() ITK_OVERRIDE; // Because output will be different dimension to input
+    void ThreadedGenerateData(const TRegion &region,
+                              ThreadIdType   threadId) ITK_OVERRIDE; // Does the work
+    // DataObject::Pointer MakeOutput(unsigned int idx); // Create the Output
 
-private:
-    MeanImageFilter(const Self &); //purposely not implemented
-    void operator=(const Self &);  //purposely not implemented
+  private:
+    MeanImageFilter(const Self &); // purposely not implemented
+    void operator=(const Self &);  // purposely not implemented
 };
 
 } // End namespace itk

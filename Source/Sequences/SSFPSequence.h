@@ -13,14 +13,13 @@
 #define SEQUENCES_SSFP_H
 
 #include "SequenceBase.h"
-#include "Macro.h"
 
 namespace QI {
 
 struct SSFPBase : SequenceBase {
-    double TR;
+    double         TR;
     Eigen::ArrayXd FA;
-    Eigen::Index size() const override;
+    Eigen::Index   size() const override;
 };
 
 struct SSFPSequence : SSFPBase {
@@ -34,7 +33,7 @@ struct SSFPEchoSequence : SSFPSequence {
 };
 
 struct SSFPFiniteSequence : SSFPBase {
-    double Trf;
+    double         Trf;
     Eigen::ArrayXd PhaseInc;
 
     QI_SEQUENCE_DECLARE(SSFPFinite);

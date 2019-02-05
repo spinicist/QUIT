@@ -9,7 +9,7 @@
  *
  */
 
-#include <iostream>
+
 #include <Eigen/Core>
 
 #include "itkDerivativeImageFilter.h"
@@ -29,11 +29,11 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    QI_LOG(verbose, "Reading data from: " << QI::CheckPos(input_path));
+    QI::Log(verbose, "Reading data from: {}", QI::CheckPos(input_path));
     auto image = QI::ReadImage(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     
-    QI_LOG(verbose, "Calculating derivatives of image" );
+    QI::Log(verbose, "Calculating derivatives of image" );
     auto grad = itk::DerivativeImageFilter<QI::VolumeF, QI::VolumeF>::New();
     grad->SetInput(image);
     grad->SetDirection(0);

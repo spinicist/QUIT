@@ -10,7 +10,6 @@
  */
 
 #include <array>
-#include <iostream>
 
 #include <Eigen/Core>
 
@@ -129,7 +128,7 @@ int main(int argc, char **argv) {
     QI::CheckPos(a_filename);
     QI::CheckPos(b_filename);
 
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence    ssfp(QI::GetMember(input, "SSFP"));
     PLANETModel         model{ssfp};
@@ -139,7 +138,7 @@ int main(int argc, char **argv) {
                                              verbose, simulate.Get());
     } else {
         PLANETFit fit{model};
-        auto      fit_filter = itk::ModelFitFilter<PLANETFit>::New(&fit, verbose, false);
+        auto      fit_filter = QI::ModelFitFilter<PLANETFit>::New(&fit, verbose, false);
         fit_filter->SetInput(0, QI::ReadVectorImage(G_filename.Get(), verbose));
         fit_filter->SetInput(1, QI::ReadVectorImage(a_filename.Get(), verbose));
         fit_filter->SetInput(2, QI::ReadVectorImage(b_filename.Get(), verbose));
@@ -156,7 +155,7 @@ int main(int argc, char **argv) {
             QI::WriteVectorImage(fit_filter->GetOutput(i),
                                  outPrefix + PLANETModel::varying_names.at(i) + QI::OutExt());
         }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

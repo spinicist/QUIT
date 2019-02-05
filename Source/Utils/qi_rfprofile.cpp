@@ -10,14 +10,14 @@
  */
 
 #include "Eigen/Core"
-#include <iostream>
+
 #include <unsupported/Eigen/Splines>
 
 #include "Args.h"
-#include "IO.h"
 #include "ImageIO.h"
 #include "ImageTypes.h"
 #include "JSON.h"
+#include "Monitor.h"
 #include "Spline.h"
 #include "Util.h"
 #include "itkImageMomentsCalculator.h"
@@ -40,13 +40,13 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
     void SetDebug(const bool d) { m_debug = d; }
     void SetDim(const int d) {
         if ((m_dim < 0) || (m_dim > 2)) {
-            QI_FAIL("Invalid dimension for RF profile, must be 0-2");
+            QI::Fail("Invalid dimension for RF profile, must be 0-2");
         }
         m_dim = d;
     }
     void SetRF(const Eigen::ArrayXd pos, const Eigen::ArrayXd vals) {
         m_spline = QI::SplineInterpolator(pos, vals);
-        QI_LOG(m_debug, m_spline);
+        QI::Log(m_debug, "{}", m_spline);
     }
 
     void SetMask(const QI::VolumeF *mask) { this->SetNthInput(1, const_cast<QI::VolumeF *>(mask)); }
@@ -97,7 +97,7 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
             auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
             moments->SetImage(mask);
             moments->Compute();
-            QI_LOG(m_debug, "Mask CoG is: " << moments->GetCenterOfGravity());
+            QI::Log(m_debug, "Mask CoG is: {}", moments->GetCenterOfGravity());
             pt_center = moments->GetCenterOfGravity();
         } else {
             // Calculate geometric center
@@ -113,8 +113,8 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
             m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), pt);
             pt_rf     = pt - pt_center;
             float val = m_spline(pt_rf[m_dim]);
-            QI_LOG(m_debug, "Slice co-ordinate: " << pt_rf << " Spline Point: " << pt_rf[m_dim]
-                                                  << " value: " << val);
+            QI::Log(m_debug, "Slice co-ordinate: {} Spline Point: {} Value: {}", pt_rf,
+                    pt_rf[m_dim], val);
             while (!imageIt.IsAtEndOfSlice()) {
                 while (!imageIt.IsAtEndOfLine()) {
                     if (!mask || maskIter.Get()) {
@@ -174,15 +174,16 @@ int main(int argc, char **argv) {
                                         "Read JSON input from file instead of stdin", {"file"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI_LOG(verbose, "Reading image " << QI::CheckPos(b1plus_path));
+    QI::Log(verbose, "Reading image {}", QI::CheckPos(b1plus_path));
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 
-    QI_LOG(verbose, "Reading slab profile");
+    QI::Log(verbose, "Reading slab profile");
     rapidjson::Document json    = infile ? QI::ReadJSON(infile.Get()) : QI::ReadJSON(std::cin);
     auto                rf_pos  = QI::ArrayFromJSON(json, "rf_pos");
     auto                rf_vals = QI::ArrayFromJSON(json, "rf_vals");
 
-    QI_LOG(verbose, "Profile has " << rf_pos.rows() << " points.\nGenerating image");
+    QI::Log(verbose, "Profile points = {}", rf_pos.rows());
+    QI::Log(verbose, "Generating image...");
     auto image = itk::ProfileImage::New();
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
@@ -196,7 +197,7 @@ int main(int argc, char **argv) {
         image->AddObserver(itk::ProgressEvent(), monitor);
     }
     image->Update();
-    QI_LOG(verbose, "Finished, writing output: " << QI::CheckPos(output_path));
+    QI::Log(verbose, "Finished, writing output: {}", QI::CheckPos(output_path));
     QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path));
     return EXIT_SUCCESS;
 }

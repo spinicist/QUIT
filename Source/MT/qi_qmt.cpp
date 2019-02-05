@@ -9,8 +9,6 @@
  *
  */
 
-#include <iostream>
-
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 
@@ -292,22 +290,22 @@ int main(int argc, char **argv) {
         0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(mtsat_path);
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::MTSatSequence   mtsat_sequence(QI::GetMember(input, "MTSat"));
     QI::Lineshapes      lineshape;
     std::shared_ptr<QI::InterpLineshape> interp = nullptr;
     if (lineshape_arg.Get() == "Gaussian") {
-        QI_LOG(verbose, "Using a Gaussian lineshape");
+        QI::Log(verbose, "Using a Gaussian lineshape");
         lineshape = QI::Lineshapes::Gaussian;
     } else if (lineshape_arg.Get() == "Lorentzian") {
-        QI_LOG(verbose, "Using a Lorentzian lineshape");
+        QI::Log(verbose, "Using a Lorentzian lineshape");
         lineshape = QI::Lineshapes::Lorentzian;
     } else if (lineshape_arg.Get() == "Superlorentzian") {
-        QI_LOG(verbose, "Using a Super-Lorentzian lineshape");
+        QI::Log(verbose, "Using a Super-Lorentzian lineshape");
         lineshape = QI::Lineshapes::SuperLorentzian;
     } else {
-        QI_LOG(verbose, "Reading lineshape file: " << lineshape_arg.Get());
+        QI::Log(verbose, "Reading lineshape file: {}", lineshape_arg.Get());
         rapidjson::Document ls_file = QI::ReadJSON(lineshape_arg.Get());
         interp    = std::make_shared<QI::InterpLineshape>(QI::GetMember(ls_file, "lineshape"));
         lineshape = QI::Lineshapes::Interpolated;
@@ -321,7 +319,7 @@ int main(int argc, char **argv) {
     } else {
         RamaniFitFunction fit{model};
 
-        auto fit_filter = itk::ModelFitFilter<RamaniFitFunction>::New(&fit, verbose, resids);
+        auto fit_filter = QI::ModelFitFilter<RamaniFitFunction>::New(&fit, verbose, resids);
         fit_filter->SetInput(0, QI::ReadVectorImage(mtsat_path.Get(), verbose));
         if (f0)
             fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
@@ -344,7 +342,7 @@ int main(int argc, char **argv) {
             QI::WriteVectorImage(fit_filter->GetResidualsOutput(0),
                                  outPrefix + "all_residuals" + QI::OutExt());
         }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

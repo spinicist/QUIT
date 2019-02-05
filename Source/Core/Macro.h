@@ -9,67 +9,46 @@
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  */
- 
- /*
+
+/*
  * The following macros are adapted from ITK for use in QUIT files which don't include any of ITK
  */
 
 #ifndef QI_MACRO_H
 #define QI_MACRO_H
 
-#include <sstream>
+#include "fmt/format.h"
 
-#if defined( _WIN32 ) && !defined( __MINGW32__ )
-    #define QI_LOCATION __FUNCSIG__
-#elif defined( __GNUC__ )
-    #define QI_LOCATION __PRETTY_FUNCTION__   
+#if defined(_WIN32) && !defined(__MINGW32__)
+#define QI_LOCATION __FUNCSIG__
+#elif defined(__GNUC__)
+#define QI_LOCATION __PRETTY_FUNCTION__
 #else
-    #define QI_LOCATION __FUNCTION__
+#define QI_LOCATION __FUNCTION__
 #endif
 
-#define QI_EXCEPTION( x )                               \
-{                                                       \
-    std::ostringstream message;                         \
-    message << QI_LOCATION << std::endl                 \
-            << __FILE__ << ":" << __LINE__ << std::endl \
-            << x << std::endl;                          \
-    throw(std::runtime_error(message.str()));                 \
-}
-
-#define QI_FAIL( x )             \
-{                                \
-    std::cerr << x << std::endl; \
-    exit(EXIT_FAILURE);          \
-}
-
-#define QI_ARRAY( T ) Eigen::Array<T, Eigen::Dynamic, 1>
-#define QI_ARRAYN( T, N ) Eigen::Array<T, N, 1>
-
-#define QI_LOG( vb, msg ) if ( vb ) std::cerr << msg << std::endl;
+#define QI_ARRAY(T) Eigen::Array<T, Eigen::Dynamic, 1>
+#define QI_ARRAYN(T, N) Eigen::Array<T, N, 1>
 
 #ifdef QI_DEBUG_BUILD
-#define QI_DB( x ) std::cout << #x << ": " << x << std::endl;
-#define QI_DBMAT( x ) std::cout << #x << "\n" << x << std::endl;
-#define QI_DBVEC( x ) std::cout << #x << ": " << x.transpose() << std::endl;
-#define QI_DBVECT( x ) std::cout << #x << ":\n" << x << std::endl;
+#define QI_DB(x) fmt::print("{}: {}\n", #x, x);
+#define QI_DBMAT(x) fmt::print("{}:\n{}\n", #x, x);
+#define QI_DBVEC(x) fmt::print("{}: {}\n", #x, x.transpose());
 #else
-#define QI_DB( x )
-#define QI_DMAT( x )
-#define QI_DBVEC( x )
-#define QI_DBVECT( x )
+#define QI_DB(x)
+#define QI_DMAT(x)
+#define QI_DBVEC(x)
+#define QI_DBVECT(x)
 #endif
 
-#define QI_ForwardNewMacro(x)                                  \
-  template<class... Args>                                      \
-  static Pointer New(Args &&... args)                          \
-    {                                                          \
-    Pointer smartPtr = ::itk::ObjectFactory< x >::Create();    \
-    if ( smartPtr == nullptr )                                 \
-      {                                                        \
-      smartPtr = new x(std::forward<Args>(args)...);           \
-      }                                                        \
-    smartPtr->UnRegister();                                    \
-    return smartPtr;                                           \
+#define QI_ForwardNewMacro(x)                                      \
+    template <class... Args> static Pointer New(Args &&... args) { \
+        Pointer smartPtr = ::itk::ObjectFactory<x>::Create();      \
+        if (smartPtr == nullptr) {                                 \
+            smartPtr = new x(std::forward<Args>(args)...);         \
+        }                                                          \
+        smartPtr->UnRegister();                                    \
+        return smartPtr;                                           \
     }
 
 #endif // QI_MACRO_H

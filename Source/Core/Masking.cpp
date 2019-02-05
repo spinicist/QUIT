@@ -14,18 +14,18 @@
 #include <limits>
 
 #include "itkBinaryThresholdImageFilter.h"
-#include "itkOtsuThresholdImageFilter.h"
 #include "itkConnectedComponentImageFilter.h"
 #include "itkLabelShapeKeepNObjectsImageFilter.h"
+#include "itkOtsuThresholdImageFilter.h"
 #include "itkRelabelComponentImageFilter.h"
 
-#include "Macro.h"
+#include "Log.h"
 
 namespace QI {
 
 VolumeI::Pointer ThresholdMask(const VolumeF::Pointer &img, const float lower, const float upper) {
     typedef itk::BinaryThresholdImageFilter<VolumeF, VolumeI> TThreshFilter;
-    auto threshold = TThreshFilter::New();
+    auto                                                      threshold = TThreshFilter::New();
     threshold->SetInput(img);
     threshold->SetLowerThreshold(lower);
     threshold->SetUpperThreshold(upper);
@@ -48,14 +48,15 @@ VolumeI::Pointer OtsuMask(const VolumeF::Pointer &img) {
     return mask;
 }
 
-std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const unsigned long size_threshold, const size_t to_keep, QI::VolumeI::Pointer &labels) {
-    auto CC = itk::ConnectedComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
+std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const unsigned long size_threshold,
+                              const size_t to_keep, QI::VolumeI::Pointer &labels) {
+    auto CC      = itk::ConnectedComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
     auto relabel = itk::RelabelComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
     CC->SetInput(mask);
     relabel->SetInput(CC->GetOutput());
     relabel->Update();
     // Relabel sorts on size by default, so now work out how many make the size threshold
-    auto label_sizes = relabel->GetSizeOfObjectsInPixels();
+    auto               label_sizes = relabel->GetSizeOfObjectsInPixels();
     std::vector<float> kept_sizes;
     for (size_t i = 0; i < to_keep && i < label_sizes.size(); i++) {
         if (label_sizes[i] < size_threshold) {
@@ -64,11 +65,11 @@ std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const unsigned l
         kept_sizes.push_back(label_sizes[i]);
     }
     if (kept_sizes.size() == 0) {
-        QI_EXCEPTION("No labels found in mask");
+        QI::Fail("No labels found in mask");
     }
 
     typedef itk::LabelShapeKeepNObjectsImageFilter<QI::VolumeI> TKeepN;
-    TKeepN::Pointer keepN = TKeepN::New();
+    TKeepN::Pointer                                             keepN = TKeepN::New();
     keepN->SetInput(relabel->GetOutput());
     keepN->SetBackgroundValue(0);
     keepN->SetNumberOfObjects(kept_sizes.size());

@@ -9,15 +9,13 @@
  *
  */
 
-#include <iostream>
-
-#include "itkSubtractImageFilter.h"
-#include "itkDivideImageFilter.h"
-#include "itkStatisticsImageFilter.h"
-#include "itkSquareImageFilter.h"
-#include "Util.h"
 #include "Args.h"
 #include "ImageIO.h"
+#include "Util.h"
+#include "itkDivideImageFilter.h"
+#include "itkSquareImageFilter.h"
+#include "itkStatisticsImageFilter.h"
+#include "itkSubtractImageFilter.h"
 
 //******************************************************************************
 // Main
@@ -26,17 +24,23 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser("Checks if images are different within a tolerance.\n"
                                 "Intended for use with library tests.\n"
                                 "http://github.com/spinicist/QUIT");
-    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<std::string> input_path(parser, "INPUT", "Input file for difference", {"input"});
-    args::ValueFlag<std::string> baseline_path(parser, "BASELINE", "Baseline file for difference", {"baseline"});
-    args::ValueFlag<double>      tolerance(parser, "TOLERANCE", "Tolerance (mean percent difference)", {"tolerance"}, 0);
-    args::ValueFlag<double>      noise(parser, "NOISE", "Added noise level, tolerance is relative to this", {"noise"}, 0);
-    args::Flag                   absolute(parser, "ABSOLUTE", "Use absolute difference, not relative (avoids 0/0 problems)", {'a', "abs"});
+    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<std::string> input_path(parser, "INPUT", "Input file for difference",
+                                            {"input"});
+    args::ValueFlag<std::string> baseline_path(parser, "BASELINE", "Baseline file for difference",
+                                               {"baseline"});
+    args::ValueFlag<double> tolerance(parser, "TOLERANCE", "Tolerance (mean percent difference)",
+                                      {"tolerance"}, 0);
+    args::ValueFlag<double> noise(parser, "NOISE",
+                                  "Added noise level, tolerance is relative to this", {"noise"}, 0);
+    args::Flag              absolute(parser, "ABSOLUTE",
+                        "Use absolute difference, not relative (avoids 0/0 problems)",
+                        {'a', "abs"});
     QI::ParseArgs(parser, argc, argv, verbose);
-    auto input = QI::ReadImage(QI::CheckValue(input_path), verbose);
+    auto input    = QI::ReadImage(QI::CheckValue(input_path), verbose);
     auto baseline = QI::ReadImage(QI::CheckValue(baseline_path), verbose);
-    
+
     auto diff = itk::SubtractImageFilter<QI::VolumeF>::New();
     diff->SetInput1(input);
     diff->SetInput2(baseline);
@@ -55,21 +59,20 @@ int main(int argc, char **argv) {
     stats->SetInput(sqr_norm->GetOutput());
     stats->Update();
 
-    const double mean_sqr_diff = stats->GetMean();
+    const double mean_sqr_diff      = stats->GetMean();
     const double root_mean_sqr_diff = sqrt(mean_sqr_diff);
-    const double rel_diff = (noise.Get() > 0) ? root_mean_sqr_diff / noise.Get() : root_mean_sqr_diff;
+    const double rel_diff =
+        (noise.Get() > 0) ? root_mean_sqr_diff / noise.Get() : root_mean_sqr_diff;
     const bool passed = rel_diff <= tolerance.Get();
-    QI_LOG(verbose, "Mean Square Diff: " << mean_sqr_diff
-           << "\nRelative noise: " << noise.Get()
-           << "\nSquare-root mean square diff: " << root_mean_sqr_diff
-           << "\nRelative Diff: " << rel_diff
-           << "\nTolerance: " << tolerance.Get()
-           << "\nResult: " << (passed ? "Passed" : "Failed"));
+    QI::Log(verbose, "Mean Square Diff: {}\nRelative noise: {}\nSquare-root mean square diff: {}\nRelative Diff: {}\nTolerance: {}\nResult: ", mean_sqr_diff
+    ,noise.Get()
+                                         , root_mean_sqr_diff
+                                         , rel_diff
+                                         , tolerance.Get()
+                                         , (passed ? "Passed" : "Failed"));
     if (passed) {
         return EXIT_SUCCESS;
     } else {
         return EXIT_FAILURE;
     }
 }
-
-

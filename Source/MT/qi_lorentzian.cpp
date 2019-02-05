@@ -11,7 +11,6 @@
 
 #include "ceres/ceres.h"
 #include <Eigen/Core>
-#include <iostream>
 
 #include "Args.h"
 #include "FitFunction.h"
@@ -32,7 +31,7 @@ struct LorentzSequence : QI::SequenceBase {
 };
 LorentzSequence::LorentzSequence(const rapidjson::Value &json) {
     if (json.IsNull())
-        QI_FAIL("Could not read sequence: " << name());
+        QI::Fail("Could not read sequence: {}", name());
     sat_f0 = QI::ArrayFromJSON(json, "sat_f0");
 }
 rapidjson::Value LorentzSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
@@ -131,7 +130,7 @@ int main(int argc, char **argv) {
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(input_path);
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     LorentzSequence     sequence(QI::GetMember(input, "Lorentz"));
     LorentzModel        model{sequence};
@@ -140,7 +139,7 @@ int main(int argc, char **argv) {
                                                simulate.Get());
     } else {
         LorentzFit fit{model};
-        auto       fit_filter = itk::ModelFitFilter<LorentzFit>::New(&fit, verbose, false);
+        auto       fit_filter = QI::ModelFitFilter<LorentzFit>::New(&fit, verbose, false);
         fit_filter->SetInput(0, QI::ReadVectorImage(input_path.Get(), verbose));
         if (mask)
             fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
@@ -153,7 +152,7 @@ int main(int argc, char **argv) {
                            outPrefix + LorentzModel::varying_names.at(i) + QI::OutExt(), verbose);
         }
         QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

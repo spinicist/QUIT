@@ -13,7 +13,6 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include <array>
-#include <iostream>
 
 #include "Args.h"
 #include "FitFunction.h"
@@ -178,7 +177,7 @@ int main(int argc, char **argv) {
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence    ssfp(QI::GetMember(input, "SSFP"));
     FMModel             model{ssfp};
@@ -189,7 +188,7 @@ int main(int argc, char **argv) {
         FMNLLS fm{model};
         fm.max_iterations = its.Get();
         fm.asymmetric     = asym.Get();
-        auto fit_filter   = itk::ModelFitFilter<FMNLLS>::New(&fm, verbose, resids);
+        auto fit_filter   = QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, resids);
         fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(ssfp_path), verbose));
         fit_filter->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));
         if (B1)
@@ -212,7 +211,7 @@ int main(int argc, char **argv) {
         if (its) {
             QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
         }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

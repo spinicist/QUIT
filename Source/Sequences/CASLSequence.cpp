@@ -10,12 +10,12 @@
  */
 
 #include "CASLSequence.h"
-#include "Macro.h"
+#include "Log.h"
 
 namespace QI {
 
 CASLSequence::CASLSequence(const rapidjson::Value& json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    if (json.IsNull()) QI::Fail("Could not read sequence: {}", name());
     TR = json["TR"].GetDouble();
     label_time = json["label_time"].GetDouble();
     post_label_delay = ArrayFromJSON(json, "post_label_delay");

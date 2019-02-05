@@ -13,16 +13,15 @@
 
 #include "SPGRSequence.h"
 #include "JSON.h"
-#include "Macro.h"
+#include "Log.h"
 
 namespace QI {
 
-Eigen::Index SPGRBase::size() const {
-    return FA.rows();
-}
+Eigen::Index SPGRBase::size() const { return FA.rows(); }
 
 SPGRSequence::SPGRSequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    if (json.IsNull())
+        QI::Fail("Could not read sequence: {}", name());
     TR = GetMember(json, "TR").GetDouble();
     FA = ArrayFromJSON(json, "FA", M_PI / 180);
 }
@@ -34,13 +33,13 @@ rapidjson::Value SPGRSequence::toJSON(rapidjson::Document::AllocatorType &a) con
     return json;
 }
 
-
 /*
  * With echo-time correction
  */
 
 SPGREchoSequence::SPGREchoSequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    if (json.IsNull())
+        QI::Fail("Could not read sequence: {}", name());
     TR = GetMember(json, "TR").GetDouble();
     TE = GetMember(json, "TE").GetDouble();
     FA = ArrayFromJSON(json, "FA", M_PI / 180);
@@ -58,11 +57,12 @@ rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a)
  * With echo-time and finite-pulse corrections
  */
 SPGRFiniteSequence::SPGRFiniteSequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
-    TR = GetMember(json, "TR").GetDouble();
-    TE = GetMember(json, "TE").GetDouble();
+    if (json.IsNull())
+        QI::Fail("Could not read sequence: {}", name());
+    TR  = GetMember(json, "TR").GetDouble();
+    TE  = GetMember(json, "TE").GetDouble();
     Trf = GetMember(json, "Trf").GetDouble();
-    FA = ArrayFromJSON(json, "FA", M_PI / 180);
+    FA  = ArrayFromJSON(json, "FA", M_PI / 180);
 }
 
 rapidjson::Value SPGRFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {

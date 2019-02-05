@@ -12,13 +12,14 @@
 #ifndef QI_FIT_H
 #define QI_FIT_H
 
-#include <iostream>
 #include <Eigen/Core>
 
 namespace QI {
 
-Eigen::VectorXd LeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y, double *resid = nullptr);
-Eigen::VectorXd RobustLeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y, double *resid = nullptr);
+Eigen::VectorXd LeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y,
+                             double *resid = nullptr);
+Eigen::VectorXd RobustLeastSquares(const Eigen::MatrixXd &X, const Eigen::VectorXd &y,
+                                   double *resid = nullptr);
 
 } // End namespace QI
 

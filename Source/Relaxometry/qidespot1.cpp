@@ -12,7 +12,6 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include <array>
-#include <iostream>
 
 #include "Args.h"
 #include "FitFunction.h"
@@ -192,7 +191,7 @@ int main(int argc, char **argv) {
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(spgr_path);
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SPGRSequence    spgrSequence(QI::GetMember(input, "SPGR"));
     DESPOT1             model{spgrSequence};
@@ -204,18 +203,18 @@ int main(int argc, char **argv) {
         switch (algorithm.Get()) {
         case 'l':
             d1 = new DESPOT1LLS(model);
-            QI_LOG(verbose, "LLS algorithm selected.");
+            QI::Log(verbose, "LLS algorithm selected.");
             break;
         case 'w':
             d1 = new DESPOT1WLLS(model);
-            QI_LOG(verbose, "WLLS algorithm selected.");
+            QI::Log(verbose, "WLLS algorithm selected.");
             break;
         case 'n':
             d1 = new DESPOT1NLLS(model);
-            QI_LOG(verbose, "NLLS algorithm selected.");
+            QI::Log(verbose, "NLLS algorithm selected.");
             break;
         default:
-            QI_FAIL("Unknown algorithm type: " << algorithm.Get());
+            QI::Fail("Unknown algorithm type: {}", algorithm.Get());
         }
         if (clampPD) {
             d1->model.bounds_lo[0] = 1e-6;
@@ -227,7 +226,7 @@ int main(int argc, char **argv) {
         }
         if (its)
             d1->max_iterations = its.Get();
-        auto fit = itk::ModelFitFilter<DESPOT1Fit>::New(d1, verbose, resids);
+        auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose, resids);
         fit->SetInput(0, QI::ReadVectorImage(spgr_path.Get(), verbose));
         if (B1)
             fit->SetFixed(0, QI::ReadImage(B1.Get(), verbose));
@@ -249,7 +248,7 @@ int main(int argc, char **argv) {
         if (its) {
             QI::WriteImage(fit->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
         }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

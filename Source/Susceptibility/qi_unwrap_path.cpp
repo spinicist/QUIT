@@ -10,72 +10,74 @@
  *  This is an implementation of the algorithm found in:
  *  Abdul-Rahman et al, Fast and robust three-dimensional best path phase unwrapping algorithm,
  *  http://ao.osa.org/abstract.cfm?URI=ao-46-26-6623
- *  Abdul-Rahman et al, Robust three-dimensional best-path phase-unwrapping algorithm that 
+ *  Abdul-Rahman et al, Robust three-dimensional best-path phase-unwrapping algorithm that
  *  avoids singularity loops, http://ao.osa.org/abstract.cfm?URI=ao-48-23-4582
  */
 
-#include <iostream>
+#include <list>
 #include <memory>
-#include <list>
-#include <list>
 
-#include "itkImageToImageFilter.h"
-#include "itkExtractImageFilter.h"
-#include "itkTileImageFilter.h"
-#include "ImageTypes.h"
-#include "Util.h"
-#include "ImageIO.h"
 #include "Args.h"
-#include "ReliabilityFilter.h"
+#include "ImageIO.h"
+#include "ImageTypes.h"
 #include "PathUnwrapFilter.h"
+#include "ReliabilityFilter.h"
+#include "Util.h"
+#include "itkExtractImageFilter.h"
+#include "itkImageToImageFilter.h"
+#include "itkTileImageFilter.h"
 
 /*
  * Main
  */
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    args::ArgumentParser parser("Path-based phase unwrapping\n"
-                                "See Abdul-Rahman et al. Fast and Robust three-dimensional best path phase unwrapping algorithm\n"
+    args::ArgumentParser          parser("Path-based phase unwrapping\n"
+                                "See Abdul-Rahman et al. Fast and Robust three-dimensional best "
+                                "path phase unwrapping algorithm\n"
                                 "http://ao.osa.org/abstract.cfm?URI=ao-46-26-6623\n"
                                 "http://github.com/spinicist/QUIT");
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
-    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPUT PREFIX", "Change output prefix (default input filename)", {'o', "out"});
-    args::ValueFlag<std::string> maskarg(parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"}, QI::GetDefaultThreads());
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPUT PREFIX", "Change output prefix (default input filename)", {'o', "out"});
+    args::ValueFlag<std::string> maskarg(parser, "MASK", "Only process voxels within the mask",
+                                         {'m', "mask"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI_LOG(verbose, "Reading phase file: " << QI::CheckPos(input_path));
+    QI::Log(verbose, "Reading phase file: {}", QI::CheckPos(input_path));
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
 
     typedef itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF> TExtract;
     typedef itk::TileImageFilter<QI::VolumeF, QI::SeriesF>    TTile;
-    
-    auto region = inFile->GetLargestPossibleRegion();
-    const size_t nvols = region.GetSize()[3]; // Save for the loop
+
+    auto         region           = inFile->GetLargestPossibleRegion();
+    const size_t nvols            = region.GetSize()[3]; // Save for the loop
     region.GetModifiableSize()[3] = 0;
     itk::FixedArray<unsigned int, 4> layout;
     layout[0] = layout[1] = layout[2] = 1;
-    layout[3] = nvols;
+    layout[3]                         = nvols;
 
     auto extract = TExtract::New();
-    auto tile   = TTile::New();
+    auto tile    = TTile::New();
     extract->SetInput(inFile);
     extract->SetDirectionCollapseToSubmatrix();
     tile->SetLayout(layout);
 
     auto reliabilityFilter = itk::PhaseReliabilityFilter::New();
-    auto unwrapFilter = itk::UnwrapPathPhaseFilter::New();
+    auto unwrapFilter      = itk::UnwrapPathPhaseFilter::New();
     for (size_t i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
-        QI_LOG(verbose, "Processing volume " << i );
+        QI::Log(verbose, "Processing volume {}", i);
         extract->SetExtractionRegion(region);
         extract->Update();
-        QI_LOG(verbose, "Calculating reliabilty" );
+        QI::Log(verbose, "Calculating reliabilty");
         reliabilityFilter->SetInput(extract->GetOutput());
         reliabilityFilter->Update();
-        QI_LOG(verbose, "Unwrapping phase" );
+        QI::Log(verbose, "Unwrapping phase");
         unwrapFilter->SetInput(extract->GetOutput());
         unwrapFilter->SetReliability(reliabilityFilter->GetOutput());
         unwrapFilter->Update();
@@ -86,13 +88,14 @@ int main(int argc, char **argv) {
     // Make sure output orientation info is correct
     auto dir = inFile->GetDirection();
     auto spc = inFile->GetSpacing();
-    inFile = tile->GetOutput();
+    inFile   = tile->GetOutput();
     inFile->SetDirection(dir);
     inFile->SetSpacing(spc);
     inFile->DisconnectPipeline();
 
-    std::string outname = (outarg ? outarg.Get() : (QI::StripExt(input_path.Get())) + "_unwrapped" + QI::OutExt());
-    QI_LOG(verbose, "Writing output: " << outname );
+    std::string outname =
+        (outarg ? outarg.Get() : (QI::StripExt(input_path.Get())) + "_unwrapped" + QI::OutExt());
+    QI::Log(verbose, "Writing output: {}", outname);
     QI::WriteImage(inFile, outname);
 
     return EXIT_SUCCESS;

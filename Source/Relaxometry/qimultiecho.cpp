@@ -11,7 +11,6 @@
  */
 
 #include <array>
-#include <iostream>
 
 #include "ceres/ceres.h"
 #include <Eigen/Core>
@@ -172,7 +171,7 @@ int main(int argc, char **argv) {
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(input_path);
-    QI_LOG(verbose, "Reading sequence parameters");
+    QI::Log(verbose, "Reading sequence parameters");
     rapidjson::Document input = file ? QI::ReadJSON(file.Get()) : QI::ReadJSON(std::cin);
     QI::MultiEchoBase * sequence;
     if (input.HasMember("MultiEcho")) {
@@ -180,7 +179,7 @@ int main(int argc, char **argv) {
     } else if (input.HasMember("MultiEchoFlex")) {
         sequence = new QI::MultiEchoFlexSequence(input["MultiEchoFlex"]);
     } else {
-        QI_FAIL("Could not find MultiEcho or MultiEchoFlex in JSON input");
+        QI::Fail("Could not find MultiEcho or MultiEchoFlex in JSON input");
     }
     MultiEcho model{*sequence};
     if (simulate) {
@@ -191,20 +190,20 @@ int main(int argc, char **argv) {
         switch (algorithm.Get()) {
         case 'l':
             me = new MultiEchoLogLin(model);
-            QI_LOG(verbose, "LogLin algorithm selected.");
+            QI::Log(verbose, "LogLin algorithm selected.");
             break;
         case 'a':
             me = new MultiEchoARLO(model);
-            QI_LOG(verbose, "ARLO algorithm selected.");
+            QI::Log(verbose, "ARLO algorithm selected.");
             break;
         case 'n':
             me = new MultiEchoNLLS(model);
-            QI_LOG(verbose, "Non-linear algorithm (Levenberg Marquardt) selected.");
+            QI::Log(verbose, "Non-linear algorithm (Levenberg Marquardt) selected.");
             break;
         default:
-            QI_FAIL("Unknown algorithm type " << algorithm.Get());
+            QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
-        auto fit   = itk::ModelFitFilter<MultiEchoFit>::New(me, verbose, resids);
+        auto fit   = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, resids);
         auto input = QI::ReadVectorImage(input_path.Get(), verbose);
         fit->SetInput(0, input);
         const int nvols = input->GetNumberOfComponentsPerPixel();
@@ -212,7 +211,7 @@ int main(int argc, char **argv) {
             const int nblocks = nvols / sequence->size();
             fit->SetBlocks(nblocks);
         } else {
-            QI_FAIL("Input size is not a multiple of the sequence size");
+            QI::Fail("Input size is not a multiple of the sequence size");
         }
         if (mask)
             fit->SetMask(QI::ReadImage(mask.Get(), verbose));
@@ -229,7 +228,7 @@ int main(int argc, char **argv) {
             QI::WriteVectorImage(fit->GetResidualsOutput(0),
                                  outPrefix + "all_residuals" + QI::OutExt());
         }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

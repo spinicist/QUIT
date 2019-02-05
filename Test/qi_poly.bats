@@ -18,12 +18,12 @@ qipolyimg mask.nii baseline.nii --order=2 -v << END_INPUT
     "coeffs": [1, 1, 2, 4, 1, 0, 0, 1, 0, 1]
 }
 END_INPUT
-qipolyfit --verbose baseline.nii --order=2 --print-terms > unmasked_terms.json
-qipolyfit --verbose baseline.nii --order=2 --print-terms --mask=mask.nii > masked_terms.json
-qipolyfit --verbose baseline.nii --order=2 --print-terms --robust > robust_terms.json
-qipolyimg --verbose mask.nii unmasked.nii --order=2 < unmasked_terms.json
-qipolyimg --verbose mask.nii masked.nii --order=2 < masked_terms.json
-qipolyimg --verbose mask.nii robust.nii --order=2 < robust_terms.json
+qipolyfit baseline.nii --order=2 --print-terms > unmasked_terms.json
+qipolyfit baseline.nii --order=2 --print-terms --mask=mask.nii > masked_terms.json
+qipolyfit baseline.nii --order=2 --print-terms --robust > robust_terms.json
+qipolyimg mask.nii unmasked.nii --order=2 < unmasked_terms.json
+qipolyimg mask.nii masked.nii --order=2 < masked_terms.json
+qipolyimg mask.nii robust.nii --order=2 < robust_terms.json
 qidiff --baseline=baseline.nii --input=unmasked.nii --tolerance=1 --verbose
 qidiff --baseline=baseline.nii --input=masked.nii   --tolerance=1 --verbose
 qidiff --baseline=baseline.nii --input=unmasked.nii --tolerance=1 --verbose

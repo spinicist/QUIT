@@ -10,15 +10,16 @@
  */
 
 #include "AFISequence.h"
-#include "Macro.h"
+#include "Log.h"
 
 namespace QI {
 
 AFISequence::AFISequence(const rapidjson::Value &json) {
-    if (json.IsNull()) QI_FAIL("Could not read sequence: " << name());
+    if (json.IsNull())
+        QI::Fail("Could not read sequence: {}", name());
     TR1 = json["TR1"].GetDouble();
     TR2 = json["TR2"].GetDouble();
-    FA = json["FA"].GetDouble() * M_PI / 180;
+    FA  = json["FA"].GetDouble() * M_PI / 180;
 }
 
 rapidjson::Value AFISequence::toJSON(rapidjson::Document::AllocatorType &a) const {

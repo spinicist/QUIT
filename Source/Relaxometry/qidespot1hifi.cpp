@@ -15,7 +15,6 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include <array>
-#include <iostream>
 
 #include "Args.h"
 #include "FitFunction.h"
@@ -58,7 +57,7 @@ struct HIFIModel {
         } else if (i == 1) {
             return mprage.size();
         } else {
-            QI_FAIL("Invalid output size " << i);
+            QI::Fail("Invalid output size: {}", i);
         }
     }
 
@@ -129,7 +128,7 @@ struct HIFIFit {
         case 1:
             return model.mprage.size();
         default:
-            QI_FAIL("Invalid input " << i << " size requested");
+            QI::Fail("Invalid input size = {}", i);
         }
     }
     int n_fixed() const { return 0; }
@@ -223,7 +222,7 @@ int main(int argc, char **argv) {
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI_LOG(verbose, "Reading sequence information");
+    QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SPGRSequence    spgrSequence(QI::GetMember(input, "SPGR"));
     QI::MPRAGESequence  mprageSequence(QI::GetMember(input, "MPRAGE"));
@@ -234,7 +233,7 @@ int main(int argc, char **argv) {
                                            verbose, simulate.Get());
     } else {
         HIFIFit hifi_fit{model};
-        auto    fit_filter = itk::ModelFitFilter<HIFIFit>::New(&hifi_fit, verbose, resids);
+        auto    fit_filter = QI::ModelFitFilter<HIFIFit>::New(&hifi_fit, verbose, resids);
         fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(spgr_path), verbose));
         fit_filter->SetInput(1, QI::ReadVectorImage(QI::CheckPos(mprage_path), verbose));
         if (mask)
@@ -252,7 +251,7 @@ int main(int argc, char **argv) {
             QI::WriteVectorImage(fit_filter->GetResidualsOutput(0),
                                  outPrefix + "all_residuals" + QI::OutExt());
         }
-        QI_LOG(verbose, "Finished.");
+        QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
 }

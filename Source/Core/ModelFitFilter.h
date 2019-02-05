@@ -16,6 +16,7 @@
 #include <tuple>
 #include <vector>
 
+#include "itkCommand.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionIteratorWithIndex.h"
@@ -25,15 +26,16 @@
 #include "itkVectorImage.h"
 
 #include "FitFunction.h"
-#include "Macro.h"
+#include "Log.h"
 #include "ModelHelpers.h"
+#include "Monitor.h"
 
-namespace itk {
+namespace QI {
 
 template <typename FitType>
 class ModelFitFilter
-    : public ImageToImageFilter<
-          VectorImage<typename IOPrecision<typename FitType::InputType>::Type, 3>,
+    : public itk::ImageToImageFilter<
+          itk::VectorImage<typename IOPrecision<typename FitType::InputType>::Type, 3>,
           typename BlockTypes<FitType::Blocked, 3,
                               typename IOPrecision<typename FitType::OutputType>::Type>::Type> {
   public:
@@ -48,23 +50,23 @@ class ModelFitFilter
 
     static constexpr int ImageDim = 3;
 
-    using TInputImage = VectorImage<InputPixelType, ImageDim>;
-    using TFixedImage = Image<FixedPixelType, ImageDim>;
-    using TMaskImage  = Image<float, ImageDim>;
+    using TInputImage = itk::VectorImage<InputPixelType, ImageDim>;
+    using TFixedImage = itk::Image<FixedPixelType, ImageDim>;
+    using TMaskImage  = itk::Image<float, ImageDim>;
 
     static constexpr bool Blocked = FitType::Blocked;
 
     using TOutputImage   = typename BlockTypes<Blocked, ImageDim, OutputPixelType>::Type;
     using TFlagImage     = typename BlockTypes<Blocked, ImageDim, typename FitType::FlagType>::Type;
     using TResidualImage = typename BlockTypes<Blocked, ImageDim, InputPixelType>::Type;
-    using TResidualsImage = VectorImage<InputPixelType, ImageDim>;
+    using TResidualsImage = itk::VectorImage<InputPixelType, ImageDim>;
 
     using TRegion = typename TInputImage::RegionType;
     using TIndex  = typename TRegion::IndexType;
 
     using Self       = ModelFitFilter;
-    using Superclass = ImageToImageFilter<TInputImage, TOutputImage>;
-    using Pointer    = SmartPointer<Self>;
+    using Superclass = itk::ImageToImageFilter<TInputImage, TOutputImage>;
+    using Pointer    = itk::SmartPointer<Self>;
 
     static constexpr bool Indexed    = FitType::Indexed;
     static constexpr bool HasDerived = ModelType::ND > 0;
@@ -111,8 +113,8 @@ class ModelFitFilter
         if (i < m_fit->n_inputs()) {
             return static_cast<const TInputImage *>(this->ProcessObject::GetInput(i));
         } else {
-            QI_FAIL("Requested input " << i << " does not exist (" << m_fit->n_inputs()
-                                       << " inputs)");
+            QI::Fail("Requested input {} but {} has {}", i, typeid(FitType).name(),
+                     m_fit->n_inputs());
         }
     }
 
@@ -121,8 +123,8 @@ class ModelFitFilter
             this->SetNthInput(m_fit->n_inputs() + FixedOffset + i,
                               const_cast<TFixedImage *>(image));
         } else {
-            itkExceptionMacro("Requested const input " << i << " does not exist (" << ModelType::NF
-                                                       << " const inputs)");
+            QI::Fail("Tried to set fixed input {} but {} has {}", i, typeid(ModelType).name(),
+                     ModelType::NF);
         }
     }
 
@@ -131,8 +133,8 @@ class ModelFitFilter
             size_t index = m_fit->n_inputs() + FixedOffset + i;
             return static_cast<const TFixedImage *>(this->ProcessObject::GetInput(index));
         } else {
-            QI_FAIL("Requested const input " << i << " does not exist (" << ModelType::NF
-                                             << " const inputs)");
+            QI::Fail("Requested fixed input {} but {} has {}", i, typeid(ModelType).name(),
+                     ModelType::NF);
         }
     }
 
@@ -158,7 +160,7 @@ class ModelFitFilter
         if constexpr (Blocked) {
             m_blocks = nb;
         } else {
-            QI_FAIL("Cannot set block size on a non-blocked filter");
+            QI::Fail("Cannot set block size on a non-blocked filter");
         }
     }
 
@@ -166,8 +168,8 @@ class ModelFitFilter
         if (i < ModelType::NV) {
             return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(i));
         } else {
-            QI_FAIL("Requested output " << std::to_string(i) << " is past maximum ("
-                                        << std::to_string(ModelType::NV) << ")");
+            QI::Fail("Requested varying output {} but {} has {}", i, typeid(ModelType).name(),
+                     ModelType::NV);
         }
     }
 
@@ -190,24 +192,64 @@ class ModelFitFilter
                 return dynamic_cast<TOutputImage *>(
                     this->ProcessObject::GetOutput(DerivedOutputOffset + i));
             } else {
-                QI_FAIL("Requested derived output " << std::to_string(i) << " is past maximum ("
-                                                    << std::to_string(ModelType::ND) << ")");
+                QI::Fail("Requested derived output {} but {} has {}", i, typeid(ModelType).name(),
+                         ModelType::ND);
             }
         } else {
-            QI_FAIL("No derived outputs for this model");
+            QI::Fail("No derived outputs for this model");
         }
     }
 
-    RealTimeClock::TimeStampType GetTotalTime() const { return m_elapsedTime; }
+    /*
+     * I would prefer this to go in the constructor, but the ForwardNew macro can't cope with
+     * container construction, i.e. {} in the call itself.
+     */
+    void ReadInputs(std::vector<std::string> const &              inputs,
+                    std::array<std::string, ModelType::NF> const &fixed, std::string const &mask) {
+        if (static_cast<size_t>(m_fit->n_inputs()) != inputs.size()) {
+            QI::Fail("Number of input file paths did not match number of inputs for model");
+        }
+
+        for (int i = 0; i < m_fit->n_inputs(); i++) {
+            SetInput(i, QI::ReadImage<TInputImage>(inputs[i], m_verbose));
+        }
+        for (int f = 0; f < ModelType::NF; f++) {
+            if (fixed[f] != "")
+                SetFixed(f, QI::ReadImage<TFixedImage>(fixed[f], m_verbose));
+        }
+        if (mask != "")
+            SetMask(QI::ReadImage<TMaskImage>(mask, m_verbose));
+    }
+    void WriteOutputs(std::string const &prefix) {
+        for (int i = 0; i < ModelType::NV; i++) {
+            QI::WriteImage(GetOutput(i), prefix + m_fit->model.varying_names.at(i) + QI::OutExt(),
+                           m_verbose);
+        }
+        if constexpr (ModelType::ND > 0) {
+            for (int i = 0; i < ModelType::ND; i++) {
+                QI::WriteImage(GetDerivedOutput(i),
+                               prefix + m_fit->model.derived_names.at(i) + QI::OutExt(), m_verbose);
+            }
+        }
+        QI::WriteImage(GetResidualOutput(), prefix + "SoS_residual" + QI::OutExt(), m_verbose);
+        QI::WriteImage(GetFlagOutput(), prefix + "iterations" + QI::OutExt(), m_verbose);
+        if (m_allResiduals) {
+            for (int i = 0; i < m_fit->n_inputs(); i++) {
+                QI::WriteImage(GetResidualsOutput(0),
+                               prefix + "residuals_" + std::to_string(i) + QI::OutExt(), m_verbose);
+            }
+        }
+    }
 
   private:
     ModelFitFilter(const Self &); // purposely not implemented
     void operator=(const Self &); // purposely not implemented
 
   protected:
-    DataObject::Pointer MakeOutput(ProcessObject::DataObjectPointerArraySizeType idx) override {
-        using itype = ProcessObject::DataObjectPointerArraySizeType; // Stop unsigned long
-                                                                     // versus int warnings
+    itk::DataObject::Pointer
+    MakeOutput(itk::ProcessObject::DataObjectPointerArraySizeType idx) override {
+        using itype = itk::ProcessObject::DataObjectPointerArraySizeType; // Stop unsigned long
+                                                                          // versus int warnings
         if (idx < static_cast<itype>(ModelType::NV)) {
             return TOutputImage::New().GetPointer();
         } else if (idx < static_cast<itype>(FlagOutputOffset)) {
@@ -219,36 +261,34 @@ class ModelFitFilter
         } else if (idx < static_cast<itype>(ResidualsOutputOffset + m_fit->n_inputs())) {
             return TResidualImage::New().GetPointer();
         } else {
-            QI_FAIL("Attempted to create output " << idx << ", invalid index");
+            QI::Fail("Attempted to create output {} but {} has {}", idx, typeid(FitType).name(),
+                     TotalOutputs);
         }
     }
 
     const FitType *m_fit;
     const bool     m_verbose, m_allResiduals;
-    bool           m_hasSubregion;
+    bool           m_hasSubregion = false;
     TRegion        m_subregion;
     int            m_blocks = 1;
-
-    RealTimeClock::TimeStampType m_elapsedTime = 0.0;
 
     virtual void GenerateOutputInformation() override {
         Superclass::GenerateOutputInformation();
         for (int i = 0; i < m_fit->n_inputs(); i++) {
             if ((m_fit->input_size(i) * m_blocks) !=
                 static_cast<int>(this->GetInput(i)->GetNumberOfComponentsPerPixel())) {
-                QI_FAIL("Input " << i << " has incorrect size "
-                                 << this->GetInput(i)->GetNumberOfComponentsPerPixel()
-                                 << ", should be " << (m_fit->input_size(i) * m_blocks));
+                QI::Fail("Input {} has incorrect number of volumes {}, should be {}", i,
+                         this->GetInput(i)->GetNumberOfComponentsPerPixel(),
+                         (m_fit->input_size(i) * m_blocks));
             }
         }
 
+        Log(m_verbose, "Allocating output image memory");
         auto input     = this->GetInput(0);
         auto region    = input->GetLargestPossibleRegion();
         auto spacing   = input->GetSpacing();
         auto origin    = input->GetOrigin();
         auto direction = input->GetDirection();
-        if (m_verbose)
-            std::cout << "Allocating output memory" << std::endl;
         for (int i = 0; i < ModelType::NV; i++) {
             auto op = this->GetOutput(i);
             op->SetRegions(region);
@@ -275,8 +315,6 @@ class ModelFitFilter
         }
         if (m_allResiduals) {
             for (int i = 0; i < m_fit->n_inputs(); i++) {
-                if (m_verbose)
-                    std::cout << "Allocating memory for point residuals " << i << std::endl;
                 auto r = this->GetResidualsOutput(i);
                 r->SetRegions(region);
                 r->SetSpacing(spacing);
@@ -286,8 +324,6 @@ class ModelFitFilter
                 r->Allocate(true);
             }
         }
-        if (m_verbose)
-            std::cout << "Allocating total residual memory" << std::endl;
         auto r = this->GetResidualOutput();
         r->SetRegions(region);
         r->SetSpacing(spacing);
@@ -297,8 +333,6 @@ class ModelFitFilter
             r->SetNumberOfComponentsPerPixel(m_blocks);
         }
         r->Allocate(true);
-        if (m_verbose)
-            std::cout << "Allocating flag memory" << std::endl;
         auto f = this->GetFlagOutput();
         f->SetRegions(region);
         f->SetSpacing(spacing);
@@ -320,9 +354,7 @@ class ModelFitFilter
             }
         }
 
-        if (m_verbose) {
-            std::cerr << "Processing..." << std::endl;
-        }
+        Info(m_verbose, "Processing...");
         this->GetMultiThreader()->SetNumberOfWorkUnits(this->GetNumberOfWorkUnits());
         this->GetMultiThreader()->template ParallelizeImageRegion<ImageDim>(
             region,
@@ -330,52 +362,50 @@ class ModelFitFilter
                 this->DynamicThreadedGenerateData(outputRegion);
             },
             this);
-        if (m_verbose) {
-            std::cerr << "Finished processing, elapsed time was " << this->GetTotalTime() << "s";
-        }
+        Info(m_verbose, "Finished processing.");
     }
 
     virtual void DynamicThreadedGenerateData(const TRegion &region) override {
-        ImageRegionConstIterator<TMaskImage> mask_iter;
-        const auto                           mask = this->GetMask();
+        itk::ImageRegionConstIterator<TMaskImage> mask_iter;
+        const auto                                mask = this->GetMask();
         if (mask) {
-            mask_iter = ImageRegionConstIterator<TMaskImage>(mask, region);
+            mask_iter = itk::ImageRegionConstIterator<TMaskImage>(mask, region);
         }
 
-        std::vector<ImageRegionConstIterator<TInputImage>> input_iters(m_fit->n_inputs());
-        std::vector<ImageRegionIterator<TResidualsImage>>  residuals_iters(m_fit->n_inputs());
+        std::vector<itk::ImageRegionConstIterator<TInputImage>> input_iters(m_fit->n_inputs());
+        std::vector<itk::ImageRegionIterator<TResidualsImage>>  residuals_iters(m_fit->n_inputs());
         for (int i = 0; i < m_fit->n_inputs(); i++) {
-            input_iters[i] = ImageRegionConstIterator<TInputImage>(this->GetInput(i), region);
+            input_iters[i] = itk::ImageRegionConstIterator<TInputImage>(this->GetInput(i), region);
             if (m_allResiduals) {
                 residuals_iters[i] =
-                    ImageRegionIterator<TResidualsImage>(this->GetResidualsOutput(i), region);
+                    itk::ImageRegionIterator<TResidualsImage>(this->GetResidualsOutput(i), region);
             }
         }
-        std::vector<ImageRegionConstIterator<TFixedImage>> fixed_iters(ModelType::NF);
+        std::vector<itk::ImageRegionConstIterator<TFixedImage>> fixed_iters(ModelType::NF);
         for (int i = 0; i < ModelType::NF; i++) {
             typename TFixedImage::ConstPointer c = this->GetFixed(i);
             if (c) {
-                fixed_iters[i] = ImageRegionConstIterator<TFixedImage>(c, region);
+                fixed_iters[i] = itk::ImageRegionConstIterator<TFixedImage>(c, region);
             }
         }
 
-        std::vector<ImageRegionIterator<TOutputImage>> output_iters(ModelType::NV);
+        std::vector<itk::ImageRegionIterator<TOutputImage>> output_iters(ModelType::NV);
         for (int i = 0; i < ModelType::NV; i++) {
-            output_iters[i] = ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
+            output_iters[i] = itk::ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
         }
 
-        std::vector<ImageRegionIterator<TOutputImage>> derived_iters(ModelType::ND);
+        std::vector<itk::ImageRegionIterator<TOutputImage>> derived_iters(ModelType::ND);
         if constexpr (HasDerived) {
             for (int i = 0; i < ModelType::ND; i++) {
                 derived_iters[i] =
-                    ImageRegionIterator<TOutputImage>(this->GetDerivedOutput(i), region);
+                    itk::ImageRegionIterator<TOutputImage>(this->GetDerivedOutput(i), region);
             }
         }
 
         // Keep the index on this one to report voxel locations where algorithm fails.
-        ImageRegionIteratorWithIndex<TResidualImage> residual_iter(this->GetResidualOutput(),
-                                                                   region);
-        ImageRegionIterator<TFlagImage>              flag_iter(this->GetFlagOutput(), region);
+        itk::ImageRegionIteratorWithIndex<TResidualImage> residual_iter(this->GetResidualOutput(),
+                                                                        region);
+        itk::ImageRegionIterator<TFlagImage>              flag_iter(this->GetFlagOutput(), region);
 
         using InputArray    = QI_ARRAY(typename FitType::InputType);
         using OutputArray   = QI_ARRAYN(typename FitType::OutputType, ModelType::NV);
@@ -425,8 +455,8 @@ class ModelFitFilter
                     }
 
                     if (!std::get<0>(status)) {
-                        std::cerr << "Fit failed for voxel " << residual_iter.GetIndex() << ": "
-                                  << std::get<1>(status) << std::endl;
+                        QI::Warn("Fit failed for voxel {}: ", residual_iter.GetIndex(),
+                                 std::get<1>(status));
                     }
 
                     if constexpr (Blocked) {
@@ -508,8 +538,8 @@ class ModelFitFilter
             ++residual_iter;
         }
     }
-}; // namespace itk
+};
 
-} // namespace itk
+} // namespace QI
 
 #endif // MODELFITFILTER_H

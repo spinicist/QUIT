@@ -12,49 +12,52 @@
 #ifndef QI_SIMULATEMODEL_H
 #define QI_SIMULATEMODEL_H
 
+#include "ImageIO.h"
 #include "JSON.h"
 #include "ModelSimFilter.h"
-#include "ImageIO.h"
 
 namespace QI {
 
-template<typename Model, bool MultiOutput>
+template <typename Model, bool MultiOutput>
 void SimulateModel(rapidjson::Value &json, const Model &model,
-                   const std::vector<std::string> &fixedpaths,const std::vector<std::string> &outpaths,
-                   const bool verbose, const double noise) {
-    auto simulator = itk::ModelSimFilter<Model, MultiOutput>::New(model);
+                   const std::vector<std::string> &fixedpaths,
+                   const std::vector<std::string> &outpaths, const bool verbose,
+                   const double noise) {
+    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model);
     simulator->SetNoise(noise);
-    QI_LOG(verbose, "Reading varying parameters");
+    QI::Log(verbose, "Reading varying parameters");
     for (auto i = 0; i < Model::NV; i++) {
-        const std::string v = model.varying_names[i];
+        const std::string v     = model.varying_names[i];
         const std::string vname = v + "File";
         const std::string vfile = QI::GetMember(json, vname).GetString();
         simulator->SetVarying(i, QI::ReadImage(vfile, verbose));
     }
     if (fixedpaths.size() != Model::NF) {
-        QI_FAIL("Number of fixed paths " << fixedpaths.size() << " does not match number of parameters " << Model::NF);
+        QI::Fail("Number of fixed paths {} does not match number of parameters {}",
+                 fixedpaths.size(), Model::NF);
     }
-    QI_LOG(verbose, "Reading fixed parameters");
+    QI::Log(verbose, "Reading fixed parameters");
     for (auto i = 0; i < Model::NF; i++) {
         if (fixedpaths[i].size() > 0) {
             simulator->SetFixed(i, QI::ReadImage(fixedpaths[i], verbose));
         }
     }
-    QI_LOG(verbose, "Simulating model");
+    QI::Log(verbose, "Simulating model...");
     simulator->Update();
-    if constexpr(MultiOutput) {
+    QI::Log(verbose, "Finished");
+    if constexpr (MultiOutput) {
         if (outpaths.size() != model.num_outputs()) {
-           QI_FAIL("Number of output paths " << outpaths.size() << " does not match number of outputs " << model.num_outputs());
+            QI::Fail("Number of output paths {} does not match number of outputs {}",
+                     outpaths.size(), model.num_outputs());
         }
         for (size_t i = 0; i < model.num_outputs(); i++) {
-            QI_LOG(verbose, "Writing output image: " << outpaths[i]);
+            QI::Log(verbose, "Writing output image: {}", outpaths[i]);
             QI::WriteVectorImage(simulator->GetOutput(i), outpaths[i]);
         }
     } else {
-        QI_LOG(verbose, "Writing output image: " << outpaths[0]);
+        QI::Log(verbose, "Writing output image: {}", outpaths[0]);
         QI::WriteVectorImage(simulator->GetOutput(0), outpaths[0]);
     }
-
 }
 
 } // End namespace QI

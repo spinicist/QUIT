@@ -12,7 +12,6 @@
 #ifndef QI_THREEPOOLMODEL_H
 #define QI_THREEPOOLMODEL_H
 
-#include "Macro.h"
 #include "OnePoolSignals.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"

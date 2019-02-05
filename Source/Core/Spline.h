@@ -12,7 +12,7 @@
 #ifndef QI_SPLINE_H
 #define QI_SPLINE_H
 
-#include <iostream>
+
 
 #include "Eigen/Core"
 #include <unsupported/Eigen/Splines>

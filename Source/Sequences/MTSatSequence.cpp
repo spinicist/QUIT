@@ -12,7 +12,7 @@
  */
 
 #include "MTSatSequence.h"
-#include "Macro.h"
+#include "Log.h"
 
 namespace QI {
 
@@ -20,7 +20,7 @@ Eigen::Index MTSatSequence::size() const { return sat_f0.rows(); }
 
 MTSatSequence::MTSatSequence(const rapidjson::Value &json) : pulse(json["pulse"]) {
     if (json.IsNull())
-        QI_FAIL("Could not read sequence: " << name());
+        QI::Fail("Could not read sequence: {}", name());
     TR        = GetMember(json, "TR").GetDouble();
     FA        = GetMember(json, "FA").GetDouble() * M_PI / 180;
     sat_f0    = ArrayFromJSON(json, "sat_f0");
