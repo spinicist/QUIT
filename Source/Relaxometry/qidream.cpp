@@ -58,8 +58,7 @@ int main(int argc, char **argv) {
         {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Opening input file: {}", QI::CheckPos(input_file));
-    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file));
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file), verbose);
 
     auto fid_volume               = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto ste_volume               = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
@@ -92,8 +91,8 @@ int main(int argc, char **argv) {
     B1->SetInput1(dream->GetOutput());
     B1->SetConstant2(alpha.Get());
     B1->Update();
-    QI::WriteImage(dream->GetOutput(), out_prefix.Get() + "DREAM_angle" + QI::OutExt());
-    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "DREAM_B1" + QI::OutExt());
+    QI::WriteImage(dream->GetOutput(), out_prefix.Get() + "DREAM_angle" + QI::OutExt(), verbose);
+    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "DREAM_B1" + QI::OutExt(), verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

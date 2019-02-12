@@ -335,12 +335,14 @@ int main(int argc, char **argv) {
         std::string outPrefix = outarg.Get() + "QMT_";
         for (int i = 0; i < RamaniFullModel::NV; i++) {
             QI::WriteImage(fit_filter->GetOutput(i),
-                           outPrefix + RamaniFullModel::varying_names.at(i) + QI::OutExt());
+                           outPrefix + RamaniFullModel::varying_names.at(i) + QI::OutExt(),
+                           verbose);
         }
-        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt(),
+                       verbose);
         if (resids) {
             QI::WriteVectorImage(fit_filter->GetResidualsOutput(0),
-                                 outPrefix + "all_residuals" + QI::OutExt());
+                                 outPrefix + "all_residuals" + QI::OutExt(), verbose);
         }
         QI::Log(verbose, "Finished.");
     }

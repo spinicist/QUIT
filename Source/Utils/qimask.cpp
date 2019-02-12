@@ -63,12 +63,11 @@ int main(int argc, char **argv) {
 
     QI::ParseArgs(parser, argc, argv, verbose);
 
-    QI::Log(verbose, "Reading input image: {}", QI::CheckPos(input_path));
     QI::SeriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {
-        vols = QI::ReadMagnitudeImage<QI::SeriesF>(QI::CheckPos(input_path));
+        vols = QI::ReadMagnitudeImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
     } else {
-        vols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
+        vols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
     }
 
     std::string out_path;
@@ -169,8 +168,7 @@ int main(int argc, char **argv) {
         mask_image->DisconnectPipeline();
     }
 
-    QI::Log(verbose, "Saving mask to: {}", out_path);
-    QI::WriteImage(mask_image, out_path);
+    QI::WriteImage(mask_image, out_path, verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

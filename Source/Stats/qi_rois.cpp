@@ -85,9 +85,10 @@ void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names)
         TStatsFilter::Pointer label_filter = TStatsFilter::New();
         QI::Log(verbose, "Reading first label file to determine labels: {}",
                 QI::CheckList(in_paths).at(0));
-        label_filter->SetLabelInput(QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0)));
-        label_filter->SetInput(QI::ReadImage<QI::VolumeF>(QI::CheckList(in_paths).at(
-            0))); // Dummy value because ITK complains input primary is not set
+        label_filter->SetLabelInput(
+            QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0), verbose));
+        // Dummy value because ITK complains input primary is not set
+        label_filter->SetInput(QI::ReadImage<QI::VolumeF>(QI::CheckList(in_paths).at(0), verbose));
         label_filter->Update();
         label_numbers = label_filter->GetValidLabelValues();
         std::sort(label_numbers.begin(), label_numbers.end());
@@ -150,13 +151,13 @@ void GetValues(const int n_files, const TLabels &labels, const std::vector<doubl
     for (int f = 0; f < n_files; f++) {
         if (volumes) {
             QI::Log(verbose, "Reading label file: {}", in_paths.Get().at(f));
-            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
-            value_img = QI::ReadImage(in_paths.Get().at(f)); // Dummy image
+            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f), verbose);
+            value_img = QI::ReadImage(in_paths.Get().at(f), verbose); // Dummy image
         } else {
             QI::Log(verbose, "Reading label file: {}", in_paths.Get().at(f));
-            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
+            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f), verbose);
             QI::Log(verbose, "Reading value file: {}", in_paths.Get().at(f + n_files));
-            value_img = QI::ReadImage(in_paths.Get().at(f + n_files));
+            value_img = QI::ReadImage(in_paths.Get().at(f + n_files), verbose);
         }
         double vox_volume = QI::VoxelVolume(label_img);
         label_filter->SetLabelInput(label_img);

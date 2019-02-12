@@ -13,76 +13,10 @@
 
 #include "Args.h"
 #include "CASLSequence.h"
-#include "FitFunction.h"
 #include "ImageIO.h"
-#include "Model.h"
-#include "ModelFitFilter.h"
-#include "SimulateModel.h"
 #include "Util.h"
-#include "itkUnaryFunctorImageFilter.h"
-
-using namespace std::literals;
-
-using CASLModel = QI::Model<1, 2, QI::CASLSequence>;
-template <> std::array<const std::string, 1> CASLModel::varying_names{{"CBF"s}};
-template <> std::array<const std::string, 2> CASLModel::fixed_names{{"T1_tisse"s, "PD"s}};
-template <> const QI_ARRAYN(double, 2) CASLModel::fixed_defaults{0.0, 0.0};
-
-struct CASLFit {
-    static const bool Blocked = true;
-    static const bool Indexed = true;
-    using InputType           = double;
-    using OutputType          = double;
-    using ResidualType        = double;
-    using FlagType            = int; // Iterations
-    using ModelType           = CASLModel;
-    using SequenceType        = QI::CASLSequence;
-    ModelType &  model;
-    const double T1_blood, alpha, lambda;
-
-    CASLFit(ModelType &c, const double &t, const double &a, const double &l)
-        : model(c), T1_blood(t), alpha(a), lambda(l) {}
-    int n_inputs() const { return 1; }
-    int input_size(const int /* Unused */) const { return 2; }
-    int n_fixed() const { return ModelType::NF; }
-    int n_outputs() const { return ModelType::NV; }
-
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, CASLModel::NV) & outputs, ResidualType & /*Unused*/,
-                          std::vector<Eigen::ArrayXd> & /*Unused*/, FlagType & /*Unused*/,
-                          const int /*Unused*/, const itk::Index<3> &voxel) const {
-        const double label   = inputs[0][0];
-        const double control = inputs[0][1];
-
-        const double diff      = control - label;
-        const double T1_tissue = fixed[0];
-        const double PD_correction =
-            (T1_tissue == 0.0) ? 1.0 : (1 - exp(-model.sequence.TR / T1_tissue));
-        const double PD  = ((fixed[1] == 0.0) ? control : fixed[1]) / PD_correction;
-        const double PLD = (model.sequence.post_label_delay.rows() > 1)
-                               ? model.sequence.post_label_delay[voxel[2]]
-                               : model.sequence.post_label_delay[0];
-        const double CBF =
-            (6000 * lambda * diff * exp(PLD / T1_blood)) /
-            (2. * alpha * T1_blood * PD * (1. - exp(-model.sequence.label_time / T1_blood)));
-        outputs[0] = CBF;
-        return std::make_tuple(true, "");
-    }
-};
-
-struct VectorMean {
-    VectorMean(){};
-    ~VectorMean(){};
-    bool         operator!=(const VectorMean &) const { return false; }
-    bool         operator==(const VectorMean &other) const { return !(*this != other); }
-    inline float operator()(const itk::VariableLengthVector<float> &vec) const {
-        float sum = 0;
-        for (size_t i = 0; i < vec.Size(); i++) {
-            sum += vec[i];
-        }
-        return sum / vec.Size();
-    }
-};
+#include "itkImageRegionConstIterator.h"
+#include "itkImageRegionIteratorWithIndex.h"
 
 /*
  * Main
@@ -99,9 +33,6 @@ int main(int argc, char **argv) {
                                         {'o', "out"});
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
                                       {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
     args::Flag              average(parser, "AVERAGE", "Average the time-series", {'a', "average"});
     args::Flag              slice_time(parser, "SLICE TIME CORRECTION",
                           "Apply slice-time correction (number of post-label "
@@ -121,37 +52,96 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     auto input = QI::ReadVectorImage(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Reading sequence parameters");
-    rapidjson::Document json = QI::ReadJSON(std::cin);
-    QI::CASLSequence    sequence(json["CASL"]);
-    CASLModel           model{sequence};
-    CASLFit             casl_fit{model, T1_blood.Get(), alpha.Get(), lambda.Get()};
-    auto                fit_filter = QI::ModelFitFilter<CASLFit>::New(&casl_fit, verbose, false);
-    fit_filter->SetInput(0, input);
-    if (PD_path)
-        fit_filter->SetFixed(0, QI::ReadImage(PD_path.Get(), verbose));
-    if (T1_tissue_path)
-        fit_filter->SetFixed(1, QI::ReadImage(T1_tissue_path.Get(), verbose));
+    rapidjson::Document  json = QI::ReadJSON(std::cin);
+    QI::CASLSequence     sequence(json["CASL"]);
+    QI::VolumeF::Pointer t1_img = nullptr, pd_img = nullptr, mask_img = nullptr;
+    if (T1_tissue_path) {
+        t1_img = QI::ReadImage(T1_tissue_path.Get(), verbose);
+    }
+    if (PD_path) {
+        pd_img = QI::ReadImage(PD_path.Get(), verbose);
+    }
+    if (mask) {
+        mask_img = QI::ReadImage(mask.Get(), verbose);
+    }
+
     const auto n_slices = input->GetLargestPossibleRegion().GetSize()[2];
     if (slice_time && (n_slices != static_cast<size_t>(sequence.post_label_delay.rows()))) {
         QI::Fail("Number of post-label delays {} does not match number of slices {}",
                  sequence.post_label_delay.rows(), n_slices);
     }
-    fit_filter->SetBlocks(input->GetNumberOfComponentsPerPixel() / 2);
-    if (mask)
-        fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-    if (subregion)
-        fit_filter->SetSubregion(QI::RegionArg(subregion.Get()));
-    fit_filter->Update();
-    std::string outPrefix = outarg.Get() + "CASL";
-    if (average) {
-        auto mean_filter =
-            itk::UnaryFunctorImageFilter<QI::VectorVolumeF, QI::VolumeF, VectorMean>::New();
-        mean_filter->SetInput(fit_filter->GetOutput(0));
-        mean_filter->Update();
-        QI::WriteImage(mean_filter->GetOutput(), outPrefix + "_CBF" + QI::OutExt());
-    } else {
-        QI::WriteVectorImage(fit_filter->GetOutput(0), outPrefix + "_CBF" + QI::OutExt());
-    }
+
+    const auto insize  = input->GetNumberOfComponentsPerPixel();
+    const auto outsize = average ? 1 : insize / 2;
+
+    auto output = QI::VectorVolumeF::New();
+    output->CopyInformation(input);
+    output->SetRegions(input->GetBufferedRegion());
+    output->SetNumberOfComponentsPerPixel(outsize);
+    output->Allocate(true);
+
+    QI::Log(verbose, "Processing");
+    auto mt = itk::MultiThreaderBase::New();
+    mt->ParallelizeImageRegion<3>(
+        input->GetBufferedRegion(),
+        [&](const QI::VectorVolumeF::RegionType &region) {
+            itk::ImageRegionConstIterator<QI::VectorVolumeF>     in_it(input, region);
+            itk::ImageRegionIteratorWithIndex<QI::VectorVolumeF> out_it(output, region);
+            itk::ImageRegionConstIterator<QI::VolumeF>           t1_it, pd_it, mask_it;
+            if (t1_img) {
+                t1_it = itk::ImageRegionConstIterator<QI::VolumeF>(t1_img, region);
+            }
+            if (pd_img) {
+                pd_it = itk::ImageRegionConstIterator<QI::VolumeF>(pd_img, region);
+            }
+            if (mask_img) {
+                mask_it = itk::ImageRegionConstIterator<QI::VolumeF>(mask_img, region);
+            }
+
+            for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it, ++out_it) {
+                itk::VariableLengthVector<float> CBF_vector(outsize);
+                if (!mask_img || mask_it.Get()) {
+                    const Eigen::Map<const Eigen::MatrixXf> input(in_it.Get().GetDataPointer(), 2,
+                                                                  insize / 2);
+
+                    const auto &label        = input.row(0);
+                    const auto &control      = input.row(1);
+                    const auto &diff         = control - label; // Negative contrast
+                    const auto PD_correction = t1_img ? 1.0 - exp(-sequence.TR / t1_it.Get()) : 1.0;
+                    const auto PD  = (pd_img ? pd_it.Get() : control.mean()) / PD_correction;
+                    const auto PLD = sequence.post_label_delay.rows() > 1
+                                         ? sequence.post_label_delay[out_it.GetIndex()[2]]
+                                         : sequence.post_label_delay[0];
+                    const auto CBF = (6000 * lambda.Get() * diff * exp(PLD / T1_blood.Get())) /
+                                     (2. * alpha.Get() * T1_blood.Get() * PD *
+                                      (1. - exp(-sequence.label_time / T1_blood.Get())));
+
+                    itk::VariableLengthVector<float> CBF_vector(outsize);
+                    if (average) {
+                        CBF_vector[0] = CBF.mean();
+                    } else {
+                        for (size_t i = 0; i < outsize; i++) {
+                            CBF_vector[i] = CBF[i];
+                        }
+                    }
+                } else {
+                    CBF_vector.Fill(0.0);
+                }
+                out_it.Set(CBF_vector);
+                if (t1_img) {
+                    ++t1_it;
+                }
+                if (pd_img) {
+                    ++pd_it;
+                }
+                if (mask_img) {
+                    ++mask_it;
+                }
+            }
+        },
+        nullptr);
+
+    QI::WriteVectorImage(output, outarg.Get() + "CASL_CBF" + QI::OutExt(), verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

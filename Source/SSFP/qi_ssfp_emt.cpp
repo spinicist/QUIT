@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
         std::string outPrefix = outarg.Get() + "EMT_";
         for (int i = 0; i < EMTModel::NV; i++) {
             QI::WriteImage(fit_filter->GetOutput(i),
-                           outPrefix + EMTModel::varying_names.at(i) + QI::OutExt());
+                           outPrefix + EMTModel::varying_names.at(i) + QI::OutExt(), verbose);
         }
         QI::Log(verbose, "Finished.");
     }

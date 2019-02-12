@@ -244,12 +244,13 @@ int main(int argc, char **argv) {
         std::string outPrefix = outarg.Get() + "HIFI_";
         for (int i = 0; i < hifi_fit.model.NV; i++) {
             QI::WriteImage(fit_filter->GetOutput(i),
-                           outPrefix + hifi_fit.model.varying_names.at(i) + QI::OutExt());
+                           outPrefix + hifi_fit.model.varying_names.at(i) + QI::OutExt(), verbose);
         }
-        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt(),
+                       verbose);
         if (resids) {
             QI::WriteVectorImage(fit_filter->GetResidualsOutput(0),
-                                 outPrefix + "all_residuals" + QI::OutExt());
+                                 outPrefix + "all_residuals" + QI::OutExt(), verbose);
         }
         QI::Log(verbose, "Finished.");
     }

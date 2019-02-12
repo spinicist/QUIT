@@ -25,7 +25,7 @@ auto ReadVectorImage(const std::string &path, const bool verbose) ->
     typedef itk::VectorImage<TPixel, 3>       TVector;
     typedef itk::ImageToVectorFilter<TSeries> TToVector;
 
-    auto img     = ReadImage<TSeries>(path);
+    auto img     = ReadImage<TSeries>(path, verbose);
     auto convert = TToVector::New();
     convert->SetInput(img);
     QI::Log(verbose, "Reading image: {}", path);

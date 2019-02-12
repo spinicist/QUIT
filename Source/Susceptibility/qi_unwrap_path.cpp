@@ -48,8 +48,7 @@ int main(int argc, char **argv) {
                                          {'m', "mask"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Reading phase file: {}", QI::CheckPos(input_path));
-    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
 
     typedef itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF> TExtract;
     typedef itk::TileImageFilter<QI::VolumeF, QI::SeriesF>    TTile;
@@ -95,8 +94,7 @@ int main(int argc, char **argv) {
 
     std::string outname =
         (outarg ? outarg.Get() : (QI::StripExt(input_path.Get())) + "_unwrapped" + QI::OutExt());
-    QI::Log(verbose, "Writing output: {}", outname);
-    QI::WriteImage(inFile, outname);
+    QI::WriteImage(inFile, outname, verbose);
 
     return EXIT_SUCCESS;
 }

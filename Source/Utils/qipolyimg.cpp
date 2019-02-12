@@ -115,8 +115,7 @@ int main(int argc, char **argv) {
                                       {'m', "mask"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Reading reference image: {}", QI::CheckPos(ref_path));
-    QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));
+    QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path), verbose);
     QI::Log(verbose, "Reading polynomial");
     rapidjson::Document json   = QI::ReadJSON(std::cin);
     Eigen::Array3d      center = QI::ArrayFromJSON(json, "center");
@@ -135,11 +134,11 @@ int main(int argc, char **argv) {
     image->SetReferenceImage(reference);
     image->SetPolynomial(poly);
     if (mask)
-        image->SetMask(QI::ReadImage(mask.Get()));
+        image->SetMask(QI::ReadImage(mask.Get(), verbose));
     image->SetCenter(center);
     image->SetScale(scale);
     image->Update();
-    QI::WriteImage(image->GetOutput(), out_path.Get());
+    QI::WriteImage(image->GetOutput(), out_path.Get(), verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

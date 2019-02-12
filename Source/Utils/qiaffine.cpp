@@ -55,7 +55,7 @@ args::ValueFlag<std::string>
     rotate(parser, "ROTATE", "Rotate by Euler angles around X,Y,Z (degrees).", {"rotate"}, "0,0,0");
 
 template <typename TImage> int Pipeline() {
-    auto image = QI::ReadImage<TImage>(QI::CheckPos(source_path));
+    auto image = QI::ReadImage<TImage>(QI::CheckPos(source_path), verbose);
 
     // Permute if required
     if (permute) {
@@ -199,11 +199,9 @@ template <typename TImage> int Pipeline() {
 
     // Write out the edited file
     if (dest_path) {
-        QI::Log(verbose, "Writing: {}", dest_path.Get());
-        QI::WriteImage(image, dest_path.Get());
+        QI::WriteImage(image, dest_path.Get(), verbose);
     } else {
-        QI::Log(verbose, "Writing: {}", source_path.Get());
-        QI::WriteImage(image, source_path.Get());
+        QI::WriteImage(image, source_path.Get(), verbose);
     }
     return EXIT_SUCCESS;
 }

@@ -174,8 +174,7 @@ int main(int argc, char **argv) {
                                         "Read JSON input from file instead of stdin", {"file"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Reading image {}", QI::CheckPos(b1plus_path));
-    auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
+    auto reference = QI::ReadImage(QI::CheckPos(b1plus_path), verbose);
 
     QI::Log(verbose, "Reading slab profile");
     rapidjson::Document json    = infile ? QI::ReadJSON(infile.Get()) : QI::ReadJSON(std::cin);
@@ -191,13 +190,12 @@ int main(int argc, char **argv) {
     image->SetCenterMask(centerMask);
     image->SetDebug(true);
     if (mask)
-        image->SetMask(QI::ReadImage(mask.Get()));
+        image->SetMask(QI::ReadImage(mask.Get(), verbose));
     if (verbose) {
         auto monitor = QI::GenericMonitor::New();
         image->AddObserver(itk::ProgressEvent(), monitor);
     }
     image->Update();
-    QI::Log(verbose, "Finished, writing output: {}", QI::CheckPos(output_path));
-    QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path));
+    QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path), verbose);
     return EXIT_SUCCESS;
 }

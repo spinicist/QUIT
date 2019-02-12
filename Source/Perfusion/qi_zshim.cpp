@@ -73,7 +73,6 @@ int main(int argc, char **argv) {
         },
         nullptr);
     const std::string fname = outPrefix + "_zshim" + QI::OutExt();
-    QI::Log(verbose, "Writing output file: {}", fname);
-    QI::WriteVectorImage(output, fname);
+    QI::WriteVectorImage(output, fname, verbose);
     return EXIT_SUCCESS;
 }

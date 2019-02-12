@@ -58,8 +58,7 @@ int main(int argc, char **argv) {
                           {'s', "save"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Opening input file: {}", QI::CheckPos(input_path));
-    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Nominal flip-angle = {} degrees", nom_flip.Get());
     QI::Log(verbose, "TR2:TR1 ratio = {}", tr_ratio.Get());
     auto volume1                   = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
@@ -86,9 +85,9 @@ int main(int argc, char **argv) {
     B1->SetInput1(afi->GetOutput());
     B1->SetConstant2(nom_flip.Get());
     B1->Update();
-    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "AFI_B1" + QI::OutExt());
+    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "AFI_B1" + QI::OutExt(), verbose);
     if (save_angle)
-        QI::WriteImage(afi->GetOutput(), out_prefix.Get() + "AFI_angle" + QI::OutExt());
+        QI::WriteImage(afi->GetOutput(), out_prefix.Get() + "AFI_angle" + QI::OutExt(), verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

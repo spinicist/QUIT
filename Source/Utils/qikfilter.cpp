@@ -161,10 +161,10 @@ int main(int argc, char **argv) {
     QI::SeriesXF::Pointer vols;
     if (complex_in) {
         QI::Log(verbose, "Reading complex file: {}", QI::CheckPos(in_path));
-        vols = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(in_path));
+        vols = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(in_path), verbose);
     } else {
         QI::Log(verbose, "Reading real file: {}", QI::CheckPos(in_path));
-        QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(in_path));
+        QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(in_path), verbose);
         auto                 cast  = itk::CastImageFilter<QI::SeriesF, QI::SeriesXF>::New();
         cast->SetInput(rvols);
         cast->Update();
@@ -281,11 +281,11 @@ int main(int argc, char **argv) {
             cast_filter->SetInput(shift_filter->GetOutput());
             cast_filter->Update();
             QI::WriteMagnitudeImage(cast_filter->GetOutput(),
-                                    out_base + "_kspace_before" + QI::OutExt());
+                                    out_base + "_kspace_before" + QI::OutExt(), verbose);
             shift_filter->SetInput(mult->GetOutput());
             cast_filter->Update();
             QI::WriteMagnitudeImage(cast_filter->GetOutput(),
-                                    out_base + "_kspace_after" + QI::OutExt());
+                                    out_base + "_kspace_after" + QI::OutExt(), verbose);
         }
     }
     QI::Log(verbose, "Finished.");
@@ -299,21 +299,17 @@ int main(int argc, char **argv) {
 
     const std::string out_path = out_base + "_filtered" + QI::OutExt();
     if (complex_out) {
-        QI::Log(verbose, "Saving complex output file: {}", out_path);
-        QI::WriteImage(vols, out_path);
+        QI::WriteImage(vols, out_path, verbose);
     } else {
-        QI::Log(verbose, "Saving real output file: {}", out_path);
-        QI::WriteMagnitudeImage(vols, out_path);
+        QI::WriteMagnitudeImage(vols, out_path, verbose);
     }
     if (save_kernel) {
-        const std::string kernel_path = out_base + "_kernel" + QI::OutExt();
-        QI::Log(verbose, "Saving filter kernel to: {}", kernel_path);
         auto shift_filter = itk::FFTShiftImageFilter<QI::VolumeD, QI::VolumeD>::New();
         shift_filter->SetInput(tkernel->GetOutput());
         auto cast_filter = itk::CastImageFilter<QI::VolumeD, QI::VolumeF>::New();
         cast_filter->SetInput(shift_filter->GetOutput());
         cast_filter->Update();
-        QI::WriteImage(cast_filter->GetOutput(), kernel_path);
+        QI::WriteImage(cast_filter->GetOutput(), out_base + "_kernel" + QI::OutExt(), verbose);
     }
     return EXIT_SUCCESS;
 }

@@ -136,17 +136,16 @@ int main(int argc, char **argv) {
                                            {'m', "mask"});
 
     QI::ParseArgs(parser, argc, argv, verbose);
-    QI::Log(verbose, "Reading input from: {}", QI::CheckPos(input_path));
-    auto              input = QI::ReadImage(QI::CheckPos(input_path));
-    auto              fit   = itk::PolynomialFitImageFilter::New();
+    auto input = QI::ReadImage(QI::CheckPos(input_path), verbose);
+    auto fit   = itk::PolynomialFitImageFilter::New();
+
     QI::Polynomial<3> poly(order.Get());
     fit->SetInput(input);
     fit->SetPolynomial(poly);
     fit->SetRobust(robust);
     Eigen::Array3d center = Eigen::Array3d::Zero();
     if (mask_path) {
-        QI::Log(verbose, "Reading mask from: {}", mask_path.Get());
-        auto mask_image = QI::ReadImage(mask_path.Get());
+        auto mask_image = QI::ReadImage(mask_path.Get(), verbose);
         fit->SetMask(mask_image);
         auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
         moments->SetImage(mask_image);

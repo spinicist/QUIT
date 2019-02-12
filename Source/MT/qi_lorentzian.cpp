@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
             QI::WriteImage(fit_filter->GetOutput(i),
                            outPrefix + LorentzModel::varying_names.at(i) + QI::OutExt(), verbose);
         }
-        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt(), verbose);
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

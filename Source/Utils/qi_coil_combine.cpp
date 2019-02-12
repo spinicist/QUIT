@@ -304,7 +304,6 @@ int main(int argc, char **argv) {
     QI::Log(verbose, "Correcting phase & combining");
     const std::string out_name =
         (outarg ? outarg.Get() : QI::StripExt(input_path.Get())) + "_combined" + QI::OutExt();
-    QI::Log(verbose, "Writing output file: {}", out_name);
-    QI::WriteVectorImage(output, out_name);
+    QI::WriteVectorImage(output, out_name, verbose);
     return EXIT_SUCCESS;
 }

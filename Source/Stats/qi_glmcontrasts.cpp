@@ -247,6 +247,6 @@ int main(int argc, char **argv) {
     for (int c = 0; c < contrasts.rows(); c++) {
         QI::Log(verbose, "Writing contrast {}", c + 1);
         QI::WriteImage(con_filter->GetOutput(c),
-                       outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt());
+                       outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt(), verbose);
     }
 }

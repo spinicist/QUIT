@@ -77,16 +77,9 @@ int main(int argc, char **argv) {
         std::string outPrefix = outarg.Get() + "ES_";
         for (int i = 0; i < QI::EllipseModel::NV; i++) {
             QI::WriteVectorImage(fit_filter->GetOutput(i),
-                                 outPrefix + QI::EllipseModel::varying_names.at(i) + QI::OutExt());
+                                 outPrefix + QI::EllipseModel::varying_names.at(i) + QI::OutExt(),
+                                 verbose);
         }
-        // QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
-        // if (resids) {
-        //     QI::WriteVectorImage(fit_filter->GetResidualsOutput(0), outPrefix + "all_residuals" +
-        //     QI::OutExt());
-        // }
-        // if (its) {
-        //     QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
-        // }
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

@@ -209,9 +209,9 @@ int main(int argc, char **argv) {
             // }
             fit_filter->SetInput(0, input);
             if (mask)
-                fit_filter->SetMask(QI::ReadImage(mask.Get()));
+                fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
             if (gradz)
-                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get()));
+                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get(), verbose));
             if (subregion) {
                 fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
             }
@@ -220,13 +220,11 @@ int main(int argc, char **argv) {
             const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
             for (size_t i = 0; i < model.NV; i++) {
                 const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
-                QI::Log(verbose, "Writing file: {}", fname);
-                QI::WriteImage(fit_filter->GetOutput(i), fname);
+                QI::WriteImage(fit_filter->GetOutput(i), fname, verbose);
             }
             for (size_t i = 0; i < model.ND; i++) {
                 const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
-                QI::Log(verbose, "Writing file: {}", fname);
-                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname);
+                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname, verbose);
             }
         } else {
             ASEModel model{sequence, B0.Get()};
@@ -240,9 +238,9 @@ int main(int argc, char **argv) {
             // }
             fit_filter->SetInput(0, input);
             if (mask)
-                fit_filter->SetMask(QI::ReadImage(mask.Get()));
+                fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
             if (gradz)
-                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get()));
+                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get(), verbose));
             if (subregion) {
                 fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
             }
@@ -251,13 +249,11 @@ int main(int argc, char **argv) {
             const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
             for (size_t i = 0; i < model.NV; i++) {
                 const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
-                QI::Log(verbose, "Writing file: {}", fname);
-                QI::WriteImage(fit_filter->GetOutput(i), fname);
+                QI::WriteImage(fit_filter->GetOutput(i), fname, verbose);
             }
             for (size_t i = 0; i < model.ND; i++) {
                 const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
-                QI::Log(verbose, "Writing file: {}", fname);
-                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname);
+                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname, verbose);
             }
             return EXIT_SUCCESS;
         }

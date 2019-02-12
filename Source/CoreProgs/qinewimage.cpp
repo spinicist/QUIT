@@ -99,7 +99,8 @@ template <int dim> void make_image() {
         }
         stepLength = imgSize[fillDim] / steps;
         deltaVal   = (stopVal - startVal) / (steps - 1);
-        QI::Log(verbose, "Fill dimension {} with {} steps {}-{}", fillDim, steps, startVal, stopVal);
+        QI::Log(verbose, "Fill dimension {} with {} steps {}-{}", fillDim, steps, startVal,
+                stopVal);
     }
     QI::Log(verbose, "Step length = {} delta = {}", stepLength, deltaVal);
     imgRegion.SetIndex(imgIndex);
@@ -132,7 +133,7 @@ template <int dim> void make_image() {
         it.NextLine();
     }
     QI::Log(verbose, "Writing file to: {}", QI::CheckPos(fName));
-    QI::WriteImage(newimg, QI::CheckPos(fName));
+    QI::WriteImage(newimg, QI::CheckPos(fName), verbose);
 }
 
 //******************************************************************************

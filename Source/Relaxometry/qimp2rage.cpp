@@ -80,8 +80,7 @@ int main(int argc, char **argv) {
     args::Flag t1(parser, "T1", "Calculate T1 map via spline look-up", {'t', "t1"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Opening input file {}", QI::CheckPos(input_path));
-    auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
+    auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path), verbose);
 
     auto ti_1                     = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
     auto ti_2                     = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();

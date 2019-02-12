@@ -109,8 +109,7 @@ int main(int argc, char **argv) {
         nullptr);
     std::string outname =
         outarg ? outarg.Get() : QI::StripExt(input_path.Get()) + "_interp" + QI::OutExt();
-    QI::Log(verbose, "Writing output: {}", outname);
-    QI::WriteVectorImage(output, outname);
+    QI::WriteVectorImage(output, outname, verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

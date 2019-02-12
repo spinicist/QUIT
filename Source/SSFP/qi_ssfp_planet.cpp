@@ -153,7 +153,8 @@ int main(int argc, char **argv) {
         std::string outPrefix = out_prefix.Get() + "PLANET_";
         for (int i = 0; i < PLANETModel::NV; i++) {
             QI::WriteVectorImage(fit_filter->GetOutput(i),
-                                 outPrefix + PLANETModel::varying_names.at(i) + QI::OutExt());
+                                 outPrefix + PLANETModel::varying_names.at(i) + QI::OutExt(),
+                                 verbose);
         }
         QI::Log(verbose, "Finished.");
     }

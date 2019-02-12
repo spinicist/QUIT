@@ -131,11 +131,9 @@ template <typename TPixel> void Run() {
     typename TXImage::Pointer imgX = ITK_NULLPTR;
 
     if (in_real) {
-        QI::Log(verbose, "Reading real file: {}", in_real.Get());
-        img1 = QI::ReadImage<TImage>(in_real.Get());
+        img1 = QI::ReadImage<TImage>(in_real.Get(), verbose);
         if (in_imag) {
-            QI::Log(verbose, "Reading imaginary file: {}", in_imag.Get());
-            img2 = QI::ReadImage<TImage>(in_imag.Get());
+            img2 = QI::ReadImage<TImage>(in_imag.Get(), verbose);
         } else {
             QI::Fail("Must set real and imaginary inputs together");
         }
@@ -147,10 +145,10 @@ template <typename TPixel> void Run() {
         imgX->DisconnectPipeline();
     } else if (in_mag) {
         QI::Log(verbose, "Reading magnitude file: {}", in_mag.Get());
-        img1 = QI::ReadImage<TImage>(in_mag.Get());
+        img1 = QI::ReadImage<TImage>(in_mag.Get(), verbose);
         if (in_pha) {
             QI::Log(verbose, "Reading phase file: {}", in_pha.Get());
-            img2 = QI::ReadImage<TImage>(in_pha.Get());
+            img2 = QI::ReadImage<TImage>(in_pha.Get(), verbose);
         } else {
             QI::Fail("Must set magnitude and phase inputs together");
         }
@@ -161,11 +159,9 @@ template <typename TPixel> void Run() {
         imgX = compose->GetOutput();
         imgX->DisconnectPipeline();
     } else if (in_complex) {
-        QI::Log(verbose, "Reading complex file: {}", in_complex.Get());
-        imgX = QI::ReadImage<TXImage>(in_complex.Get());
+        imgX = QI::ReadImage<TXImage>(in_complex.Get(), verbose);
     } else if (in_realimag) {
-        QI::Log(verbose, "Reading real/imaginary file: {}", in_realimag.Get());
-        auto img_both                       = QI::ReadImage<TImage>(in_realimag.Get());
+        auto img_both                       = QI::ReadImage<TImage>(in_realimag.Get(), verbose);
         auto real_region                    = img_both->GetLargestPossibleRegion();
         auto imag_region                    = img_both->GetLargestPossibleRegion();
         real_region.GetModifiableSize()[3]  = real_region.GetSize()[3] / 2;
@@ -211,33 +207,28 @@ template <typename TPixel> void Run() {
         auto o = itk::ComplexToModulusImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
-        QI::WriteImage(o->GetOutput(), out_mag.Get());
-        QI::Log(verbose, "Wrote magnitude image {}", out_mag.Get());
+        QI::WriteImage(o->GetOutput(), out_mag.Get(), verbose);
     }
     if (out_pha) {
         auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
-        QI::WriteImage(o->GetOutput(), out_pha.Get());
-        QI::Log(verbose, "Wrote phase image {}", out_pha.Get());
+        QI::WriteImage(o->GetOutput(), out_pha.Get(), verbose);
     }
     if (out_real) {
         auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
-        QI::WriteImage(o->GetOutput(), out_real.Get());
-        QI::Log(verbose, "Wrote real image {}", out_real.Get());
+        QI::WriteImage(o->GetOutput(), out_real.Get(), verbose);
     }
     if (out_imag) {
         auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
         o->SetInput(imgX);
         o->Update();
-        QI::WriteImage(o->GetOutput(), out_imag.Get());
-        QI::Log(verbose, "Wrote imaginary image {}", out_imag.Get());
+        QI::WriteImage(o->GetOutput(), out_imag.Get(), verbose);
     }
     if (out_complex) {
-        QI::Log(verbose, "Writing complex image {}", out_complex.Get());
-        QI::WriteImage(imgX, out_complex.Get());
+        QI::WriteImage(imgX, out_complex.Get(), verbose);
     }
 }
 

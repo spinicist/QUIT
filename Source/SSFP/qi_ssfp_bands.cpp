@@ -285,7 +285,7 @@ int main(int argc, char **argv) {
         pass2->SetInput(inFile);
         pass2->SetPass1(output);
         if (mask)
-            pass2->SetMask(QI::ReadImage(mask.Get()));
+            pass2->SetMask(QI::ReadImage(mask.Get(), verbose));
         QI::Log(verbose, "2nd pass");
         if (verbose) {
             auto monitor = QI::GenericMonitor::New();
@@ -298,9 +298,9 @@ int main(int argc, char **argv) {
     std::string outname = prefix + "_" + suffix + QI::OutExt();
     QI::Log(verbose, "Writing output file: {}", outname);
     if (magnitude) {
-        QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(output, outname);
+        QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(output, outname, verbose);
     } else {
-        QI::WriteVectorImage(output, outname);
+        QI::WriteVectorImage(output, outname, verbose);
     }
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;

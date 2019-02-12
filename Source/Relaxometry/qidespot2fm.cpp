@@ -201,15 +201,17 @@ int main(int argc, char **argv) {
         std::string outPrefix = outarg.Get() + "FM_";
         for (int i = 0; i < model.NV; i++) {
             QI::WriteImage(fit_filter->GetOutput(i),
-                           outPrefix + fm.model.varying_names.at(i) + QI::OutExt());
+                           outPrefix + fm.model.varying_names.at(i) + QI::OutExt(), verbose);
         }
-        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt());
+        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt(),
+                       verbose);
         if (resids) {
             QI::WriteVectorImage(fit_filter->GetResidualsOutput(0),
-                                 outPrefix + "all_residuals" + QI::OutExt());
+                                 outPrefix + "all_residuals" + QI::OutExt(), verbose);
         }
         if (its) {
-            QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt());
+            QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt(),
+                           verbose);
         }
         QI::Log(verbose, "Finished.");
     }

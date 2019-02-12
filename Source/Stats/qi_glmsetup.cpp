@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
         const int group = group_list.at(i);
         if (group > 0) { // Ignore entries with a 0
             QI::Log(verbose, "File: {} Group: {}", file_paths.Get().at(i), group);
-            QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.Get().at(i));
+            QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.Get().at(i), verbose);
             groups.at(group - 1).push_back(ptr);
             std::vector<std::string> covar;
             if (covars_path) {
@@ -248,7 +248,6 @@ int main(int argc, char **argv) {
     output->SetSpacing(spacing);
     output->SetOrigin(origin);
     output->SetDirection(direction);
-    QI::Log(verbose, "Writing merged file: {}", QI::CheckValue(output_path));
-    QI::WriteImage<QI::SeriesF>(output, QI::CheckValue(output_path));
+    QI::WriteImage<QI::SeriesF>(output, QI::CheckValue(output_path), verbose);
     return EXIT_SUCCESS;
 }
