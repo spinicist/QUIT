@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
     } else {
         LorentzFit fit{model};
         auto       fit_filter = QI::ModelFitFilter<LorentzFit>::New(&fit, verbose, false);
-        fit_filter->SetInput(0, QI::ReadVectorImage(input_path.Get(), verbose));
+        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(input_path.Get(), verbose));
         if (mask)
             fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
         if (subregion)

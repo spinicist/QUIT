@@ -234,8 +234,9 @@ int main(int argc, char **argv) {
     } else {
         HIFIFit hifi_fit{model};
         auto    fit_filter = QI::ModelFitFilter<HIFIFit>::New(&hifi_fit, verbose, resids);
-        fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(spgr_path), verbose));
-        fit_filter->SetInput(1, QI::ReadVectorImage(QI::CheckPos(mprage_path), verbose));
+        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(spgr_path), verbose));
+        fit_filter->SetInput(1,
+                             QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(mprage_path), verbose));
         if (mask)
             fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
         if (subregion)

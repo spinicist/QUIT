@@ -220,9 +220,9 @@ int main(int argc, char **argv) {
         EMTFit fit{model};
         fit.model.T2_b  = T2_b_us.Get() * 1e-6;
         auto fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, verbose, false);
-        fit_filter->SetInput(0, QI::ReadVectorImage(G_path.Get(), verbose));
-        fit_filter->SetInput(1, QI::ReadVectorImage(a_path.Get(), verbose));
-        fit_filter->SetInput(2, QI::ReadVectorImage(b_path.Get(), verbose));
+        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(G_path.Get(), verbose));
+        fit_filter->SetInput(1, QI::ReadImage<QI::VectorVolumeF>(a_path.Get(), verbose));
+        fit_filter->SetInput(2, QI::ReadImage<QI::VectorVolumeF>(b_path.Get(), verbose));
         if (f0)
             fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
         if (B1)

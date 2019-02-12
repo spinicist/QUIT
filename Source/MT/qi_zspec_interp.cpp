@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Opening file: {}", QI::CheckPos(input_path));
-    auto input = QI::ReadVectorImage<float>(QI::CheckPos(input_path), verbose);
+    auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
 
     QI::Log(verbose, "Reading input frequencies");
     rapidjson::Document json      = QI::ReadJSON(std::cin);
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
     const QI::VolumeF::Pointer f0_image = f0_arg ? QI::ReadImage(f0_arg.Get(), verbose) : nullptr;
     const QI::VolumeF::Pointer ref_image =
         ref_arg ? QI::ReadImage(ref_arg.Get(), verbose) : nullptr;
-    auto output = QI::VectorVolumeF::New();
+    QI::VectorVolumeF::Pointer output = QI::VectorVolumeF::New();
     output->CopyInformation(input);
     output->SetRegions(input->GetBufferedRegion());
     output->SetNumberOfComponentsPerPixel(out_freqs.rows());
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
         nullptr);
     std::string outname =
         outarg ? outarg.Get() : QI::StripExt(input_path.Get()) + "_interp" + QI::OutExt();
-    QI::WriteVectorImage(output, outname, verbose);
+    QI::WriteImage(output, outname, verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

@@ -201,8 +201,7 @@ int main(int argc, char **argv) {
             ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
             ASEFixDBVFit   fit(model);
             auto           fit_filter = QI::ModelFitFilter<ASEFixDBVFit>::New(&fit, verbose, false);
-            QI::Log(verbose, "Reading ASE data from: {}", QI::CheckPos(input_path));
-            auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
+            auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
             // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
             // if (slice_arg) {
             //     vox_size[2] = slice_arg.Get();
@@ -230,8 +229,7 @@ int main(int argc, char **argv) {
             ASEModel model{sequence, B0.Get()};
             ASEFit   fit(model);
             auto     fit_filter = QI::ModelFitFilter<ASEFit>::New(&fit, verbose, false);
-            QI::Log(verbose, "Reading ASE data from: {}", QI::CheckPos(input_path));
-            auto input = QI::ReadVectorImage(QI::CheckPos(input_path));
+            auto     input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
             // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
             // if (slice_arg) {
             //     vox_size[2] = slice_arg.Get();

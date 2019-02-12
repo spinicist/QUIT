@@ -289,7 +289,7 @@ int main(int argc, char **argv) {
             d2->model.elliptical = true;
         }
         auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(d2, verbose, resids);
-        fit->SetInput(0, QI::ReadVectorImage(QI::CheckPos(ssfp_path), verbose));
+        fit->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(ssfp_path), verbose));
         fit->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));
         if (B1)
             fit->SetFixed(1, QI::ReadImage(B1.Get(), verbose));

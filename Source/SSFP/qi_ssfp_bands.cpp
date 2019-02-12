@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Opening input file: {}", QI::CheckPos(input_path));
-    auto         inFile = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
+    auto         inFile = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);
     const size_t nVols  = inFile->GetNumberOfComponentsPerPixel();
     QI::Log(verbose, "Phase increments = {} Number of volumes = {}", ph_incs.Get(), nVols);
     QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
@@ -298,9 +298,9 @@ int main(int argc, char **argv) {
     std::string outname = prefix + "_" + suffix + QI::OutExt();
     QI::Log(verbose, "Writing output file: {}", outname);
     if (magnitude) {
-        QI::WriteVectorMagnitudeImage<QI::VectorVolumeXF>(output, outname, verbose);
+        QI::WriteMagnitudeImage(output, outname, verbose);
     } else {
-        QI::WriteVectorImage(output, outname, verbose);
+        QI::WriteImage(output, outname, verbose);
     }
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;

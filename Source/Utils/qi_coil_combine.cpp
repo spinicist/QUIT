@@ -249,12 +249,12 @@ int main(int argc, char **argv) {
                                  {'V', "vol"}, 1);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Reading input image: {}", QI::CheckPos(input_path));
-    auto input_image = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path));
+    auto input_image = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);
+
     QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
     if (ser_path) {
         QI::Log(verbose, "Reading COMPOSER reference image: {}", ser_path.Get());
-        auto ser_image = QI::ReadVectorImage<std::complex<float>>(ser_path.Get());
+        auto ser_image = QI::ReadImage<QI::VectorVolumeXF>(ser_path.Get(), verbose);
         auto combine   = CoilCombineFilter::New();
         combine->SetInput(input_image);
         combine->SetInput(1, ser_image);
@@ -304,6 +304,6 @@ int main(int argc, char **argv) {
     QI::Log(verbose, "Correcting phase & combining");
     const std::string out_name =
         (outarg ? outarg.Get() : QI::StripExt(input_path.Get())) + "_combined" + QI::OutExt();
-    QI::WriteVectorImage(output, out_name, verbose);
+    QI::WriteImage(output, out_name, verbose);
     return EXIT_SUCCESS;
 }

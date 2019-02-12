@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<int> zdrop(parser, "ZDROP", "Z-Shims to drop, default 0", {"zdrop"}, 0);
     args::ValueFlag<int> ydrop(parser, "YDROP", "Y-Shims to drop, default 0", {"ydrop"}, 0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    auto              input     = QI::ReadVectorImage(QI::CheckPos(input_path), verbose);
+    auto              input     = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     const int         insize    = input->GetNumberOfComponentsPerPixel();
     const auto        gridsize  = zshims.Get() * yshims.Get();
@@ -73,6 +73,6 @@ int main(int argc, char **argv) {
         },
         nullptr);
     const std::string fname = outPrefix + "_zshim" + QI::OutExt();
-    QI::WriteVectorImage(output, fname, verbose);
+    QI::WriteImage(output, fname, verbose);
     return EXIT_SUCCESS;
 }

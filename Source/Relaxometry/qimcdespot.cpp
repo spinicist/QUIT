@@ -171,7 +171,8 @@ int main(int argc, char **argv) {
 
             auto fit_filter = QI::ModelFitFilter<FitType>::New(&src, verbose, resids);
             for (size_t i = 0; i < input_paths.Get().size(); i++) {
-                fit_filter->SetInput(i, QI::ReadVectorImage(input_paths.Get().at(i), verbose));
+                fit_filter->SetInput(
+                    i, QI::ReadImage<QI::VectorVolumeF>(input_paths.Get().at(i), verbose));
             }
             if (f0)
                 fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));

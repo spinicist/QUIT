@@ -31,7 +31,7 @@ void WriteImage(const TImg *ptr, const std::string &path, const bool verbose) {
 }
 
 template <typename TImg>
-void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string &path, const bool verbose) {
+void WriteImage(const itk::SmartPointer<TImg> &ptr, const std::string &path, const bool verbose) {
     WriteImage<TImg>(ptr.GetPointer(), path, verbose);
 }
 
@@ -46,7 +46,7 @@ void WriteMagnitudeImage(const TImg *ptr, const std::string &path, const bool ve
 }
 
 template <typename TImg>
-void WriteMagnitudeImage(const itk::SmartPointer<TImg> ptr, const std::string &path,
+void WriteMagnitudeImage(const itk::SmartPointer<TImg> &ptr, const std::string &path,
                          const bool verbose) {
     WriteMagnitudeImage<TImg>(ptr.GetPointer(), path, verbose);
 }
@@ -82,19 +82,19 @@ template void WriteImage<SeriesXF>(const SeriesXF *ptr, const std::string &path,
                                    const bool verbose);
 template void WriteImage<SeriesXD>(const SeriesXD *ptr, const std::string &path,
                                    const bool verbose);
-template void WriteImage<VolumeF>(const itk::SmartPointer<VolumeF> ptr, const std::string &path,
+template void WriteImage<VolumeF>(const itk::SmartPointer<VolumeF> &ptr, const std::string &path,
                                   const bool verbose);
-template void WriteImage<VolumeD>(const itk::SmartPointer<VolumeD> ptr, const std::string &path,
+template void WriteImage<VolumeD>(const itk::SmartPointer<VolumeD> &ptr, const std::string &path,
                                   const bool verbose);
-template void WriteImage<VolumeI>(const itk::SmartPointer<VolumeI> ptr, const std::string &path,
+template void WriteImage<VolumeI>(const itk::SmartPointer<VolumeI> &ptr, const std::string &path,
                                   const bool verbose);
-template void WriteImage<SeriesF>(const itk::SmartPointer<SeriesF> ptr, const std::string &path,
+template void WriteImage<SeriesF>(const itk::SmartPointer<SeriesF> &ptr, const std::string &path,
                                   const bool verbose);
-template void WriteImage<SeriesD>(const itk::SmartPointer<SeriesD> ptr, const std::string &path,
+template void WriteImage<SeriesD>(const itk::SmartPointer<SeriesD> &ptr, const std::string &path,
                                   const bool verbose);
-template void WriteImage<SeriesXF>(const itk::SmartPointer<SeriesXF> ptr, const std::string &path,
+template void WriteImage<SeriesXF>(const itk::SmartPointer<SeriesXF> &ptr, const std::string &path,
                                    const bool verbose);
-template void WriteImage<SeriesXD>(const itk::SmartPointer<SeriesXD> ptr, const std::string &path,
+template void WriteImage<SeriesXD>(const itk::SmartPointer<SeriesXD> &ptr, const std::string &path,
                                    const bool verbose);
 template void WriteScaledImage<VolumeF>(const VolumeF *img, const VolumeF *simg,
                                         const std::string &path, const bool verbose);
@@ -103,11 +103,11 @@ template void WriteScaledImage<VolumeF>(const itk::SmartPointer<VolumeF> &ptr,
                                         const std::string &path, const bool verbose);
 template void WriteMagnitudeImage<VolumeXF>(const VolumeXF *ptr, const std::string &path,
                                             const bool verbose);
-template void WriteMagnitudeImage<VolumeXF>(const itk::SmartPointer<VolumeXF> ptr,
+template void WriteMagnitudeImage<VolumeXF>(const itk::SmartPointer<VolumeXF> &ptr,
                                             const std::string &path, const bool verbose);
 template void WriteMagnitudeImage<SeriesXF>(const SeriesXF *ptr, const std::string &path,
                                             const bool verbose);
-template void WriteMagnitudeImage<SeriesXF>(const itk::SmartPointer<SeriesXF> ptr,
+template void WriteMagnitudeImage<SeriesXF>(const itk::SmartPointer<SeriesXF> &ptr,
                                             const std::string &path, const bool verbose);
 
 } // namespace QI

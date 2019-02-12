@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
             QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
         auto fit   = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, resids);
-        auto input = QI::ReadVectorImage(input_path.Get(), verbose);
+        auto input = QI::ReadImage<QI::VectorVolumeF>(input_path.Get(), verbose);
         fit->SetInput(0, input);
         const int nvols = input->GetNumberOfComponentsPerPixel();
         if (nvols % sequence->size() == 0) {

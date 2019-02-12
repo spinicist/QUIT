@@ -139,9 +139,9 @@ int main(int argc, char **argv) {
     } else {
         PLANETFit fit{model};
         auto      fit_filter = QI::ModelFitFilter<PLANETFit>::New(&fit, verbose, false);
-        fit_filter->SetInput(0, QI::ReadVectorImage(G_filename.Get(), verbose));
-        fit_filter->SetInput(1, QI::ReadVectorImage(a_filename.Get(), verbose));
-        fit_filter->SetInput(2, QI::ReadVectorImage(b_filename.Get(), verbose));
+        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(G_filename.Get(), verbose));
+        fit_filter->SetInput(1, QI::ReadImage<QI::VectorVolumeF>(a_filename.Get(), verbose));
+        fit_filter->SetInput(2, QI::ReadImage<QI::VectorVolumeF>(b_filename.Get(), verbose));
         fit_filter->SetBlocks(ssfp.size());
         if (B1)
             fit_filter->SetFixed(0, QI::ReadImage(B1.Get(), verbose));

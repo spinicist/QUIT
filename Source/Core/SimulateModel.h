@@ -51,10 +51,10 @@ void SimulateModel(rapidjson::Value &json, const Model &model,
                      outpaths.size(), model.num_outputs());
         }
         for (size_t i = 0; i < model.num_outputs(); i++) {
-            QI::WriteVectorImage(simulator->GetOutput(i), outpaths[i], verbose);
+            QI::WriteImage(simulator->GetOutput(i), outpaths[i], verbose);
         }
     } else {
-        QI::WriteVectorImage(simulator->GetOutput(0), outpaths[0], verbose);
+        QI::WriteImage(simulator->GetOutput(0), outpaths[0], verbose);
     }
 }
 

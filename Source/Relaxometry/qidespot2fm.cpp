@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
         fm.max_iterations = its.Get();
         fm.asymmetric     = asym.Get();
         auto fit_filter   = QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, resids);
-        fit_filter->SetInput(0, QI::ReadVectorImage(QI::CheckPos(ssfp_path), verbose));
+        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(ssfp_path), verbose));
         fit_filter->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));
         if (B1)
             fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));

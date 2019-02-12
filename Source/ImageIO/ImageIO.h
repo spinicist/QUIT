@@ -28,14 +28,14 @@ template <typename TImg>
 extern void WriteImage(const TImg *ptr, const std::string &path, const bool verbose);
 
 template <typename TImg>
-extern void WriteImage(const itk::SmartPointer<TImg> ptr, const std::string &path,
+extern void WriteImage(const itk::SmartPointer<TImg> &ptr, const std::string &path,
                        const bool verbose);
 
 template <typename TImg>
 extern void WriteMagnitudeImage(const TImg *ptr, const std::string &path, const bool verbose);
 
 template <typename TImg>
-extern void WriteMagnitudeImage(const itk::SmartPointer<TImg> ptr, const std::string &path,
+extern void WriteMagnitudeImage(const itk::SmartPointer<TImg> &ptr, const std::string &path,
                                 const bool verbose);
 
 template <typename TImg>
@@ -46,34 +46,6 @@ template <typename TImg>
 extern void WriteScaledImage(const itk::SmartPointer<TImg> &       ptr,
                              const itk::SmartPointer<QI::VolumeF> &sptr, const std::string &path,
                              const bool verbose);
-
-template <typename TPixel = float>
-extern auto ReadVectorImage(const std::string &path, const bool verbose = false) ->
-    typename itk::VectorImage<TPixel, 3>::Pointer;
-
-template <typename TVImg>
-extern void WriteVectorImage(const TVImg *img, const std::string &path, const bool verbose);
-
-template <typename TVImg>
-extern void WriteVectorImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path,
-                             const bool verbose);
-
-template <typename TVImg>
-extern void WriteVectorMagnitudeImage(const TVImg *img, const std::string &path,
-                                      const bool verbose);
-
-template <typename TVImg>
-extern void WriteVectorMagnitudeImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path,
-                                      const bool verbose);
-
-template <typename TVImg>
-extern void WriteScaledVectorImage(const TVImg *img, const QI::VolumeF *simg,
-                                   const std::string &path, const bool verbose);
-
-template <typename TVImg>
-extern void WriteScaledVectorImage(const itk::SmartPointer<TVImg> &      ptr,
-                                   const itk::SmartPointer<QI::VolumeF> &sptr,
-                                   const std::string &path, const bool verbose);
 
 } // namespace QI
 

@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
         if (its)
             d1->max_iterations = its.Get();
         auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose, resids);
-        fit->SetInput(0, QI::ReadVectorImage(spgr_path.Get(), verbose));
+        fit->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(spgr_path.Get(), verbose));
         if (B1)
             fit->SetFixed(0, QI::ReadImage(B1.Get(), verbose));
         if (mask)

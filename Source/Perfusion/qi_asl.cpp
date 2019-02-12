@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
                                    "Blood-brain partition co-efficent, default 0.9 mL/g",
                                    {'l', "lambda"}, 0.9);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    auto input = QI::ReadVectorImage(QI::CheckPos(input_path), verbose);
+    auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Reading sequence parameters");
     rapidjson::Document  json = QI::ReadJSON(std::cin);
     QI::CASLSequence     sequence(json["CASL"]);
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
         },
         nullptr);
 
-    QI::WriteVectorImage(output, outarg.Get() + "CASL_CBF" + QI::OutExt(), verbose);
+    QI::WriteImage(output, outarg.Get() + "CASL_CBF" + QI::OutExt(), verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

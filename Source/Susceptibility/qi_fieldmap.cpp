@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Opening file: {}", QI::CheckPos(input_path));
-    auto input = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(input_path), verbose);
+    auto input = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "ΔTE = {} ms", QI::CheckValue(delta_te));
 
     auto fieldmap = QI::VolumeF::New();

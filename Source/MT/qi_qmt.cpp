@@ -320,7 +320,7 @@ int main(int argc, char **argv) {
         RamaniFitFunction fit{model};
 
         auto fit_filter = QI::ModelFitFilter<RamaniFitFunction>::New(&fit, verbose, resids);
-        fit_filter->SetInput(0, QI::ReadVectorImage(mtsat_path.Get(), verbose));
+        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(mtsat_path.Get(), verbose));
         if (f0)
             fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
         if (B1)

@@ -14,31 +14,38 @@
 #include "ImageIO.h"
 #include "ImageToVectorFilter.h"
 #include "Log.h"
+#include "itkImageFileReader.h"
 #include <string>
 
 namespace QI {
 
-template <typename TPixel>
-auto ReadVectorImage(const std::string &path, const bool verbose) ->
-    typename itk::VectorImage<TPixel, 3>::Pointer {
-    typedef itk::Image<TPixel, 4>             TSeries;
-    typedef itk::VectorImage<TPixel, 3>       TVector;
-    typedef itk::ImageToVectorFilter<TSeries> TToVector;
+template <typename TVectorImg>
+auto ReadImage(const std::string &path, const bool verbose) -> typename TVectorImg::Pointer {
 
-    auto img     = ReadImage<TSeries>(path, verbose);
+    using TPixel    = typename TVectorImg::InternalPixelType;
+    using TSeries   = itk::Image<TPixel, 4>;
+    using TReader   = itk::ImageFileReader<TSeries>;
+    using TToVector = itk::ImageToVectorFilter<TSeries>;
+
+    auto file = TReader::New();
+    file->SetFileName(path);
+
     auto convert = TToVector::New();
-    convert->SetInput(img);
+    convert->SetInput(file->GetOutput());
     QI::Log(verbose, "Reading image: {}", path);
     convert->Update();
-    typename TVector::Pointer vols = convert->GetOutput();
+    typename TVectorImg::Pointer vols = convert->GetOutput();
+    if (!vols) {
+        QI::Fail("Failed to read image: {}", path);
+    }
     vols->DisconnectPipeline();
     return vols;
 }
 
-template auto ReadVectorImage<float>(const std::string &path, const bool verbose) ->
-    typename itk::VectorImage<float, 3>::Pointer;
-template auto ReadVectorImage<std::complex<float>>(const std::string &path, const bool verbose) ->
-    typename itk::VectorImage<std::complex<float>, 3>::Pointer;
+template auto ReadImage<QI::VectorVolumeF>(const std::string &path, const bool verbose)
+    -> QI::VectorVolumeF::Pointer;
+template auto ReadImage<QI::VectorVolumeXF>(const std::string &path, const bool verbose)
+    -> QI::VectorVolumeXF::Pointer;
 
 } // namespace QI
 

@@ -224,7 +224,8 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
 
     QI::Log(verbose, "Reading input file {}", QI::CheckPos(input_path));
-    QI::VectorVolumeF::Pointer merged = QI::ReadVectorImage<float>(QI::CheckPos(input_path));
+    QI::VectorVolumeF::Pointer merged =
+        QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Reading design matrix {}", QI::CheckPos(design_path));
     Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(QI::CheckPos(design_path));
     QI::Log(verbose, "Reading contrasts file {}", QI::CheckPos(contrasts_path));

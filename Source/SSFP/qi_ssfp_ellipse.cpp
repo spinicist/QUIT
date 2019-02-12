@@ -56,7 +56,8 @@ int main(int argc, char **argv) {
         QI::SimulateModel<QI::EllipseModel, false>(json_input, model, {}, {ssfp_path.Get()},
                                                    verbose, simulate.Get());
     } else {
-        auto input = QI::ReadVectorImage<std::complex<float>>(QI::CheckPos(ssfp_path), verbose);
+        auto input = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(ssfp_path), verbose);
+
         QI::EllipseFit *fit = nullptr;
         switch (algorithm.Get()) {
         case 'h':
