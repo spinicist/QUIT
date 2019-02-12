@@ -74,12 +74,7 @@ int main(int argc, char **argv) {
         if (subregion)
             fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
         fit_filter->Update();
-        std::string outPrefix = outarg.Get() + "ES_";
-        for (int i = 0; i < QI::EllipseModel::NV; i++) {
-            QI::WriteVectorImage(fit_filter->GetOutput(i),
-                                 outPrefix + QI::EllipseModel::varying_names.at(i) + QI::OutExt(),
-                                 verbose);
-        }
+        fit_filter->WriteOutputs(outarg.Get() + "ES_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

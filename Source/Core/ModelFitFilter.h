@@ -29,6 +29,7 @@
 #include "Log.h"
 #include "ModelHelpers.h"
 #include "Monitor.h"
+#include "Util.h"
 
 namespace QI {
 
@@ -538,7 +539,7 @@ class ModelFitFilter
             ++residual_iter;
         }
     }
-};
+}; // namespace QI
 
 } // namespace QI
 

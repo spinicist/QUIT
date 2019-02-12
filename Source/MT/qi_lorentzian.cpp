@@ -146,12 +146,7 @@ int main(int argc, char **argv) {
         if (subregion)
             fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
         fit_filter->Update();
-        std::string outPrefix = outarg.Get() + "LTZ_";
-        for (int i = 0; i < LorentzModel::NV; i++) {
-            QI::WriteImage(fit_filter->GetOutput(i),
-                           outPrefix + LorentzModel::varying_names.at(i) + QI::OutExt(), verbose);
-        }
-        QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt(), verbose);
+        fit_filter->WriteOutputs(outarg.Get() + "LTZ_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

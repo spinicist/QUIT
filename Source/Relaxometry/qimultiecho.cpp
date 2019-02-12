@@ -218,16 +218,7 @@ int main(int argc, char **argv) {
         if (subregion)
             fit->SetSubregion(QI::RegionArg(subregion.Get()));
         fit->Update();
-        std::string outPrefix = outarg.Get() + "ME_";
-        for (int i = 0; i < model.NV; i++) {
-            QI::WriteVectorImage(fit->GetOutput(i),
-                                 outPrefix + me->model.varying_names.at(i) + QI::OutExt(), verbose);
-        }
-        QI::WriteVectorImage(fit->GetResidualOutput(), outPrefix + "residual" + QI::OutExt(), verbose);
-        if (resids) {
-            QI::WriteVectorImage(fit->GetResidualsOutput(0),
-                                 outPrefix + "all_residuals" + QI::OutExt(), verbose);
-        }
+        fit->WriteOutputs(outarg.Get() + "ME_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

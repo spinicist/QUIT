@@ -232,11 +232,7 @@ int main(int argc, char **argv) {
         if (subregion)
             fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
         fit_filter->Update();
-        std::string outPrefix = outarg.Get() + "EMT_";
-        for (int i = 0; i < EMTModel::NV; i++) {
-            QI::WriteImage(fit_filter->GetOutput(i),
-                           outPrefix + EMTModel::varying_names.at(i) + QI::OutExt(), verbose);
-        }
+        fit_filter->WriteOutputs(outarg.Get() + "EMT_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

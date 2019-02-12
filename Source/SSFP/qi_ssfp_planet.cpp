@@ -150,12 +150,7 @@ int main(int argc, char **argv) {
         if (subregion)
             fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
         fit_filter->Update();
-        std::string outPrefix = out_prefix.Get() + "PLANET_";
-        for (int i = 0; i < PLANETModel::NV; i++) {
-            QI::WriteVectorImage(fit_filter->GetOutput(i),
-                                 outPrefix + PLANETModel::varying_names.at(i) + QI::OutExt(),
-                                 verbose);
-        }
+        fit_filter->WriteOutputs(out_prefix.Get() + "PLANET_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

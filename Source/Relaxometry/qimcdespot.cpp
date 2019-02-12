@@ -182,21 +182,7 @@ int main(int argc, char **argv) {
             if (subregion)
                 fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
             fit_filter->Update();
-            std::string outPrefix = outarg.Get() + prefix;
-            for (int i = 0; i < src.n_outputs(); i++) {
-                QI::WriteImage(fit_filter->GetOutput(i),
-                               outPrefix + src.model.varying_names.at(i) + QI::OutExt(), verbose);
-            }
-            QI::WriteImage(fit_filter->GetResidualOutput(), outPrefix + "residual" + QI::OutExt(),
-                           verbose);
-            if (resids) {
-                QI::WriteVectorImage(fit_filter->GetResidualsOutput(0),
-                                     outPrefix + "all_residuals" + QI::OutExt(), verbose);
-            }
-            if (its) {
-                QI::WriteImage(fit_filter->GetFlagOutput(), outPrefix + "iterations" + QI::OutExt(),
-                               verbose);
-            }
+            fit_filter->WriteOutputs(outarg.Get() + prefix);
             QI::Log(verbose, "Finished.");
         }
     };
