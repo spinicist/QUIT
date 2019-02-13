@@ -40,8 +40,10 @@ using DESPOT1Fit = QI::FitFunction<DESPOT1>;
 
 struct DESPOT1LLS : DESPOT1Fit {
     using DESPOT1Fit::DESPOT1Fit;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, DESPOT1::NV) & outputs, ResidualType &     residual,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, DESPOT1::NV) & outputs,
+                          ResidualType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
@@ -66,8 +68,10 @@ struct DESPOT1LLS : DESPOT1Fit {
 
 struct DESPOT1WLLS : DESPOT1Fit {
     using DESPOT1Fit::DESPOT1Fit;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, DESPOT1::NV) & outputs, ResidualType &     residual,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, DESPOT1::NV) & outputs,
+                          ResidualType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
@@ -110,8 +114,10 @@ struct DESPOT1NLLS : DESPOT1Fit {
         model.bounds_lo[1] = 1e-6;
     }
 
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, DESPOT1::NV) & p, ResidualType &           residual,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, DESPOT1::NV) & p,
+                          ResidualType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const double &scale = inputs[0].maxCoeff();
@@ -226,14 +232,9 @@ int main(int argc, char **argv) {
         }
         if (its)
             d1->max_iterations = its.Get();
-        auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose, resids);
-        fit->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(spgr_path.Get(), verbose));
-        if (B1)
-            fit->SetFixed(0, QI::ReadImage(B1.Get(), verbose));
-        if (mask)
-            fit->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit->SetSubregion(QI::RegionArg(args::get(subregion)));
+        auto fit =
+            QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose.Get(), resids.Get(), subregion.Get());
+        fit->ReadInputs({QI::CheckPos(spgr_path)}, {B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(outarg.Get() + "D1_");
         QI::Log(verbose, "Finished.");

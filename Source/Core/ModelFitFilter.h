@@ -13,6 +13,8 @@
 #define QI_MODELFITFILTER_H
 
 #include <Eigen/Core>
+#include <array>
+#include <functional>
 #include <tuple>
 #include <vector>
 
@@ -37,7 +39,8 @@ template <typename FitType>
 class ModelFitFilter
     : public itk::ImageToImageFilter<
           itk::VectorImage<typename IOPrecision<typename FitType::InputType>::Type, 3>,
-          typename BlockTypes<FitType::Blocked, 3,
+          typename BlockTypes<FitType::Blocked,
+                              3,
                               typename IOPrecision<typename FitType::OutputType>::Type>::Type> {
   public:
     using ModelType     = typename FitType::ModelType;
@@ -88,8 +91,12 @@ class ModelFitFilter
     static constexpr int ResidualsOutputOffset = ResidualOutputOffset + 1;
     static constexpr int TotalOutputs          = ResidualsOutputOffset + 1;
 
-    ModelFitFilter(const FitType *f, const bool verbose, const bool allResids)
-        : m_fit(f), m_verbose(verbose), m_allResiduals(allResids) {
+    ModelFitFilter(FitType const *    f,
+                   const bool         verbose,
+                   const bool         allResids,
+                   std::string const &subregion) :
+        m_fit(f),
+        m_verbose(verbose), m_allResiduals(allResids) {
         this->SetNumberOfRequiredInputs(m_fit->n_inputs());
         this->SetNumberOfRequiredOutputs(TotalOutputs);
         for (int i = 0; i < TotalOutputs; i++) {
@@ -98,6 +105,24 @@ class ModelFitFilter
         if (m_verbose) {
             auto monitor = QI::GenericMonitor::New();
             this->AddObserver(itk::ProgressEvent(), monitor);
+        }
+        if (subregion != "") {
+            std::istringstream iss(subregion);
+            std::string        el;
+
+            typename TRegion::IndexType start;
+            typename TRegion::SizeType  size;
+            for (size_t i = 0; i < TRegion::ImageDimension; i++) {
+                std::getline(iss, el, ',');
+                start[i] = std::stoi(el);
+            }
+            for (size_t i = 0; i < TRegion::ImageDimension; i++) {
+                std::getline(iss, el, ',');
+                size[i] = std::stoi(el);
+            }
+            m_subregion.SetIndex(start);
+            m_subregion.SetSize(size);
+            m_hasSubregion = true;
         }
     }
 
@@ -206,7 +231,8 @@ class ModelFitFilter
      * container construction, i.e. {} in the call itself.
      */
     void ReadInputs(std::vector<std::string> const &              inputs,
-                    std::array<std::string, ModelType::NF> const &fixed, std::string const &mask) {
+                    std::array<std::string, ModelType::NF> const &fixed,
+                    std::string const &                           mask) {
         if (static_cast<size_t>(m_fit->n_inputs()) != inputs.size()) {
             QI::Fail("Number of input file paths did not match number of inputs for model");
         }

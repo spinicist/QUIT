@@ -32,7 +32,8 @@ template <> const QI_ARRAYN(double, 2) FMModel::fixed_defaults{1.0, 1.0};
 template <>
 template <typename Derived>
 auto FMModel::signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
-    -> QI_ARRAY(typename Derived::Scalar) {
+    -> QI_ARRAY(typename Derived::Scalar)
+{
     using T                      = typename Derived::Scalar;
     const T &     PD             = v[0];
     const T &     T2             = v[1];
@@ -64,10 +65,13 @@ using FMFit = QI::FitFunction<FMModel>;
 struct FMNLLS : FMFit {
     using FMFit::FMFit;
     bool              asymmetric = false;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, FMModel::NV) & bestP, ResidualType &       residual,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, FMModel::NV) & bestP,
+                          ResidualType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const override {
+                          FlagType &                   iterations) const override
+    {
         const double &T1 = fixed[0];
         if (std::isfinite(T1) && (T1 > model.sequence.TR)) {
             // Improve scaling by dividing the PD down to something sensible.
@@ -95,7 +99,8 @@ struct FMNLLS : FMFit {
             problem.SetParameterUpperBound(p.data(), 1, T1);
             if (this->asymmetric) {
                 problem.SetParameterLowerBound(p.data(), 2, -0.5 / model.sequence.TR);
-            } else {
+            }
+            else {
                 problem.SetParameterLowerBound(p.data(), 2, 0.0);
             }
             problem.SetParameterUpperBound(p.data(), 2, 0.5 / model.sequence.TR);
@@ -133,7 +138,8 @@ struct FMNLLS : FMFit {
                 for (size_t i = 0; i < r_temp.size(); i++)
                     residuals[i] = r_temp[i] * scale;
             }
-        } else {
+        }
+        else {
             bestP << 0.0, 0.0, 0.0;
             residual   = 0;
             iterations = 0;
@@ -146,7 +152,8 @@ struct FMNLLS : FMFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates a T2 map from SSFP data and a T1 map.\nhttp://github.com/spinicist/QUIT");
@@ -184,19 +191,14 @@ int main(int argc, char **argv) {
     if (simulate) {
         QI::SimulateModel<FMModel, false>(input, model, {QI::CheckPos(t1_path), B1.Get()},
                                           {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
-    } else {
+    }
+    else {
         FMNLLS fm{model};
         fm.max_iterations = its.Get();
         fm.asymmetric     = asym.Get();
-        auto fit_filter   = QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, resids);
-        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(ssfp_path), verbose));
-        fit_filter->SetFixed(0, QI::ReadImage(QI::CheckPos(t1_path), verbose));
-        if (B1)
-            fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
-        if (mask)
-            fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        auto fit_filter   = QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, resids, subregion.Get());
+        fit_filter->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()},
+                               mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(outarg.Get() + "FM_");
         QI::Log(verbose, "Finished.");

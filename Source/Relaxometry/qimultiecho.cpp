@@ -44,9 +44,12 @@ using MultiEchoFit = QI::BlockFitFunction<MultiEcho>;
 
 struct MultiEchoLogLin : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, MultiEcho::NV) & outputs, ResidualType &   residual,
-                          std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, MultiEcho::NV) & outputs,
+                          ResidualType &               residual,
+                          std::vector<Eigen::ArrayXd> &residuals,
+                          FlagType &                   iterations,
                           const int /*Unused*/) const override {
         const Eigen::ArrayXd &data = inputs[0];
         Eigen::MatrixXd       X(model.sequence.size(), 2);
@@ -67,9 +70,12 @@ struct MultiEchoLogLin : MultiEchoFit {
 
 struct MultiEchoARLO : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, MultiEcho::NV) & outputs, ResidualType &   residual,
-                          std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, MultiEcho::NV) & outputs,
+                          ResidualType &               residual,
+                          std::vector<Eigen::ArrayXd> &residuals,
+                          FlagType &                   iterations,
                           const int /*Unused*/) const override {
         const Eigen::ArrayXd &data   = inputs[0];
         const double          ESP    = model.sequence.TE[1] - model.sequence.TE[0];
@@ -97,9 +103,12 @@ struct MultiEchoARLO : MultiEchoFit {
 
 struct MultiEchoNLLS : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, MultiEcho::NV) & p, ResidualType &         residual,
-                          std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, MultiEcho::NV) & p,
+                          ResidualType &               residual,
+                          std::vector<Eigen::ArrayXd> &residuals,
+                          FlagType &                   iterations,
                           const int /*Unused*/) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
@@ -203,20 +212,15 @@ int main(int argc, char **argv) {
         default:
             QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
-        auto fit   = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, resids);
-        auto input = QI::ReadImage<QI::VectorVolumeF>(input_path.Get(), verbose);
-        fit->SetInput(0, input);
-        const int nvols = input->GetNumberOfComponentsPerPixel();
+        auto fit = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, resids, subregion.Get());
+        fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
+        const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
         if (nvols % sequence->size() == 0) {
             const int nblocks = nvols / sequence->size();
             fit->SetBlocks(nblocks);
         } else {
             QI::Fail("Input size is not a multiple of the sequence size");
         }
-        if (mask)
-            fit->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit->SetSubregion(QI::RegionArg(subregion.Get()));
         fit->Update();
         fit->WriteOutputs(outarg.Get() + "ME_");
         QI::Log(verbose, "Finished.");

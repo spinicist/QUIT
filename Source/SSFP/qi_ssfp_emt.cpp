@@ -115,9 +115,12 @@ struct EMTFit {
     int n_fixed() const { return 2; }
     int n_outputs() const { return 5; }
 
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, EMTModel::NV) & p, ResidualType &          residual,
-                          std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const {
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, EMTModel::NV) & p,
+                          ResidualType &               residual,
+                          std::vector<Eigen::ArrayXd> &residuals,
+                          FlagType &                   iterations) const {
         const double          scale = inputs[0].mean();
         const Eigen::ArrayXd &G     = inputs[0] / scale;
         const Eigen::ArrayXd &a     = inputs[1];
@@ -198,6 +201,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(
         parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
         {'s', "subregion"});
+    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     args::ValueFlag<std::string> seq_arg(parser, "FILE",
                                          "Read JSON input from file instead of stdin", {"file"});
     args::ValueFlag<float>       simulate(
@@ -219,18 +223,9 @@ int main(int argc, char **argv) {
     } else {
         EMTFit fit{model};
         fit.model.T2_b  = T2_b_us.Get() * 1e-6;
-        auto fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, verbose, false);
-        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(G_path.Get(), verbose));
-        fit_filter->SetInput(1, QI::ReadImage<QI::VectorVolumeF>(a_path.Get(), verbose));
-        fit_filter->SetInput(2, QI::ReadImage<QI::VectorVolumeF>(b_path.Get(), verbose));
-        if (f0)
-            fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
-        if (B1)
-            fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
-        if (mask)
-            fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        auto fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, verbose, resids, subregion.Get());
+        fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {f0.Get(), B1.Get()},
+                               mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(outarg.Get() + "EMT_");
         QI::Log(verbose, "Finished.");

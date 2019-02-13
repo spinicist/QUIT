@@ -75,9 +75,12 @@ struct PLANETFit {
     int n_fixed() const { return 1; }
     int n_outputs() const { return 3; }
 
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, PLANETModel::NV) & out, ResidualType & /* Unused */,
-                          std::vector<Eigen::ArrayXd> & /* Unused */, FlagType & /* Unused */,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, PLANETModel::NV) & out,
+                          ResidualType & /* Unused */,
+                          std::vector<Eigen::ArrayXd> & /* Unused */,
+                          FlagType & /* Unused */,
                           const int block) const {
         const double &G    = inputs[0][0];
         const double &a    = inputs[1][0];
@@ -103,9 +106,9 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Calculates T1&T2 from SSFP Ellipse Parameters.\nhttp://github.com/spinicist/QUIT");
 
-    args::Positional<std::string> G_filename(parser, "G", "Ellipse parameter G");
-    args::Positional<std::string> a_filename(parser, "a", "Ellipse parameter a");
-    args::Positional<std::string> b_filename(parser, "b", "Ellipse parameter b");
+    args::Positional<std::string> G_path(parser, "G", "Ellipse parameter G");
+    args::Positional<std::string> a_path(parser, "a", "Ellipse parameter a");
+    args::Positional<std::string> b_path(parser, "b", "Ellipse parameter b");
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
@@ -124,9 +127,9 @@ int main(int argc, char **argv) {
         parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    QI::CheckPos(G_filename);
-    QI::CheckPos(a_filename);
-    QI::CheckPos(b_filename);
+    QI::CheckPos(G_path);
+    QI::CheckPos(a_path);
+    QI::CheckPos(b_path);
 
     QI::Log(verbose, "Reading sequence information");
     rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
@@ -134,21 +137,13 @@ int main(int argc, char **argv) {
     PLANETModel         model{ssfp};
     if (simulate) {
         QI::SimulateModel<PLANETModel, true>(input, model, {B1.Get()},
-                                             {G_filename.Get(), a_filename.Get(), b_filename.Get()},
-                                             verbose, simulate.Get());
+                                             {G_path.Get(), a_path.Get(), b_path.Get()}, verbose,
+                                             simulate.Get());
     } else {
         PLANETFit fit{model};
-        auto      fit_filter = QI::ModelFitFilter<PLANETFit>::New(&fit, verbose, false);
-        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(G_filename.Get(), verbose));
-        fit_filter->SetInput(1, QI::ReadImage<QI::VectorVolumeF>(a_filename.Get(), verbose));
-        fit_filter->SetInput(2, QI::ReadImage<QI::VectorVolumeF>(b_filename.Get(), verbose));
+        auto fit_filter = QI::ModelFitFilter<PLANETFit>::New(&fit, verbose, false, subregion.Get());
+        fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get()}, mask.Get());
         fit_filter->SetBlocks(ssfp.size());
-        if (B1)
-            fit_filter->SetFixed(0, QI::ReadImage(B1.Get(), verbose));
-        if (mask)
-            fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
         fit_filter->Update();
         fit_filter->WriteOutputs(out_prefix.Get() + "PLANET_");
         QI::Log(verbose, "Finished.");

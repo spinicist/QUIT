@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(
         parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
         {'s', "subregion"});
+    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d",
                                     {'a', "algo"}, 'd');
     args::ValueFlag<std::string> seq_arg(parser, "FILE",
@@ -47,17 +48,14 @@ int main(int argc, char **argv) {
         parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
         {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    QI::CheckPos(ssfp_path);
     QI::Log(verbose, "Reading sequence information");
     rapidjson::Document json_input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence    ssfp(QI::GetMember(json_input, "SSFP"));
     QI::EllipseModel    model{ssfp};
     if (simulate) {
-        QI::SimulateModel<QI::EllipseModel, false>(json_input, model, {}, {ssfp_path.Get()},
+        QI::SimulateModel<QI::EllipseModel, false>(json_input, model, {}, {QI::CheckPos(ssfp_path)},
                                                    verbose, simulate.Get());
     } else {
-        auto input = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(ssfp_path), verbose);
-
         QI::EllipseFit *fit = nullptr;
         switch (algorithm.Get()) {
         case 'h':
@@ -67,13 +65,11 @@ int main(int argc, char **argv) {
             fit = new QI::DirectFit(model);
             break;
         }
-        auto fit_filter = QI::ModelFitFilter<QI::EllipseFit>::New(fit, verbose, false);
-        fit_filter->SetInput(0, input);
-        fit_filter->SetBlocks(input->GetNumberOfComponentsPerPixel() / ssfp.size());
-        if (mask)
-            fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        auto fit_filter =
+            QI::ModelFitFilter<QI::EllipseFit>::New(fit, verbose, resids, subregion.Get());
+        fit_filter->ReadInputs({QI::CheckPos(ssfp_path)}, {}, mask.Get());
+        fit_filter->SetBlocks(fit_filter->GetInput(0)->GetNumberOfComponentsPerPixel() /
+                              ssfp.size());
         fit_filter->Update();
         fit_filter->WriteOutputs(outarg.Get() + "ES_");
         QI::Log(verbose, "Finished.");

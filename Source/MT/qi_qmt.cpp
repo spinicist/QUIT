@@ -49,9 +49,11 @@ struct RamaniReducedModel {
     VaryingArray bounds_hi;
     VaryingArray start;
 
-    RamaniReducedModel(SequenceType &s, const QI::Lineshapes ls,
-                       const std::shared_ptr<QI::InterpLineshape> &i)
-        : sequence{s}, lineshape{ls}, interp{i} {
+    RamaniReducedModel(SequenceType &                              s,
+                       const QI::Lineshapes                        ls,
+                       const std::shared_ptr<QI::InterpLineshape> &i) :
+        sequence{s},
+        lineshape{ls}, interp{i} {
         //{"R*M0a"s, "f/(R_a*(1-f))"s, "T2_b"s, "T1_a/T2_a"s, "gM0_a"s}
         start << 10.0, 0.1, 10.e-6, 25., 1.;
         // bounds_lo.setConstant(1.0e-12);
@@ -127,9 +129,11 @@ struct RamaniFullModel {
     RamaniReducedModel  reduced;
     const SequenceType &sequence;
 
-    RamaniFullModel(SequenceType &s, const QI::Lineshapes ls,
-                    const std::shared_ptr<QI::InterpLineshape> &interp = nullptr)
-        : reduced{s, ls, interp}, sequence{s} {}
+    RamaniFullModel(SequenceType &                              s,
+                    const QI::Lineshapes                        ls,
+                    const std::shared_ptr<QI::InterpLineshape> &interp = nullptr) :
+        reduced{s, ls, interp},
+        sequence{s} {}
 
     size_t num_outputs() const { return 2; }
     int    output_size(int i) {
@@ -181,7 +185,8 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
 
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                           const Eigen::ArrayXd &                  fixed,
-                          QI_ARRAYN(OutputType, RamaniFullModel::NV) & p, ResidualType &residual,
+                          QI_ARRAYN(OutputType, RamaniFullModel::NV) & p,
+                          ResidualType &                       residual,
                           std::vector<QI_ARRAY(ResidualType)> &residuals,
                           FlagType &                           iterations) const override {
         const double &scale = inputs[0].maxCoeff();
@@ -319,18 +324,9 @@ int main(int argc, char **argv) {
     } else {
         RamaniFitFunction fit{model};
 
-        auto fit_filter = QI::ModelFitFilter<RamaniFitFunction>::New(&fit, verbose, resids);
-        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(mtsat_path.Get(), verbose));
-        if (f0)
-            fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
-        if (B1)
-            fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
-        if (T1)
-            fit_filter->SetFixed(2, QI::ReadImage(T1.Get(), verbose));
-        if (mask)
-            fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        auto fit_filter =
+            QI::ModelFitFilter<RamaniFitFunction>::New(&fit, verbose, resids, subregion.Get());
+        fit_filter->ReadInputs({mtsat_path.Get()}, {f0.Get(), B1.Get(), T1.Get()}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(outarg.Get() + "QMT_");
         QI::Log(verbose, "Finished.");

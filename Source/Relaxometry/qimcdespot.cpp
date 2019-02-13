@@ -32,9 +32,12 @@ template <typename Model> struct MCDSRCFunctor {
     const QI_ARRAYN(double, Model::NF) fixed;
     const Model &model;
 
-    MCDSRCFunctor(const Model &m, const QI_ARRAYN(double, Model::NF) & f, const Eigen::ArrayXd &d,
-                  const Eigen::ArrayXd &w)
-        : data(d), weights(w), fixed(f), model(m) {
+    MCDSRCFunctor(const Model &m,
+                  const QI_ARRAYN(double, Model::NF) & f,
+                  const Eigen::ArrayXd &d,
+                  const Eigen::ArrayXd &w) :
+        data(d),
+        weights(w), fixed(f), model(m) {
         assert(data.rows() == model.sequence.size());
     }
 
@@ -73,9 +76,12 @@ template <typename Model> struct SRCFit {
     size_t src_samples = 5000, src_retain = 50;
     bool   src_gauss = true;
 
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, Model::NV) & v, ResidualType &             residual,
-                          std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const {
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, Model::NV) & v,
+                          ResidualType &               residual,
+                          std::vector<Eigen::ArrayXd> &residuals,
+                          FlagType &                   iterations) const {
         Eigen::ArrayXd data(model.sequence.size());
         int            dataIndex = 0;
         for (size_t i = 0; i < inputs.size(); i++) {
@@ -169,19 +175,9 @@ int main(int argc, char **argv) {
             QI::Log(verbose, "Low bounds: {}", src.model.bounds_lo.transpose());
             QI::Log(verbose, "High bounds: {}", src.model.bounds_hi.transpose());
 
-            auto fit_filter = QI::ModelFitFilter<FitType>::New(&src, verbose, resids);
-            for (size_t i = 0; i < input_paths.Get().size(); i++) {
-                fit_filter->SetInput(
-                    i, QI::ReadImage<QI::VectorVolumeF>(input_paths.Get().at(i), verbose));
-            }
-            if (f0)
-                fit_filter->SetFixed(0, QI::ReadImage(f0.Get(), verbose));
-            if (B1)
-                fit_filter->SetFixed(1, QI::ReadImage(B1.Get(), verbose));
-            if (mask)
-                fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-            if (subregion)
-                fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+            auto fit_filter =
+                QI::ModelFitFilter<FitType>::New(&src, verbose, resids, subregion.Get());
+            fit_filter->ReadInputs(input_paths.Get(), {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(outarg.Get() + prefix);
             QI::Log(verbose, "Finished.");

@@ -136,8 +136,10 @@ struct HIFIFit {
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd & /* Unused */,
-                          QI_ARRAYN(OutputType, HIFIModel::NV) & v, ResidualType &residual,
-                          std::vector<Eigen::ArrayXd> &residuals, FlagType &iterations) const {
+                          QI_ARRAYN(OutputType, HIFIModel::NV) & v,
+                          ResidualType &               residual,
+                          std::vector<Eigen::ArrayXd> &residuals,
+                          FlagType &                   iterations) const {
         double scale = std::max(inputs[0].maxCoeff(), inputs[1].maxCoeff());
         if (scale < std::numeric_limits<double>::epsilon()) {
             v << 0.0, 0.0, 0.0;
@@ -233,14 +235,10 @@ int main(int argc, char **argv) {
                                            verbose, simulate.Get());
     } else {
         HIFIFit hifi_fit{model};
-        auto    fit_filter = QI::ModelFitFilter<HIFIFit>::New(&hifi_fit, verbose, resids);
-        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(spgr_path), verbose));
-        fit_filter->SetInput(1,
-                             QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(mprage_path), verbose));
-        if (mask)
-            fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        auto    fit_filter =
+            QI::ModelFitFilter<HIFIFit>::New(&hifi_fit, verbose, resids, subregion.Get());
+        fit_filter->ReadInputs({QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, {},
+                               mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(outarg.Get() + "HIFI_");
         QI::Log(verbose, "Finished.");

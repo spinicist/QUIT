@@ -4,7 +4,13 @@ ColumnLimit: 100
 AlignAfterOpenBracket: true
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Left
 AlignOperands: true
 AlignTrailingComments: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortFunctionsOnASingleLine: Inline
+BinPackParameters: false
 BraceWrapping:
     AfterControlStatement: false
+BreakConstructorInitializers: AfterColon
+FixNamespaceComments: true

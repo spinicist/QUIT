@@ -64,8 +64,8 @@ SPIN_FILE="me$EXT"
 NOISE="0.01"
 qi_ase_oef --verbose --simulate=$NOISE $SPIN_FILE --threads=1 < input.json
 qi_ase_oef --verbose $SPIN_FILE --threads=1 < input.json
-qidiff --baseline=R2p$EXT --input=me_R2p$EXT --noise=$NOISE --tolerance=5 --verbose
-qidiff --baseline=DBV$EXT --input=me_DBV$EXT --noise=$NOISE --tolerance=10 --verbose
+qidiff --baseline=R2p$EXT --input=ASE_R2p$EXT --noise=$NOISE --tolerance=5 --verbose
+qidiff --baseline=DBV$EXT --input=ASE_DBV$EXT --noise=$NOISE --tolerance=10 --verbose
 }
 
 @test "Perfusion (Z-Shim)" {

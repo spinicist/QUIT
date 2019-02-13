@@ -62,8 +62,10 @@ auto LorentzModel::signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(do
 
 struct LorentzFit : QI::FitFunction<LorentzModel> {
     using FitFunction::FitFunction;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs, const Eigen::ArrayXd &fixed,
-                          QI_ARRAYN(OutputType, LorentzModel::NV) & p, ResidualType &      residual,
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd &             fixed,
+                          QI_ARRAYN(OutputType, LorentzModel::NV) & p,
+                          ResidualType &residual,
                           std::vector<Eigen::ArrayXd> & /* Unused */,
                           FlagType & /* Unused */) const override {
         const double scale = inputs[0].maxCoeff();
@@ -123,6 +125,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(
         parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
         {'s', "subregion"});
+    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     args::ValueFlag<std::string> seq_arg(parser, "FILE",
                                          "Read JSON input from file instead of stdin", {"file"});
     args::ValueFlag<float>       simulate(
@@ -139,12 +142,9 @@ int main(int argc, char **argv) {
                                                simulate.Get());
     } else {
         LorentzFit fit{model};
-        auto       fit_filter = QI::ModelFitFilter<LorentzFit>::New(&fit, verbose, false);
-        fit_filter->SetInput(0, QI::ReadImage<QI::VectorVolumeF>(input_path.Get(), verbose));
-        if (mask)
-            fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-        if (subregion)
-            fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
+        auto       fit_filter =
+            QI::ModelFitFilter<LorentzFit>::New(&fit, verbose, resids, subregion.Get());
+        fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(outarg.Get() + "LTZ_");
         QI::Log(verbose, "Finished.");

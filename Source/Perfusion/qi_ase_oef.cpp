@@ -78,8 +78,9 @@ struct ASEModel {
         return S;
     }
 
-    void derived(const VaryingArray &varying, const FixedArray & /* Unused */,
-                 DerivedArray &      derived) const {
+    void derived(const VaryingArray &varying,
+                 const FixedArray & /* Unused */,
+                 DerivedArray &derived) const {
         const auto &R2p = varying[2];
         const auto &DBV = varying[3];
 
@@ -142,8 +143,9 @@ struct ASEFixDBVModel {
         return S;
     }
 
-    void derived(const VaryingArray &varying, const FixedArray & /* Unused */,
-                 DerivedArray &      derived) const {
+    void derived(const VaryingArray &varying,
+                 const FixedArray & /* Unused */,
+                 DerivedArray &derived) const {
         const auto &R2p = varying[2];
         const auto  dw  = R2p / DBV;
         const auto  Tc  = 1.5 * (1. / dw);
@@ -183,6 +185,7 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> subregion(
         parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
         {'s', "subregion"});
+    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     args::ValueFlag<std::string> json_file(parser, "FILE",
                                            "Read JSON input from file instead of stdin", {"file"});
     args::ValueFlag<float>       simulate(
@@ -197,63 +200,28 @@ int main(int argc, char **argv) {
         QI::SimulateModel<ASEModel, false>(json, model, {gradz.Get()}, {input_path.Get()}, verbose,
                                            simulate.Get());
     } else {
+        auto process = [&](auto fit) {
+            auto fit_filter =
+                QI::ModelFitFilter<decltype(fit)>::New(&fit, verbose, resids, subregion.Get());
+            fit_filter->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
+            // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
+            // if (slice_arg) {
+            //     vox_size[2] = slice_arg.Get();
+            // }
+            // if (gradz)
+            //     fit_filter->SetFixed(2, QI::ReadImage(gradz.Get(), verbose));
+            fit_filter->Update();
+            fit_filter->WriteOutputs(outarg.Get() + "ASE_");
+        };
         if (DBV) {
             ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
             ASEFixDBVFit   fit(model);
-            auto           fit_filter = QI::ModelFitFilter<ASEFixDBVFit>::New(&fit, verbose, false);
-            auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
-            // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
-            // if (slice_arg) {
-            //     vox_size[2] = slice_arg.Get();
-            // }
-            fit_filter->SetInput(0, input);
-            if (mask)
-                fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-            if (gradz)
-                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get(), verbose));
-            if (subregion) {
-                fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
-            }
-            fit_filter->Update();
-
-            const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
-            for (size_t i = 0; i < model.NV; i++) {
-                const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
-                QI::WriteImage(fit_filter->GetOutput(i), fname, verbose);
-            }
-            for (size_t i = 0; i < model.ND; i++) {
-                const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
-                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname, verbose);
-            }
+            process(fit);
         } else {
             ASEModel model{sequence, B0.Get()};
             ASEFit   fit(model);
-            auto     fit_filter = QI::ModelFitFilter<ASEFit>::New(&fit, verbose, false);
-            auto     input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
-            // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
-            // if (slice_arg) {
-            //     vox_size[2] = slice_arg.Get();
-            // }
-            fit_filter->SetInput(0, input);
-            if (mask)
-                fit_filter->SetMask(QI::ReadImage(mask.Get(), verbose));
-            if (gradz)
-                fit_filter->SetFixed(2, QI::ReadImage(gradz.Get(), verbose));
-            if (subregion) {
-                fit_filter->SetSubregion(QI::RegionArg(args::get(subregion)));
-            }
-            fit_filter->Update();
-
-            const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
-            for (size_t i = 0; i < model.NV; i++) {
-                const std::string fname = outPrefix + "_" + model.varying_names[i] + QI::OutExt();
-                QI::WriteImage(fit_filter->GetOutput(i), fname, verbose);
-            }
-            for (size_t i = 0; i < model.ND; i++) {
-                const std::string fname = outPrefix + "_" + model.derived_names[i] + QI::OutExt();
-                QI::WriteImage(fit_filter->GetDerivedOutput(i), fname, verbose);
-            }
-            return EXIT_SUCCESS;
+            process(fit);
         }
     }
+    return EXIT_SUCCESS;
 }

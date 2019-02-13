@@ -19,7 +19,10 @@
 namespace QI {
 
 void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose);
-void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose,
+void ParseArgs(args::ArgumentParser &parser,
+               int                   argc,
+               char **               argv,
+               const args::Flag &    verbose,
                args::ValueFlag<int> &threads);
 
 template <typename T> T CheckPos(args::Positional<T> &a) {
@@ -77,7 +80,6 @@ TRegion RegionArg(const std::string &a) {
     r.SetSize(size);
     return r;
 }
-
 } // End namespace QI
 
 #endif // QI_ARGS_H
