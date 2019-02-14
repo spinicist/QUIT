@@ -28,15 +28,15 @@
 #include "Spline.h"
 #include "Util.h"
 
-inline float MP2Contrast(const std::complex<float> ti1, const std::complex<float> ti2,
-                         const float beta = 0.0f) {
+inline float
+MP2Contrast(const std::complex<float> ti1, const std::complex<float> ti2, const float beta = 0.0f) {
     const float a1 = abs(ti1);
     const float a2 = abs(ti2);
     return (std::real(std::conj(ti1) * ti2) - beta) / (std::norm(a1) + std::norm(a2) + 2 * beta);
 }
 
-Eigen::Array2cf One_MP2RAGE(const double &M0, const double &T1, const double &B1,
-                            const QI::MP2RAGESequence &s) {
+Eigen::Array2cf
+One_MP2RAGE(const double &M0, const double &T1, const double &B1, const QI::MP2RAGESequence &s) {
     const double         R1  = 1. / T1;
     const Eigen::Array2d R1s = R1 - log(cos(B1 * s.FA)) / s.TR;
     const Eigen::Array2d M0s = M0 * (1. - exp(-s.TR * R1)) / (1. - exp(-s.TR * R1s));
@@ -66,17 +66,22 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Path to complex MP-RAGE data");
     args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       beta_arg(
-        parser, "BETA",
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> json_file(
+        parser, "FILE", "Read JSON input from file instead of stdin", {"file"});
+    args::ValueFlag<float> beta_arg(
+        parser,
+        "BETA",
         "Regularisation factor for robust contrast calculation "
         "(https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0099676)",
-        {'b', "beta"}, 0.0);
+        {'b', "beta"},
+        0.0);
     args::Flag t1(parser, "T1", "Calculate T1 map via spline look-up", {'t', "t1"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
@@ -109,7 +114,8 @@ int main(int argc, char **argv) {
 
     if (t1) {
         QI::Log(verbose, "Reading sequence information");
-        rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+        rapidjson::Document input =
+            json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
         QI::MP2RAGESequence mp2rage_sequence(input["MP2RAGE"]);
         QI::Log(verbose, "Building look-up spline");
         int            num_entries = 100;

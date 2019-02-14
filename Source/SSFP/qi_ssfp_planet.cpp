@@ -109,35 +109,26 @@ int main(int argc, char **argv) {
     args::Positional<std::string> G_path(parser, "G", "Ellipse parameter G");
     args::Positional<std::string> a_path(parser, "a", "Ellipse parameter a");
     args::Positional<std::string> b_path(parser, "b", "Ellipse parameter b");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                            {'o', "out"});
+
+    QI_COMMON_ARGS;
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+
     QI::ParseArgs(parser, argc, argv, verbose, threads);
+
     QI::CheckPos(G_path);
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence    ssfp(QI::GetMember(input, "SSFP"));
     PLANETModel         model{ssfp};
     if (simulate) {
-        QI::SimulateModel<PLANETModel, true>(input, model, {B1.Get()},
-                                             {G_path.Get(), a_path.Get(), b_path.Get()}, verbose,
+        QI::SimulateModel<PLANETModel, true>(input,
+                                             model,
+                                             {B1.Get()},
+                                             {G_path.Get(), a_path.Get(), b_path.Get()},
+                                             verbose,
                                              simulate.Get());
     } else {
         PLANETFit fit{model};
@@ -145,7 +136,7 @@ int main(int argc, char **argv) {
         fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get()}, mask.Get());
         fit_filter->SetBlocks(ssfp.size());
         fit_filter->Update();
-        fit_filter->WriteOutputs(out_prefix.Get() + "PLANET_");
+        fit_filter->WriteOutputs(prefix.Get() + "PLANET_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

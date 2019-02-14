@@ -170,40 +170,30 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Calculates T1 maps from SPGR data\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> spgr_path(parser, "SPGR FILE", "Path to SPGR data");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
+    QI_COMMON_ARGS;
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/w/n)", {'a', "algo"}, 'l');
-    args::ValueFlag<int>  its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)",
-                             {'i', "its"}, 15);
-    args::ValueFlag<float>       clampPD(parser, "CLAMP PD", "Clamp PD between 0 and value",
-                                   {'p', "clampPD"}, std::numeric_limits<float>::infinity());
-    args::ValueFlag<float>       clampT1(parser, "CLAMP T1", "Clamp T1 between 0 and value",
-                                   {'t', "clampT1"}, std::numeric_limits<float>::infinity());
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+    args::ValueFlag<int>  its(
+        parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
+    args::ValueFlag<float> clampPD(parser,
+                                   "CLAMP PD",
+                                   "Clamp PD between 0 and value",
+                                   {'p', "clampPD"},
+                                   std::numeric_limits<float>::infinity());
+    args::ValueFlag<float> clampT1(parser,
+                                   "CLAMP T1",
+                                   "Clamp T1 between 0 and value",
+                                   {'t', "clampT1"},
+                                   std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(spgr_path);
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SPGRSequence    spgrSequence(QI::GetMember(input, "SPGR"));
     DESPOT1             model{spgrSequence};
     if (simulate) {
-        QI::SimulateModel<DESPOT1, false>(input, model, {B1.Get()}, {spgr_path.Get()}, verbose,
-                                          simulate.Get());
+        QI::SimulateModel<DESPOT1, false>(
+            input, model, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());
     } else {
         DESPOT1Fit *d1 = nullptr;
         switch (algorithm.Get()) {
@@ -236,7 +226,7 @@ int main(int argc, char **argv) {
             QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose.Get(), resids.Get(), subregion.Get());
         fit->ReadInputs({QI::CheckPos(spgr_path)}, {B1.Get()}, mask.Get());
         fit->Update();
-        fit->WriteOutputs(outarg.Get() + "D1_");
+        fit->WriteOutputs(prefix.Get() + "D1_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

@@ -59,13 +59,13 @@ qinewimage --size "$SIZE" -f "0.0" f0$EXT
 qinewimage --size "$SIZE" -g "2 0.8 1.1" B1$EXT
 [ -e B1$EXT ]
 
-qi_qmt --verbose --simulate=$NOISE --lineshape=superlorentz.json --file=mtsat.json $MTSAT_FILE $T1OBS_FILE
+qi_qmt --verbose --simulate=$NOISE --lineshape=superlorentz.json --json=mtsat.json $MTSAT_FILE $T1OBS_FILE
 [ -e $MTSAT_FILE ]
 [ -e $T1OBS_FILE ]
 }
 
 @test "qMT Ramani" {
-qi_qmt --verbose --lineshape=superlorentz.json --file=mtsat.json $MTSAT_FILE $T1OBS_FILE
+qi_qmt --verbose --lineshape=superlorentz.json --json=mtsat.json $MTSAT_FILE $T1OBS_FILE
 qidiff --verbose --baseline=f_b$EXT --input=QMT_f_b$EXT --noise=$NOISE --tolerance=$TOL
 qidiff --verbose --baseline=k_bf$EXT --input=QMT_k_bf$EXT --noise=$NOISE --tolerance=$TOL
 }

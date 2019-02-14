@@ -194,53 +194,38 @@ struct HIFIFit {
 //******************************************************************************
 int main(int argc, char **argv) {
     Eigen::initParallel();
-    args::ArgumentParser parser("Calculates T1 and B1 maps from SPGR & IR-SPGR or MP-RAGE "
+    args::ArgumentParser          parser("Calculates T1 and B1 maps from SPGR & IR-SPGR or MP-RAGE "
                                 "data.\nhttp://github.com/spinicist/QUIT");
-
     args::Positional<std::string> spgr_path(parser, "SPGR_FILE", "Input SPGR file");
     args::Positional<std::string> mprage_path(parser, "MPRAGE_FILE", "Input MP-RAGE file");
-
-    args::HelpFlag         help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag             verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag             all_resids(parser, "ALL RESIDUALS",
-                          "Output individual residuals in addition to the Sum-of-Squares",
-                          {'r', "resids"});
-    args::ValueFlag<float> clamp(parser, "CLAMP", "Clamp output T1 values to this value",
-                                 {'c', "clamp"}, std::numeric_limits<float>::infinity());
-    args::ValueFlag<int>   threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+    QI_COMMON_ARGS;
+    args::ValueFlag<float> clamp(parser,
+                                 "CLAMP",
+                                 "Clamp output T1 values to this value",
+                                 {'c', "clamp"},
+                                 std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SPGRSequence    spgrSequence(QI::GetMember(input, "SPGR"));
     QI::MPRAGESequence  mprageSequence(QI::GetMember(input, "MPRAGE"));
     HIFIModel           model{spgrSequence, mprageSequence};
     if (simulate) {
-        QI::SimulateModel<HIFIModel, true>(input, model, {},
+        QI::SimulateModel<HIFIModel, true>(input,
+                                           model,
+                                           {},
                                            {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)},
-                                           verbose, simulate.Get());
+                                           verbose,
+                                           simulate.Get());
     } else {
         HIFIFit hifi_fit{model};
         auto    fit_filter =
             QI::ModelFitFilter<HIFIFit>::New(&hifi_fit, verbose, resids, subregion.Get());
-        fit_filter->ReadInputs({QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, {},
-                               mask.Get());
+        fit_filter->ReadInputs(
+            {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, {}, mask.Get());
         fit_filter->Update();
-        fit_filter->WriteOutputs(outarg.Get() + "HIFI_");
+        fit_filter->WriteOutputs(prefix.Get() + "HIFI_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

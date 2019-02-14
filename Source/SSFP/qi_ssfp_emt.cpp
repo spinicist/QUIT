@@ -185,49 +185,37 @@ int main(int argc, char **argv) {
     args::Positional<std::string> G_path(parser, "G_FILE", "Input G file");
     args::Positional<std::string> a_path(parser, "a_FILE", "Input a file");
     args::Positional<std::string> b_path(parser, "b_FILE", "Input b file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag           debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
+
+    QI_COMMON_ARGS;
+    args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
     args::ValueFlag<std::string> f0(parser, "f0", "f0 map (in Hertz)", {'f', "f0"});
-    args::ValueFlag<double> T2_b_us(parser, "T2b", "T2 of bound pool (in microseconds, default 12)",
-                                    {"T2b"}, 12);
-    args::ValueFlag<std::string> subregion(
-        parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+    args::ValueFlag<double>      T2_b_us(
+        parser, "T2b", "T2 of bound pool (in microseconds, default 12)", {"T2b"}, 12);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(G_path);
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPMTSequence  ssfp(QI::GetMember(input, "SSFPMT"));
     EMTModel            model{ssfp};
     if (simulate) {
-        QI::SimulateModel<EMTModel, true>(input, model, {f0.Get(), B1.Get()},
-                                          {G_path.Get(), a_path.Get(), b_path.Get()}, verbose,
+        QI::SimulateModel<EMTModel, true>(input,
+                                          model,
+                                          {f0.Get(), B1.Get()},
+                                          {G_path.Get(), a_path.Get(), b_path.Get()},
+                                          verbose,
                                           simulate.Get());
     } else {
         EMTFit fit{model};
         fit.model.T2_b  = T2_b_us.Get() * 1e-6;
         auto fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, verbose, resids, subregion.Get());
-        fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {f0.Get(), B1.Get()},
-                               mask.Get());
+        fit_filter->ReadInputs(
+            {G_path.Get(), a_path.Get(), b_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
         fit_filter->Update();
-        fit_filter->WriteOutputs(outarg.Get() + "EMT_");
+        fit_filter->WriteOutputs(prefix.Get() + "EMT_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

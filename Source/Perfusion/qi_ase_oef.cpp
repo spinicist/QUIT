@@ -166,39 +166,28 @@ int main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates the OEF from ASE data.\nhttp://github.com/spinicist/QUIT");
+
     args::Positional<std::string> input_path(parser, "ASE_FILE", "Input ASE file");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename",
-                                        {'o', "out"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
+
+    QI_COMMON_ARGS;
     args::ValueFlag<double> B0(parser, "B0", "Field-strength (Tesla), default 3", {'B', "B0"}, 3.0);
     args::ValueFlag<double> DBV(parser, "DBV", "Fix DBV and only fit R2'", {'d', "DBV"}, 0.0);
     args::ValueFlag<std::string> gradz(
         parser, "GRADZ", "Gradient of field-map in z-direction for MFG correction", {'z', "gradz"});
     args::ValueFlag<double> slice_arg(
-        parser, "SLICE THICKNESS",
-        "Slice-thickness for MFG calculation (useful if there was a slice gap)", {'s', "slice"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<std::string> json_file(parser, "FILE",
-                                           "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+        parser,
+        "SLICE THICKNESS",
+        "Slice-thickness for MFG calculation (useful if there was a slice gap)",
+        {'s', "slice"});
+
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MultiEchoFlexSequence sequence(json["MultiEchoFlex"]);
 
     if (simulate) {
         ASEModel model{sequence, B0.Get()};
-        QI::SimulateModel<ASEModel, false>(json, model, {gradz.Get()}, {input_path.Get()}, verbose,
-                                           simulate.Get());
+        QI::SimulateModel<ASEModel, false>(
+            json, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
     } else {
         auto process = [&](auto fit) {
             auto fit_filter =
@@ -211,7 +200,7 @@ int main(int argc, char **argv) {
             // if (gradz)
             //     fit_filter->SetFixed(2, QI::ReadImage(gradz.Get(), verbose));
             fit_filter->Update();
-            fit_filter->WriteOutputs(outarg.Get() + "ASE_");
+            fit_filter->WriteOutputs(prefix.Get() + "ASE_");
         };
         if (DBV) {
             ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};

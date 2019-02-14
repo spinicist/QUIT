@@ -32,8 +32,7 @@ template <> const QI_ARRAYN(double, 2) FMModel::fixed_defaults{1.0, 1.0};
 template <>
 template <typename Derived>
 auto FMModel::signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
-    -> QI_ARRAY(typename Derived::Scalar)
-{
+    -> QI_ARRAY(typename Derived::Scalar) {
     using T                      = typename Derived::Scalar;
     const T &     PD             = v[0];
     const T &     T2             = v[1];
@@ -70,8 +69,7 @@ struct FMNLLS : FMFit {
                           QI_ARRAYN(OutputType, FMModel::NV) & bestP,
                           ResidualType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const override
-    {
+                          FlagType &                   iterations) const override {
         const double &T1 = fixed[0];
         if (std::isfinite(T1) && (T1 > model.sequence.TR)) {
             // Improve scaling by dividing the PD down to something sensible.
@@ -99,8 +97,7 @@ struct FMNLLS : FMFit {
             problem.SetParameterUpperBound(p.data(), 1, T1);
             if (this->asymmetric) {
                 problem.SetParameterLowerBound(p.data(), 2, -0.5 / model.sequence.TR);
-            }
-            else {
+            } else {
                 problem.SetParameterLowerBound(p.data(), 2, 0.0);
             }
             problem.SetParameterUpperBound(p.data(), 2, 0.5 / model.sequence.TR);
@@ -113,7 +110,8 @@ struct FMNLLS : FMFit {
             options.logging_type        = ceres::SILENT;
             for (const double &f0 : f0_starts) {
                 p = {
-                    5., std::max(0.1 * T1, 1.5 * model.sequence.TR),
+                    5.,
+                    std::max(0.1 * T1, 1.5 * model.sequence.TR),
                     f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
@@ -138,8 +136,7 @@ struct FMNLLS : FMFit {
                 for (size_t i = 0; i < r_temp.size(); i++)
                     residuals[i] = r_temp[i] * scale;
             }
-        }
-        else {
+        } else {
             bestP << 0.0, 0.0, 0.0;
             residual   = 0;
             iterations = 0;
@@ -152,8 +149,7 @@ struct FMNLLS : FMFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates a T2 map from SSFP data and a T1 map.\nhttp://github.com/spinicist/QUIT");
@@ -161,46 +157,33 @@ int main(int argc, char **argv)
     args::Positional<std::string> t1_path(parser, "T1_MAP", "Input T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
 
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
+    QI_COMMON_ARGS;
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
+    args::ValueFlag<int>         its(
+        parser, "ITERS", "Max iterations for NLLS (default 75)", {'i', "its"}, 75);
     args::Flag asym(parser, "ASYM", "Fit +/- off-resonance frequency", {'A', "asym"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<int> its(parser, "ITERS", "Max iterations for NLLS (default 75)", {'i', "its"},
-                             75);
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence    ssfp(QI::GetMember(input, "SSFP"));
     FMModel             model{ssfp};
     if (simulate) {
-        QI::SimulateModel<FMModel, false>(input, model, {QI::CheckPos(t1_path), B1.Get()},
-                                          {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
-    }
-    else {
+        QI::SimulateModel<FMModel, false>(input,
+                                          model,
+                                          {QI::CheckPos(t1_path), B1.Get()},
+                                          {QI::CheckPos(ssfp_path)},
+                                          verbose,
+                                          simulate.Get());
+    } else {
         FMNLLS fm{model};
         fm.max_iterations = its.Get();
         fm.asymmetric     = asym.Get();
         auto fit_filter   = QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, resids, subregion.Get());
-        fit_filter->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()},
-                               mask.Get());
+        fit_filter->ReadInputs(
+            {QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()}, mask.Get());
         fit_filter->Update();
-        fit_filter->WriteOutputs(outarg.Get() + "FM_");
+        fit_filter->WriteOutputs(prefix.Get() + "FM_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

@@ -10,6 +10,7 @@ AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortFunctionsOnASingleLine: Inline
 BinPackParameters: false
+BinPackArguments: false
 BraceWrapping:
     AfterControlStatement: false
 BreakConstructorInitializers: AfterColon

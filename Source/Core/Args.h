@@ -63,4 +63,28 @@ template <typename TArray, const int size> void ArrayArg(const std::string &a, T
 
 } // End namespace QI
 
+#define QI_COMMON_ARGS                                                                         \
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});              \
+    args::Flag     verbose(parser, "VERBOSE", "Print more messages", {'v', "verbose"});        \
+    args::Flag     resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});         \
+                                                                                               \
+    args::ValueFlag<int>   threads(parser,                                                     \
+                                 "THREADS",                                                  \
+                                 "Use N threads (default=4, 0=hardware limit)",              \
+                                 {'T', "threads"},                                           \
+                                 QI::GetDefaultThreads());                                   \
+    args::ValueFlag<float> simulate(                                                           \
+        parser, "SIMULATE", "Simulate sequence (argument is noise level)", {"simulate"}, 0.0); \
+    args::ValueFlag<std::string> mask(                                                         \
+        parser, "MASK", "Only process voxels within the given mask", {'m', "mask"});           \
+    args::ValueFlag<std::string> subregion(                                                    \
+        parser,                                                                                \
+        "SUBREGION",                                                                           \
+        "Process voxels in a block from I,J,K with size SI,SJ,SK",                             \
+        {'s', "subregion"});                                                                   \
+    args::ValueFlag<std::string> prefix(                                                       \
+        parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});                   \
+    args::ValueFlag<std::string> json_file(                                                    \
+        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
+
 #endif // QI_ARGS_H

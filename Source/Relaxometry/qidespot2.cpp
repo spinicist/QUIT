@@ -191,8 +191,8 @@ struct DESPOT2NLLS : DESPOT2Fit {
         problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0] / scale);
         problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0] / scale);
         problem.SetParameterLowerBound(p.data(), 1, model.bounds_lo[1]);
-        problem.SetParameterUpperBound(p.data(), 1,
-                                       std::min(model.bounds_hi[1], fixed[0])); // T2 cannot be > T1
+        problem.SetParameterUpperBound(
+            p.data(), 1, std::min(model.bounds_hi[1], fixed[0])); // T2 cannot be > T1
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
         options.max_num_iterations  = max_iterations;
@@ -226,44 +226,38 @@ int main(int argc, char **argv) {
         "Calculates T2 maps from SSFP data\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> t1_path(parser, "T1 MAP", "Path to T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Path to SSFP data");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
+    QI_COMMON_ARGS;
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/w/n)", {'a', "algo"}, 'l');
-    args::Flag           gs_arg(parser, "GS", "Data is band-free geometric solution / ellipse data",
-                      {'g', "gs"});
-    args::ValueFlag<int> its(parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)",
-                             {'i', "its"}, 15);
-    args::ValueFlag<float>       clampPD(parser, "CLAMP PD", "Clamp PD between 0 and value",
-                                   {'p', "clampPD"}, std::numeric_limits<float>::infinity());
-    args::ValueFlag<float>       clampT2(parser, "CLAMP T2", "Clamp T2 between 0 and value",
-                                   {'t', "clampT2"}, std::numeric_limits<float>::infinity());
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+    args::Flag            gs_arg(
+        parser, "GS", "Data is band-free geometric solution / ellipse data", {'g', "gs"});
+    args::ValueFlag<int> its(
+        parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
+    args::ValueFlag<float> clampPD(parser,
+                                   "CLAMP PD",
+                                   "Clamp PD between 0 and value",
+                                   {'p', "clampPD"},
+                                   std::numeric_limits<float>::infinity());
+    args::ValueFlag<float> clampT2(parser,
+                                   "CLAMP T2",
+                                   "Clamp T2 between 0 and value",
+                                   {'t', "clampT2"},
+                                   std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence    ssfp(QI::GetMember(input, "SSFP"));
     DESPOT2             model{ssfp};
     if (simulate) {
         if (gs_arg)
             model.elliptical = true;
-        QI::SimulateModel<DESPOT2, false>(input, model, {QI::CheckPos(t1_path), B1.Get()},
-                                          {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
+        QI::SimulateModel<DESPOT2, false>(input,
+                                          model,
+                                          {QI::CheckPos(t1_path), B1.Get()},
+                                          {QI::CheckPos(ssfp_path)},
+                                          verbose,
+                                          simulate.Get());
     } else {
         DESPOT2Fit *d2 = nullptr;
         switch (algorithm.Get()) {
@@ -297,7 +291,7 @@ int main(int argc, char **argv) {
         auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(d2, verbose, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()}, mask.Get());
         fit->Update();
-        fit->WriteOutputs(outarg.Get() + "D2_");
+        fit->WriteOutputs(prefix.Get() + "D2_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

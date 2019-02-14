@@ -114,39 +114,25 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser("Simple Lorentzian fitting.\nhttp://github.com/spinicist/QUIT");
 
     args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+
+    QI_COMMON_ARGS;
+
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
+    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     LorentzSequence     sequence(QI::GetMember(input, "Lorentz"));
     LorentzModel        model{sequence};
     if (simulate) {
-        QI::SimulateModel<LorentzModel, false>(input, model, {}, {input_path.Get()}, verbose,
-                                               simulate.Get());
+        QI::SimulateModel<LorentzModel, false>(
+            input, model, {}, {input_path.Get()}, verbose, simulate.Get());
     } else {
         LorentzFit fit{model};
         auto       fit_filter =
             QI::ModelFitFilter<LorentzFit>::New(&fit, verbose, resids, subregion.Get());
         fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
         fit_filter->Update();
-        fit_filter->WriteOutputs(outarg.Get() + "LTZ_");
+        fit_filter->WriteOutputs(prefix.Get() + "LTZ_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;

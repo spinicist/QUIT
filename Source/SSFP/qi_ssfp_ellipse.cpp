@@ -27,34 +27,19 @@ int main(int argc, char **argv) {
 
     args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
 
-    args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag           debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "PREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser, "REGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::Flag resids(parser, "RESIDS", "Write out residuals for each data-point", {'r', "resids"});
-    args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d",
-                                    {'a', "algo"}, 'd');
-    args::ValueFlag<std::string> seq_arg(parser, "FILE",
-                                         "Read JSON input from file instead of stdin", {"file"});
-    args::ValueFlag<float>       simulate(
-        parser, "SIMULATE", "Simulate sequence instead of fitting model (argument is noise level)",
-        {"simulate"}, 0.0);
+    QI_COMMON_ARGS;
+    args::Flag            debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
+    args::ValueFlag<char> algorithm(
+        parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document json_input = seq_arg ? QI::ReadJSON(seq_arg.Get()) : QI::ReadJSON(std::cin);
-    QI::SSFPSequence    ssfp(QI::GetMember(json_input, "SSFP"));
-    QI::EllipseModel    model{ssfp};
+    rapidjson::Document json_input =
+        json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    QI::SSFPSequence ssfp(QI::GetMember(json_input, "SSFP"));
+    QI::EllipseModel model{ssfp};
     if (simulate) {
-        QI::SimulateModel<QI::EllipseModel, false>(json_input, model, {}, {QI::CheckPos(ssfp_path)},
-                                                   verbose, simulate.Get());
+        QI::SimulateModel<QI::EllipseModel, false>(
+            json_input, model, {}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
     } else {
         QI::EllipseFit *fit = nullptr;
         switch (algorithm.Get()) {
@@ -71,7 +56,7 @@ int main(int argc, char **argv) {
         fit_filter->SetBlocks(fit_filter->GetInput(0)->GetNumberOfComponentsPerPixel() /
                               ssfp.size());
         fit_filter->Update();
-        fit_filter->WriteOutputs(outarg.Get() + "ES_");
+        fit_filter->WriteOutputs(prefix.Get() + "ES_");
         QI::Log(verbose, "Finished.");
     }
     return EXIT_SUCCESS;
