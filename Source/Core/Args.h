@@ -61,25 +61,6 @@ template <typename TArray, const int size> void ArrayArg(const std::string &a, T
     }
 }
 
-template <typename TRegion = typename QI::VolumeF::RegionType>
-TRegion RegionArg(const std::string &a) {
-    std::istringstream          iss(a);
-    std::string                 el;
-    typename TRegion::IndexType start;
-    typename TRegion::SizeType  size;
-    for (size_t i = 0; i < TRegion::ImageDimension; i++) {
-        std::getline(iss, el, ',');
-        start[i] = std::stoi(el);
-    }
-    for (size_t i = 0; i < TRegion::ImageDimension; i++) {
-        std::getline(iss, el, ',');
-        size[i] = std::stoi(el);
-    }
-    TRegion r;
-    r.SetIndex(start);
-    r.SetSize(size);
-    return r;
-}
 } // End namespace QI
 
 #endif // QI_ARGS_H

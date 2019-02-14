@@ -89,6 +89,25 @@ Eigen::Array<T, D, 1> Eigenify(const itk::Vector<T, D> &itk_vector) {
     return eigen_vector;
 }
 
+template <typename TRegion> TRegion RegionFromString(const std::string &a) {
+    std::istringstream          iss(a);
+    std::string                 el;
+    typename TRegion::IndexType start;
+    typename TRegion::SizeType  size;
+    for (size_t i = 0; i < TRegion::ImageDimension; i++) {
+        std::getline(iss, el, ',');
+        start[i] = std::stoi(el);
+    }
+    for (size_t i = 0; i < TRegion::ImageDimension; i++) {
+        std::getline(iss, el, ',');
+        size[i] = std::stoi(el);
+    }
+    TRegion r;
+    r.SetIndex(start);
+    r.SetSize(size);
+    return r;
+}
+
 } // namespace QI
 
 #endif // QUIT_UTIL_H

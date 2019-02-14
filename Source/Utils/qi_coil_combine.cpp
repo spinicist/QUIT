@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
         QI::Log(verbose, "Using Hammond method");
         QI::VectorVolumeXF::RegionType region;
         if (region_arg) {
-            region = QI::RegionArg<QI::VolumeF::RegionType>(region_arg.Get());
+            region = QI::RegionFromString<QI::VolumeF::RegionType>(region_arg.Get());
         } else {
             auto          size = input_image->GetLargestPossibleRegion().GetSize();
             itk::Index<3> index;

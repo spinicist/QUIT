@@ -107,21 +107,7 @@ class ModelFitFilter
             this->AddObserver(itk::ProgressEvent(), monitor);
         }
         if (subregion != "") {
-            std::istringstream iss(subregion);
-            std::string        el;
-
-            typename TRegion::IndexType start;
-            typename TRegion::SizeType  size;
-            for (size_t i = 0; i < TRegion::ImageDimension; i++) {
-                std::getline(iss, el, ',');
-                start[i] = std::stoi(el);
-            }
-            for (size_t i = 0; i < TRegion::ImageDimension; i++) {
-                std::getline(iss, el, ',');
-                size[i] = std::stoi(el);
-            }
-            m_subregion.SetIndex(start);
-            m_subregion.SetSize(size);
+            m_subregion    = RegionFromString<TRegion>(subregion);
             m_hasSubregion = true;
         }
     }
