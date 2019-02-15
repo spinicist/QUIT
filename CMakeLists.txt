@@ -14,7 +14,6 @@ include(CMakeToolsHelpers OPTIONAL)
 
 set( CMAKE_CXX_FLAGS "-Wall -Wextra" )
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
-set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
      CACHE PATH "Path to external library includes (usually External/include" )
@@ -30,10 +29,13 @@ endif()
 message( STATUS "Found Eigen in ${EIGEN3_INCLUDE_DIR}" )
 include_directories( SYSTEM ${EIGEN3_INCLUDE_DIR} )
 
-if( NOT DEFINED CERES_INCLUDE_DIRS )
-    find_package( Ceres 1.14.0 )
+if(DEFINED CERES_BUILD_DIR)
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CERES_BUILD_DIR})
 endif()
-include_directories( SYSTEM ${CERES_INCLUDE_DIRS} )
+find_package( Ceres 1.14.0 )
+if(CERES_FOUND)
+    include_directories( SYSTEM ${CERES_INCLUDE_DIRS} )
+endif()
 
 # fmtlib: Sane output
 find_package(fmtlib REQUIRED CONFIG)
