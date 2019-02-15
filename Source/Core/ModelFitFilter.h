@@ -123,7 +123,7 @@ class ModelFitFilter
 
     typename TInputImage::ConstPointer GetInput(const int i) const {
         if (i < m_fit->n_inputs()) {
-            return static_cast<const TInputImage *>(this->ProcessObject::GetInput(i));
+            return static_cast<const TInputImage *>(this->itk::ProcessObject::GetInput(i));
         } else {
             QI::Fail("Requested input {} but {} has {}", i, typeid(FitType).name(),
                      m_fit->n_inputs());
@@ -143,7 +143,7 @@ class ModelFitFilter
     typename TFixedImage::ConstPointer GetFixed(const int i) const {
         if (i < ModelType::NF) {
             size_t index = m_fit->n_inputs() + FixedOffset + i;
-            return static_cast<const TFixedImage *>(this->ProcessObject::GetInput(index));
+            return static_cast<const TFixedImage *>(this->itk::ProcessObject::GetInput(index));
         } else {
             QI::Fail("Requested fixed input {} but {} has {}", i, typeid(ModelType).name(),
                      ModelType::NF);
@@ -156,7 +156,7 @@ class ModelFitFilter
 
     typename TMaskImage::ConstPointer GetMask() const {
         return static_cast<const TMaskImage *>(
-            this->ProcessObject::GetInput(m_fit->n_inputs() + MaskOffset));
+            this->itk::ProcessObject::GetInput(m_fit->n_inputs() + MaskOffset));
     }
 
     void SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
@@ -178,7 +178,7 @@ class ModelFitFilter
 
     TOutputImage *GetOutput(const int i) {
         if (i < ModelType::NV) {
-            return dynamic_cast<TOutputImage *>(this->ProcessObject::GetOutput(i));
+            return dynamic_cast<TOutputImage *>(this->itk::ProcessObject::GetOutput(i));
         } else {
             QI::Fail("Requested varying output {} but {} has {}", i, typeid(ModelType).name(),
                      ModelType::NV);
@@ -186,23 +186,23 @@ class ModelFitFilter
     }
 
     TResidualImage *GetResidualOutput() {
-        return dynamic_cast<TResidualImage *>(this->ProcessObject::GetOutput(ResidualOutputOffset));
+        return dynamic_cast<TResidualImage *>(this->itk::ProcessObject::GetOutput(ResidualOutputOffset));
     }
 
     TResidualsImage *GetResidualsOutput(const int i) {
         return dynamic_cast<TResidualsImage *>(
-            this->ProcessObject::GetOutput(ResidualsOutputOffset + i));
+            this->itk::ProcessObject::GetOutput(ResidualsOutputOffset + i));
     }
 
     TFlagImage *GetFlagOutput() {
-        return dynamic_cast<TFlagImage *>(this->ProcessObject::GetOutput(FlagOutputOffset));
+        return dynamic_cast<TFlagImage *>(this->itk::ProcessObject::GetOutput(FlagOutputOffset));
     }
 
     TOutputImage *GetDerivedOutput(const int i) {
         if constexpr (HasDerived) {
             if (i < ModelType::ND) {
                 return dynamic_cast<TOutputImage *>(
-                    this->ProcessObject::GetOutput(DerivedOutputOffset + i));
+                    this->itk::ProcessObject::GetOutput(DerivedOutputOffset + i));
             } else {
                 QI::Fail("Requested derived output {} but {} has {}", i, typeid(ModelType).name(),
                          ModelType::ND);

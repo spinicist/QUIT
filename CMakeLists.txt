@@ -51,7 +51,7 @@ find_package(ITK 5.0.0 REQUIRED
                 ITKIOTransformBase ITKImageCompose
                 ITKImageFeature ITKImageFilterBase ITKImageFunction ITKImageGrid
                 ITKImageIntensity ITKImageStatistics ITKLabelMap ITKLabelVoting
-                ITKMathematicalMorphology ITKOptimizers ITKRegistrationCommon
+                ITKMathematicalMorphology
                 ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
 include( ${ITK_USE_FILE} )
 

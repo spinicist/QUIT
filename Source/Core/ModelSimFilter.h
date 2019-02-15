@@ -62,7 +62,7 @@ class ModelSimFilter
 
     typename QI::VolumeF::ConstPointer GetVarying(const int i) const {
         if (i < ModelType::NV) {
-            return static_cast<const QI::VolumeF *>(this->ProcessObject::GetInput(i));
+            return static_cast<const QI::VolumeF *>(this->itk::ProcessObject::GetInput(i));
         } else {
             itkExceptionMacro("Requested varying input " << i << " does not exist ("
                                                          << ModelType::NV << " inputs)");
@@ -81,7 +81,7 @@ class ModelSimFilter
     typename QI::VolumeF::ConstPointer GetFixed(const int i) const {
         if (i < ModelType::NF) {
             size_t index = ModelType::NV + i;
-            return static_cast<const QI::VolumeF *>(this->ProcessObject::GetInput(index));
+            return static_cast<const QI::VolumeF *>(this->itk::ProcessObject::GetInput(index));
         } else {
             itkExceptionMacro("Requested const input " << i << " does not exist (" << ModelType::NF
                                                        << " const inputs)");
@@ -94,11 +94,11 @@ class ModelSimFilter
 
     typename QI::VolumeF::ConstPointer GetMask() const {
         return static_cast<const QI::VolumeF *>(
-            this->ProcessObject::GetInput(ModelType::NF + ModelType::NV));
+            this->itk::ProcessObject::GetInput(ModelType::NF + ModelType::NV));
     }
 
     OutputImageType *GetOutput(const int i) {
-        return dynamic_cast<OutputImageType *>(this->ProcessObject::GetOutput(i));
+        return dynamic_cast<OutputImageType *>(this->itk::ProcessObject::GetOutput(i));
     }
 
     void SetNoise(const double s) { m_sigma = s; }
