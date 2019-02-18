@@ -46,13 +46,26 @@ endif()
 
 find_package(ITK 5.0.0 REQUIRED
               COMPONENTS
-                ITKBinaryMathematicalMorphology ITKCommon ITKConnectedComponents
-                ITKFFT ITKIOImageBase ITKIONRRD ITKIONIFTI
-                ITKIOTransformBase ITKImageCompose
-                ITKImageFeature ITKImageFilterBase ITKImageFunction ITKImageGrid
-                ITKImageIntensity ITKImageStatistics ITKLabelMap ITKLabelVoting
+                ITKBinaryMathematicalMorphology
+                ITKCommon
+                ITKConnectedComponents
+                ITKFFT
+                ITKIOImageBase
+                ITKIOTransformBase
+                ITKImageCompose
+                ITKImageFeature
+                ITKImageFilterBase
+                ITKImageGrid
+                ITKImageIntensity
+                ITKImageStatistics
+                ITKLabelMap
+                ITKLabelVoting
                 ITKMathematicalMorphology
-                ITKSmoothing ITKThresholding ITKTransform ITKImageIO ITKTransformIO )
+                ITKThresholding
+                ITKTransform
+                ITKImageIO
+                ITKTransformIO
+                ITKIONIFTI )
 include( ${ITK_USE_FILE} )
 
 OPTION(BUILD_SHARED_LIBS "Build shared libraries." OFF)

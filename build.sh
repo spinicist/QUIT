@@ -94,12 +94,11 @@ if [ -n "$ITK" ]; then
     mkdir -p $ITK_BUILD_DIR
     cd $ITK_BUILD_DIR
     ITK_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_FLAGS=-fpermissive
-    -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DGDCM_USE_COREFOUNDATION_LIBRARY=OFF \
+    -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF \
     -DITK_BUILD_DEFAULT_MODULES=OFF\
-    -DITKGroup_Core=OFF -DModule_ITKCommon=ON\
-    -DModule_ITKIONIFTI=ON -DModule_ITKIONRRD=ON\
-    -DModule_ITKIOTransformInsightLegacy=ON\
+    -DITKGroup_Core=OFF\
     -DModule_ITKBinaryMathematicalMorphology=ON\
+    -DModule_ITKCommon=ON\
     -DModule_ITKConnectedComponents=ON\
     -DModule_ITKFFT=ON\
     -DModule_ITKIOImageBase=ON\
@@ -107,16 +106,16 @@ if [ -n "$ITK" ]; then
     -DModule_ITKImageCompose=ON\
     -DModule_ITKImageFeature=ON\
     -DModule_ITKImageFilterBase=ON\
-    -DModule_ITKImageFunction=ON\
     -DModule_ITKImageGrid=ON\
     -DModule_ITKImageIntensity=ON\
     -DModule_ITKImageStatistics=ON\
     -DModule_ITKLabelMap=ON\
     -DModule_ITKLabelVoting=ON\
     -DModule_ITKMathematicalMorphology=ON\
-    -DModule_ITKSmoothing=ON\
     -DModule_ITKThresholding=ON\
-    -DModule_ITKTransform=ON"
+    -DModule_ITKTransform=ON\
+    -DModule_ITKIOTransformInsightLegacy=ON\
+    -DModule_ITKIONIFTI=ON"
     cmake $ITK_DIR $ITK_OPTS
     $BUILDCMD
 fi
