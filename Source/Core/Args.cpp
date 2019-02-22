@@ -43,14 +43,16 @@ std::string::size_type Glyphs(const std::string &string_) {
  * \param the widtho f the first line, defaults to the width of the body
  * \return the vector of lines
  */
-std::vector<std::string> Wrap(const std::string &in, const std::string::size_type width,
-                              std::string::size_type firstlinewidth) {
+std::vector<std::string> Wrap(const std::string &          in,
+                              const std::string::size_type width,
+                              std::string::size_type       firstlinewidth) {
     // Preserve existing line breaks
     const auto newlineloc = in.find('\n');
     if (newlineloc != in.npos) {
         auto first  = Wrap(std::string(in, 0, newlineloc), width);
         auto second = Wrap(std::string(in, newlineloc + 1), width);
-        first.insert(std::end(first), std::make_move_iterator(std::begin(second)),
+        first.insert(std::end(first),
+                     std::make_move_iterator(std::begin(second)),
                      std::make_move_iterator(std::end(second)));
         return first;
     }
@@ -101,7 +103,7 @@ namespace QI {
 void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose) {
     try {
         parser.ParseCLI(argc, argv);
-        QI::Log(verbose, "Starting {} {}", argv[0], QI::GetVersion());
+        QI::Info(verbose, "Starting {} {}", argv[0], QI::GetVersion());
     } catch (args::Help) {
         fmt::print("{}\n", parser);
         exit(EXIT_SUCCESS);
@@ -112,11 +114,14 @@ void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::
     }
 }
 
-void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose,
+void ParseArgs(args::ArgumentParser &parser,
+               int                   argc,
+               char **               argv,
+               const args::Flag &    verbose,
                args::ValueFlag<int> &threads) {
     try {
         parser.ParseCLI(argc, argv);
-        QI::Log(verbose, "Starting {} {}", argv[0], QI::GetVersion());
+        QI::Info(verbose, "Starting {} {}", argv[0], QI::GetVersion());
         QI::Log(verbose, "Max threads = {}", threads.Get());
         itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
     } catch (args::Help) {

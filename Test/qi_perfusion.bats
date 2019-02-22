@@ -8,8 +8,9 @@ init_tests
 
 @test "Perfusion (ASL)" {
 
-SIZE="32,32,32,2"
-qinewimage --verbose --dims=4 --size="$SIZE" --step="3 1 1.06 2" asl$EXT
+SIZE="3,3,3,2"
+qinewimage --verbose --dims=4 --size="${SIZE},2" --step="3 1 1.06 2" asl$EXT
+qinewimage --verbose --dims=3 --size="${SIZE}" --fill=147.355 ref_cbf$EXT
 qi_asl --verbose asl$EXT <<END_INPUT
 {
     "CASL" : {
@@ -19,6 +20,7 @@ qi_asl --verbose asl$EXT <<END_INPUT
     }
 }
 END_INPUT
+qidiff --baseline=ref_cbf$EXT --input=CASL_CBF$EXT --noise=0 --tolerance=1.e-3 --verbose
 }
 
 @test "Perfusion (ASE)" {
