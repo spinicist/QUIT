@@ -118,18 +118,17 @@ int main(int argc, char **argv) {
             for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it) {
                 itk::VariableLengthVector<float> CBF_vector(outsize);
                 if (!mask_img || mask_it.Get()) {
-                    const Eigen::Map<const Eigen::MatrixXf> input(
+                    const Eigen::Map<const Eigen::ArrayXXf> raw(
                         in_it.Get().GetDataPointer(), 2, insize / 2);
-                    const auto &label        = input.row(0);
-                    const auto &control      = input.row(1);
+                    const auto &label        = raw.row(0);
+                    const auto &control      = raw.row(1);
                     const auto &difference   = control - label; // Negative contrast
                     const auto PD_correction = t1_img ? 1.0 - exp(-sequence.TR / t1_it.Get()) : 1.0;
                     const auto PD    = (pd_img ? pd_it.Get() : control.mean()) / PD_correction;
                     const auto scale = sequence.post_label_delay.rows() > 1
                                            ? scales[out_it.GetIndex()[2]]
                                            : scales[0];
-                    const auto                       CBF = scale * difference / PD;
-                    itk::VariableLengthVector<float> CBF_vector(outsize);
+                    const auto CBF = scale * difference / PD;
                     if (average) {
                         CBF_vector[0] = CBF.mean();
                     } else {
@@ -137,16 +136,6 @@ int main(int argc, char **argv) {
                             CBF_vector[i] = CBF[i];
                         }
                     }
-                    fmt::print("in:\n{}\nlabel {} \nctrl {}\ndiff {}\nPD {} scale {}\nCBF "
-                               "{}\nCBF_Vector {}\n",
-                               input.block<2, 5>(0, 0),
-                               label.head(5),
-                               control.head(5),
-                               difference.head(5),
-                               PD,
-                               scale,
-                               CBF,
-                               CBF_vector);
                 } else {
                     CBF_vector.Fill(0.0);
                 }
@@ -165,7 +154,6 @@ int main(int argc, char **argv) {
         },
         nullptr);
     QI::Info(verbose, "Finished");
-    fmt::print("{}", output);
     QI::WriteImage(output, outarg.Get() + "CASL_CBF" + QI::OutExt(), verbose);
     return EXIT_SUCCESS;
 }

@@ -28,18 +28,24 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(
         parser, "OUTPUT", "Change ouput filename (default is input_interp)", {'o', "out"});
-    args::ValueFlag<std::string> f0_arg(parser, "OFF RESONANCE",
+    args::ValueFlag<std::string> f0_arg(parser,
+                                        "OFF RESONANCE",
                                         "Specify off-resonance frequency (units must match input)",
                                         {'f', "f0"});
-    args::ValueFlag<int> order(parser, "ORDER", "Spline order for interpolation (default 3)",
-                               {'O', "order"}, 3);
-    args::Flag           asym(parser, "ASYMMETRY", "Output asymmetry (M+ - M-)", {'a', "asym"});
+    args::ValueFlag<int>         order(
+        parser, "ORDER", "Spline order for interpolation (default 3)", {'O', "order"}, 3);
+    args::Flag asym(parser, "ASYMMETRY", "Output asymmetry (M+ - M-)", {'a', "asym"});
     args::ValueFlag<std::string> ref_arg(
-        parser, "REFERENCE", "Divide output by reference and multiply by 100 (output %)",
+        parser,
+        "REFERENCE",
+        "Divide output by reference and multiply by 100 (output %)",
         {'r', "ref"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
@@ -82,26 +88,23 @@ int main(int argc, char **argv) {
                 const Eigen::Map<const Eigen::ArrayXf> zdata(in_it.Get().GetDataPointer(),
                                                              in_freqs.rows());
                 QI::SplineInterpolator           zspec(in_freqs, zdata.cast<double>(), order.Get());
-                itk::VariableLengthVector<float> output(out_freqs.rows());
+                itk::VariableLengthVector<float> interped(out_freqs.rows());
                 float                            f0 = f0_image ? f0_it.Get() : 0.0;
                 for (int f = 0; f < out_freqs.rows(); f++) {
                     if (asym) {
                         const double p_frq = f0 + out_freqs[f];
                         const double m_frq = f0 - out_freqs[f];
-                        output[f]          = zspec(m_frq) - zspec(p_frq);
-                        // std::cout << p_frq << " " << m_frq << " " << f0 << "
-                        // " << zspec(p_frq) << " " << zspec(m_frq) << " " <<
-                        // output[f] << "\n";
+                        interped[f]        = zspec(m_frq) - zspec(p_frq);
                     } else {
                         const double frq = f0 + out_freqs[f];
-                        output[f]        = zspec(frq);
+                        interped[f]      = zspec(frq);
                     }
                 }
                 if (ref_arg) {
-                    output *= (100. / ref_it.Get());
+                    interped *= (100. / ref_it.Get());
                     ++ref_it;
                 }
-                out_it.Set(output);
+                out_it.Set(interped);
                 if (f0_image)
                     ++f0_it;
             }

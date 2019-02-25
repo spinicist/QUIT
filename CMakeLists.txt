@@ -8,11 +8,11 @@ endif()
 project(QUIT CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
+add_compile_options("-Wall" "-Wextra" "-Wshadow")
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 include(CMakeToolsHelpers OPTIONAL)
 
-set( CMAKE_CXX_FLAGS "-Wall -Wextra" )
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
