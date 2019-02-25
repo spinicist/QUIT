@@ -33,7 +33,7 @@ Most Linux systems currently ship with GCC 4.8 or lower as their system compiler
 External Libraries
 ------------------
 
-QUIT is built using several C++ libraries. These are currently included in the project as git submodules. The easiest way to initialise these is with the ``easy_build.sh`` script. However, if you are already have some of them available you may wish to not run the script and instead configure them yourself. This is discussed further below. The libraries are:
+QUIT is built using several C++ libraries. These are currently included in the project as git submodules. The easiest way to initialise these is with the ``build.sh`` script. However, if you are already have some of them available you may wish to not run the script and instead configure them yourself. This is discussed further below. The libraries are:
 
 - `Eigen <http://eigen.tuxfamily.org>`_
 
@@ -50,7 +50,15 @@ QUIT is built using several C++ libraries. These are currently included in the p
 Compilation
 -----------
 
-If you are unfamiliar with C++/CMake/git etc. a script is provided that should be able to build the tools provided the right software is available on your system. To use it, in a terminal window, change directory to where you unpacked QUIT. Then type ``./easy_build.sh``. This should correctly checkout the git repositories for each external library, build Ceres and ITK, and then configure and build QUIT.
+If you are unfamiliar with C++/CMake/git etc. a script is provided that should be able to build the tools provided the right software is available on your system. To use it, in a terminal window, change directory to where you unpacked QUIT. Then type ``./build.sh``. This should correctly checkout the git repositories for each external library, build Ceres and ITK, and then configure and build QUIT.
+
+CMake projects separate the ``build`` and ``install`` phases. The binaries are only moved to a single folder during ``install``. By default, the install directory is ``/usr/local/bin``. If you run ``./build.sh -i``it will run the install step to this directory. You can also ``cd`` into the ``build/`` directory and then type ``make install`` (or ``ninja install``) to avoid re-running the entire ``build.sh`` script.
+ 
+If you want to change where the binaries are installed, you can either:
+- Run ``./build.sh -i -p /path/to/install``
+- ``cd /build; ccmake ./``, change the ``INSTALL_PREFIX_DIR``, configure (press c), generate (press g), exit, then ``make install``
+ 
+Note that the binaries will end up in ``/bin`` inside the install prefix.
 
 If you are familiar with C++/CMake/git etc. then compiling QUIT should be straightforward. The rough steps are:
 

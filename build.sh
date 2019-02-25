@@ -1,7 +1,7 @@
-#!/bin/bash -eux
+#!/bin/bash -eu
 
 #
-# easy_build.sh
+# build.sh
 #
 # A hopefully simple script to download all dependencies for QUIT and then
 # compile automatically, for those who are unfamiliar with CMake etc.
@@ -11,6 +11,18 @@
 # 1. CMake version 3.2 or greater
 # 2. A C++11 compliant compiler e.g. GCC 4.8 or higher
 #
+
+USAGE="Usage: $0 [opts]
+
+This script automates the build process for QUIT.
+
+Options:
+    -h        Print this help message
+    -i        Install after building (default location /usr/local/bin)
+    -p PREFIX Change the install location prefix (/bin will be added)
+    -n        Add -march=native to build flags (improves performance)
+    -s gci    Skip (g)it submodule update/(c)eres build/(i)TK build steps
+"
 
 WD=$PWD
 
@@ -22,8 +34,9 @@ INSTALL=""          # Install as well as build
 QUIT_INSTALL_DIR="" # User can specify install directory (mainly for Travis)
 NUM_THREADS="2"     # Specify number of threads during make/ninja
 NATIVE=""           # Specifieds march=native
-while getopts "cij:np:s:" opt; do
+while getopts "hij:np:s:" opt; do
     case $opt in
+        h) echo "$USAGE"; exit 0;;
         i) INSTALL="install";;
         j) NUM_THREADS="$OPTARG";;
         n) NATIVE="-DCMAKE_CXX_FLAGS=-march=native";;
@@ -40,11 +53,18 @@ while getopts "cij:np:s:" opt; do
             fi
     esac
 done
+shift $(( $OPTIND - 1))
+
+if [ $# -ne 0 ]; then
+    echo "$USAGE"
+    exit 1;
+fi
 
 # Check for presence of ninja
 if [ -x "$(which ninja)" ]; then
     GENERATOR="-GNinja"
     BUILDCMD="ninja -j $NUM_THREADS"
+    echo "Found ninja"
 else
     GENERATOR=""
     BUILDCMD="make -j $NUM_THREADS"
@@ -52,6 +72,7 @@ fi
 
 # Initialise submodules
 if [ -n "$CHECKOUT" ]; then
+    echo "Running git submodule update"
     git submodule update --init
 fi
 EXTERNAL="$WD/External"
@@ -67,6 +88,7 @@ CXX_STANDARD="-DCMAKE_CXX_STANDARD=17"
 CERES_DIR="$EXTERNAL/ceres-solver"
 CERES_BUILD_DIR="$CERES_DIR/$BUILD_DIR"
 if [ -n "$CERES" ]; then
+    echo "Building ceres..."
     if [[ -d $CERES_BUILD_DIR ]]; then
         rm -r $CERES_BUILD_DIR
     fi
@@ -88,6 +110,7 @@ fi
 ITK_DIR="$EXTERNAL/ITK"
 ITK_BUILD_DIR="$ITK_DIR/$BUILD_DIR"
 if [ -n "$ITK" ]; then
+    echo "Building ITK..."
     if [[ -d $ITK_BUILD_DIR ]]; then
         rm -r $ITK_BUILD_DIR
     fi
@@ -135,5 +158,6 @@ if [[ -d "$QUIT_BUILD_DIR" ]]; then
 fi
 mkdir -p $QUIT_BUILD_DIR
 cd $QUIT_BUILD_DIR
+echo "Building QUIT..."
 cmake $WD $QUIT_OPTS
 $BUILDCMD

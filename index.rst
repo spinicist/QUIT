@@ -37,7 +37,9 @@ The Linux binaries are built with Ubuntu 14.04 with GCC 7. If you need to run on
 Compile From Source
 -------------------
 
-See the :doc:`Docs/Developer` documentation.
+Compiling from source is recommended to keep up to date with the ``master`` branch. A ``build.sh`` script is provided that should automate this process. By default, ``build.sh`` only builds the binary programs. To install these to a single directory, you must run ``./build.sh -i``. The default install location is ``/usr/local/bin``, but this can be changed by running ``./build.sh -i -p /path/to/install/prefix/``.
+
+For more details see the :doc:`Docs/Developer` documentation.
 
 General Usage
 -------------
