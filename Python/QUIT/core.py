@@ -12,53 +12,90 @@ Requires that the QUIT tools are in your your system path
 By: Emil Ljungberg and Tobias Wood
 """
 
-from __future__ import (print_function, division, unicode_literals,
-                        absolute_import)
-
-from nipype.interfaces.base import CommandLineInputSpec, CommandLine, TraitedSpec, File, traits, isdefined
-import json
-import os
-from .base import QUITCommand, QUITCommandInputSpec
+from nipype.interfaces.base import CommandLine, TraitedSpec, File, traits
+from os import path
+from . import base as QI
 
 ############################ qinewimage ############################
 
-class QiNewImageInputSpec(QUITCommandInputSpec):
-        
+
+class NewImageInputSpec(QI.InputBaseSpec):
     # Options
-    ndims = traits.Int(desc='Image dimension, default 3', argstr='--dims=%d')
-    imsize = traits.Int(desc='Image size', argstr='--size=%d')
+    img_size = traits.List(minsize=2, maxsize=4, mandatory=True,
+                           desc='Image size', argstr='--size=%s', sep=',')
     voxel_spacing = traits.Float(desc='Voxel spacing', argstr='--spacing=%f')
     origin = traits.Float(desc='Image origin', argstr='--origin=%f')
-    im_fill = traits.Float(desc='Fill with value', argstr='--fill=%f')
-    im_gradient = traits.String(desc='Fill with value (dim, low, high)', argstr='--step=%s')
-    im_steps = traits.String(desc='Fill with discrete steps (dim, low,high, steps)', argstr='--step=%s')
-    wrap = traits.Float(desc='Wrap image values at the given value', argstr='--wrap=%f')
+    fill = traits.Float(desc='Fill with value', argstr='--fill=%f')
+    grad_dim = traits.Int(
+        desc='Fill with gradient along dimension', argstr='--grad_dim=%d')
+    grad_vals = traits.Tuple(
+        desc='Gradient start/end values', argstr='--grad_vals=%f,%f')
+    grad_steps = traits.Int(
+        desc='Gradient in N discrete steps', argstr='--steps=%s')
+    wrap = traits.Float(
+        desc='Wrap image values at the given value', argstr='--wrap=%f')
 
     # Output file
-    out_file = traits.File(desc='Output file', exists=False, position=-1, argstr='%s', mandatory=True)
+    out_file = traits.File(desc='Output file', exists=False,
+                           position=-1, argstr='%s', mandatory=True)
 
-class QiNewImageOutputSpec(TraitedSpec):
+
+class NewImageOutputSpec(TraitedSpec):
     out_file = File(desc="Simulated Image")
 
-class QiNewImage(CommandLine):
+
+class NewImage(QI.BaseCommand):
     """
     Produce a new image with qinewimage
 
     Example usage
     -------
-    >>> from QUIT.nipype.CoreProgs import QiNewImage
-    >>> qinewimage = QiNewImage(out_file='test.nii', imsize=256)
+    >>> from QUIT.nipype.CoreProgs import QINewImage
+    >>> qinewimage = QINewImage(out_file='test.nii', imsize=256)
     >>> sim_res = qinewimage.run()
     >>> print(sim_res.outputs)
     """
 
     _cmd = 'qinewimage'
-    input_spec = QiNewImageInputSpec
-    output_spec = QiNewImageOutputSpec
+    input_spec = NewImageInputSpec
+    output_spec = NewImageOutputSpec
 
+    def _parse_inputs(self, skip=None):
+        dim_arg = '--dims=%d' % len(self.inputs.img_size)
+        return [dim_arg, ] + super()._parse_inputs(skip)
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        outputs['out_file'] = os.path.abspath('out_file.nii.gz')
-        
+        outputs['out_file'] = path.abspath(self.inputs.out_file)
+        return outputs
+
+############################ qidiff ############################
+
+
+class DiffInputSpec(QI.InputBaseSpec):
+
+    # Options
+    in_file = traits.String(desc='Input file', argstr='--input=%s')
+    baseline = traits.String(desc='Baseline file', argstr='--baseline=%s')
+    noise = traits.Float(desc='Added noise level', argstr='--noise=%f')
+    abs_diff = traits.Bool(
+        desc='Use absolute difference, not relative', argstr='--abs')
+
+
+class DiffOutputSpec(TraitedSpec):
+    out_diff = traits.Float(desc='Image difference')
+
+
+class Diff(QI.BaseCommand):
+    """
+    Compare two images
+    """
+
+    _cmd = 'qidiff'
+    input_spec = DiffInputSpec
+    output_spec = DiffOutputSpec
+
+    def aggregate_outputs(self, runtime=None, needed_outputs=None):
+        outputs = self._outputs()
+        outputs.out_diff = float(runtime.stdout)
         return outputs

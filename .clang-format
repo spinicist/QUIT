@@ -13,5 +13,6 @@ BinPackParameters: false
 BinPackArguments: false
 BraceWrapping:
     AfterControlStatement: false
+BreakBeforeTernaryOperators: false
 BreakConstructorInitializers: AfterColon
 FixNamespaceComments: true

@@ -9,7 +9,7 @@ setup() {
 @test "Polynomial Fitting" {
 
 SIZE="32, 32, 32"
-qinewimage --size "$SIZE" --step="2 0 1 2" mask.nii
+qinewimage --size "$SIZE" --grad_dim=2 --grad_vals=0,1 --steps=2 mask.nii
 # Set constant term to 1 so there are no zero voxels, because qidiff doesn't like that
 qipolyimg mask.nii baseline.nii --order=2 -v << END_INPUT
 {
@@ -24,8 +24,8 @@ qipolyfit baseline.nii --order=2 --print-terms --robust > robust_terms.json
 qipolyimg mask.nii unmasked.nii --order=2 < unmasked_terms.json
 qipolyimg mask.nii masked.nii --order=2 < masked_terms.json
 qipolyimg mask.nii robust.nii --order=2 < robust_terms.json
-qidiff --baseline=baseline.nii --input=unmasked.nii --tolerance=1 --verbose
-qidiff --baseline=baseline.nii --input=masked.nii   --tolerance=1 --verbose
-qidiff --baseline=baseline.nii --input=unmasked.nii --tolerance=1 --verbose
+qidiff --baseline=baseline.nii --input=unmasked.nii --verbose
+qidiff --baseline=baseline.nii --input=masked.nii   --verbose
+qidiff --baseline=baseline.nii --input=unmasked.nii --verbose
 
 }

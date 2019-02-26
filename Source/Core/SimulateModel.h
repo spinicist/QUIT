@@ -19,11 +19,13 @@
 namespace QI {
 
 template <typename Model, bool MultiOutput>
-void SimulateModel(rapidjson::Value &json, const Model &model,
+void SimulateModel(rapidjson::Value &              json,
+                   const Model &                   model,
                    const std::vector<std::string> &fixedpaths,
-                   const std::vector<std::string> &outpaths, const bool verbose,
-                   const double noise) {
-    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model);
+                   const std::vector<std::string> &outpaths,
+                   const bool                      verbose,
+                   const double                    noise) {
+    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, verbose);
     simulator->SetNoise(noise);
     QI::Log(verbose, "Reading varying parameters");
     for (auto i = 0; i < Model::NV; i++) {
@@ -34,7 +36,8 @@ void SimulateModel(rapidjson::Value &json, const Model &model,
     }
     if (fixedpaths.size() != Model::NF) {
         QI::Fail("Number of fixed paths {} does not match number of parameters {}",
-                 fixedpaths.size(), Model::NF);
+                 fixedpaths.size(),
+                 Model::NF);
     }
     QI::Log(verbose, "Reading fixed parameters");
     for (auto i = 0; i < Model::NF; i++) {
@@ -42,13 +45,15 @@ void SimulateModel(rapidjson::Value &json, const Model &model,
             simulator->SetFixed(i, QI::ReadImage(fixedpaths[i], verbose));
         }
     }
-    QI::Log(verbose, "Simulating model...");
+    QI::Log(verbose, "Noise level is {}\nSimulating model...", noise);
+    srand((unsigned int)time(0));
     simulator->Update();
     QI::Log(verbose, "Finished");
     if constexpr (MultiOutput) {
         if (outpaths.size() != model.num_outputs()) {
             QI::Fail("Number of output paths {} does not match number of outputs {}",
-                     outpaths.size(), model.num_outputs());
+                     outpaths.size(),
+                     model.num_outputs());
         }
         for (size_t i = 0; i < model.num_outputs(); i++) {
             QI::WriteImage(simulator->GetOutput(i), outpaths[i], verbose);

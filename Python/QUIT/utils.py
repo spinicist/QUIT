@@ -4,96 +4,79 @@
 """
 Implementation of nipype interfaces for QUIT utilities.
 
-Implemented:
-    - qiaffine
-    - qimask
-    - qi_rfprofile
-    
 To be implemented:
     - qi_coil_combine
-    - qicomplex
     - qihdr
-    - qikfilter
-    - qipolyfit
-    - qipolyimg
+
 
 Requires that the QUIT tools are in your your system path
 """
 
-from __future__ import (print_function, division, unicode_literals,
-                        absolute_import)
-
-from nipype.interfaces.base import CommandLineInputSpec, CommandLine, TraitedSpec, File, traits, isdefined
-# from quit_nipype_utils import parse_param_dict
-from .base import QUITCommand, QUITCommandInputSpec
-
-import json
-import os
+from json import dump, loads
+from os import path
+from nipype.interfaces.base import CommandLine, TraitedSpec, File, traits, isdefined
+from . import base as QI
 
 ############################ qi_rfprofile ############################
 
 
-class QiRFprofileInputSpec(QUITCommandInputSpec):
+class RFProfileInputSpec(QI.InputBaseSpec):
+    rf = traits.Dict(desc='Dictionary with rf_pos and rf_vals lists', argstr='',
+                     mandatory=True)
 
-    # Inputs
+    # Input nifti
     in_file = File(exists=True, argstr='%s', mandatory=True,
-                   position=0, desc='Input B1+ file')
-    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s',
-                      xor=['param_dict'], mandatory=True, exists=True)
-    param_dict = traits.Dict(desc='Parameter dictionary', position=2,
-                             argstr='', mandatory=True, xor=['param_file'])
+                   position=-2, desc='Input B1+ map')
+    out_file = File(argstr='%s', mandatory=True,
+                    position=-1, desc='Output slab profile')
 
-    # Outputs
-    out_file = File(exists=False, argstr='%s', mandatory=True,
-                    desc='Input B1+ file', position=1)
-
-    # Options
-    mask_file = File(
-        desc='Only process voxels within the mask', argstr='--mask=%s')
-
-    # Commonly used options
-    debug = traits.Bool(desc='Output debugging messages', argstr='-v')
     threads = traits.Int(
         desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
     prefix = traits.String(
         desc='Add a prefix to output filenames', argstr='--out=%s')
+    mask_file = File(
+        desc='Only process voxels within the mask', argstr='--mask=%s')
+    center = traits.List(
+        desc='Set center point of slab profile to center of mask', argsstr='--center')
 
 
-class QiRFprofileOutputSpec(TraitedSpec):
+class RFProfileOutputSpec(TraitedSpec):
     # Specify which outputs there are
-    out_file = File(desc="output relative B1 file")
+    out_file = File(desc="output slab profile file")
 
 
-class QiRFprofile(QUITCommand):
+class RFProfile(QI.BaseCommand):
     """
     help for myInterface
 
     Example 1
     -------
-    >>> from QUIT.nipype.utils import QiRFprofile
-    >>> interface = QiRFprofile()
+    >>> from QUIT.nipype.utils import RFProfile
+    >>> interface = RFProfile()
 
     """
 
     _cmd = 'qi_rfprofile'
-    input_spec = QiRFprofileInputSpec
-    output_spec = QiRFprofileOutputSpec
+    input_spec = RFProfileInputSpec
+    output_spec = RFProfileOutputSpec
 
     def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
+        """
+        Make parameter dictionary into a .json file for input to interface
+        """
+        if name == 'rf':
+            return self._make_json(value)
+        return super()._format_arg(name, spec, value)
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-
-        outputs['out_file'] = os.path.abspath(
-            self._add_prefix(self.inputs.out_file))
-
+        outputs['out_file'] = path.abspath(self.inputs.out_file)
         return outputs
 
 ############################ qiaffine ############################
 
 
-class QiAffineInputSpec(QUITCommandInputSpec):
+class AffineInputSpec(QI.InputSpec):
 
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
@@ -129,45 +112,41 @@ class QiAffineInputSpec(QUITCommandInputSpec):
         desc='Set the origin to geometric center (geo) or (cog)', argstr='--center=%s')
 
 
-class QiAffineOutputSpec(TraitedSpec):
+class AffineOutputSpec(TraitedSpec):
     # Specify which outputs there are
-    out_file = File(desc="output relative B1 file")
+    out_file = File(desc="Transformed file")
 
 
-class QiAffine(QUITCommand):
+class Affine(CommandLine):
     """
     help for myInterface
 
     Example 1
     -------
-    >>> from QUIT.nipype.utils import QiRFprofile
-    >>> interface = QiRFprofile()
+    >>> from QUIT.nipype.utils import Affine
+    >>> interface = Affine()
 
     """
 
-    _cmd = 'qi_rfprofile'
-    input_spec = QiRFprofileInputSpec
-    output_spec = QiRFprofileOutputSpec
-
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
+    _cmd = 'qiaffine'
+    input_spec = AffineInputSpec
+    output_spec = AffineOutputSpec
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        outputs['out_file'] = os.path.abspath(
-            self._add_prefix(self.inputs.out_file))
+        outputs['out_file'] = path.abspath(self.inputs.out_file)
         return outputs
 
 ############################ qimask ############################
 
 
-class QiMaskInputSpec(QUITCommandInputSpec):
+class MaskInputSpec(QI.InputBaseSpec):
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Input File')
 
     # Outputs
-    out_file = File(exists=False, argstr='%s', mandatory=True,
+    out_file = File(exists=False, argstr='%s',
                     position=1, desc='Set output filename, default is input + _mask')
 
     # Options
@@ -185,42 +164,33 @@ class QiMaskInputSpec(QUITCommandInputSpec):
         desc="Fill holes in thresholded mask with radius N", argstr='--fillh=%d')
 
 
-class QiMaskOutputSpec(TraitedSpec):
+class MaskOutputSpec(TraitedSpec):
     # Specify which outputs there are
-    mask_file = File(desc="Output mask file")
+    out_file = File(desc="Output mask file")
 
 
-class QiMask(CommandLine):
+class Mask(QI.BaseCommand):
     """
     help for myInterface
 
     Example 1
     -------
-    >>> from QUIT.nipype.utils import QiRFprofile
-    >>> interface = QiRFprofile()
+    >>> from QUIT.nipype.utils import RFProfile
+    >>> interface = RFProfile()
 
     """
 
     _cmd = 'qimask'
-    input_spec = QiMaskInputSpec
-    output_spec = QiMaskOutputSpec
-
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
+    input_spec = MaskInputSpec
+    output_spec = MaskOutputSpec
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-
-        # Specify output files
-        if self.inputs.out_file:
-            output_fname = self.inputs.out_file
+        if isdefined(self.inputs.out_file):
+            fname = self._gen_fname(self.inputs.out_file)
         else:
-            input_bname = os.path.basename(self.inputs.in_file)
-            input_fname = os.path.splitext(os.path.split(input_bname)[-1])
-            output_fname = input_fname + '_mask.nii.gz'
-
-        outputs['mask_file'] = os.path.abspath(output_fname)
-
+            fname = self._gen_fname(self.inputs.in_file, suffix='_mask')
+        outputs['out_file'] = fname
         return outputs
 
 
@@ -228,7 +198,7 @@ class QiMask(CommandLine):
 # < To be implemented > #
 
 ############################ qicomplex ############################
-class ComplexInputSpec(QUITCommandInputSpec):
+class ComplexInputSpec(QI.InputSpec):
 
     # Options
     mag = traits.String(desc='Magnitude input', argstr='--mag=%s', exists=True)
@@ -256,7 +226,7 @@ class ComplexOutputSpec(TraitedSpec):
     complex_out_file = File()
 
 
-class Complex(QUITCommand):
+class Complex(QI.Command):
     """
     Deals with magnitude/phase/real/imaginary/complex data
 
@@ -290,10 +260,118 @@ class Complex(QUITCommand):
 # < To be implemented > #
 
 ############################ qikfilter ############################
-# < To be implemented > #
 
-############################ qipolyfit ############################
-# < To be implemented > #
+
+class FilterInputSpec(QI.InputBaseSpec):
+    in_file = File(argstr='%s', mandatory=True, exists=True,
+                   position=-1, desc='Input file to fit polynomial to')
+    filter_spec = traits.String(argstr='--filter=%s', mandatory=True,
+                                desc='Filter to apply', multiple=True)
+    complex_in = traits.Bool(argstr='--complex_in', desc='Read complex data')
+    complex_out = traits.Bool(argstr='--complex_out',
+                              desc='Write complex data')
+    prefix = traits.String(
+        argstr='--out=%s', desc='Output prefix (default is input filename)')
+    zeropad = traits.Int(argstr='--zero_pad=%d',
+                         desc='Zero-pad volume by N voxels in each direction')
+
+
+class FilterOutputSpec(TraitedSpec):
+    out_file = File(desc="Simulated Image")
+
+
+class Filter(QI.BaseCommand):
+    """
+    Filter an image in k-space
+    """
+    _cmd = 'qikfilter'
+    input_spec = FilterInputSpec
+    output_spec = FilterOutputSpec
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        if isdefined(self.inputs.prefix):
+            outputs['out_file'] = os.path.join(
+                self.inputs.prefix + '_filtered.nii.gz')
+        else:
+            p, f = path.split(self.inputs.in_file)
+            fname, ext = path.splitext(f)
+            if ext == '.gz':
+                fname = path.splitext(fname)[0]
+            outputs['out_file'] = path.abspath(p + fname + '_filtered.nii.gz')
+        return outputs
 
 ############################ qipolyimg ############################
-# < To be implemented > #
+
+
+class PolyImageInputSpec(QI.InputBaseSpec):
+    # Options
+    ref_file = File(argstr='%s', mandatory=True, exists=True, position=-2,
+                    desc='Reference file for co-ordinate space and size')
+    out_file = traits.File(argstr='%s', mandatory=True,
+                           exists=False, position=-1, desc='Output file')
+    order = traits.Int(argstr='--order=%d', mandatory=True,
+                       desc='Polynomial Order')
+    poly = traits.Dict(
+        mandatory=True, desc='Polynomial paramters (center, scale, coeffs)', argstr='')
+
+
+class PolyImageOutputSpec(TraitedSpec):
+    out_file = File(desc='Output polynomial image')
+
+
+class PolyImage(QI.BaseCommand):
+    """
+    Produce a new image with qipolyimage
+    """
+
+    _cmd = 'qipolyimg'
+    input_spec = PolyImageInputSpec
+    output_spec = PolyImageOutputSpec
+
+    def _format_arg(self, name, spec, value):
+        """
+        Make parameter dictionary into a .json file for input to interface
+        """
+        if name == 'poly':
+            fname = '_tmp_poly.json'
+            with open(fname, 'w') as outfile:
+                dump(value, outfile)
+            newarg = "--json=" + fname
+            return newarg
+        else:
+            return super()._format_arg(name, spec, value)
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        outputs['out_file'] = path.abspath(self.inputs.out_file)
+        return outputs
+
+############################ qipolyfit ############################
+
+
+class PolyFitInputSpec(QI.InputBaseSpec):
+    in_file = File(argstr='%s', mandatory=True, exists=True,
+                   position=-1, desc='Input file to fit polynomial to')
+    order = traits.Int(argstr='--order=%d', mandatory=True,
+                       desc='Polynomial Order')
+    robust = traits.Bool(
+        argstr='--robust', desc='Use robust (iterative) polynomial fit')
+
+
+class PolyFitOutputSpec(TraitedSpec):
+    poly = traits.Dict(desc="Polynomial parameters")
+
+
+class PolyFit(QI.BaseCommand):
+    """
+    Fit a polynomial to an image
+    """
+    _cmd = 'qipolyfit'
+    input_spec = PolyFitInputSpec
+    output_spec = PolyFitOutputSpec
+
+    def aggregate_outputs(self, runtime=None, needed_outputs=None):
+        outputs = self._outputs()
+        outputs.poly = loads(runtime.stdout)
+        return outputs

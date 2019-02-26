@@ -61,6 +61,18 @@ template <typename TArray, const int size> void ArrayArg(const std::string &a, T
     }
 }
 
+template <typename TArray, const int size> void ArrayArgF(const std::string &a, TArray &array) {
+    std::istringstream iss(a);
+    std::string        el;
+    for (int i = 0; i < size; i++) {
+        std::getline(iss, el, ',');
+        if (!iss) {
+            QI::Fail("Failed to read from array argument: {}", a);
+        }
+        array[i] = std::stof(el);
+    }
+}
+
 } // End namespace QI
 
 #define QI_COMMON_ARGS                                                                         \

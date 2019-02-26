@@ -2,49 +2,30 @@
 # -*- coding: utf-8 -*-
 
 """
-Implementation of nipype interfaces for QUIT relaxometry utilities.
+Implementation of nipype interfaces for QUIT relaxometry utilities
 Requires that the QUIT tools are in your your system path
 """
 
-from __future__ import (print_function, division, unicode_literals,
-                        absolute_import)
-import os
-import json
-
-from nipype.interfaces.base import CommandLineInputSpec, CommandLine, TraitedSpec, File, traits, isdefined
-from .base import QUITCommand, QUITCommandInputSpec
+from nipype.interfaces.base import TraitedSpec, File, traits
+from . import base as QI
 
 
 ############################ qidespot1 ############################
 
-class QIDespot1InputSpec(QUITCommandInputSpec):
-    # Inputs
-    param_file = File(desc='Parameter .json file', position=-1, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
-
-    param_dict = traits.Dict(desc='dictionary trait', position=-1, 
-        argstr='', mandatory=True, xor=['param_file'])
-        
-    spgr_file = File(exists=True, argstr='%s', mandatory=True,
-        position=-2, desc='Path to SPGR data')
-    
-    # Options
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
+class DESPOT1InputSpec(QI.InputSpec):
+    # Additional Options
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
     algo = traits.String(desc="Choose algorithm (l/w/n)", argstr="--algo=%s")
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
     clamp_PD = traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f')
     clamp_T1 = traits.Float(desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
     
-class QIDespot1OutputSpec(TraitedSpec):
-    t1_map = File(desc="Path to T1 map")
-    pd_map = File(desc="Path to PD map")
-    residual_map = File(desc="Path to residual map")
+class DESPOT1OutputSpec(TraitedSpec):
+    t1_map = File('D1_T1.nii.gz', desc="Path to T1 map", usedefault=True)
+    pd_map = File('D1_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    residual_map = File('D1_residual.nii.gz', desc="Path to residual map", usedefault=True)
 
-class QIDespot1(QUITCommand):
+class DESPOT1(QI.Command):
     """
     Run DESPOT1 analysis with qidespot1
 
@@ -68,48 +49,17 @@ class QIDespot1(QUITCommand):
     """
 
     _cmd = 'qidespot1'
-    input_spec = QIDespot1InputSpec
-    output_spec = QIDespot1OutputSpec
-
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-
-        outputs['t1_map'] = os.path.abspath(self._add_prefix('D1_T1.nii.gz'))
-        outputs['pd_map'] = os.path.abspath(self._add_prefix('D1_PD.nii.gz'))
-        
-        if self.inputs.residuals:
-            outputs['residual_map'] = os.path.abspath(self._add_prefix('D1_residual.nii.gz'))
-        
-        return outputs
+    input_spec = DESPOT1InputSpec
+    output_spec = DESPOT1OutputSpec
 
 ############################ qidespot1sim ############################
 
-class QIDespot1SimInputSpec(QUITCommandInputSpec):
-    # Inputs
-    spgr_file = File(exists=False, argstr='%s', mandatory=True,
-        position=0, desc='Path to write SPGR/FLASH image')
-
-    param_file = File(desc='Parameter .json file', position=1, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
-
-    param_dict = traits.Dict(desc='dictionary trait', position=1, 
-        argstr='', mandatory=True, xor=['param_file'])
-
+class DESPOT1SimInputSpec(QI.SimInputSpec):
     # Options
-    verbose = traits.Bool(desc='Print more information', argstr='-v')
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    noise = traits.Float(desc='Noise level to add to simulation', argstr='--simulate=%f', default_value=0.0, usedefault=True)
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
-    environ = {'QUIT_EXT':'NIFTI_GZ'}
-    
-class QIDespot1SimOutputSpec(TraitedSpec):
-    spgr_image = File(desc="Path to SPGR/FLASH image")
 
-class QIDespot1Sim(QUITCommand):
+
+class DESPOT1Sim(QI.SimCommand):
     """
     Run DESPOT1 simulation with qidespot1
 
@@ -127,37 +77,24 @@ class QIDespot1Sim(QUITCommand):
     """
 
     _cmd = 'qidespot1'
-    input_spec = QIDespot1SimInputSpec
-    output_spec = QIDespot1SimOutputSpec
-
-    def _format_arg(self, name, spec, value):
-        if name == 'param_dict':
-            with open('_tmp_input.json', 'w') as outfile:
-                json.dump(value, outfile)
-            return "< _tmp_input.json"
-
-        return super(QIDespot1Sim, self)._format_arg(name, spec, value)
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-        outputs['spgr_image'] = self.inputs.spgr_file
-        return outputs
+    input_spec = DESPOT1SimInputSpec
+    output_spec = QI.SimOutputSpec
 
 ############################ qidespot1hifi ############################
 
-class QIDespot1HifiInputSpec(QUITCommandInputSpec):
+class HIFIInputSpec(QI.InputBaseSpec):
     # Inputs
     spgr_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path to SPGR data')
+        position=-2, desc='Path to SPGR data')
 
     mprage_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path to MPRAGE data')
+        position=-1, desc='Path to MPRAGE data')
 
-    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
+    param_file = File(desc='.json file', argstr='--json=%s',
+                      xor=['param_dict'], mandatory=True, exists=True)
 
-    param_dict = traits.Dict(desc='dictionary trait', position=2, 
-        argstr='', mandatory=True, xor=['param_file'])
+    param_dict = traits.Dict(desc='Param Dict', argstr='',
+                             mandatory=True, xor=['param_file'])
 
     # Options
     threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
@@ -167,13 +104,13 @@ class QIDespot1HifiInputSpec(QUITCommandInputSpec):
     residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
     clamp_T1 = traits.Float(desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
 
-class QIDespot1HifiOutputSpec(TraitedSpec):
-    t1_map = File(desc="Path to T1 map")
-    pd_map = File(desc="Path to PD map")
-    b1_map = File(desc="Path to B1 map")
-    residual_map = File(desc="Path to residual map")
+class HIFIOutputSpec(TraitedSpec):
+    t1_map = File('HIFI_T1.nii.gz', desc="Path to T1 map", usedefault=True)
+    pd_map = File('HIFI_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    b1_map = File('HIFI_B1.nii.gz', desc="Path to B1 map", usedefault=True)
+    residual_map = File('HIFI_residual.nii.gz', desc="Path to residual map", usedefault=True)
 
-class QIDespot1Hifi(QUITCommand):
+class HIFI(QI.Command):
     """
     Calculate T1 & B1 map with the DESPOT1-HIFI method
 
@@ -191,54 +128,37 @@ class QIDespot1Hifi(QUITCommand):
     """
 
     _cmd = 'qidespot1hifi'
-    input_spec = QIDespot1HifiInputSpec
-    output_spec = QIDespot1HifiOutputSpec
-
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-            
-        outputs['t1_map'] = os.path.abspath(self._add_prefix('HIFI_T1.nii.gz'))
-        outputs['pd_map'] = os.path.abspath(self._add_prefix('HIFI_PD.nii.gz'))
-        outputs['b1_map'] = os.path.abspath(self._add_prefix('HIFI_B1.nii.gz'))
-
-        if self.inputs.residuals:
-            outputs['residual_map'] = os.path.abspath(self._add_prefix('HIFI_residual.nii.gz'))
-        
-        return outputs
+    input_spec = HIFIInputSpec
+    output_spec = HIFIOutputSpec
+    # terminal_output = 'file'
 
 ############################ qidespot1hifisim ############################
 
-class QIDespot1HifiSimInputSpec(CommandLineInputSpec):
+class HIFISimInputSpec(QI.InputBaseSpec):
     # Inputs
-    spgr_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path for output SPGR image')
+    spgr_file = File(exists=False, argstr='%s', mandatory=True,
+        position=-2, desc='Path for output SPGR image')
 
-    mprage_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path for output MPRAGE image')
+    mprage_file = File(exists=False, argstr='%s', mandatory=True,
+        position=-1, desc='Path for output MPRAGE image')
 
-    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
+    param_file = File(desc='.json file', argstr='--json=%s',
+                      xor=['param_dict'], mandatory=True, exists=True)
 
-    param_dict = traits.Dict(desc='dictionary trait', position=2, 
-        argstr='', mandatory=True, xor=['param_file'])
+    param_dict = traits.Dict(desc='Param Dict', argstr='',
+                             mandatory=True, xor=['param_file'])
 
     # Options
-    verbose = traits.Bool(desc='Print more information', argstr='-v')
     threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
     noise = traits.Float(desc='Noise level to add to simulation', argstr='--simulate=%f', default_value=0.0, usedefault=True)
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
 
-    environ = {'QUIT_EXT':'NIFTI_GZ'}
+class HIFISimOutputSpec(TraitedSpec):
+    spgr_file = File(desc="Output SPGR image")
+    mprage_file = File(desc="Output MPRAGE image")
 
-class QIDespot1HifiSimOutputSpec(TraitedSpec):
-    spgr_image = File(desc="Output SPGR image")
-    mprage_image = File(desc="Output MPRAGE image")
-
-class QIDespot1HifiSim(CommandLine):
+class HIFISim(QI.Command):
     """
     Simulate SPGR/FLASH and MPRAGE images using DESPOT1-HIFI model
 
@@ -258,54 +178,37 @@ class QIDespot1HifiSim(CommandLine):
     """
 
     _cmd = 'qidespot1hifi'
-    input_spec = QIDespot1HifiSimInputSpec
-    output_spec = QIDespot1HifiSimOutputSpec
-
-    def _format_arg(self, name, spec, value):
-        if name == 'param_dict':
-            with open('_tmp_input.json', 'w') as outfile:
-                json.dump(value, outfile)
-            return "< _tmp_input.json"
-
-        return super(QIDespot1HifiSim, self)._format_arg(name, spec, value)
+    input_spec = HIFISimInputSpec
+    output_spec = HIFISimOutputSpec
+    # terminal_output = 'file'
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        outputs['spgr_image'] = self.inputs.spgr_file
-        outputs['mprage_image'] = self.inputs.mprage_file
+        outputs['spgr_file'] = self.inputs.spgr_file
+        outputs['mprage_file'] = self.inputs.mprage_file
         return outputs
 
 ############################ qidespot2 ############################
 
-class QIDespot2InputSpec(QUITCommandInputSpec):
+class DESPOT2InputSpec(QI.InputSpec):
     # Inputs
-    t1_map = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path to T1 map')
-    ssfp_file = File(exists=True, argstr='%s', mandatory=True,
-        position=1, desc='Path to SSFP data')
-    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
-    param_dict = traits.Dict(desc='dictionary trait', position=2, 
-        argstr='', mandatory=True, xor=['param_file'])
+    t1_file = File(exists=True, argstr='%s', mandatory=True,
+        position=-2, desc='Path to T1 map')
 
     # Options
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
     algo = traits.Enum("LLS","WLS","NLS", desc="Choose algorithm", argstr="--algo=%d")
-    ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='-e')
+    ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
     clamp_PD = traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f')
     clamp_T2 = traits.Float(desc='Clamp T2 between 0 and value', argstr='--clampT1=%f')
 
-class QIDespot2OutputSpec(TraitedSpec):
-    t2_map = File(desc="Path to T2 map")
-    pd_map = File(desc="Path to PD map")
-    residual_map = File(desc="Path to residual map")
+class DESPOT2OutputSpec(TraitedSpec):
+    t2_map = File('D2_T2.nii.gz', desc="Path to T2 map", usedefault=True)
+    pd_map = File('D2_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    residual_map = File('D2_residual.nii.gz', desc="Path to residual map", usedefault=True)
 
-class QIDespot2(QUITCommand):
+class DESPOT2(QI.Command):
     """
     Run DESPOT2 analysis with qidespot2
 
@@ -331,50 +234,21 @@ class QIDespot2(QUITCommand):
     """
 
     _cmd = 'qidespot2'
-    input_spec = QIDespot2InputSpec
-    output_spec = QIDespot2OutputSpec
-
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-            
-        outputs['t2_map'] = os.path.abspath(self._add_prefix('D2_T2.nii.gz'))
-        outputs['pd_map'] = os.path.abspath(self._add_prefix('D2_PD.nii.gz'))
-        
-        if self.inputs.residuals:
-            outputs['residual_map'] = os.path.abspath(self._add_prefix('D2_residual.nii.gz'))
-        
-        return outputs
+    input_spec = DESPOT2InputSpec
+    output_spec = DESPOT2OutputSpec
 
 ############################ qidespot2sim ############################
 
-class QIDespot2SimInputSpec(CommandLineInputSpec):
+class DESPOT2SimInputSpec(QI.SimInputSpec):
     # Inputs
-
     t1_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path for input T1 map')
-    ssfp_file = File(exists=True, argstr='%s', mandatory=True,
-        position=1, desc='Path for output SSFP data')
-    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
-    param_dict = traits.Dict(desc='dictionary trait', position=2, 
-        argstr='', mandatory=True, xor=['param_file'])
+        position=-2, desc='Path for input T1 map')
 
     # Options
-    verbose = traits.Bool(desc='Print more information', argstr='-v')
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    noise = traits.Float(desc='Noise level to add to simulation', argstr='--simulate=%f', default_value=0.0, usedefault=True)
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
-    ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='-e')
-    environ = {'QUIT_EXT':'NIFTI_GZ'}
+    ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
 
-class QIDespot2SimOutputSpec(TraitedSpec):
-    ssfp_image = File(desc="Path to SSFP image")
-
-class QIDespot2Sim(CommandLine):
+class DESPOT2Sim(QI.SimCommand):
     """
     Run DESPOT2 simulation
 
@@ -393,51 +267,28 @@ class QIDespot2Sim(CommandLine):
     """
 
     _cmd = 'qidespot2'
-    input_spec = QIDespot2SimInputSpec
-    output_spec = QIDespot2SimOutputSpec
-
-    def _format_arg(self, name, spec, value):
-        if name == 'param_dict':
-            with open('_tmp_input.json', 'w') as outfile:
-                json.dump(value, outfile)
-            return "< _tmp_input.json"
-
-        return super(QIDespot2Sim, self)._format_arg(name, spec, value)
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-        outputs['ssfp_image'] = self.inputs.ssfp_file
-        return outputs
+    input_spec = DESPOT2SimInputSpec
+    output_spec = QI.SimOutputSpec
 
 ############################ qidespot2fm ############################
 
-class QIDespot2FMInputSpec(QUITCommandInputSpec):
+class FMInputSpec(QI.InputSpec):
     # Inputs
-    t1_map = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path to T1 map')
-    ssfp_file = File(exists=True, argstr='%s', mandatory=True,
-        position=1, desc='Path to SSFP data')
-    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
-    param_dict = traits.Dict(desc='dictionary trait', position=2, 
-        argstr='', mandatory=True, xor=['param_file'])
+    t1_file = File(exists=True, argstr='%s', mandatory=True,
+        position=-2, desc='Path to T1 map')
 
     # Options
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
-    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='-A')
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
     algo = traits.Enum("LLS","WLS","NLS", desc="Choose algorithm", argstr="--algo=%d")
 
-class QIDespot2FMOutputSpec(TraitedSpec):
-    t2_map = File(desc="Path to T2 map")
-    pd_map = File(desc="Path to PD map")
-    f0_map = File(desc="Path to f0 (off-resonance) map")
-    residual_map = File(desc="Path to residual map")
+class FMOutputSpec(TraitedSpec):
+    t2_map = File('FM_T2.nii.gz', desc="Path to T2 map", usedefault=True)
+    pd_map = File('FM_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    f0_map = File('FM_f0.nii.gz', desc="Path to f0 (off-resonance) map", usedefault=True)
+    residual_map = File('FM_residual.nii.gz', desc="Path to residual map", usedefault=True)
 
-class QIDespot2FM(QUITCommand):
+class FM(QI.Command):
     """
     Run DESPOT2-FM analysis
 
@@ -454,27 +305,31 @@ class QIDespot2FM(QUITCommand):
     """
 
     _cmd = 'qidespot2fm'
-    input_spec = QIDespot2FMInputSpec
-    output_spec = QIDespot2FMOutputSpec
+    input_spec = FMInputSpec
+    output_spec = FMOutputSpec
 
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
+class FMSimInputSpec(QI.SimInputSpec):
+    # Inputs
+    t1_file = File(exists=True, argstr='%s', mandatory=True,
+        position=-2, desc='Path for input T1 map')
 
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-    
-        outputs['t2_map'] = os.path.abspath(self._add_prefix('FM_T2.nii.gz'))
-        outputs['pd_map'] = os.path.abspath(self._add_prefix('FM_PD.nii.gz'))
-        outputs['f0_map'] = os.path.abspath(self._add_prefix('FM_f0.nii.gz'))
-        
-        if self.inputs.residuals:
-            outputs['residual_map'] = os.path.abspath(self._add_prefix('FM_residual.nii.gz'))
-        
-        return outputs
+    # Options
+    b1map_file = File(desc='B1 map (ratio)', argstr='--B1=%s')
+    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
+
+class FMSim(QI.SimCommand):
+    """
+    Run DESPOT2-FM simulation
+
+    """
+
+    _cmd = 'qidespot2fm'
+    input_spec = FMSimInputSpec
+    output_spec = QI.SimOutputSpec
 
 ############################ qimcdespot ############################
 # Status: Everything is there but not tested
-class QIMCDespotInputSpec(QUITCommandInputSpec):
+class QIMCDespotInputSpec(QI.InputSpec):
     # Inputs
     spgr_file = File(exists=True, argstr='%s', mandatory=True,
         position=0, desc='SPGR file')
@@ -486,8 +341,8 @@ class QIMCDespotInputSpec(QUITCommandInputSpec):
         xor=['param_dict'], mandatory=True, exists=True)
 
     # Options
-    f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)      
-    B1_map = File(desc='B1 map (ratio)', argstr='--B1=%s', exists=True)      
+    f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
+    B1_map = File(desc='B1 map (ratio)', argstr='--B1=%s', exists=True)
     mask = File(desc='Only process voxels within the mask', argstr='--mask=%s', exists=True)
     residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resid')
     model = traits.Enum("1","2","2nex","3","3_f0","3nex", desc="Select model to fit - 1/2/2nex/3/3_f0/3nex, default 3", 
@@ -513,7 +368,7 @@ class QIMCDespotOutputSpec(TraitedSpec):
     output_3C_f0 = File(desc="The off-resonance frequency. If this was specified on the command line, it will be a copy of that file")
     output_3C_B1 = File(desc="The relative flip-angle map. If this was specified on the command line, it will be a copy of that file")
     
-class QIMCDespot(QUITCommand):
+class QIMCDespot(QI.Command):
     """
     Interace for qimcdespot
 
@@ -539,12 +394,11 @@ class QIMCDespot(QUITCommand):
                 '3C_tau_m', '3C_f_m', '3C_f_csf', '3C_f0', '3C_B1']
         for op in outputs:
             outputs['output_{}'.format(op)] = os.path.abspath(self._add_prefix('{}.nii.gz'.format(op)))
-        
         return outputs
 
 ############################ qimp2rage ############################
 # Implemented but not tested #
-class QIMP2RAGEInputSpec(QUITCommandInputSpec):
+class MP2RAGEInputSpec(QI.InputSpec):
     # Inputs
     mprage_data = File(exists=True, argstr='%s', mandatory=True,
         position=0, desc='Path to complex MP-RAGE data')
@@ -557,12 +411,12 @@ class QIMP2RAGEInputSpec(QUITCommandInputSpec):
     threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
     prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
 
-class QIMP2RAGEOutputSpec(TraitedSpec):
+class MP2RAGEOutputSpec(TraitedSpec):
     # Specify which outputs there are
     contrast = File(desc='The MP2 contrast image. The range of this image is -0.5 to 0.5 unless the --automask option is specified, in which case it will be shifted to 0 to 1.')
     t1map = File(desc='The T1 map. Units are the same as TR and SegTR.')
     
-class QIMP2RAGE(QUITCommand):
+class MP2RAGE(QI.Command):
     """
     Interface for qimp2rage
 
@@ -574,8 +428,8 @@ class QIMP2RAGE(QUITCommand):
     """
 
     _cmd = 'qimp2rage'
-    input_spec = QIMP2RAGEInputSpec
-    output_spec = QIMP2RAGEOutputSpec
+    input_spec = MP2RAGEInputSpec
+    output_spec = MP2RAGEOutputSpec
 
     # If the command requires a json input file
     def _format_arg(self, name, spec, value):
@@ -594,28 +448,20 @@ class QIMP2RAGE(QUITCommand):
         return outputs
 
 ############################ qimultiecho ############################
-# Implemented but not tested #
-# Still need to put in a nice example
 
-class QIMultiechoInputSpec(QUITCommandInputSpec):
-    # Inputs
-    me_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Input multi-echo data')
-
+class MultiechoInputSpec(QI.InputSpec):
     # Options
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
     algo = traits.String(desc="Choose algorithm (l/a/n)", argstr="--algo=%s")
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
     thresh_PD = traits.Float(desc='Only output maps when PD exceeds threshold value', argstr='-t=%f')
     clamp_T2 = traits.Float(desc='Clamp T2 between 0 and value', argstr='-p=%f')    
 
-class QIMultiechoOutputSpec(TraitedSpec):
-    t2_map = File(desc="The T2 map. Units are the same as TE1 and ESP.")
-    pd_map = File(desc="The apparent proton-density map (intercept of the decay curve at TE=0)")
+class MultiechoOutputSpec(TraitedSpec):
+    t2_map = File('ME_T2.nii.gz', desc='The T2 map. Units are the same as TE1 and ESP', usedefault=True)
+    pd_map = File('ME_PD.nii.gz', desc='The apparent proton-density map (intercept of the decay curve at TE=0)', usedefault=True)
+    residual_map = File('ME_residual.nii.gz', desc='Path to residual map', usedefault=True)
     
-class QIMultiecho(QUITCommand):
+class Multiecho(QI.Command):
     """
     help for myInterface
 
@@ -627,25 +473,28 @@ class QIMultiecho(QUITCommand):
     """
 
     _cmd = 'qimultiecho'
-    input_spec = QIMultiechoInputSpec
-    output_spec = QIMultiechoOutputSpec
+    input_spec = MultiechoInputSpec
+    output_spec = MultiechoOutputSpec
 
-    # If the command requires a json input file
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
+class MultiechoSim(QI.SimCommand):
+    """
+    help for myInterface
 
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-        
-        outputs['t2_map'] = os.path.abspath(self._add_prefix("ME_T2.nii.gz"))
-        outputs['pd_map'] = os.path.abspath(self._add_prefix("ME_PD.nii.gz"))
+    Example 1
+    -------
+    >>> from QUIT.nipype.relaxometry import QiMultiecho
+    >>> interface = QiMultiecho(prefix='nipype_', param_file='me_params.json')
+    
+    """
 
-        return outputs
+    _cmd = 'qimultiecho'
+    input_spec = QI.SimInputSpec
+    output_spec = QI.SimOutputSpec
 
 ############################ qidream ############################
 # Implemented but not tested #
 
-class QIDreamInputSpec(QUITCommandInputSpec):
+class QIDreamInputSpec(QI.InputSpec):
     # Inputs
     dream_file = File(exists=True, argstr='%s', mandatory=True,
         position=0, desc='Input file. Must have 2 volumes (FID and STE)')
@@ -661,7 +510,7 @@ class QIDreamOutputSpec(TraitedSpec):
     b1_rel_map = File(desc="The relative flip-angle map.")
     b1_act_map = File(desc="The actual achieved angle in each voxel.")
     
-class QIDream(QUITCommand):
+class QIDream(QI.Command):
     """
     Interface for qidream
 
@@ -690,7 +539,7 @@ class QIDream(QUITCommand):
 ############################ qiafi ############################
 # Implemented but not tested #
 
-class QIAFIInputSpec(QUITCommandInputSpec):
+class QIAFIInputSpec(QI.InputSpec):
     # Inputs
     afi_file = File(exists=True, argstr='%s', mandatory=True, position=0, desc='Input file')
 
@@ -706,7 +555,7 @@ class QIAFIOutputSpec(TraitedSpec):
     b1_rel_map = File(desc="The relative flip-angle map.")
     b1_act_map = File(desc="The actual flip-angle map.")
    
-class QIAFI(QUITCommand):
+class QIAFI(QI.Command):
     """
     help for myInterface
 

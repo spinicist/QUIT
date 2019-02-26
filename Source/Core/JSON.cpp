@@ -28,7 +28,8 @@ rapidjson::Document ReadJSON(std::istream &is) {
     rapidjson::Document       doc;
     doc.ParseStream(isw);
     if (doc.HasParseError()) {
-        QI::Fail("JSON Error @offset {}: {}", (unsigned)doc.GetErrorOffset(),
+        QI::Fail("JSON Error @offset {}: {}",
+                 (unsigned)doc.GetErrorOffset(),
                  rapidjson::GetParseError_En(doc.GetParseError()));
     }
     return doc;
@@ -39,7 +40,7 @@ rapidjson::Document ReadJSON(const std::string &path) {
     if (ifs) {
         return ReadJSON(ifs);
     } else {
-        QI::Fail("Error opening JSON file: {}", path);
+        QI::Fail("Error reading from JSON file: {}", path);
     }
 }
 
@@ -51,8 +52,18 @@ std::ostream &WriteJSON(std::ostream &os, const rapidjson::Document &doc) {
     return os;
 }
 
+void WriteJSON(const std::string &path, const rapidjson::Document &doc) {
+    std::ofstream ofs(path);
+    if (ofs) {
+        WriteJSON(ofs, doc);
+    } else {
+        QI::Fail("Error writing to JSON file: {}", path);
+    }
+}
+
 rapidjson::Value ArrayToJSON(const Eigen::ArrayXd &              array,
-                             rapidjson::Document::AllocatorType &allocator, const double &scale) {
+                             rapidjson::Document::AllocatorType &allocator,
+                             const double &                      scale) {
     rapidjson::Value json_array(rapidjson::kArrayType);
     for (Eigen::Index i = 0; i < array.rows(); i++) {
         double scaled_value = array[i] * scale;
@@ -61,8 +72,8 @@ rapidjson::Value ArrayToJSON(const Eigen::ArrayXd &              array,
     return json_array;
 }
 
-Eigen::ArrayXd ArrayFromJSON(const rapidjson::Value &json, const std::string &key,
-                             const double &scale) {
+Eigen::ArrayXd
+ArrayFromJSON(const rapidjson::Value &json, const std::string &key, const double &scale) {
     if (!json.HasMember(key))
         QI::Fail("Missing JSON member: {}", key);
     const auto &json_array = json[key];

@@ -47,8 +47,9 @@ template <typename S, typename... Args> inline void Warn(const S &fmt_str, const
 
 template <typename S, typename... Args>
 [[noreturn]] inline void Fail(const S &fmt_str, const Args &... args) {
-    fmt::print(stderr, fmt::fg(fmt::color::red), "Error");
+    fmt::print(stderr, fmt::fg(fmt::color::red), "Error ");
     fmt::print(stderr, fmt_str, args...);
+    fmt::print(stderr, "\n");
     exit(EXIT_FAILURE);
 }
 

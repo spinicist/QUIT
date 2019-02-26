@@ -2,116 +2,161 @@
 # -*- coding: utf-8 -*-
 
 """
-Implementation of nipype interfaces for QUIT MT modules.
-
-Contains wrappers for:
-    - qi_lorentzian
-    - qi_zspec
-
+Implementation of nipype interfaces for QUIT MT module
 Requires that the QUIT tools are in your your system path
-
 """
 
-from __future__ import (print_function, division, unicode_literals,
-                        absolute_import)
-
-from nipype.interfaces.base import CommandLineInputSpec, CommandLine, TraitedSpec, File, traits, isdefined
-import json
-import os
-from .base import QUITCommand, QUITCommandInputSpec
+from os import path
+from nipype.interfaces.base import TraitedSpec, File, traits, isdefined
+from . import base as QI
 
 ############################ qi_lineshape ############################
-# < To be implemented > #
+
+
+class LineshapeInputSpec(QI.InputBaseSpec):
+    # Options
+    out_file = traits.File(argstr='%s', mandatory=True,
+                           exists=False, position=-1, desc='Output file')
+    lineshape = traits.String(argstr='--lineshape=%s', mandatory=True,
+                              desc='Gauss/Lorentzian/SuperLorentzian')
+    t2b = traits.Float(argstr='--T2b=%f',
+                       desc='Nominal T2 of bound-pool (default 10µs)')
+    frq_count = traits.Int(argstr='--frq_count=%d',
+                           desc='Number of frequencies in table (default 10)')
+    frq_start = traits.Float(argstr='--frq_start=%f',
+                             desc='Start frequency for table (default 1 kHZ)')
+    frq_space = traits.Float(
+        argstr='--frq_space=%f', desc='Spacing of frequencies in table (default 1kHz)')
+
+
+class LineshapeOutputSpec(TraitedSpec):
+    out_file = File(desc='JSON Lineshape file')
+
+
+class Lineshape(QI.BaseCommand):
+    """
+    Pre-calculate lineshapes and write them out for use with qMT
+    """
+
+    _cmd = 'qi_lineshape'
+    input_spec = LineshapeInputSpec
+    output_spec = LineshapeOutputSpec
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        outputs['out_file'] = path.abspath(self.inputs.out_file)
+        return outputs
 
 ############################ qi_lorentzian ############################
 
 
-class LorentzianInputSpec(QUITCommandInputSpec):
-    # Inputs
-    in_file = File(exists=True,
-                   argstr='%s',
-                   mandatory=True,
-                   desc='Path to input Z-spectrum',
-                   position=-2)
-
-    param_file = File(desc='Parameter .json file', position=-1, argstr='--json=%s',
-                      xor=['param_dict'], mandatory=True, exists=True)
-
-    param_dict = traits.Dict(desc='dictionary trait', position=-1,
-                             argstr='', mandatory=True, xor=['param_file'])
-
-    # Options
-    mask_file = File(
-        desc='Only process voxels within the mask', argstr='--mask=%s')
-    threads = traits.Int(
-        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(
-        desc='Output prefix', argstr='--out=%s')
+class LorentzianInputSpec(QI.InputSpec):
+    # No extra options
+    pass
 
 
 class LorentzianOutputSpec(TraitedSpec):
-    pd_map = File(desc="Path to PD map")
-    f0_map = File(desc="Path to center-frequency map")
-    fwhm_map = File(desc="Path to FWHM map")
-    A_map = File(desc="Path to Lorentzian amplitude map")
-    residual_map = File(desc="Path to residual map")
+    pd_map = File('LTZ_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    f0_map = File('LTZ_f0.nii.gz',
+                  desc="Path to center-frequency map", usedefault=True)
+    fwhm_map = File('LTZ_fwhm.nii.gz',
+                    desc="Path to FWHM map", usedefault=True)
+    A_map = File('LTZ_A.nii.gz',
+                 desc="Path to Lorentzian amplitude map", usedefault=True)
+    residual_map = File('LTZ_residual.nii.gz',
+                        desc="Path to residual map", usedefault=True)
 
 
-class Lorentzian(QUITCommand):
+class Lorentzian(QI.Command):
     """
     Fit a Lorentzian function to a Z-spectrum
-
     """
 
     _cmd = 'qi_lorentzian'
     input_spec = LorentzianInputSpec
     output_spec = LorentzianOutputSpec
 
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
 
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-        outputs['pd_map'] = os.path.abspath(self._add_prefix('LTZ_PD.nii.gz'))
-        outputs['f0_map'] = os.path.abspath(self._add_prefix('LTZ_f0.nii.gz'))
-        outputs['fwhm_map'] = os.path.abspath(
-            self._add_prefix('LTZ_fwhm.nii.gz'))
-        outputs['A_map'] = os.path.abspath(self._add_prefix('LTZ_A.nii.gz'))
-        outputs['residual_map'] = os.path.abspath(
-            self._add_prefix('LTZ_residual.nii.gz'))
-        return outputs
+class LorentzianSimInputSpec(QI.SimInputSpec):
+    # No extra options
+    pass
+
+
+class LorentzianSim(QI.SimCommand):
+    _cmd = 'qi_lorentzian'
+    input_spec = LorentzianSimInputSpec
+    output_spec = QI.SimOutputSpec
+
 
 ############################ qi_qmt ############################
-# < To be implemented > #
+class qMTInputSpec(QI.InputSpec):
+    # Inputs
+    t1_map = File(exists=True, argstr='%s', mandatory=True,
+                  position=-2, desc='Path to T1 map')
+
+    # Options
+    lineshape = traits.String(argstr='--lineshape=%s', mandatory=True,
+                              desc='Gauss/Lorentzian/SuperLorentzian/path to JSON file')
+    f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+
+
+class qMTOutputSpec(TraitedSpec):
+    pd_map = File('QMT_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    T1_f_map = File('QMT_T1_f.nii.gz',
+                    desc="Path to T1 of free pool", usedefault=True)
+    T2_f_map = File('QMT_T2_f.nii.gz',
+                    desc="Path to T2 of free pool", usedefault=True)
+    T2_b_map = File('QMT_T2_b.nii.gz',
+                    desc="Path to T2 of bound pool", usedefault=True)
+    k_bf_map = File('QMT_k_bf.nii.gz',
+                    desc="Path to exchange rate from bound to free pool", usedefault=True)
+    f_b_map = File('QMT_f_b.nii.gz',
+                   desc="Path to bound pool fraction", usedefault=True)
+    residual_map = File('QMT_residual.nii.gz',
+                        desc="Path to residual map", usedefault=True)
+
+
+class qMT(QI.Command):
+    """
+    Fit the Ramani model to a Z-spectrum
+    """
+
+    _cmd = 'qi_qmt'
+    input_spec = qMTInputSpec
+    output_spec = qMTOutputSpec
+
+
+class qMTSimInputSpec(QI.SimInputSpec):
+    # Inputs
+    t1_map = File(argstr='%s', mandatory=True,
+                  position=-2, desc='Path to T1 map')
+
+    # Options
+    lineshape = traits.String(argstr='--lineshape=%s', mandatory=True,
+                              desc='Gauss/Lorentzian/SuperLorentzian/path to JSON file')
+    f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+
+
+class qMTSim(QI.SimCommand):
+    _cmd = 'qi_qmt'
+    input_spec = qMTSimInputSpec
+    output_spec = QI.SimOutputSpec
 
 ############################ qi_zspec ############################
 
 
-class ZSpecInputSpec(QUITCommandInputSpec):
-    # Inputs
-    in_file = File(exists=True,
-                   argstr='%s',
-                   mandatory=True,
-                   desc='Path to input Z-spectrum',
-                   position=-2)
-
-    param_file = File(desc='Parameter .json file', position=-1, argstr='--json=%s',
-                      xor=['param_dict'], mandatory=True, exists=True)
-
-    param_dict = traits.Dict(desc='dictionary trait', position=-1,
-                             argstr='', mandatory=True, xor=['param_file'])
-
+class ZSpecInputSpec(QI.InputSpec):
     # Options
     fmap = File(
         desc='Fieldmap (in same units as frequencies)', argstr='--f0=%s')
-    ref = File(desc='Reference image for %age output', argstr='--ref=%s')
+    ref = File(desc='Reference image for image output', argstr='--ref=%s')
     asym = traits.Bool(
         desc='Output MT-asymmetry spectrum instead of Z-spectrum', argstr='--asym')
     order = traits.Int(
         desc='Interpolation order (default 3)', argstr='--order=%d')
-    threads = traits.Int(
-        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    out_name = traits.String(
+    out_file = traits.String(
         desc='Output filename (default is input_interp)', argstr='--out=%s')
 
 
@@ -119,7 +164,7 @@ class ZSpecOutputSpec(TraitedSpec):
     out_file = File(desc="Path to interpolated Z-spectrum/MTA-spectrum")
 
 
-class ZSpec(QUITCommand):
+class ZSpec(QI.BaseCommand):
     """
     Interpolate a Z-spectrum (with correction for off-resonance)
 
@@ -129,17 +174,11 @@ class ZSpec(QUITCommand):
     input_spec = ZSpecInputSpec
     output_spec = ZSpecOutputSpec
 
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
-
-    def _parse_inputs(self, skip=None):
-        if not isdefined(self.inputs.out_name):
-            fname = os.path.abspath(
-                self._gen_fname(self.inputs.in_file, suffix='_interp'))
-            self.inputs.out_name = fname
-        return super()._parse_inputs(skip)
-
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        outputs['out_file'] = self.inputs.out_name
+        if isdefined(self.inputs.out_file):
+            fname = self._gen_fname(self.inputs.out_file)
+        else:
+            fname = self._gen_fname(self.inputs.in_file, suffix='_interp')
+        outputs['out_file'] = fname
         return outputs

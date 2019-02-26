@@ -23,24 +23,32 @@ int main(int argc, char **argv) {
 
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<std::string> shape_arg(parser, "LINESHAPE",
-                                           "Choose lineshape (Gauss/Lorentzian/Super-lorentzian)",
-                                           {'l', "lineshape"}, "G");
-    args::ValueFlag<double> T2b(parser, "T2 BOUND", "Choose nominal bound-pool T2 (default 10µs)",
-                                {'t', "T2b"}, 10e-6);
-    args::ValueFlag<double> frq_count(parser, "FREQUENCY COUNT",
-                                      "Number of frequencies (default 10)", {'n', "frq_count"}, 10);
-    args::ValueFlag<double> frq_start(parser, "FREQUENCY START",
+    args::Positional<std::string> out_path(parser, "OUTPUT", "Output lineshape JSON path");
+    args::ValueFlag<std::string>  shape_arg(parser,
+                                           "LINESHAPE",
+                                           "Choose lineshape (Gauss/Lorentzian/SuperLorentzian)",
+                                           {'l', "lineshape"},
+                                           "G");
+    args::ValueFlag<double>       T2b(
+        parser, "T2 BOUND", "Choose nominal bound-pool T2 (default 10µs)", {'t', "T2b"}, 10e-6);
+    args::ValueFlag<double> frq_count(
+        parser, "FREQUENCY COUNT", "Number of frequencies (default 10)", {'n', "frq_count"}, 10);
+    args::ValueFlag<double> frq_start(parser,
+                                      "FREQUENCY START",
                                       "First saturation frequency (default 1000 Hz)",
-                                      {'s', "frq_start"}, 1e3);
-    args::ValueFlag<double> frq_spacing(parser, "FREQUENCY SPACING",
+                                      {'s', "frq_start"},
+                                      1e3);
+    args::ValueFlag<double> frq_spacing(parser,
+                                        "FREQUENCY SPACING",
                                         "Spacing of frequencies (default 1000 Hz)",
-                                        {'p', "frq_space"}, 1e3);
+                                        {'p', "frq_space"},
+                                        1e3);
 
     QI::ParseArgs(parser, argc, argv, verbose);
     QI::Log(verbose, "Bound-pool T2: {}", T2b.Get());
     auto frqs =
-        Eigen::ArrayXd::LinSpaced(frq_count.Get(), frq_start.Get(),
+        Eigen::ArrayXd::LinSpaced(frq_count.Get(),
+                                  frq_start.Get(),
                                   frq_start.Get() + frq_spacing.Get() * (frq_count.Get() - 1));
     QI::Log(verbose, "Frequency count: {}", frqs.rows());
     Eigen::ArrayXd values;
@@ -58,7 +66,7 @@ int main(int argc, char **argv) {
     rapidjson::Document doc;
     doc.SetObject();
     doc.AddMember("lineshape", lineshape.toJSON(doc.GetAllocator()), doc.GetAllocator());
-    QI::WriteJSON(std::cout, doc);
+    QI::WriteJSON(QI::CheckPos(out_path), doc);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

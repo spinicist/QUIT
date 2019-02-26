@@ -29,10 +29,12 @@ auto ReadImage(const std::string &path, const bool verbose) -> typename TVectorI
 
     auto file = TReader::New();
     file->SetFileName(path);
+    QI::Log(verbose, "Reading image: {}", path);
+    file->Update();
 
     auto convert = TToVector::New();
     convert->SetInput(file->GetOutput());
-    QI::Log(verbose, "Reading image: {}", path);
+    QI::Log(verbose, "Converting to vector image");
     convert->Update();
     typename TVectorImg::Pointer vols = convert->GetOutput();
     if (!vols) {

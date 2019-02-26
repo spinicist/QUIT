@@ -29,16 +29,17 @@ class ModelSimFilter
           QI::VolumeF,
           itk::VectorImage<typename IOPrecision<typename ModelType::DataType>::Type, 3>> {
   public:
-    using OutputPixelType = typename IOPrecision<typename ModelType::DataType>::Type;
-    using OutputImageType = itk::VectorImage<OutputPixelType, 3>;
-    using Self            = ModelSimFilter;
-    using Superclass      = itk::ImageToImageFilter<QI::VolumeF, OutputImageType>;
-    using Pointer         = itk::SmartPointer<Self>;
-    using RegionType      = typename OutputImageType::RegionType;
+    static constexpr int ImageDim = 3;
+    using OutputPixelType         = typename IOPrecision<typename ModelType::DataType>::Type;
+    using OutputImageType         = itk::VectorImage<OutputPixelType, ImageDim>;
+    using Self                    = ModelSimFilter;
+    using Superclass              = itk::ImageToImageFilter<QI::VolumeF, OutputImageType>;
+    using Pointer                 = itk::SmartPointer<Self>;
+    using RegionType              = typename OutputImageType::RegionType;
     QI_ForwardNewMacro(Self);
     itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
-    ModelSimFilter(const ModelType &m) : m_model{m} {
+    ModelSimFilter(const ModelType &m, const bool vb) : m_model{m}, m_verbose{vb} {
         this->SetNumberOfRequiredInputs(ModelType::NV);
         if constexpr (MultiOutput) {
             this->SetNumberOfRequiredOutputs(m_model.num_outputs());
@@ -108,8 +109,9 @@ class ModelSimFilter
     void operator=(const Self &); // purposely not implemented
 
   protected:
-    ModelType m_model;
-    double    m_sigma = 0.0;
+    ModelType  m_model;
+    double     m_sigma = 0.0;
+    const bool m_verbose;
 
     ModelSimFilter() {}
     ~ModelSimFilter() {}
@@ -142,6 +144,20 @@ class ModelSimFilter
             }
             op->Allocate(true);
         }
+    }
+
+    virtual void GenerateData() override {
+        auto region = this->GetInput(0)->GetLargestPossibleRegion();
+
+        Info(m_verbose, "Simulating...");
+        this->GetMultiThreader()->SetNumberOfWorkUnits(this->GetNumberOfWorkUnits());
+        this->GetMultiThreader()->template ParallelizeImageRegion<ImageDim>(
+            region,
+            [this](const RegionType &outputRegion) {
+                this->DynamicThreadedGenerateData(outputRegion);
+            },
+            this);
+        Info(m_verbose, "Finished simulating.");
     }
 
     void DynamicThreadedGenerateData(const RegionType &region) override {

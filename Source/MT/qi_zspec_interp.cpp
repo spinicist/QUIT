@@ -35,6 +35,8 @@ int main(int argc, char **argv) {
                                  QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(
         parser, "OUTPUT", "Change ouput filename (default is input_interp)", {'o', "out"});
+    args::ValueFlag<std::string> json_file(
+        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
     args::ValueFlag<std::string> f0_arg(parser,
                                         "OFF RESONANCE",
                                         "Specify off-resonance frequency (units must match input)",
@@ -53,7 +55,7 @@ int main(int argc, char **argv) {
     auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
 
     QI::Log(verbose, "Reading input frequencies");
-    rapidjson::Document json      = QI::ReadJSON(std::cin);
+    rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto                in_freqs  = QI::ArrayFromJSON(json, "input_freqs");
     auto                out_freqs = QI::ArrayFromJSON(json, "output_freqs");
     QI::Log(verbose, "Input frequencies: {}", in_freqs.transpose());
@@ -74,6 +76,7 @@ int main(int argc, char **argv) {
 
     auto mt = itk::MultiThreaderBase::New();
     QI::Log(verbose, "Processing");
+    mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
         input->GetBufferedRegion(),
         [&](const QI::VectorVolumeF::RegionType &region) {

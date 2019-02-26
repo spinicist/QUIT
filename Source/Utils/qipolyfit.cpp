@@ -130,10 +130,10 @@ int main(int argc, char **argv) {
     args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag print_terms(parser, "TERMS", "Print out the polynomial terms", {"print-terms"});
     args::Flag robust(parser, "ROBUST", "Use a robust (Huber) fit", {'r', "robust"});
-    args::ValueFlag<int>         order(parser, "ORDER", "Specify the polynomial order (default 4)",
-                               {'o', "order"}, 4);
-    args::ValueFlag<std::string> mask_path(parser, "MASK", "Only process voxels within the mask",
-                                           {'m', "mask"});
+    args::ValueFlag<int> order(
+        parser, "ORDER", "Specify the polynomial order (default 4)", {'o', "order"}, 4);
+    args::ValueFlag<std::string> mask_path(
+        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
 
     QI::ParseArgs(parser, argc, argv, verbose);
     auto input = QI::ReadImage(QI::CheckPos(input_path), verbose);

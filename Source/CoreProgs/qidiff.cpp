@@ -26,31 +26,33 @@ int main(int argc, char **argv) {
                                 "http://github.com/spinicist/QUIT");
     args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<std::string> input_path(parser, "INPUT", "Input file for difference",
-                                            {"input"});
-    args::ValueFlag<std::string> baseline_path(parser, "BASELINE", "Baseline file for difference",
-                                               {"baseline"});
-    args::ValueFlag<double> tolerance(parser, "TOLERANCE", "Tolerance (mean percent difference)",
-                                      {"tolerance"}, 0);
-    args::ValueFlag<double> noise(parser, "NOISE",
-                                  "Added noise level, tolerance is relative to this", {"noise"}, 0);
-    args::Flag              absolute(parser, "ABSOLUTE",
+    args::ValueFlag<std::string> input_path(
+        parser, "INPUT", "Input file for difference", {"input"});
+    args::ValueFlag<std::string> baseline_path(
+        parser, "BASELINE", "Baseline file for difference", {"baseline"});
+    args::ValueFlag<double> noise(parser,
+                                  "NOISE",
+                                  "Added noise level (divide diff by this to get noise factor)",
+                                  {"noise"},
+                                  0);
+    args::Flag              absolute(parser,
+                        "ABSOLUTE",
                         "Use absolute difference, not relative (avoids 0/0 problems)",
                         {'a', "abs"});
     QI::ParseArgs(parser, argc, argv, verbose);
     auto input    = QI::ReadImage(QI::CheckValue(input_path), verbose);
     auto baseline = QI::ReadImage(QI::CheckValue(baseline_path), verbose);
 
-    auto diff = itk::SubtractImageFilter<QI::VolumeF>::New();
-    diff->SetInput1(input);
-    diff->SetInput2(baseline);
+    auto diffFilter = itk::SubtractImageFilter<QI::VolumeF>::New();
+    diffFilter->SetInput1(input);
+    diffFilter->SetInput2(baseline);
 
     auto sqr_norm = itk::SquareImageFilter<QI::VolumeF, QI::VolumeF>::New();
     if (absolute) {
-        sqr_norm->SetInput(diff->GetOutput());
+        sqr_norm->SetInput(diffFilter->GetOutput());
     } else {
         auto diff_norm = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
-        diff_norm->SetInput1(diff->GetOutput());
+        diff_norm->SetInput1(diffFilter->GetOutput());
         diff_norm->SetInput2(baseline);
         diff_norm->Update();
         sqr_norm->SetInput(diff_norm->GetOutput());
@@ -61,18 +63,13 @@ int main(int argc, char **argv) {
 
     const double mean_sqr_diff      = stats->GetMean();
     const double root_mean_sqr_diff = sqrt(mean_sqr_diff);
-    const double rel_diff =
-        (noise.Get() > 0) ? root_mean_sqr_diff / noise.Get() : root_mean_sqr_diff;
-    const bool passed = rel_diff <= tolerance.Get();
-    QI::Log(verbose, "Mean Square Diff: {}\nRelative noise: {}\nSquare-root mean square diff: {}\nRelative Diff: {}\nTolerance: {}\nResult: ", mean_sqr_diff
-    ,noise.Get()
-                                         , root_mean_sqr_diff
-                                         , rel_diff
-                                         , tolerance.Get()
-                                         , (passed ? "Passed" : "Failed"));
-    if (passed) {
-        return EXIT_SUCCESS;
-    } else {
-        return EXIT_FAILURE;
-    }
+    const double diff = (noise.Get() > 0) ? root_mean_sqr_diff / noise.Get() : root_mean_sqr_diff;
+    QI::Log(verbose,
+            "Mean Square Diff: {}\nSquare-root mean square diff: {}\nRelative noise: {}\nRelative "
+            "Diff: {}",
+            mean_sqr_diff,
+            root_mean_sqr_diff,
+            noise.Get(),
+            diff);
+    fmt::print("{}", diff);
 }

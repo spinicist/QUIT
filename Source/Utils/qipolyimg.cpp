@@ -102,26 +102,35 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Creates an image from polynomial coefficients, which are read from stdin.\n"
         "\nhttp://github.com/spinicist/QUIT");
-    args::Positional<std::string> ref_path(parser, "REFERENCE",
-                                           "Reference image space to create the polynomial");
+    args::Positional<std::string> ref_path(
+        parser, "REFERENCE", "Reference image space to create the polynomial");
     args::Positional<std::string> out_path(parser, "OUTPUT", "Output image path");
     args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<int> order(parser, "ORDER", "Specify the polynomial order (default 2)",
-                               {'o', "order"}, 2);
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<int> order(
+        parser, "ORDER", "Specify the polynomial order (default 2)", {'o', "order"}, 2);
+    args::ValueFlag<std::string> mask(
+        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<std::string> json_file(
+        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path), verbose);
     QI::Log(verbose, "Reading polynomial");
-    rapidjson::Document json   = QI::ReadJSON(std::cin);
+    rapidjson::Document json   = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     Eigen::Array3d      center = QI::ArrayFromJSON(json, "center");
     double              scale  = json["scale"].GetDouble();
     Eigen::ArrayXd      coeffs = QI::ArrayFromJSON(json, "coeffs");
-    QI::Log(verbose, "Center point is: {} Scale is: {}", center.transpose(), scale);
+    QI::Log(verbose,
+            "Center point is: {} Scale is: {}\nCoeffs are: {}",
+            center.transpose(),
+            scale,
+            coeffs.transpose());
 
     QI::Polynomial<3> poly(order.Get());
     if (coeffs.rows() != poly.nterms()) {

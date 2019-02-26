@@ -27,13 +27,16 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input multi-echo GRE file");
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<double> delta_te(parser, "ΔTE", "Echo time difference (ms)", {"delta_te"});
-    args::ValueFlag<double> B0(parser, "B0", "Field-strength in Tesla. Output will be in PPM",
-                               {"B0"});
+    args::ValueFlag<double> B0(
+        parser, "B0", "Field-strength in Tesla. Output will be in PPM", {"B0"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Opening file: {}", QI::CheckPos(input_path));
@@ -53,6 +56,7 @@ int main(int argc, char **argv) {
         const auto gamma = 42.57747892; // MHz per T to get PPM
         scale /= (gamma * B0.Get());
     }
+    mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
         input->GetBufferedRegion(),
         [&](const QI::VectorVolumeF::RegionType &region) {

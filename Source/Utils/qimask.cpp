@@ -42,22 +42,31 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> outarg(
         parser, "OUTPUT FILE", "Set output filename, default is input + _mask", {'o', "out"});
     args::ValueFlag<int> volume(
-        parser, "VOLUME",
+        parser,
+        "VOLUME",
         "Choose volume to mask in multi-volume file. Default 1, -1 selects last volume",
-        {'v', "volume"}, 0);
-    args::Flag is_complex(parser, "COMPLEX", "Input data is complex, take magnitude first",
-                          {'x', "complex"});
+        {'v', "volume"},
+        0);
+    args::Flag is_complex(
+        parser, "COMPLEX", "Input data is complex, take magnitude first", {'x', "complex"});
     args::ValueFlag<float> lower_threshold(
-        parser, "LOWER THRESHOLD",
+        parser,
+        "LOWER THRESHOLD",
         "Specify lower intensity threshold for 1st stage, otherwise Otsu's method is used",
-        {'l', "lower"}, 0.);
+        {'l', "lower"},
+        0.);
     args::ValueFlag<float> upper_threshold(
-        parser, "UPPER THRESHOLD",
+        parser,
+        "UPPER THRESHOLD",
         "Specify upper intensity threshold for 1st stage, otherwise Otsu's method is used",
-        {'u', "upper"}, std::numeric_limits<float>::infinity());
+        {'u', "upper"},
+        std::numeric_limits<float>::infinity());
     args::ValueFlag<float> rats(
-        parser, "RATS", "Perform the RATS step, argument is size threshold for connected component",
-        {'r', "rats"}, 0.);
+        parser,
+        "RATS",
+        "Perform the RATS step, argument is size threshold for connected component",
+        {'r', "rats"},
+        0.);
     args::ValueFlag<int> fillh_radius(
         parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
 
@@ -72,7 +81,7 @@ int main(int argc, char **argv) {
 
     std::string out_path;
     if (outarg.Get() == "") {
-        out_path = QI::StripExt(input_path.Get()) + "_mask" + QI::OutExt();
+        out_path = QI::StripExt(QI::Basename(input_path.Get())) + "_mask" + QI::OutExt();
     } else {
         out_path = outarg.Get();
     }

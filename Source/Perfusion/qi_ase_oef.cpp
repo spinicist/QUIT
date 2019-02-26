@@ -49,7 +49,7 @@ struct ASEModel {
     const std::array<const std::string, NF> fixed_names{{}};
     const FixedArray                        fixed_defaults{};
 
-    const VaryingArray start{0.98, 0., 1.0, 0.015};
+    const VaryingArray start{0.98, 0., 2.0, 0.02};
     const VaryingArray bounds_lo{0.1, -0.1, 0.25, 0.001};
     const VaryingArray bounds_hi{2., 0.1, 10.0, 0.05};
 
@@ -185,9 +185,15 @@ int main(int argc, char **argv) {
     QI::MultiEchoFlexSequence sequence(json["MultiEchoFlex"]);
 
     if (simulate) {
-        ASEModel model{sequence, B0.Get()};
-        QI::SimulateModel<ASEModel, false>(
-            json, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
+        if (DBV) {
+            ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
+            QI::SimulateModel<ASEFixDBVModel, false>(
+                json, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
+        } else {
+            ASEModel model{sequence, B0.Get()};
+            QI::SimulateModel<ASEModel, false>(
+                json, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
+        }
     } else {
         auto process = [&](auto fit_func) {
             auto fit_filter = QI::ModelFitFilter<decltype(fit_func)>::New(

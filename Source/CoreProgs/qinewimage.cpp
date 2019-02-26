@@ -37,12 +37,14 @@ args::ValueFlag<int> dims_arg(parser, "DIMS", "Image dimension, default 3", {'d'
 args::ValueFlag<std::string> size_arg(parser, "SIZE", "Image size", {'s', "size"});
 args::ValueFlag<std::string> spacing_arg(parser, "SPACING", "Voxel spacing", {'p', "spacing"});
 args::ValueFlag<std::string> origin_arg(parser, "ORIGIN", "Image origin", {'o', "origin"});
-args::ValueFlag<std::string> fill_arg(parser, "FILL", "Fill with value", {'f', "fill"});
-args::ValueFlag<std::string> grad_arg(parser, "GRADIENT", "Fill with gradient (dim, low, high)",
-                                      {'g', "grad"});
+args::ValueFlag<float>       fill_arg(parser, "FILL", "Fill with value", {'f', "fill"});
+args::ValueFlag<int>
+    grad_dim(parser, "GRAD DIM", "Fill with a gradient along this axis", {'g', "grad_dim"}, 0);
 args::ValueFlag<std::string>
-                        steps_arg(parser, "STEPS", "Fill with discrete steps (dim, low, high, steps)", {'t', "step"});
-args::ValueFlag<double> wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
+    grad_arg(parser, "GRAD END", "Gradient low/high values (low, high)", {'v', "grad_vals"}, "0,0");
+args::ValueFlag<int>
+                       steps_arg(parser, "STEPS", "Number of discrete steps (steps)", {'t', "steps"}, 1);
+args::ValueFlag<float> wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
 
 template <int dim> void make_image() {
     typedef itk::Image<float, dim> ImageType;
@@ -55,54 +57,61 @@ template <int dim> void make_image() {
     RegionType imgRegion;
     IndexType  imgIndex;
     imgIndex.Fill(0);
+    if (grad_dim.Get() >= dim)
+        QI::Fail("Fill dimension is larger than image dimension");
     SizeType imgSize;
-    imgSize.Fill(1);
-    SpacingType imgSpacing;
-    imgSpacing.Fill(1.0);
-    PointType imgOrigin;
-    imgOrigin.Fill(0.);
-
-    if (size_arg)
+    if (size_arg) {
         QI::ArrayArg<SizeType, dim>(size_arg.Get(), imgSize);
-    if (spacing_arg)
-        QI::ArrayArg<SpacingType, dim>(spacing_arg.Get(), imgSpacing);
-    if (origin_arg)
-        QI::ArrayArg<PointType, dim>(origin_arg.Get(), imgOrigin);
-    QI::Log(verbose, "Size: {} Spacing: {} Origin: {}", imgSize, imgSpacing, imgOrigin);
-    enum class FillTypes { Fill, Gradient, Steps };
-    FillTypes fillType = FillTypes::Fill;
-    float     startVal = 0, deltaVal = 0, stopVal = 0;
-    int       stepLength = 1, fillDim = 0;
-    if (fill_arg) {
-        fillType = FillTypes::Fill;
-        startVal = std::stod(fill_arg.Get());
-        QI::Log(verbose, "Fill with constant value: {}", startVal);
-    } else if (grad_arg) {
-        fillType = FillTypes::Gradient;
-        std::istringstream stream(grad_arg.Get());
-        stream >> fillDim;
-        stream >> startVal;
-        stream >> stopVal;
-        deltaVal   = (stopVal - startVal) / (imgSize[fillDim] - 1);
-        stepLength = 1;
-        QI::Log(verbose, "Fill dimension {} with gradient {}-{}", fillDim, startVal, stopVal);
-    } else if (steps_arg) {
-        fillType = FillTypes::Steps;
-        std::istringstream stream(steps_arg.Get());
-        stream >> fillDim;
-        stream >> startVal;
-        stream >> stopVal;
-        int steps;
-        stream >> steps;
-        if (steps < 2) {
-            QI::Fail("Must have more than 1 step");
-        }
-        stepLength = imgSize[fillDim] / steps;
-        deltaVal   = (stopVal - startVal) / (steps - 1);
-        QI::Log(verbose, "Fill dimension {} with {} steps {}-{}", fillDim, steps, startVal,
-                stopVal);
+    } else {
+        imgSize.Fill(1);
     }
-    QI::Log(verbose, "Step length = {} delta = {}", stepLength, deltaVal);
+    SpacingType imgSpacing;
+    if (spacing_arg) {
+        QI::ArrayArg<SpacingType, dim>(spacing_arg.Get(), imgSpacing);
+    } else {
+        imgSpacing.Fill(1.0);
+    }
+    PointType imgOrigin;
+    if (origin_arg) {
+        QI::ArrayArg<PointType, dim>(origin_arg.Get(), imgOrigin);
+    } else {
+        for (int i = 0; i < 3; i++) {
+            imgOrigin[i] = -imgSpacing[i] * (imgSize[i] - 1) / 2.0;
+        }
+    }
+    QI::Log(verbose,
+            "Dimensions: {} Size: {} Spacing: {} Origin: {}",
+            dim,
+            imgSize,
+            imgSpacing,
+            imgOrigin);
+    Eigen::Array2f end_vals{0, 0};
+
+    float deltaVal    = 0;
+    int   step_length = 1;
+    if (grad_arg) {
+        QI::ArrayArgF<Eigen::Array2f, 2>(grad_arg.Get(), end_vals);
+        QI::Log(verbose, "Fill starts at {}, ends at {}", end_vals[0], end_vals[1]);
+        if (steps_arg) {
+            deltaVal    = (end_vals[1] - end_vals[0]) / steps_arg.Get();
+            step_length = (imgSize[grad_dim.Get()] - 1) / steps_arg.Get();
+            QI::Log(verbose,
+                    "Number of steps is {}, step length is {}, step value is {}",
+                    steps_arg.Get(),
+                    step_length,
+                    deltaVal);
+        } else {
+            deltaVal = (end_vals[1] - end_vals[0]) / (imgSize[grad_dim.Get()] - 1);
+            QI::Log(verbose, "Smooth gradient, delta value {}", deltaVal);
+        }
+        QI::Log(verbose, "Along dimension {}", grad_dim.Get());
+
+    } else if (fill_arg) {
+        end_vals = fill_arg.Get();
+        deltaVal = 0;
+        QI::Log(verbose, "Fill with constant value: {}", fill_arg.Get());
+    }
+
     imgRegion.SetIndex(imgIndex);
     imgRegion.SetSize(imgSize);
     newimg->SetRegions(imgRegion);
@@ -110,20 +119,16 @@ template <int dim> void make_image() {
     newimg->SetOrigin(imgOrigin);
     newimg->Allocate();
 
-    if (fillDim >= dim)
-        QI::Fail("Fill dimension is larger than image dimension");
     itk::ImageLinearIteratorWithIndex<ImageType> it(newimg, imgRegion);
-    it.SetDirection(fillDim);
+    it.SetDirection(grad_dim.Get());
     QI::Log(verbose, "Filling...");
     it.GoToBegin();
     while (!it.IsAtEnd()) {
-        float val = startVal;
+        float val = end_vals[0];
         while (!it.IsAtEndOfLine()) {
             it.Set(val);
             ++it;
-            if (fillType == FillTypes::Gradient) {
-                val += deltaVal;
-            } else if ((it.GetIndex()[fillDim] % stepLength) == 0) {
+            if ((it.GetIndex()[grad_dim.Get()] % step_length) == 0) {
                 val += deltaVal;
             }
             if (wrap_arg) {

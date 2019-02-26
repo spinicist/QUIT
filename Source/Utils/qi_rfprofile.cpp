@@ -165,8 +165,6 @@ int main(int argc, char **argv) {
                                  "Use N threads (default=4, 0=hardware limit)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
-        parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag                   centerMask(parser,

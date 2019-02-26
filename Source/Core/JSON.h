@@ -21,12 +21,13 @@ namespace QI {
 rapidjson::Document ReadJSON(std::istream &is);
 rapidjson::Document ReadJSON(const std::string &path);
 std::ostream &      WriteJSON(std::ostream &os, const rapidjson::Document &doc);
+void                WriteJSON(const std::string &path, const rapidjson::Document &doc);
 
-rapidjson::Value ArrayToJSON(const Eigen::ArrayXd &, rapidjson::Document::AllocatorType &,
-                             const double &scale = 1);
+rapidjson::Value
+ArrayToJSON(const Eigen::ArrayXd &, rapidjson::Document::AllocatorType &, const double &scale = 1);
 
-Eigen::ArrayXd          ArrayFromJSON(const rapidjson::Value &json, const std::string &key,
-                                      const double &scale = 1);
+Eigen::ArrayXd
+                        ArrayFromJSON(const rapidjson::Value &json, const std::string &key, const double &scale = 1);
 const rapidjson::Value &GetMember(const rapidjson::Value &json, const std::string &key);
 
 } // End namespace QI

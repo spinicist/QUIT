@@ -27,18 +27,21 @@ int main(int argc, char **argv) {
     args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Output progress messages", {'v', "verbose"});
     args::Flag           debug(parser, "DEBUG", "Output debug messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename",
-                                        {'o', "out"});
-    args::ValueFlag<int> zshims(parser, "ZSHIMS", "Number of Z-Shims (default 8)", {'z', "zshims"},
-                                8);
-    args::ValueFlag<int> yshims(parser, "YSHIMS", "Number of Y-Shims (default 1)", {'y', "yshims"},
-                                1);
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
+    args::ValueFlag<int> zshims(
+        parser, "ZSHIMS", "Number of Z-Shims (default 8)", {'z', "zshims"}, 8);
+    args::ValueFlag<int> yshims(
+        parser, "YSHIMS", "Number of Y-Shims (default 1)", {'y', "yshims"}, 1);
     args::ValueFlag<int> zdrop(parser, "ZDROP", "Z-Shims to drop, default 0", {"zdrop"}, 0);
     args::ValueFlag<int> ydrop(parser, "YDROP", "Y-Shims to drop, default 0", {"ydrop"}, 0);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    auto              input     = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
+    auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     const int         insize    = input->GetNumberOfComponentsPerPixel();
     const auto        gridsize  = zshims.Get() * yshims.Get();
@@ -52,6 +55,7 @@ int main(int argc, char **argv) {
 
     QI::Log(verbose, "Processing");
     auto mt = itk::MultiThreaderBase::New();
+    mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
         input->GetBufferedRegion(),
         [&](const QI::VectorVolumeF::RegionType &region) {
@@ -63,10 +67,11 @@ int main(int argc, char **argv) {
                 for (auto out = 0; out < outsize; out++) {
                     const Eigen::Map<const Eigen::MatrixXf> grid(
                         in_it.Get().GetDataPointer() + gridsize * out, zshims.Get(), yshims.Get());
-                    itk_shimmed[out] =
-                        grid.block(zdrop.Get(), ydrop.Get(), zshims.Get() - 2 * zdrop.Get(),
-                                   yshims.Get() - 2 * ydrop.Get())
-                            .norm();
+                    itk_shimmed[out] = grid.block(zdrop.Get(),
+                                                  ydrop.Get(),
+                                                  zshims.Get() - 2 * zdrop.Get(),
+                                                  yshims.Get() - 2 * ydrop.Get())
+                                           .norm();
                 }
                 out_it.Set(itk_shimmed);
             }

@@ -96,6 +96,7 @@ int main(int argc, char **argv) {
         (2. * alpha.Get() * T1_blood.Get() * (1. - exp(-sequence.label_time / T1_blood.Get())));
     QI::Info(verbose, "Processing");
     auto mt = itk::MultiThreaderBase::New();
+    mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
         input->GetBufferedRegion(),
         [&](const QI::VectorVolumeF::RegionType &region) {
@@ -125,9 +126,9 @@ int main(int argc, char **argv) {
                     const auto &difference   = control - label; // Negative contrast
                     const auto PD_correction = t1_img ? 1.0 - exp(-sequence.TR / t1_it.Get()) : 1.0;
                     const auto PD    = (pd_img ? pd_it.Get() : control.mean()) / PD_correction;
-                    const auto scale = sequence.post_label_delay.rows() > 1
-                                           ? scales[out_it.GetIndex()[2]]
-                                           : scales[0];
+                    const auto scale = sequence.post_label_delay.rows() > 1 ?
+                                           scales[out_it.GetIndex()[2]] :
+                                           scales[0];
                     const auto CBF = scale * difference / PD;
                     if (average) {
                         CBF_vector[0] = CBF.mean();

@@ -11,7 +11,7 @@ The following programs are available:
 qi_asl
 ------
 
-This program implements the standard equation to calculate CBF from either Continuous or pseudo-Continuous Arterial Spin Labelling data (CASL or pCASL). For the exact equation used, see the first reference below.
+This program implements the standard equation to calculate Cerebral Blood Flow (CBF) in units of ml/100 g/minute from either Continuous or pseudo-Continuous Arterial Spin Labelling data (CASL or pCASL). For the exact equation used, see the first reference below.
 
 .. image:: cbf.png
     :alt: A Rodent CBF Map
