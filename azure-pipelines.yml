@@ -9,5 +9,5 @@ jobs:
     displayName: 'Install tools from Brew'
   - bash: ./build.sh -j 4 -p "$PWD/install" -i
     displayName: 'Build'
-  - bash: export PATH="$PWD/install/bin:$PATH"; echo $PATH; pwd; which qinewimage; ls "$PWD/install/bin"; bats Test/
+  - bash: export PATH="$PWD/install/bin:$PATH"; bats Test/
     displayName: 'Run Tests'
