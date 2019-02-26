@@ -73,7 +73,7 @@ template <int D> class Polynomial {
     double value(const Eigen::Vector3d &p) { return values(p).sum(); }
 
     std::string get_terms() const {
-        std::vector<std::string> t(m_coeffs.rows(), "a");
+        std::vector<std::string> terms(m_coeffs.rows(), "a");
         std::ostringstream       output;
         std::string              list = "1";
         char                     dim  = 'a';
@@ -81,22 +81,22 @@ template <int D> class Polynomial {
             list.append(std::string(1, dim));
             dim++;
         }
-        int                                        it        = 0;
-        std::function<void(std::string, int, int)> orderLoop = [&](std::string term, int o,
-                                                                   int start) -> void {
+        int it = 0;
+
+        std::function<void(std::string, int, int)> orderLoop =
+            [&](std::string term, int o, int start) -> void {
             if (o == m_order) {
-                t[it++] = term;
+                terms[it++] = term;
             } else {
                 for (int i = start; i < Dimension + 1; i++) {
-                    std::string t = term + list[i];
-                    orderLoop(t, o + 1, i);
+                    orderLoop(term + list[i], o + 1, i);
                 }
             }
         };
         orderLoop(std::string(""), 0, 0);
-        output << t[0];
+        output << terms[0];
         for (int i = 1; i < m_coeffs.rows(); i++) {
-            output << " + " << t[i];
+            output << " + " << terms[i];
         }
         return output.str();
     }

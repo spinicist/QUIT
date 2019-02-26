@@ -189,9 +189,9 @@ int main(int argc, char **argv) {
         QI::SimulateModel<ASEModel, false>(
             json, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
     } else {
-        auto process = [&](auto fit) {
-            auto fit_filter =
-                QI::ModelFitFilter<decltype(fit)>::New(&fit, verbose, resids, subregion.Get());
+        auto process = [&](auto fit_func) {
+            auto fit_filter = QI::ModelFitFilter<decltype(fit_func)>::New(
+                &fit_func, verbose, resids, subregion.Get());
             fit_filter->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
             // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
             // if (slice_arg) {

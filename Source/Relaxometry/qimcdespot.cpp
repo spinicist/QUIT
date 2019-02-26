@@ -176,12 +176,12 @@ int main(int argc, char **argv) {
     };
     switch (modelarg.Get()) {
     case 2: {
-        QI::TwoPoolModel model{sequences, scale.Get()};
-        process(model, "2C_");
+        QI::TwoPoolModel two_pool{sequences, scale.Get()};
+        process(two_pool, "2C_");
     } break;
     case 3: {
-        QI::ThreePoolModel model{sequences, scale.Get()};
-        process(model, "3C_");
+        QI::ThreePoolModel three_pool{sequences, scale.Get()};
+        process(three_pool, "3C_");
     } break;
     default:
         QI::Fail("Unknown model specifier: {}", modelarg.Get());
