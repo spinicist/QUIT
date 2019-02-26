@@ -19,7 +19,7 @@ from .base import QUITCommand, QUITCommandInputSpec
 
 class QIDespot1InputSpec(QUITCommandInputSpec):
     # Inputs
-    param_file = File(desc='Parameter .json file', position=-1, argstr='< %s', 
+    param_file = File(desc='Parameter .json file', position=-1, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
 
     param_dict = traits.Dict(desc='dictionary trait', position=-1, 
@@ -92,7 +92,7 @@ class QIDespot1SimInputSpec(QUITCommandInputSpec):
     spgr_file = File(exists=False, argstr='%s', mandatory=True,
         position=0, desc='Path to write SPGR/FLASH image')
 
-    param_file = File(desc='Parameter .json file', position=1, argstr='< %s', 
+    param_file = File(desc='Parameter .json file', position=1, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
 
     param_dict = traits.Dict(desc='dictionary trait', position=1, 
@@ -153,7 +153,7 @@ class QIDespot1HifiInputSpec(QUITCommandInputSpec):
     mprage_file = File(exists=True, argstr='%s', mandatory=True,
         position=0, desc='Path to MPRAGE data')
 
-    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
+    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
 
     param_dict = traits.Dict(desc='dictionary trait', position=2, 
@@ -219,7 +219,7 @@ class QIDespot1HifiSimInputSpec(CommandLineInputSpec):
     mprage_file = File(exists=True, argstr='%s', mandatory=True,
         position=0, desc='Path for output MPRAGE image')
 
-    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
+    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
 
     param_dict = traits.Dict(desc='dictionary trait', position=2, 
@@ -283,7 +283,7 @@ class QIDespot2InputSpec(QUITCommandInputSpec):
         position=0, desc='Path to T1 map')
     ssfp_file = File(exists=True, argstr='%s', mandatory=True,
         position=1, desc='Path to SSFP data')
-    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
+    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
     param_dict = traits.Dict(desc='dictionary trait', position=2, 
         argstr='', mandatory=True, xor=['param_file'])
@@ -357,7 +357,7 @@ class QIDespot2SimInputSpec(CommandLineInputSpec):
         position=0, desc='Path for input T1 map')
     ssfp_file = File(exists=True, argstr='%s', mandatory=True,
         position=1, desc='Path for output SSFP data')
-    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
+    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
     param_dict = traits.Dict(desc='dictionary trait', position=2, 
         argstr='', mandatory=True, xor=['param_file'])
@@ -417,7 +417,7 @@ class QIDespot2FMInputSpec(QUITCommandInputSpec):
         position=0, desc='Path to T1 map')
     ssfp_file = File(exists=True, argstr='%s', mandatory=True,
         position=1, desc='Path to SSFP data')
-    param_file = File(desc='Parameter .json file', position=2, argstr='< %s', 
+    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
     param_dict = traits.Dict(desc='dictionary trait', position=2, 
         argstr='', mandatory=True, xor=['param_file'])
@@ -482,7 +482,7 @@ class QIMCDespotInputSpec(QUITCommandInputSpec):
         position=1, desc='SSFP file')
     param_dict = traits.Dict(desc='Parameters as dictionary', position=2, 
         argstr='', mandatory=True, xor=['param_file'])
-    param_file = File(desc='Parameters as .json file', position=2, argstr='< %s', 
+    param_file = File(desc='Parameters as .json file', position=2, argstr='--json=%s', 
         xor=['param_dict'], mandatory=True, exists=True)
 
     # Options

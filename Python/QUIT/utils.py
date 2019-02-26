@@ -38,7 +38,7 @@ class QiRFprofileInputSpec(QUITCommandInputSpec):
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Input B1+ file')
-    param_file = File(desc='Parameter .json file', position=2, argstr='< %s',
+    param_file = File(desc='Parameter .json file', position=2, argstr='--json=%s',
                       xor=['param_dict'], mandatory=True, exists=True)
     param_dict = traits.Dict(desc='Parameter dictionary', position=2,
                              argstr='', mandatory=True, xor=['param_file'])

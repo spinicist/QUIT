@@ -4,12 +4,9 @@
 """
 Implementation of nipype interfaces for QUIT MT modules.
 
-To be implemented:
-    - qi_dipolar_mt
-    - qi_linshape
+Contains wrappers for:
     - qi_lorentzian
-    - qi_mtasym
-    - qi_qmt
+    - qi_zspec
 
 Requires that the QUIT tools are in your your system path
 
@@ -37,7 +34,7 @@ class LorentzianInputSpec(QUITCommandInputSpec):
                    desc='Path to input Z-spectrum',
                    position=-2)
 
-    param_file = File(desc='Parameter .json file', position=-1, argstr='< %s',
+    param_file = File(desc='Parameter .json file', position=-1, argstr='--json=%s',
                       xor=['param_dict'], mandatory=True, exists=True)
 
     param_dict = traits.Dict(desc='dictionary trait', position=-1,
@@ -98,7 +95,7 @@ class ZSpecInputSpec(QUITCommandInputSpec):
                    desc='Path to input Z-spectrum',
                    position=-2)
 
-    param_file = File(desc='Parameter .json file', position=-1, argstr='< %s',
+    param_file = File(desc='Parameter .json file', position=-1, argstr='--json=%s',
                       xor=['param_dict'], mandatory=True, exists=True)
 
     param_dict = traits.Dict(desc='dictionary trait', position=-1,
