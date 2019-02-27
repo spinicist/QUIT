@@ -28,8 +28,8 @@ versions.
 
 ## Documentation
 
-Documentation exists in Markdown format in the Docs folder, and is also
-available at http://spinicist.github.io/QUIT/
+Documentation is available at http://quit.readthedocs.io (and the in Docs folder
+in .rst format).
 
 ## Installation
 
@@ -55,8 +55,14 @@ with your particular flip-angles and TRs.
 Each product has some basic usage instructions that will be printed with either
 the -h or --help options, e.g. `qimcdespot -h`. The majority of programs take
 the input filenames as arguments on the command-line, and in addition will read
-an input text file from `stdin`. For further details, see the [documentation](https://spinicist.github.io/QUIT), which is also available in the `Docs` folder.
+an input text file from `stdin`. For further details, see the 
+[documentation](https://spinicist.github.io/QUIT), which is also available in 
+the `Docs` folder.
 
 ## Getting Help
 
-If you can't find an answer to a problem in the documentation or help strings, you can open an [issue](https://github.com/spinicist/QUIT/issues), post a question on [Neurostars](https://neurostars.org) or find the main developer on Twitter ([@spinicist](https://twitter.com/spinicist)).
+If you can't find an answer to a problem in the documentation or help strings, 
+you can open an [issue](https://github.com/spinicist/QUIT/issues), post a 
+question on [Neurostars](https://neurostars.org) or find the main developer on 
+e-mail (tobias.wood@kcl.ac.uk) and Twitter 
+([@spinicist](https://twitter.com/spinicist)).
