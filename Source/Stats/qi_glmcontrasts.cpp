@@ -161,6 +161,9 @@ class ContrastsFilter : public itk::ImageToImageFilter<QI::VectorVolumeF, QI::Vo
         m_scale = s;
         m_mat   = c * ((d.transpose() * d).inverse()) * d.transpose();
         this->SetNumberOfRequiredOutputs(m_mat.rows());
+        for (int i = 0; i < m_mat.rows(); i++) {
+            this->SetNthOutput(i, this->MakeOutput(i));
+        }
     }
 
   protected:
@@ -209,18 +212,18 @@ int main(int argc, char **argv) {
     args::ArgumentParser          parser("A utility for calculating group means, differences etc.\n"
                                 "One output file will be generated for each contrast.\n"
                                 "\nhttp://github.com/spinicist/QUIT");
-    args::Positional<std::string> input_path(parser, "IMAGE",
-                                             "The combined image file from qi_glmsetup");
-    args::Positional<std::string> design_path(parser, "DESIGN",
-                                              "GLM Design matrix from qi_glmsetup");
-    args::Positional<std::string> contrasts_path(parser, "CONTRASTS",
-                                                 "Contrasts matrix from qi_glmsetup");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag fraction(parser, "FRACTION", "Output contrasts as fraction of grand mean",
-                        {'F', "frac"});
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filename",
-                                        {'o', "out"});
+    args::Positional<std::string> input_path(
+        parser, "IMAGE", "The combined image file from qi_glmsetup");
+    args::Positional<std::string> design_path(
+        parser, "DESIGN", "GLM Design matrix from qi_glmsetup");
+    args::Positional<std::string> contrasts_path(
+        parser, "CONTRASTS", "Contrasts matrix from qi_glmsetup");
+    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag     fraction(
+        parser, "FRACTION", "Output contrasts as fraction of grand mean", {'F', "frac"});
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
     QI::Log(verbose, "Reading input file {}", QI::CheckPos(input_path));
@@ -233,11 +236,13 @@ int main(int argc, char **argv) {
     if (design_matrix.rows() != merged->GetNumberOfComponentsPerPixel()) {
         QI::Fail(
             "Number of rows in design matrix ({}) does not match number of volumes in image ({})",
-            design_matrix.rows(), merged->GetNumberOfComponentsPerPixel());
+            design_matrix.rows(),
+            merged->GetNumberOfComponentsPerPixel());
     }
     if (design_matrix.cols() != contrasts.cols()) {
         QI::Fail("Number of columns in design matrix ({}) does not match contrasts ({})",
-                 design_matrix.cols(), contrasts.cols());
+                 design_matrix.cols(),
+                 contrasts.cols());
     }
 
     auto con_filter = ContrastsFilter::New();
@@ -248,6 +253,7 @@ int main(int argc, char **argv) {
     for (int c = 0; c < contrasts.rows(); c++) {
         QI::Log(verbose, "Writing contrast {}", c + 1);
         QI::WriteImage(con_filter->GetOutput(c),
-                       outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt(), verbose);
+                       outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt(),
+                       verbose);
     }
 }
