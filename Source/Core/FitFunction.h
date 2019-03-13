@@ -25,7 +25,11 @@ namespace QI {
 /*
  *  Return type required by the fit() function objects
  */
-using FitReturnType = std::tuple<bool, std::string>;
+
+struct FitReturnType {
+    bool        success;
+    std::string message;
+};
 
 template <typename Model_, bool Blocked_ = false, bool Indexed_ = false> struct FitFunctionBase {
     using ModelType           = Model_;
@@ -49,10 +53,12 @@ struct FitFunction : FitFunctionBase<ModelType, false, false> {
     using ResidualType = typename ModelType::DataType;
     using FlagType     = FlagType_; // Iterations
 
-    virtual FitReturnType
-    fit(const std::vector<QI_ARRAY(InputType)> &inputs, const Eigen::ArrayXd &fixed,
-        QI_ARRAYN(OutputType, ModelType::NV) & outputs, ResidualType &        residual,
-        std::vector<QI_ARRAY(ResidualType)> &point_residuals, FlagType &flag) const = 0;
+    virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
+                              const Eigen::ArrayXd &                  fixed,
+                              QI_ARRAYN(OutputType, ModelType::NV) & outputs,
+                              ResidualType &                       residual,
+                              std::vector<QI_ARRAY(ResidualType)> &point_residuals,
+                              FlagType &                           flag) const = 0;
 };
 
 template <typename ModelType, typename FlagType_ = int>
@@ -73,7 +79,7 @@ struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
         if (scale < std::numeric_limits<double>::epsilon()) {
             p        = ScaledNLLSFitFunction::ModelType::VaryingArray::Zero();
             residual = 0;
-            return std::make_tuple(false, "Maximum data value was not positive");
+            return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
         p << this->model.start;
@@ -100,7 +106,7 @@ struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
         ceres::Solve(options, &problem, &summary);
         p[0] = p[0] * scale;
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
         residual   = summary.final_cost * scale;
@@ -110,7 +116,7 @@ struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
             for (size_t i = 0; i < r_temp.size(); i++)
                 residuals[0][i] = r_temp[i] * scale;
         }
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 
@@ -127,8 +133,9 @@ struct BlockFitFunction : FitFunctionBase<ModelType, true, false> {
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
                               ResidualType &                       residual,
-                              std::vector<QI_ARRAY(ResidualType)> &point_residuals, FlagType &flag,
-                              const int block) const = 0;
+                              std::vector<QI_ARRAY(ResidualType)> &point_residuals,
+                              FlagType &                           flag,
+                              const int                            block) const = 0;
 };
 
 template <typename ModelType, typename FlagType_ = int>
@@ -144,8 +151,9 @@ struct IndexedFitFunction : FitFunctionBase<ModelType, false, true> {
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
                               ResidualType &                       residual,
-                              std::vector<QI_ARRAY(ResidualType)> &point_residuals, FlagType &flag,
-                              const itk::Index<3> &index) const = 0;
+                              std::vector<QI_ARRAY(ResidualType)> &point_residuals,
+                              FlagType &                           flag,
+                              const itk::Index<3> &                index) const = 0;
 };
 
 } // End namespace QI

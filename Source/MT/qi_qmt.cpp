@@ -193,11 +193,11 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
         p                   = RamaniFullModel::VaryingArray::Zero();
         residual            = 0;
         if (scale < std::numeric_limits<double>::epsilon()) {
-            return std::make_tuple(false, "Maximum data value was not positive");
+            return {false, "Maximum data value was not positive"};
         }
         const auto T1_obs = fixed[2];
         if (!std::isfinite(T1_obs) || (T1_obs < 1.e-12)) {
-            return std::make_tuple(false, "T1 Observed was not finite and positive");
+            return {false, "T1 Observed was not finite and positive"};
         }
 
         const Eigen::ArrayXd             data    = inputs[0] / scale;
@@ -222,7 +222,7 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
         options.logging_type        = ceres::SILENT;
         ceres::Solve(options, &problem, &summary);
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            return {false, summary.FullReport()};
         }
         // Convert from the fitted parameters to useful ones
         const auto  R_obs   = 1 / T1_obs;
@@ -255,7 +255,7 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
             for (size_t i = 0; i < r_temp.size(); i++)
                 residuals[0][i] = r_temp[i] * scale;
         }
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

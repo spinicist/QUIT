@@ -64,7 +64,7 @@ struct MultiEchoLogLin : MultiEchoFit {
         }
         residual   = sqrt(temp_residuals.square().sum() / temp_residuals.rows());
         iterations = 1;
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 
@@ -97,7 +97,7 @@ struct MultiEchoARLO : MultiEchoFit {
         }
         residual   = sqrt(temp_residuals.square().sum() / temp_residuals.rows());
         iterations = 1;
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 
@@ -114,7 +114,7 @@ struct MultiEchoNLLS : MultiEchoFit {
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
             residual = 0;
-            return std::make_tuple(false, "Maximum data value was not positive");
+            return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
         p << 10., 0.05;
@@ -138,7 +138,7 @@ struct MultiEchoNLLS : MultiEchoFit {
         ceres::Solve(options, &problem, &summary);
         p[0] = p[0] * scale;
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
         residual   = summary.final_cost * scale;
@@ -148,7 +148,7 @@ struct MultiEchoNLLS : MultiEchoFit {
             for (size_t i = 0; i < r_temp.size(); i++)
                 residuals[0][i] = r_temp[i] * scale;
         }
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

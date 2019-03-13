@@ -108,7 +108,7 @@ template <typename Model> struct SRCFit {
                                           src_gauss,
                                           false);
         if (!rc.optimise(v)) {
-            return std::make_tuple(false, "Region contraction failed");
+            return {false, "Region contraction failed"};
         }
         auto r   = func.residuals(v);
         residual = sqrt(r.square().sum() / r.rows());
@@ -120,7 +120,7 @@ template <typename Model> struct SRCFit {
             }
         }
         iterations = rc.contractions();
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

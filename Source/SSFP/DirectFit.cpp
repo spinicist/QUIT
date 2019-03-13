@@ -91,13 +91,13 @@ QI::FitReturnType DirectFit::fit(const std::vector<Eigen::ArrayXcd> &inputs,
     p << abs(c_mean), 0.5, 0.5, th0, psi0;
     ceres::Solve(options, &problem, &summary);
     if (!summary.IsSolutionUsable()) {
-        return std::make_tuple(false, summary.FullReport());
+        return {false, summary.FullReport()};
     }
     residual = summary.final_cost;
     p[0] *= scale;
     p[3] = std::fmod(p[3] + 3 * M_PI, 2 * M_PI) - M_PI;
     p[4] = std::fmod(p[4] + 3 * M_PI, 2 * M_PI) - M_PI;
-    return std::make_tuple(true, "");
+    return {true, ""};
 }
 
 } // End namespace QI

@@ -154,7 +154,7 @@ struct EMTFit {
         options.logging_type        = ceres::SILENT;
         ceres::Solve(options, &problem, &summary);
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            return {false, summary.FullReport()};
         }
         p[0] *= scale;
         // f_b is converted to F internally so don't convert here
@@ -173,7 +173,7 @@ struct EMTFit {
             }
         }
         iterations = summary.iterations.size();
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

@@ -72,7 +72,7 @@ struct LorentzFit : QI::FitFunction<LorentzModel> {
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0, 0.0, 0.0;
             residual = 0;
-            return std::make_tuple(false, "Maximum data value was not positive");
+            return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd &z_spec = inputs[0] / scale;
 
@@ -105,7 +105,7 @@ struct LorentzFit : QI::FitFunction<LorentzModel> {
         ceres::Solve(options, &problem, &summary);
         p[0] *= scale;
         residual = summary.final_cost;
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

@@ -144,7 +144,7 @@ struct HIFIFit {
         if (scale < std::numeric_limits<double>::epsilon()) {
             v << 0.0, 0.0, 0.0;
             residual = 0.0;
-            return std::make_tuple(false, "Maximum data value was zero or less");
+            return {false, "Maximum data value was zero or less"};
         }
         const Eigen::ArrayXd spgr_data   = inputs[0] / scale;
         const Eigen::ArrayXd mprage_data = inputs[1] / scale;
@@ -172,7 +172,7 @@ struct HIFIFit {
         options.logging_type        = ceres::SILENT;
         ceres::Solve(options, &problem, &summary);
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            return {false, summary.FullReport()};
         }
         v[0]       = v[0] * scale;
         iterations = summary.iterations.size();
@@ -185,7 +185,7 @@ struct HIFIFit {
             for (int i = 0; i < model.mprage.size(); i++)
                 residuals[1][i] = r_temp[i + model.spgr.size()] * scale;
         }
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

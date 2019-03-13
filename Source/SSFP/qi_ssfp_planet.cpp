@@ -98,7 +98,7 @@ struct PLANETFit {
         out[0] = PD;
         out[1] = T1;
         out[2] = T2;
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

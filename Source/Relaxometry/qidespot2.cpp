@@ -43,8 +43,8 @@ struct DESPOT2 : QI::Model<2, 2, QI::SSFPSequence> {
         const T       E2 = exp(-sequence.TR / T2);
 
         const QI_ARRAY(double) alpha = sequence.FA * B1;
-        const QI_ARRAY(T) denom = elliptical ? (1.0 - E1 * E2 * E2 - (E1 - E2 * E2) * cos(alpha))
-                                             : (1.0 - E1 * E2 - (E1 - E2) * cos(alpha));
+        const QI_ARRAY(T) denom = elliptical ? (1.0 - E1 * E2 * E2 - (E1 - E2 * E2) * cos(alpha)) :
+                                               (1.0 - E1 * E2 - (E1 - E2) * cos(alpha));
         const QI_ARRAY(T) numer = PD * sqrt(E2) * (1.0 - E1) * sin(alpha);
         return numer / denom;
     }
@@ -93,7 +93,7 @@ struct DESPOT2LLS : DESPOT2Fit {
         }
         residual   = sqrt(r.square().sum() / r.rows());
         iterations = 1;
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 
@@ -158,7 +158,7 @@ struct DESPOT2WLLS : DESPOT2Fit {
             residuals[0] = r;
         }
         residual = sqrt(r.square().sum() / r.rows());
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 
@@ -178,7 +178,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
             residual = 0;
-            return std::make_tuple(false, "Maximum data value was not positive");
+            return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
         p << 10., 0.1;
@@ -203,7 +203,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
         ceres::Solve(options, &problem, &summary);
         p[0] = p[0] * scale;
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
         residual   = summary.final_cost * scale;
@@ -213,7 +213,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
             for (size_t i = 0; i < r_temp.size(); i++)
                 residuals[0][i] = r_temp[i] * scale;
         }
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

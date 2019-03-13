@@ -62,7 +62,7 @@ struct DESPOT1LLS : DESPOT1Fit {
         }
         residual   = sqrt(temp_residuals.square().sum() / temp_residuals.rows());
         iterations = 1;
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 
@@ -103,7 +103,7 @@ struct DESPOT1WLLS : DESPOT1Fit {
             residuals[0] = temp_residuals;
         }
         residual = sqrt(temp_residuals.square().sum() / temp_residuals.rows());
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 
@@ -124,7 +124,7 @@ struct DESPOT1NLLS : DESPOT1Fit {
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
             residual = 0;
-            return std::make_tuple(false, "Maximum data value was not positive");
+            return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
         p << 10., 1.;
@@ -148,7 +148,7 @@ struct DESPOT1NLLS : DESPOT1Fit {
         ceres::Solve(options, &problem, &summary);
         p[0] = p[0] * scale;
         if (!summary.IsSolutionUsable()) {
-            return std::make_tuple(false, summary.FullReport());
+            return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
         residual   = summary.final_cost * scale;
@@ -158,7 +158,7 @@ struct DESPOT1NLLS : DESPOT1Fit {
             for (size_t i = 0; i < r_temp.size(); i++)
                 residuals[0][i] = r_temp[i] * scale;
         }
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

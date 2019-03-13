@@ -115,7 +115,7 @@ struct FMNLLS : FMFit {
                     f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
-                    return std::make_tuple(false, summary.FullReport());
+                    return {false, summary.FullReport()};
                 }
                 double r = summary.final_cost;
                 if (r < best) {
@@ -127,7 +127,7 @@ struct FMNLLS : FMFit {
             }
             bestP[0] = bestP[0] * scale;
             if (!summary.IsSolutionUsable()) {
-                return std::make_tuple(false, summary.FullReport());
+                return {false, summary.FullReport()};
             }
             if (residuals.size() > 0) {
                 std::vector<double> r_temp(data.size());
@@ -140,9 +140,9 @@ struct FMNLLS : FMFit {
             bestP << 0.0, 0.0, 0.0;
             residual   = 0;
             iterations = 0;
-            return std::make_tuple(false, "T1 was either infinite or shorter than TR");
+            return {false, "T1 was either infinite or shorter than TR"};
         }
-        return std::make_tuple(true, "");
+        return {true, ""};
     }
 };
 

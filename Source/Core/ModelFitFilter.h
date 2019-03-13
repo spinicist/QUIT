@@ -125,8 +125,8 @@ class ModelFitFilter
         if (i < m_fit->n_inputs()) {
             return static_cast<const TInputImage *>(this->itk::ProcessObject::GetInput(i));
         } else {
-            QI::Fail("Requested input {} but {} has {}", i, typeid(FitType).name(),
-                     m_fit->n_inputs());
+            QI::Fail(
+                "Requested input {} but {} has {}", i, typeid(FitType).name(), m_fit->n_inputs());
         }
     }
 
@@ -135,7 +135,9 @@ class ModelFitFilter
             this->SetNthInput(m_fit->n_inputs() + FixedOffset + i,
                               const_cast<TFixedImage *>(image));
         } else {
-            QI::Fail("Tried to set fixed input {} but {} has {}", i, typeid(ModelType).name(),
+            QI::Fail("Tried to set fixed input {} but {} has {}",
+                     i,
+                     typeid(ModelType).name(),
                      ModelType::NF);
         }
     }
@@ -145,7 +147,9 @@ class ModelFitFilter
             size_t index = m_fit->n_inputs() + FixedOffset + i;
             return static_cast<const TFixedImage *>(this->itk::ProcessObject::GetInput(index));
         } else {
-            QI::Fail("Requested fixed input {} but {} has {}", i, typeid(ModelType).name(),
+            QI::Fail("Requested fixed input {} but {} has {}",
+                     i,
+                     typeid(ModelType).name(),
                      ModelType::NF);
         }
     }
@@ -180,13 +184,16 @@ class ModelFitFilter
         if (i < ModelType::NV) {
             return dynamic_cast<TOutputImage *>(this->itk::ProcessObject::GetOutput(i));
         } else {
-            QI::Fail("Requested varying output {} but {} has {}", i, typeid(ModelType).name(),
+            QI::Fail("Requested varying output {} but {} has {}",
+                     i,
+                     typeid(ModelType).name(),
                      ModelType::NV);
         }
     }
 
     TResidualImage *GetResidualOutput() {
-        return dynamic_cast<TResidualImage *>(this->itk::ProcessObject::GetOutput(ResidualOutputOffset));
+        return dynamic_cast<TResidualImage *>(
+            this->itk::ProcessObject::GetOutput(ResidualOutputOffset));
     }
 
     TResidualsImage *GetResidualsOutput(const int i) {
@@ -204,7 +211,9 @@ class ModelFitFilter
                 return dynamic_cast<TOutputImage *>(
                     this->itk::ProcessObject::GetOutput(DerivedOutputOffset + i));
             } else {
-                QI::Fail("Requested derived output {} but {} has {}", i, typeid(ModelType).name(),
+                QI::Fail("Requested derived output {} but {} has {}",
+                         i,
+                         typeid(ModelType).name(),
                          ModelType::ND);
             }
         } else {
@@ -235,13 +244,14 @@ class ModelFitFilter
     }
     void WriteOutputs(std::string const &prefix) {
         for (int i = 0; i < ModelType::NV; i++) {
-            QI::WriteImage(GetOutput(i), prefix + m_fit->model.varying_names.at(i) + QI::OutExt(),
-                           m_verbose);
+            QI::WriteImage(
+                GetOutput(i), prefix + m_fit->model.varying_names.at(i) + QI::OutExt(), m_verbose);
         }
         if constexpr (ModelType::ND > 0) {
             for (int i = 0; i < ModelType::ND; i++) {
                 QI::WriteImage(GetDerivedOutput(i),
-                               prefix + m_fit->model.derived_names.at(i) + QI::OutExt(), m_verbose);
+                               prefix + m_fit->model.derived_names.at(i) + QI::OutExt(),
+                               m_verbose);
             }
         }
         QI::WriteImage(GetResidualOutput(), prefix + "SoS_residual" + QI::OutExt(), m_verbose);
@@ -249,7 +259,8 @@ class ModelFitFilter
         if (m_allResiduals) {
             for (int i = 0; i < m_fit->n_inputs(); i++) {
                 QI::WriteImage(GetResidualsOutput(0),
-                               prefix + "residuals_" + std::to_string(i) + QI::OutExt(), m_verbose);
+                               prefix + "residuals_" + std::to_string(i) + QI::OutExt(),
+                               m_verbose);
             }
         }
     }
@@ -274,7 +285,9 @@ class ModelFitFilter
         } else if (idx < static_cast<itype>(ResidualsOutputOffset + m_fit->n_inputs())) {
             return TResidualImage::New().GetPointer();
         } else {
-            QI::Fail("Attempted to create output {} but {} has {}", idx, typeid(FitType).name(),
+            QI::Fail("Attempted to create output {} but {} has {}",
+                     idx,
+                     typeid(FitType).name(),
                      TotalOutputs);
         }
     }
@@ -290,7 +303,8 @@ class ModelFitFilter
         for (int i = 0; i < m_fit->n_inputs(); i++) {
             if ((m_fit->input_size(i) * m_blocks) !=
                 static_cast<int>(this->GetInput(i)->GetNumberOfComponentsPerPixel())) {
-                QI::Fail("Input {} has incorrect number of volumes {}, should be {}", i,
+                QI::Fail("Input {} has incorrect number of volumes {}, should be {}",
+                         i,
                          this->GetInput(i)->GetNumberOfComponentsPerPixel(),
                          (m_fit->input_size(i) * m_blocks));
             }
@@ -456,20 +470,32 @@ class ModelFitFilter
 
                     QI::FitReturnType status;
                     if constexpr (Blocked && Indexed) {
-                        status = m_fit->fit(inputs, fixed, outputs, residual, residuals, flag, b,
+                        status = m_fit->fit(inputs,
+                                            fixed,
+                                            outputs,
+                                            residual,
+                                            residuals,
+                                            flag,
+                                            b,
                                             residual_iter.GetIndex());
                     } else if constexpr (Blocked) {
                         status = m_fit->fit(inputs, fixed, outputs, residual, residuals, flag, b);
                     } else if constexpr (Indexed) {
-                        status = m_fit->fit(inputs, fixed, outputs, residual, residuals, flag,
+                        status = m_fit->fit(inputs,
+                                            fixed,
+                                            outputs,
+                                            residual,
+                                            residuals,
+                                            flag,
                                             residual_iter.GetIndex());
                     } else {
                         status = m_fit->fit(inputs, fixed, outputs, residual, residuals, flag);
                     }
 
-                    if (!std::get<0>(status)) {
-                        QI::Warn("Fit failed for voxel {}: ", residual_iter.GetIndex(),
-                                 std::get<1>(status));
+                    if (!status.success) {
+                        QI::Warn("Fit failed for voxel {}: {}",
+                                 residual_iter.GetIndex(),
+                                 status.message);
                     }
 
                     if constexpr (Blocked) {
