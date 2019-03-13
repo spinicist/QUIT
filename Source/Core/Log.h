@@ -32,16 +32,16 @@ template <typename S, typename... Args>
 inline void Info(const bool verbose, const S &fmt_str, const Args &... args) {
     if (verbose) {
         const std::time_t now = std::time(nullptr);
-        fmt::print(stderr, fmt::fg(fmt::color::green), "{:%T} ", *std::localtime(&now));
-        fmt::print(stderr, fmt::fg(fmt::terminal_color::bright_white), fmt_str, args...);
+        fmt::print(stderr, fmt::fg(fmt::terminal_color::green), "{:%T} ", *std::localtime(&now));
+        fmt::print(stderr, fmt::fg(fmt::terminal_color::white), fmt_str, args...);
         fmt::print(stderr, "\n");
     }
 }
 
 template <typename S, typename... Args> inline void Warn(const S &fmt_str, const Args &... args) {
     const std::time_t now = std::time(nullptr);
-    fmt::print(stderr, fmt::fg(fmt::color::orange), "{:%T} ", *std::localtime(&now));
-    fmt::print(stderr, fmt::fg(fmt::terminal_color::bright_white), fmt_str, args...);
+    fmt::print(stderr, fmt::fg(fmt::terminal_color::yellow), "{:%T} ", *std::localtime(&now));
+    fmt::print(stderr, fmt::fg(fmt::terminal_color::white), fmt_str, args...);
     fmt::print(stderr, "\n");
 }
 
