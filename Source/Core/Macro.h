@@ -34,11 +34,13 @@
 #define QI_DB(x) fmt::print("{}: {}\n", #x, x);
 #define QI_DBMAT(x) fmt::print("{}:\n{}\n", #x, x);
 #define QI_DBVEC(x) fmt::print("{}: {}\n", #x, x.transpose());
+#define QI_DBSTL(x) fmt::print("{}: {}\n", #x, fmt::join(x, ", "));
 #else
 #define QI_DB(x)
-#define QI_DMAT(x)
+#define QI_DBMAT(x)
 #define QI_DBVEC(x)
 #define QI_DBVECT(x)
+#define QI_DBSTL(x)
 #endif
 
 #define QI_ForwardNewMacro(x)                                      \

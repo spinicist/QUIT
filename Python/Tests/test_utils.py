@@ -1,11 +1,11 @@
 import unittest
 from math import sqrt
-from QUIT.base import BaseCommand
+from nipype.interfaces.base import CommandLine
 from QUIT.core import NewImage, Diff
 from QUIT.utils import PolyImage, PolyFit, Filter, RFProfile
 
 vb = True
-BaseCommand.terminal_output = 'allatonce'
+CommandLine.terminal_output = 'allatonce'
 
 
 class Utils(unittest.TestCase):

@@ -1,16 +1,16 @@
 import unittest
 from math import sqrt
-from QUIT.base import BaseCommand
+from nipype.interfaces.base import CommandLine
 from QUIT.core import NewImage, Diff
 from QUIT.perfusion import ASL, ASE, ASESim, ZShim
 
 vb = True
-BaseCommand.terminal_output = 'allatonce'
+CommandLine.terminal_output = 'allatonce'
 
 
 class Perfusion(unittest.TestCase):
     def test_asl(self):
-        asl = {'CASL': {'TR': 4.0, 'label_time': 3.0,
+        seq = {'CASL': {'TR': 4.0, 'label_time': 3.0,
                         'post_label_delay': [0.3]}}
         asl_file = 'sim_asl.nii.gz'
 
@@ -19,7 +19,7 @@ class Perfusion(unittest.TestCase):
         NewImage(img_size=[32, 32, 32], fill=147.355,
                  out_file='ref_cbf.nii.gz', verbose=vb).run()
 
-        ASL(param_dict=asl, in_file=asl_file, verbose=vb).run()
+        ASL(sequence=seq, in_file=asl_file, verbose=vb).run()
 
         diff_CBF = Diff(in_file='CASL_CBF.nii.gz',
                         baseline='ref_cbf.nii.gz', verbose=vb).run()
@@ -27,11 +27,8 @@ class Perfusion(unittest.TestCase):
 
     def test_oef(self):
         # Use MultiEchoFlex as a proxy for ASE
-        ase = {'MultiEchoFlex': {'TR': 2.5, 'TE': [-0.07, -0.06, -0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]},
-               'S0File': 'S0.nii.gz',
-               'dTFile': 'dT.nii.gz',
-               'R2pFile': 'R2p.nii.gz',
-               'DBVFile': 'DBV.nii.gz'}
+        seq = {'MultiEchoFlex': {'TR': 2.5,
+                                 'TE': [-0.07, -0.06, -0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]}}
         ase_file = 'sim_ase.nii.gz'
         img_sz = [32, 32, 32]
         noise = 0.001
@@ -45,8 +42,12 @@ class Perfusion(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.005, 0.025),
                  out_file='DBV.nii.gz', verbose=vb).run()
 
-        ASESim(param_dict=ase, in_file=ase_file, noise=noise, verbose=vb).run()
-        ASE(param_dict=ase, in_file=ase_file, verbose=vb).run()
+        ASESim(sequence=seq, in_file=ase_file, noise=noise, verbose=vb,
+               S0='S0.nii.gz',
+               dT='dT.nii.gz',
+               R2p='R2p.nii.gz',
+               DBV='DBV.nii.gz').run()
+        ASE(sequence=seq, in_file=ase_file, verbose=vb).run()
 
         diff_R2p = Diff(in_file='ASE_R2p.nii.gz', baseline='R2p.nii.gz',
                         noise=noise, verbose=vb).run()
@@ -57,10 +58,8 @@ class Perfusion(unittest.TestCase):
 
     def test_oef_fixed_dbv(self):
         # Use MultiEchoFlex as a proxy for ASE
-        ase = {'MultiEchoFlex': {'TR': 2.5, 'TE': [-0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05]},
-               'S0File': 'S0.nii.gz',
-               'dTFile': 'dT.nii.gz',
-               'R2pFile': 'R2p.nii.gz'}
+        seq = {'MultiEchoFlex': {'TR': 2.5,
+                                 'TE': [-0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05]}}
         ase_file = 'sim_ase.nii.gz'
         img_sz = [32, 32, 32]
         noise = 0.001
@@ -73,9 +72,12 @@ class Perfusion(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=1, grad_vals=(1.0, 3.0),
                  out_file='R2p.nii.gz', verbose=vb).run()
 
-        ASESim(param_dict=ase, in_file=ase_file,
-               DBV=DBV, noise=noise, verbose=vb).run()
-        ASE(param_dict=ase, in_file=ase_file, DBV=DBV, verbose=vb).run()
+        ASESim(sequence=seq, in_file=ase_file,
+               fix_DBV=DBV, noise=noise, verbose=vb,
+               S0='S0.nii.gz',
+               dT='dT.nii.gz',
+               R2p='R2p.nii.gz').run()
+        ASE(sequence=seq, in_file=ase_file, fix_DBV=DBV, verbose=vb).run()
 
         diff_R2p = Diff(in_file='ASE_R2p.nii.gz', baseline='R2p.nii.gz',
                         noise=noise, verbose=vb).run()

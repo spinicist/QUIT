@@ -1,14 +1,9 @@
 cmake_minimum_required(VERSION 3.10.2 FATAL_ERROR)
 
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
-endif()
-
 project(QUIT CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
-add_compile_options("-Wall" "-Wextra" "-Wshadow")
+add_compile_options("-Wall" "-Wextra" "-Wshadow" "-ftemplate-backtrace-limit=30")
 aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 include(CMakeToolsHelpers OPTIONAL)
@@ -67,8 +62,6 @@ find_package(ITK 5.0.0 REQUIRED
                 ITKTransformIO
                 ITKIONIFTI )
 include( ${ITK_USE_FILE} )
-
-OPTION(BUILD_SHARED_LIBS "Build shared libraries." OFF)
 
 set( VERSION_MAJOR "2" )
 set( VERSION_MINOR "0" )

@@ -53,6 +53,8 @@ struct FitFunction : FitFunctionBase<ModelType, false, false> {
     using ResidualType = typename ModelType::DataType;
     using FlagType     = FlagType_; // Iterations
 
+    int max_iterations = 100;
+
     virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
@@ -62,46 +64,95 @@ struct FitFunction : FitFunctionBase<ModelType, false, false> {
 };
 
 template <typename ModelType, typename FlagType_ = int>
-struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
+struct NLLSFitFunction : FitFunction<ModelType> {
     using Super = FitFunction<ModelType, FlagType_>;
     using Super::Super;
-    int max_iterations = 30;
-    FitReturnType
-    fit(const std::vector<QI_ARRAY(typename ScaledNLLSFitFunction::InputType)> &inputs,
-        const Eigen::ArrayXd &                                                  fixed,
-        QI_ARRAYN(typename ScaledNLLSFitFunction::OutputType,
-                  ScaledNLLSFitFunction::ModelType::NV) &
-            p,
-        typename ScaledNLLSFitFunction::ResidualType &                       residual,
-        std::vector<QI_ARRAY(typename ScaledNLLSFitFunction::ResidualType)> &residuals,
-        typename ScaledNLLSFitFunction::FlagType &iterations) const override {
-        const double &scale = inputs[0].maxCoeff();
-        if (scale < std::numeric_limits<double>::epsilon()) {
-            p        = ScaledNLLSFitFunction::ModelType::VaryingArray::Zero();
-            residual = 0;
-            return {false, "Maximum data value was not positive"};
-        }
-        const Eigen::ArrayXd data = inputs[0] / scale;
+    using InputType    = typename ModelType::DataType;
+    using OutputType   = typename ModelType::ParameterType;
+    using ResidualType = typename ModelType::DataType;
+    using FlagType     = FlagType_; // Iterations
+    int max_iterations = 100;
+
+    FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
+                      const Eigen::ArrayXd &                  fixed,
+                      QI_ARRAYN(OutputType, ModelType::NV) & p,
+                      ResidualType &                       residual,
+                      std::vector<QI_ARRAY(ResidualType)> &residuals,
+                      FlagType &                           iterations) const {
         p << this->model.start;
         ceres::Problem problem;
-        using Cost = ModelCost<typename ScaledNLLSFitFunction::ModelType>;
-        using AutoCost =
-            ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ScaledNLLSFitFunction::ModelType::NV>;
-        auto *cost      = new Cost(this->model, fixed, data);
+        using Cost      = ModelCost<ModelType>;
+        using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ModelType::NV>;
+        auto *cost      = new Cost(this->model, fixed, inputs[0]);
         auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
-        problem.SetParameterLowerBound(p.data(), 0, this->model.bounds_lo[0]);
-        problem.SetParameterUpperBound(p.data(), 0, this->model.bounds_hi[0]);
-        for (int i = 1; i < ScaledNLLSFitFunction::ModelType::NV; i++) {
+        for (int i = 0; i < ModelType::NV; i++) {
             problem.SetParameterLowerBound(p.data(), i, this->model.bounds_lo[i]);
             problem.SetParameterUpperBound(p.data(), i, this->model.bounds_hi[i]);
         }
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
         options.max_num_iterations  = this->max_iterations;
-        options.function_tolerance  = 1e-5;
-        options.gradient_tolerance  = 1e-6;
-        options.parameter_tolerance = 1e-4;
+        options.function_tolerance  = 1e-6;
+        options.gradient_tolerance  = 1e-7;
+        options.parameter_tolerance = 1e-5;
+        options.logging_type        = ceres::SILENT;
+        ceres::Solve(options, &problem, &summary);
+        if (!summary.IsSolutionUsable()) {
+            return {false, summary.FullReport()};
+        }
+        iterations = summary.iterations.size();
+        residual   = summary.final_cost;
+        if (residuals.size() > 0) {
+            std::vector<double> r_temp(inputs[0].size());
+            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
+            for (size_t i = 0; i < r_temp.size(); i++)
+                residuals[0][i] = r_temp[i];
+        }
+        return {true, ""};
+    }
+};
+
+template <typename ModelType, typename FlagType_ = int>
+struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
+    using Super = FitFunction<ModelType, FlagType_>;
+    using Super::Super;
+    using InputType    = typename ModelType::DataType;
+    using OutputType   = typename ModelType::ParameterType;
+    using ResidualType = typename ModelType::DataType;
+    using FlagType     = FlagType_; // Iterations
+    int max_iterations = 100;
+
+    FitReturnType fit(std::vector<QI_ARRAY(InputType)> const &inputs,
+                      Eigen::ArrayXd const &                  fixed,
+                      QI_ARRAYN(OutputType, ModelType::NV) & p,
+                      ResidualType &                       residual,
+                      std::vector<QI_ARRAY(ResidualType)> &residuals,
+                      FlagType &                           iterations) const override {
+        const double &scale = inputs[0].maxCoeff();
+        if (scale < std::numeric_limits<double>::epsilon()) {
+            p        = ModelType::VaryingArray::Zero();
+            residual = 0;
+            return {false, "Maximum data value was not positive"};
+        }
+        const Eigen::ArrayXd data = inputs[0] / scale;
+        p << this->model.start;
+        ceres::Problem problem;
+        using Cost      = ModelCost<ModelType>;
+        using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ModelType::NV>;
+        auto *cost      = new Cost(this->model, fixed, data);
+        auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
+        problem.AddResidualBlock(auto_cost, NULL, p.data());
+        for (int i = 0; i < ModelType::NV; i++) {
+            problem.SetParameterLowerBound(p.data(), i, this->model.bounds_lo[i]);
+            problem.SetParameterUpperBound(p.data(), i, this->model.bounds_hi[i]);
+        }
+        ceres::Solver::Options options;
+        ceres::Solver::Summary summary;
+        options.max_num_iterations  = this->max_iterations;
+        options.function_tolerance  = 1e-6;
+        options.gradient_tolerance  = 1e-7;
+        options.parameter_tolerance = 1e-5;
         options.logging_type        = ceres::SILENT;
         ceres::Solve(options, &problem, &summary);
         p[0] = p[0] * scale;

@@ -14,9 +14,12 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
 
+// #define QI_DEBUG_BUILD 1
+
 #include "Args.h"
 #include "ImageIO.h"
 #include "JSON.h"
+#include "Macro.h"
 #include "Spline.h"
 #include "Util.h"
 
@@ -44,6 +47,8 @@ int main(int argc, char **argv) {
     args::ValueFlag<int>         order(
         parser, "ORDER", "Spline order for interpolation (default 3)", {'O', "order"}, 3);
     args::Flag asym(parser, "ASYMMETRY", "Output asymmetry (M+ - M-)", {'a', "asym"});
+    args::ValueFlag<std::string> mask(
+        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> ref_arg(
         parser,
         "REFERENCE",
@@ -51,10 +56,8 @@ int main(int argc, char **argv) {
         {'r', "ref"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    QI::Log(verbose, "Opening file: {}", QI::CheckPos(input_path));
     auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
 
-    QI::Log(verbose, "Reading input frequencies");
     rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto                in_freqs  = QI::ArrayFromJSON(json, "input_freqs");
     auto                out_freqs = QI::ArrayFromJSON(json, "output_freqs");
@@ -65,7 +68,8 @@ int main(int argc, char **argv) {
     if (order)
         QI::Log(verbose, "Spline order: {}", order.Get());
 
-    const QI::VolumeF::Pointer f0_image = f0_arg ? QI::ReadImage(f0_arg.Get(), verbose) : nullptr;
+    const QI::VolumeF::Pointer mask_image = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
+    const QI::VolumeF::Pointer f0_image   = f0_arg ? QI::ReadImage(f0_arg.Get(), verbose) : nullptr;
     const QI::VolumeF::Pointer ref_image =
         ref_arg ? QI::ReadImage(ref_arg.Get(), verbose) : nullptr;
     QI::VectorVolumeF::Pointer output = QI::VectorVolumeF::New();
@@ -81,40 +85,50 @@ int main(int argc, char **argv) {
         input->GetBufferedRegion(),
         [&](const QI::VectorVolumeF::RegionType &region) {
             itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input, region);
-            itk::ImageRegionConstIterator<QI::VolumeF>       f0_it, ref_it;
-            if (f0_arg)
+            itk::ImageRegionConstIterator<QI::VolumeF>       f0_it, ref_it, mask_it;
+            if (f0_image)
                 f0_it = itk::ImageRegionConstIterator<QI::VolumeF>(f0_image, region);
-            if (ref_arg)
+            if (ref_image)
                 ref_it = itk::ImageRegionConstIterator<QI::VolumeF>(ref_image, region);
+            if (mask_image)
+                mask_it = itk::ImageRegionConstIterator<QI::VolumeF>(mask_image, region);
             itk::ImageRegionIterator<QI::VectorVolumeF> out_it(output, region);
             for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it, ++out_it) {
-                const Eigen::Map<const Eigen::ArrayXf> zdata(in_it.Get().GetDataPointer(),
-                                                             in_freqs.rows());
-                QI::SplineInterpolator           zspec(in_freqs, zdata.cast<double>(), order.Get());
                 itk::VariableLengthVector<float> interped(out_freqs.rows());
-                float                            f0 = f0_image ? f0_it.Get() : 0.0;
-                for (int f = 0; f < out_freqs.rows(); f++) {
-                    if (asym) {
-                        const double p_frq = f0 + out_freqs[f];
-                        const double m_frq = f0 - out_freqs[f];
-                        interped[f]        = zspec(m_frq) - zspec(p_frq);
-                    } else {
-                        const double frq = f0 + out_freqs[f];
-                        interped[f]      = zspec(frq);
+                if (!mask_image || mask_it.Get()) {
+                    const Eigen::Map<const Eigen::ArrayXf> zdata(in_it.Get().GetDataPointer(),
+                                                                 in_freqs.rows());
+                    QI::SplineInterpolator zspec(in_freqs, zdata.cast<double>(), order.Get());
+
+                    float f0 = f0_image ? f0_it.Get() : 0.0;
+                    for (int f = 0; f < out_freqs.rows(); f++) {
+                        if (asym) {
+                            const double p_frq = f0 + out_freqs[f];
+                            const double m_frq = f0 - out_freqs[f];
+                            interped[f]        = zspec(m_frq) - zspec(p_frq);
+                        } else {
+                            const double frq = f0 + out_freqs[f];
+                            interped[f]      = zspec(frq);
+                        }
                     }
-                }
-                if (ref_arg) {
-                    interped *= (100. / ref_it.Get());
-                    ++ref_it;
+                    if (ref_arg) {
+                        interped *= (100. / ref_it.Get());
+                        ++ref_it;
+                    }
+                } else {
+                    interped.Fill(0.0);
                 }
                 out_it.Set(interped);
                 if (f0_image)
                     ++f0_it;
+                if (mask_image)
+                    ++mask_it;
             }
         },
         nullptr);
     std::string outname =
-        outarg ? outarg.Get() : QI::StripExt(input_path.Get()) + "_interp" + QI::OutExt();
+        outarg ? outarg.Get() :
+                 QI::StripExt(QI::Basename(input_path.Get())) + "_interp" + QI::OutExt();
     QI::WriteImage(output, outname, verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;

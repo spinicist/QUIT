@@ -17,10 +17,58 @@ from os import path
 from nipype.interfaces.base import CommandLine, TraitedSpec, File, traits, isdefined
 from . import base as QI
 
+############################### qi_pca ###############################
+
+
+class PCAInputSpec(QI.InputSpec):
+    in_file = File(argstr='%s', mandatory=True, exists=True,
+                   position=-1, desc='Input file for PCA denoising')
+    retain = traits.Int(argstr='--retain=%d', desc='Number of PCs to retain')
+    mask_file = File(argstr='--mask=%s', exists=True, desc='Mask file')
+    projections_file = traits.String(
+        argstr='--project=%s', desc='File to save projections to')
+    pc_json_file = traits.String(
+        argstr='--save_pcs=%s', desc='Save Principal Components to JSON file')
+    out_file = traits.String(
+        argstr='--out=%s', desc='Name of output file (default is input_pca)')
+
+
+class PCAOutputSpec(TraitedSpec):
+    out_file = File(desc='Denoised image')
+    projections_file = File(desc='Projections file')
+    pc_json_file = File(desc='JSON containing Principal Components')
+
+
+class PCA(QI.BaseCommand):
+    """
+    Denoise an image using Principal Components
+    """
+    _cmd = 'qi_pca'
+    input_spec = PCAInputSpec
+    output_spec = PCAOutputSpec
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        if isdefined(self.inputs.out_file):
+            outputs['out_file'] = path.abspath(self.inputs.out_file)
+        else:
+            p, f = path.split(self.inputs.in_file)
+            fname, ext = path.splitext(f)
+            if ext == '.gz':
+                fname = path.splitext(fname)[0]
+            outputs['out_file'] = path.abspath(fname + '_pca.nii.gz')
+        if isdefined(self.inputs.pc_json_file):
+            outputs['pc_json_file'] = path.abspath(self.inputs.pc_json_file)
+        if isdefined(self.inputs.projections_file):
+            outputs['projections_file'] = path.abspath(
+                self.inputs.projections_file)
+        return outputs
+
+
 ############################ qi_rfprofile ############################
 
 
-class RFProfileInputSpec(QI.InputBaseSpec):
+class RFProfileInputSpec(QI.InputSpec):
     rf = traits.Dict(desc='Dictionary with rf_pos and rf_vals lists', argstr='',
                      mandatory=True)
 
@@ -60,13 +108,11 @@ class RFProfile(QI.BaseCommand):
     input_spec = RFProfileInputSpec
     output_spec = RFProfileOutputSpec
 
-    def _format_arg(self, name, spec, value):
-        """
-        Make parameter dictionary into a .json file for input to interface
-        """
-        if name == 'rf':
-            return self._make_json(value)
-        return super()._format_arg(name, spec, value)
+    def _parse_inputs(self, skip=None):
+        # Make sequence dictionary into a .json file for input to interface
+        if isdefined(self.inputs.rf):
+            self._json = self.inputs.rf
+        return super()._parse_inputs(skip)
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
@@ -208,14 +254,19 @@ class ComplexInputSpec(QI.InputSpec):
                          argstr='--imag=%s', exists=True)
     x = traits.String(desc='Complex input', argstr='--complex=%s', exists=True)
     realimag = traits.String(
-        desc='Real/Imaginary input', argstr='--realimag=%s', mandatory=True, exists=True)
+        desc='Real/Imaginary input', argstr='--realimag=%s', exists=True)
 
+    magnitude_out_file = File(
+        argstr='--MAG=%s', desc='Output magnitude file', hash_files=False)
+    real_out_file = File(
+        argstr='--REAL=%s', desc='Output real file', hash_files=False)
+    imag_out_file = File(
+        argstr='--IMAG=%s', desc='Output imaginary file', hash_files=False)
     complex_out_file = File(argstr='--COMPLEX=%s',
                             desc='Output complex file',
-                            genfile=True,
                             hash_files=False)
 
-    fixge = traits.Bool(
+    fix_ge = traits.Bool(
         desc='Fix GE FFT-shift bug (negate alternate slices)', argstr='--fixge')
     negate = traits.Bool(desc='Multiply by -1', argstr='--negate')
     conjugate = traits.Bool(desc='Conjugate data', argstr='--conjugate')
@@ -224,9 +275,12 @@ class ComplexInputSpec(QI.InputSpec):
 class ComplexOutputSpec(TraitedSpec):
     # Specify which outputs there are
     complex_out_file = File()
+    magnitude_out_file = File()
+    real_out_file = File()
+    imag_out_file = File()
 
 
-class Complex(QI.Command):
+class Complex(QI.BaseCommand):
     """
     Deals with magnitude/phase/real/imaginary/complex data
 
@@ -243,18 +297,18 @@ class Complex(QI.Command):
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        inputs = self.input_spec().get()
+        inputs = self.inputs
 
-        if not isdefined(inputs['complex_out_file']):
-            inputs['complex_out_file'] = self._gen_fname(
-                self.inputs.realimag, suffix='_x')
-            outputs['complex_out_file'] = inputs['complex_out_file']
+        if isdefined(inputs.complex_out_file):
+            outputs['complex_out_file'] = path.abspath(inputs.complex_out_file)
+        if isdefined(inputs.magnitude_out_file):
+            outputs['magnitude_out_file'] = path.abspath(
+                inputs.magnitude_out_file)
+        if isdefined(inputs.real_out_file):
+            outputs['real_out_file'] = path.abspath(inputs.real_out_file)
+        if isdefined(inputs.imag_out_file):
+            outputs['imag_out_file'] = path.abspath(inputs.imag_out_file)
         return outputs
-
-    def _gen_filename(self, name):
-        if name == 'complex_out_file':
-            return self._list_outputs()[name]
-        return None
 
 ############################ qihdr ############################
 # < To be implemented > #
@@ -262,7 +316,7 @@ class Complex(QI.Command):
 ############################ qikfilter ############################
 
 
-class FilterInputSpec(QI.InputBaseSpec):
+class FilterInputSpec(QI.InputSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file to fit polynomial to')
     filter_spec = traits.String(argstr='--filter=%s', mandatory=True,
@@ -291,20 +345,20 @@ class Filter(QI.BaseCommand):
     def _list_outputs(self):
         outputs = self.output_spec().get()
         if isdefined(self.inputs.prefix):
-            outputs['out_file'] = os.path.join(
+            outputs['out_file'] = path.abspath(
                 self.inputs.prefix + '_filtered.nii.gz')
         else:
             p, f = path.split(self.inputs.in_file)
             fname, ext = path.splitext(f)
             if ext == '.gz':
                 fname = path.splitext(fname)[0]
-            outputs['out_file'] = path.abspath(p + fname + '_filtered.nii.gz')
+            outputs['out_file'] = path.abspath(fname + '_filtered.nii.gz')
         return outputs
 
 ############################ qipolyimg ############################
 
 
-class PolyImageInputSpec(QI.InputBaseSpec):
+class PolyImageInputSpec(QI.InputSpec):
     # Options
     ref_file = File(argstr='%s', mandatory=True, exists=True, position=-2,
                     desc='Reference file for co-ordinate space and size')

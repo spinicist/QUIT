@@ -14,14 +14,13 @@
 #ifndef QI_RFPULSE_H
 #define QI_RFPULSE_H
 
-#include <string>
 #include "JSON.h"
+#include <string>
 
 namespace QI {
 
 struct RFPulse {
-    double Trf, p1, p2;
-    std::string name;
+    double Trf, p1, p2, bandwidth;
 
     rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const;
     RFPulse(const rapidjson::Value &);

@@ -45,23 +45,15 @@ struct RamaniReducedModel {
     const QI::Lineshapes                       lineshape;
     const std::shared_ptr<QI::InterpLineshape> interp = nullptr;
 
-    VaryingArray bounds_lo;
-    VaryingArray bounds_hi;
-    VaryingArray start;
+    VaryingArray const bounds_lo{2, 1.e-12, 1.e-6, 1, 0.5};
+    VaryingArray const bounds_hi{1e2, 1, 100.e-6, 50., 1.5};
+    VaryingArray const start{10.0, 0.1, 10.e-6, 25., 1.};
 
     RamaniReducedModel(SequenceType &                              s,
                        const QI::Lineshapes                        ls,
                        const std::shared_ptr<QI::InterpLineshape> &i) :
         sequence{s},
-        lineshape{ls}, interp{i} {
-        //{"R*M0a"s, "f/(R_a*(1-f))"s, "T2_b"s, "T1_a/T2_a"s, "gM0_a"s}
-        start << 10.0, 0.1, 10.e-6, 25., 1.;
-        // bounds_lo.setConstant(1.0e-12);
-        // bounds_hi.setConstant(std::numeric_limits<double>::infinity());
-        bounds_lo << 2, 1.e-12, 1.e-6, 1, 0.5;
-        bounds_hi << 1e2, 1, 100.e-6, 50., 1.5;
-        // bounds_hi << 100, 1, 50.e-6, 75, 1.5;
-    }
+        lineshape{ls}, interp{i} {}
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &v, const FixedArray &f) const

@@ -12,10 +12,13 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 
+// #define QI_DEBUG_BUILD 1
+
 #include "Args.h"
 #include "FitFunction.h"
 #include "ImageIO.h"
 #include "JSON.h"
+#include "MTSatSequence.h"
 #include "Model.h"
 #include "ModelFitFilter.h"
 #include "SequenceBase.h"
@@ -24,116 +27,170 @@
 
 using namespace std::literals;
 
-struct LorentzSequence : QI::SequenceBase {
-    Eigen::ArrayXd sat_f0;
-    QI_SEQUENCE_DECLARE(Lorentz);
-    Eigen::Index size() const override { return sat_f0.rows(); }
-};
-LorentzSequence::LorentzSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    sat_f0 = QI::ArrayFromJSON(json, "sat_f0");
-}
-rapidjson::Value LorentzSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("sat_f0", QI::ArrayToJSON(sat_f0, a), a);
-    return json;
-}
+template <int NP_> struct LorentzModel {
+    using SequenceType  = QI::MTSatSequence;
+    using DataType      = double;
+    using ParameterType = double;
 
-using LorentzModel = QI::Model<4, 0, LorentzSequence>;
-template <>
-std::array<const std::string, 4> LorentzModel::varying_names{{"PD"s, "f0"s, "fwhm"s, "A"s}};
-template <> std::array<const std::string, 0> LorentzModel::fixed_names{{}};
-template <> const QI_ARRAYN(double, 0) LorentzModel::fixed_defaults{};
-template <>
-template <typename Derived>
-auto LorentzModel::signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) &
-                          /* Unused */) const -> QI_ARRAY(typename Derived::Scalar) {
-    using T         = typename Derived::Scalar;
-    const T &  PD   = v[0];
-    const T &  f0   = v[1];
-    const T &  fwhm = v[2];
-    const T &  A    = v[3];
-    const auto x    = (f0 - sequence.sat_f0) / (fwhm / 2.0);
-    const auto L    = A / (1.0 + x.square());
-    const auto s    = PD * (1.0 - L);
-    return s;
-}
+    static constexpr int NP   = NP_;
+    static constexpr int NVpP = 3; // Number of varying parameters per pool - A and FWHM
+    static constexpr int NVg  = 0;
+    static constexpr int NV   = NVg + NVpP * NP;
+    static constexpr int ND   = 0;
+    static constexpr int NF   = 0;
 
-struct LorentzFit : QI::FitFunction<LorentzModel> {
-    using FitFunction::FitFunction;
-    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, LorentzModel::NV) & p,
-                          ResidualType &residual,
-                          std::vector<Eigen::ArrayXd> & /* Unused */,
-                          FlagType & /* Unused */) const override {
-        const double scale = inputs[0].maxCoeff();
-        if (scale < std::numeric_limits<double>::epsilon()) {
-            p << 0.0, 0.0, 0.0, 0.0;
-            residual = 0;
-            return {false, "Maximum data value was not positive"};
+    using VaryingArray = QI_ARRAYN(ParameterType, NV);
+    using FixedArray   = QI_ARRAYN(ParameterType, NF);
+
+    SequenceType &              sequence;
+    std::array<std::string, NV> varying_names;
+    VaryingArray                bounds_lo;
+    VaryingArray                bounds_hi;
+    VaryingArray                start;
+    std::array<bool, NP>        use_bandwidth;
+    double                      Zref;
+    bool                        additive;
+
+    const std::array<std::string, NF> fixed_names{};
+    const FixedArray                  fixed_defaults{};
+
+    template <typename Derived>
+    auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) &
+                /* Unused */) const -> QI_ARRAY(typename Derived::Scalar) {
+        using T       = typename Derived::Scalar;
+        QI_ARRAY(T) S = QI_ARRAY(T)::Constant(sequence.sat_f0.rows(), T(Zref));
+        QI_ARRAY(T) F;
+
+        QI_ARRAY(T) const Z = QI_ARRAY(T)::Zero(sequence.sat_f0.rows());
+        for (auto i = 0; i < NP; i++) {
+            auto const indN = NVg + NVpP * i;
+            T const &  Δf0  = v[indN + 0];
+            T const &  fwhm = v[indN + 1];
+            T const &  A    = v[indN + 2];
+            if (use_bandwidth[i]) {
+                auto const x   = (sequence.sat_f0 - Δf0 - sequence.pulse.bandwidth / 2);
+                auto const y   = (sequence.sat_f0 - Δf0 + sequence.pulse.bandwidth / 2);
+                auto const xHx = (x > Z).select(x, Z);
+                auto const yHy = (y < Z).select(y, Z);
+                F              = xHx + yHy;
+            } else {
+                F = (sequence.sat_f0 - Δf0 - v[1]);
+            }
+            auto const L = A / (1.0 + (2.0 * F / fwhm).square());
+            if (additive) {
+                S += L;
+            } else {
+                S -= L;
+            }
         }
-        const Eigen::ArrayXd &z_spec = inputs[0] / scale;
-
-        using LCost     = QI::ModelCost<LorentzModel>;
-        using AutoCost  = ceres::AutoDiffCostFunction<LCost, ceres::DYNAMIC, LorentzModel::NV>;
-        auto *cost      = new LCost(model, fixed, z_spec);
-        auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
-        //{"PD"s, "f0"s, "fwhm"s, "A"s}
-        p << 2.0, 0.0, 0.5, 0.9;
-        ceres::Problem problem;
-        problem.AddResidualBlock(auto_cost, NULL, p.data());
-        problem.SetParameterLowerBound(p.data(), 0, 1.e-6);
-        problem.SetParameterUpperBound(p.data(), 0, 10.0);
-        problem.SetParameterLowerBound(p.data(), 1, -10.0);
-        problem.SetParameterUpperBound(p.data(), 1, 10.0);
-        problem.SetParameterLowerBound(p.data(), 2, 1.e-6);
-        problem.SetParameterUpperBound(p.data(), 2, 10.);
-        problem.SetParameterLowerBound(p.data(), 3, 1.e-3);
-        problem.SetParameterUpperBound(p.data(), 3, 10.0);
-        ceres::Solver::Options options;
-        options.function_tolerance  = 1e-5;
-        options.gradient_tolerance  = 1e-6;
-        options.parameter_tolerance = 1e-4;
-        options.logging_type        = ceres::SILENT;
-        ceres::Solver::Summary summary;
-        options.max_num_iterations  = 50;
-        options.function_tolerance  = 1e-5;
-        options.gradient_tolerance  = 1e-6;
-        options.parameter_tolerance = 1e-4;
-        ceres::Solve(options, &problem, &summary);
-        p[0] *= scale;
-        residual = summary.final_cost;
-        return {true, ""};
+        return S;
     }
 };
 
-int main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Simple Lorentzian fitting.\nhttp://github.com/spinicist/QUIT");
+// Declare here so available in Process function
+args::ArgumentParser parser("Simple Lorentzian fitting.\nhttp://github.com/spinicist/QUIT");
 
-    args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
+args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
+args::ValueFlag<int>
+    pools(parser, "POOLS", "Number of Lorentzians to fit, default 1", {'p', "pools"}, 1);
+QI_COMMON_ARGS;
+args::Flag additive(
+    parser, "ADDITIVE", "Use an additive model instead of subtractive", {'a', "add"}, false);
+args::ValueFlag<double>
+    Zref(parser, "Zref", "Reference value for Z-spectra, default 1.0", {'z', "zref"}, 1.0);
 
-    QI_COMMON_ARGS;
+template <int N> void Process() {
+    using LM   = LorentzModel<N>;
+    using LFit = QI::NLLSFitFunction<LM>;
 
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(input_path);
+    rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    LorentzSequence     sequence(QI::GetMember(input, "Lorentz"));
-    LorentzModel        model{sequence};
+    QI::MTSatSequence sequence(QI::GetMember(json, "MTSat"));
+
+    auto const &pools_json = json["pools"];
+    if (pools_json.Size() != N) {
+        QI::Fail("Incorrect number of pools in JSON ({}, should be {})", pools_json.Size(), N);
+    }
+
+    std::array<std::string, LM::NV> varying_names;
+    typename LM::VaryingArray       low, high, start;
+    std::array<bool, N>             use_bandwidth;
+    for (rapidjson::SizeType i = 0; i < N; i++) {
+        auto const &pool = pools_json[i];
+        auto const &name = pool["name"].GetString();
+
+        varying_names[LM::NVg + LM::NVpP * i + 0] = name + "_f0"s;
+        varying_names[LM::NVg + LM::NVpP * i + 1] = name + "_fwhm"s;
+        varying_names[LM::NVg + LM::NVpP * i + 2] = name + "_A"s;
+
+        auto const &Δf0_json  = pool["df0"];
+        auto const &fwhm_json = pool["fwhm"];
+        auto const &A_json    = pool["A"];
+        if (Δf0_json.Size() != 3) {
+            QI::Fail("Must specify start, low, high for df0 in {}", name);
+        }
+        if (fwhm_json.Size() != 3) {
+            QI::Fail("Must specify start, low, high for FWHM in {}", name);
+        }
+        if (A_json.Size() != 3) {
+            QI::Fail("Must specify start, low, high for A in {}", name);
+        }
+
+        start[LM::NVg + LM::NVpP * i + 0] = Δf0_json[0].GetDouble();
+        start[LM::NVg + LM::NVpP * i + 1] = fwhm_json[0].GetDouble();
+        start[LM::NVg + LM::NVpP * i + 2] = A_json[0].GetDouble();
+        low[LM::NVg + LM::NVpP * i + 0]   = Δf0_json[1].GetDouble();
+        low[LM::NVg + LM::NVpP * i + 1]   = fwhm_json[1].GetDouble();
+        low[LM::NVg + LM::NVpP * i + 2]   = A_json[1].GetDouble();
+        high[LM::NVg + LM::NVpP * i + 0]  = Δf0_json[2].GetDouble();
+        high[LM::NVg + LM::NVpP * i + 1]  = fwhm_json[2].GetDouble();
+        high[LM::NVg + LM::NVpP * i + 2]  = A_json[2].GetDouble();
+
+        if (pool.HasMember("use_bandwidth")) {
+            use_bandwidth[i] = pool["use_bandwidth"].GetBool();
+        } else {
+            use_bandwidth[i] = false;
+        }
+    }
+
+    QI::Log(verbose,
+            "Fitting check:\nLow:   {}\nHigh:  {}\nStart:  {}\nBandwidth: {}",
+            low.transpose(),
+            high.transpose(),
+            start.transpose(),
+            fmt::join(use_bandwidth, ", "));
+
+    LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
+
     if (simulate) {
-        QI::SimulateModel<LorentzModel, false>(
-            input, model, {}, {input_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<LM, false>(json, model, {}, {input_path.Get()}, verbose, simulate.Get());
     } else {
-        LorentzFit fit{model};
-        auto       fit_filter =
-            QI::ModelFitFilter<LorentzFit>::New(&fit, verbose, resids, subregion.Get());
+        LFit fit{model};
+        auto fit_filter = QI::ModelFitFilter<LFit>::New(&fit, verbose, resids, subregion.Get());
         fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "LTZ_");
         QI::Log(verbose, "Finished.");
+    }
+}
+
+int main(int argc, char **argv) {
+    Eigen::initParallel();
+
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    switch (pools.Get()) {
+    case 1:
+        Process<1>();
+        break;
+    case 2:
+        Process<2>();
+        break;
+    case 3:
+        Process<3>();
+        break;
+    default:
+        QI::Fail("Desired number of pools ({}) has not been implemented", pools.Get());
     }
     return EXIT_SUCCESS;
 }

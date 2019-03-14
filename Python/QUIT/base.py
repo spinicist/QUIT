@@ -8,36 +8,30 @@ Heavily inspired by the FSL base class
 """
 
 import json
+from copy import deepcopy
 from os import path, getcwd
 from nipype import logging
 from nipype.utils.filemanip import fname_presuffix
-from nipype.interfaces.base import traits, isdefined, CommandLine, CommandLineInputSpec, TraitedSpec, File, PackageInfo
+from nipype.interfaces.base import traits, isdefined, CommandLine, CommandLineInputSpec, TraitedSpec, DynamicTraitedSpec, File, PackageInfo
 from nipype.external.due import BibTeX
+
+################################# Input Specs ##################################
 
 
 class InputBaseSpec(CommandLineInputSpec):
     """
-    Base Input Specification for all QUIT Commands
+    Barebones input spec suitable for utilities like NewImage
     """
-
-    # Inputs that are common to all program
     verbose = traits.Bool(desc='Print more information', argstr='--verbose')
     environ = {'QUIT_EXT': 'NIFTI_GZ'}
 
 
 class InputSpec(InputBaseSpec):
+    """
+    Input Specification for most QUIT tools
+    """
     # Most QUIT programs take similar arguments
-
-    # Most QUIT programs take a JSON parameter file
-    param_file = File(desc='.json file', argstr='--json=%s',
-                      xor=['param_dict'], mandatory=True, exists=True)
-
-    param_dict = traits.Dict(desc='Param Dict', argstr='',
-                             mandatory=True, xor=['param_file'])
-
-    # Input nifti
-    in_file = File(exists=True, argstr='%s', mandatory=True,
-                   position=-1, desc='Input file')
+    json = traits.File(exists=True, desc='JSON Input file', argstr='--json=%s')
 
     threads = traits.Int(
         desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
@@ -45,15 +39,73 @@ class InputSpec(InputBaseSpec):
         desc='Add a prefix to output filenames', argstr='--out=%s')
     mask_file = File(
         desc='Only process voxels within the mask', argstr='--mask=%s')
+
+
+class FitInputSpec(InputSpec):
+    """
+    Input Specification for tools in fitting mode
+    """
+    # Input nifti
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+                   position=-1, desc='Input file')
     residuals = traits.Bool(
         desc='Write out residuals for each data-point', argstr='--resids')
+
+
+class SimInputBaseSpec(DynamicTraitedSpec):
+    """
+    Input specification for tools in simulation mode
+    """
+    ignore_exception = traits.Bool(
+        False,
+        usedefault=True,
+        nohash=True,
+        deprecated='1.0.0',
+        desc='Print an error message instead of throwing an exception '
+        'in case the interface fails to run')
+    args = traits.Str(argstr='%s', desc='Additional parameters to the command')
+    environ = traits.DictStrStr(
+        desc='Environment variables', usedefault=True, nohash=True)
+    # This input does not have a "usedefault=True" so the set_default_terminal_output()
+    # method would work
+    terminal_output = traits.Enum(
+        'stream',
+        'allatonce',
+        'file',
+        'none',
+        deprecated='1.0.0',
+        desc=('Control terminal output: `stream` - '
+              'displays to terminal immediately (default), '
+              '`allatonce` - waits till command is '
+              'finished to display output, `file` - '
+              'writes output to file, `none` - output'
+              ' is ignored'),
+        nohash=True)
+
+    json = traits.File(exists=True, desc='JSON Input file', argstr='--json=%s')
+    noise = traits.Float(desc='Noise level to add to simulation',
+                         argstr='--simulate=%f', default_value=0.0, usedefault=True)
+
+
+class SimInputSpec(SimInputBaseSpec):
+    """
+    Input specification for tools in simulation mode
+    """
+    in_file = File(argstr='%s', mandatory=True,
+                   position=-1, desc='Output simulated file')
+################################# Output Specs #################################
+
+
+class SimOutputSpec(TraitedSpec):
+    out_file = File(desc="Path to output image")
+
+################################### Commands ###################################
 
 
 class BaseCommand(CommandLine):
     """
     Base support for QUIT commands.
     """
-
     references_ = [{
         'entry':
         BibTeX(
@@ -71,13 +123,6 @@ class BaseCommand(CommandLine):
             '}'),
         'tags': ['implementation'],
     }]
-
-    def _make_json(self, value):
-        fname = '_tmp_input.json'
-        with open(fname, 'w') as outfile:
-            json.dump(value, outfile)
-        newarg = "--json=" + fname
-        return newarg
 
     def _gen_fname(self,
                    basename,
@@ -123,16 +168,17 @@ class BaseCommand(CommandLine):
             basename, prefix=prefix, suffix=suffix, use_ext=True, newpath=cwd)
         return fname
 
-    def _format_arg(self, name, spec, value):
-        """
-        Make parameter dictionary into a .json file for input to interface
-        """
-        if name == 'param_dict':
-            return self._make_json(value)
-        return super()._format_arg(name, spec, value)
+    def _parse_inputs(self, skip=None):
+        # Make sequence dictionary into a .json file for input to interface
+        if hasattr(self, '_json') and not isdefined(self.inputs.json):
+            fname = '_input.json'
+            with open(fname, 'w') as outfile:
+                json.dump(self._json, outfile, indent=2)
+            self.inputs.json = path.abspath(fname)
+        return super()._parse_inputs(skip)
 
 
-class Command(BaseCommand):
+class FitCommand(BaseCommand):
     """
     Support for standard fitting tools.
     """
@@ -142,47 +188,42 @@ class Command(BaseCommand):
         Add prefix to everything in .outputs
         """
         for key, value in outputs.items():
-            outputs[key] = self._gen_fname(value, prefix=self.inputs.prefix)
+            if isinstance(value, (list,)):
+                outputs[key] = [self._gen_fname(
+                    x, prefix=self.inputs.prefix) for x in value]
+            else:
+                outputs[key] = self._gen_fname(
+                    value, prefix=self.inputs.prefix)
         return outputs
 
-    def _list_outputs(self):
-        return self._add_prefixes(self.output_spec().get())
+    def _list_outputs(self, outputs=None):
+        if outputs is None:
+            outputs = self.output_spec().get()
+        return self._add_prefixes(outputs)
 
-####################### Simulator Base Classes #################################
-
-
-class SimInputSpec(InputBaseSpec):
-    # Most QUIT programs take similar arguments
-
-    # Most QUIT programs take a JSON parameter file
-    param_file = File(desc='.json file', argstr='--json=%s',
-                      xor=['param_dict'], mandatory=True, exists=True)
-
-    param_dict = traits.Dict(desc='Param Dict', argstr='',
-                             mandatory=True, xor=['param_file'])
-
-    # Input nifti
-    in_file = File(exists=False, argstr='%s', mandatory=True,
-                   position=-1, desc='Input file')
-
-    threads = traits.Int(
-        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(
-        desc='Add a prefix to output filenames', argstr='--out=%s')
-    mask_file = File(
-        desc='Only process voxels within the mask', argstr='--mask=%s')
-    noise = traits.Float(desc='Noise level to add to simulation',
-                         argstr='--simulate=%f', default_value=0.0, usedefault=True)
+    def __init__(self, sequence={}, **kwargs):
+        self._json = deepcopy(sequence)
+        super().__init__(**kwargs)
 
 
-class SimOutputSpec(TraitedSpec):
-    out_file = File(desc="Path to output image")
-
-
-class SimCommand(Command):
+class SimCommand(BaseCommand):
     """
     Base support for QUIT simulator commands.
     """
+
+    def __init__(self, sequence={}, **kwargs):
+        self._json = deepcopy(sequence)
+        for pf in self._param_files:
+            setattr(self.input_spec, pf, File(
+                exists=True, desc='Path to %s map' % pf))
+        super().__init__(**kwargs)
+
+    def _parse_inputs(self, skip=[]):
+        for pf in self._param_files:
+            if isdefined(getattr(self.inputs, pf)):
+                self._json[pf] = getattr(self.inputs, pf)
+                skip.append(pf)
+        return super()._parse_inputs(skip)
 
     def _list_outputs(self):
         outputs = self.output_spec().get()

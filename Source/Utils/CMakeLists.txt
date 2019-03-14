@@ -1,7 +1,7 @@
 option( BUILD_UTILITIES "Build the utility programs" ON )
 if( ${BUILD_UTILITIES} )
     set( PROGRAMS
-        qicomplex qiaffine qimask qikfilter
+        qicomplex qiaffine qimask qikfilter qi_pca
         qipolyfit qipolyimg
         qi_coil_combine qi_rfprofile qi_gradient )
 

@@ -27,22 +27,23 @@ void SimulateModel(rapidjson::Value &              json,
                    const double                    noise) {
     auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, verbose);
     simulator->SetNoise(noise);
-    QI::Log(verbose, "Reading varying parameters");
     for (auto i = 0; i < Model::NV; i++) {
-        const std::string v     = model.varying_names[i];
-        const std::string vname = v + "File";
+        const std::string vname = model.varying_names[i];
         const std::string vfile = QI::GetMember(json, vname).GetString();
-        simulator->SetVarying(i, QI::ReadImage(vfile, verbose));
+        QI::Log(verbose, "Reading {} from file: {}", vname, vfile);
+        simulator->SetVarying(i, QI::ReadImage(vfile, false));
     }
     if (fixedpaths.size() != Model::NF) {
         QI::Fail("Number of fixed paths {} does not match number of parameters {}",
                  fixedpaths.size(),
                  Model::NF);
     }
-    QI::Log(verbose, "Reading fixed parameters");
     for (auto i = 0; i < Model::NF; i++) {
         if (fixedpaths[i].size() > 0) {
-            simulator->SetFixed(i, QI::ReadImage(fixedpaths[i], verbose));
+            std::string const &fname = model.fixed_names[i];
+            std::string const &ffile = fixedpaths[i];
+            QI::Log(verbose, "Reading {} from file: {}", fname, ffile);
+            simulator->SetFixed(i, QI::ReadImage(ffile, false));
         }
     }
     QI::Log(verbose, "Noise level is {}\nSimulating model...", noise);

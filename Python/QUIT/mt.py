@@ -7,7 +7,7 @@ Requires that the QUIT tools are in your your system path
 """
 
 from os import path
-from nipype.interfaces.base import TraitedSpec, File, traits, isdefined
+from nipype.interfaces.base import TraitedSpec, DynamicTraitedSpec, File, traits, isdefined
 from . import base as QI
 
 ############################ qi_lineshape ############################
@@ -50,24 +50,22 @@ class Lineshape(QI.BaseCommand):
 ############################ qi_lorentzian ############################
 
 
-class LorentzianInputSpec(QI.InputSpec):
-    # No extra options
-    pass
+class LorentzianInputSpec(QI.FitInputSpec):
+    # Options
+    pools = traits.Int(argstr='--pools=%d',
+                       desc='Number of pools, set from pool arg')
+    additive = traits.Bool(argstr='--add',
+                           desc='Use an additive instead of subtractive model')
+    Zref = traits.Float(argstr='--zref=%f',
+                        desc='Set reference Z-spectrum value (usually 1 or 0)')
 
 
-class LorentzianOutputSpec(TraitedSpec):
-    pd_map = File('LTZ_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    f0_map = File('LTZ_f0.nii.gz',
-                  desc="Path to center-frequency map", usedefault=True)
-    fwhm_map = File('LTZ_fwhm.nii.gz',
-                    desc="Path to FWHM map", usedefault=True)
-    A_map = File('LTZ_A.nii.gz',
-                 desc="Path to Lorentzian amplitude map", usedefault=True)
+class LorentzianOutputSpec(DynamicTraitedSpec):
     residual_map = File('LTZ_residual.nii.gz',
-                        desc="Path to residual map", usedefault=True)
+                        desc='Path to residual map', usedefault=True)
 
 
-class Lorentzian(QI.Command):
+class Lorentzian(QI.FitCommand):
     """
     Fit a Lorentzian function to a Z-spectrum
     """
@@ -76,10 +74,37 @@ class Lorentzian(QI.Command):
     input_spec = LorentzianInputSpec
     output_spec = LorentzianOutputSpec
 
+    def __init__(self, pools={}, **kwargs):
+        super(Lorentzian, self).__init__(pools=len(pools), **kwargs)
+        self._json['pools'] = pools
+        for pool in pools:
+            pn = pool['name']
+            setattr(self.output_spec, pn + '_f0', File('LTZ_%s_f0.nii.gz' %
+                                                       pn, desc='Path to %s Δf0 map' % pn, usedefault=True))
+            setattr(self.output_spec, pn + '_fwhm', File('LTZ_%s_fwhm.nii.gz' %
+                                                         pn, desc='Path to %s FWHM map' % pn, usedefault=True))
+            setattr(self.output_spec, pn + '_A', File('LTZ_%s_A.nii.gz' %
+                                                      pn, desc='Path to %s A map' % pn, usedefault=True))
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        for pool in self._json['pools']:
+            pn = pool['name']
+            outputs[pn + '_f0'] = 'LTZ_%s_f0.nii.gz' % pn
+            outputs[pn + '_fwhm'] = 'LTZ_%s_fwhm.nii.gz' % pn
+            outputs[pn + '_A'] = 'LTZ_%s_A.nii.gz' % pn
+        return self._add_prefixes(outputs)
+
 
 class LorentzianSimInputSpec(QI.SimInputSpec):
-    # No extra options
-    pass
+    # Options
+    # Options
+    pools = traits.Int(argstr='--pools=%d',
+                       desc='Number of pools, set from pool arg')
+    additive = traits.Bool(argstr='--add',
+                           desc='Use an additive instead of subtractive model')
+    Zref = traits.Float(argstr='--zref=%f',
+                        desc='Set reference Z-spectrum value (usually 1 or 0)')
 
 
 class LorentzianSim(QI.SimCommand):
@@ -87,9 +112,20 @@ class LorentzianSim(QI.SimCommand):
     input_spec = LorentzianSimInputSpec
     output_spec = QI.SimOutputSpec
 
+    def __init__(self, pools={}, **kwargs):
+        self._param_files = []
+        for pool in pools:
+            pn = pool['name']
+            self._param_files.append(pn + '_f0')
+            self._param_files.append(pn + '_fwhm')
+            self._param_files.append(pn + '_A')
+        super().__init__(pools=len(pools), **kwargs)
+        self._json['pools'] = pools
 
 ############################ qi_qmt ############################
-class qMTInputSpec(QI.InputSpec):
+
+
+class qMTInputSpec(QI.FitInputSpec):
     # Inputs
     t1_map = File(exists=True, argstr='%s', mandatory=True,
                   position=-2, desc='Path to T1 map')
@@ -117,7 +153,7 @@ class qMTOutputSpec(TraitedSpec):
                         desc="Path to residual map", usedefault=True)
 
 
-class qMT(QI.Command):
+class qMT(QI.FitCommand):
     """
     Fit the Ramani model to a Z-spectrum
     """
@@ -141,6 +177,7 @@ class qMTSimInputSpec(QI.SimInputSpec):
 
 class qMTSim(QI.SimCommand):
     _cmd = 'qi_qmt'
+    _param_files = ['PD', 'T1_f', 'T2_f', 'T2_b', 'k_bf', 'f_b']
     input_spec = qMTSimInputSpec
     output_spec = QI.SimOutputSpec
 
@@ -148,8 +185,11 @@ class qMTSim(QI.SimCommand):
 
 
 class ZSpecInputSpec(QI.InputSpec):
+    # Input nifti
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+                   position=-1, desc='Input file')
     # Options
-    fmap = File(
+    f0_map = File(
         desc='Fieldmap (in same units as frequencies)', argstr='--f0=%s')
     ref = File(desc='Reference image for image output', argstr='--ref=%s')
     asym = traits.Bool(
@@ -174,11 +214,15 @@ class ZSpec(QI.BaseCommand):
     input_spec = ZSpecInputSpec
     output_spec = ZSpecOutputSpec
 
+    def __init__(self, in_freqs=[], out_freqs=[], **kwargs):
+        super().__init__(**kwargs)
+        self._json = {'input_freqs': in_freqs, 'output_freqs': out_freqs}
+
     def _list_outputs(self):
         outputs = self.output_spec().get()
         if isdefined(self.inputs.out_file):
             fname = self._gen_fname(self.inputs.out_file)
         else:
             fname = self._gen_fname(self.inputs.in_file, suffix='_interp')
-        outputs['out_file'] = fname
+        outputs['out_file'] = path.abspath(fname)
         return outputs

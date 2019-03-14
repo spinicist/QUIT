@@ -20,7 +20,7 @@ from . import base as QI
 ############################ qi_asl ############################
 
 
-class ASLInputSpec(QI.InputSpec):
+class ASLInputSpec(QI.FitInputSpec):
     # Additional Options
     average = traits.Bool(
         desc='Average across time-series', argstr='--average')
@@ -41,7 +41,7 @@ class ASLOutputSpec(TraitedSpec):
     CBF_map = File('CASL_CBF.nii.gz', desc="Path to CBF map", usedefault=True)
 
 
-class ASL(QI.Command):
+class ASL(QI.FitCommand):
     """
     Calculate CBF from CASL data
 
@@ -54,11 +54,11 @@ class ASL(QI.Command):
 ############################ qi_ase_oef ############################
 
 
-class ASEInputSpec(QI.InputSpec):
+class ASEInputSpec(QI.FitInputSpec):
     # Additional Options
     B0 = traits.Float(
         desc='Field-strength (Tesla), default 3', argstr='--B0=%f')
-    DBV = traits.Float(
+    fix_DBV = traits.Float(
         desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f')
     gradz = traits.String(
         desc='Field gradient in z/slice-direction for MFG correction', argstr='--gradz=%s')
@@ -82,7 +82,7 @@ class ASEOutputSpec(TraitedSpec):
         'ASE_dHb.nii.gz', desc='Path to Deoxyhaemoglobin concentration map', usedefault=True)
 
 
-class ASE(QI.Command):
+class ASE(QI.FitCommand):
     """
     Calculate the Oxygen Extraction Fraction from Asymmetric Spin Echo data
 
@@ -94,7 +94,7 @@ class ASE(QI.Command):
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        if not isdefined(self.inputs.DBV):
+        if not isdefined(self.inputs.fix_DBV):
             outputs.pop('DBV_map', None)
         return self._add_prefixes(outputs)
 
@@ -103,7 +103,7 @@ class ASESimInputSpec(QI.SimInputSpec):
     # Additional Options
     B0 = traits.Float(
         desc='Field-strength (Tesla), default 3', argstr='--B0=%f')
-    DBV = traits.Float(
+    fix_DBV = traits.Float(
         desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f')
     gradz = traits.String(
         desc='Field gradient in z/slice-direction for MFG correction', argstr='--gradz=%s')
@@ -120,6 +120,13 @@ class ASESim(QI.SimCommand):
     _cmd = 'qi_ase_oef'
     input_spec = ASESimInputSpec
     output_spec = QI.SimOutputSpec
+
+    def __init__(self, **kwargs):
+        if not 'fix_DBV' in kwargs:
+            self._param_files = ['S0', 'dT', 'R2p', 'DBV']
+        else:
+            self._param_files = ['S0', 'dT', 'R2p']
+        super().__init__(**kwargs)
 
 ############################ qi_zshim ############################
 

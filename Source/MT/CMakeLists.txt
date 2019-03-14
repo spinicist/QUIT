@@ -1,7 +1,7 @@
 option( BUILD_MT "Build the MT Programs" ON )
 if( ${BUILD_MT} )
     set( PROGRAMS
-         qi_zspec_interp qi_lorentzian
+         qi_zspec_interp qi_zspec_b1 qi_lorentzian
          qi_lineshape qi_qmt
        )
 

@@ -44,7 +44,7 @@ class NewImageOutputSpec(TraitedSpec):
     out_file = File(desc="Simulated Image")
 
 
-class NewImage(QI.BaseCommand):
+class NewImage(CommandLine):
     """
     Produce a new image with qinewimage
 
@@ -86,7 +86,7 @@ class DiffOutputSpec(TraitedSpec):
     out_diff = traits.Float(desc='Image difference')
 
 
-class Diff(QI.BaseCommand):
+class Diff(CommandLine):
     """
     Compare two images
     """
