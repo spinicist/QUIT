@@ -26,7 +26,7 @@
 
 using namespace std::literals;
 
-using MultiEcho = QI::Model<2, 0, QI::MultiEchoBase>;
+using MultiEcho = QI::Model<2, 0, QI::MultiEchoSequence>;
 template <>
 template <typename Derived>
 auto MultiEcho::signal(const Eigen::ArrayBase<Derived> &p, const QI_ARRAYN(double, 0) &
@@ -167,16 +167,10 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence parameters");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::MultiEchoBase * sequence;
-    if (input.HasMember("MultiEcho")) {
-        sequence = new QI::MultiEchoSequence(input["MultiEcho"]);
-    } else if (input.HasMember("MultiEchoFlex")) {
-        sequence = new QI::MultiEchoFlexSequence(input["MultiEchoFlex"]);
-    } else {
-        QI::Fail("Could not find MultiEcho or MultiEchoFlex in JSON input");
-    }
-    MultiEcho model{*sequence};
+    json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto sequence = input.at("MultiEcho").get<QI::MultiEchoSequence>();
+
+    MultiEcho model{sequence};
     if (simulate) {
         QI::SimulateModel<MultiEcho, false>(
             input, model, {}, {QI::CheckPos(input_path)}, verbose, simulate.Get());
@@ -201,8 +195,8 @@ int main(int argc, char **argv) {
         auto fit = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
         const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
-        if (nvols % sequence->size() == 0) {
-            const int nblocks = nvols / sequence->size();
+        if (nvols % sequence.size() == 0) {
+            const int nblocks = nvols / sequence.size();
             fit->SetBlocks(nblocks);
         } else {
             QI::Fail("Input size is not a multiple of the sequence size");

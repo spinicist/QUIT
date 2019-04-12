@@ -22,80 +22,9 @@
 using namespace std::string_literals;
 
 namespace QI {
-
-SequenceBase *SequenceFromJSON(const rapidjson::Value &json) {
-    rapidjson::Value::ConstMemberIterator seq = json.MemberBegin();
-#define CHECK_MAKE(NAME)                                                                           \
-    (seq->name.GetString() == #NAME##s) {                                                          \
-        NAME##Sequence *ptr = new NAME##Sequence(seq->value);                                      \
-        return ptr;                                                                                \
-    }
-    if
-        CHECK_MAKE(SPGR)
-    else if
-        CHECK_MAKE(SPGREcho)
-    // else if CHECK_MAKE( SPGRFinite )
-    else if
-        CHECK_MAKE(MPRAGE)
-    else if
-        CHECK_MAKE(SSFP)
-    else if
-        CHECK_MAKE(SSFPEcho)
-    // else if CHECK_MAKE( SSFPFinite )
-    // else if CHECK_MAKE( SSFPGS )
-    else if
-        CHECK_MAKE(SSFPMT)
-    else if
-        CHECK_MAKE(MTSat)
-    else if
-        CHECK_MAKE(MultiEcho)
-    else if
-        CHECK_MAKE(MultiEchoFlex)
-    else if
-        CHECK_MAKE(CASL)
-    else {
-        QI::Fail("Unimplemented JSON load for sequence type: {}", seq->name.GetString());
-    }
-#undef CHECK_MAKE
+size_t SequenceBase::count() const {
+    return 1;
 }
-
-rapidjson::Value JSONFromSequence(const SequenceBase *s, rapidjson::Document::AllocatorType &a) {
-    rapidjson::Value json(rapidjson::kObjectType);
-#define MAKE_JSON(NAME)                                                                            \
-    (s->name() == #NAME) {                                                                         \
-        json.AddMember(#NAME, dynamic_cast<const NAME##Sequence *>(s)->toJSON(a), a);              \
-    }
-    if
-        MAKE_JSON(SPGR)
-    else if
-        MAKE_JSON(SPGREcho)
-    // else if MAKE_JSON( SPGRFinite )
-    else if
-        MAKE_JSON(MPRAGE)
-    else if
-        MAKE_JSON(SSFP)
-    else if
-        MAKE_JSON(SSFPEcho)
-    // else if MAKE_JSON( SSFPFinite )
-    // else if MAKE_JSON( SSFPGS )
-    else if
-        MAKE_JSON(SSFPMT)
-    else if
-        MAKE_JSON(MTSat)
-    else if
-        MAKE_JSON(MultiEcho)
-    else if
-        MAKE_JSON(MultiEchoFlex)
-    else if
-        MAKE_JSON(CASL)
-    else {
-        QI::Fail("Unimplemented save for sequence type: {}", s->name());
-    }
-#undef MAKE_JSON
-    return json;
-}
-
-size_t SequenceBase::count() const { return 1; }
 
 Eigen::ArrayXd SequenceBase::weights(const double /* Unused */) const {
     return Eigen::ArrayXd::Ones(size()); // Default weights are constant

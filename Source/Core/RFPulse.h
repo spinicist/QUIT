@@ -21,10 +21,9 @@ namespace QI {
 
 struct RFPulse {
     double Trf, p1, p2, bandwidth;
-
-    rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const;
-    RFPulse(const rapidjson::Value &);
 };
+void from_json(const json &j, RFPulse &s);
+void to_json(json &j, const RFPulse &s);
 
 } // End namespace QI
 

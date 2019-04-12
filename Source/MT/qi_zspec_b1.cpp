@@ -70,9 +70,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
-    auto b1_rms = QI::ArrayFromJSON(json, "b1_rms");
+    auto b1_rms = QI::ArrayFromJSON(doc, "b1_rms");
     if (b1_rms.rows() != static_cast<Eigen::Index>(inputs.size())) {
         QI::Fail("The number of B1 RMS entries must match the number of inputs");
     }

@@ -8,7 +8,6 @@ aux_source_directory(. SRC_LIST)
 include(CheckCXXCompilerFlag)
 include(CMakeToolsHelpers OPTIONAL)
 
-add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
 set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
      CACHE PATH "Path to external library includes (usually External/include" )

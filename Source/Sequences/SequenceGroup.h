@@ -32,8 +32,6 @@ struct SequenceGroup : SequenceBase {
     Eigen::ArrayXd weights(const double f0 = 0.0) const override;
 
     void addSequence(const SequenceBase *s);
-    SequenceGroup(const rapidjson::Value &);
-    rapidjson::Value toJSON(rapidjson::Document::AllocatorType &) const override;
 };
 
 } // End namespace QI

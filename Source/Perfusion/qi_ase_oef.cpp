@@ -31,7 +31,7 @@ constexpr double Hct        = 0.34;
 constexpr double Hb         = Hct / kappa;
 
 struct ASEModel {
-    using SequenceType  = QI::MultiEchoFlexSequence;
+    using SequenceType  = QI::MultiEchoSequence;
     using DataType      = double;
     using ParameterType = double;
 
@@ -97,7 +97,7 @@ struct ASEModel {
 using ASEFit = QI::ScaledNLLSFitFunction<ASEModel>;
 
 struct ASEFixDBVModel {
-    using SequenceType  = QI::MultiEchoFlexSequence;
+    using SequenceType  = QI::MultiEchoSequence;
     using DataType      = double;
     using ParameterType = double;
 
@@ -181,18 +181,18 @@ int main(int argc, char **argv) {
         {'s', "slice"});
 
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::MultiEchoFlexSequence sequence(json["MultiEchoFlex"]);
+    json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto sequence = input.at("MultiEcho").get<QI::MultiEchoSequence>();
 
     if (simulate) {
         if (DBV) {
             ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
             QI::SimulateModel<ASEFixDBVModel, false>(
-                json, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
+                input, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
         } else {
             ASEModel model{sequence, B0.Get()};
             QI::SimulateModel<ASEModel, false>(
-                json, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
+                input, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
         }
     } else {
         auto process = [&](auto fit_func) {

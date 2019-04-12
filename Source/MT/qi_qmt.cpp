@@ -272,9 +272,9 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(mtsat_path);
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::MTSatSequence   mtsat_sequence(QI::GetMember(input, "MTSat"));
-    QI::Lineshapes      lineshape;
+    json           input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto           mtsat_sequence = input.at("MTSat").get<QI::MTSatSequence>();
+    QI::Lineshapes lineshape;
     std::shared_ptr<QI::InterpLineshape> interp = nullptr;
     if (lineshape_arg.Get() == "Gaussian") {
         QI::Log(verbose, "Using a Gaussian lineshape");
@@ -287,8 +287,9 @@ int main(int argc, char **argv) {
         lineshape = QI::Lineshapes::SuperLorentzian;
     } else {
         QI::Log(verbose, "Reading lineshape file: {}", lineshape_arg.Get());
-        rapidjson::Document ls_file = QI::ReadJSON(lineshape_arg.Get());
-        interp    = std::make_shared<QI::InterpLineshape>(QI::GetMember(ls_file, "lineshape"));
+        json ls_file = QI::ReadJSON(lineshape_arg.Get());
+        interp       = std::make_shared<QI::InterpLineshape>(
+            ls_file.at("lineshape").get<QI::InterpLineshape>());
         lineshape = QI::Lineshapes::Interpolated;
     }
 

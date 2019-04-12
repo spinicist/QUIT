@@ -27,14 +27,14 @@ const SequenceBase *SequenceGroup::operator[](const size_t i) const {
 
 Eigen::Index SequenceGroup::size() const {
     size_t sz = 0;
-    for (auto& sig : sequences)
+    for (auto &sig : sequences)
         sz += sig->size();
     return sz;
 }
 
 Eigen::ArrayXd SequenceGroup::weights(const double f0) const {
     Eigen::ArrayXd weights(size());
-    size_t start = 0;
+    size_t         start = 0;
     for (auto &sig : sequences) {
         weights.segment(start, sig->size()) = sig->weights(f0);
         start += sig->size();
@@ -46,20 +46,20 @@ void SequenceGroup::addSequence(const SequenceBase *s) {
     sequences.push_back(s);
 }
 
-SequenceGroup::SequenceGroup(const rapidjson::Value &json) {
-    assert(json.IsArray());
-    for (rapidjson::SizeType i = 0; i < json.Size(); i++) {
-        sequences.push_back(SequenceFromJSON(json[i]));
-    }
-}
+// SequenceGroup::SequenceGroup(const rapidjson::Value &json) {
+//     assert(json.IsArray());
+//     for (rapidjson::SizeType i = 0; i < json.Size(); i++) {
+//         sequences.push_back(SequenceFromJSON(json[i]));
+//     }
+// }
 
-rapidjson::Value SequenceGroup::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kArrayType);
-    for (const auto &seq : sequences) {
-        auto aval = JSONFromSequence(seq, a);
-        json.PushBack(aval, a);
-    }
-    return json;
-}
+// rapidjson::Value SequenceGroup::toJSON(rapidjson::Document::AllocatorType &a) const {
+//     rapidjson::Value json(rapidjson::kArrayType);
+//     for (const auto &seq : sequences) {
+//         auto aval = JSONFromSequence(seq, a);
+//         json.PushBack(aval, a);
+//     }
+//     return json;
+// }
 
 } // End namespace QI

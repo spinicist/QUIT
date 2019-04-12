@@ -12,8 +12,8 @@ if( ${BUILD_RELAX} )
     endforeach(PROGRAM)
 
     # mcdespot is a special flower
-    add_executable( qimcdespot qimcdespot.cpp TwoPoolModel.cpp ThreePoolModel.cpp Helpers.cpp )
-    target_link_libraries( qimcdespot qi_sequences qi_imageio qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES} )
+    # add_executable( qimcdespot qimcdespot.cpp TwoPoolModel.cpp ThreePoolModel.cpp Helpers.cpp )
+    # target_link_libraries( qimcdespot qi_sequences qi_imageio qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES} )
 
-    install( TARGETS ${PROGRAMS} qimcdespot RUNTIME DESTINATION bin )
+    install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
 endif()

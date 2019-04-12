@@ -12,16 +12,11 @@
 #include "SSFPSequence.h"
 #include "Log.h"
 
-#define FA_PHASE_CHECK()                                                                           \
-    if (FA.rows() != PhaseInc.rows()) {                                                            \
-        QI::Fail("While reading {} number of phase increments {} did not match the number of "     \
-                 "flip angles {}",                                                                 \
-                 this->name(), PhaseInc.rows(), FA.rows());                                        \
-    }
-
 namespace QI {
 
-Eigen::Index SSFPBase::size() const { return FA.rows(); }
+Eigen::Index SSFPBase::size() const {
+    return FA.rows();
+}
 
 Eigen::ArrayXd SSFPSequence::weights(const double f0) const {
     Eigen::ArrayXd offset  = PhaseInc + 2. * M_PI * f0 * TR;
@@ -29,94 +24,93 @@ Eigen::ArrayXd SSFPSequence::weights(const double f0) const {
     return weights;
 }
 
-SSFPSequence::SSFPSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR       = GetMember(json, "TR").GetDouble();
-    FA       = ArrayFromJSON(json, "FA", M_PI / 180);
-    PhaseInc = ArrayFromJSON(json, "PhaseInc", M_PI / 180);
-    FA_PHASE_CHECK()
-}
-
-rapidjson::Value SSFPSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
-    return json;
-}
-
-SSFPEchoSequence::SSFPEchoSequence(const rapidjson::Value &json) : SSFPSequence(json) {}
-
-rapidjson::Value SSFPEchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
-    return json;
-}
-
-Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
-    Eigen::ArrayXd offset  = PhaseInc + 2. * M_PI * f0 * TR;
-    Eigen::ArrayXd weights = 0.75 * (offset / 2).sin().square();
-    return weights;
-}
-
-SSFPFiniteSequence::SSFPFiniteSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR       = GetMember(json, "TR").GetDouble();
-    Trf      = GetMember(json, "Trf").GetDouble();
-    FA       = ArrayFromJSON(json, "FA", M_PI / 180);
-    PhaseInc = ArrayFromJSON(json, "PhaseInc", M_PI / 180);
-    FA_PHASE_CHECK()
-}
-
-rapidjson::Value SSFPFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("Trf", Trf, a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
-    return json;
-}
-
-SSFPGSSequence::SSFPGSSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR = GetMember(json, "TR").GetDouble();
-    FA = ArrayFromJSON(json, "FA", M_PI / 180);
-}
-
-rapidjson::Value SSFPGSSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    return json;
-}
-
-Eigen::Index SSFPMTSequence::size() const { return FA.rows(); }
-
-SSFPMTSequence::SSFPMTSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR    = ArrayFromJSON(json, "TR");
-    FA    = ArrayFromJSON(json, "FA", M_PI / 180);
-    Trf   = ArrayFromJSON(json, "Trf");
-    intB1 = ArrayFromJSON(json, "intB1");
-    if ((TR.rows() != Trf.rows()) || (TR.rows() != intB1.rows()) || (TR.rows() != FA.rows())) {
-        QI::Fail("One on more parameters had differing lengths (TR={}, Trf={}, intB1={}, FA={}",
-                 TR.rows(), Trf.rows(), intB1.rows(), FA.rows());
+void from_json(const json &j, SSFPSequence &s) {
+    j.at("TR").get_to(s.TR);
+    s.FA       = ArrayFromJSON(j, "FA", M_PI / 180.0);
+    s.PhaseInc = ArrayFromJSON(j, "PhaseInc", M_PI / 180.0);
+    if (s.FA.rows() != s.PhaseInc.rows()) {
+        QI::Fail("While reading {} number of phase increments {} did not match the number of "
+                 "flip angles {}",
+                 s.name(),
+                 s.PhaseInc.rows(),
+                 s.FA.rows());
     }
 }
 
-rapidjson::Value SSFPMTSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", ArrayToJSON(TR, a), a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    json.AddMember("Trf", ArrayToJSON(Trf, a), a);
-    json.AddMember("intB1", ArrayToJSON(intB1, a), a);
-    return json;
+void to_json(json &j, const SSFPSequence &s) {
+    j = json{{"TR", s.TR}, {"FA", s.FA}, {"PhaseInc", s.PhaseInc}};
+}
+
+// SSFPEchoSequence::SSFPEchoSequence(const rapidjson::Value &json) : SSFPSequence(json) {}
+
+// rapidjson::Value SSFPEchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+//     rapidjson::Value json(rapidjson::kObjectType);
+//     json.AddMember("TR", TR, a);
+//     json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+//     json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
+//     return json;
+// }
+
+// Eigen::ArrayXd SSFPFiniteSequence::weights(const double f0) const {
+//     Eigen::ArrayXd offset  = PhaseInc + 2. * M_PI * f0 * TR;
+//     Eigen::ArrayXd weights = 0.75 * (offset / 2).sin().square();
+//     return weights;
+// }
+
+// SSFPFiniteSequence::SSFPFiniteSequence(const rapidjson::Value &json) {
+//     if (json.IsNull())
+//         QI::Fail("Could not read sequence: {}", name());
+//     TR       = GetMember(json, "TR").GetDouble();
+//     Trf      = GetMember(json, "Trf").GetDouble();
+//     FA       = ArrayFromJSON(json, "FA", M_PI / 180);
+//     PhaseInc = ArrayFromJSON(json, "PhaseInc", M_PI / 180);
+//     FA_PHASE_CHECK()
+// }
+
+// rapidjson::Value SSFPFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+//     rapidjson::Value json(rapidjson::kObjectType);
+//     json.AddMember("TR", TR, a);
+//     json.AddMember("Trf", Trf, a);
+//     json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+//     json.AddMember("PhaseInc", ArrayToJSON(PhaseInc, a, 180 / M_PI), a);
+//     return json;
+// }
+
+// SSFPGSSequence::SSFPGSSequence(const rapidjson::Value &json) {
+//     if (json.IsNull())
+//         QI::Fail("Could not read sequence: {}", name());
+//     TR = GetMember(json, "TR").GetDouble();
+//     FA = ArrayFromJSON(json, "FA", M_PI / 180);
+// }
+
+// rapidjson::Value SSFPGSSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+//     rapidjson::Value json(rapidjson::kObjectType);
+//     json.AddMember("TR", TR, a);
+//     json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+//     return json;
+// }
+
+Eigen::Index SSFPMTSequence::size() const {
+    return FA.rows();
+}
+
+void from_json(const json &j, SSFPMTSequence &s) {
+    s.TR    = ArrayFromJSON(j, "TR");
+    s.FA    = ArrayFromJSON(j, "FA", M_PI / 180);
+    s.Trf   = ArrayFromJSON(j, "Trf");
+    s.intB1 = ArrayFromJSON(j, "intB1");
+    if ((s.TR.rows() != s.Trf.rows()) || (s.TR.rows() != s.intB1.rows()) ||
+        (s.TR.rows() != s.FA.rows())) {
+        QI::Fail("One on more parameters had differing lengths (TR={}, Trf={}, intB1={}, FA={}",
+                 s.TR.rows(),
+                 s.Trf.rows(),
+                 s.intB1.rows(),
+                 s.FA.rows());
+    }
+}
+
+void to_json(json &j, const SSFPMTSequence &s) {
+    j = json{{"TR", s.TR}, {"FA", s.FA}, {"Trf", s.Trf}, {"intB1", s.intB1}};
 }
 
 } // End namespace QI

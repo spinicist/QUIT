@@ -104,21 +104,21 @@ template <int N> void Process() {
     using LFit = QI::NLLSFitFunction<LM>;
 
     QI::CheckPos(input_path);
-    rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::Log(verbose, "Reading sequence information");
-    QI::MTSatSequence sequence(QI::GetMember(json, "MTSat"));
+    auto sequence = input.at("MTSat").get<QI::MTSatSequence>();
 
-    auto const &pools_json = json["pools"];
-    if (pools_json.Size() != N) {
-        QI::Fail("Incorrect number of pools in JSON ({}, should be {})", pools_json.Size(), N);
+    auto const &pools_json = input.at("pools");
+    if (pools_json.size() != N) {
+        QI::Fail("Incorrect number of pools in JSON ({}, should be {})", pools_json.size(), N);
     }
 
     std::array<std::string, LM::NV> varying_names;
     typename LM::VaryingArray       low, high, start;
     std::array<bool, N>             use_bandwidth;
-    for (rapidjson::SizeType i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++) {
         auto const &pool = pools_json[i];
-        auto const &name = pool["name"].GetString();
+        auto const &name = pool["name"].get<std::string>();
 
         varying_names[LM::NVg + LM::NVpP * i + 0] = name + "_f0"s;
         varying_names[LM::NVg + LM::NVpP * i + 1] = name + "_fwhm"s;
@@ -127,28 +127,28 @@ template <int N> void Process() {
         auto const &Δf0_json  = pool["df0"];
         auto const &fwhm_json = pool["fwhm"];
         auto const &A_json    = pool["A"];
-        if (Δf0_json.Size() != 3) {
+        if (Δf0_json.size() != 3) {
             QI::Fail("Must specify start, low, high for df0 in {}", name);
         }
-        if (fwhm_json.Size() != 3) {
+        if (fwhm_json.size() != 3) {
             QI::Fail("Must specify start, low, high for FWHM in {}", name);
         }
-        if (A_json.Size() != 3) {
+        if (A_json.size() != 3) {
             QI::Fail("Must specify start, low, high for A in {}", name);
         }
 
-        start[LM::NVg + LM::NVpP * i + 0] = Δf0_json[0].GetDouble();
-        start[LM::NVg + LM::NVpP * i + 1] = fwhm_json[0].GetDouble();
-        start[LM::NVg + LM::NVpP * i + 2] = A_json[0].GetDouble();
-        low[LM::NVg + LM::NVpP * i + 0]   = Δf0_json[1].GetDouble();
-        low[LM::NVg + LM::NVpP * i + 1]   = fwhm_json[1].GetDouble();
-        low[LM::NVg + LM::NVpP * i + 2]   = A_json[1].GetDouble();
-        high[LM::NVg + LM::NVpP * i + 0]  = Δf0_json[2].GetDouble();
-        high[LM::NVg + LM::NVpP * i + 1]  = fwhm_json[2].GetDouble();
-        high[LM::NVg + LM::NVpP * i + 2]  = A_json[2].GetDouble();
+        start[LM::NVg + LM::NVpP * i + 0] = Δf0_json[0].get<double>();
+        start[LM::NVg + LM::NVpP * i + 1] = fwhm_json[0].get<double>();
+        start[LM::NVg + LM::NVpP * i + 2] = A_json[0].get<double>();
+        low[LM::NVg + LM::NVpP * i + 0]   = Δf0_json[1].get<double>();
+        low[LM::NVg + LM::NVpP * i + 1]   = fwhm_json[1].get<double>();
+        low[LM::NVg + LM::NVpP * i + 2]   = A_json[1].get<double>();
+        high[LM::NVg + LM::NVpP * i + 0]  = Δf0_json[2].get<double>();
+        high[LM::NVg + LM::NVpP * i + 1]  = fwhm_json[2].get<double>();
+        high[LM::NVg + LM::NVpP * i + 2]  = A_json[2].get<double>();
 
-        if (pool.HasMember("use_bandwidth")) {
-            use_bandwidth[i] = pool["use_bandwidth"].GetBool();
+        if (pool.find("use_bandwidth") != pool.end()) {
+            use_bandwidth[i] = pool.at("use_bandwidth").get<bool>();
         } else {
             use_bandwidth[i] = false;
         }
@@ -164,7 +164,7 @@ template <int N> void Process() {
     LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
 
     if (simulate) {
-        QI::SimulateModel<LM, false>(json, model, {}, {input_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<LM, false>(input, model, {}, {input_path.Get()}, verbose, simulate.Get());
     } else {
         LFit fit{model};
         auto fit_filter = QI::ModelFitFilter<LFit>::New(&fit, verbose, resids, subregion.Get());

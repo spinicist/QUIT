@@ -27,8 +27,8 @@ class Perfusion(unittest.TestCase):
 
     def test_oef(self):
         # Use MultiEchoFlex as a proxy for ASE
-        seq = {'MultiEchoFlex': {'TR': 2.5,
-                                 'TE': [-0.07, -0.06, -0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]}}
+        seq = {'MultiEcho': {'TR': 2.5,
+                             'TE': [-0.07, -0.06, -0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]}}
         ase_file = 'sim_ase.nii.gz'
         img_sz = [32, 32, 32]
         noise = 0.001
@@ -58,8 +58,8 @@ class Perfusion(unittest.TestCase):
 
     def test_oef_fixed_dbv(self):
         # Use MultiEchoFlex as a proxy for ASE
-        seq = {'MultiEchoFlex': {'TR': 2.5,
-                                 'TE': [-0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05]}}
+        seq = {'MultiEcho': {'TR': 2.5,
+                             'TE': [-0.05, -0.04, -0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03, 0.04, 0.05]}}
         ase_file = 'sim_ase.nii.gz'
         img_sz = [32, 32, 32]
         noise = 0.001

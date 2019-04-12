@@ -188,9 +188,10 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(spgr_path);
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::SPGRSequence    spgrSequence(QI::GetMember(input, "SPGR"));
-    DESPOT1             model{spgrSequence};
+    json input        = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto spgrSequence = input.at("SPGR").get<QI::SPGRSequence>();
+
+    DESPOT1 model{spgrSequence};
     if (simulate) {
         QI::SimulateModel<DESPOT1, false>(
             input, model, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());

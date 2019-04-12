@@ -22,6 +22,8 @@ struct MPRAGESequence : SequenceBase {
     QI_SEQUENCE_DECLARE(MPRAGE);
     Eigen::Index size() const override;
 };
+void from_json(const json &j, MPRAGESequence &s);
+void to_json(json &j, const MPRAGESequence &s);
 
 struct MP2RAGESequence : SequenceBase {
     double         TR;
@@ -32,6 +34,8 @@ struct MP2RAGESequence : SequenceBase {
     QI_SEQUENCE_DECLARE(MP2RAGE);
     Eigen::Index size() const override;
 };
+void from_json(const json &j, MP2RAGESequence &s);
+void to_json(json &j, const MP2RAGESequence &s);
 
 } // End namespace QI
 

@@ -16,33 +16,39 @@ using namespace std::string_literals;
 
 namespace QI {
 
-InterpLineshape::InterpLineshape(const double fmin, const double fstep, const int fcount,
-                                 const Eigen::ArrayXd &vals, const double T2) :
+InterpLineshape::InterpLineshape(const double          fmin,
+                                 const double          fstep,
+                                 const int             fcount,
+                                 const Eigen::ArrayXd &vals,
+                                 const double          T2) :
     T2_nominal{T2},
-    freq_min{fmin}, freq_step{fstep}, freq_count{fcount},
-    values{vals},
-    grid(&values[0], 0, values.rows()),
-    interpolator{grid}
-{}
+    freq_min{fmin}, freq_step{fstep}, freq_count{fcount}, values{vals} {
 
-InterpLineshape::InterpLineshape(const rapidjson::Value &val) :
-    T2_nominal{QI::GetMember(val, "T2_nominal").GetDouble()},
-    freq_min{QI::GetMember(val, "freq_min").GetDouble()},
-    freq_step{QI::GetMember(val, "freq_step").GetDouble()},
-    freq_count{QI::GetMember(val, "freq_count").GetInt()},
-    values{ArrayFromJSON(val, "values")},
-    grid(&values[0], 0, values.rows()),
-    interpolator{grid}
-{}
-
-rapidjson::Value InterpLineshape::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value value(rapidjson::kObjectType);
-    value.AddMember("T2_nominal", T2_nominal, a);
-    value.AddMember("freq_min", freq_min, a);
-    value.AddMember("freq_step", freq_step, a);
-    value.AddMember("freq_count", freq_count, a);
-    value.AddMember("values", ArrayToJSON(values, a), a);
-    return value;
+    grid         = std::make_shared<ceres::Grid1D<double>>(&values[0], 0, values.rows());
+    interpolator = std::make_shared<ceres::CubicInterpolator<ceres::Grid1D<double>>>(*grid);
 }
 
 } // End namespace QI
+
+namespace nlohmann {
+
+QI::InterpLineshape adl_serializer<QI::InterpLineshape>::from_json(const json &j) {
+    auto T2nom = j.at("T2_nominal").get<double>();
+    auto fmin  = j.at("freq_min").get<double>();
+
+    auto fstep  = j.at("freq_step").get<double>();
+    auto fcount = j.at("freq_count").get<int>();
+    auto vals   = QI::ArrayFromJSON(j, "values");
+
+    return QI::InterpLineshape(fmin, fstep, fcount, vals, T2nom);
+}
+
+void adl_serializer<QI::InterpLineshape>::to_json(json &j, QI::InterpLineshape l) {
+    j = json{{"T2_nominal", l.T2_nominal},
+             {"freq_min", l.freq_min},
+             {"freq_step", l.freq_step},
+             {"freq_count", l.freq_count},
+             {"values", l.values}};
+}
+
+} // namespace nlohmann

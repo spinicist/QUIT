@@ -17,12 +17,14 @@
 namespace QI {
 
 struct CASLSequence : QI::SequenceBase {
-    double TR, label_time;
+    double         TR, label_time;
     Eigen::ArrayXd post_label_delay;
 
     QI_SEQUENCE_DECLARE(CASL);
     Eigen::Index size() const override { return 1; };
 };
+void from_json(const json &j, CASLSequence &s);
+void to_json(json &j, const CASLSequence &s);
 
 } // End namespace QI
 

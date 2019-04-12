@@ -91,9 +91,7 @@ class HIFIInputSpec(QI.InputSpec):
     mprage_file = File(exists=True, argstr='%s', mandatory=True,
         position=-1, desc='Path to MPRAGE data')
 
-
     # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
     clamp_T1 = traits.Float(desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
 

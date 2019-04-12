@@ -32,14 +32,15 @@ int main(int argc, char **argv) {
     args::ValueFlag<char> algorithm(
         parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
     QI::ParseArgs(parser, argc, argv, verbose, threads);
+    QI::CheckPos(ssfp_path);
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document json_input =
-        json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::SSFPSequence ssfp(QI::GetMember(json_input, "SSFP"));
+    json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
+    QI::Log(verbose, "{}", ssfp);
     QI::EllipseModel model{ssfp};
     if (simulate) {
         QI::SimulateModel<QI::EllipseModel, false>(
-            json_input, model, {}, {QI::CheckPos(ssfp_path)}, verbose, simulate.Get());
+            input, model, {}, {ssfp_path.Get()}, verbose, simulate.Get());
     } else {
         QI::EllipseFit *fit = nullptr;
         switch (algorithm.Get()) {
@@ -52,7 +53,7 @@ int main(int argc, char **argv) {
         }
         auto fit_filter =
             QI::ModelFitFilter<QI::EllipseFit>::New(fit, verbose, resids, subregion.Get());
-        fit_filter->ReadInputs({QI::CheckPos(ssfp_path)}, {}, mask.Get());
+        fit_filter->ReadInputs({ssfp_path.Get()}, {}, mask.Get());
         fit_filter->SetBlocks(fit_filter->GetInput(0)->GetNumberOfComponentsPerPixel() /
                               ssfp.size());
         fit_filter->Update();

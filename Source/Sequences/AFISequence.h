@@ -17,10 +17,12 @@
 namespace QI {
 
 struct AFISequence : SequenceBase {
-    double FA, TR1, TR2;
+    double       FA, TR1, TR2;
     Eigen::Index size() const override { return 2; }
-    QI_SEQUENCE_DECLARE( AFI )
+    QI_SEQUENCE_DECLARE(AFI)
 };
+void from_json(const json &j, AFISequence &s);
+void to_json(json &j, const AFISequence &s);
 
 } // End namespace QI
 

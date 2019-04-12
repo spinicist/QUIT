@@ -120,9 +120,9 @@ int main(int argc, char **argv) {
     QI::CheckPos(b_path);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::SSFPSequence    ssfp(QI::GetMember(input, "SSFP"));
-    PLANETModel         model{ssfp};
+    json             input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    QI::SSFPSequence ssfp(input.at("SSFP"));
+    PLANETModel      model{ssfp};
     if (simulate) {
         QI::SimulateModel<PLANETModel, true>(input,
                                              model,

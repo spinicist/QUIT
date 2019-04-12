@@ -19,19 +19,16 @@ class MT(unittest.TestCase):
                               'sat_f0': np.linspace(-5, 5, 21).squeeze().tolist(),
                               'sat_angle': np.repeat(180.0, 21).squeeze().tolist()}}
         pools = [{'name': 'DS',
-                  'Δf0': 0,
-                  'fwhm': [0.5, 1.e-6, 10.0],
-                  'A': [0.5, 1.e-3, 1.0],
-                  'use_bandwith': True}]
+                  'df0': [0, -2.5, 2.5],
+                  'fwhm': [1.0, 1.e-6, 3.0],
+                  'A': [0.2, 1.e-3, 1.0],
+                  'use_bandwidth': True}]
         lorentz_file = 'lorentz_sim.nii.gz'
         img_sz = [32, 32, 32]
         noise = 0.001
 
-        NewImage(out_file='PD.nii.gz', verbose=vb, img_size=img_sz,
-                 fill=1.0).run()
         NewImage(out_file='f0.nii.gz', verbose=vb, img_size=img_sz,
                  grad_dim=0, grad_vals=(-0.5, 0.5)).run()
-
         NewImage(out_file='fwhm.nii.gz', verbose=vb, img_size=img_sz,
                  grad_dim=1, grad_vals=(0.5, 2.5)).run()
         NewImage(out_file='A.nii.gz', verbose=vb, img_size=img_sz,
@@ -39,22 +36,18 @@ class MT(unittest.TestCase):
 
         LorentzianSim(sequence=sequence, pools=pools, in_file=lorentz_file,
                       noise=noise, verbose=vb,
-                      PD='PD.nii.gz',
-                      f0='f0.nii.gz',
+                      DS_f0='f0.nii.gz',
                       DS_fwhm='fwhm.nii.gz',
                       DS_A='A.nii.gz').run()
         Lorentzian(sequence=sequence, pools=pools,
                    in_file=lorentz_file, verbose=vb).run()
 
-        diff_PD = Diff(in_file='LTZ_PD.nii.gz', baseline='PD.nii.gz',
-                       noise=noise, verbose=vb).run()
-        diff_f0 = Diff(in_file='LTZ_f0.nii.gz', baseline='f0.nii.gz',
+        diff_f0 = Diff(in_file='LTZ_DS_f0.nii.gz', baseline='f0.nii.gz',
                        noise=noise, verbose=vb).run()
         diff_fwhm = Diff(in_file='LTZ_DS_fwhm.nii.gz', baseline='fwhm.nii.gz',
                          noise=noise, verbose=vb).run()
         diff_A = Diff(in_file='LTZ_DS_A.nii.gz', baseline='A.nii.gz',
                       noise=noise, verbose=vb).run()
-        self.assertLessEqual(diff_PD.outputs.out_diff, 1.25)
         self.assertLessEqual(diff_f0.outputs.out_diff, 60)
         self.assertLessEqual(diff_fwhm.outputs.out_diff, 20)
         self.assertLessEqual(diff_A.outputs.out_diff, 25)
@@ -71,14 +64,14 @@ class MT(unittest.TestCase):
                               'sat_f0': sat_f0,
                               'sat_angle': np.repeat(180.0, 17).squeeze().tolist()}}
         pools = [{'name': 'DS',
-                  'df0': 0,
-                  'fwhm': [0.5, 1.e-6, 10.0],
-                  'A': [0.5, 1.e-3, 1.0],
-                  'use_bandwith': True},
+                  'df0': [0, -2.5, 2.5],
+                  'fwhm': [1.0, 1.e-6, 3.0],
+                  'A': [0.2, 1.e-3, 1.0],
+                  'use_bandwidth': True},
                  {'name': 'MT',
-                  'df0': -2.0,
-                  'fwhm': [90.0, 60.0, 200.0],
-                  'A': [0.5, 1.e-3, 1.0]}]
+                  'df0': [-2.5, -5.0, -0.5],
+                  'fwhm': [50.0, 35.0, 200.0],
+                  'A': [0.3, 1.e-3, 1.0]}]
 
         lorentz_file = 'lorentz_sim.nii.gz'
         img_sz = [32, 32, 32]
@@ -103,19 +96,14 @@ class MT(unittest.TestCase):
 
         LorentzianSim(sequence=sequence, pools=pools, in_file=lorentz_file,
                       noise=noise, verbose=vb,
-                      PD='PD.nii.gz',
-                      f0='f0.nii.gz',
+                      DS_f0='f0.nii.gz',
                       DS_fwhm='fwhm.nii.gz',
                       DS_A='A.nii.gz',
                       MT_fwhm='MTfwhm.nii.gz',
+                      MT_f0='f0.nii.gz',
                       MT_A='MTA.nii.gz').run()
         Lorentzian(sequence=sequence, pools=pools,
                    in_file=lorentz_file, verbose=vb).run()
-
-        diff_PD = Diff(in_file='LTZ_PD.nii.gz', baseline='PD.nii.gz',
-                       noise=noise, verbose=vb).run()
-        diff_f0 = Diff(in_file='LTZ_f0.nii.gz', baseline='f0.nii.gz', abs_diff=True,
-                       noise=noise, verbose=vb).run()
 
         diff_fwhm = Diff(in_file='LTZ_DS_fwhm.nii.gz', baseline='fwhm.nii.gz',
                          noise=noise, verbose=vb).run()
@@ -127,9 +115,7 @@ class MT(unittest.TestCase):
         diff_MTA = Diff(in_file='LTZ_MT_A.nii.gz', baseline='MTA.nii.gz',
                         noise=noise, verbose=vb).run()
 
-        self.assertLessEqual(diff_PD.outputs.out_diff, 7)
-        self.assertLessEqual(diff_f0.outputs.out_diff, 2)
-        self.assertLessEqual(diff_fwhm.outputs.out_diff, 7)
+        self.assertLessEqual(diff_fwhm.outputs.out_diff, 15)
         self.assertLessEqual(diff_A.outputs.out_diff, 300)
         self.assertLessEqual(diff_MTfwhm.outputs.out_diff, 15)
         self.assertLessEqual(diff_MTA.outputs.out_diff, 300)

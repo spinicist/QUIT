@@ -17,61 +17,58 @@
 
 namespace QI {
 
-Eigen::Index SPGRBase::size() const { return FA.rows(); }
-
-SPGRSequence::SPGRSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR = GetMember(json, "TR").GetDouble();
-    FA = ArrayFromJSON(json, "FA", M_PI / 180);
+Eigen::Index SPGRBase::size() const {
+    return FA.rows();
 }
 
-rapidjson::Value SPGRSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    return json;
+void from_json(const json &j, SPGRSequence &s) {
+    j.at("TR").get_to(s.TR);
+    s.FA = ArrayFromJSON(j, "FA", M_PI / 180.0);
 }
 
-/*
- * With echo-time correction
- */
-
-SPGREchoSequence::SPGREchoSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR = GetMember(json, "TR").GetDouble();
-    TE = GetMember(json, "TE").GetDouble();
-    FA = ArrayFromJSON(json, "FA", M_PI / 180);
+void to_json(json &j, const SPGRSequence &s) {
+    j = nlohmann::json{{"TR", s.TR}, {"FA", s.FA * 180.0 / M_PI}};
 }
 
-rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("TE", TE, a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    return json;
-}
+// /*
+//  * With echo-time correction
+//  */
 
-/*
- * With echo-time and finite-pulse corrections
- */
-SPGRFiniteSequence::SPGRFiniteSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR  = GetMember(json, "TR").GetDouble();
-    TE  = GetMember(json, "TE").GetDouble();
-    Trf = GetMember(json, "Trf").GetDouble();
-    FA  = ArrayFromJSON(json, "FA", M_PI / 180);
-}
+// SPGREchoSequence::SPGREchoSequence(const rapidjson::Value &json) {
+//     if (json.IsNull())
+//         QI::Fail("Could not read sequence: {}", name());
+//     TR = GetMember(json, "TR").GetDouble();
+//     TE = GetMember(json, "TE").GetDouble();
+//     FA = ArrayFromJSON(json, "FA", M_PI / 180);
+// }
 
-rapidjson::Value SPGRFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("TE", TE, a);
-    json.AddMember("Trf", Trf, a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    return json;
-}
+// rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+//     rapidjson::Value json(rapidjson::kObjectType);
+//     json.AddMember("TR", TR, a);
+//     json.AddMember("TE", TE, a);
+//     json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+//     return json;
+// }
+
+// /*
+//  * With echo-time and finite-pulse corrections
+//  */
+// SPGRFiniteSequence::SPGRFiniteSequence(const rapidjson::Value &json) {
+//     if (json.IsNull())
+//         QI::Fail("Could not read sequence: {}", name());
+//     TR  = GetMember(json, "TR").GetDouble();
+//     TE  = GetMember(json, "TE").GetDouble();
+//     Trf = GetMember(json, "Trf").GetDouble();
+//     FA  = ArrayFromJSON(json, "FA", M_PI / 180);
+// }
+
+// rapidjson::Value SPGRFiniteSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
+//     rapidjson::Value json(rapidjson::kObjectType);
+//     json.AddMember("TR", TR, a);
+//     json.AddMember("TE", TE, a);
+//     json.AddMember("Trf", Trf, a);
+//     json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
+//     return json;
+// }
 
 } // End namespace QI

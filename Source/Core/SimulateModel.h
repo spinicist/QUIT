@@ -19,7 +19,7 @@
 namespace QI {
 
 template <typename Model, bool MultiOutput>
-void SimulateModel(rapidjson::Value &              json,
+void SimulateModel(json &                          json,
                    const Model &                   model,
                    const std::vector<std::string> &fixedpaths,
                    const std::vector<std::string> &outpaths,
@@ -29,7 +29,7 @@ void SimulateModel(rapidjson::Value &              json,
     simulator->SetNoise(noise);
     for (auto i = 0; i < Model::NV; i++) {
         const std::string vname = model.varying_names[i];
-        const std::string vfile = QI::GetMember(json, vname).GetString();
+        const std::string vfile = json.at(vname).get<std::string>();
         QI::Log(verbose, "Reading {} from file: {}", vname, vfile);
         simulator->SetVarying(i, QI::ReadImage(vfile, false));
     }

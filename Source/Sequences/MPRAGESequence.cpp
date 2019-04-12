@@ -15,63 +15,60 @@ QI::Fail("Could not read sequence: {}", name());
 
 namespace QI {
 
-Eigen::Index MPRAGESequence::size() const { return 1; }
-
-MPRAGESequence::MPRAGESequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR  = GetMember(json, "TR").GetDouble();
-    TI  = GetMember(json, "TI").GetDouble();
-    TD  = GetMember(json, "TD").GetDouble();
-    k0  = GetMember(json, "k0").GetInt();
-    FA  = GetMember(json, "FA").GetDouble() * M_PI / 180;
-    ETL = GetMember(json, "ETL").GetInt();
-    eta = GetMember(json, "eta").GetDouble();
+Eigen::Index MPRAGESequence::size() const {
+    return 1;
 }
 
-rapidjson::Value MPRAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("TI", TI, a);
-    json.AddMember("TD", TD, a);
-    json.AddMember("eta", eta, a);
-    json.AddMember("FA", FA * 180 / M_PI, a);
-    json.AddMember("ETL", ETL, a);
-    json.AddMember("k0", k0, a);
-    return json;
+void from_json(const json &j, MPRAGESequence &s) {
+    j.at("TR").get_to(s.TR);
+    j.at("TI").get_to(s.TI);
+    j.at("TD").get_to(s.TD);
+    j.at("k0").get_to(s.k0);
+    j.at("ETL").get_to(s.ETL);
+    j.at("eta").get_to(s.eta);
+    s.FA = j.at("FA").get<double>() * M_PI / 180.0;
+}
+
+void to_json(json &j, const MPRAGESequence &s) {
+    j = {{"TR", s.TR},
+         {"TI", s.TI},
+         {"TD", s.TD},
+         {"eta", s.eta},
+         {"FA", s.FA * 180.0 / M_PI},
+         {"ETL", s.ETL},
+         {"k0", s.k0}};
 }
 
 /*
  * MP2RAGE
  */
 
-Eigen::Index MP2RAGESequence::size() const { return 2; }
-
-MP2RAGESequence::MP2RAGESequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR          = GetMember(json, "TR").GetDouble();
-    auto TI     = ArrayFromJSON(json, "TI");
-    auto TRPrep = GetMember(json, "TRPrep").GetDouble();
-    FA          = ArrayFromJSON(json, "FA", M_PI / 180);
-    SegLength   = GetMember(json, "SegLength").GetInt();
-    k0          = GetMember(json, "k0").GetInt();
-    TD[0]       = TI[0] - k0 * TR;
-    TD[1]       = TI[1] - (TI[0] + SegLength * TR);
-    TD[2]       = TRPrep - (TI[1] + (SegLength - k0) * TR);
+Eigen::Index MP2RAGESequence::size() const {
+    return 2;
 }
 
-rapidjson::Value MP2RAGESequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    Eigen::Array2d   TI{TD[0], TD[1] + SegLength * TR + TD[0]};
-    double           TRPrep = TI[1] + (SegLength - k0) * TR + TD[2];
-    rapidjson::Value json;
-    json.AddMember("TR", TR, a);
-    json.AddMember("TRPrep", TRPrep, a);
-    json.AddMember("TI", ArrayToJSON(TI, a), a);
-    json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-    json.AddMember("SegLength", SegLength, a);
-    json.AddMember("k0", k0, a);
-    return json;
+void from_json(const json &j, MP2RAGESequence &s) {
+    j.at("TR").get_to(s.TR);
+    auto TI     = ArrayFromJSON(j, "TI");
+    auto TRPrep = j.at("TRPrep").get<double>();
+    s.FA        = ArrayFromJSON(j, "FA", M_PI / 180.0);
+    j.at("SegLength").get_to(s.SegLength);
+    j.at("k0").get_to(s.k0);
+    s.TD[0] = TI[0] - s.k0 * s.TR;
+    s.TD[1] = TI[1] - (TI[0] + s.SegLength * s.TR);
+    s.TD[2] = TRPrep - (TI[1] + (s.SegLength - s.k0) * s.TR);
+}
+
+void to_json(json &j, const MP2RAGESequence &s) {
+    Eigen::Array2d TI{s.TD[0], s.TD[1] + s.SegLength * s.TR + s.TD[0]};
+    double         TRPrep = TI[1] + (s.SegLength - s.k0) * s.TR + s.TD[2];
+
+    j = json{{"TR", s.TR},
+             {"TRPrep", TRPrep},
+             {"TI", TI},
+             {"FA", s.FA},
+             {"SegLength", s.SegLength},
+             {"k0", s.k0}};
 }
 
 } // End namespace QI

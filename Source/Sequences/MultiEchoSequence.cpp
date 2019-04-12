@@ -17,45 +17,27 @@ namespace QI {
 /*
  * Base
  */
-Eigen::Index MultiEchoBase::size() const { return TE.rows(); }
+Eigen::Index MultiEchoSequence::size() const {
+    return TE.rows();
+}
 
 /*
  * Regularly spaced sequence
  */
-MultiEchoSequence::MultiEchoSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR  = GetMember(json, "TR").GetDouble();
-    TE1 = GetMember(json, "TE1").GetDouble();
-    ESP = GetMember(json, "ESP").GetDouble();
-    ETL = GetMember(json, "ETL").GetInt();
-    TE  = Eigen::ArrayXd::LinSpaced(ETL, TE1, TE1 + ESP * (ETL - 1));
+void from_json(const json &j, MultiEchoSequence &s) {
+    j.at("TR").get_to(s.TR);
+    if (j.find("TE") != j.end()) {
+        s.TE = ArrayFromJSON(j, "TE");
+    } else {
+        auto TE1 = j.at("TE1").get<double>();
+        auto ESP = j.at("ESP").get<double>();
+        auto ETL = j.at("ETL").get<double>();
+        s.TE     = Eigen::ArrayXd::LinSpaced(ETL, TE1, TE1 + ESP * (ETL - 1));
+    }
 }
 
-rapidjson::Value MultiEchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("TE1", TE1, a);
-    json.AddMember("ESP", ESP, a);
-    json.AddMember("ETL", ETL, a);
-    return json;
-}
-
-/*
- * Irregularly spaced sequence
- */
-MultiEchoFlexSequence::MultiEchoFlexSequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR = GetMember(json, "TR").GetDouble();
-    TE = ArrayFromJSON(json, "TE");
-}
-
-rapidjson::Value MultiEchoFlexSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("TE", ArrayToJSON(TE, a), a);
-    return json;
+void to_json(json &j, const MultiEchoSequence &s) {
+    j = json{{"TR", s.TR}, {"TE", s.TE}};
 }
 
 } // End namespace QI

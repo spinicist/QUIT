@@ -15,20 +15,15 @@
 
 namespace QI {
 
-RFPulse::RFPulse(const rapidjson::Value &json) {
-    Trf       = QI::GetMember(json, "Trf").GetDouble();
-    p1        = QI::GetMember(json, "p1").GetDouble();
-    p2        = QI::GetMember(json, "p2").GetDouble();
-    bandwidth = QI::GetMember(json, "bandwidth").GetDouble();
+void from_json(const json &j, RFPulse &s) {
+    j.at("Trf").get_to(s.Trf);
+    j.at("p1").get_to(s.p1);
+    j.at("p2").get_to(s.p2);
+    j.at("bandwidth").get_to(s.bandwidth);
 }
 
-rapidjson::Value RFPulse::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json_val(rapidjson::kObjectType);
-    json_val.AddMember("Trf", Trf, a);
-    json_val.AddMember("p1", p1, a);
-    json_val.AddMember("p2", p2, a);
-    json_val.AddMember("bandwidth", bandwidth, a);
-    return json_val;
+void to_json(json &j, const RFPulse &s) {
+    j = json{{"Trf", s.Trf}, {"p1", s.p1}, {"p2", s.p2}, {"bandwidth", s.bandwidth}};
 }
 
 } // End namespace QI

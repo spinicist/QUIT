@@ -58,9 +58,9 @@ int main(int argc, char **argv) {
 
     auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
 
-    rapidjson::Document json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    auto                in_freqs  = QI::ArrayFromJSON(json, "input_freqs");
-    auto                out_freqs = QI::ArrayFromJSON(json, "output_freqs");
+    json doc       = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto in_freqs  = QI::ArrayFromJSON(doc, "input_freqs");
+    auto out_freqs = QI::ArrayFromJSON(doc, "output_freqs");
     QI::Log(verbose, "Input frequencies: {}", in_freqs.transpose());
     QI::Log(verbose, "Output frequencies:{}", out_freqs.transpose());
     if (asym)

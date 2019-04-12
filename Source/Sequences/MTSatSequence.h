@@ -14,18 +14,20 @@
 #ifndef SEQUENCES_MTSAT_H
 #define SEQUENCES_MTSAT_H
 
-#include "SequenceBase.h"
 #include "RFPulse.h"
+#include "SequenceBase.h"
 
 namespace QI {
 
 struct MTSatSequence : SequenceBase {
-    double FA, TR;
+    double         FA, TR;
     Eigen::ArrayXd sat_f0, sat_angle;
-    RFPulse pulse;
+    RFPulse        pulse;
     QI_SEQUENCE_DECLARE(MTSat);
     Eigen::Index size() const override;
 };
+void from_json(const json &j, MTSatSequence &s);
+void to_json(json &j, const MTSatSequence &s);
 
 } // End namespace QI
 

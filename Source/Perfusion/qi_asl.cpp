@@ -63,8 +63,8 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Reading sequence parameters");
-    rapidjson::Document  json = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::CASLSequence     sequence(json["CASL"]);
+    json                 doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    QI::CASLSequence     sequence(doc["CASL"]);
     QI::VolumeF::Pointer t1_img = nullptr, pd_img = nullptr, mask_img = nullptr;
     if (T1_tissue_path) {
         t1_img = QI::ReadImage(T1_tissue_path.Get(), verbose);

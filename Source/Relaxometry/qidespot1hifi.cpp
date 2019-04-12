@@ -207,10 +207,11 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::SPGRSequence    spgrSequence(QI::GetMember(input, "SPGR"));
-    QI::MPRAGESequence  mprageSequence(QI::GetMember(input, "MPRAGE"));
-    HIFIModel           model{spgrSequence, mprageSequence};
+    json input          = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto spgrSequence   = input.at("SPGR").get<QI::SPGRSequence>();
+    auto mprageSequence = input.at("MPRAGE").get<QI::MPRAGESequence>();
+
+    HIFIModel model{spgrSequence, mprageSequence};
     if (simulate) {
         QI::SimulateModel<HIFIModel, true>(input,
                                            model,

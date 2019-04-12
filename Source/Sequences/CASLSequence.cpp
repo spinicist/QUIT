@@ -14,19 +14,14 @@
 
 namespace QI {
 
-CASLSequence::CASLSequence(const rapidjson::Value& json) {
-    if (json.IsNull()) QI::Fail("Could not read sequence: {}", name());
-    TR = json["TR"].GetDouble();
-    label_time = json["label_time"].GetDouble();
-    post_label_delay = ArrayFromJSON(json, "post_label_delay");
+void from_json(const json &j, CASLSequence &s) {
+    j.at("TR").get_to(s.TR);
+    j.at("label_time").get_to(s.label_time);
+    s.post_label_delay = ArrayFromJSON(j, "post_label_delay");
 }
 
-rapidjson::Value CASLSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("label_time", label_time, a);
-    json.AddMember("post_label_delay", ArrayToJSON(post_label_delay, a), a);
-    return json;
+void to_json(json &j, const CASLSequence &s) {
+    j = json{{"TR", s.TR}, {"label_time", s.label_time}, {"post_label_delay", s.post_label_delay}};
 }
 
 } // End namespace QI

@@ -16,21 +16,14 @@
 
 namespace QI {
 
-struct MultiEchoBase : SequenceBase {
-    double TR;
+struct MultiEchoSequence : SequenceBase {
+    double         TR;
     Eigen::ArrayXd TE;
-    Eigen::Index size() const override;
-};
-
-struct MultiEchoSequence : MultiEchoBase {
-    double TE1, ESP;
-    int ETL;
+    Eigen::Index   size() const override;
     QI_SEQUENCE_DECLARE(MultiEcho);
 };
-
-struct MultiEchoFlexSequence : MultiEchoBase {
-    QI_SEQUENCE_DECLARE(MultiEchoFlex);
-};
+void from_json(const json &j, MultiEchoSequence &s);
+void to_json(json &j, const MultiEchoSequence &s);
 
 } // End namespace QI
 

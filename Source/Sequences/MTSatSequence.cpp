@@ -16,25 +16,24 @@
 
 namespace QI {
 
-Eigen::Index MTSatSequence::size() const { return sat_f0.rows(); }
-
-MTSatSequence::MTSatSequence(const rapidjson::Value &json) : pulse(json["pulse"]) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR        = GetMember(json, "TR").GetDouble();
-    FA        = GetMember(json, "FA").GetDouble() * M_PI / 180;
-    sat_f0    = ArrayFromJSON(json, "sat_f0");
-    sat_angle = ArrayFromJSON(json, "sat_angle", M_PI / 180);
+Eigen::Index MTSatSequence::size() const {
+    return sat_f0.rows();
 }
 
-rapidjson::Value MTSatSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR", TR, a);
-    json.AddMember("FA", FA * 180 / M_PI, a);
-    json.AddMember("pulse", pulse.toJSON(a), a);
-    json.AddMember("sat_f0", ArrayToJSON(sat_f0, a), a);
-    json.AddMember("sat_angle", ArrayToJSON(sat_angle, a, 180 / M_PI), a);
-    return json;
+void from_json(const json &j, MTSatSequence &s) {
+    j.at("TR").get_to(s.TR);
+    s.FA        = j.at("FA").get<double>() * M_PI / 180.0;
+    s.sat_f0    = ArrayFromJSON(j, "sat_f0");
+    s.sat_angle = ArrayFromJSON(j, "sat_angle", M_PI / 180.0);
+    j.at("pulse").get_to(s.pulse);
+}
+
+void to_json(json &j, const MTSatSequence &s) {
+    j = json{{"TR", s.TR},
+             {"FA", s.FA},
+             {"pulse", s.pulse},
+             {"sat_f0", s.sat_f0},
+             {"sat_angle", s.sat_angle}};
 }
 
 } // End namespace QI

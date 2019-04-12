@@ -198,9 +198,9 @@ int main(int argc, char **argv) {
     QI::CheckPos(b_path);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::SSFPMTSequence  ssfp(QI::GetMember(input, "SSFPMT"));
-    EMTModel            model{ssfp};
+    json               input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    QI::SSFPMTSequence ssfp(input.at("SSFPMT"));
+    EMTModel           model{ssfp};
     if (simulate) {
         QI::SimulateModel<EMTModel, true>(input,
                                           model,

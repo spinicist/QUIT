@@ -165,9 +165,9 @@ int main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Reading sequence information");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::SSFPSequence    ssfp(QI::GetMember(input, "SSFP"));
-    FMModel             model{ssfp};
+    json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto    ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
+    FMModel model{ssfp};
     if (simulate) {
         QI::SimulateModel<FMModel, false>(input,
                                           model,

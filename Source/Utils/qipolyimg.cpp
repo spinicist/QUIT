@@ -122,10 +122,10 @@ int main(int argc, char **argv) {
 
     QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path), verbose);
     QI::Log(verbose, "Reading polynomial");
-    rapidjson::Document json   = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    Eigen::Array3d      center = QI::ArrayFromJSON(json, "center");
-    double              scale  = json["scale"].GetDouble();
-    Eigen::ArrayXd      coeffs = QI::ArrayFromJSON(json, "coeffs");
+    json           input  = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    Eigen::Array3d center = QI::ArrayFromJSON(input, "center");
+    double         scale  = input.at("scale").get<double>();
+    Eigen::ArrayXd coeffs = QI::ArrayFromJSON(input, "coeffs");
     QI::Log(verbose,
             "Center point is: {} Scale is: {}\nCoeffs are: {}",
             center.transpose(),

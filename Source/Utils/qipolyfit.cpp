@@ -106,8 +106,8 @@ class PolynomialFitImageFilter : public ImageToImageFilter<QI::VolumeF, QI::Volu
             if (mask)
                 ++maskIter;
         }
-        Eigen::VectorXd b = m_Robust ? QI::RobustLeastSquares(X, y, &m_residual)
-                                     : QI::LeastSquares(X, y, &m_residual);
+        Eigen::VectorXd b = m_Robust ? QI::RobustLeastSquares(X, y, &m_residual) :
+                                       QI::LeastSquares(X, y, &m_residual);
         m_poly.setCoeffs(b);
     }
 
@@ -162,14 +162,12 @@ int main(int argc, char **argv) {
     double scale = (spacing / 2).GetNorm();
     fit->SetScale(scale);
     fit->Update();
-    rapidjson::Document doc;
-    doc.SetObject();
-    auto &a = doc.GetAllocator();
-    doc.AddMember("center", QI::ArrayToJSON(center, a), a);
-    doc.AddMember("scale", scale, a);
-    doc.AddMember("coeffs", QI::ArrayToJSON(fit->GetPolynomial().coeffs(), a), a);
+    json doc;
+    doc["center"] = center;
+    doc["scale"]  = scale;
+    doc["coeffs"] = fit->GetPolynomial().coeffs();
     if (print_terms)
-        doc.AddMember("terms", fit->GetPolynomial().get_terms(), a);
+        doc["terms"] = fit->GetPolynomial().get_terms();
     QI::WriteJSON(std::cout, doc);
     QI::Log(verbose, "Residual: {}", fit->GetResidual());
     QI::Log(verbose, "Finished.");

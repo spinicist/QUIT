@@ -114,15 +114,14 @@ int main(int argc, char **argv) {
 
     if (t1) {
         QI::Log(verbose, "Reading sequence information");
-        rapidjson::Document input =
-            json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-        QI::MP2RAGESequence mp2rage_sequence(input["MP2RAGE"]);
+        json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+        auto sequence = input.at("MP2RAGE").get<QI::MP2RAGESequence>();
         QI::Log(verbose, "Building look-up spline");
         int            num_entries = 100;
         Eigen::ArrayXd T1_values   = Eigen::ArrayXd::LinSpaced(num_entries, 0.25, 4.0);
         Eigen::ArrayXd MP2_values(num_entries);
         for (int i = 0; i < num_entries; i++) {
-            const auto  sig = One_MP2RAGE(1., T1_values[i], 1., mp2rage_sequence);
+            const auto  sig = One_MP2RAGE(1., T1_values[i], 1., sequence);
             const float mp2 = MP2Contrast(sig[0], sig[1]);
             if ((i > 0) && (mp2 > MP2_values[i - 1])) {
                 num_entries = i;

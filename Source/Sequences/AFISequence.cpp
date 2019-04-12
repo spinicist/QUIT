@@ -14,20 +14,14 @@
 
 namespace QI {
 
-AFISequence::AFISequence(const rapidjson::Value &json) {
-    if (json.IsNull())
-        QI::Fail("Could not read sequence: {}", name());
-    TR1 = json["TR1"].GetDouble();
-    TR2 = json["TR2"].GetDouble();
-    FA  = json["FA"].GetDouble() * M_PI / 180;
+void from_json(const json &j, AFISequence &s) {
+    j.at("TR1").get_to(s.TR1);
+    j.at("TR2").get_to(s.TR2);
+    j.at("FA").get_to(s.FA);
 }
 
-rapidjson::Value AFISequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("TR1", TR1, a);
-    json.AddMember("TR2", TR2, a);
-    json.AddMember("FA", FA * 180 / M_PI, a);
-    return json;
+void to_json(json &j, const AFISequence &s) {
+    j = nlohmann::json{{"TR1", s.TR1}, {"TR2", s.TR2}, {"FA", s.FA * 180. / M_PI}};
 }
 
 } // End namespace QI

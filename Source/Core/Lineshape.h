@@ -50,24 +50,25 @@ template <typename T> QI_ARRAY(T) SuperLorentzian(const Eigen::ArrayXd &df0, con
     QI_ARRAY(T) vals(df0.rows());
     for (auto i = 0; i < df0.rows(); i++) {
         SLFunctor<T> sl_functor{T2b, df0[i]};
-        vals[i] = integrator.quadratureAdaptive(sl_functor, T{0.0}, T{1.0}, abs_error, rel_error,
-                                                quad_rule);
+        vals[i] = integrator.quadratureAdaptive(
+            sl_functor, T{0.0}, T{1.0}, abs_error, rel_error, quad_rule);
     }
     return vals;
 }
 
 struct InterpLineshape {
-    double                                          T2_nominal = 1e-6;
-    double                                          freq_min, freq_step;
-    int                                             freq_count;
-    Eigen::ArrayXd                                  values;
-    ceres::Grid1D<double>                           grid;
-    ceres::CubicInterpolator<ceres::Grid1D<double>> interpolator;
+    double                                                           T2_nominal = 1e-6;
+    double                                                           freq_min, freq_step;
+    int                                                              freq_count;
+    Eigen::ArrayXd                                                   values;
+    std::shared_ptr<ceres::Grid1D<double>>                           grid;
+    std::shared_ptr<ceres::CubicInterpolator<ceres::Grid1D<double>>> interpolator;
 
-    InterpLineshape(const double freq_min, const double freq_step, const int freq_count,
-                    const Eigen::ArrayXd &vals, const double T2b);
-    InterpLineshape(const rapidjson::Value &);
-    rapidjson::Value toJSON(rapidjson::Document::AllocatorType &a) const;
+    InterpLineshape(const double          freq_min,
+                    const double          freq_step,
+                    const int             freq_count,
+                    const Eigen::ArrayXd &vals,
+                    const double          T2b);
 
     template <typename T> QI_ARRAY(T) operator()(const Eigen::ArrayXd &f, const T T2) const {
         const auto scale = T2 / T2_nominal;
@@ -79,7 +80,7 @@ struct InterpLineshape {
             } else if (sf[i] > (freq_count - 1.0)) {
                 interp_vals[i] = values[freq_count - 1] * scale;
             } else {
-                interpolator.Evaluate(sf[i], &interp_vals[i]);
+                interpolator->Evaluate(sf[i], &interp_vals[i]);
                 interp_vals[i] *= scale;
             }
         }
@@ -88,5 +89,12 @@ struct InterpLineshape {
 };
 
 } // End namespace QI
+
+namespace nlohmann {
+template <> struct adl_serializer<QI::InterpLineshape> {
+    static QI::InterpLineshape from_json(const json &j);
+    static void                to_json(json &j, QI::InterpLineshape t);
+};
+} // namespace nlohmann
 
 #endif // LINESHAPE_H

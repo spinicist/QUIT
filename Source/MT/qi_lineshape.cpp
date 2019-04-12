@@ -63,9 +63,7 @@ int main(int argc, char **argv) {
     }
     const auto lineshape =
         QI::InterpLineshape(frq_start.Get(), frq_spacing.Get(), frq_count.Get(), values, T2b.Get());
-    rapidjson::Document doc;
-    doc.SetObject();
-    doc.AddMember("lineshape", lineshape.toJSON(doc.GetAllocator()), doc.GetAllocator());
+    json doc{{"lineshape", lineshape}};
     QI::WriteJSON(QI::CheckPos(out_path), doc);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;

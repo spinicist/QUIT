@@ -115,13 +115,11 @@ int main(int argc, char **argv) {
             (retained_vals * 100).transpose());
 
     if (save_pcs) {
-        rapidjson::Document doc;
-        doc.SetObject();
-        auto &a = doc.GetAllocator();
-        doc.AddMember("eigenvalues", QI::ArrayToJSON(retained_vals, a), a);
+        json doc;
+        doc["eigenvalues"] = retained_vals;
         for (Eigen::Index v = 0; v < Nret; v++) {
             // std::string name = "eigenvector_"s + std::to_string(v);
-            doc.AddMember("eigenvector", QI::ArrayToJSON(retained_vecs.col(v), a), a);
+            doc["eigenvector"] = retained_vecs.col(v);
         }
         QI::Log(verbose, "Saving PCs to JSON file: {}", save_pcs.Get());
         QI::WriteJSON(save_pcs.Get(), doc);
