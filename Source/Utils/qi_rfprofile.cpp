@@ -73,22 +73,24 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
     ProfileImage() {}
     ~ProfileImage() {}
     void DynamicThreadedGenerateData(const TRegion &region) ITK_OVERRIDE {
-        auto                                     output = this->GetOutput();
-        ImageSliceIteratorWithIndex<QI::VolumeF> imageIt(output, region);
-        imageIt.SetFirstDirection((m_dim + 1) % 3);
-        imageIt.SetSecondDirection((m_dim + 2) % 3);
-        imageIt.GoToBegin();
-        ImageSliceIteratorWithIndex<QI::VolumeF> it_B1(m_reference, region);
-        it_B1.SetFirstDirection((m_dim + 1) % 3);
-        it_B1.SetSecondDirection((m_dim + 2) % 3);
-        it_B1.GoToBegin();
+        auto const output = this->GetOutput();
+        auto const mask   = this->GetMask();
+        auto const dim1   = (m_dim + 1) % 3;
+        auto const dim2   = (m_dim + 2) % 3;
 
-        const auto                                    mask = this->GetMask();
+        ImageSliceIteratorWithIndex<QI::VolumeF> imageIt(output, region);
+        imageIt.SetFirstDirection(dim1);
+        imageIt.SetSecondDirection(dim2);
+
+        ImageSliceIteratorWithIndex<QI::VolumeF> it_B1(m_reference, region);
+        it_B1.SetFirstDirection(dim1);
+        it_B1.SetSecondDirection(dim2);
+
         ImageSliceConstIteratorWithIndex<QI::VolumeF> maskIter;
         if (mask) {
             maskIter = ImageSliceConstIteratorWithIndex<QI::VolumeF>(mask, region);
-            maskIter.SetFirstDirection(0);
-            maskIter.SetSecondDirection(1);
+            maskIter.SetFirstDirection(dim1);
+            maskIter.SetSecondDirection(dim2);
             maskIter.GoToBegin();
         }
 
@@ -108,16 +110,30 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
             m_reference->TransformIndexToPhysicalPoint(idx_center, pt_center);
         }
 
+        // Now get physical space index to deal with obliqued scans
+        QI::VectorVolumeF::IndexType index1, index2;
+        index1.Fill(0);
+        index2.Fill(0);
+        index2[m_dim] = 1;
+        QI::VectorVolumeF::PointType pt1, pt2;
+        m_reference->TransformIndexToPhysicalPoint(index1, pt1);
+        m_reference->TransformIndexToPhysicalPoint(index2, pt2);
+        auto const diff     = pt2 - pt1;
+        int        phys_dim = 0;
+        if (fabs(diff[1]) > fabs(diff[0])) {
+            if (fabs(diff[2]) > fabs(diff[1])) {
+                phys_dim = 2;
+            }
+            phys_dim = 1;
+        }
+        QI::Log(m_debug, "Physical dimension: {}", phys_dim);
+
         while (!imageIt.IsAtEnd()) {
             QI::VectorVolumeF::PointType pt, pt_rf;
             m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), pt);
             pt_rf     = pt - pt_center;
-            float val = m_spline(pt_rf[m_dim]);
-            QI::Log(m_debug,
-                    "Slice co-ordinate: {} Spline Point: {} Value: {}",
-                    pt_rf,
-                    pt_rf[m_dim],
-                    val);
+            float val = m_spline(pt_rf[phys_dim]);
+            QI::Log(m_debug, "Absolute co-ord: {} Relative co-ord: {} Value: {}", pt, pt_rf, val);
             while (!imageIt.IsAtEndOfSlice()) {
                 while (!imageIt.IsAtEndOfLine()) {
                     if (!mask || maskIter.Get()) {
@@ -195,10 +211,11 @@ int main(int argc, char **argv) {
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
     image->SetDim(dimension.Get());
-    image->SetCenterMask(centerMask);
-    image->SetDebug(true);
-    if (mask)
+    image->SetDebug(verbose);
+    if (mask) {
         image->SetMask(QI::ReadImage(mask.Get(), verbose));
+        image->SetCenterMask(centerMask);
+    }
     if (verbose) {
         auto monitor = QI::GenericMonitor::New();
         image->AddObserver(itk::ProgressEvent(), monitor);
