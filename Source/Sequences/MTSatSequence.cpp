@@ -22,6 +22,7 @@ Eigen::Index MTSatSequence::size() const {
 
 void from_json(const json &j, MTSatSequence &s) {
     j.at("TR").get_to(s.TR);
+    j.at("Trf").get_to(s.Trf);
     s.FA        = j.at("FA").get<double>() * M_PI / 180.0;
     s.sat_f0    = ArrayFromJSON(j, "sat_f0");
     s.sat_angle = ArrayFromJSON(j, "sat_angle", M_PI / 180.0);

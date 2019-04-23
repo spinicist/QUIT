@@ -118,13 +118,15 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
         QI::VectorVolumeF::PointType pt1, pt2;
         m_reference->TransformIndexToPhysicalPoint(index1, pt1);
         m_reference->TransformIndexToPhysicalPoint(index2, pt2);
-        auto const diff     = pt2 - pt1;
-        int        phys_dim = 0;
-        if (fabs(diff[1]) > fabs(diff[0])) {
+        auto const diff = pt2 - pt1;
+        QI::Log(m_debug, "Physical difference: {}", diff);
+        int phys_dim = 0;
+        if ((fabs(diff[1]) > fabs(diff[0])) || (fabs(diff[2]) > fabs(diff[0]))) {
             if (fabs(diff[2]) > fabs(diff[1])) {
                 phys_dim = 2;
+            } else {
+                phys_dim = 1;
             }
-            phys_dim = 1;
         }
         QI::Log(m_debug, "Physical dimension: {}", phys_dim);
 

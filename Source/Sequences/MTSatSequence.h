@@ -20,7 +20,7 @@
 namespace QI {
 
 struct MTSatSequence : SequenceBase {
-    double         FA, TR;
+    double         FA, TR, Trf;
     Eigen::ArrayXd sat_f0, sat_angle;
     RFPulse        pulse;
     QI_SEQUENCE_DECLARE(MTSat);

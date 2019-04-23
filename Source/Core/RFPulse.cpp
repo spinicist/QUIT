@@ -16,14 +16,13 @@
 namespace QI {
 
 void from_json(const json &j, RFPulse &s) {
-    j.at("Trf").get_to(s.Trf);
     j.at("p1").get_to(s.p1);
     j.at("p2").get_to(s.p2);
     j.at("bandwidth").get_to(s.bandwidth);
 }
 
 void to_json(json &j, const RFPulse &s) {
-    j = json{{"Trf", s.Trf}, {"p1", s.p1}, {"p2", s.p2}, {"bandwidth", s.bandwidth}};
+    j = json{{"p1", s.p1}, {"p2", s.p2}, {"bandwidth", s.bandwidth}};
 }
 
 } // End namespace QI

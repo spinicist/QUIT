@@ -12,6 +12,7 @@
 #ifndef SEQUENCES_SSFP_H
 #define SEQUENCES_SSFP_H
 
+#include "RFPulse.h"
 #include "SequenceBase.h"
 #include "fmt/format.h"
 
@@ -48,7 +49,8 @@ void to_json(json &j, const SSFPSequence &s);
 // };
 
 struct SSFPMTSequence : SequenceBase {
-    Eigen::ArrayXd FA, TR, Trf, intB1;
+    Eigen::ArrayXd FA, TR, Trf;
+    RFPulse        pulse;
     QI_SEQUENCE_DECLARE(SSFPMT);
     Eigen::Index size() const override;
 };

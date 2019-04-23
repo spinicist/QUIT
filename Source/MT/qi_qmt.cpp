@@ -85,7 +85,7 @@ struct RamaniReducedModel {
         }
 
         const auto w_cwpe = (B1 * sequence.sat_angle / sequence.pulse.p1) *
-                            sqrt(sequence.pulse.p2 / (sequence.pulse.Trf * sequence.TR));
+                            sqrt(sequence.pulse.p2 / (sequence.Trf * sequence.TR));
         const auto R_rfb = M_PI * (w_cwpe * w_cwpe) * lsv;
 
         const auto S = gM0a * (Rb * RM0a * fterm + R_rfb + Rb + RM0a) /

@@ -20,7 +20,7 @@
 namespace QI {
 
 struct RFPulse {
-    double Trf, p1, p2, bandwidth;
+    double p1, p2, bandwidth;
 };
 void from_json(const json &j, RFPulse &s);
 void to_json(json &j, const RFPulse &s);

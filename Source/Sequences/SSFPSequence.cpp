@@ -95,22 +95,20 @@ Eigen::Index SSFPMTSequence::size() const {
 }
 
 void from_json(const json &j, SSFPMTSequence &s) {
-    s.TR    = ArrayFromJSON(j, "TR");
-    s.FA    = ArrayFromJSON(j, "FA", M_PI / 180);
-    s.Trf   = ArrayFromJSON(j, "Trf");
-    s.intB1 = ArrayFromJSON(j, "intB1");
-    if ((s.TR.rows() != s.Trf.rows()) || (s.TR.rows() != s.intB1.rows()) ||
-        (s.TR.rows() != s.FA.rows())) {
-        QI::Fail("One on more parameters had differing lengths (TR={}, Trf={}, intB1={}, FA={}",
+    s.TR  = ArrayFromJSON(j, "TR");
+    s.Trf = ArrayFromJSON(j, "Trf");
+    s.FA  = ArrayFromJSON(j, "FA", M_PI / 180);
+    j.at("pulse").get_to(s.pulse);
+    if ((s.TR.rows() != s.Trf.rows()) || (s.TR.rows() != s.FA.rows())) {
+        QI::Fail("Parameters had differing lengths (TR={}, FA={}, Trf={}",
                  s.TR.rows(),
-                 s.Trf.rows(),
-                 s.intB1.rows(),
-                 s.FA.rows());
+                 s.FA.rows(),
+                 s.Trf.rows());
     }
 }
 
 void to_json(json &j, const SSFPMTSequence &s) {
-    j = json{{"TR", s.TR}, {"FA", s.FA}, {"Trf", s.Trf}, {"intB1", s.intB1}};
+    j = json{{"TR", s.TR}, {"Trf", s.Trf}, {"FA", s.FA}, {"pulse", s.pulse}};
 }
 
 } // End namespace QI

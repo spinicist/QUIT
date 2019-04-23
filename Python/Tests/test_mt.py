@@ -10,11 +10,11 @@ CommandLine.terminal_output = 'allatonce'
 
 class MT(unittest.TestCase):
     def test_lorentzian(self):
-        sequence = {'MTSat': {'pulse': {'Trf': 0.02,
-                                        'p1': 0.4,
+        sequence = {'MTSat': {'pulse': {'p1': 0.4,
                                         'p2': 0.3,
                                         'bandwidth': 0.39},
                               'TR': 4,
+                              'Trf': 0.02,
                               'FA': 5,
                               'sat_f0': np.linspace(-5, 5, 21).squeeze().tolist(),
                               'sat_angle': np.repeat(180.0, 21).squeeze().tolist()}}
@@ -55,11 +55,11 @@ class MT(unittest.TestCase):
     def test_lorentzian2(self):
         sat_f0 = [*np.linspace(-40, 40,
                                12).squeeze().tolist(), -0.5, -0.25, 0, 0.25, 0.5]
-        sequence = {'MTSat': {'pulse': {'Trf': 0.02,
-                                        'p1': 0.4,
+        sequence = {'MTSat': {'pulse': {'p1': 0.4,
                                         'p2': 0.3,
                                         'bandwidth': 0.39},
                               'TR': 4,
+                              'Trf': 0.02,
                               'FA': 5,
                               'sat_f0': sat_f0,
                               'sat_angle': np.repeat(180.0, 17).squeeze().tolist()}}
@@ -126,7 +126,8 @@ class MT(unittest.TestCase):
                          'bw': 100,
                          'FA': 5,
                          'TR': 0.03,
-                         'pulse': {'Trf': 0.015, 'p1': 0.416, 'p2': 0.295, 'bandwidth': 100}},
+                         'Trf': 0.015,
+                         'pulse': {'p1': 0.416, 'p2': 0.295, 'bandwidth': 100}},
                }
         qmt_file = 'qmt_sim.nii.gz'
         t1app = 'qmt_t1app.nii.gz'
