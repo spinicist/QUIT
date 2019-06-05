@@ -1,7 +1,7 @@
 option( BUILD_B1 "Build the B1+/- programs" ON )
 if( ${BUILD_RELAX} )
     set( PROGRAMS
-        qiafi qidream
+        qiafi qidream qi_b1_papp
        )
 
     foreach(PROGRAM ${PROGRAMS})
