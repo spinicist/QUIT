@@ -1,7 +1,6 @@
 option( BUILD_RELAX "Build the relaxometry (DESPOT etc.) programs" ON )
 if( ${BUILD_RELAX} )
     set( PROGRAMS
-        qiafi qidream
         qidespot1 qidespot2 qidespot1hifi qidespot2fm
         qimultiecho qimp2rage qi_mpm_r2s
        )
