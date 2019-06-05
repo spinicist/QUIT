@@ -31,10 +31,10 @@ void from_json(const json &j, MTSatSequence &s) {
 
 void to_json(json &j, const MTSatSequence &s) {
     j = json{{"TR", s.TR},
-             {"FA", s.FA},
+             {"FA", s.FA * 180 / M_PI},
              {"pulse", s.pulse},
              {"sat_f0", s.sat_f0},
-             {"sat_angle", s.sat_angle}};
+             {"sat_angle", s.sat_angle * 180 / M_PI}};
 }
 
 } // End namespace QI

@@ -1,0 +1,251 @@
+/*
+ *  qi_mpm_r2s.cpp
+ *
+ *  Copyright (c) 2019 Tobias Wood.
+ *
+ *  This Source Code Form is subject to the terms of the Mozilla Public
+ *  License, v. 2.0. If a copy of the MPL was not distributed with this
+ *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ */
+
+#include <Eigen/Core>
+
+#include "Args.h"
+#include "ImageIO.h"
+#include "Model.h"
+#include "ModelFitFilter.h"
+#include "MultiEchoSequence.h"
+#include "Util.h"
+#include "itkImageRegionConstIterator.h"
+#include "itkImageRegionIterator.h"
+
+struct MPMModel {
+    using SequenceType  = QI::MultiEchoSequence;
+    using DataType      = double;
+    using ParameterType = double;
+
+    static constexpr int NV = 4;
+    static constexpr int ND = 0;
+    static constexpr int NF = 0;
+
+    using VaryingArray = QI_ARRAYN(ParameterType, NV);
+    using FixedArray   = QI_ARRAYN(ParameterType, NF);
+
+    SequenceType &                    pdw_s, &t1w_s, &mtw_s;
+    VaryingArray const                bounds_lo{1e-6, 1e-6, 1e-6, 1e-6};
+    VaryingArray const                bounds_hi{1e4, 1e2, 1e2, 1e2}; // Signal values will be scaled
+    std::array<std::string, NV> const varying_names{"R2s", "S_PDw", "S_T1w", "S_MTw"};
+    std::array<std::string, 0> const  fixed_names{};
+    FixedArray const                  fixed_defaults{};
+
+    template <typename Derived>
+    auto pdw_signal(const Eigen::ArrayBase<Derived> &v) const
+        -> QI_ARRAY(typename Derived::Scalar) {
+        using T     = typename Derived::Scalar;
+        T const &R2 = v[0];
+        T const &PD = v[1]; // S_PDw
+        return PD * exp(-pdw_s.TE * R2);
+    }
+
+    template <typename Derived>
+    auto t1w_signal(const Eigen::ArrayBase<Derived> &v) const
+        -> QI_ARRAY(typename Derived::Scalar) {
+        using T     = typename Derived::Scalar;
+        T const &R2 = v[0];
+        T const &PD = v[2]; // S_T1w
+        return PD * exp(-pdw_s.TE * R2);
+    }
+
+    template <typename Derived>
+    auto mtw_signal(const Eigen::ArrayBase<Derived> &v) const
+        -> QI_ARRAY(typename Derived::Scalar) {
+        using T     = typename Derived::Scalar;
+        T const &R2 = v[0];
+        T const &PD = v[3]; // S_MTw
+        return PD * exp(-pdw_s.TE * R2);
+    }
+
+    auto signals(const QI_ARRAYN(double, NV) & v, const QI_ARRAYN(double, NF) & /* Unused */) const
+        -> std::vector<QI_ARRAY(double)> {
+        return {pdw_signal(v), t1w_signal(v), mtw_signal(v)};
+    }
+};
+
+struct PDwCost {
+    MPMModel const &model;
+    QI_ARRAY(double) const data;
+
+    template <typename T> bool operator()(const T *const vin, T *rin) const {
+        Eigen::Map<QI_ARRAY(T)>                            r(rin, data.rows());
+        Eigen::Map<QI_ARRAYN(T, MPMModel::NV) const> const v(vin);
+
+        const auto calc = model.pdw_signal(v);
+        r               = data - calc;
+        return true;
+    }
+};
+
+struct T1wCost {
+    MPMModel const &model;
+    QI_ARRAY(double) const data;
+
+    template <typename T> bool operator()(const T *const vin, T *rin) const {
+        Eigen::Map<QI_ARRAY(T)>                            r(rin, data.rows());
+        Eigen::Map<QI_ARRAYN(T, MPMModel::NV) const> const v(vin);
+
+        const auto calc = model.t1w_signal(v);
+        r               = data - calc;
+        return true;
+    }
+};
+
+struct MTwCost {
+    MPMModel const &model;
+    QI_ARRAY(double) const data;
+
+    template <typename T> bool operator()(const T *const vin, T *rin) const {
+        Eigen::Map<QI_ARRAY(T)>                            r(rin, data.rows());
+        Eigen::Map<QI_ARRAYN(T, MPMModel::NV) const> const v(vin);
+
+        const auto calc = model.mtw_signal(v);
+        r               = data - calc;
+        return true;
+    }
+};
+
+struct MPMFit {
+    static const bool Blocked = false;
+    static const bool Indexed = false;
+    using InputType           = double;
+    using OutputType          = double;
+    using ResidualType        = double;
+    using FlagType            = int;
+    using ModelType           = MPMModel;
+    ModelType model;
+
+    int n_inputs() const { return 3; }
+    int input_size(const int i) const {
+        switch (i) {
+        case 0:
+            return model.pdw_s.size();
+        case 1:
+            return model.t1w_s.size();
+        case 2:
+            return model.mtw_s.size();
+        default:
+            QI::Fail("Invalid input size = {}", i);
+        }
+    }
+    int n_fixed() const { return 0; }
+    int n_outputs() const { return 4; }
+
+    QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
+                          const Eigen::ArrayXd & /* Unused */,
+                          ModelType::VaryingArray &    v,
+                          ResidualType &               residual,
+                          std::vector<Eigen::ArrayXd> &residuals,
+                          FlagType &                   iterations) const {
+        double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff(), inputs[2].maxCoeff()});
+        if (scale < std::numeric_limits<double>::epsilon()) {
+            v        = ModelType::VaryingArray::Zero();
+            residual = 0.0;
+            return {false, "Maximum data value was zero or less"};
+        }
+        Eigen::ArrayXd const pdw_data = inputs[0] / scale;
+        Eigen::ArrayXd const t1w_data = inputs[1] / scale;
+        Eigen::ArrayXd const mtw_data = inputs[2] / scale;
+        v << 10., 1., 1., 1.; // R2s, S_PDw, S_T1w, S_MTw
+        ceres::Problem problem;
+        using AutoPDwType = ceres::AutoDiffCostFunction<PDwCost, ceres::DYNAMIC, ModelType::NV>;
+        using AutoT1wType = ceres::AutoDiffCostFunction<T1wCost, ceres::DYNAMIC, ModelType::NV>;
+        using AutoMTwType = ceres::AutoDiffCostFunction<MTwCost, ceres::DYNAMIC, ModelType::NV>;
+        auto *pdw_cost    = new AutoPDwType(new PDwCost{model, pdw_data}, model.pdw_s.size());
+        auto *t1w_cost    = new AutoT1wType(new T1wCost{model, t1w_data}, model.t1w_s.size());
+        auto *mtw_cost    = new AutoMTwType(new MTwCost{model, mtw_data}, model.mtw_s.size());
+        ceres::LossFunction *loss = new ceres::HuberLoss(1.0);
+        problem.AddResidualBlock(pdw_cost, loss, v.data());
+        problem.AddResidualBlock(t1w_cost, loss, v.data());
+        problem.AddResidualBlock(mtw_cost, loss, v.data());
+        for (int i = 0; i < ModelType::NV; i++) {
+            problem.SetParameterLowerBound(v.data(), i, model.bounds_lo[i]);
+            problem.SetParameterUpperBound(v.data(), i, model.bounds_hi[i]);
+        }
+        ceres::Solver::Options options;
+        ceres::Solver::Summary summary;
+        options.max_num_iterations  = 50;
+        options.function_tolerance  = 1e-5;
+        options.gradient_tolerance  = 1e-6;
+        options.parameter_tolerance = 1e-4;
+        options.logging_type        = ceres::SILENT;
+        ceres::Solve(options, &problem, &summary);
+        if (!summary.IsSolutionUsable()) {
+            return {false, summary.FullReport()};
+        }
+        v.tail(3) = v.tail(3) * scale; // Multiply signals/proton densities back up
+
+        iterations = summary.iterations.size();
+        residual   = summary.final_cost * scale;
+        if (residuals.size() > 0) {
+            std::vector<double> r_temp(model.pdw_s.size() + model.t1w_s.size() +
+                                       model.mtw_s.size());
+            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
+            for (int i = 0; i < model.pdw_s.size(); i++)
+                residuals[0][i] = r_temp[i] * scale;
+            for (int i = 0; i < model.t1w_s.size(); i++)
+                residuals[1][i] = r_temp[i] * scale;
+            for (int i = 0; i < model.mtw_s.size(); i++)
+                residuals[2][i] = r_temp[i] * scale;
+        }
+        return {true, ""};
+    }
+};
+
+/*
+ * Main
+ */
+int main(int argc, char **argv) {
+    Eigen::initParallel();
+    args::ArgumentParser parser(
+        "Calculates R2* and S0 from PDw, T1w, MTw data.\nhttp://github.com/spinicist/QUIT");
+    args::Positional<std::string> pdw_path(parser, "PDw", "Input multi-echo PD-weighted file");
+    args::Positional<std::string> t1w_path(parser, "T1w", "Input multi-echo T1-weighted file");
+    args::Positional<std::string> mtw_path(parser, "MTw", "Input multi-echo MT-weighted file");
+
+    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
+    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+    args::Flag           resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<std::string> prefix(
+        parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
+    args::ValueFlag<std::string> mask_path(
+        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<std::string> subregion(
+        parser,
+        "SUBREGION",
+        "Process voxels in a block from I,J,K with size SI,SJ,SK",
+        {'s', "subregion"});
+    args::ValueFlag<std::string> json_file(
+        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
+    args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
+    QI::ParseArgs(parser, argc, argv, verbose, threads);
+
+    QI::Log(verbose, "Reading sequence parameters");
+    json                  doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    QI::MultiEchoSequence pdw_seq(doc["PDw"]), t1w_seq(doc["T1w"]), mtw_seq(doc["MTw"]);
+
+    MPMModel model{pdw_seq, t1w_seq, mtw_seq};
+    MPMFit   mpm_fit{model};
+    auto fit_filter = QI::ModelFitFilter<MPMFit>::New(&mpm_fit, verbose, resids, subregion.Get());
+    fit_filter->ReadInputs({QI::CheckPos(pdw_path), QI::CheckPos(t1w_path), QI::CheckPos(mtw_path)},
+                           {},
+                           mask_path.Get());
+    fit_filter->Update();
+    fit_filter->WriteOutputs(prefix.Get() + "MPM_");
+    QI::Log(verbose, "Finished.");
+    return EXIT_SUCCESS;
+}

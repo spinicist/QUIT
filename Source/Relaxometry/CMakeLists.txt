@@ -3,7 +3,7 @@ if( ${BUILD_RELAX} )
     set( PROGRAMS
         qiafi qidream
         qidespot1 qidespot2 qidespot1hifi qidespot2fm
-        qimultiecho qimp2rage
+        qimultiecho qimp2rage qi_mpm_r2s
        )
 
     foreach(PROGRAM ${PROGRAMS})

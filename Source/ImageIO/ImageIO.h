@@ -28,24 +28,28 @@ template <typename TImg>
 extern void WriteImage(const TImg *ptr, const std::string &path, const bool verbose);
 
 template <typename TImg>
-extern void WriteImage(const itk::SmartPointer<TImg> &ptr, const std::string &path,
-                       const bool verbose);
+extern void
+WriteImage(const itk::SmartPointer<TImg> &ptr, const std::string &path, const bool verbose);
 
 template <typename TImg>
 extern void WriteMagnitudeImage(const TImg *ptr, const std::string &path, const bool verbose);
 
 template <typename TImg>
-extern void WriteMagnitudeImage(const itk::SmartPointer<TImg> &ptr, const std::string &path,
-                                const bool verbose);
+extern void WriteMagnitudeImage(const itk::SmartPointer<TImg> &ptr,
+                                const std::string &            path,
+                                const bool                     verbose);
 
 template <typename TImg>
-extern void WriteScaledImage(const TImg *img, const QI::VolumeF *simg, const std::string &path,
-                             const bool verbose);
+extern void WriteScaledImage(const TImg *       img,
+                             const QI::VolumeF *simg,
+                             const std::string &path,
+                             const bool         verbose);
 
 template <typename TImg>
 extern void WriteScaledImage(const itk::SmartPointer<TImg> &       ptr,
-                             const itk::SmartPointer<QI::VolumeF> &sptr, const std::string &path,
-                             const bool verbose);
+                             const itk::SmartPointer<QI::VolumeF> &sptr,
+                             const std::string &                   path,
+                             const bool                            verbose);
 
 } // namespace QI
 
