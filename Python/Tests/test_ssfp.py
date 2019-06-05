@@ -46,7 +46,7 @@ class SSFP(unittest.TestCase):
                   T2='T2.nii.gz').run()
         EllipseSim(sequence=ellipse_seq, in_file=ellipse_file,
                    noise=noise, verbose=vb,
-                   G=planet_G, a=planet_a, b=planet_b, theta0='zero.nii.gz', phi_rf='zero.nii.gz').run()
+                   G=planet_G, a=planet_a, b=planet_b, theta_0='zero.nii.gz', phi_rf='zero.nii.gz').run()
         Ellipse(sequence=ellipse_seq, in_file=ellipse_file, verbose=vb).run()
         PLANET(sequence=planet_seq, G_map=planet_G,
                a_map=planet_a, b_map=planet_b, verbose=vb).run()
@@ -119,7 +119,7 @@ class SSFP(unittest.TestCase):
                k_bf='k_bf.nii.gz').run()
         EllipseSim(sequence=ellipse_sim, in_file=ellipse_file,
                    noise=noise, verbose=vb,
-                   G=emt_G, a=emt_a, b=emt_b, theta0='zero.nii.gz', phi_rf='zero.nii.gz').run()
+                   G=emt_G, a=emt_a, b=emt_b, theta_0='zero.nii.gz', phi_rf='zero.nii.gz').run()
         Ellipse(sequence=ellipse_fit, in_file=ellipse_file, verbose=vb).run()
         eMT(sequence=emt_seq, G_map=emt_G,
             a_map=emt_a, b_map=emt_b, verbose=vb).run()

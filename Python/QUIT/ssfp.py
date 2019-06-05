@@ -32,7 +32,7 @@ class EllipseOutputSpec(TraitedSpec):
     G_map = File('ES_G.nii.gz', desc='Path to G map', usedefault=True)
     a_map = File('ES_a.nii.gz', desc='Path to a map', usedefault=True)
     b_map = File('ES_b.nii.gz', desc='Path to b map', usedefault=True)
-    theta0_map = File('ES_theta0.nii.gz',
+    theta0_map = File('ES_theta_0.nii.gz',
                       desc='Path to theta 0 (off-resonance phase) map', usedefault=True)
     phi_rf_map = File('ES_phi_rf.nii.gz',
                       desc='Path to RF phase map', usedefault=True)
@@ -58,7 +58,7 @@ class EllipseSim(QI.SimCommand):
     """
 
     _cmd = 'qi_ssfp_ellipse'
-    _param_files = ['G', 'a', 'b', 'theta0', 'phi_rf']
+    _param_files = ['G', 'a', 'b', 'theta_0', 'phi_rf']
     input_spec = QI.SimInputSpec
     output_spec = QI.SimOutputSpec
 
