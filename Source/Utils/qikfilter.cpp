@@ -61,6 +61,7 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
     DirectionType                                  m_Direction;
     PointType                                      m_Origin;
     std::vector<std::shared_ptr<QI::FilterKernel>> m_kernels;
+    bool                                           m_Highpass;
 
   public:
     itkNewMacro(Self);
@@ -78,6 +79,7 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
     itkSetMacro(Spacing, SpacingType);
     itkSetMacro(Direction, DirectionType);
     itkSetMacro(Origin, PointType);
+    itkSetMacro(Highpass, bool);
 
   protected:
     void GenerateOutputInformation() ITK_OVERRIDE {
@@ -107,6 +109,9 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
             for (const auto &kernel : m_kernels) {
                 val *= kernel->value(p, hsz, sp);
             }
+            if (m_Highpass) {
+                val = 1 - val;
+            }
             outIt.Set(val);
             ++outIt;
         }
@@ -130,8 +135,11 @@ int main(int argc, char **argv) {
     args::Positional<std::string> in_path(parser, "INPUT", "Input file.");
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string> out_prefix(
         parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<int> zero_padding(
@@ -139,9 +147,11 @@ int main(int argc, char **argv) {
     args::Flag complex_in(parser, "COMPLEX_IN", "Input data is complex", {"complex_in"});
     args::Flag complex_out(parser, "COMPLEX_OUT", "Write complex output", {"complex_out"});
     args::Flag save_kernel(parser, "KERNEL", "Save kernels as images", {"save_kernel"});
-    args::Flag save_kspace(parser, "KSPACE", "Save k-space before & after filtering",
-                           {"save_kspace"});
-    args::Flag filter_per_volume(parser, "FILTER_PER_VOL",
+    args::Flag save_kspace(
+        parser, "KSPACE", "Save k-space before & after filtering", {"save_kspace"});
+    args::Flag highpass(parser, "HIGHPASS", "Use a high-pass, not a low-pass filter", {"highpass"});
+    args::Flag filter_per_volume(parser,
+                                 "FILTER_PER_VOL",
                                  "Instead of concatenating multiple filters, use one per volume",
                                  {"filter_per_volume"});
     args::ValueFlagList<std::string> filters(
@@ -191,7 +201,8 @@ int main(int argc, char **argv) {
     if (filter_per_volume && nvols != kernels.size()) {
         QI::Fail(
             "Number of volumes ({}) and kernels ({}) do not match for filter_per_volume option",
-            nvols, kernels.size());
+            nvols,
+            kernels.size());
     }
     region.GetModifiableSize()[3] = 0;
     QI::VolumeXD::RegionType unpad_region;
@@ -202,6 +213,10 @@ int main(int argc, char **argv) {
     auto tkernel = TKernel::New();
     if (!filter_per_volume) {
         tkernel->SetKernels(kernels);
+    }
+    if (highpass) {
+        tkernel->SetHighpass(highpass);
+        QI::Log(verbose, "Set highpass filter");
     }
 
     auto                             tile = TTile::New();
@@ -233,7 +248,8 @@ int main(int argc, char **argv) {
             fft_pad->SetInput(extract->GetOutput());
         }
         fft_pad->Update(); // Need to know the size of this to set up the kernel properly
-        QI::Log(verbose, "After FFT padding size is: {}",
+        QI::Log(verbose,
+                "After FFT padding size is: {}",
                 fft_pad->GetOutput()->GetLargestPossibleRegion().GetSize());
         if (i == 0) {
             tkernel->SetRegion(fft_pad->GetOutput()->GetLargestPossibleRegion());
@@ -241,7 +257,8 @@ int main(int argc, char **argv) {
             tkernel->SetOrigin(fft_pad->GetOutput()->GetOrigin());
             tkernel->SetDirection(fft_pad->GetOutput()->GetDirection());
             tkernel->Update();
-            QI::Log(verbose, "Created kernel, size is: {}",
+            QI::Log(verbose,
+                    "Created kernel, size is: {}",
                     tkernel->GetOutput()->GetLargestPossibleRegion().GetSize());
         }
         if (filter_per_volume) {
@@ -280,12 +297,12 @@ int main(int argc, char **argv) {
             shift_filter->SetInput(forward->GetOutput());
             cast_filter->SetInput(shift_filter->GetOutput());
             cast_filter->Update();
-            QI::WriteMagnitudeImage(cast_filter->GetOutput(),
-                                    out_base + "_kspace_before" + QI::OutExt(), verbose);
+            QI::WriteMagnitudeImage(
+                cast_filter->GetOutput(), out_base + "_kspace_before" + QI::OutExt(), verbose);
             shift_filter->SetInput(mult->GetOutput());
             cast_filter->Update();
-            QI::WriteMagnitudeImage(cast_filter->GetOutput(),
-                                    out_base + "_kspace_after" + QI::OutExt(), verbose);
+            QI::WriteMagnitudeImage(
+                cast_filter->GetOutput(), out_base + "_kspace_after" + QI::OutExt(), verbose);
         }
     }
     QI::Log(verbose, "Finished.");

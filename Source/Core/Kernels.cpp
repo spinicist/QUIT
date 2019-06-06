@@ -22,8 +22,11 @@ TukeyKernel::TukeyKernel(std::istream &istr) {
         m_q = stod(nextValue);
     }
 }
-void   TukeyKernel::print(std::ostream &ostr) const { ostr << "Tukey," << m_a << "," << m_q; }
-double TukeyKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+void TukeyKernel::print(std::ostream &ostr) const {
+    ostr << "Tukey," << m_a << "," << m_q;
+}
+double TukeyKernel::value(const Eigen::Array3d &pos,
+                          const Eigen::Array3d &sz,
                           const Eigen::Array3d &) const {
     const double r = sqrt(((pos / sz).square()).sum() / 3);
     const double v =
@@ -41,8 +44,11 @@ HammingKernel::HammingKernel(std::istream &istr) {
         m_b = stod(nextValue);
     }
 }
-void   HammingKernel::print(std::ostream &ostr) const { ostr << "Hamming," << m_a << "," << m_b; }
-double HammingKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+void HammingKernel::print(std::ostream &ostr) const {
+    ostr << "Hamming," << m_a << "," << m_b;
+}
+double HammingKernel::value(const Eigen::Array3d &pos,
+                            const Eigen::Array3d &sz,
                             const Eigen::Array3d &) const {
     const double r = sqrt(((pos / sz).square()).sum() / 3);
     const double v = m_a - m_b * cos(M_PI * (1. + r));
@@ -65,9 +71,12 @@ GaussKernel::GaussKernel(std::istream &istr) {
         }
     }
 }
-void GaussKernel::print(std::ostream &ostr) const { ostr << "Gauss," << m_fwhm.transpose(); }
+void GaussKernel::print(std::ostream &ostr) const {
+    ostr << "Gauss," << m_fwhm.transpose();
+}
 
-double GaussKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+double GaussKernel::value(const Eigen::Array3d &pos,
+                          const Eigen::Array3d &sz,
                           const Eigen::Array3d &sp) const {
     static const double  M       = 2. * sqrt(2. * log(2.)) / M_PI;
     const Eigen::Array3d sigma_k = M * sz * sp / m_fwhm;
@@ -76,7 +85,9 @@ double GaussKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
     return v;
 }
 
-BlackmanKernel::BlackmanKernel() { calc_constants(); }
+BlackmanKernel::BlackmanKernel() {
+    calc_constants();
+}
 BlackmanKernel::BlackmanKernel(std::istream &istr) {
     if (!istr.eof()) {
         std::string nextValue;
@@ -90,8 +101,11 @@ void BlackmanKernel::calc_constants() {
     m_a1 = 1. / 2.;
     m_a2 = m_alpha / 2.;
 }
-void   BlackmanKernel::print(std::ostream &ostr) const { ostr << "Blackman," << m_alpha; }
-double BlackmanKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+void BlackmanKernel::print(std::ostream &ostr) const {
+    ostr << "Blackman," << m_alpha;
+}
+double BlackmanKernel::value(const Eigen::Array3d &pos,
+                             const Eigen::Array3d &sz,
                              const Eigen::Array3d &) const {
     const double r = sqrt(((pos / sz).square() / 3).sum());
     const double v = m_a0 - m_a1 * cos(M_PI * (1. + r)) + m_a2 * cos(2. * M_PI * (1. + r));
@@ -118,8 +132,8 @@ RectKernel::RectKernel(std::istream &istr) {
 void RectKernel::print(std::ostream &ostr) const {
     ostr << "FixFSE," << m_dim << "," << m_width << "," << m_val_inside << "," << m_val_outside;
 }
-double RectKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &,
-                         const Eigen::Array3d &) const {
+double
+RectKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &, const Eigen::Array3d &) const {
     if (fabs(pos[m_dim]) > m_width) {
         return m_val_outside;
     } else {
@@ -152,7 +166,8 @@ void FixFSEKernel::print(std::ostream &ostr) const {
     ostr << "FixFSE," << m_dim << "," << m_etl << "," << m_kzero << "," << m_te1 << "," << m_esp
          << "," << m_T2;
 }
-double FixFSEKernel::value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+double FixFSEKernel::value(const Eigen::Array3d &pos,
+                           const Eigen::Array3d &sz,
                            const Eigen::Array3d &) const {
     const int dim      = abs(m_dim);
     const int dir      = m_dim > 0 ? 1 : -1;

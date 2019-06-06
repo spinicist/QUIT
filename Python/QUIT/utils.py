@@ -324,6 +324,8 @@ class FilterInputSpec(QI.InputSpec):
     complex_in = traits.Bool(argstr='--complex_in', desc='Read complex data')
     complex_out = traits.Bool(argstr='--complex_out',
                               desc='Write complex data')
+    highpass = traits.Bool(argstr='--highpass',
+                           desc='Highpass instead of lowpass')
     prefix = traits.String(
         argstr='--out=%s', desc='Output prefix (default is input filename)')
     zeropad = traits.Int(argstr='--zero_pad=%d',

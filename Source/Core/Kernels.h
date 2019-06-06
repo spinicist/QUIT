@@ -22,10 +22,10 @@ namespace QI {
 class FilterKernel {
   protected:
   public:
-    virtual void   print(std::ostream &ostr) const       = 0;
-    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
-                         const Eigen::Array3d &sp) const = 0;
-    virtual ~FilterKernel()                              = default;
+    virtual void print(std::ostream &ostr) const = 0;
+    virtual double
+    value(const Eigen::Array3d &pos, const Eigen::Array3d &sz, const Eigen::Array3d &sp) const = 0;
+    virtual ~FilterKernel() = default;
 };
 
 class TukeyKernel : public FilterKernel {
@@ -37,7 +37,8 @@ class TukeyKernel : public FilterKernel {
     TukeyKernel();
     TukeyKernel(std::istream &istr);
     virtual void   print(std::ostream &ostr) const override;
-    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
                          const Eigen::Array3d &sp) const override;
 };
 
@@ -50,19 +51,21 @@ class HammingKernel : public FilterKernel {
     HammingKernel();
     HammingKernel(std::istream &istr);
     virtual void   print(std::ostream &ostr) const override;
-    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
                          const Eigen::Array3d &sp) const override;
 };
 
 class GaussKernel : public FilterKernel {
   protected:
-    Eigen::Array3d m_fwhm;
+    Eigen::Array3d m_fwhm{1, 1, 1};
 
   public:
     GaussKernel();
     GaussKernel(std::istream &istr);
     virtual void   print(std::ostream &ostr) const override;
-    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
                          const Eigen::Array3d &sp) const override;
 };
 
@@ -75,7 +78,8 @@ class BlackmanKernel : public FilterKernel {
     BlackmanKernel();
     BlackmanKernel(std::istream &istr);
     virtual void   print(std::ostream &ostr) const override;
-    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
                          const Eigen::Array3d &sp) const override;
 };
 
@@ -88,7 +92,8 @@ class RectKernel : public FilterKernel {
     RectKernel();
     RectKernel(std::istream &istr);
     virtual void   print(std::ostream &ostr) const override;
-    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
                          const Eigen::Array3d &sp) const override;
 };
 
@@ -101,7 +106,8 @@ class FixFSEKernel : public FilterKernel {
     FixFSEKernel();
     FixFSEKernel(std::istream &istr);
     virtual void   print(std::ostream &ostr) const override;
-    virtual double value(const Eigen::Array3d &pos, const Eigen::Array3d &sz,
+    virtual double value(const Eigen::Array3d &pos,
+                         const Eigen::Array3d &sz,
                          const Eigen::Array3d &sp) const override;
 };
 
