@@ -104,11 +104,12 @@ int main(int argc, char **argv) {
             for (b1_it.GoToBegin(); !b1_it.IsAtEnd(); ++b1_it) {
                 const double B1 = b1_it.Get();
                 if (!mask_image || mask_it.Get()) {
-                    std::vector<const Eigen::Map<const Eigen::ArrayXf>> in_z;
+                    std::vector<Eigen::Map<const Eigen::ArrayXf>> in_z;
                     std::vector<itk::VariableLengthVector<float>>       out_z;
                     for (const auto &ii : in_its) {
                         in_z.emplace_back(ii.Get().GetDataPointer(), Nz);
-                        out_z.emplace_back(Nz);
+			itk::VariableLengthVector<float> temp(Nz);
+                        out_z.push_back(temp);
                     }
 
                     for (Eigen::Index iz = 0; iz < Nz; iz++) {
