@@ -64,17 +64,17 @@ template <int NP_> struct LorentzModel {
         QI_ARRAY(T) const Z = QI_ARRAY(T)::Zero(sequence.sat_f0.rows());
         for (auto i = 0; i < NP; i++) {
             auto const indN = NVg + NVpP * i;
-            T const &  Δf0  = v[indN + 0];
+            T const &  df   = v[indN + 0];
             T const &  fwhm = v[indN + 1];
             T const &  A    = v[indN + 2];
             if (use_bandwidth[i]) {
-                auto const x   = (sequence.sat_f0 - Δf0 - sequence.pulse.bandwidth / 2);
-                auto const y   = (sequence.sat_f0 - Δf0 + sequence.pulse.bandwidth / 2);
+                auto const x   = (sequence.sat_f0 - df - sequence.pulse.bandwidth / 2);
+                auto const y   = (sequence.sat_f0 - df + sequence.pulse.bandwidth / 2);
                 auto const xHx = (x > Z).select(x, Z);
                 auto const yHy = (y < Z).select(y, Z);
                 F              = xHx + yHy;
             } else {
-                F = (sequence.sat_f0 - Δf0 - v[1]);
+                F = (sequence.sat_f0 - df - v[1]);
             }
             auto const L = A / (1.0 + (2.0 * F / fwhm).square());
             if (additive) {
@@ -124,10 +124,10 @@ template <int N> void Process() {
         varying_names[LM::NVg + LM::NVpP * i + 1] = name + "_fwhm"s;
         varying_names[LM::NVg + LM::NVpP * i + 2] = name + "_A"s;
 
-        auto const &Δf0_json  = pool["df0"];
+        auto const &df_json   = pool["df0"];
         auto const &fwhm_json = pool["fwhm"];
         auto const &A_json    = pool["A"];
-        if (Δf0_json.size() != 3) {
+        if (df_json.size() != 3) {
             QI::Fail("Must specify start, low, high for df0 in {}", name);
         }
         if (fwhm_json.size() != 3) {
@@ -137,13 +137,13 @@ template <int N> void Process() {
             QI::Fail("Must specify start, low, high for A in {}", name);
         }
 
-        start[LM::NVg + LM::NVpP * i + 0] = Δf0_json[0].get<double>();
+        start[LM::NVg + LM::NVpP * i + 0] = df_json[0].get<double>();
         start[LM::NVg + LM::NVpP * i + 1] = fwhm_json[0].get<double>();
         start[LM::NVg + LM::NVpP * i + 2] = A_json[0].get<double>();
-        low[LM::NVg + LM::NVpP * i + 0]   = Δf0_json[1].get<double>();
+        low[LM::NVg + LM::NVpP * i + 0]   = df_json[1].get<double>();
         low[LM::NVg + LM::NVpP * i + 1]   = fwhm_json[1].get<double>();
         low[LM::NVg + LM::NVpP * i + 2]   = A_json[1].get<double>();
-        high[LM::NVg + LM::NVpP * i + 0]  = Δf0_json[2].get<double>();
+        high[LM::NVg + LM::NVpP * i + 0]  = df_json[2].get<double>();
         high[LM::NVg + LM::NVpP * i + 1]  = fwhm_json[2].get<double>();
         high[LM::NVg + LM::NVpP * i + 2]  = A_json[2].get<double>();
 
