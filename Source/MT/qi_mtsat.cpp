@@ -19,24 +19,28 @@
 #include "itkImageRegionIterator.h"
 
 struct MTSatSequence : QI::SequenceBase {
-    double TR, al_t1, al_pd, al_mt;
+    double TR_pd, al_pd, TR_t1, al_t1, TR_mt, al_mt;
 
     QI_SEQUENCE_DECLARE(MTSat);
     Eigen::Index size() const override { return 1; };
 };
 void from_json(const json &j, MTSatSequence &s) {
-    j.at("TR").get_to(s.TR);
-    s.al_pd = j.at("FA_PD").get<double>() * M_PI / 180;
-    s.al_t1 = j.at("FA_T1").get<double>() * M_PI / 180;
-    s.al_mt = j.at("FA_MT").get<double>() * M_PI / 180;
+    j.at("TR_PDw").get_to(s.TR_pd);
+    j.at("TR_T1w").get_to(s.TR_t1);
+    j.at("TR_MTw").get_to(s.TR_mt);
+    s.al_pd = j.at("FA_PDw").get<double>() * M_PI / 180;
+    s.al_t1 = j.at("FA_T1w").get<double>() * M_PI / 180;
+    s.al_mt = j.at("FA_MTw").get<double>() * M_PI / 180;
 }
 
 void to_json(json &j, const MTSatSequence &s) {
     j = json{
-        {"TR", s.TR},
-        {"FA_PD", s.al_pd * 180 / M_PI},
-        {"FA_T1", s.al_t1 * 180 / M_PI},
-        {"FA_MT", s.al_mt * 180 / M_PI},
+        {"TR_PDw", s.TR_pd},
+        {"TR_T1w", s.TR_t1},
+        {"TR_MTw", s.TR_mt},
+        {"FA_PDw", s.al_pd * 180 / M_PI},
+        {"FA_T1w", s.al_t1 * 180 / M_PI},
+        {"FA_MTw", s.al_mt * 180 / M_PI},
     };
 }
 
@@ -112,11 +116,13 @@ int main(int argc, char **argv) {
                     auto S_mt = mtw_it.Get();
                     auto B1   = b1_img ? B1_it.Get() : 1.0f;
 
-                    auto R1 = (B1 * B1 / (2. * s.TR)) * (S_t1 * s.al_t1 - S_pd * s.al_pd) /
+                    auto R1 = (B1 * B1 / 2.) *
+                              (S_t1 * s.al_t1 / s.TR_t1 - S_pd * s.al_pd / s.TR_pd) /
                               (S_pd / s.al_pd - S_t1 / s.al_t1);
-                    auto A = (S_pd * S_t1 / B1) * (s.al_t1 / s.al_pd - s.al_pd / s.al_t1) /
-                             (S_t1 * s.al_t1 - S_pd * s.al_pd);
-                    auto d = (A * B1 * s.al_mt / S_mt - 1) * R1 * s.TR -
+                    auto A = (S_pd * S_t1 / B1) *
+                             (s.TR_pd * s.al_t1 / s.al_pd - s.TR_t1 * s.al_pd / s.al_t1) /
+                             (S_t1 * s.TR_pd * s.al_t1 - S_pd * s.TR_t1 * s.al_pd);
+                    auto d = (A * B1 * s.al_mt / S_mt - 1) * R1 * s.TR_mt -
                              (B1 * B1 * s.al_mt * s.al_mt / 2);
                     R1_it.Set(R1);
                     A_it.Set(A);
