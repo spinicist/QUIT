@@ -31,11 +31,13 @@
 #define QI_ARRAYN(T, N) Eigen::Array<T, N, 1>
 
 #ifdef QI_DEBUG_BUILD
+#define QI_DBMSG(x) fmt::print(x);
 #define QI_DB(x) fmt::print("{}: {}\n", #x, x);
 #define QI_DBMAT(x) fmt::print("{}:\n{}\n", #x, x);
 #define QI_DBVEC(x) fmt::print("{}: {}\n", #x, x.transpose());
 #define QI_DBSTL(x) fmt::print("{}: {}\n", #x, fmt::join(x, ", "));
 #else
+#define QI_DBMSG(x)
 #define QI_DB(x)
 #define QI_DBMAT(x)
 #define QI_DBVEC(x)

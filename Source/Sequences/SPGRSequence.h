@@ -30,10 +30,12 @@ struct SPGRSequence : SPGRBase {
 void from_json(const json &j, SPGRSequence &s);
 void to_json(json &j, const SPGRSequence &s);
 
-// struct SPGREchoSequence : SPGRBase {
-//     double TR, TE;
-//     QI_SEQUENCE_DECLARE(SPGREcho);
-// };
+struct SPGREchoSequence : SPGRBase {
+    double TR, TE;
+    QI_SEQUENCE_DECLARE(SPGREcho);
+};
+void from_json(const json &j, SPGREchoSequence &s);
+void to_json(json &j, const SPGREchoSequence &s);
 
 // struct SPGRFiniteSequence : SPGRBase {
 //     double TR, TE, Trf;

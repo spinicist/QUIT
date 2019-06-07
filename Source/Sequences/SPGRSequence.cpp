@@ -30,25 +30,15 @@ void to_json(json &j, const SPGRSequence &s) {
     j = nlohmann::json{{"TR", s.TR}, {"FA", s.FA * 180.0 / M_PI}};
 }
 
-// /*
-//  * With echo-time correction
-//  */
+void from_json(const json &j, SPGREchoSequence &s) {
+    j.at("TR").get_to(s.TR);
+    j.at("TE").get_to(s.TE);
+    s.FA = ArrayFromJSON(j, "FA", M_PI / 180.0);
+}
 
-// SPGREchoSequence::SPGREchoSequence(const rapidjson::Value &json) {
-//     if (json.IsNull())
-//         QI::Fail("Could not read sequence: {}", name());
-//     TR = GetMember(json, "TR").GetDouble();
-//     TE = GetMember(json, "TE").GetDouble();
-//     FA = ArrayFromJSON(json, "FA", M_PI / 180);
-// }
-
-// rapidjson::Value SPGREchoSequence::toJSON(rapidjson::Document::AllocatorType &a) const {
-//     rapidjson::Value json(rapidjson::kObjectType);
-//     json.AddMember("TR", TR, a);
-//     json.AddMember("TE", TE, a);
-//     json.AddMember("FA", ArrayToJSON(FA, a, 180 / M_PI), a);
-//     return json;
-// }
+void to_json(json &j, const SPGREchoSequence &s) {
+    j = nlohmann::json{{"TR", s.TR}, {"TE", s.TE}, {"FA", s.FA * 180.0 / M_PI}};
+}
 
 // /*
 //  * With echo-time and finite-pulse corrections
