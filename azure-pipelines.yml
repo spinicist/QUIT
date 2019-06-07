@@ -1,13 +1,39 @@
-trigger:
-- master
 jobs:
 - job: macOS
   pool:
-    vmImage: 'macOS-10.13'
+    vmImage: 'macOS-10.14'
   steps:
-  - bash: brew update; brew install ninja bats;
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+  - bash: brew update; brew install ninja;
     displayName: 'Install tools from Brew'
   - bash: ./build.sh -j 4 -p "$PWD/install" -i
     displayName: 'Build'
-  - bash: export PATH="$PWD/install/bin:$PATH"; bats Test/
-    displayName: 'Run Tests'
+  - bash: pip install nipype
+    displayName: 'Install nipype'
+  - bash: pip install -e .
+    displayName: 'Install QUIT Python'
+    workingDirectory: Python
+  - bash: export PATH="$PWD/../../install/bin:$PATH"; echo $PATH; python -m unittest discover
+    displayName: 'Run Python Tests'
+    workingDirectory: Python/Tests
+- job: LinuxGCC
+  pool:
+    vmImage: 'ubuntu-16.04'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.6'
+      architecture: 'x64'
+  - bash: export CXX="g++-7"; ./build.sh -j 4 -p "$PWD/install" -i
+    displayName: 'Build'
+  - bash: pip install nipype
+    displayName: 'Install nipype'
+  - bash: pip install -e .
+    displayName: 'Install QUIT Python'
+    workingDirectory: Python
+  - bash: export PATH="$PWD/../../install/bin:$PATH"; echo $PATH; python -m unittest discover
+    displayName: 'Run Python Tests'
+    workingDirectory: Python/Tests 
