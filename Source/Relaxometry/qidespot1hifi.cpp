@@ -38,6 +38,7 @@ struct HIFIModel {
     static constexpr int NV = 3;
     static constexpr int ND = 0;
     static constexpr int NF = 0;
+    static constexpr int NI = 2;
 
     static std::array<const std::string, 3> varying_names;
     static std::array<const std::string, 0> fixed_names;
@@ -120,7 +121,6 @@ struct HIFIFit {
     using ModelType           = HIFIModel;
     HIFIModel model;
 
-    int n_inputs() const { return 2; }
     int input_size(const int i) const {
         switch (i) {
         case 0:
@@ -131,7 +131,6 @@ struct HIFIFit {
             QI::Fail("Invalid input size = {}", i);
         }
     }
-    int n_fixed() const { return 0; }
     int n_outputs() const { return 3; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,

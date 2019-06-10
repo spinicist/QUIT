@@ -125,17 +125,13 @@ struct FMNLLS : FMFit {
                     iterations = summary.iterations.size();
                 }
             }
-            bestP[0] = bestP[0] * scale;
             if (!summary.IsSolutionUsable()) {
                 return {false, summary.FullReport()};
             }
             if (residuals.size() > 0) {
-                std::vector<double> r_temp(data.size());
-                p = bestP; // Make sure the correct parameters are in the block
-                problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-                for (size_t i = 0; i < r_temp.size(); i++)
-                    residuals[i] = r_temp[i] * scale;
+                residuals[0] = (data - model.signal(bestP, fixed.cast<double>())) * scale;
             }
+            bestP[0] = bestP[0] * scale;
         } else {
             bestP << 0.0, 0.0, 0.0;
             residual   = 0;

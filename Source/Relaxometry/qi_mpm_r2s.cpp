@@ -28,6 +28,7 @@ struct MPMModel {
     static constexpr int NV = 4;
     static constexpr int ND = 0;
     static constexpr int NF = 0;
+    static constexpr int NI = 3;
 
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);
@@ -124,7 +125,6 @@ struct MPMFit {
     using ModelType           = MPMModel;
     ModelType model;
 
-    int n_inputs() const { return 3; }
     int input_size(const int i) const {
         switch (i) {
         case 0:
@@ -155,7 +155,7 @@ struct MPMFit {
         Eigen::ArrayXd const pdw_data = inputs[0] / scale;
         Eigen::ArrayXd const t1w_data = inputs[1] / scale;
         Eigen::ArrayXd const mtw_data = inputs[2] / scale;
-        v << 10., 1., 1., 1.; // R2s, S_PDw, S_T1w, S_MTw
+        v << 20., 1., 1., 1.; // R2s, S_PDw, S_T1w, S_MTw
         ceres::Problem problem;
         using AutoPDwType = ceres::AutoDiffCostFunction<PDwCost, ceres::DYNAMIC, ModelType::NV>;
         using AutoT1wType = ceres::AutoDiffCostFunction<T1wCost, ceres::DYNAMIC, ModelType::NV>;
@@ -182,21 +182,17 @@ struct MPMFit {
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
-        v.tail(3) = v.tail(3) * scale; // Multiply signals/proton densities back up
-
         iterations = summary.iterations.size();
         residual   = summary.final_cost * scale;
         if (residuals.size() > 0) {
             std::vector<double> r_temp(model.pdw_s.size() + model.t1w_s.size() +
                                        model.mtw_s.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (int i = 0; i < model.pdw_s.size(); i++)
-                residuals[0][i] = r_temp[i] * scale;
-            for (int i = 0; i < model.t1w_s.size(); i++)
-                residuals[1][i] = r_temp[i] * scale;
-            for (int i = 0; i < model.mtw_s.size(); i++)
-                residuals[2][i] = r_temp[i] * scale;
+            residuals[0] = (pdw_data - model.pdw_signal(v)) * scale;
+            residuals[1] = (t1w_data - model.t1w_signal(v)) * scale;
+            residuals[2] = (mtw_data - model.mtw_signal(v)) * scale;
         }
+        v.tail(3) = v.tail(3) * scale; // Multiply signals/proton densities back up
         return {true, ""};
     }
 };

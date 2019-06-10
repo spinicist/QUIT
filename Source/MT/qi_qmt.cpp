@@ -34,6 +34,7 @@ struct RamaniReducedModel {
     static constexpr int NV = 5;
     static constexpr int ND = 0;
     static constexpr int NF = 2;
+    static constexpr int NI = 1;
 
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);
@@ -108,6 +109,7 @@ struct RamaniFullModel {
     static constexpr int NV = 6;
     static constexpr int ND = 0;
     static constexpr int NF = 3;
+    static constexpr int NI = 1;
 
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);

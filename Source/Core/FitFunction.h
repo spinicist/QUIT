@@ -38,7 +38,6 @@ template <typename Model_, bool Blocked_ = false, bool Indexed_ = false> struct 
     static const bool Indexed = Indexed_;
     ModelType &       model;
     int               max_iterations = 30;
-    int               n_inputs() const { return 1; }
     int               input_size(const int /* Unused */) const { return model.sequence.size(); }
 
     FitFunctionBase(ModelType &m) : model{m} {}

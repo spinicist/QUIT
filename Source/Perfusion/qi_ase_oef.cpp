@@ -41,9 +41,11 @@ struct ASEModel {
     static constexpr int NV = 4;
     static constexpr int ND = 3;
     static constexpr int NF = 1;
-    using VaryingArray      = QI_ARRAYN(ParameterType, NV);
-    using DerivedArray      = QI_ARRAYN(ParameterType, ND);
-    using FixedArray        = QI_ARRAYN(ParameterType, NF);
+    static constexpr int NI = 1;
+
+    using VaryingArray = QI_ARRAYN(ParameterType, NV);
+    using DerivedArray = QI_ARRAYN(ParameterType, ND);
+    using FixedArray   = QI_ARRAYN(ParameterType, NF);
     const std::array<const std::string, NV> varying_names{{"S0"s, "dT"s, "R2p"s, "DBV"s}};
     const std::array<const std::string, ND> derived_names{{"Tc"s, "OEF"s, "dHb"s}};
     const std::array<const std::string, NF> fixed_names{{}};
@@ -104,9 +106,11 @@ struct ASEFixDBVModel {
     static constexpr int NV = 3;
     static constexpr int ND = 3;
     static constexpr int NF = 1;
-    using VaryingArray      = QI_ARRAYN(ParameterType, NV);
-    using DerivedArray      = QI_ARRAYN(ParameterType, ND);
-    using FixedArray        = QI_ARRAYN(ParameterType, NF);
+    static constexpr int NI = 1;
+
+    using VaryingArray = QI_ARRAYN(ParameterType, NV);
+    using DerivedArray = QI_ARRAYN(ParameterType, ND);
+    using FixedArray   = QI_ARRAYN(ParameterType, NF);
 
     const SequenceType &sequence;
     const double        B0, DBV;

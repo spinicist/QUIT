@@ -22,7 +22,8 @@ class DESPOT_SC(unittest.TestCase):
         DESPOT1Sim(sequence=seq, in_file=spgr_file,
                    noise=noise, verbose=vb,
                    PD='PD.nii.gz', T1='T1.nii.gz').run()
-        DESPOT1(sequence=seq, in_file=spgr_file, verbose=vb).run()
+        DESPOT1(sequence=seq, in_file=spgr_file,
+                verbose=vb, residuals=True).run()
 
         diff_T1 = Diff(in_file='D1_T1.nii.gz', baseline='T1.nii.gz',
                        noise=noise, verbose=vb).run()
@@ -51,7 +52,7 @@ class DESPOT_SC(unittest.TestCase):
                 noise=noise, verbose=vb,
                 PD='PD.nii.gz', T1='T1.nii.gz', B1='B1.nii.gz').run()
         HIFI(sequence=seqs, spgr_file=spgr_file,
-             mprage_file=mprage_file, verbose=vb).run()
+             mprage_file=mprage_file, verbose=vb, residuals=True).run()
 
         diff_T1 = Diff(in_file='HIFI_T1.nii.gz', baseline='T1.nii.gz',
                        noise=noise, verbose=vb).run()
@@ -82,7 +83,7 @@ class DESPOT_SC(unittest.TestCase):
                    t1_file='T1.nii.gz', ellipse=gs, noise=noise, verbose=vb,
                    PD='PD.nii.gz', T2='T2.nii.gz').run()
         DESPOT2(sequence=seq, in_file=ssfp_file,
-                t1_file='T1.nii.gz', ellipse=gs, verbose=vb).run()
+                t1_file='T1.nii.gz', ellipse=gs, verbose=vb, residuals=True).run()
 
         diff_T2 = Diff(in_file='D2_T2.nii.gz', baseline='T2.nii.gz',
                        noise=noise, verbose=vb).run()
@@ -116,7 +117,7 @@ class DESPOT_SC(unittest.TestCase):
               t1_file='T1.nii.gz', noise=noise, verbose=vb,
               PD='PD.nii.gz', T2='T2.nii.gz', f0='f0.nii.gz').run()
         FM(sequence=seq, in_file=ssfp_file, asym=False,
-           t1_file='T1.nii.gz', verbose=vb).run()
+           t1_file='T1.nii.gz', verbose=vb, residuals=True).run()
 
         diff_T2 = Diff(in_file='FM_T2.nii.gz', baseline='T2.nii.gz',
                        noise=noise, verbose=vb).run()

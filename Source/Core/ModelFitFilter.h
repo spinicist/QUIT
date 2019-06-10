@@ -63,7 +63,7 @@ class ModelFitFilter
     using TOutputImage   = typename BlockTypes<Blocked, ImageDim, OutputPixelType>::Type;
     using TFlagImage     = typename BlockTypes<Blocked, ImageDim, typename FitType::FlagType>::Type;
     using TResidualImage = typename BlockTypes<Blocked, ImageDim, InputPixelType>::Type;
-    using TResidualsImage = itk::VectorImage<InputPixelType, ImageDim>;
+    using TResidualsImage = TInputImage;
 
     using TRegion = typename TInputImage::RegionType;
     using TIndex  = typename TRegion::IndexType;
@@ -89,7 +89,7 @@ class ModelFitFilter
         HasDerived ? DerivedOutputOffset + ModelType::ND : ModelType::NV;
     static constexpr int ResidualOutputOffset  = FlagOutputOffset + 1;
     static constexpr int ResidualsOutputOffset = ResidualOutputOffset + 1;
-    static constexpr int TotalOutputs          = ResidualsOutputOffset + 1;
+    static constexpr int TotalOutputs          = ResidualsOutputOffset + ModelType::NI;
 
     ModelFitFilter(FitType const *    f,
                    const bool         verbose,
@@ -97,7 +97,7 @@ class ModelFitFilter
                    std::string const &subregion) :
         m_fit(f),
         m_verbose(verbose), m_allResiduals(allResids) {
-        this->SetNumberOfRequiredInputs(m_fit->n_inputs());
+        this->SetNumberOfRequiredInputs(ModelType::NI);
         this->SetNumberOfRequiredOutputs(TotalOutputs);
         for (int i = 0; i < TotalOutputs; i++) {
             this->SetNthOutput(i, this->MakeOutput(i));
@@ -113,27 +113,25 @@ class ModelFitFilter
     }
 
     void SetInput(unsigned int i, const TInputImage *image) override {
-        if (static_cast<int>(i) < m_fit->n_inputs()) {
+        if (static_cast<int>(i) < ModelType::NI) {
             this->SetNthInput(i, const_cast<TInputImage *>(image));
         } else {
-            itkExceptionMacro("Requested input " << i << " does not exist (" << m_fit->n_inputs()
+            itkExceptionMacro("Requested input " << i << " does not exist (" << ModelType::NI
                                                  << " inputs)");
         }
     }
 
     typename TInputImage::ConstPointer GetInput(const int i) const {
-        if (i < m_fit->n_inputs()) {
+        if (i < ModelType::NI) {
             return static_cast<const TInputImage *>(this->itk::ProcessObject::GetInput(i));
         } else {
-            QI::Fail(
-                "Requested input {} but {} has {}", i, typeid(FitType).name(), m_fit->n_inputs());
+            QI::Fail("Requested input {} but {} has {}", i, typeid(FitType).name(), ModelType::NI);
         }
     }
 
     void SetFixed(const int i, const TFixedImage *image) {
         if (i < ModelType::NF) {
-            this->SetNthInput(m_fit->n_inputs() + FixedOffset + i,
-                              const_cast<TFixedImage *>(image));
+            this->SetNthInput(ModelType::NI + FixedOffset + i, const_cast<TFixedImage *>(image));
         } else {
             QI::Fail("Tried to set fixed input {} but {} has {}",
                      i,
@@ -144,7 +142,7 @@ class ModelFitFilter
 
     typename TFixedImage::ConstPointer GetFixed(const int i) const {
         if (i < ModelType::NF) {
-            size_t index = m_fit->n_inputs() + FixedOffset + i;
+            size_t index = ModelType::NI + FixedOffset + i;
             return static_cast<const TFixedImage *>(this->itk::ProcessObject::GetInput(index));
         } else {
             QI::Fail("Requested fixed input {} but {} has {}",
@@ -155,12 +153,12 @@ class ModelFitFilter
     }
 
     void SetMask(const TMaskImage *mask) {
-        this->SetNthInput(m_fit->n_inputs() + MaskOffset, const_cast<TMaskImage *>(mask));
+        this->SetNthInput(ModelType::NI + MaskOffset, const_cast<TMaskImage *>(mask));
     }
 
     typename TMaskImage::ConstPointer GetMask() const {
         return static_cast<const TMaskImage *>(
-            this->itk::ProcessObject::GetInput(m_fit->n_inputs() + MaskOffset));
+            this->itk::ProcessObject::GetInput(ModelType::NI + MaskOffset));
     }
 
     void SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
@@ -228,11 +226,11 @@ class ModelFitFilter
     void ReadInputs(std::vector<std::string> const &              inputs,
                     std::array<std::string, ModelType::NF> const &fixed,
                     std::string const &                           mask) {
-        if (static_cast<size_t>(m_fit->n_inputs()) != inputs.size()) {
+        if (static_cast<size_t>(ModelType::NI) != inputs.size()) {
             QI::Fail("Number of input file paths did not match number of inputs for model");
         }
 
-        for (int i = 0; i < m_fit->n_inputs(); i++) {
+        for (int i = 0; i < ModelType::NI; i++) {
             SetInput(i, QI::ReadImage<TInputImage>(inputs[i], m_verbose));
         }
         for (int f = 0; f < ModelType::NF; f++) {
@@ -242,6 +240,7 @@ class ModelFitFilter
         if (mask != "")
             SetMask(QI::ReadImage<TMaskImage>(mask, m_verbose));
     }
+
     void WriteOutputs(std::string const &prefix) {
         for (int i = 0; i < ModelType::NV; i++) {
             QI::WriteImage(
@@ -257,8 +256,8 @@ class ModelFitFilter
         QI::WriteImage(GetResidualOutput(), prefix + "SoS_residual" + QI::OutExt(), m_verbose);
         QI::WriteImage(GetFlagOutput(), prefix + "iterations" + QI::OutExt(), m_verbose);
         if (m_allResiduals) {
-            for (int i = 0; i < m_fit->n_inputs(); i++) {
-                QI::WriteImage(GetResidualsOutput(0),
+            for (int i = 0; i < ModelType::NI; i++) {
+                QI::WriteImage(GetResidualsOutput(i),
                                prefix + "residuals_" + std::to_string(i) + QI::OutExt(),
                                m_verbose);
             }
@@ -282,8 +281,8 @@ class ModelFitFilter
             return TFlagImage::New().GetPointer();
         } else if (idx == static_cast<itype>(ResidualOutputOffset)) {
             return TResidualImage::New().GetPointer();
-        } else if (idx < static_cast<itype>(ResidualsOutputOffset + m_fit->n_inputs())) {
-            return TResidualImage::New().GetPointer();
+        } else if (idx < static_cast<itype>(ResidualsOutputOffset + ModelType::NI)) {
+            return TResidualsImage::New().GetPointer();
         } else {
             QI::Fail("Attempted to create output {} but {} has {}",
                      idx,
@@ -300,7 +299,7 @@ class ModelFitFilter
 
     virtual void GenerateOutputInformation() override {
         Superclass::GenerateOutputInformation();
-        for (int i = 0; i < m_fit->n_inputs(); i++) {
+        for (int i = 0; i < ModelType::NI; i++) {
             if ((m_fit->input_size(i) * m_blocks) !=
                 static_cast<int>(this->GetInput(i)->GetNumberOfComponentsPerPixel())) {
                 QI::Fail("Input {} has incorrect number of volumes {}, should be {}",
@@ -316,6 +315,7 @@ class ModelFitFilter
         auto spacing   = input->GetSpacing();
         auto origin    = input->GetOrigin();
         auto direction = input->GetDirection();
+
         for (int i = 0; i < ModelType::NV; i++) {
             auto op = this->GetOutput(i);
             op->SetRegions(region);
@@ -327,6 +327,7 @@ class ModelFitFilter
             }
             op->Allocate(true);
         }
+
         if constexpr (HasDerived) {
             for (int i = 0; i < ModelType::ND; i++) {
                 auto op = this->GetDerivedOutput(i);
@@ -340,26 +341,7 @@ class ModelFitFilter
                 op->Allocate(true);
             }
         }
-        if (m_allResiduals) {
-            for (int i = 0; i < m_fit->n_inputs(); i++) {
-                auto r = this->GetResidualsOutput(i);
-                r->SetRegions(region);
-                r->SetSpacing(spacing);
-                r->SetOrigin(origin);
-                r->SetDirection(direction);
-                r->SetNumberOfComponentsPerPixel(m_fit->input_size(i) * m_blocks);
-                r->Allocate(true);
-            }
-        }
-        auto r = this->GetResidualOutput();
-        r->SetRegions(region);
-        r->SetSpacing(spacing);
-        r->SetOrigin(origin);
-        r->SetDirection(direction);
-        if constexpr (Blocked) {
-            r->SetNumberOfComponentsPerPixel(m_blocks);
-        }
-        r->Allocate(true);
+
         auto f = this->GetFlagOutput();
         f->SetRegions(region);
         f->SetSpacing(spacing);
@@ -369,6 +351,28 @@ class ModelFitFilter
             f->SetNumberOfComponentsPerPixel(m_blocks);
         }
         f->Allocate(true);
+
+        auto r = this->GetResidualOutput();
+        r->SetRegions(region);
+        r->SetSpacing(spacing);
+        r->SetOrigin(origin);
+        r->SetDirection(direction);
+        if constexpr (Blocked) {
+            r->SetNumberOfComponentsPerPixel(m_blocks);
+        }
+        r->Allocate(true);
+
+        if (m_allResiduals) {
+            for (int i = 0; i < ModelType::NI; i++) {
+                auto rs = this->GetResidualsOutput(i);
+                rs->SetRegions(region);
+                rs->SetSpacing(spacing);
+                rs->SetOrigin(origin);
+                rs->SetDirection(direction);
+                rs->SetNumberOfComponentsPerPixel(m_fit->input_size(i) * m_blocks);
+                rs->Allocate(true);
+            }
+        }
     }
 
     virtual void GenerateData() override {
@@ -399,9 +403,9 @@ class ModelFitFilter
             mask_iter = itk::ImageRegionConstIterator<TMaskImage>(mask, region);
         }
 
-        std::vector<itk::ImageRegionConstIterator<TInputImage>> input_iters(m_fit->n_inputs());
-        std::vector<itk::ImageRegionIterator<TResidualsImage>>  residuals_iters(m_fit->n_inputs());
-        for (int i = 0; i < m_fit->n_inputs(); i++) {
+        std::vector<itk::ImageRegionConstIterator<TInputImage>> input_iters(ModelType::NI);
+        std::vector<itk::ImageRegionIterator<TResidualsImage>>  residuals_iters(ModelType::NI);
+        for (int i = 0; i < ModelType::NI; i++) {
             input_iters[i] = itk::ImageRegionConstIterator<TInputImage>(this->GetInput(i), region);
             if (m_allResiduals) {
                 residuals_iters[i] =
@@ -440,8 +444,8 @@ class ModelFitFilter
         while (!input_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {
                 for (int b = 0; b < m_blocks; b++) {
-                    std::vector<InputArray> inputs(m_fit->n_inputs());
-                    for (int i = 0; i < m_fit->n_inputs(); i++) {
+                    std::vector<InputArray> inputs(ModelType::NI);
+                    for (int i = 0; i < ModelType::NI; i++) {
                         auto input_data       = input_iters[i].Get();
                         inputs[i]             = InputArray(m_fit->input_size(i));
                         const int block_start = b * m_fit->input_size(i);
@@ -462,7 +466,7 @@ class ModelFitFilter
                     typename FitType::FlagType     flag{};
                     std::vector<ResidualArray> residuals; // Leave size 0 if user doesn't want them
                     if (m_allResiduals) {
-                        for (int i = 0; i < m_fit->n_inputs(); i++) {
+                        for (int i = 0; i < ModelType::NI; i++) {
                             const int block_size = m_fit->input_size(i);
                             residuals.push_back(ResidualArray::Zero(block_size));
                         }
@@ -520,7 +524,7 @@ class ModelFitFilter
                         }
                     }
                     if (m_allResiduals) {
-                        for (int i = 0; i < m_fit->n_inputs(); i++) {
+                        for (int i = 0; i < ModelType::NI; i++) {
                             const int block_start = m_fit->input_size(i) * b;
                             for (int j = 0; j < m_fit->input_size(i); j++) {
                                 residuals_iters[i].Get()[j + block_start] = residuals[i][j];
@@ -556,7 +560,7 @@ class ModelFitFilter
 
             if (this->GetMask())
                 ++mask_iter;
-            for (int i = 0; i < m_fit->n_inputs(); i++) {
+            for (int i = 0; i < ModelType::NI; i++) {
                 ++input_iters[i];
                 if (m_allResiduals)
                     ++residuals_iters[i];

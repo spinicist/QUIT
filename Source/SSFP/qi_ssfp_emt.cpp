@@ -32,6 +32,7 @@ struct EMTModel {
     static constexpr int NV = 4;
     static constexpr int ND = 0;
     static constexpr int NF = 3;
+    static constexpr int NI = 3;
 
     SequenceType const &  sequence;
     Eigen::ArrayXd const &Wtot;
@@ -114,9 +115,7 @@ struct EMTFit {
     using ModelType           = EMTModel;
     ModelType &model;
 
-    int n_inputs() const { return 3; }
     int input_size(const int /* Unused */) const { return model.sequence.size(); }
-    int n_fixed() const { return 2; }
     int n_outputs() const { return 5; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,

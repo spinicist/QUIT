@@ -38,6 +38,7 @@ struct EllipseModel {
     static constexpr int NV = 5;
     static constexpr int ND = 0;
     static constexpr int NF = 0;
+    static constexpr int NI = 1;
 
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);

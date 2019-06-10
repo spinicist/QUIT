@@ -67,9 +67,7 @@ template <typename Model> struct SRCFit {
     using ModelType           = Model;
     Model &model;
 
-    int n_inputs() const { return model.sequence.count(); }
     int input_size(const int i) const { return model.sequence.at(i)->size(); }
-    int n_fixed() const { return Model::NF; }
     int n_outputs() const { return Model::NV; }
 
     int    max_iterations = 5;
