@@ -78,11 +78,11 @@ struct PDwCost {
     QI_ARRAY(double) const data;
 
     template <typename T> bool operator()(const T *const vin, T *rin) const {
-        Eigen::Map<QI_ARRAY(T)>                            r(rin, data.rows());
         Eigen::Map<QI_ARRAYN(T, MPMModel::NV) const> const v(vin);
 
-        const auto calc = model.pdw_signal(v);
-        r               = data - calc;
+        Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
+
+        r = data - model.pdw_signal(v);
         return true;
     }
 };
@@ -92,11 +92,11 @@ struct T1wCost {
     QI_ARRAY(double) const data;
 
     template <typename T> bool operator()(const T *const vin, T *rin) const {
-        Eigen::Map<QI_ARRAY(T)>                            r(rin, data.rows());
         Eigen::Map<QI_ARRAYN(T, MPMModel::NV) const> const v(vin);
 
-        const auto calc = model.t1w_signal(v);
-        r               = data - calc;
+        Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
+
+        r = data - model.t1w_signal(v);
         return true;
     }
 };
@@ -106,11 +106,11 @@ struct MTwCost {
     QI_ARRAY(double) const data;
 
     template <typename T> bool operator()(const T *const vin, T *rin) const {
-        Eigen::Map<QI_ARRAY(T)>                            r(rin, data.rows());
         Eigen::Map<QI_ARRAYN(T, MPMModel::NV) const> const v(vin);
 
-        const auto calc = model.mtw_signal(v);
-        r               = data - calc;
+        Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
+
+        r = data - model.mtw_signal(v);
         return true;
     }
 };
@@ -137,8 +137,7 @@ struct MPMFit {
             QI::Fail("Invalid input size = {}", i);
         }
     }
-    int n_fixed() const { return 0; }
-    int n_outputs() const { return 4; }
+    int n_outputs() const { return model.NV; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd & /* Unused */,
@@ -185,9 +184,6 @@ struct MPMFit {
         iterations = summary.iterations.size();
         residual   = summary.final_cost * scale;
         if (residuals.size() > 0) {
-            std::vector<double> r_temp(model.pdw_s.size() + model.t1w_s.size() +
-                                       model.mtw_s.size());
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
             residuals[0] = (pdw_data - model.pdw_signal(v)) * scale;
             residuals[1] = (t1w_data - model.t1w_signal(v)) * scale;
             residuals[2] = (mtw_data - model.mtw_signal(v)) * scale;
@@ -230,6 +226,10 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
+    QI::CheckPos(pdw_path);
+    QI::CheckPos(t1w_path);
+    QI::CheckPos(mtw_path);
+
     QI::Log(verbose, "Reading sequence parameters");
     json                  doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MultiEchoSequence pdw_seq(doc["PDw"]), t1w_seq(doc["T1w"]), mtw_seq(doc["MTw"]);
@@ -237,9 +237,7 @@ int main(int argc, char **argv) {
     MPMModel model{pdw_seq, t1w_seq, mtw_seq};
     MPMFit   mpm_fit{model};
     auto fit_filter = QI::ModelFitFilter<MPMFit>::New(&mpm_fit, verbose, resids, subregion.Get());
-    fit_filter->ReadInputs({QI::CheckPos(pdw_path), QI::CheckPos(t1w_path), QI::CheckPos(mtw_path)},
-                           {},
-                           mask_path.Get());
+    fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask_path.Get());
     fit_filter->Update();
     fit_filter->WriteOutputs(prefix.Get() + "MPM_");
     QI::Log(verbose, "Finished.");
