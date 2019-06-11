@@ -12,6 +12,7 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include <array>
+#include <type_traits>
 
 // #define QI_DEBUG_BUILD 1
 
@@ -31,34 +32,35 @@ struct EMTModel {
 
     static constexpr int NV = 4;
     static constexpr int ND = 0;
-    static constexpr int NF = 3;
+    static constexpr int NF = 2;
     static constexpr int NI = 3;
 
+    using VaryingArray = QI_ARRAYN(double, NV);
+    using FixedArray   = QI_ARRAYN(double, NF);
+
     SequenceType const &  sequence;
-    Eigen::ArrayXd const &Wtot;
-    double const &        T2_b = 12.e-6;
+    Eigen::ArrayXd const &W;
 
     std::array<std::string, NV> const varying_names{"PD"s, "f_b"s, "k_bf"s, "T1_f"s};
-    std::array<std::string, NF> const fixed_names{"f0"s, "B1"s, "T2_f"s};
-    QI_ARRAYN(double, NF) const fixed_defaults{0.0, 1.0, 0.1};
+    std::array<std::string, NF> const fixed_names{"B1"s, "T2_f"s};
+    FixedArray const                  fixed_defaults{1.0, 0.1};
 
     size_t num_outputs() const { return 3; }
     int    output_size(int /* Unused */) { return sequence.size(); }
 
     template <typename Derived>
-    auto signals(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
+    auto signals(const Eigen::ArrayBase<Derived> &v, FixedArray const &f) const
         -> std::vector<QI_ARRAY(typename Derived::Scalar)> {
-        using T             = typename Derived::Scalar;
-        using ArrayXT       = Eigen::Array<T, Eigen::Dynamic, 1>;
-        const T &     M0    = v[0];
-        const T &     f_b   = v[1];
-        const T &     f_f   = 1.0 - f_b;
-        const T &     k_bf  = v[2];
-        const T &     T1_f  = v[3];
-        const T &     T1_b  = T1_f;
-        double const &f0_Hz = f[0];
-        double const &B1    = f[1];
-        double const &T2_f  = f[2];
+        using T            = typename Derived::Scalar;
+        using ArrayXT      = Eigen::Array<T, Eigen::Dynamic, 1>;
+        const T &     M0   = v[0];
+        const T &     f_b  = v[1];
+        const T &     f_f  = 1.0 - f_b;
+        const T &     k_bf = v[2];
+        const T &     T1_f = v[3];
+        const T &     T1_b = T1_f;
+        double const &B1   = f[0];
+        double const &T2_f = f[1];
 
         const ArrayXT        E1f   = (-sequence.TR / T1_f).exp();
         const Eigen::ArrayXd E2_f  = (-sequence.TR / T2_f).exp();
@@ -67,12 +69,18 @@ struct EMTModel {
         const ArrayXT        E1_b  = (-sequence.TR / T1_b).exp();
         const ArrayXT        Ek    = (-sequence.TR * (k_bf + k_fb)).exp();
 
-        const double G_gauss =
-            sqrt(1.0 / (2.0 * M_PI)) * T2_b * exp(-pow(2.0 * M_PI * f0_Hz * T2_b, 2.0) / 2.0);
-        const Eigen::ArrayXd Ew = (-Wtot * B1 * B1 * M_PI * M_PI * G_gauss).exp();
+        const Eigen::ArrayXd Ew = (-W * B1 * B1 * sequence.Trf).exp();
         const ArrayXT        A  = 1.0 - Ew * E1_b * (f_b + f_f * Ek);
         const ArrayXT        B  = f_f - Ek * (Ew * E1_b - f_b);
         const ArrayXT        C  = f_b * (1.0 - E1_b) * (1.0 - Ek);
+
+        if constexpr (std::is_floating_point<T>::value) {
+            QI_DBVEC(v);
+            QI_DBVEC(f);
+            QI_DBVEC((-W * B1 * B1 * sequence.Trf))
+            QI_DBVEC(Ew);
+            QI_DB(f_b);
+        }
 
         const ArrayXT denom = A - B * E1f * cos(B1 * sequence.FA) -
                               (E2_f * E2_f) * (B * E1f - A * cos(B1 * sequence.FA));
@@ -100,7 +108,12 @@ struct EMTCost {
         const auto signals = model.signals(v, fixed);
         r.head(G.rows())   = G - signals[0];
         r.tail(b.rows())   = b - signals[2];
-
+        if constexpr (std::is_floating_point<T>::value) {
+            QI_DBVEC(G);
+            QI_DBVEC(signals[0]);
+            QI_DBVEC(b);
+            QI_DBVEC(signals[1]);
+        }
         return true;
     }
 };
@@ -186,10 +199,9 @@ int main(int argc, char **argv) {
     QI_COMMON_ARGS;
     args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
-    args::ValueFlag<std::string> f0(parser, "f0", "f0 map (in Hertz)", {'f', "f0"});
     args::ValueFlag<std::string> T2_f(parser, "T2f", "T2 Free map (for simulation only)", {"T2f"});
-    args::ValueFlag<double>      T2_b_us(
-        parser, "T2b", "T2 of bound pool (in microseconds, default 12)", {"T2b"}, 12);
+    args::ValueFlag<double>      G0(
+        parser, "G0", "Lineshape value at resonance (default 1.4e-5)", {"G0"}, 1.4e-5);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(G_path);
     QI::CheckPos(a_path);
@@ -199,17 +211,15 @@ int main(int argc, char **argv) {
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
     QI::SSFPMTSequence   ssfp(input.at("SSFPMT"));
-    Eigen::ArrayXd const Wtot = pow(ssfp.FA / ssfp.pulse.p1, 2) * (ssfp.pulse.p2 / ssfp.Trf);
-    QI_DB(ssfp.pulse.p1)
-    QI_DB(ssfp.pulse.p2)
-    QI_DBVEC(ssfp.FA);
-    QI_DBVEC(ssfp.Trf);
-    QI_DBVEC(Wtot);
-    EMTModel model{ssfp, Wtot, T2_b_us.Get() * 1e-6};
+    Eigen::ArrayXd const W =
+        M_PI * G0.Get() * (ssfp.pulse.p2 / pow(ssfp.pulse.p1, 2)) * pow(ssfp.FA / ssfp.Trf, 2);
+    QI::Log(verbose, "Calculated saturation rate W = {}\n", W.transpose());
+
+    EMTModel model{ssfp, W};
     if (simulate) {
         QI::SimulateModel<EMTModel, true>(input,
                                           model,
-                                          {f0.Get(), B1.Get(), T2_f.Get()},
+                                          {B1.Get(), T2_f.Get()},
                                           {G_path.Get(), a_path.Get(), b_path.Get()},
                                           verbose,
                                           simulate.Get());
@@ -217,22 +227,23 @@ int main(int argc, char **argv) {
         // First calculate T2_f
         auto a_input = QI::ReadImage<QI::VectorVolumeF>(a_path.Get(), verbose);
 
-        QI::VolumeF::Pointer T2_f_calc = QI::VolumeF::New();
-        T2_f_calc->CopyInformation(a_input);
-        T2_f_calc->SetRegions(a_input->GetBufferedRegion());
-        T2_f_calc->Allocate(true);
+        auto T2_f_calc = QI::NewImageLike(a_input);
+
         QI::Info(verbose, "Calculating T2_f");
         auto mt = itk::MultiThreaderBase::New();
         mt->SetNumberOfWorkUnits(threads.Get());
         mt->ParallelizeImageRegion<3>(
-            a_input->GetBufferedRegion(),
+            subregion ? QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
+                        a_input->GetBufferedRegion(),
             [&](const QI::VectorVolumeF::RegionType &region) {
                 itk::ImageRegionConstIterator<QI::VectorVolumeF> a_it(a_input, region);
                 itk::ImageRegionIterator<QI::VolumeF>            T2_f_it(T2_f_calc, region);
-                for (a_it.GoToBegin(); !a_it.IsAtEnd(); ++a_it, ++T2_f_it) {
+                for (; !a_it.IsAtEnd(); ++a_it, ++T2_f_it) {
                     auto const as = Eigen::Map<const Eigen::ArrayXf>(a_it.Get().GetDataPointer(),
                                                                      a_it.Get().Size());
                     Eigen::ArrayXd T2_fs = (-ssfp.TR / as.cast<double>().log());
+                    QI_DBVEC(as);
+                    QI_DBVEC(T2_fs);
                     T2_f_it.Set(T2_fs.mean()); // Different TRs so have to average afterwards
                 }
             },
@@ -241,8 +252,8 @@ int main(int argc, char **argv) {
         EMTFit fit{model};
         auto   fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, verbose, resids, subregion.Get());
         fit_filter->ReadInputs(
-            {G_path.Get(), a_path.Get(), b_path.Get()}, {f0.Get(), B1.Get(), ""}, mask.Get());
-        fit_filter->SetFixed(2, T2_f_calc);
+            {G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get(), ""}, mask.Get());
+        fit_filter->SetFixed(1, T2_f_calc);
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "EMT_");
         QI::WriteImage(T2_f_calc, prefix.Get() + "EMT_T2_f" + QI::OutExt(), verbose);

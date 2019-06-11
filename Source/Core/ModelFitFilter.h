@@ -133,7 +133,7 @@ class ModelFitFilter
         if (i < ModelType::NF) {
             this->SetNthInput(ModelType::NI + FixedOffset + i, const_cast<TFixedImage *>(image));
         } else {
-            QI::Fail("Tried to set fixed input {} but {} has {}",
+            QI::Fail("Tried to set fixed input {} but {} only has {} fixed inputs",
                      i,
                      typeid(ModelType).name(),
                      ModelType::NF);

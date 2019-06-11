@@ -133,20 +133,11 @@ class AffineInputSpec(QI.InputSpec):
                     position=1, desc='Destination File')
 
     # Options
-    xfm_file = File(exists=False, argstr='--tfm=%s', mandatory=True,
+    xfm_file = File(exists=False, argstr='--tfm=%s',
                     desc='Write out the transformation to a file')
-    offX = traits.Int(desc='Translate origin in X direction',
-                      argstr='-offX=%d')
-    offY = traits.Int(desc='Translate origin in Y direction',
-                      argstr='-offY=%d')
-    offZ = traits.Int(desc='Translate origin in Z direction',
-                      argstr='-offZ=%d')
-    rotX = traits.Int(
-        desc='Rotate about X-axis by angle (degrees)', argstr='-rotX=%d')
-    rotY = traits.Int(
-        desc='Rotate about Y-axis by angle (degrees)', argstr='-rotY=%d')
-    rotZ = traits.Int(
-        desc='Rotate about Z-axis by angle (degrees)', argstr='-rotZ=%d')
+    translate = traits.String(desc='Translations in "X,Y,Z" directions',
+                              argstr='--trans=%s')
+    rotate = traits.String(desc='Rotations about "X,Y,Z" in degrees', argstr='--rotate=%s')
     scale = traits.Float(desc='Scale by a constant', argstr='--scale=%f')
     permute = traits.String(
         desc='Permute axes, e.g. 2,0,1. Negative values mean flip as well', argstr='--permute=%s')
