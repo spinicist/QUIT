@@ -52,7 +52,7 @@ Eigen::ArrayXd ArrayFromJSON(const json &json, const std::string &key, const dou
 
     const auto &   json_array = json[key].get<std::vector<double>>();
     Eigen::ArrayXd array(json_array.size());
-    for (Eigen::Index i = 0; i < json_array.size(); i++) {
+    for (size_t i = 0; i < json_array.size(); i++) {
         array[i] = json_array[i] * scale;
     }
     return array;

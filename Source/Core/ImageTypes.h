@@ -38,10 +38,14 @@ typedef itk::Image<std::complex<double>, 4>       SeriesXD;
 typedef itk::VectorImage<std::complex<double>, 3> VectorVolumeXD;
 
 template <typename TNew = VolumeF, typename TRef>
-auto NewImageLike(const itk::SmartPointer<TRef> &ref) -> typename TNew::Pointer {
+auto NewImageLike(const itk::SmartPointer<TRef> &ref, int const &ncomp = 1) ->
+    typename TNew::Pointer {
     auto nimg = TNew::New();
     nimg->CopyInformation(ref);
     nimg->SetRegions(ref->GetBufferedRegion());
+    if (ncomp > 1) {
+        nimg->SetNumberOfComponentsPerPixel(ncomp);
+    }
     nimg->Allocate(true);
     return nimg;
 }

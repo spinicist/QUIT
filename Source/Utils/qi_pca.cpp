@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
 
     QI::VolumeF::Pointer const mask_img = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
 
-    auto const Nv = [&]() {
+    auto const Nvox = [&]() {
         if (mask) {
             QI::Log(verbose, "Counting voxels in mask...");
             auto         mask_it = itk::ImageRegionConstIterator<QI::VolumeF>(mask_img, region);
@@ -76,9 +76,9 @@ int main(int argc, char **argv) {
             return static_cast<Eigen::Index>(region.GetNumberOfPixels());
         }
     }();
-    QI::Log(verbose, "Total voxels = {}", Nv);
+    QI::Log(verbose, "Total voxels = {}", Nvox);
 
-    Eigen::MatrixXd X(Nv, Nq);
+    Eigen::MatrixXd X(Nvox, Nq);
     {
         // Use scope to keep these iterators separate to the multi-threaded ones later
         itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input, region);
@@ -125,30 +125,21 @@ int main(int argc, char **argv) {
         QI::WriteJSON(save_pcs.Get(), doc);
     }
 
-    QI::VectorVolumeF::Pointer proj_img = QI::VectorVolumeF::New();
-    proj_img->CopyInformation(input);
-    proj_img->SetRegions(input->GetBufferedRegion());
-    proj_img->SetNumberOfComponentsPerPixel(Nret);
-    proj_img->Allocate(true);
-
-    QI::VectorVolumeF::Pointer out_img = QI::VectorVolumeF::New();
-    out_img->CopyInformation(input);
-    out_img->SetRegions(input->GetBufferedRegion());
-    out_img->SetNumberOfComponentsPerPixel(Nq);
-    out_img->Allocate(true);
+    auto proj_img = QI::NewImageLike<QI::VectorVolumeF>(input, Nret);
+    auto out_img  = QI::NewImageLike<QI::VectorVolumeF>(input, Nq);
 
     QI::Info(verbose, "Calculating projection...");
     auto mt = itk::MultiThreaderBase::New();
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
         input->GetBufferedRegion(),
-        [&](const QI::VectorVolumeF::RegionType &region) {
-            itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input, region);
-            itk::ImageRegionIterator<QI::VectorVolumeF>      proj_it(proj_img, region);
-            itk::ImageRegionIterator<QI::VectorVolumeF>      out_it(out_img, region);
+        [&](const QI::VectorVolumeF::RegionType &thread_region) {
+            itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input, thread_region);
+            itk::ImageRegionIterator<QI::VectorVolumeF>      proj_it(proj_img, thread_region);
+            itk::ImageRegionIterator<QI::VectorVolumeF>      out_it(out_img, thread_region);
             itk::ImageRegionConstIterator<QI::VolumeF>       mask_it;
             if (mask_img)
-                mask_it = itk::ImageRegionConstIterator<QI::VolumeF>(mask_img, region);
+                mask_it = itk::ImageRegionConstIterator<QI::VolumeF>(mask_img, thread_region);
             for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it, ++proj_it, ++out_it) {
                 itk::VariableLengthVector<float> itk_proj(Nret);
                 itk::VariableLengthVector<float> itk_out(Nq);
