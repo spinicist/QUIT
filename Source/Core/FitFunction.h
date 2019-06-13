@@ -34,6 +34,7 @@ struct FitReturnType {
 template <typename Model_, bool Blocked_ = false, bool Indexed_ = false> struct FitFunctionBase {
     using ModelType           = Model_;
     using SequenceType        = typename ModelType::SequenceType;
+    using ResidualType        = double;
     static const bool Blocked = Blocked_;
     static const bool Indexed = Indexed_;
     ModelType &       model;
@@ -47,37 +48,37 @@ template <typename ModelType, typename FlagType_ = int>
 struct FitFunction : FitFunctionBase<ModelType, false, false> {
     using Super = FitFunctionBase<ModelType, false, false>;
     using Super::Super;
-    using InputType    = typename ModelType::DataType;
-    using OutputType   = typename ModelType::ParameterType;
-    using ResidualType = typename ModelType::DataType;
-    using FlagType     = FlagType_; // Iterations
+    using typename Super::ResidualType;
+    using InputType  = typename ModelType::DataType;
+    using OutputType = typename ModelType::ParameterType;
+    using FlagType   = FlagType_; // Iterations
 
     int max_iterations = 100;
 
     virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
-                              ResidualType &                       residual,
-                              std::vector<QI_ARRAY(ResidualType)> &point_residuals,
-                              FlagType &                           flag) const = 0;
+                              ResidualType &                    residual,
+                              std::vector<QI_ARRAY(InputType)> &point_residuals,
+                              FlagType &                        flag) const = 0;
 };
 
 template <typename ModelType, typename FlagType_ = int>
 struct NLLSFitFunction : FitFunction<ModelType> {
     using Super = FitFunction<ModelType, FlagType_>;
     using Super::Super;
+    using typename Super::ResidualType;
     using InputType    = typename ModelType::DataType;
     using OutputType   = typename ModelType::ParameterType;
-    using ResidualType = typename ModelType::DataType;
     using FlagType     = FlagType_; // Iterations
     int max_iterations = 100;
 
     FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                       const Eigen::ArrayXd &                  fixed,
                       QI_ARRAYN(OutputType, ModelType::NV) & p,
-                      ResidualType &                       residual,
-                      std::vector<QI_ARRAY(ResidualType)> &residuals,
-                      FlagType &                           iterations) const {
+                      ResidualType &                    residual,
+                      std::vector<QI_ARRAY(InputType)> &residuals,
+                      FlagType &                        iterations) const {
         p << this->model.start;
         ceres::Problem problem;
         using Cost      = ModelCost<ModelType>;
@@ -116,18 +117,18 @@ template <typename ModelType, typename FlagType_ = int>
 struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
     using Super = FitFunction<ModelType, FlagType_>;
     using Super::Super;
+    using typename Super::ResidualType;
     using InputType    = typename ModelType::DataType;
     using OutputType   = typename ModelType::ParameterType;
-    using ResidualType = typename ModelType::DataType;
     using FlagType     = FlagType_; // Iterations
     int max_iterations = 100;
 
     FitReturnType fit(std::vector<QI_ARRAY(InputType)> const &inputs,
                       Eigen::ArrayXd const &                  fixed,
                       QI_ARRAYN(OutputType, ModelType::NV) & p,
-                      ResidualType &                       residual,
-                      std::vector<QI_ARRAY(ResidualType)> &residuals,
-                      FlagType &                           iterations) const override {
+                      ResidualType &                    residual,
+                      std::vector<QI_ARRAY(InputType)> &residuals,
+                      FlagType &                        iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
             p        = ModelType::VaryingArray::Zero();
@@ -174,36 +175,38 @@ template <typename ModelType, typename FlagType_ = int>
 struct BlockFitFunction : FitFunctionBase<ModelType, true, false> {
     using Super = FitFunctionBase<ModelType, true, false>;
     using Super::Super;
-    using InputType                                  = typename ModelType::DataType;
-    using OutputType                                 = typename ModelType::ParameterType;
-    using ResidualType                               = typename ModelType::DataType;
-    using FlagType                                   = FlagType_; // Iterations
-    using SequenceType                               = typename ModelType::SequenceType;
+    using typename Super::ResidualType;
+    using InputType    = typename ModelType::DataType;
+    using OutputType   = typename ModelType::ParameterType;
+    using FlagType     = FlagType_; // Iterations
+    using SequenceType = typename ModelType::SequenceType;
+
     virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
-                              ResidualType &                       residual,
-                              std::vector<QI_ARRAY(ResidualType)> &point_residuals,
-                              FlagType &                           flag,
-                              const int                            block) const = 0;
+                              ResidualType &                    residual,
+                              std::vector<QI_ARRAY(InputType)> &point_residuals,
+                              FlagType &                        flag,
+                              const int                         block) const = 0;
 };
 
 template <typename ModelType, typename FlagType_ = int>
 struct IndexedFitFunction : FitFunctionBase<ModelType, false, true> {
     using Super = FitFunctionBase<ModelType, false, true>;
     using Super::Super;
-    using InputType                                             = typename ModelType::DataType;
-    using OutputType                                            = typename ModelType::ParameterType;
-    using ResidualType                                          = typename ModelType::DataType;
-    using FlagType                                              = FlagType_; // Iterations
-    using SequenceType                                          = typename ModelType::SequenceType;
+    using typename Super::ResidualType;
+    using InputType    = typename ModelType::DataType;
+    using OutputType   = typename ModelType::ParameterType;
+    using FlagType     = FlagType_; // Iterations
+    using SequenceType = typename ModelType::SequenceType;
+
     virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
-                              ResidualType &                       residual,
-                              std::vector<QI_ARRAY(ResidualType)> &point_residuals,
-                              FlagType &                           flag,
-                              const itk::Index<3> &                index) const = 0;
+                              ResidualType &                    residual,
+                              std::vector<QI_ARRAY(InputType)> &point_residuals,
+                              FlagType &                        flag,
+                              const itk::Index<3> &             index) const = 0;
 };
 
 } // End namespace QI

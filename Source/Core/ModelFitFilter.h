@@ -46,11 +46,13 @@ class ModelFitFilter
     using ModelType     = typename FitType::ModelType;
     using InputType     = typename FitType::InputType;
     using OutputType    = typename FitType::OutputType;
+    using ResidualType  = typename FitType::ResidualType;
     using ParameterType = typename ModelType::ParameterType;
 
-    using InputPixelType  = typename IOPrecision<InputType>::Type;
-    using OutputPixelType = typename IOPrecision<OutputType>::Type;
-    using FixedPixelType  = typename IOPrecision<ParameterType>::Type;
+    using InputPixelType    = typename IOPrecision<InputType>::Type;
+    using OutputPixelType   = typename IOPrecision<OutputType>::Type;
+    using ResidualPixelType = typename IOPrecision<ResidualType>::Type;
+    using FixedPixelType    = typename IOPrecision<ParameterType>::Type;
 
     static constexpr int ImageDim = 3;
 
@@ -62,7 +64,7 @@ class ModelFitFilter
 
     using TOutputImage   = typename BlockTypes<Blocked, ImageDim, OutputPixelType>::Type;
     using TFlagImage     = typename BlockTypes<Blocked, ImageDim, typename FitType::FlagType>::Type;
-    using TResidualImage = typename BlockTypes<Blocked, ImageDim, InputPixelType>::Type;
+    using TResidualImage = typename BlockTypes<Blocked, ImageDim, ResidualPixelType>::Type;
     using TResidualsImage = TInputImage;
 
     using TRegion = typename TInputImage::RegionType;
@@ -440,7 +442,7 @@ class ModelFitFilter
 
         using InputArray    = QI_ARRAY(typename FitType::InputType);
         using OutputArray   = QI_ARRAYN(typename FitType::OutputType, ModelType::NV);
-        using ResidualArray = QI_ARRAY(typename FitType::ResidualType);
+        using ResidualArray = QI_ARRAY(typename FitType::InputType);
         while (!input_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {
                 for (int b = 0; b < m_blocks; b++) {

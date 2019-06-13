@@ -40,9 +40,9 @@ struct DirectCost : ModelCost<EllipseModel> {
 QI::FitReturnType DirectFit::fit(const std::vector<Eigen::ArrayXcd> &inputs,
                                  const Eigen::ArrayXd &              fixed,
                                  QI_ARRAYN(OutputType, EllipseModel::NV) & p,
-                                 ResidualType &residual,
-                                 std::vector<Eigen::ArrayXcd> & /*Unused*/,
-                                 FlagType &iterations,
+                                 ResidualType &                residual,
+                                 std::vector<Eigen::ArrayXcd> &residuals,
+                                 FlagType &                    iterations,
                                  const int /* Unused */) const {
     const double               scale  = inputs[0].abs().maxCoeff();
     const Eigen::ArrayXcd      data   = inputs[0] / scale;
@@ -94,6 +94,9 @@ QI::FitReturnType DirectFit::fit(const std::vector<Eigen::ArrayXcd> &inputs,
         return {false, summary.FullReport()};
     }
     residual = summary.final_cost;
+    if (residuals.size() > 0) {
+        residuals[0] = (data - model.signal(p, fixed)) * scale;
+    }
     p[0] *= scale;
     p[3] = std::fmod(p[3] + 3 * M_PI, 2 * M_PI) - M_PI;
     p[4] = std::fmod(p[4] + 3 * M_PI, 2 * M_PI) - M_PI;
