@@ -19,11 +19,13 @@ class DESPOT1InputSpec(QI.FitInputSpec):
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
     clamp_PD = traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f')
     clamp_T1 = traits.Float(desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
-    
+
+
 class DESPOT1OutputSpec(TraitedSpec):
     t1_map = File('D1_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     pd_map = File('D1_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    residual_map = File('D1_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    residual_map = File('D1_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+
 
 class DESPOT1(QI.FitCommand):
     """
@@ -54,6 +56,7 @@ class DESPOT1(QI.FitCommand):
 
 ############################ qidespot1sim ############################
 
+
 class DESPOT1SimInputSpec(QI.SimInputSpec):
     # Options
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
@@ -83,23 +86,26 @@ class DESPOT1Sim(QI.SimCommand):
 
 ############################ qidespot1hifi ############################
 
+
 class HIFIInputSpec(QI.InputSpec):
     # Inputs
     spgr_file = File(exists=True, argstr='%s', mandatory=True,
-        position=-2, desc='Path to SPGR data')
+                     position=-2, desc='Path to SPGR data')
 
     mprage_file = File(exists=True, argstr='%s', mandatory=True,
-        position=-1, desc='Path to MPRAGE data')
+                       position=-1, desc='Path to MPRAGE data')
 
     # Options
     residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
     clamp_T1 = traits.Float(desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
 
+
 class HIFIOutputSpec(TraitedSpec):
     t1_map = File('HIFI_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     pd_map = File('HIFI_PD.nii.gz', desc="Path to PD map", usedefault=True)
     b1_map = File('HIFI_B1.nii.gz', desc="Path to B1 map", usedefault=True)
-    residual_map = File('HIFI_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    residual_map = File('HIFI_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+
 
 class HIFI(QI.FitCommand):
     """
@@ -124,18 +130,20 @@ class HIFI(QI.FitCommand):
 
 ############################ qidespot1hifisim ############################
 
+
 class HIFISimInputSpec(QI.SimInputBaseSpec):
     # Inputs
     spgr_file = File(exists=False, argstr='%s', mandatory=True,
-        position=-2, desc='Path for output SPGR image')
+                     position=-2, desc='Path for output SPGR image')
 
     mprage_file = File(exists=False, argstr='%s', mandatory=True,
-        position=-1, desc='Path for output MPRAGE image')
+                       position=-1, desc='Path for output MPRAGE image')
 
 
 class HIFISimOutputSpec(TraitedSpec):
     spgr_file = File(desc="Output SPGR image")
     mprage_file = File(desc="Output MPRAGE image")
+
 
 class HIFISim(QI.SimCommand):
     """
@@ -169,23 +177,26 @@ class HIFISim(QI.SimCommand):
 
 ############################ qidespot2 ############################
 
+
 class DESPOT2InputSpec(QI.FitInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
-        position=-2, desc='Path to T1 map')
+                   position=-2, desc='Path to T1 map')
 
     # Options
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    algo = traits.Enum("LLS","WLS","NLS", desc="Choose algorithm", argstr="--algo=%d")
+    algo = traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d")
     ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
     clamp_PD = traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f')
     clamp_T2 = traits.Float(desc='Clamp T2 between 0 and value', argstr='--clampT1=%f')
 
+
 class DESPOT2OutputSpec(TraitedSpec):
     t2_map = File('D2_T2.nii.gz', desc="Path to T2 map", usedefault=True)
     pd_map = File('D2_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    residual_map = File('D2_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    residual_map = File('D2_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+
 
 class DESPOT2(QI.FitCommand):
     """
@@ -218,14 +229,16 @@ class DESPOT2(QI.FitCommand):
 
 ############################ qidespot2sim ############################
 
+
 class DESPOT2SimInputSpec(QI.SimInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
-        position=-2, desc='Path for input T1 map')
+                   position=-2, desc='Path for input T1 map')
 
     # Options
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
+
 
 class DESPOT2Sim(QI.SimCommand):
     """
@@ -252,21 +265,24 @@ class DESPOT2Sim(QI.SimCommand):
 
 ############################ qidespot2fm ############################
 
+
 class FMInputSpec(QI.FitInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
-        position=-2, desc='Path to T1 map')
+                   position=-2, desc='Path to T1 map')
 
     # Options
     b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
-    algo = traits.Enum("LLS","WLS","NLS", desc="Choose algorithm", argstr="--algo=%d")
+    algo = traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d")
+
 
 class FMOutputSpec(TraitedSpec):
     t2_map = File('FM_T2.nii.gz', desc="Path to T2 map", usedefault=True)
     pd_map = File('FM_PD.nii.gz', desc="Path to PD map", usedefault=True)
     f0_map = File('FM_f0.nii.gz', desc="Path to f0 (off-resonance) map", usedefault=True)
-    residual_map = File('FM_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    residual_map = File('FM_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+
 
 class FM(QI.FitCommand):
     """
@@ -288,14 +304,16 @@ class FM(QI.FitCommand):
     input_spec = FMInputSpec
     output_spec = FMOutputSpec
 
+
 class FMSimInputSpec(QI.SimInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
-        position=-2, desc='Path for input T1 map')
+                   position=-2, desc='Path for input T1 map')
 
     # Options
     b1map_file = File(desc='B1 map (ratio)', argstr='--B1=%s')
     asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
+
 
 class FMSim(QI.SimCommand):
     """
@@ -310,30 +328,33 @@ class FMSim(QI.SimCommand):
 
 ############################ qimcdespot ############################
 # Status: Everything is there but not tested
+
+
 class QIMCDespotInputSpec(QI.InputSpec):
     # Inputs
     spgr_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='SPGR file')
+                     position=0, desc='SPGR file')
     ssfp_file = File(exists=True, argstr='%s', mandatory=True,
-        position=1, desc='SSFP file')
-    param_dict = traits.Dict(desc='Parameters as dictionary', position=2, 
-        argstr='', mandatory=True, xor=['param_file'])
-    param_file = File(desc='Parameters as .json file', position=2, argstr='--json=%s', 
-        xor=['param_dict'], mandatory=True, exists=True)
+                     position=1, desc='SSFP file')
+    param_dict = traits.Dict(desc='Parameters as dictionary', position=2,
+                             argstr='', mandatory=True, xor=['param_file'])
+    param_file = File(desc='Parameters as .json file', position=2, argstr='--json=%s',
+                      xor=['param_dict'], mandatory=True, exists=True)
 
     # Options
     f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
     B1_map = File(desc='B1 map (ratio)', argstr='--B1=%s', exists=True)
     mask = File(desc='Only process voxels within the mask', argstr='--mask=%s', exists=True)
     residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resid')
-    model = traits.Enum("1","2","2nex","3","3_f0","3nex", desc="Select model to fit - 1/2/2nex/3/3_f0/3nex, default 3", 
-        argstr="--model=%d")
+    model = traits.Enum("1", "2", "2nex", "3", "3_f0", "3nex", desc="Select model to fit - 1/2/2nex/3/3_f0/3nex, default 3",
+                        argstr="--model=%d")
     scale = traits.Bool(desc='Normalize signals to mean (a good idea)', argstr='--scale')
-    algo = traits.Enum("S","G", desc="Select (S)tochastic or (G)aussian Region Contraction", argstr="--algo=%d")
+    algo = traits.Enum("S", "G", desc="Select (S)tochastic or (G)aussian Region Contraction", argstr="--algo=%d")
     iterations = traits.Int(desc='Max iterations, default 4', argstr='---its=%d')
     field_strength = traits.Float(desc='Specify field-strength for fitting regions - 3/7/u for user input', argstr='--tesla=%f')
     threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
     prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
+
 
 class QIMCDespotOutputSpec(TraitedSpec):
     # Specify which outputs there are
@@ -348,7 +369,8 @@ class QIMCDespotOutputSpec(TraitedSpec):
     output_3C_f_csf = File(desc="The CSF Fraction")
     output_3C_f0 = File(desc="The off-resonance frequency. If this was specified on the command line, it will be a copy of that file")
     output_3C_B1 = File(desc="The relative flip-angle map. If this was specified on the command line, it will be a copy of that file")
-    
+
+
 class QIMCDespot(QI.FitCommand):
     """
     Interace for qimcdespot
@@ -369,21 +391,23 @@ class QIMCDespot(QI.FitCommand):
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        
+
         # Specify output files
-        outputs = ['3C_T1_m', '3C_T2_m', '3C_T1_ie', '3C_T2_ie', '3C_T1_csf', '3C_T2_csf', 
-                '3C_tau_m', '3C_f_m', '3C_f_csf', '3C_f0', '3C_B1']
+        outputs = ['3C_T1_m', '3C_T2_m', '3C_T1_ie', '3C_T2_ie', '3C_T1_csf', '3C_T2_csf',
+                   '3C_tau_m', '3C_f_m', '3C_f_csf', '3C_f0', '3C_B1']
         for op in outputs:
             outputs['output_{}'.format(op)] = os.path.abspath(self._add_prefix('{}.nii.gz'.format(op)))
         return outputs
 
 ############################ qimp2rage ############################
 # Implemented but not tested #
+
+
 class MP2RAGEInputSpec(QI.InputSpec):
     # Inputs
     mprage_data = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Path to complex MP-RAGE data')
-    
+                       position=0, desc='Path to complex MP-RAGE data')
+
     # Options
     mask = File(desc='Only process voxels within the mask', argstr='--mask=%s', exists=True)
     automask = traits.Bool(desc='Create a mask from the sum of squares image', argstr='--automask')
@@ -392,11 +416,13 @@ class MP2RAGEInputSpec(QI.InputSpec):
     threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
     prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
 
+
 class MP2RAGEOutputSpec(TraitedSpec):
     # Specify which outputs there are
     contrast = File(desc='The MP2 contrast image. The range of this image is -0.5 to 0.5 unless the --automask option is specified, in which case it will be shifted to 0 to 1.')
     t1map = File(desc='The T1 map. Units are the same as TR and SegTR.')
-    
+
+
 class MP2RAGE(QI.FitCommand):
     """
     Interface for qimp2rage
@@ -405,7 +431,7 @@ class MP2RAGE(QI.FitCommand):
     -------
     >>> from QUIT.nipype.relaxometry import QIMP2RAGE
     >>> interface = QIMP2RAGE(prefix='nipype_', param_file='spgr_params.json')
-    
+
     """
 
     _cmd = 'qimp2rage'
@@ -418,7 +444,7 @@ class MP2RAGE(QI.FitCommand):
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        
+
         # Specify output files
         input_bname = os.path.basename(self.inputs.mprage_data)
         input_fname = os.path.splitext(os.path.split(input_bname)[-1])
@@ -430,18 +456,21 @@ class MP2RAGE(QI.FitCommand):
 
 ############################ qimultiecho ############################
 
+
 class MultiechoInputSpec(QI.FitInputSpec):
     # Options
     algo = traits.String(desc="Choose algorithm (l/a/n)", argstr="--algo=%s")
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
     thresh_PD = traits.Float(desc='Only output maps when PD exceeds threshold value', argstr='-t=%f')
-    clamp_T2 = traits.Float(desc='Clamp T2 between 0 and value', argstr='-p=%f')    
+    clamp_T2 = traits.Float(desc='Clamp T2 between 0 and value', argstr='-p=%f')
+
 
 class MultiechoOutputSpec(TraitedSpec):
     t2_map = File('ME_T2.nii.gz', desc='The T2 map. Units are the same as TE1 and ESP', usedefault=True)
     pd_map = File('ME_PD.nii.gz', desc='The apparent proton-density map (intercept of the decay curve at TE=0)', usedefault=True)
-    residual_map = File('ME_residual.nii.gz', desc='Path to residual map', usedefault=True)
-    
+    residual_map = File('ME_SoS_residual.nii.gz', desc='Path to residual map', usedefault=True)
+
+
 class Multiecho(QI.FitCommand):
     """
     help for myInterface
@@ -450,12 +479,13 @@ class Multiecho(QI.FitCommand):
     -------
     >>> from QUIT.nipype.relaxometry import QiMultiecho
     >>> interface = QiMultiecho(prefix='nipype_', param_file='me_params.json')
-    
+
     """
 
     _cmd = 'qimultiecho'
     input_spec = MultiechoInputSpec
     output_spec = MultiechoOutputSpec
+
 
 class MultiechoSim(QI.SimCommand):
     """
@@ -465,7 +495,7 @@ class MultiechoSim(QI.SimCommand):
     -------
     >>> from QUIT.nipype.relaxometry import QiMultiecho
     >>> interface = QiMultiecho(prefix='nipype_', param_file='me_params.json')
-    
+
     """
 
     _cmd = 'qimultiecho'
@@ -476,22 +506,25 @@ class MultiechoSim(QI.SimCommand):
 ############################ qidream ############################
 # Implemented but not tested #
 
+
 class QIDreamInputSpec(QI.InputSpec):
     # Inputs
     dream_file = File(exists=True, argstr='%s', mandatory=True,
-        position=0, desc='Input file. Must have 2 volumes (FID and STE)')
-    
+                      position=0, desc='Input file. Must have 2 volumes (FID and STE)')
+
     # Options
     threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
     prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
     order = traits.String(desc='Volume order - f/s/v - fid/ste/vst first', argstr='--order=%s')
     mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
     alpha = traits.Float(desc="Nominal flip-angle (default 55)", argstr="--alpha=%f")
-    
+
+
 class QIDreamOutputSpec(TraitedSpec):
     b1_rel_map = File(desc="The relative flip-angle map.")
     b1_act_map = File(desc="The actual achieved angle in each voxel.")
-    
+
+
 class QIDream(QI.BaseCommand):
     """
     Interface for qidream
@@ -500,7 +533,7 @@ class QIDream(QI.BaseCommand):
     -------
     >>> from QUIT.nipype.relaxometry import QiDream
     >>> interface = QiDream(prefix='nipype_', param_file='spgr_params.json')
-    
+
     """
 
     _cmd = 'qidream'
@@ -521,6 +554,7 @@ class QIDream(QI.BaseCommand):
 ############################ qiafi ############################
 # Implemented but not tested #
 
+
 class QIAFIInputSpec(QI.InputSpec):
     # Inputs
     afi_file = File(exists=True, argstr='%s', mandatory=True, position=0, desc='Input file')
@@ -532,11 +566,13 @@ class QIAFIInputSpec(QI.InputSpec):
     tr_ratio = traits.Float(desc="Specify TR2:TR1 ratio, default 5", argstr="--ratio=%f")
     save_act_b1 = traits.Bool(desc="Write out the actual flip-angle as well as B1", argstr="--save")
 
+
 class QIAFIOutputSpec(TraitedSpec):
     # Specify which outputs there are
     b1_rel_map = File(desc="The relative flip-angle map.")
     b1_act_map = File(desc="The actual flip-angle map.")
-   
+
+
 class QIAFI(QI.BaseCommand):
     """
     help for myInterface
@@ -545,7 +581,7 @@ class QIAFI(QI.BaseCommand):
     -------
     >>> from QUIT.nipype.relaxometry import QiAfi
     >>> interface = QiAfi(prefix='nipype_', param_file='spgr_params.json')
-    
+
     """
 
     _cmd = 'qiafi'
