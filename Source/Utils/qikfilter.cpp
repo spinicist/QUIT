@@ -212,6 +212,10 @@ int main(int argc, char **argv) {
 
     auto tkernel = TKernel::New();
     if (!filter_per_volume) {
+        QI::Info(verbose, "Kernels:");
+        for (auto const &k : kernels) {
+            QI::Info(verbose, "{}", *k);
+        }
         tkernel->SetKernels(kernels);
     }
     if (highpass) {
@@ -258,7 +262,7 @@ int main(int argc, char **argv) {
             tkernel->SetDirection(fft_pad->GetOutput()->GetDirection());
             tkernel->Update();
             QI::Log(verbose,
-                    "Created kernel, size is: {}",
+                    "Created kernel filter, size is: {}",
                     tkernel->GetOutput()->GetLargestPossibleRegion().GetSize());
         }
         if (filter_per_volume) {
