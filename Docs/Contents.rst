@@ -3,10 +3,10 @@ Categories
 
 .. toctree::
 
+   B1
    Relaxometry
    Perfusion
    MT
-   SSFP
    Susceptibility
    Stats
    Utilities
