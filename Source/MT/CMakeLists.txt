@@ -3,6 +3,7 @@ if( ${BUILD_MT} )
     set( PROGRAMS
          qi_zspec_interp qi_zspec_b1 qi_lorentzian
          qi_lineshape qi_qmt qi_mtsat
+         qi_ssfp_emt
        )
 
     foreach(PROGRAM ${PROGRAMS})

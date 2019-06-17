@@ -36,7 +36,7 @@ struct MPMModel {
     SequenceType &                    pdw_s, &t1w_s, &mtw_s;
     VaryingArray const                bounds_lo{1e-6, 1e-6, 1e-6, 1e-6};
     VaryingArray const                bounds_hi{1e4, 1e2, 1e2, 1e2}; // Signal values will be scaled
-    std::array<std::string, NV> const varying_names{"R2s", "S_PDw", "S_T1w", "S_MTw"};
+    std::array<std::string, NV> const varying_names{"R2s", "S0_PDw", "S0_T1w", "S0_MTw"};
     std::array<std::string, 0> const  fixed_names{};
     FixedArray const                  fixed_defaults{};
 

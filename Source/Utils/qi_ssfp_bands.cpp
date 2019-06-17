@@ -16,11 +16,192 @@
 #include "itkUnaryFunctorImageFilter.h"
 
 #include "Args.h"
-#include "Banding.h"
 #include "ImageIO.h"
 #include "Log.h"
 #include "Monitor.h"
 #include "Util.h"
+
+namespace QI {
+/*
+ * Helper Functions
+ */
+template <typename T> inline T cdot(const std::complex<T> &a, const std::complex<T> &b) {
+    return real(a) * real(b) + imag(a) * imag(b);
+}
+
+template <typename Derived>
+void SplitBlocks(const Eigen::ArrayBase<Derived> &full,
+                 Eigen::ArrayBase<Derived> &      a,
+                 Eigen::ArrayBase<Derived> &      b,
+                 const bool                       reorder) {
+    if (reorder) {
+        for (int i = 0; i < a.rows(); i++) {
+            a[i] = static_cast<std::complex<double>>(full[i * 2]);
+            b[i] = static_cast<std::complex<double>>(full[i * 2 + 1]);
+        }
+    } else {
+        a = full.head(a.rows());
+        b = full.tail(b.rows());
+    }
+}
+
+enum class RegEnum { None = 0, Line, Magnitude };
+std::complex<float>
+GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::ArrayXcd &b, RegEnum r);
+
+struct BandFunctor {
+    size_t m_flips, m_lines, m_crossings, m_phases = 4;
+    bool   m_phaseFirst = false, m_reorderBlock = false;
+
+    BandFunctor() = default;
+    BandFunctor(const int isz, const int p, const bool rp, const bool rb);
+
+    bool operator!=(const BandFunctor &) const { return true; }
+    bool operator==(const BandFunctor &other) const { return !(*this != other); }
+    itk::VariableLengthVector<std::complex<float>>
+    operator()(const itk::VariableLengthVector<std::complex<float>> &vec) const;
+    virtual std::complex<float>
+    applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const = 0;
+};
+
+struct CSFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float>
+    applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
+};
+
+struct MagMeanFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float>
+    applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
+};
+
+struct RMSFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float>
+    applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
+};
+
+struct MaxFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    std::complex<float>
+    applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
+};
+
+struct GSFunctor : BandFunctor {
+    using BandFunctor::BandFunctor;
+    RegEnum        m_Regularise = RegEnum::Line;
+    const RegEnum &regularise() { return m_Regularise; }
+    void           setRegularise(const RegEnum &r) { m_Regularise = r; }
+    std::complex<float>
+    applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const override;
+};
+
+BandFunctor::BandFunctor(const int isz, const int p, const bool rp, const bool rb) :
+    m_phaseFirst(rp), m_reorderBlock(rb) {
+    if (p < 4)
+        QI::Fail("Must have a minimum of 4 phase-cycling patterns.");
+    if ((p % 2) != 0)
+        QI::Fail("Number of phases must be even.");
+    m_phases = p;
+    m_lines  = m_phases / 2;
+    m_flips  = isz / m_phases;
+}
+
+itk::VariableLengthVector<std::complex<float>> BandFunctor::
+                                               operator()(const itk::VariableLengthVector<std::complex<float>> &vec) const {
+    size_t phase_stride = m_flips;
+    size_t flip_stride  = 1;
+    if (m_phaseFirst)
+        std::swap(phase_stride, flip_stride);
+    itk::VariableLengthVector<std::complex<float>> output(m_flips);
+    for (size_t f = 0; f < m_flips; f++) {
+        const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> vf(
+            vec.GetDataPointer() + f * flip_stride, m_phases, Eigen::InnerStride<>(phase_stride));
+        output[f] = this->applyFlip(vf);
+    }
+    return output;
+}
+
+std::complex<float>
+GeometricSolution(const Eigen::ArrayXcd &a, const Eigen::ArrayXcd &b, RegEnum regularise) {
+    eigen_assert(a.rows() == b.rows());
+    std::complex<double> sum(0., 0.);
+    double               N = 0;
+    for (int i = 0; i < a.rows(); i++) {
+        for (int j = i + 1; j < a.rows(); j++) {
+            const std::complex<double> di = b[i] - a[i], dj = b[j] - a[j];
+            const std::complex<double> ni(-di.imag(), di.real()), nj(-dj.imag(), dj.real());
+
+            const double mu = QI::cdot(a[j] - a[i], nj) / QI::cdot(di, nj);
+            const double nu = QI::cdot(a[i] - a[j], ni) / QI::cdot(dj, ni);
+            const double xi = 1.0 - pow(QI::cdot(di, dj) / (abs(di) * abs(dj)), 2.0);
+
+            const std::complex<double> cs = (a[i] + a[j] + b[i] + b[j]) / 4.0;
+            const std::complex<double> gs = a[i] + mu * di;
+
+            switch (regularise) {
+            case RegEnum::None:
+                sum += gs;
+                break;
+            case RegEnum::Magnitude:
+                if (norm(gs) <
+                    std::max(
+                        {std::norm(a[i]), std::norm(a[j]), std::norm(b[i]), std::norm(b[j])})) {
+                    sum += gs;
+                } else {
+                    sum += cs;
+                }
+                break;
+            case RegEnum::Line:
+                if ((mu > -xi) && (mu < 1 + xi) && (nu > -xi) && (nu < 1 + xi)) {
+                    sum += gs;
+                } else {
+                    sum += cs;
+                }
+                break;
+            }
+            N += 1;
+        }
+    }
+    return static_cast<std::complex<float>>(sum / N);
+}
+
+std::complex<float>
+CSFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    return vf.mean();
+}
+
+std::complex<float> MagMeanFunctor::applyFlip(
+    const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    return vf.abs().mean();
+}
+
+std::complex<float>
+RMSFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    float sum = vf.abs().square().sum();
+    return std::complex<float>(sqrt(sum / vf.rows()), 0.);
+}
+
+std::complex<float>
+MaxFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    std::complex<float> max = std::numeric_limits<std::complex<float>>::lowest();
+    for (int i = 0; i < vf.rows(); i++) {
+        if (std::abs(vf[i]) > std::abs(max))
+            max = vf[i];
+    }
+    return max;
+}
+
+std::complex<float>
+GSFunctor::applyFlip(const Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>> &vf) const {
+    Eigen::ArrayXcd a(m_lines);
+    Eigen::ArrayXcd b(m_lines);
+    Eigen::ArrayXcd full = vf.cast<std::complex<double>>();
+    SplitBlocks(full, a, b, m_reorderBlock);
+    return GeometricSolution(a, b, m_Regularise);
+}
+} // namespace QI
 
 namespace itk {
 
@@ -72,7 +253,8 @@ class MinEnergyFilter : public ImageToImageFilter<QI::VectorVolumeXF, QI::Vector
         Superclass::GenerateOutputInformation();
         if ((this->GetInput()->GetNumberOfComponentsPerPixel() % m_phases) != 0) {
             QI::Fail("Input size {} and number of phase {} do not match",
-                     this->GetInput()->GetNumberOfComponentsPerPixel(), m_phases);
+                     this->GetInput()->GetNumberOfComponentsPerPixel(),
+                     m_phases);
         }
         m_flips = (this->GetInput()->GetNumberOfComponentsPerPixel() / m_phases);
         auto op = this->GetOutput();
@@ -117,7 +299,8 @@ class MinEnergyFilter : public ImageToImageFilter<QI::VectorVolumeXF, QI::Vector
                 for (size_t f = 0; f < m_flips; f++) {
                     const Eigen::ArrayXcd center_array =
                         Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(
-                            center_pixel.GetDataPointer() + f * flip_stride, m_phases,
+                            center_pixel.GetDataPointer() + f * flip_stride,
+                            m_phases,
                             Eigen::InnerStride<>(phase_stride))
                             .cast<std::complex<double>>();
                     QI::SplitBlocks(center_array, a_center, b_center, m_reorderBlock);
@@ -134,7 +317,8 @@ class MinEnergyFilter : public ImageToImageFilter<QI::VectorVolumeXF, QI::Vector
                         if (norm(Id) > 0.) {
                             const Eigen::ArrayXcd input_array =
                                 Eigen::Map<const Eigen::ArrayXcf, 0, Eigen::InnerStride<>>(
-                                    input_pixel.GetDataPointer() + f * flip_stride, m_phases,
+                                    input_pixel.GetDataPointer() + f * flip_stride,
+                                    m_phases,
                                     Eigen::InnerStride<>(phase_stride))
                                     .cast<std::complex<double>>();
                             QI::SplitBlocks(input_array, a_pixel, b_pixel, m_reorderBlock);
@@ -183,29 +367,35 @@ int main(int argc, char **argv) {
     args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<std::string> out_arg(
         parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, 4);
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::Flag alt_order(parser, "ALTERNATE", "Opposing phase-incs alternate (default is 2 blocks)",
-                         {"alt-order"});
-    args::Flag ph_order(parser, "PHASE 1st",
-                        "Data order is phase, then flip-angle (default opposite)", {"ph-order"});
-    args::ValueFlag<int> ph_incs(parser, "PHASE-INCS", "Number of phase increments (default 4)",
-                                 {"ph-incs"}, 4);
-    args::Flag magnitude(parser, "MAGNITUDE", "Output a magnitude image only (default is complex)",
-                         {"magnitude"});
+    args::ValueFlag<int> threads(
+        parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<std::string> mask(
+        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::Flag alt_order(
+        parser, "ALTERNATE", "Opposing phase-incs alternate (default is 2 blocks)", {"alt-order"});
+    args::Flag           ph_order(parser,
+                        "PHASE 1st",
+                        "Data order is phase, then flip-angle (default opposite)",
+                        {"ph-order"});
+    args::ValueFlag<int> ph_incs(
+        parser, "PHASE-INCS", "Number of phase increments (default 4)", {"ph-incs"}, 4);
+    args::Flag magnitude(
+        parser, "MAGNITUDE", "Output a magnitude image only (default is complex)", {"magnitude"});
     args::ValueFlag<std::string> method(
-        parser, "METHOD",
+        parser,
+        "METHOD",
         "Choose banding-removal method. G = Geometric Solution, X = Complex Average, R = Root Mean "
         "Square, M = Maximum, N = Mean Magnitude. Default = G",
-        {"method"}, "G");
+        {"method"},
+        "G");
     args::ValueFlag<std::string> regularise(
-        parser, "REGULARISE",
-        "Chose regularisation method for GS. M = Magnitude, L = Line, N = None", {"regularise"},
+        parser,
+        "REGULARISE",
+        "Chose regularisation method for GS. M = Magnitude, L = Line, N = None",
+        {"regularise"},
         "L");
-    args::Flag two_pass(parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme",
-                        {'2', "2pass"});
+    args::Flag two_pass(
+        parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2', "2pass"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Opening input file: {}", QI::CheckPos(input_path));
@@ -230,8 +420,8 @@ int main(int argc, char **argv) {
             QI::Fail("Invalid regularisation {}", regularise.Get());
         }
         QI::Log(verbose, "Regularisation = {}", suffix);
-        auto pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF,
-                                                  QI::GSFunctor>::New();
+        auto pass1 = itk::
+            UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::GSFunctor>::New();
         pass1->SetFunctor(gs);
         pass1->SetInput(inFile);
         pass1->Update();
@@ -239,8 +429,8 @@ int main(int argc, char **argv) {
     } else if (method.Get() == "X") {
         suffix = "CS";
         QI::CSFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
-        auto          pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF,
-                                                  QI::CSFunctor>::New();
+        auto          pass1 = itk::
+            UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::CSFunctor>::New();
         pass1->SetFunctor(functor);
         pass1->SetInput(inFile);
         pass1->Update();
@@ -248,8 +438,8 @@ int main(int argc, char **argv) {
     } else if (method.Get() == "R") {
         suffix = "RMS";
         QI::RMSFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
-        auto           pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF,
-                                                  QI::RMSFunctor>::New();
+        auto           pass1 = itk::
+            UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::RMSFunctor>::New();
         pass1->SetFunctor(functor);
         pass1->SetInput(inFile);
         pass1->Update();
@@ -257,7 +447,8 @@ int main(int argc, char **argv) {
     } else if (method.Get() == "N") {
         suffix = "MagMean";
         QI::MagMeanFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
-        auto pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF,
+        auto               pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF,
+                                                  QI::VectorVolumeXF,
                                                   QI::MagMeanFunctor>::New();
         pass1->SetFunctor(functor);
         pass1->SetInput(inFile);
@@ -266,8 +457,8 @@ int main(int argc, char **argv) {
     } else if (method.Get() == "M") {
         suffix = "Max";
         QI::MaxFunctor functor(nVols, ph_incs.Get(), ph_order, alt_order);
-        auto           pass1 = itk::UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF,
-                                                  QI::MaxFunctor>::New();
+        auto           pass1 = itk::
+            UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::MaxFunctor>::New();
         pass1->SetFunctor(functor);
         pass1->SetInput(inFile);
         pass1->Update();

@@ -12,6 +12,7 @@ if( ${BUILD_UTILITIES} )
             qipolyimg
             qi_rfprofile
             qi_tvmask
+            qi_ssfp_bands
     )
 
     foreach(PROGRAM ${PROGRAMS})

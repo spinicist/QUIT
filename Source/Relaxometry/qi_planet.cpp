@@ -1,7 +1,7 @@
 /*
- *  qdespot1.cpp - Part of QUantitative Imaging Tools
+ *  qi_planet.cpp - Part of QUantitative Imaging Tools
  *
- *  Copyright (c) 2015 Tobias Wood.
+ *  Copyright (c) 2019 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this

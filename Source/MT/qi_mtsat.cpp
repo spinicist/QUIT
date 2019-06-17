@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
         nullptr);
     QI::Info(verbose, "Finished");
     QI::WriteImage(R1_img, outarg.Get() + "MTSat_R1" + QI::OutExt(), verbose);
-    QI::WriteImage(A_img, outarg.Get() + "MTSat_A" + QI::OutExt(), verbose);
+    QI::WriteImage(A_img, outarg.Get() + "MTSat_S0" + QI::OutExt(), verbose);
     QI::WriteImage(d_img, outarg.Get() + "MTSat_delta" + QI::OutExt(), verbose);
     return EXIT_SUCCESS;
 }

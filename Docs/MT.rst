@@ -1,15 +1,15 @@
 Magnetization Transfer
 ======================
 
-MR voxels often contain complex microstructure with multiple different components or pools, each with unique relaxation properties. It is possible for magnetization to be transferred between these pools via several mechanisms, such as exchange of individual protons or entire molecules, or simple dipolar coupling from molecules that are in close proximity. These mechanisms can be studied in the related fields of Magnetization Transfer (MT) and Chemical Exchange Saturation Transfer (CEST). QUIT currently contains some basic CEST analysis tools and one for calculating simple dipolar/inhomogeneous MT ratios.
-
-In addition a tool is provided for calculating qMT parameters from SSFP data. This is in the :Doc:`SSFP` module.
+MR voxels often contain complex microstructure with multiple different components or pools, each with unique relaxation properties. It is possible for magnetization to be transferred between these pools via several mechanisms, such as exchange of individual protons or entire molecules, or simple dipolar coupling from molecules that are in close proximity. These mechanisms can be studied in the related fields of Magnetization Transfer (MT) and Chemical Exchange Saturation Transfer (CEST). QUIT currently contains some basic CEST analysis tools and one for calculating simple dipolar/inhomogeneous MT ratios. In addition a tool is provided for calculating qMT parameters from SSFP data.
 
 * `qi_lineshape`_
 * `qi_qmt`_
 * `qi_zspec_interp`_
 * `qi_lorentzian`_
 * `qi_dipolar_mtr.sh`_
+* `qi_ssfp_emt`_
+* `qi_mtsat`_
 
 qi_lineshape
 ------------
@@ -183,3 +183,64 @@ The input must consist of 5 volumes: Dipolar +/-, Dipolar -/+, Unsaturated, MT+,
 
 1. `Original full paper <http://doi.wiley.com/10.1002/mrm.25174>`_
 2. `Dipolar versus inhomogeneous naming <https://doi.org/10.1016/j.jmr.2016.11.013>`_
+
+qi_ssfp_emt
+-----------
+
+Due to the short TR commonly used with SSFP, at high flip-angles the sequence becomes MT weighted. It is hence possible to extract qMT parameters from SSFP data. More details will be in a forthcoming paper.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi_ssfp_emt ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+
+**Outputs**
+
+- ``EMT_T1f.nii.gz`` - Longitudinal relaxation time of the free water bool
+- ``EMT_T2f.nii.gz`` - Transverse relaxation time of the free water pool
+- ``EMT_M0.nii.gz`` - Apparent Proton Density
+- ``EMT_F.nii.gz`` - Bound pool fraction
+- ``EMT_kf.nii.gz`` - Forward exchange rate
+
+**References**
+
+- `Bieri et al <http://doi.wiley.com/10.1002/mrm.21056>`_
+- `Gloor et al <http://doi.wiley.com/10.1002/mrm.21705>`_
+
+qi_mtsat
+-----------
+
+Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and the semi-quantitative MT-Saturation parameter "delta". This is the fractional reduction in the longitudinal magnetization during one TR, expressed as a percentage. Arguably could be included in the :doc:`Docs/Relaxometry` module instead. Outputs R1 instead of T1 as this is more common in the MTSat / MPM literature. If using multi-echo input data the input should be passed through `qi_mpm_r2s` first and the output ``S0`` files used as input to `qi_mtsat`.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi_mtsat PDw.nii.gz T1w.nii.gz MTw.nii.gz < input.json
+
+**Example JSON File**
+
+.. code-block:: json
+
+    {
+        "MTSat": {
+            "TR_PDw": 0.025,
+            "TR_T1w": 0.025,
+            "TR_MTw": 0.028,
+            "FA_PDw": 5,
+            "FA_T1w": 25,
+            "FA_MTw": 5
+        }
+    }
+
+**Outputs**
+
+- ``MTSat_R1.nii.gz`` - Apparent longitudinal relaxation rate
+- ``MTSat_S0.nii.gz`` - Apparent proton density / equilibrium magnetization
+- ``MTSat_delta.nii.gz`` - MT-Sat parameter, see above.
+
+**References**
+
+- `Helms et al <http://doi.wiley.com/10.1002/mrm.21732>`_
+- `Erratum <http://doi.wiley.com/10.1002/mrm.22607>`_

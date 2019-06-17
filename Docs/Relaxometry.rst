@@ -1,7 +1,7 @@
 Relaxometry
 ===========
 
-Relaxometry is the measurement of the longitudinal and transverse relaxation times T<sub>1</sub> and T<sub>2</sub>. There are a multitude of different techniques for measuring both. The main focus of QUIT has been on the Driven-Equilibrium Single-Pulse Observation of T<sub>1</sub> (DESPOT1) family of techniques, but the classic multi-echo T<sub>2</sub> method and the more recent MP2RAGE T<sub>1</sub> measurement method are also implemented, along with the AFI and DREAM B1 mapping methods.
+Relaxometry is the measurement of the longitudinal and transverse relaxation times T<sub>1</sub> and T<sub>2</sub>. There are a multitude of different techniques for measuring both. The main focus of QUIT has been on the Driven-Equilibrium Single-Pulse Observation of T<sub>1</sub> (DESPOT1) family of techniques, but the classic multi-echo T<sub>2</sub> method and the more recent MP2RAGE T<sub>1</sub> measurement method are also implemented. It is common for relaxometry methods to need a :doc:`Docs/B1` B1+ map.
 
 The following programs are available:
 
@@ -9,11 +9,13 @@ The following programs are available:
 * `qidespot1hifi`_
 * `qidespot2`_
 * `qidespot2fm`_
+* `qi_jsr`_
 * `qimcdespot`_
 * `qimultiecho`_
 * `qimp2rage`_
-* `qiafi`_
-* `qidream`_
+* `qi_mpm_r2s`_
+* `qi_ssfp_ellipse`_
+* `qi_planet`_
 
 qidespot1
 ---------
@@ -200,6 +202,45 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. The length of ``PhaseInc``
 **References**
 
 - `Orignal FM Paper <http://doi.wiley.com/10.1002/jmri.21849>`_
+
+qi_jsr
+-------------
+
+Join-System Relaxometry fits T1 and T2 to spoiled and balanced gradient echo (SPGR and SSFP) data simultaneously, which improves the accuracy and precision in the fit of both.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi_jsr spgr.nii.gz ssfp.nii.gz < input.json
+
+**Example JSON File**
+
+.. code-block:: json
+
+    {
+        "SPGR": {
+            "TR": 0.01,
+            "TE": 0.003,
+            "FA": [12]
+        },
+        "SSFP": {
+            "TR": 0.01,
+            "FA": [10, 20, 20, 40],
+            "PhaseInc": [180, 180, 0, 180]
+        }
+    }
+
+**Outputs**
+
+* ``JSR_PD.nii.gz`` - The apparent Proton Density map. No units.
+* ``JSR_T1.nii.gz`` - The T1 map. Units are the same as those used for TR in the input.
+* ``JSR_T2.nii.gz`` - The T2 map. Units are the same as those used for TR in the input.
+* ``JSR_f0.nii.gz`` - The off-resonance map.
+
+**References**
+
+- `Teixeira et al <http://doi.wiley.com/10.1002/mrm.26670>`_
 
 qimcdespot
 ----------
@@ -394,74 +435,103 @@ For irregularly spaced echoes:
 
 - `ARLO <http://doi.wiley.com/10.1002/mrm.25137>`_
 
-qiafi
------
+qi_mpm_r2s
+-----------
 
-Calculates a relative flip-angle (B1) map using the Actual Flip-angle Imaging method.
-
-**Example Command Line**
-
-.. code-block:: bash
-
-    qiafi input_file.nii.gz
-
-Does not read any input from ``stdin``. The input file should contain two volumes, corresponding to TR1 and TR2.
-
-**Outputs**
-
-* ``AFI_B1.nii.gz`` - The relative flip-angle map.
-
-*Important Options*
-
-* ``--flip, -f``
-
-    The nominal flip-angle that should have been achieved, default 55 degrees.
-
-* ``--ratio, -r``
-
-    The ratio of TR2 to TR1, default 5.
-
-* ``--save, -s``
-
-    Output AFI_angle.nii.gz, the actual achieved angle in each voxel.
-
-**References**
-
-- `Original AFI Paper <http://doi.wiley.com/10.1002/mrm.21120>`_
-- `Optimal parameters <http://doi.wiley.com/10.1002/mrm.22394>`_
-- `Steady-State Conditions <http://doi.wiley.com/10.1002/mrm.21592>`_
-
-qidream
--------
-
-Calculates a relative flip-angle (B1) map using the DREAM method.
+Implements the ECSTATICS method for estimating R2*, part of Multi-Parametric Mapping (MPM). This performs a simultaneous fit to PD-, T1- and MT-weighted multi-echo data for R2*, improving the SNR of the resulting fit compared to individual fits. In contrast to the original paper, which used linear least-squares, a bounded non-linear fit is used.
 
 **Example Command Line**
 
 .. code-block:: bash
 
-    qidream input_file.nii.gz
+    qi_mpm_r2s PDw.nii.gz T1w.nii.gz MTw.nii.gz < input.json
 
-Does not read any input from `stdin`. The input file should contain two volumes, the FID and stimulated echo (STE).
+**Example JSON File**
+
+For regularly spaced echoes:
+
+.. code-block:: json
+
+    {
+        "PDw" : {
+            "TR" : 2.5,
+            "TE1" : 0.005,
+            "ESP" : 0.005,
+            "ETL" : 8
+        },
+        "T1w" : {
+            "TR" : 2.5,
+            "TE1" : 0.005,
+            "ESP" : 0.005,
+            "ETL" : 8
+        },
+        "MTw" : {
+            "TR" : 2.5,
+            "TE1" : 0.005,
+            "ESP" : 0.005,
+            "ETL" : 6
+        }
+    }
+
+``TE1`` is the first echo-time, ``ESP`` is the subsequent echo-spacing, ``ETL`` is the echo-train length.
 
 **Outputs**
 
-* ``DREAM_B1.nii.gz`` - The relative flip-angle map.
-* ``DREAM_angle.nii.gz`` - The actual achieved angle in each voxel.
-
-*Important Options*
-
-* ``--alpha, -a``
-
-    The nominal flip-angle that should have been achieved, default 55 degrees.
-
-* ``--order, -O``
-
-    * f - FID is the first volume, STE is second
-    * s - STE is the first volume, FID is second
-    * v - VST (Virtual Stimulated Echo) is the first volume, FID is second
+* ``MPM_R2s.nii.gz`` - The R2* map. Same units as ``TE``.
+* ``MPM_S0_PDw.nii.gz`` - The PD-weighted signal at ``TE=0``.
+* ``MPM_S0_T1w.nii.gz`` - The PD-weighted signal at ``TE=0``.
+* ``MPM_S0_MTw.nii.gz`` - The PD-weighted signal at ``TE=0``.
 
 **References**
 
-- `Original DREAM Paper <http://doi.wiley.com/10.1002/mrm.24158>`_
-- `Virtual Stimulated Echo <http://doi.wiley.com/10.1002/mrm.24667>`_
+- `Weiskopf et al <http://journal.frontiersin.org/article/10.3389/fnins.2014.00278/abstract>`_
+
+qi_ssfp_ellipse
+---------------
+
+This tool is not a relaxometry tool as such but a pre-processing step for `qi_planet`_.
+Shcherbakova et al showed it was possible to recover the ellipse parameters *G*, *a*, *b* from at least six phase-increments. They then proceeded to recover T1 & T2 from the ellipse parameters. This utility calculates the ellipse parameters, and ``qi_planet`` then processes those parameters to calculate T1 & T2. A non-linear fit is used instead of the algebraic method used by Shcherbakova et al. This is slower, but robust across all flip-angles.
+
+.. image:: ellipse.png
+    :alt: SSFP Ellipse Parameters
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi_ssfp_ellipse ssfp_data.nii.gz < input.json
+
+The SSFP file must be complex-valued. At least three pairs of opposing phase-increments are recommended (six images in total).
+
+**Outputs**
+
+- ``ES_G`` - The Geometric Solution point of the ellipse. Influences the overall size of the ellipse. This is called \(M\) in the Hoff and Shcherbakova papers, but it is not a measurable magnetization and hence to distinguish it a different letter is used.
+- ``ES_a`` - The ellipse parameter that along with \(G\) controls the ellipse size.
+- ``ES_b`` - The ellipse parameter that determines how flat or circular the ellipse is.
+- ``ES_theta_0`` - The accrued phase due to off-resonance, divide by :math:`2\pi TE` (or :math:`\pi TR`) to find the off-resonance frequency.
+- ``ES_phi_rf`` - The effective phase of the RF pulse.
+
+**References**
+
+- `PLANET <http://dx.doi.org/10.1002/mrm.26717>`_
+
+qi_planet
+--------------
+
+Converts the SSFP Ellipse parameters into relaxation times.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi_planet ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+
+**Outputs**
+
+- ``PLANET_T1.nii.gz`` - Longitudinal relaxation time
+- ``PLANET_T2.nii.gz`` - Transverse relaxation time
+- ``PLANET_PD.nii.gz`` - Apparent Proton Density
+
+**References**
+
+- `PLANET <http://dx.doi.org/10.1002/mrm.26717>`_
