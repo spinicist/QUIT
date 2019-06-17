@@ -69,6 +69,8 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
     args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
+    args::ValueFlag<double>      C(
+        parser, "C", "Correction factor for delta (default 0.4)", {'C', "C"}, 0.4);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     auto pdw_img = QI::ReadImage(QI::CheckPos(pdw_path), verbose);
@@ -122,11 +124,11 @@ int main(int argc, char **argv) {
                     auto A = (S_pd * S_t1 / B1) *
                              (s.TR_pd * s.al_t1 / s.al_pd - s.TR_t1 * s.al_pd / s.al_t1) /
                              (S_t1 * s.TR_pd * s.al_t1 - S_pd * s.TR_t1 * s.al_pd);
-                    auto d = (A * B1 * s.al_mt / S_mt - 1) * R1 * s.TR_mt -
-                             (B1 * B1 * s.al_mt * s.al_mt / 2);
+                    auto d = (A * s.al_mt / S_mt - 1.0) * R1 * s.TR_mt - s.al_mt * s.al_mt / 2;
+                    auto d_corrected = d * (1.0 - C.Get()) / (1.0 - C.Get() * B1);
                     R1_it.Set(R1);
                     A_it.Set(A);
-                    d_it.Set(d * 100);
+                    d_it.Set(d_corrected * 100);
                 } else {
                     R1_it.Set(0.0);
                     A_it.Set(0.0);
