@@ -288,9 +288,9 @@ Calculates the mean square difference between two images and checks if it is bel
 
 .. code-block:: bash
 
-    qidiff --baseline=original.nii --input=calculated.nii --noise=0.01 --tolerance=30
+    qidiff --baseline=original.nii --input=calculated.nii --noise=0.01
 
-The program simply returns ``FAILURE`` or ``SUCCESS``, which is detected by BATS. Note, to make useage clearer, unlike most other QUIT programs all input is specified as arguments.
+The program returns the dimensionless noise factor on `stdout`, which is read by the test suite. Note, to make useage clearer, unlike most other QUIT programs all input is specified as arguments.
 
 **Important Options**
 
