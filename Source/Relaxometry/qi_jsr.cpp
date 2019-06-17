@@ -37,8 +37,8 @@ struct JSRModel {
     using VaryingArray = QI_ARRAYN(ParameterType, NV);
     using FixedArray   = QI_ARRAYN(ParameterType, NF);
 
-    QI::SPGREchoSequence &spgr;
-    QI::SSFPSequence &    ssfp;
+    QI::SPGREchoSequence &  spgr;
+    QI::SSFPFiniteSequence &ssfp;
 
     VaryingArray const                start{10., 1., 0.1, 0.};
     VaryingArray const                bounds_lo{1e-6, 1e-3, 1e-3, -1.0 / ssfp.TR};
@@ -77,9 +77,13 @@ struct JSRModel {
         double const &B1             = f[0];
         QI_ARRAY(double) const alpha = ssfp.FA * B1;
 
+        // Crooijman / Bieri correction
+        T const T_rfe = (0.68 - 0.125 * (1.0 + ssfp.Trf / ssfp.TR) * T2 / T1) * ssfp.Trf;
+        T const TRf   = ssfp.TR - T_rfe;
+
         T const E1  = exp(-ssfp.TR / T1);
-        T const E2  = exp(-ssfp.TR / T2);
-        T const Ee  = exp(-ssfp.TR / (2.0 * T2));
+        T const E2  = exp(-TRf / T2);
+        T const Ee  = exp(-TRf / (2.0 * T2));
         T const psi = 2. * M_PI * f0 * ssfp.TR;
 
         QI_ARRAY(T) const d = (1. - E1 * E2 * E2 - (E1 - E2 * E2) * cos(alpha));
@@ -258,8 +262,8 @@ int main(int argc, char **argv) {
     QI::Log(verbose, "Reading sequence parameters");
     json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
-    QI::SPGREchoSequence spgr_seq(doc["SPGR"]);
-    QI::SSFPSequence     ssfp_seq(doc["SSFP"]);
+    QI::SPGREchoSequence   spgr_seq(doc["SPGR"]);
+    QI::SSFPFiniteSequence ssfp_seq(doc["SSFP"]);
 
     JSRModel model{spgr_seq, ssfp_seq};
     JSRFit   jsr_fit{model};

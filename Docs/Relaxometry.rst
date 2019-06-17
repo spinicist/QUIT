@@ -226,10 +226,14 @@ Join-System Relaxometry fits T1 and T2 to spoiled and balanced gradient echo (SP
         },
         "SSFP": {
             "TR": 0.01,
+            "Trf": 0.003,
             "FA": [10, 20, 20, 40],
             "PhaseInc": [180, 180, 0, 180]
         }
     }
+
+Note that the pulse-length for SSFP is required in order to apply to finite-pulse correction of Crooijmans et al. For hard-pulses this should be set to the actual length of the pulse, for other pulses an adjusted pulse-length is required as discussed in the paper.
+
 
 **Outputs**
 
@@ -241,6 +245,7 @@ Join-System Relaxometry fits T1 and T2 to spoiled and balanced gradient echo (SP
 **References**
 
 - `Teixeira et al <http://doi.wiley.com/10.1002/mrm.26670>`_
+- `Crooijmans et al <http://doi.wiley.com/10.1002/mrm.22661>`_
 
 qimcdespot
 ----------

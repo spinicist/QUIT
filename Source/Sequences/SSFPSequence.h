@@ -36,13 +36,15 @@ void to_json(json &j, const SSFPSequence &s);
 //     QI_SEQUENCE_DECLARE(SSFPEcho);
 // };
 
-// struct SSFPFiniteSequence : SSFPBase {
-//     double         Trf;
-//     Eigen::ArrayXd PhaseInc;
+struct SSFPFiniteSequence : SSFPBase {
+    double         Trf;
+    Eigen::ArrayXd PhaseInc;
 
-//     QI_SEQUENCE_DECLARE(SSFPFinite);
-//     Eigen::ArrayXd weights(const double f0) const override;
-// };
+    QI_SEQUENCE_DECLARE(SSFPFinite);
+    Eigen::ArrayXd weights(const double f0) const override;
+};
+void from_json(const json &j, SSFPFiniteSequence &s);
+void to_json(json &j, const SSFPFiniteSequence &s);
 
 // struct SSFPGSSequence : SSFPBase {
 //     QI_SEQUENCE_DECLARE(SSFPGS);
