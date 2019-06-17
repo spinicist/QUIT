@@ -141,7 +141,7 @@ struct JSRFit {
     static const bool Indexed = false;
     using InputType           = double;
     using OutputType          = double;
-    using ResidualType        = double;
+    using RMSErrorType        = double;
     using FlagType            = int;
     using ModelType           = JSRModel;
     ModelType model;
@@ -161,7 +161,7 @@ struct JSRFit {
     QI::FitReturnType fit(std::vector<Eigen::ArrayXd> const &inputs,
                           Eigen::ArrayXd const &             fixed,
                           ModelType::VaryingArray &          best_varying,
-                          ResidualType &                     residual,
+                          RMSErrorType &                     residual,
                           std::vector<Eigen::ArrayXd> &      residuals,
                           FlagType &                         iterations) const {
         double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff()});

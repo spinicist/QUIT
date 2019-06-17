@@ -47,7 +47,7 @@ struct MultiEchoLogLin : MultiEchoFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, MultiEcho::NV) & outputs,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations,
                           const int /*Unused*/) const override {
@@ -73,7 +73,7 @@ struct MultiEchoARLO : MultiEchoFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, MultiEcho::NV) & outputs,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations,
                           const int /*Unused*/) const override {
@@ -106,7 +106,7 @@ struct MultiEchoNLLS : MultiEchoFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, MultiEcho::NV) & p,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations,
                           const int /*Unused*/) const override {

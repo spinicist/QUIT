@@ -62,7 +62,7 @@ template <typename Model> struct SRCFit {
     static const bool Indexed = false;
     using InputType           = double;
     using OutputType          = double;
-    using ResidualType        = double;
+    using RMSErrorType        = double;
     using FlagType            = int;
     using ModelType           = Model;
     Model &model;
@@ -77,7 +77,7 @@ template <typename Model> struct SRCFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, Model::NV) & v,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
         Eigen::ArrayXd data(model.sequence.size());

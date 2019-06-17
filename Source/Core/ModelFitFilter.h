@@ -46,12 +46,12 @@ class ModelFitFilter
     using ModelType     = typename FitType::ModelType;
     using InputType     = typename FitType::InputType;
     using OutputType    = typename FitType::OutputType;
-    using ResidualType  = typename FitType::ResidualType;
+    using RMSErrorType  = typename FitType::RMSErrorType;
     using ParameterType = typename ModelType::ParameterType;
 
     using InputPixelType    = typename IOPrecision<InputType>::Type;
     using OutputPixelType   = typename IOPrecision<OutputType>::Type;
-    using ResidualPixelType = typename IOPrecision<ResidualType>::Type;
+    using RMSErrorPixelType = typename IOPrecision<RMSErrorType>::Type;
     using FixedPixelType    = typename IOPrecision<ParameterType>::Type;
 
     static constexpr int ImageDim = 3;
@@ -64,7 +64,7 @@ class ModelFitFilter
 
     using TOutputImage   = typename BlockTypes<Blocked, ImageDim, OutputPixelType>::Type;
     using TFlagImage     = typename BlockTypes<Blocked, ImageDim, typename FitType::FlagType>::Type;
-    using TResidualImage = typename BlockTypes<Blocked, ImageDim, ResidualPixelType>::Type;
+    using TRMSErrorImage = typename BlockTypes<Blocked, ImageDim, RMSErrorPixelType>::Type;
     using TResidualsImage = TInputImage;
 
     using TRegion = typename TInputImage::RegionType;
@@ -86,12 +86,11 @@ class ModelFitFilter
     static constexpr int FixedOffset = MaskOffset + 1;
 
     // Output image offsets
-    static constexpr int DerivedOutputOffset = HasDerived ? ModelType::NV : -1;
-    static constexpr int FlagOutputOffset =
-        HasDerived ? DerivedOutputOffset + ModelType::ND : ModelType::NV;
-    static constexpr int ResidualOutputOffset  = FlagOutputOffset + 1;
-    static constexpr int ResidualsOutputOffset = ResidualOutputOffset + 1;
-    static constexpr int TotalOutputs          = ResidualsOutputOffset + ModelType::NI;
+    static constexpr int DerivedOffset = HasDerived ? ModelType::NV : -1;
+    static constexpr int FlagOffset    = HasDerived ? DerivedOffset + ModelType::ND : ModelType::NV;
+    static constexpr int RMSErrorOffset  = FlagOffset + 1;
+    static constexpr int ResidualsOffset = RMSErrorOffset + 1;
+    static constexpr int TotalOutputs    = ResidualsOffset + ModelType::NI;
 
     ModelFitFilter(FitType const *    f,
                    const bool         verbose,
@@ -191,25 +190,24 @@ class ModelFitFilter
         }
     }
 
-    TResidualImage *GetResidualOutput() {
-        return dynamic_cast<TResidualImage *>(
-            this->itk::ProcessObject::GetOutput(ResidualOutputOffset));
+    TRMSErrorImage *GetRMSErrorOutput() {
+        return dynamic_cast<TRMSErrorImage *>(this->itk::ProcessObject::GetOutput(RMSErrorOffset));
     }
 
     TResidualsImage *GetResidualsOutput(const int i) {
         return dynamic_cast<TResidualsImage *>(
-            this->itk::ProcessObject::GetOutput(ResidualsOutputOffset + i));
+            this->itk::ProcessObject::GetOutput(ResidualsOffset + i));
     }
 
     TFlagImage *GetFlagOutput() {
-        return dynamic_cast<TFlagImage *>(this->itk::ProcessObject::GetOutput(FlagOutputOffset));
+        return dynamic_cast<TFlagImage *>(this->itk::ProcessObject::GetOutput(FlagOffset));
     }
 
     TOutputImage *GetDerivedOutput(const int i) {
         if constexpr (HasDerived) {
             if (i < ModelType::ND) {
                 return dynamic_cast<TOutputImage *>(
-                    this->itk::ProcessObject::GetOutput(DerivedOutputOffset + i));
+                    this->itk::ProcessObject::GetOutput(DerivedOffset + i));
             } else {
                 QI::Fail("Requested derived output {} but {} has {}",
                          i,
@@ -255,7 +253,7 @@ class ModelFitFilter
                                m_verbose);
             }
         }
-        QI::WriteImage(GetResidualOutput(), prefix + "SoS_residual" + QI::OutExt(), m_verbose);
+        QI::WriteImage(GetRMSErrorOutput(), prefix + "rmse" + QI::OutExt(), m_verbose);
         QI::WriteImage(GetFlagOutput(), prefix + "iterations" + QI::OutExt(), m_verbose);
         if (m_allResiduals) {
             for (int i = 0; i < ModelType::NI; i++) {
@@ -277,13 +275,13 @@ class ModelFitFilter
                                                                           // versus int warnings
         if (idx < static_cast<itype>(ModelType::NV)) {
             return TOutputImage::New().GetPointer();
-        } else if (idx < static_cast<itype>(FlagOutputOffset)) {
+        } else if (idx < static_cast<itype>(FlagOffset)) {
             return TOutputImage::New().GetPointer();
-        } else if (idx == static_cast<itype>(FlagOutputOffset)) {
+        } else if (idx == static_cast<itype>(FlagOffset)) {
             return TFlagImage::New().GetPointer();
-        } else if (idx == static_cast<itype>(ResidualOutputOffset)) {
-            return TResidualImage::New().GetPointer();
-        } else if (idx < static_cast<itype>(ResidualsOutputOffset + ModelType::NI)) {
+        } else if (idx == static_cast<itype>(RMSErrorOffset)) {
+            return TRMSErrorImage::New().GetPointer();
+        } else if (idx < static_cast<itype>(ResidualsOffset + ModelType::NI)) {
             return TResidualsImage::New().GetPointer();
         } else {
             QI::Fail("Attempted to create output {} but {} has {}",
@@ -354,25 +352,25 @@ class ModelFitFilter
         }
         f->Allocate(true);
 
-        auto r = this->GetResidualOutput();
-        r->SetRegions(region);
-        r->SetSpacing(spacing);
-        r->SetOrigin(origin);
-        r->SetDirection(direction);
+        auto rms = this->GetRMSErrorOutput();
+        rms->SetRegions(region);
+        rms->SetSpacing(spacing);
+        rms->SetOrigin(origin);
+        rms->SetDirection(direction);
         if constexpr (Blocked) {
-            r->SetNumberOfComponentsPerPixel(m_blocks);
+            rms->SetNumberOfComponentsPerPixel(m_blocks);
         }
-        r->Allocate(true);
+        rms->Allocate(true);
 
         if (m_allResiduals) {
             for (int i = 0; i < ModelType::NI; i++) {
-                auto rs = this->GetResidualsOutput(i);
-                rs->SetRegions(region);
-                rs->SetSpacing(spacing);
-                rs->SetOrigin(origin);
-                rs->SetDirection(direction);
-                rs->SetNumberOfComponentsPerPixel(m_fit->input_size(i) * m_blocks);
-                rs->Allocate(true);
+                auto res = this->GetResidualsOutput(i);
+                res->SetRegions(region);
+                res->SetSpacing(spacing);
+                res->SetOrigin(origin);
+                res->SetDirection(direction);
+                res->SetNumberOfComponentsPerPixel(m_fit->input_size(i) * m_blocks);
+                res->Allocate(true);
             }
         }
     }
@@ -436,8 +434,8 @@ class ModelFitFilter
         }
 
         // Keep the index on this one to report voxel locations where algorithm fails.
-        itk::ImageRegionIteratorWithIndex<TResidualImage> residual_iter(this->GetResidualOutput(),
-                                                                        region);
+        itk::ImageRegionIteratorWithIndex<TRMSErrorImage> rmse_iter(this->GetRMSErrorOutput(),
+                                                                    region);
         itk::ImageRegionIterator<TFlagImage>              flag_iter(this->GetFlagOutput(), region);
 
         using InputArray    = QI_ARRAY(typename FitType::InputType);
@@ -464,8 +462,8 @@ class ModelFitFilter
                     }
 
                     OutputArray                    outputs;
-                    typename FitType::ResidualType residual{};
-                    typename FitType::FlagType     flag{};
+                    typename FitType::RMSErrorType rmse = 0;
+                    typename FitType::FlagType     flag = 0;
                     std::vector<ResidualArray> residuals; // Leave size 0 if user doesn't want them
                     if (m_allResiduals) {
                         for (int i = 0; i < ModelType::NI; i++) {
@@ -476,43 +474,31 @@ class ModelFitFilter
 
                     QI::FitReturnType status;
                     if constexpr (Blocked && Indexed) {
-                        status = m_fit->fit(inputs,
-                                            fixed,
-                                            outputs,
-                                            residual,
-                                            residuals,
-                                            flag,
-                                            b,
-                                            residual_iter.GetIndex());
+                        status = m_fit->fit(
+                            inputs, fixed, outputs, rmse, residuals, flag, b, rmse_iter.GetIndex());
                     } else if constexpr (Blocked) {
-                        status = m_fit->fit(inputs, fixed, outputs, residual, residuals, flag, b);
+                        status = m_fit->fit(inputs, fixed, outputs, rmse, residuals, flag, b);
                     } else if constexpr (Indexed) {
-                        status = m_fit->fit(inputs,
-                                            fixed,
-                                            outputs,
-                                            residual,
-                                            residuals,
-                                            flag,
-                                            residual_iter.GetIndex());
+                        status = m_fit->fit(
+                            inputs, fixed, outputs, rmse, residuals, flag, rmse_iter.GetIndex());
                     } else {
-                        status = m_fit->fit(inputs, fixed, outputs, residual, residuals, flag);
+                        status = m_fit->fit(inputs, fixed, outputs, rmse, residuals, flag);
                     }
 
                     if (!status.success) {
-                        QI::Warn("Fit failed for voxel {}: {}",
-                                 residual_iter.GetIndex(),
-                                 status.message);
+                        QI::Warn(
+                            "Fit failed for voxel {}: {}", rmse_iter.GetIndex(), status.message);
                     }
 
                     if constexpr (Blocked) {
-                        flag_iter.Get()[b]     = flag;
-                        residual_iter.Get()[b] = residual;
+                        flag_iter.Get()[b] = flag;
+                        rmse_iter.Get()[b] = rmse;
                         for (int i = 0; i < ModelType::NV; i++) {
                             output_iters[i].Get()[b] = outputs[i];
                         }
                     } else {
                         flag_iter.Set(flag);
-                        residual_iter.Set(static_cast<InputType>(residual));
+                        rmse_iter.Set(rmse);
                         for (int i = 0; i < ModelType::NV; i++) {
                             output_iters[i].Set(outputs[i]);
                         }
@@ -537,7 +523,7 @@ class ModelFitFilter
             } else {
                 if constexpr (Blocked) {
                     flag_iter.Get().Fill(0);
-                    residual_iter.Get().Fill(0);
+                    rmse_iter.Get().Fill(0);
                     for (auto &o : output_iters) {
                         o.Get().Fill(0);
                     }
@@ -580,7 +566,7 @@ class ModelFitFilter
                 }
             }
             ++flag_iter;
-            ++residual_iter;
+            ++rmse_iter;
         }
     }
 }; // namespace QI

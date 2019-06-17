@@ -34,7 +34,7 @@ struct FitReturnType {
 template <typename Model_, bool Blocked_ = false, bool Indexed_ = false> struct FitFunctionBase {
     using ModelType           = Model_;
     using SequenceType        = typename ModelType::SequenceType;
-    using ResidualType        = double;
+    using RMSErrorType        = double;
     static const bool Blocked = Blocked_;
     static const bool Indexed = Indexed_;
     ModelType &       model;
@@ -48,7 +48,7 @@ template <typename ModelType, typename FlagType_ = int>
 struct FitFunction : FitFunctionBase<ModelType, false, false> {
     using Super = FitFunctionBase<ModelType, false, false>;
     using Super::Super;
-    using typename Super::ResidualType;
+    using typename Super::RMSErrorType;
     using InputType  = typename ModelType::DataType;
     using OutputType = typename ModelType::ParameterType;
     using FlagType   = FlagType_; // Iterations
@@ -58,8 +58,8 @@ struct FitFunction : FitFunctionBase<ModelType, false, false> {
     virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
-                              ResidualType &                    residual,
-                              std::vector<QI_ARRAY(InputType)> &point_residuals,
+                              RMSErrorType &                    rmse,
+                              std::vector<QI_ARRAY(InputType)> &residuals,
                               FlagType &                        flag) const = 0;
 };
 
@@ -67,7 +67,7 @@ template <typename ModelType, typename FlagType_ = int>
 struct NLLSFitFunction : FitFunction<ModelType> {
     using Super = FitFunction<ModelType, FlagType_>;
     using Super::Super;
-    using typename Super::ResidualType;
+    using typename Super::RMSErrorType;
     using InputType    = typename ModelType::DataType;
     using OutputType   = typename ModelType::ParameterType;
     using FlagType     = FlagType_; // Iterations
@@ -76,7 +76,7 @@ struct NLLSFitFunction : FitFunction<ModelType> {
     FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                       const Eigen::ArrayXd &                  fixed,
                       QI_ARRAYN(OutputType, ModelType::NV) & p,
-                      ResidualType &                    residual,
+                      RMSErrorType &                    rmse,
                       std::vector<QI_ARRAY(InputType)> &residuals,
                       FlagType &                        iterations) const {
         p << this->model.start;
@@ -101,13 +101,11 @@ struct NLLSFitFunction : FitFunction<ModelType> {
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
-        iterations = summary.iterations.size();
-        residual   = summary.final_cost;
+        iterations   = summary.iterations.size();
+        auto tresids = inputs[0] - this->model.signal(p, fixed);
+        rmse         = sqrt(tresids.square().mean());
         if (residuals.size() > 0) {
-            std::vector<double> r_temp(inputs[0].size());
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (size_t i = 0; i < r_temp.size(); i++)
-                residuals[0][i] = r_temp[i];
+            residuals[0] = tresids;
         }
         return {true, ""};
     }
@@ -117,7 +115,7 @@ template <typename ModelType, typename FlagType_ = int>
 struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
     using Super = FitFunction<ModelType, FlagType_>;
     using Super::Super;
-    using typename Super::ResidualType;
+    using typename Super::RMSErrorType;
     using InputType    = typename ModelType::DataType;
     using OutputType   = typename ModelType::ParameterType;
     using FlagType     = FlagType_; // Iterations
@@ -126,13 +124,13 @@ struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
     FitReturnType fit(std::vector<QI_ARRAY(InputType)> const &inputs,
                       Eigen::ArrayXd const &                  fixed,
                       QI_ARRAYN(OutputType, ModelType::NV) & p,
-                      ResidualType &                    residual,
+                      RMSErrorType &                    rmse,
                       std::vector<QI_ARRAY(InputType)> &residuals,
                       FlagType &                        iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
-            p        = ModelType::VaryingArray::Zero();
-            residual = 0;
+            p    = ModelType::VaryingArray::Zero();
+            rmse = 0;
             return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
@@ -159,14 +157,13 @@ struct ScaledNLLSFitFunction : FitFunction<ModelType, FlagType_> {
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
-        iterations = summary.iterations.size();
-        residual   = summary.final_cost * scale;
+        iterations   = summary.iterations.size();
+        auto tresids = inputs[0] - this->model.signal(p, fixed);
+        rmse         = sqrt(tresids.square().mean());
         if (residuals.size() > 0) {
-            std::vector<double> r_temp(data.size());
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (size_t i = 0; i < r_temp.size(); i++)
-                residuals[0][i] = r_temp[i] * scale;
+            residuals[0] = tresids;
         }
+
         return {true, ""};
     }
 };
@@ -175,7 +172,7 @@ template <typename ModelType, typename FlagType_ = int>
 struct BlockFitFunction : FitFunctionBase<ModelType, true, false> {
     using Super = FitFunctionBase<ModelType, true, false>;
     using Super::Super;
-    using typename Super::ResidualType;
+    using typename Super::RMSErrorType;
     using InputType    = typename ModelType::DataType;
     using OutputType   = typename ModelType::ParameterType;
     using FlagType     = FlagType_; // Iterations
@@ -184,7 +181,7 @@ struct BlockFitFunction : FitFunctionBase<ModelType, true, false> {
     virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
-                              ResidualType &                    residual,
+                              RMSErrorType &                    rmse,
                               std::vector<QI_ARRAY(InputType)> &point_residuals,
                               FlagType &                        flag,
                               const int                         block) const = 0;
@@ -194,7 +191,7 @@ template <typename ModelType, typename FlagType_ = int>
 struct IndexedFitFunction : FitFunctionBase<ModelType, false, true> {
     using Super = FitFunctionBase<ModelType, false, true>;
     using Super::Super;
-    using typename Super::ResidualType;
+    using typename Super::RMSErrorType;
     using InputType    = typename ModelType::DataType;
     using OutputType   = typename ModelType::ParameterType;
     using FlagType     = FlagType_; // Iterations
@@ -203,7 +200,7 @@ struct IndexedFitFunction : FitFunctionBase<ModelType, false, true> {
     virtual FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                               const Eigen::ArrayXd &                  fixed,
                               QI_ARRAYN(OutputType, ModelType::NV) & outputs,
-                              ResidualType &                    residual,
+                              RMSErrorType &                    rmse,
                               std::vector<QI_ARRAY(InputType)> &point_residuals,
                               FlagType &                        flag,
                               const itk::Index<3> &             index) const = 0;

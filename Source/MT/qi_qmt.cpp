@@ -180,12 +180,12 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                           const Eigen::ArrayXd &                  fixed,
                           QI_ARRAYN(OutputType, RamaniFullModel::NV) & p,
-                          ResidualType &                       residual,
-                          std::vector<QI_ARRAY(ResidualType)> &residuals,
-                          FlagType &                           iterations) const override {
+                          RMSErrorType &                    rmse,
+                          std::vector<QI_ARRAY(InputType)> &residuals,
+                          FlagType &                        iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         p                   = RamaniFullModel::VaryingArray::Zero();
-        residual            = 0;
+        rmse           = 0;
         if (scale < std::numeric_limits<double>::epsilon()) {
             return {false, "Maximum data value was not positive"};
         }
@@ -242,7 +242,7 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
         QI_DBVEC(inner_p);
         QI_DBVEC(p);
         iterations = summary.iterations.size();
-        residual   = summary.final_cost * scale;
+        rmse  = summary.final_cost * scale;
         if (residuals.size() > 0) {
             std::vector<double> r_temp(data.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);

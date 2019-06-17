@@ -43,7 +43,7 @@ struct DESPOT1LLS : DESPOT1Fit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, DESPOT1::NV) & outputs,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
@@ -71,7 +71,7 @@ struct DESPOT1WLLS : DESPOT1Fit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, DESPOT1::NV) & outputs,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
@@ -117,7 +117,7 @@ struct DESPOT1NLLS : DESPOT1Fit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, DESPOT1::NV) & p,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const double &scale = inputs[0].maxCoeff();

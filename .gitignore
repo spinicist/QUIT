@@ -1,6 +1,6 @@
 *.nii.gz
 *.mnc
-_tmp_input.json
+_*.json
 *-checkpoint.ipynb
 *.pyc
 *.egg-info

@@ -67,7 +67,7 @@ struct FMNLLS : FMFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, FMModel::NV) & bestP,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const double &T1 = fixed[0];

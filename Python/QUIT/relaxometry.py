@@ -24,7 +24,7 @@ class DESPOT1InputSpec(QI.FitInputSpec):
 class DESPOT1OutputSpec(TraitedSpec):
     t1_map = File('D1_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     pd_map = File('D1_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    residual_map = File('D1_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    rmse_map = File('D1_rmse.nii.gz', desc="Path to residual map", usedefault=True)
 
 
 class DESPOT1(QI.FitCommand):
@@ -104,7 +104,7 @@ class HIFIOutputSpec(TraitedSpec):
     t1_map = File('HIFI_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     pd_map = File('HIFI_PD.nii.gz', desc="Path to PD map", usedefault=True)
     b1_map = File('HIFI_B1.nii.gz', desc="Path to B1 map", usedefault=True)
-    residual_map = File('HIFI_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    rmse_map = File('HIFI_rmse.nii.gz', desc="Path to residual map", usedefault=True)
 
 
 class HIFI(QI.FitCommand):
@@ -195,7 +195,7 @@ class DESPOT2InputSpec(QI.FitInputSpec):
 class DESPOT2OutputSpec(TraitedSpec):
     t2_map = File('D2_T2.nii.gz', desc="Path to T2 map", usedefault=True)
     pd_map = File('D2_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    residual_map = File('D2_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    rmse_map = File('D2_rmse.nii.gz', desc="Path to residual map", usedefault=True)
 
 
 class DESPOT2(QI.FitCommand):
@@ -281,7 +281,7 @@ class FMOutputSpec(TraitedSpec):
     t2_map = File('FM_T2.nii.gz', desc="Path to T2 map", usedefault=True)
     pd_map = File('FM_PD.nii.gz', desc="Path to PD map", usedefault=True)
     f0_map = File('FM_f0.nii.gz', desc="Path to f0 (off-resonance) map", usedefault=True)
-    residual_map = File('FM_SoS_residual.nii.gz', desc="Path to residual map", usedefault=True)
+    rmse_map = File('FM_rmse.nii.gz', desc="Path to residual map", usedefault=True)
 
 
 class FM(QI.FitCommand):
@@ -468,7 +468,7 @@ class MultiechoInputSpec(QI.FitInputSpec):
 class MultiechoOutputSpec(TraitedSpec):
     t2_map = File('ME_T2.nii.gz', desc='The T2 map. Units are the same as TE1 and ESP', usedefault=True)
     pd_map = File('ME_PD.nii.gz', desc='The apparent proton-density map (intercept of the decay curve at TE=0)', usedefault=True)
-    residual_map = File('ME_SoS_residual.nii.gz', desc='Path to residual map', usedefault=True)
+    rmse_map = File('ME_rmse.nii.gz', desc='Path to residual map', usedefault=True)
 
 
 class Multiecho(QI.FitCommand):

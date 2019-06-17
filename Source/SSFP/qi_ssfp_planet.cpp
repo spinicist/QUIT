@@ -66,7 +66,7 @@ struct PLANETFit {
     static const bool Indexed = false;
     using InputType           = double;
     using OutputType          = double;
-    using ResidualType        = double;
+    using RMSErrorType        = double;
     using FlagType            = int;
     using ModelType           = PLANETModel;
     ModelType model;
@@ -77,7 +77,7 @@ struct PLANETFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, PLANETModel::NV) & out,
-                          ResidualType & /* Unused */,
+                          RMSErrorType & /* Unused */,
                           std::vector<Eigen::ArrayXd> & /* Unused */,
                           FlagType & /* Unused */,
                           const int block) const {

@@ -61,8 +61,8 @@ class LorentzianInputSpec(QI.FitInputSpec):
 
 
 class LorentzianOutputSpec(DynamicTraitedSpec):
-    residual_map = File('LTZ_SoS_residual.nii.gz',
-                        desc='Path to residual map', usedefault=True)
+    rmse_map = File('LTZ_rmse.nii.gz',
+                    desc='Path to residual map', usedefault=True)
 
 
 class Lorentzian(QI.FitCommand):
@@ -149,8 +149,8 @@ class qMTOutputSpec(TraitedSpec):
                     desc="Path to exchange rate from bound to free pool", usedefault=True)
     f_b_map = File('QMT_f_b.nii.gz',
                    desc="Path to bound pool fraction", usedefault=True)
-    residual_map = File('QMT_SoS_residual.nii.gz',
-                        desc="Path to residual map", usedefault=True)
+    rmse_map = File('QMT_rmse.nii.gz',
+                    desc="Path to residual map", usedefault=True)
 
 
 class qMT(QI.FitCommand):

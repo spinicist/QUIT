@@ -116,7 +116,7 @@ struct HIFIFit {
     static const bool Indexed = false;
     using InputType           = double;
     using OutputType          = double;
-    using ResidualType        = double;
+    using RMSErrorType        = double;
     using FlagType            = int;
     using ModelType           = HIFIModel;
     HIFIModel model;
@@ -136,7 +136,7 @@ struct HIFIFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd & /* Unused */,
                           QI_ARRAYN(OutputType, HIFIModel::NV) & v,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
         double scale = std::max(inputs[0].maxCoeff(), inputs[1].maxCoeff());

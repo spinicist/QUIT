@@ -134,7 +134,7 @@ class MT(unittest.TestCase):
         img_sz = [32, 32, 32]
         noise = 0.001
 
-        lineshape_file = 'qmt_lineshape.json'
+        lineshape_file = '_qmt_lineshape.json'
 
         Lineshape(out_file=lineshape_file, lineshape='SuperLorentzian',
                   frq_start=500, frq_space=500, frq_count=150).run()

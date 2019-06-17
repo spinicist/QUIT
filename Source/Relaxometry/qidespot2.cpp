@@ -60,9 +60,9 @@ struct DESPOT2LLS : DESPOT2Fit {
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                           const Eigen::ArrayXd &                  fixed,
                           QI_ARRAYN(OutputType, DESPOT2::NV) & outputs,
-                          ResidualType &                       residual,
-                          std::vector<QI_ARRAY(ResidualType)> &residuals,
-                          FlagType &                           iterations) const override {
+                          RMSErrorType &                    residual,
+                          std::vector<QI_ARRAY(InputType)> &residuals,
+                          FlagType &                        iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
         const double &        T1   = fixed[0];
         const double &        B1   = fixed[1];
@@ -102,9 +102,9 @@ struct DESPOT2WLLS : DESPOT2Fit {
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
                           const Eigen::ArrayXd &                  fixed,
                           QI_ARRAYN(OutputType, DESPOT2::NV) & outputs,
-                          ResidualType &                       residual,
-                          std::vector<QI_ARRAY(ResidualType)> &residuals,
-                          FlagType &                           iterations) const override {
+                          RMSErrorType &                    residual,
+                          std::vector<QI_ARRAY(InputType)> &residuals,
+                          FlagType &                        iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
         const double &        T1   = fixed[0];
         const double &        B1   = fixed[1];
@@ -171,7 +171,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, DESPOT2::NV) & p,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
         const double &scale = inputs[0].maxCoeff();

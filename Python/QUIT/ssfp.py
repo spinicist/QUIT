@@ -36,8 +36,8 @@ class EllipseOutputSpec(TraitedSpec):
                       desc='Path to theta 0 (off-resonance phase) map', usedefault=True)
     phi_rf_map = File('ES_phi_rf.nii.gz',
                       desc='Path to RF phase map', usedefault=True)
-    residual_map = File('ES_SoS_residual.nii.gz',
-                        desc='Path to residual map', usedefault=True)
+    rmse_map = File('ES_rmse.nii.gz',
+                    desc='Path to residual map', usedefault=True)
 
 
 class Ellipse(QI.FitCommand):
@@ -90,8 +90,8 @@ class eMTOutputSpec(TraitedSpec):
                     desc="Path to free-pool T1 map", usedefault=True)
     T2_f_map = File('EMT_T2_f.nii.gz',
                     desc="Path to free-pool T2 map", usedefault=True)
-    residual_map = File('EMT_SoS_residual.nii.gz',
-                        desc="Path to residual map", usedefault=True)
+    rmse_map = File('EMT_rmse.nii.gz',
+                    desc="Path to residual map", usedefault=True)
 
 
 class eMT(QI.FitCommand):
@@ -164,8 +164,8 @@ class PLANETOutputSpec(TraitedSpec):
     PD_map = File('PLANET_PD.nii.gz', desc="Path to PD map", usedefault=True)
     T1_map = File('PLANET_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     T2_map = File('PLANET_T2.nii.gz', desc="Path to T2 map", usedefault=True)
-    residual_map = File('PLANET_SoS_residual.nii.gz',
-                        desc="Path to residual map", usedefault=True)
+    rmse_map = File('PLANET_rmse.nii.gz',
+                    desc="Path to residual map", usedefault=True)
 
 
 class PLANET(QI.FitCommand):

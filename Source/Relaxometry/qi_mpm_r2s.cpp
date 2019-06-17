@@ -120,7 +120,7 @@ struct MPMFit {
     static const bool Indexed = false;
     using InputType           = double;
     using OutputType          = double;
-    using ResidualType        = double;
+    using RMSErrorType        = double;
     using FlagType            = int;
     using ModelType           = MPMModel;
     ModelType model;
@@ -142,7 +142,7 @@ struct MPMFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd & /* Unused */,
                           ModelType::VaryingArray &    v,
-                          ResidualType &               residual,
+                          RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
         double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff(), inputs[2].maxCoeff()});

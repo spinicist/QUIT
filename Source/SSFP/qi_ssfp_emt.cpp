@@ -123,7 +123,7 @@ struct EMTFit {
     static const bool Indexed = false;
     using InputType           = double;
     using OutputType          = double;
-    using ResidualType        = double;
+    using RMSErrorType        = double;
     using FlagType            = int;
     using ModelType           = EMTModel;
     ModelType &model;
@@ -134,7 +134,7 @@ struct EMTFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
                           QI_ARRAYN(OutputType, EMTModel::NV) & p,
-                          ResidualType &               residual,
+                          RMSErrorType &               rmse,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
         const double          scale = inputs[0].mean();
@@ -168,7 +168,7 @@ struct EMTFit {
             return {false, summary.FullReport()};
         }
         p[0] *= scale;
-        residual = summary.final_cost;
+        rmse = summary.final_cost;
         if (residuals.size() > 0) {
             std::vector<double> r_temp(G.size() + b.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);

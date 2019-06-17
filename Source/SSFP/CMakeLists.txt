@@ -3,8 +3,7 @@ if( ${BUILD_ELLIPSE} )
     add_executable( qi_ssfp_bands qi_ssfp_bands.cpp Banding.cpp )
     target_link_libraries( qi_ssfp_bands qi_sequences qi_imageio qi_core ${ITK_LIBRARIES} )
 
-    add_executable( qi_ssfp_ellipse qi_ssfp_ellipse.cpp
-        EllipseModel.cpp DirectFit.cpp HyperFit.cpp )
+    add_executable( qi_ssfp_ellipse qi_ssfp_ellipse.cpp )
     target_link_libraries( qi_ssfp_ellipse qi_sequences qi_imageio qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES} )
 
     add_executable( qi_ssfp_planet qi_ssfp_planet.cpp )
