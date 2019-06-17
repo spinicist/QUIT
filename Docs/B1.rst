@@ -1,7 +1,7 @@
 B1
 ==
 
-The B1 (RF) fields inside the scanner are not perfectly flat (homogeneous), particularly at field strengths of 3T or above. Hence in methods where the local flip-angle must be known (e.g. :doc:`Docs/Relaxometry`) the B1 field must be measured or fitted for. A distinction is drawn between B1+ (the transmit coil inhomogeneity) and B1- (the receive coil inhomogeneity). Generally it is B1+ that is important to know for quantitative techniques, and throughout ``QUIT`` it is expressed as a fraction - a value of 1 means the desired flip-angle was achieved in a voxel, and values lower/higher than this imply a lower/higher flip-angle. B1- is important if you are interested in measuring the Proton Density (PD / M0).
+The B1 (RF) fields inside the scanner are not perfectly flat (homogeneous), particularly at field strengths of 3T or above. Hence in methods where the local flip-angle must be known (e.g. :doc:`Relaxometry`) the B1 field must be measured or fitted for. A distinction is drawn between B1+ (the transmit coil inhomogeneity) and B1- (the receive coil inhomogeneity). Generally it is B1+ that is important to know for quantitative techniques, and throughout ``QUIT`` it is expressed as a fraction - a value of 1 means the desired flip-angle was achieved in a voxel, and values lower/higher than this imply a lower/higher flip-angle. B1- is important if you are interested in measuring the Proton Density (PD / M0).
 
 The following programs are available:
 

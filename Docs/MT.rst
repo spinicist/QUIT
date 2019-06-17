@@ -211,7 +211,7 @@ Due to the short TR commonly used with SSFP, at high flip-angles the sequence be
 qi_mtsat
 -----------
 
-Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and the semi-quantitative MT-Saturation parameter "delta". This is the fractional reduction in the longitudinal magnetization during one TR, expressed as a percentage. Arguably could be included in the :doc:`Docs/Relaxometry` module instead. Outputs R1 instead of T1 as this is more common in the MTSat / MPM literature. If using multi-echo input data the input should be passed through `qi_mpm_r2s` first and the output ``S0`` files used as input to `qi_mtsat`.
+Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and the semi-quantitative MT-Saturation parameter "delta". This is the fractional reduction in the longitudinal magnetization during one TR, expressed as a percentage. Arguably could be included in the :doc:`Relaxometry` module instead. Outputs R1 instead of T1 as this is more common in the MTSat / MPM literature. If using multi-echo input data the input should be passed through `qi_mpm_r2s` first and the output ``S0`` files used as input to `qi_mtsat`.
 
 **Example Command Line**
 
