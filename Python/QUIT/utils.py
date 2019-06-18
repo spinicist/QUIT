@@ -312,9 +312,11 @@ class FilterInputSpec(QI.InputSpec):
                    position=-1, desc='Input file to fit polynomial to')
     filter_spec = traits.String(argstr='--filter=%s', mandatory=True,
                                 desc='Filter to apply', multiple=True)
+    filter_per_volume = traits.Bool(argstr='--filter_per_volume', desc='Filters are one per volume')
     complex_in = traits.Bool(argstr='--complex_in', desc='Read complex data')
     complex_out = traits.Bool(argstr='--complex_out',
                               desc='Write complex data')
+    save_kernel = traits.Bool(argstr='--save_kernel', desc='Save k-Space kernel')
     highpass = traits.Bool(argstr='--highpass',
                            desc='Highpass instead of lowpass')
     prefix = traits.String(

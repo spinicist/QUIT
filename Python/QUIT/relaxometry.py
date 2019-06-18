@@ -15,7 +15,7 @@ from . import base as QI
 
 class DESPOT1InputSpec(QI.FitInputSpec):
     # Additional Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     algo = traits.String(desc="Choose algorithm (l/w/n)", argstr="--algo=%s")
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
     clamp_PD = traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f')
@@ -60,7 +60,7 @@ class DESPOT1(QI.FitCommand):
 
 class DESPOT1SimInputSpec(QI.SimInputSpec):
     # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
 
 
 class DESPOT1Sim(QI.SimCommand):
@@ -185,7 +185,7 @@ class DESPOT2InputSpec(QI.FitInputSpec):
                    position=-2, desc='Path to T1 map')
 
     # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     algo = traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d")
     ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
     iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
@@ -237,7 +237,7 @@ class DESPOT2SimInputSpec(QI.SimInputSpec):
                    position=-2, desc='Path for input T1 map')
 
     # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
 
 
@@ -273,7 +273,7 @@ class FMInputSpec(QI.FitInputSpec):
                    position=-2, desc='Path to T1 map')
 
     # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
     algo = traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d")
 
@@ -312,7 +312,7 @@ class FMSimInputSpec(QI.SimInputSpec):
                    position=-2, desc='Path for input T1 map')
 
     # Options
-    b1map_file = File(desc='B1 map (ratio)', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio)', argstr='--B1=%s')
     asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
 
 
@@ -326,6 +326,40 @@ class FMSim(QI.SimCommand):
     _param_files = ['PD', 'T2', 'f0']
     input_spec = FMSimInputSpec
     output_spec = QI.SimOutputSpec
+
+############################ qi_jsr ############################
+
+
+class JSRInputSpec(QI.InputSpec):
+    # Inputs
+    spgr_file = File(exists=True, argstr='%s', mandatory=True,
+                     position=-2, desc='Path to SPGR data')
+
+    ssfp_file = File(exists=True, argstr='%s', mandatory=True,
+                     position=-1, desc='Path to SSFP data')
+
+    # Options
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+
+
+class JSROutputSpec(TraitedSpec):
+    pd_map = File('JSR_PD.nii.gz', desc='Path to PD map', usedefault=True)
+    t1_map = File('JSR_T1.nii.gz', desc='Path to T1 map', usedefault=True)
+    t2_map = File('JSR_T2.nii.gz', desc='Path to T2 map', usedefault=True)
+    f0_map = File('JSR_f0.nii.gz', desc='Path to off-resonance map', usedefault=True)
+    rmse_map = File('JSR_rmse.nii.gz', desc='Path to residual map', usedefault=True)
+
+
+class JSR(QI.FitCommand):
+    """
+    Calculate T1 &T2 map with Joint System Relaxometry
+
+    """
+
+    _cmd = 'qi_jsr'
+    input_spec = JSRInputSpec
+    output_spec = JSROutputSpec
 
 ############################ qimcdespot ############################
 # Status: Everything is there but not tested
@@ -654,7 +688,7 @@ class PLANETInputSpec(QI.InputSpec):
                  position=-1, desc='Path to b parameter map')
 
     # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     residuals = traits.Bool(
         desc='Write out residuals for each data-point', argstr='--resids')
 
@@ -685,7 +719,7 @@ class PLANETSimInputSpec(QI.SimInputBaseSpec):
                   position=-2, desc='Output a file')
     b_file = File(argstr='%s', mandatory=True,
                   position=-1, desc='Output b file')
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
 
 
 class PLANETSimOutputSpec(TraitedSpec):
