@@ -195,20 +195,21 @@ struct JSRFit {
         ModelType::VaryingArray &          best_varying, // Output: Varying parameters
         RMSErrorType &                     residual,     // Output: root-mean-square error
         std::vector<Eigen::ArrayXd> &      residuals,    // Optional output: point residuals
-        FlagType &                         iterations) const {                    // Output: Usually iterations
+        FlagType &                         iterations /* Usually iterations */) const {
         // First scale down the raw data so that PD will be roughly the same magnitude as other
         // parameters This is important for numerical stability in the optimiser
-        doublescale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff()});
+
+        double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff()});
         if (scale < std::numeric_limits<double>::epsilon()) {
             best_varying = ModelType::VaryingArray::Zero();
             residual     = 0.0;
             return {false, "Maximum data value was zero or less"};
         }
-        Eigen::ArrayXd constspgr_data = inputs[0] / scale;
-        Eigen::ArrayXd constssfp_data = inputs[1] / scale;
+        Eigen::ArrayXd const spgr_data = inputs[0] / scale;
+        Eigen::ArrayXd const ssfp_data = inputs[1] / scale;
 
         // Setup Ceres
-        ceres::Problemproblem;
+        ceres::Problem problem;
         using AutoSPGRType = ceres::AutoDiffCostFunction<SPGRCost, ceres::DYNAMIC, ModelType::NV>;
         using AutoSSFPType = ceres::AutoDiffCostFunction<SSFPCost, ceres::DYNAMIC, ModelType::NV>;
         auto *spgr_cost =
@@ -217,7 +218,7 @@ struct JSRFit {
             new AutoSSFPType(new SSFPCost{model, fixed, ssfp_data}, model.ssfp.size());
         ceres::LossFunction *loss = new ceres::HuberLoss(1.0); // Don't know if this helps
         // This is where the parameters and cost functions actually get added to Ceres
-        ModelType::VaryingArrayvarying;
+        ModelType::VaryingArray varying;
         problem.AddResidualBlock(spgr_cost, loss, varying.data());
         problem.AddResidualBlock(ssfp_cost, loss, varying.data());
 
@@ -227,8 +228,8 @@ struct JSRFit {
             problem.SetParameterUpperBound(varying.data(), i, model.bounds_hi[i]);
         }
 
-        ceres::Solver::Optionsoptions;
-        ceres::Solver::Summarysummary;
+        ceres::Solver::Options options;
+        ceres::Solver::Summary summary;
         options.max_num_iterations  = 50;
         options.function_tolerance  = 1e-6;
         options.gradient_tolerance  = 1e-7;
@@ -236,7 +237,7 @@ struct JSRFit {
         options.logging_type        = ceres::SILENT;
 
         // We need to do 2 starts for JSR in case off-resonance is very high
-        doublebest_cost = std::numeric_limits<double>::max();
+        double best_cost = std::numeric_limits<double>::max();
         for (double psi_start : {0., M_PI}) {
             varying    = model.start;
             varying[3] = psi_start;
