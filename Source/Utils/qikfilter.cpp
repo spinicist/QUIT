@@ -61,7 +61,7 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
     DirectionType                                  m_Direction;
     PointType                                      m_Origin;
     std::vector<std::shared_ptr<QI::FilterKernel>> m_kernels;
-    bool                                           m_Highpass;
+    bool                                           m_Highpass = false;
 
   public:
     itkNewMacro(Self);
