@@ -38,19 +38,19 @@ namespace QI {
 template <typename FitType>
 class ModelFitFilter
     : public itk::ImageToImageFilter<
-          itk::VectorImage<typename IOPrecision<typename FitType::InputType>::Type, 3>,
-          typename BlockTypes<FitType::Blocked,
-                              3,
-                              typename IOPrecision<typename FitType::OutputType>::Type>::Type> {
+          itk::VectorImage<typename IOPrecision<typename FitType::ModelType::DataType>::Type, 3>,
+          typename BlockTypes<
+              FitType::Blocked,
+              3,
+              typename IOPrecision<typename FitType::ModelType::ParameterType>::Type>::Type> {
   public:
     using ModelType     = typename FitType::ModelType;
-    using InputType     = typename FitType::InputType;
-    using OutputType    = typename FitType::OutputType;
-    using RMSErrorType  = typename FitType::RMSErrorType;
+    using DataType      = typename ModelType::DataType;
     using ParameterType = typename ModelType::ParameterType;
+    using RMSErrorType  = typename FitType::RMSErrorType;
 
-    using InputPixelType    = typename IOPrecision<InputType>::Type;
-    using OutputPixelType   = typename IOPrecision<OutputType>::Type;
+    using InputPixelType    = typename IOPrecision<DataType>::Type;
+    using OutputPixelType   = typename IOPrecision<ParameterType>::Type;
     using RMSErrorPixelType = typename IOPrecision<RMSErrorType>::Type;
     using FixedPixelType    = typename IOPrecision<ParameterType>::Type;
 
@@ -438,16 +438,16 @@ class ModelFitFilter
                                                                     region);
         itk::ImageRegionIterator<TFlagImage>              flag_iter(this->GetFlagOutput(), region);
 
-        using InputArray    = QI_ARRAY(typename FitType::InputType);
-        using OutputArray   = QI_ARRAYN(typename FitType::OutputType, ModelType::NV);
-        using ResidualArray = QI_ARRAY(typename FitType::InputType);
+        using DataArray      = QI_ARRAY(DataType);
+        using ParameterArray = QI_ARRAYN(ParameterType, ModelType::NV);
+        using ResidualArray  = QI_ARRAY(DataType);
         while (!input_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {
                 for (int b = 0; b < m_blocks; b++) {
-                    std::vector<InputArray> inputs(ModelType::NI);
+                    std::vector<DataArray> inputs(ModelType::NI);
                     for (int i = 0; i < ModelType::NI; i++) {
                         auto input_data       = input_iters[i].Get();
-                        inputs[i]             = InputArray(m_fit->input_size(i));
+                        inputs[i]             = DataArray(m_fit->input_size(i));
                         const int block_start = b * m_fit->input_size(i);
                         for (Eigen::Index j = 0; j < m_fit->input_size(i); j++) {
                             inputs[i][j] = input_data[j + block_start];
@@ -461,7 +461,7 @@ class ModelFitFilter
                         }
                     }
 
-                    OutputArray                    outputs;
+                    ParameterArray                 outputs;
                     typename FitType::RMSErrorType rmse = 0;
                     typename FitType::FlagType     flag = 0;
                     std::vector<ResidualArray> residuals; // Leave size 0 if user doesn't want them

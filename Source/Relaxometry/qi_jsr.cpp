@@ -29,38 +29,52 @@ struct JSRModel {
     using DataType      = double;
     using ParameterType = double;
 
-    static constexpr int NV = 4;
-    static constexpr int ND = 0;
-    static constexpr int NF = 1;
-    static constexpr int NI = 2;
+    static constexpr int NV = 4; // Number of varying parameters
+    static constexpr int ND = 0; // Number of derived parameters
+    static constexpr int NF = 1; // Number of fixed parameters
+    static constexpr int NI = 2; // Number of inputs
 
-    using VaryingArray = QI_ARRAYN(ParameterType, NV);
-    using FixedArray   = QI_ARRAYN(ParameterType, NF);
+    using VaryingArray = QI_ARRAYN(ParameterType, NV); // Type for the varying parameter array
+    using FixedArray   = QI_ARRAYN(ParameterType, NF); // Type for the fixed parameter array
 
+    // Sequence paramter structs
     QI::SPGREchoSequence &  spgr;
     QI::SSFPFiniteSequence &ssfp;
 
-    VaryingArray const                start{10., 1., 0.1, 0.};
-    VaryingArray const                bounds_lo{1e-6, 1e-3, 1e-3, -1.0 / ssfp.TR};
-    VaryingArray const                bounds_hi{1e2, 5, 3, 1.0 / ssfp.TR};
+    // Fitting start point and bounds
+    // The PD will be scaled by the fitting function to keep parameters roughly the same magnitude
+    // The off-resonance fit is done on the accrued angle and then converted to frequency after
+    VaryingArray const start{7., 1., 0.05, 0.};
+    VaryingArray const bounds_lo{1, 1e-3, 1e-3, -2 * M_PI};
+    VaryingArray const bounds_hi{15, 5, 3, 2 * M_PI};
+
     std::array<std::string, NV> const varying_names{"PD", "T1", "T2", "df0"};
     std::array<std::string, NF> const fixed_names{"B1"};
-    FixedArray const                  fixed_defaults{1.0};
+    // If fixed parameters not supplied, use these default values
+    FixedArray const fixed_defaults{1.0};
 
+    // Signal functions. These have to be templated to allow automatic differentiation within Ceres
     template <typename Derived>
     auto spgr_signal(Eigen::ArrayBase<Derived> const &v, FixedArray const &f) const
         -> QI_ARRAY(typename Derived::Scalar) {
-        using T     = typename Derived::Scalar;
+        // Get the underlying datatype of the passed-in Eigen Array (usually double or a Ceres Jet)
+        using T = typename Derived::Scalar;
+        // Now get the individual parameters by name for clarity
         T const &PD = v[0];
         T const &T1 = v[1];
         T const &T2 = v[2];
 
+        // Fixed parameters will never be Ceres Jets, so can use a raw type
         double const &B1             = f[0];
         QI_ARRAY(double) const alpha = spgr.FA * B1;
 
+        // Anything expression that involves a varying parameter must be of type T
+        // Conversely, don't try to initialise a double/T from a T/double (fun error messages)
         T const E1 = exp(-spgr.TR / T1);
         T const Ee = exp(-spgr.TE / T2);
 
+        // The final signal will be an array of T, but the length is dependant on the sequence
+        // parameters, so it is not a VaryingArray which has fixed length
         QI_ARRAY(T) const signal = PD * Ee * sin(alpha) * (1.0 - E1) / (1.0 - E1 * cos(alpha));
         return signal;
     }
@@ -68,23 +82,31 @@ struct JSRModel {
     template <typename Derived>
     auto ssfp_signal(Eigen::ArrayBase<Derived> const &v, FixedArray const &f) const
         -> QI_ARRAY(typename Derived::Scalar) {
-        using T     = typename Derived::Scalar;
-        T const &PD = v[0];
-        T const &T1 = v[1];
-        T const &T2 = v[2];
-        T const &f0 = v[3];
+        using T      = typename Derived::Scalar;
+        T const &PD  = v[0];
+        T const &T1  = v[1];
+        T const &T2  = v[2];
+        T const &psi = v[3];
 
         double const &B1             = f[0];
         QI_ARRAY(double) const alpha = ssfp.FA * B1;
 
         // Crooijman / Bieri correction
         T const T_rfe = (0.68 - 0.125 * (1.0 + ssfp.Trf / ssfp.TR) * T2 / T1) * ssfp.Trf;
-        T const TRf   = ssfp.TR - T_rfe;
+        T const TRc   = ssfp.TR - T_rfe;
 
-        T const E1  = exp(-ssfp.TR / T1);
-        T const E2  = exp(-TRf / T2);
-        T const Ee  = exp(-TRf / (2.0 * T2));
-        T const psi = 2. * M_PI * f0 * ssfp.TR;
+        // This is a useful trick to get debugging information only when Ceres is evaluating the
+        // cost function at the end of an iteration. Printing Jet objects on every evaluation gives
+        // too much output
+        if constexpr (std::is_floating_point<T>::value) {
+            QI_DB(T_rfe)
+            QI_DB(TRc)
+            QI_DB(ssfp.TR)
+        }
+
+        T const E1 = exp(-ssfp.TR / T1);
+        T const E2 = exp(-TRc / T2);
+        T const Ee = exp(-TRc / (2.0 * T2));
 
         QI_ARRAY(T) const d = (1. - E1 * E2 * E2 - (E1 - E2 * E2) * cos(alpha));
         QI_ARRAY(T) const G = -PD * Ee * (1. - E1) * sin(alpha) / d;
@@ -112,6 +134,7 @@ struct JSRModel {
     }
 };
 
+// Cost functors. These need to calculate the residuals
 struct SPGRCost {
     JSRModel const &     model;
     JSRModel::FixedArray fixed;
@@ -140,16 +163,18 @@ struct SSFPCost {
     }
 };
 
+// Fit function structure. This is what actually runs the fitting/optimisation
 struct JSRFit {
-    static const bool Blocked = false;
-    static const bool Indexed = false;
-    using InputType           = double;
-    using OutputType          = double;
+    // Boilerplate information required by ModelFitFilter
+    static const bool Blocked = false; // = input is in blocks and outputs have multiple entries
+    static const bool Indexed = false; // = the voxel index will be passed to the fit
     using RMSErrorType        = double;
-    using FlagType            = int;
-    using ModelType           = JSRModel;
+    using FlagType            = int; // Almost always the number of iterations
+
+    using ModelType = JSRModel;
     ModelType model;
 
+    // Have to tell the ModelFitFilter how many volumes we expect in each input
     int input_size(const int i) const {
         switch (i) {
         case 0:
@@ -160,50 +185,61 @@ struct JSRFit {
             QI::Fail("Invalid input size = {}", i);
         }
     }
-    int n_outputs() const { return model.NV; }
 
-    QI::FitReturnType fit(std::vector<Eigen::ArrayXd> const &inputs,
-                          Eigen::ArrayXd const &             fixed,
-                          ModelType::VaryingArray &          best_varying,
-                          RMSErrorType &                     residual,
-                          std::vector<Eigen::ArrayXd> &      residuals,
-                          FlagType &                         iterations) const {
-        double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff()});
+    // This has to match the function signature that will be called in ModelFitFilter (which depends
+    // on Blocked/Indexed. The return type is a simple struct indicating success, and on failure
+    // also the reason for failure
+    QI::FitReturnType
+    fit(std::vector<Eigen::ArrayXd> const &inputs,       // Input: signal data
+        Eigen::ArrayXd const &             fixed,        // Input: Fixed parameters
+        ModelType::VaryingArray &          best_varying, // Output: Varying parameters
+        RMSErrorType &                     residual,     // Output: root-mean-square error
+        std::vector<Eigen::ArrayXd> &      residuals,    // Optional output: point residuals
+        FlagType &                         iterations) const {                    // Output: Usually iterations
+        // First scale down the raw data so that PD will be roughly the same magnitude as other
+        // parameters This is important for numerical stability in the optimiser
+        doublescale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff()});
         if (scale < std::numeric_limits<double>::epsilon()) {
             best_varying = ModelType::VaryingArray::Zero();
             residual     = 0.0;
             return {false, "Maximum data value was zero or less"};
         }
-        Eigen::ArrayXd const spgr_data = inputs[0] / scale;
-        Eigen::ArrayXd const ssfp_data = inputs[1] / scale;
+        Eigen::ArrayXd constspgr_data = inputs[0] / scale;
+        Eigen::ArrayXd constssfp_data = inputs[1] / scale;
 
-        ceres::Problem problem;
+        // Setup Ceres
+        ceres::Problemproblem;
         using AutoSPGRType = ceres::AutoDiffCostFunction<SPGRCost, ceres::DYNAMIC, ModelType::NV>;
         using AutoSSFPType = ceres::AutoDiffCostFunction<SSFPCost, ceres::DYNAMIC, ModelType::NV>;
         auto *spgr_cost =
             new AutoSPGRType(new SPGRCost{model, fixed, spgr_data}, model.spgr.size());
         auto *ssfp_cost =
             new AutoSSFPType(new SSFPCost{model, fixed, ssfp_data}, model.ssfp.size());
-        ceres::LossFunction *   loss = new ceres::HuberLoss(1.0);
-        ModelType::VaryingArray varying;
+        ceres::LossFunction *loss = new ceres::HuberLoss(1.0); // Don't know if this helps
+        // This is where the parameters and cost functions actually get added to Ceres
+        ModelType::VaryingArrayvarying;
         problem.AddResidualBlock(spgr_cost, loss, varying.data());
         problem.AddResidualBlock(ssfp_cost, loss, varying.data());
+
+        // Set up parameter bounds
         for (int i = 0; i < ModelType::NV; i++) {
             problem.SetParameterLowerBound(varying.data(), i, model.bounds_lo[i]);
             problem.SetParameterUpperBound(varying.data(), i, model.bounds_hi[i]);
         }
-        ceres::Solver::Options options;
-        ceres::Solver::Summary summary;
+
+        ceres::Solver::Optionsoptions;
+        ceres::Solver::Summarysummary;
         options.max_num_iterations  = 50;
-        options.function_tolerance  = 1e-5;
-        options.gradient_tolerance  = 1e-6;
-        options.parameter_tolerance = 1e-4;
+        options.function_tolerance  = 1e-6;
+        options.gradient_tolerance  = 1e-7;
+        options.parameter_tolerance = 1e-5;
         options.logging_type        = ceres::SILENT;
 
-        double best_cost = std::numeric_limits<double>::max();
-        for (double f0_start : {0., -0.5 / model.ssfp.TR, 0.5 / model.ssfp.TR}) {
+        // We need to do 2 starts for JSR in case off-resonance is very high
+        doublebest_cost = std::numeric_limits<double>::max();
+        for (double psi_start : {0., M_PI}) {
             varying    = model.start;
-            varying[3] = f0_start;
+            varying[3] = psi_start;
             ceres::Solve(options, &problem, &summary);
             if (!summary.IsSolutionUsable()) {
                 return {false, summary.FullReport()};
@@ -220,6 +256,9 @@ struct JSRFit {
             residuals[1] = (ssfp_data - model.ssfp_signal(best_varying, fixed)) * scale;
         }
         best_varying[0] *= scale; // Multiply signals/proton density back up
+        // Wrap and convert to frequency
+        best_varying[3] =
+            (std::fmod(best_varying[3] + 3 * M_PI, 2 * M_PI) - M_PI) / (2 * M_PI * model.ssfp.TR);
         return {true, ""};
     }
 };
