@@ -341,13 +341,14 @@ class JSRInputSpec(QI.InputSpec):
     # Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+    npsi = traits.Int(desc='Number of psi/off-resonance starts', argstr='--npsi=%d')
 
 
 class JSROutputSpec(TraitedSpec):
     pd_map = File('JSR_PD.nii.gz', desc='Path to PD map', usedefault=True)
     t1_map = File('JSR_T1.nii.gz', desc='Path to T1 map', usedefault=True)
     t2_map = File('JSR_T2.nii.gz', desc='Path to T2 map', usedefault=True)
-    f0_map = File('JSR_f0.nii.gz', desc='Path to off-resonance map', usedefault=True)
+    f0_map = File('JSR_df0.nii.gz', desc='Path to off-resonance map', usedefault=True)
     rmse_map = File('JSR_rmse.nii.gz', desc='Path to residual map', usedefault=True)
 
 

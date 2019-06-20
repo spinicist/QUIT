@@ -98,11 +98,11 @@ struct JSRModel {
         // This is a useful trick to get debugging information only when Ceres is evaluating the
         // cost function at the end of an iteration. Printing Jet objects on every evaluation gives
         // too much output
-        if constexpr (std::is_floating_point<T>::value) {
-            QI_DB(T_rfe)
-            QI_DB(TRc)
-            QI_DB(ssfp.TR)
-        }
+        // if constexpr (std::is_floating_point<T>::value) {
+        //     QI_DB(B1)
+        //     QI_DBVEC(ssfp.FA)
+        //     QI_DBVEC(alpha)
+        // }
 
         T const E1 = exp(-ssfp.TR / T1);
         T const E2 = exp(-TRc / T2);
@@ -173,6 +173,7 @@ struct JSRFit {
 
     using ModelType = JSRModel;
     ModelType model;
+    int       n_psi;
 
     // Have to tell the ModelFitFilter how many volumes we expect in each input
     int input_size(const int i) const {
@@ -193,7 +194,7 @@ struct JSRFit {
     fit(std::vector<Eigen::ArrayXd> const &inputs,       // Input: signal data
         Eigen::ArrayXd const &             fixed,        // Input: Fixed parameters
         ModelType::VaryingArray &          best_varying, // Output: Varying parameters
-        RMSErrorType &                     residual,     // Output: root-mean-square error
+        RMSErrorType &                     rmse,         // Output: root-mean-square error
         std::vector<Eigen::ArrayXd> &      residuals,    // Optional output: point residuals
         FlagType &                         iterations /* Usually iterations */) const {
         // First scale down the raw data so that PD will be roughly the same magnitude as other
@@ -202,7 +203,7 @@ struct JSRFit {
         double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff()});
         if (scale < std::numeric_limits<double>::epsilon()) {
             best_varying = ModelType::VaryingArray::Zero();
-            residual     = 0.0;
+            rmse         = 0.0;
             return {false, "Maximum data value was zero or less"};
         }
         Eigen::ArrayXd const spgr_data = inputs[0] / scale;
@@ -237,24 +238,30 @@ struct JSRFit {
         options.logging_type        = ceres::SILENT;
 
         // We need to do 2 starts for JSR in case off-resonance is very high
-        double best_cost = std::numeric_limits<double>::max();
-        for (double psi_start : {0., M_PI}) {
+        double       best_cost = std::numeric_limits<double>::max();
+        double const psi_step  = (n_psi % 2) ? 2 * M_PI / (n_psi - 1) : 2 * M_PI / (n_psi);
+        double       psi       = (n_psi == 1) ? 0 : -M_PI;
+        for (int p = 0; p < n_psi; p++, psi += psi_step) {
             varying    = model.start;
-            varying[3] = psi_start;
+            varying[3] = psi;
             ceres::Solve(options, &problem, &summary);
             if (!summary.IsSolutionUsable()) {
                 return {false, summary.FullReport()};
             }
             if (summary.final_cost < best_cost) {
                 iterations   = summary.iterations.size();
-                residual     = summary.final_cost * scale;
                 best_varying = varying;
                 best_cost    = summary.final_cost;
             }
         }
+        Eigen::ArrayXd const spgr_residual =
+            (spgr_data - model.spgr_signal(best_varying, fixed)) * scale;
+        Eigen::ArrayXd const ssfp_residual =
+            (ssfp_data - model.ssfp_signal(best_varying, fixed)) * scale;
+        rmse = sqrt(spgr_residual.square().mean() + ssfp_residual.square().mean());
         if (residuals.size() > 0) {
-            residuals[0] = (spgr_data - model.spgr_signal(best_varying, fixed)) * scale;
-            residuals[1] = (ssfp_data - model.ssfp_signal(best_varying, fixed)) * scale;
+            residuals[0] = spgr_residual;
+            residuals[1] = ssfp_residual;
         }
         best_varying[0] *= scale; // Multiply signals/proton density back up
         // Wrap and convert to frequency
@@ -294,6 +301,9 @@ int main(int argc, char **argv) {
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
     args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
+    args::ValueFlag<int>         npsi(
+        parser, "N PSI", "Number of starts for psi/off-resonance, default 2", {'p', "npsi"}, 2);
+
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::CheckPos(spgr_path);
@@ -306,9 +316,9 @@ int main(int argc, char **argv) {
     QI::SSFPFiniteSequence ssfp_seq(doc["SSFP"]);
 
     JSRModel model{spgr_seq, ssfp_seq};
-    JSRFit   jsr_fit{model};
+    JSRFit   jsr_fit{model, npsi.Get()};
     auto fit_filter = QI::ModelFitFilter<JSRFit>::New(&jsr_fit, verbose, resids, subregion.Get());
-    fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {}, mask_path.Get());
+    fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask_path.Get());
     fit_filter->Update();
     fit_filter->WriteOutputs(prefix.Get() + "JSR_");
     QI::Log(verbose, "Finished.");
