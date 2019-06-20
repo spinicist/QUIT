@@ -402,6 +402,8 @@ class PolyImage(QI.BaseCommand):
 class PolyFitInputSpec(QI.InputBaseSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file to fit polynomial to')
+    mask_file = File(argstr='--mask=%s', exists=True,
+                     desc='Mask file for fitting polynomial')
     order = traits.Int(argstr='--order=%d', mandatory=True,
                        desc='Polynomial Order')
     robust = traits.Bool(

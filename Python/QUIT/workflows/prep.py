@@ -13,6 +13,7 @@ def init_b1_mcf(rf_pulse, scale=150):
                       name='outputnode')
 
     b1_b1 = Node(ExtractROI(t_min=0, t_size=1), name='b1_extract_b1')
+    b1_filter = Node(Filter(filter_spec='Gauss,3.0'), name='b1_filter')
     b1_mag = Node(ExtractROI(t_min=1, t_size=1), name='b1_extract_mag')
 
     b1_reg = Node(FLIRT(out_file='b1mag_reg.nii.gz', out_matrix_file='b1mag_reg.mat'),
@@ -30,7 +31,8 @@ def init_b1_mcf(rf_pulse, scale=150):
                 (b1_mag, b1_reg, [('roi_file', 'reference')]),
                 (b1_reg, b1_invert, [('out_matrix_file', 'in_file')]),
                 (b1_invert, b1_apply, [('out_file', 'in_matrix_file')]),
-                (b1_b1, b1_apply, [('roi_file', 'in_file')]),
+                (b1_b1, b1_filter, [('roi_file', 'in_file')]),
+                (b1_filter, b1_apply, [('out_file', 'in_file')]),
                 (b1_apply, b1_scale, [('out_file', 'in_file')]),
                 (b1_scale, b1_rf, [('out_file', 'in_file')]),
                 (b1_rf, outputnode, [('out_file', 'b1_map')])])
