@@ -20,7 +20,7 @@ def init_b1_mcf(rf_pulse, scale=150):
                   name='b1_reg')
     b1_invert = Node(ConvertXFM(invert_xfm=True), name='b1_invert')
     b1_apply = Node(FLIRT(apply_xfm=True), name='b1_reg_apply')
-    b1_scale = Node(ImageMaths(op_string=f'-div {scale}'), name='b1_scale')
+    b1_scale = Node(ImageMaths(op_string='-div %f' % scale), name='b1_scale')
     b1_rf = Node(RFProfile(rf=rf_pulse, out_file='b1_rf.nii.gz'), name='b1_rf')
 
     wf = Workflow(name='b1_prep')
