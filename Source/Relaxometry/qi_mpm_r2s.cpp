@@ -223,7 +223,6 @@ int main(int argc, char **argv) {
         {'s', "subregion"});
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
-    args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::CheckPos(pdw_path);

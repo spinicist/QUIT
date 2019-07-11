@@ -306,3 +306,37 @@ class eMTSim(QI.SimCommand):
         outputs['a_file'] = path.abspath(self.inputs.a_file)
         outputs['b_file'] = path.abspath(self.inputs.b_file)
         return outputs
+
+############################ qi_mtsat ############################
+
+
+class MTSatInputSpec(QI.InputSpec):
+    # Inputs
+    pdw_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=-3, desc='Path to PD-weighted data')
+
+    t1w_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=-2, desc='Path to T1-weighted data')
+
+    mtw_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=-1, desc='Path to MT-weighted data')
+
+    # Options
+    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+
+
+class MTSatOutputSpec(TraitedSpec):
+    s0_map = File('MTSat_S0.nii.gz', desc='S0/PD Map', usedefault=True)
+    r1_map = File('MTSat_R1.nii.gz', desc='R1 map', usedefault=True)
+    delta_map = File('MTSat_delta.nii.gz', desc='MTSat delta map', usedefault=True)
+
+
+class MTSat(QI.FitCommand):
+    """
+    Runs qi_mtsat
+
+    """
+
+    _cmd = 'qi_mtsat'
+    input_spec = MTSatInputSpec
+    output_spec = MTSatOutputSpec

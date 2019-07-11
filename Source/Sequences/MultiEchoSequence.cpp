@@ -21,9 +21,6 @@ Eigen::Index MultiEchoSequence::size() const {
     return TE.rows();
 }
 
-/*
- * Regularly spaced sequence
- */
 void from_json(const json &j, MultiEchoSequence &s) {
     j.at("TR").get_to(s.TR);
     if (j.find("TE") != j.end()) {

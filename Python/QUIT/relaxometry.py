@@ -539,6 +539,41 @@ class MultiechoSim(QI.SimCommand):
     input_spec = QI.SimInputSpec
     output_spec = QI.SimOutputSpec
 
+############################ qi_mpm_r2s ############################
+
+
+class MPMR2sInputSpec(QI.InputSpec):
+    # Inputs
+    pdw_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=-3, desc='Path to PD-weighted data')
+
+    t1w_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=-2, desc='Path to T1-weighted data')
+
+    mtw_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=-1, desc='Path to MT-weighted data')
+
+    # Options
+    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+
+
+class MPMR2sOutputSpec(TraitedSpec):
+    r2s_map = File('MPM_R2s.nii.gz', desc='The R2* map. Units are the same as TE1 and ESP', usedefault=True)
+    s0_pdw = File('MPM_S0_PDw.nii.gz', desc='Intercept of the decay curve at TE=0 for PDw', usedefault=True)
+    s0_t1w = File('MPM_S0_T1w.nii.gz', desc='Intercept of the decay curve at TE=0 for T1w', usedefault=True)
+    s0_mtw = File('MPM_S0_MTw.nii.gz', desc='Intercept of the decay curve at TE=0 for MTw', usedefault=True)
+
+
+class MPMR2s(QI.FitCommand):
+    """
+    Runs qi_mpm_r2s
+
+    """
+
+    _cmd = 'qi_mpm_r2s'
+    input_spec = MPMR2sInputSpec
+    output_spec = MPMR2sOutputSpec
+
 ############################ qidream ############################
 # Implemented but not tested #
 
