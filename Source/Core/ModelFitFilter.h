@@ -485,7 +485,7 @@ class ModelFitFilter
                         status = m_fit->fit(inputs, fixed, outputs, rmse, residuals, flag);
                     }
 
-                    if (!status.success) {
+                    if (!status.success && m_verbose) {
                         QI::Warn(
                             "Fit failed for voxel {}: {}", rmse_iter.GetIndex(), status.message);
                     }
