@@ -45,6 +45,10 @@ struct EMTModel {
     std::array<std::string, NF> const fixed_names{"B1"s, "T2_f"s};
     FixedArray const                  fixed_defaults{1.0, 0.1};
 
+    VaryingArray const start{13.0, 0.1, 2.0, 0.8};
+    VaryingArray const lo{0.1, 1e-6, 1.0, 0.05};
+    VaryingArray const hi{20.0, 0.2, 10.0, 5.0};
+
     size_t num_outputs() const { return 3; }
     int    output_size(int /* Unused */) { return sequence.size(); }
 
@@ -145,17 +149,13 @@ struct EMTFit {
         auto *cost = new ceres::AutoDiffCostFunction<EMTCost, ceres::DYNAMIC, 5>(
             new EMTCost{model, fixed, G, b}, G.size() + b.size());
         ceres::LossFunction *loss = new ceres::HuberLoss(1.0);
-        p << 10.0, 0.05, 2.0, 1.0;
+        p                         = model.start;
         ceres::Problem problem;
         problem.AddResidualBlock(cost, loss, p.data());
-        problem.SetParameterLowerBound(p.data(), 0, 0.1);
-        problem.SetParameterUpperBound(p.data(), 0, 20.0);
-        problem.SetParameterLowerBound(p.data(), 1, 1e-6);
-        problem.SetParameterUpperBound(p.data(), 1, 0.2 - 1e-6);
-        problem.SetParameterLowerBound(p.data(), 2, 0.1);
-        problem.SetParameterUpperBound(p.data(), 2, 10.0);
-        problem.SetParameterLowerBound(p.data(), 3, 0.05);
-        problem.SetParameterUpperBound(p.data(), 3, 5.0);
+        for (Eigen::Index i = 0; i < model.NV; i++) {
+            problem.SetParameterLowerBound(p.data(), i, model.lo[i]);
+            problem.SetParameterUpperBound(p.data(), i, model.hi[i]);
+        }
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
         options.max_num_iterations  = 100;
