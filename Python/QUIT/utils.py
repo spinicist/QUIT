@@ -137,7 +137,8 @@ class AffineInputSpec(QI.InputSpec):
                     desc='Write out the transformation to a file')
     translate = traits.String(desc='Translations in "X,Y,Z" directions',
                               argstr='--trans=%s')
-    rotate = traits.String(desc='Rotations about "X,Y,Z" in degrees', argstr='--rotate=%s')
+    rotate = traits.String(
+        desc='Rotations about "X,Y,Z" in degrees', argstr='--rotate=%s')
     scale = traits.Float(desc='Scale by a constant', argstr='--scale=%f')
     permute = traits.String(
         desc='Permute axes, e.g. 2,0,1. Negative values mean flip as well', argstr='--permute=%s')
@@ -183,7 +184,7 @@ class MaskInputSpec(QI.InputBaseSpec):
                    position=0, desc='Input File')
 
     # Outputs
-    out_file = File(exists=False, argstr='%s',
+    out_file = File(exists=False, argstr='--out=%s',
                     position=1, desc='Set output filename, default is input + _mask')
 
     # Options
@@ -197,6 +198,8 @@ class MaskInputSpec(QI.InputBaseSpec):
                          argstr='--upper=%f')
     rats = traits.Float(desc="Perform the RATS step, argument is size threshold for connected component",
                         argstr='--rats=%f')
+    rats_radius = traits.Int(
+        desc="Starting radius for RATS (saves times), default 1", argstr='--rats_radius=%d')
     fill_holes = traits.Int(
         desc="Fill holes in thresholded mask with radius N", argstr='--fillh=%d')
 
@@ -312,11 +315,13 @@ class FilterInputSpec(QI.InputSpec):
                    position=-1, desc='Input file to fit polynomial to')
     filter_spec = traits.String(argstr='--filter=%s', mandatory=True,
                                 desc='Filter to apply', multiple=True)
-    filter_per_volume = traits.Bool(argstr='--filter_per_volume', desc='Filters are one per volume')
+    filter_per_volume = traits.Bool(
+        argstr='--filter_per_volume', desc='Filters are one per volume')
     complex_in = traits.Bool(argstr='--complex_in', desc='Read complex data')
     complex_out = traits.Bool(argstr='--complex_out',
                               desc='Write complex data')
-    save_kernel = traits.Bool(argstr='--save_kernel', desc='Save k-Space kernel')
+    save_kernel = traits.Bool(argstr='--save_kernel',
+                              desc='Save k-Space kernel')
     highpass = traits.Bool(argstr='--highpass',
                            desc='Highpass instead of lowpass')
     prefix = traits.String(

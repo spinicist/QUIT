@@ -48,11 +48,14 @@ VolumeI::Pointer OtsuMask(const VolumeF::Pointer &img) {
     return mask;
 }
 
-std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask, const unsigned long size_threshold,
-                              const size_t to_keep, QI::VolumeI::Pointer &labels) {
+std::vector<float> FindLabels(const QI::VolumeI::Pointer &mask,
+                              const unsigned long         size_threshold,
+                              const size_t                to_keep,
+                              QI::VolumeI::Pointer &      labels) {
     auto CC      = itk::ConnectedComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
     auto relabel = itk::RelabelComponentImageFilter<QI::VolumeI, QI::VolumeI>::New();
     CC->SetInput(mask);
+    CC->SetBackgroundValue(0);
     relabel->SetInput(CC->GetOutput());
     relabel->Update();
     // Relabel sorts on size by default, so now work out how many make the size threshold

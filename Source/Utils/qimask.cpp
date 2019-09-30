@@ -67,6 +67,8 @@ int main(int argc, char **argv) {
         "Perform the RATS step, argument is size threshold for connected component",
         {'r', "rats"},
         0.);
+    args::ValueFlag<int> rats_radius(
+        parser, "RATS START RADIUS", "Starting radius for RATS, default 1", {"rats_radius"}, 1);
     args::ValueFlag<int> fillh_radius(
         parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
 
@@ -127,32 +129,41 @@ int main(int argc, char **argv) {
         float mask_volume  = std::numeric_limits<float>::infinity();
         float voxel_volume = QI::VoxelVolume(mask_image);
         QI::Log(verbose, "Voxel volume: {}", voxel_volume);
-        int                  radius = 0;
+        int                  radius = rats_radius.Get();
         QI::VolumeI::Pointer mask_rats;
         while (mask_volume > rats.Get()) {
-            radius++;
             TBall           ball;
             TBall::SizeType radii;
             radii.Fill(radius);
             ball.SetRadius(radii);
             ball.CreateStructuringElement();
-            TErode::Pointer erode = TErode::New();
+
+            auto erode = TErode::New();
             erode->SetInput(mask_image);
             erode->SetForegroundValue(1);
             erode->SetBackgroundValue(0);
             erode->SetKernel(ball);
             erode->Update();
-            std::vector<float> kept_sizes = QI::FindLabels(erode->GetOutput(), 0, 1, mask_rats);
-            mask_volume                   = kept_sizes[0] * voxel_volume;
-            auto dilate                   = TDilate::New();
+
+            auto dilate = TDilate::New();
             dilate->SetKernel(ball);
-            dilate->SetInput(mask_rats);
+            dilate->SetInput(erode->GetOutput());
             dilate->SetForegroundValue(1);
             dilate->SetBackgroundValue(0);
             dilate->Update();
-            mask_rats = dilate->GetOutput();
-            mask_rats->DisconnectPipeline();
-            QI::Log(verbose, "Ran RATS iteration, radius = {} volume = {}", radius, mask_volume);
+
+            auto  kept_sizes = QI::FindLabels(erode->GetOutput(), 0, 1, mask_rats);
+            float new_volume = kept_sizes[0] * voxel_volume;
+
+            QI::FindLabels(dilate->GetOutput(), 0, 1, mask_rats);
+
+            QI::Log(verbose, "Ran RATS iteration, radius = {} volume = {}", radius, new_volume);
+            if (new_volume > mask_volume) {
+                QI::Log(verbose, "Mask volume increased, terminating");
+                break;
+            }
+            mask_volume = new_volume;
+            radius++;
         }
         mask_image = mask_rats;
     }
