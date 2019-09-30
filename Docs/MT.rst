@@ -130,7 +130,7 @@ The off-resonance map units must match the input frequencies (e.g. either PPM or
 qi_lorentzian
 -------------
 
-Fits a single Lorentzian to a Z-spectrum for B0 correction. Currently hard-coded to only fit the spectrum between +/-2ppm to avoid background MT contamination.
+Fits sums of Lorentzian functions to a Z-spectrum. Highly customisable for the number of desired Lorentzian's and their characteristics.
 
 **Example Command Line**
 
@@ -145,17 +145,60 @@ The Z-spectrum must be a 4D file with each volume acquired at a different offset
 .. code-block:: json
 
     {
-        "freq" : [ -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
+        'MTSat': {
+            'pulse': {
+                'p1': 0.4,
+                'p2': 0.3,
+                'bandwidth': 0.39
+            },
+            'Trf': 0.02,
+            'TR': 4,
+            'FA': 5,
+            'sat_f0': [0, 1, 2, 3, 4, 5],
+            'sat_angle': [180, 180, 180, 180, 180],
+        },
+        'pools' :
+        [
+            { 
+                'name': 'DS',
+                'df0': [0, -2.5, 2.5],
+                'fwhm': [1.0, 1.e-6, 3.0],
+                'A': [0.2, 1.e-3, 1.0],
+                'use_bandwidth': True
+            },
+            {
+                'name': 'MT',
+                'df0': [-2.5, -5.0, -0.5],
+                'fwhm': [50.0, 35.0, 200.0],
+                'A': [0.3, 1.e-3, 1.0]
+            }
+        ]
     }
 
-These are the offset frequencies for each volume in the Z-spectrum input.
+The input needs to include both the sequence parameters and the characteristics of the Lorentzian "pools" that you wish to fit. Currently the only important information used from the sequence are the saturation offsets, and optionally the bandwidth of the pulse. For each pool a name is required, and then triples of values representing the starting, lower and upper bound for the center frequency ``df0``, the Full-Width Half-Maximum ``fwhm`` and amplitude ``A`` of the Lorentzian. You can also specify that the modified Lorentzian including the pulse bandwidth should be used `'use_bandwith' : True`. See the reference for details.
+
+*Important Options*
+
+* ``--add, -a``
+
+    Specify an additive model instead of the default subtractive (saturation) model. Useful when a base-line has already been subtracted from the Z-spectrum. See reference for details.
+
+* ``--zref, -z``
+
+    Change the reference value for the Z-spectrum. Default is 1.0, change to 0.0 for additive model.
+
 
 **Outputs**
 
-* ``LTZ_f0.nii.gz``  - The center frequency of the fitted Lorentzian.
-* ``LTZ_w.nii.gz``   - The width of the fitted Lorentzian.
-* ``LTZ_sat.nii.gz`` - The saturation ratio of the fitted Lorentzian.
-* ``LTZ_PD.nii.gz``  - The apparent Proton Density of the fitted Lorentzian.
+For each pool three outputs will be written, prefixed by the pool name. For a single pool representing direct-saturation (DS), the following will be written:
+
+* ``DS_f0.nii.gz``  - The center frequency of the fitted Lorentzian.
+* ``DS_fwhm.nii.gz``   - The width of the fitted Lorentzian.
+* ``DS_A.nii.gz`` - The amplitdue of the fitted Lorentzian.
+
+**References**
+
+- `Deshmane et al <http://doi.wiley.com/10.1002/mrm.27569>`_
 
 qi_dipolar_mtr.sh
 -----------------
