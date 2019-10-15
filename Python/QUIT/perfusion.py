@@ -24,6 +24,8 @@ class ASLInputSpec(QI.FitInputSpec):
     # Additional Options
     average = traits.Bool(
         desc='Average across time-series', argstr='--average')
+    dummies = traits.Int(
+        desc='Remove dummies from timeseries', argstr='--dummies=%d')
     T1_blood = traits.Float(
         desc='Value of blood T1 (default 1.65)', argstr='--blood=%f')
     T1_tissue = traits.String(

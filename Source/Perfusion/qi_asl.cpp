@@ -33,33 +33,40 @@ int main(int argc, char **argv) {
                                  "Use N threads (default=4, 0=hardware limit)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
+    args::ValueFlag<std::string> json_file(
+        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
     args::ValueFlag<std::string> outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+
     args::Flag average(parser, "AVERAGE", "Average the time-series", {'a', "average"});
     args::Flag slice_time(parser,
                           "SLICE TIME CORRECTION",
                           "Apply slice-time correction (number of post-label "
                           "delays must match number of slices)",
                           {'s', "slicetime"});
-    args::ValueFlag<std::string> json_file(
-        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
-    args::ValueFlag<double>      T1_blood(parser,
+
+    args::ValueFlag<int> dummies(
+        parser, "DUMMIES", "Discard this many dummy pairs from input", {'d', "dummies"}, 0);
+
+    args::ValueFlag<std::string> T1_tissue_path(
+        parser, "TISSUE T1", "Path to tissue T1 map (units are seconds)", {'t', "tissue"});
+    args::ValueFlag<std::string> PD_path(parser, "PROTON DENSITY", "Path to PD image", {'p', "pd"});
+
+    args::ValueFlag<double> T1_blood(parser,
                                      "BLOOD T1",
                                      "Value of blood T1 to use (seconds), default 1.65 for 3T",
                                      {'b', "blood"},
                                      1.65);
-    args::ValueFlag<std::string> T1_tissue_path(
-        parser, "TISSUE T1", "Path to tissue T1 map (units are seconds)", {'t', "tissue"});
-    args::ValueFlag<std::string> PD_path(parser, "PROTON DENSITY", "Path to PD image", {'p', "pd"});
-    args::ValueFlag<double>      alpha(
+    args::ValueFlag<double> alpha(
         parser, "ALPHA", "Labelling efficiency, default 0.9", {'a', "alpha"}, 0.9);
     args::ValueFlag<double> lambda(parser,
                                    "LAMBDA",
                                    "Blood-brain partition co-efficent, default 0.9 mL/g",
                                    {'l', "lambda"},
                                    0.9);
+
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Reading sequence parameters");
@@ -83,7 +90,7 @@ int main(int argc, char **argv) {
                  n_slices);
     }
 
-    const auto insize  = input->GetNumberOfComponentsPerPixel();
+    const auto insize  = input->GetNumberOfComponentsPerPixel() - (dummies.Get() * 2);
     const auto outsize = average ? 1 : insize / 2;
 
     auto output = QI::VectorVolumeF::New();
@@ -120,7 +127,7 @@ int main(int argc, char **argv) {
                 itk::VariableLengthVector<float> CBF_vector(outsize);
                 if (!mask_img || mask_it.Get()) {
                     const Eigen::Map<const Eigen::ArrayXXf> raw(
-                        in_it.Get().GetDataPointer(), 2, insize / 2);
+                        in_it.Get().GetDataPointer() + (dummies.Get() * 2), 2, insize / 2);
                     const auto &label        = raw.row(0);
                     const auto &control      = raw.row(1);
                     const auto &difference   = control - label; // Negative contrast
