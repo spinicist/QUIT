@@ -100,4 +100,4 @@ Does not read any input from ``stdin``. The input file should contain two volume
 
 **References**
 
-- `Papp et al <http://doi.wiley.com/10.1002/mrm.21120>`_
+- `Papp et al <http://doi.wiley.com/10.1002/mrm.26058>`_
