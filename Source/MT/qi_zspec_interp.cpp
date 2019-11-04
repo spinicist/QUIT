@@ -40,6 +40,11 @@ int main(int argc, char **argv) {
         parser, "OUTPUT", "Change ouput filename (default is input_interp)", {'o', "out"});
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
+    args::ValueFlag<std::string> subregion(
+        parser,
+        "SUBREGION",
+        "Process voxels in a block from I,J,K with size SI,SJ,SK",
+        {'s', "subregion"});
     args::ValueFlag<std::string> f0_arg(parser,
                                         "OFF RESONANCE",
                                         "Specify off-resonance frequency (units must match input)",
@@ -78,11 +83,14 @@ int main(int argc, char **argv) {
     output->SetNumberOfComponentsPerPixel(out_freqs.rows());
     output->Allocate(true);
 
+    std::vector<size_t> indices = QI::SortedUniqueIndices(in_freqs);
+    auto const region = subregion ? QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
+                                    input->GetBufferedRegion();
     auto mt = itk::MultiThreaderBase::New();
     QI::Log(verbose, "Processing");
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
-        input->GetBufferedRegion(),
+        region,
         [&](const QI::VectorVolumeF::RegionType &region) {
             itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input, region);
             itk::ImageRegionConstIterator<QI::VolumeF>       f0_it, ref_it, mask_it;
@@ -98,7 +106,8 @@ int main(int argc, char **argv) {
                 if (!mask_image || mask_it.Get()) {
                     const Eigen::Map<const Eigen::ArrayXf> zdata(in_it.Get().GetDataPointer(),
                                                                  in_freqs.rows());
-                    QI::SplineInterpolator zspec(in_freqs, zdata.cast<double>(), order.Get());
+                    QI::SplineInterpolator                 zspec(
+                                        in_freqs, zdata.cast<double>(), order.Get(), indices);
 
                     float f0 = f0_image ? f0_it.Get() : 0.0;
                     for (int f = 0; f < out_freqs.rows(); f++) {

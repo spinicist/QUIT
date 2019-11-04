@@ -51,7 +51,8 @@ std::string StripExt(const std::string &filename); //!< Remove the extension fro
 std::string GetExt(const std::string &filename);   //!< Return the extension from a filename with .
 std::string Basename(const std::string &path);     //!< Return only the filename part of a path
 std::mt19937_64::result_type RandomSeed();         //!< Thread-safe random seed
-
+std::vector<size_t>
+SortedUniqueIndices(Eigen::ArrayXd const &x); //!< Sorted, unique indices (for splines)
 /*
  * Helper function to calculate the volume of a voxel in an image
  */

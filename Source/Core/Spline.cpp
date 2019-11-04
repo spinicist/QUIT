@@ -9,8 +9,10 @@
  *
  */
 
-#include "Spline.h"
 #include "Log.h"
+#include "Spline.h"
+
+#include <set>
 
 namespace QI {
 
@@ -18,22 +20,29 @@ SplineInterpolator::SplineInterpolator() : m_min(0.), m_width(0.) {}
 
 // Sort input in ascending order
 
-SplineInterpolator::SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y,
-                                       const int order) {
+SplineInterpolator::SplineInterpolator(Eigen::ArrayXd const &     x,
+                                       Eigen::ArrayXd const &     y,
+                                       const int                  order,
+                                       std::vector<size_t> const &indices) {
     if (x.size() != y.size()) {
         QI::Fail("Input vectors to spline must be same size");
     }
     if (x.size() == 0) {
         QI::Fail("Cannot create a spline with no control points");
     }
-    std::vector<std::size_t> indices(x.size());
-    std::iota(indices.begin(), indices.end(), 0);
-    std::sort(indices.begin(), indices.end(),
-              [&](std::size_t i, std::size_t j) { return x[i] < x[j]; });
 
-    Eigen::ArrayXd sx(x.size()), sy(y.size());
-    std::transform(indices.begin(), indices.end(), &sx[0], [&](std::size_t i) { return x[i]; });
-    std::transform(indices.begin(), indices.end(), &sy[0], [&](std::size_t i) { return y[i]; });
+    Eigen::ArrayXd sx, sy;
+    if (indices.size() > 0) {
+        sx = Eigen::ArrayXd(indices.size());
+        sy = Eigen::ArrayXd(indices.size());
+        std::transform(indices.begin(), indices.end(), &sx[0], [&](std::size_t i) { return x[i]; });
+        std::transform(indices.begin(), indices.end(), &sy[0], [&](std::size_t i) { return y[i]; });
+    } else {
+        sx = x;
+        sy = y;
+    }
+
+    // fmt::print("Sorted freqs: {}\nSorted value: {}\n", sx.transpose(), sy.transpose());
 
     m_min                        = sx[0];
     m_width                      = sx[sx.size() - 1] - m_min;
@@ -42,7 +51,9 @@ SplineInterpolator::SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd c
         sy.transpose(), std::min<int>(x.rows() - 1, order), scaledx.transpose());
 }
 
-double SplineInterpolator::scale(const double &x) const { return (x - m_min) / m_width; }
+double SplineInterpolator::scale(const double &x) const {
+    return (x - m_min) / m_width;
+}
 
 Eigen::ArrayXd SplineInterpolator::scale(const Eigen::ArrayXd &x) const {
     return (x - m_min) / m_width;

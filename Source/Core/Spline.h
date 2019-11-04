@@ -12,8 +12,6 @@
 #ifndef QI_SPLINE_H
 #define QI_SPLINE_H
 
-
-
 #include "Eigen/Core"
 #include <unsupported/Eigen/Splines>
 
@@ -24,24 +22,27 @@ namespace QI {
  * scaling and transposes to get them working.
  */
 class SplineInterpolator {
-public:
+  public:
     typedef Eigen::Spline<double, 1> TSpline;
 
     SplineInterpolator();
-    SplineInterpolator(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y, const int order = 3);
-    double operator()(const double &x) const;
+    SplineInterpolator(Eigen::ArrayXd const &     x,
+                       Eigen::ArrayXd const &     y,
+                       const int                  order   = 3,
+                       std::vector<size_t> const &indices = std::vector<size_t>());
+    double         operator()(const double &x) const;
     Eigen::ArrayXd operator()(const Eigen::ArrayXd &x) const;
-    void print(std::ostream &ostr) const;
+    void           print(std::ostream &ostr) const;
 
-protected:
-    TSpline m_spline;
-    double m_min;
-    double m_width;
-    double scale(const double &x) const;
+  protected:
+    TSpline        m_spline;
+    double         m_min;
+    double         m_width;
+    double         scale(const double &x) const;
     Eigen::ArrayXd scale(const Eigen::ArrayXd &x) const;
 };
 
-std::ostream& operator<<(std::ostream &ostr, const SplineInterpolator &sp);
+std::ostream &operator<<(std::ostream &ostr, const SplineInterpolator &sp);
 
 } // End namespace QI
 

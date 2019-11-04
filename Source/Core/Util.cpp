@@ -122,4 +122,19 @@ std::mt19937_64::result_type RandomSeed() {
     return r;
 }
 
+std::vector<size_t> SortedUniqueIndices(Eigen::ArrayXd const &x) {
+    // Ensure sorted and no duplicates
+    std::vector<size_t> indices;
+    std::set<double>    unique_x;
+    for (long ii = 0; ii < x.size(); ii++) {
+        if (unique_x.find(x[ii]) == unique_x.end()) {
+            indices.push_back(ii);
+            unique_x.insert(x[ii]);
+        }
+    }
+    std::sort(
+        indices.begin(), indices.end(), [&](std::size_t i, std::size_t j) { return x[i] < x[j]; });
+    return indices;
+}
+
 } // namespace QI
