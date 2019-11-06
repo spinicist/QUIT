@@ -1,7 +1,7 @@
 Magnetization Transfer
 ======================
 
-MR voxels often contain complex microstructure with multiple different components or pools, each with unique relaxation properties. It is possible for magnetization to be transferred between these pools via several mechanisms, such as exchange of individual protons or entire molecules, or simple dipolar coupling from molecules that are in close proximity. These mechanisms can be studied in the related fields of Magnetization Transfer (MT) and Chemical Exchange Saturation Transfer (CEST). QUIT currently contains some basic CEST analysis tools and one for calculating simple dipolar/inhomogeneous MT ratios. In addition a tool is provided for calculating qMT parameters from SSFP data.
+MR voxels often contain complex microstructure with multiple different components or pools, each with unique relaxation properties. It is possible for magnetization to be transferred between these pools via several mechanisms, such as exchange of individual protons or entire molecules, or simple dipolar coupling from molecules that are in close proximity. These mechanisms can be studied in the related fields of Magnetization Transfer (MT) and Chemical Exchange Saturation Transfer (CEST). QUIT contains tools for quantitative MT (`qi_qmt`_, `qi_ssfp_emt`_), CEST (`qi_zspec_interp`_, `qi_lorentzian`_) and also for processing MPM data (`qi_mtsat`_). Example `nipype workflows <https://github.com/spinicist/QUIT/tree/master/Python/QUIT/workflows/cest.py>`_ for CEST analysis are also provided.
 
 * `qi_lineshape`_
 * `qi_qmt`_

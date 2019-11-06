@@ -14,6 +14,7 @@ QUIT contains a number of utilities. Note that these are actually compiled in tw
 * `qisplitsubjects`_
 * `qidiff`_
 * `qinewimage`_
+* `qi_select`_
 
 qi_coil_combine
 ---------------
@@ -406,3 +407,16 @@ The file specified on the command line is the *output* file.
 - ``--wrap, -w``
 
     Wrap output voxels at the specified value. Useful for simulating phase data.
+
+qi_select
+---------
+
+Selects a set of volumes from a 4D file and writes them to a new 4D file (a reimplemention of fslselectvols).
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi_select in_file.nii out_file.nii 2,4,6,8
+
+The last argument is a comma-separated list of the volumes you wish to select.
