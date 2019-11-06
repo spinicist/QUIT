@@ -431,3 +431,36 @@ class PolyFit(QI.BaseCommand):
         outputs = self._outputs()
         outputs.poly = loads(runtime.stdout)
         return outputs
+
+############################ qi_select ############################
+
+
+class SelectInputSpec(QI.InputBaseSpec):
+    # Inputs
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+                   position=0, desc='Input File')
+    out_file = File(exists=False, argstr='%s',
+                    position=1, desc='Output File')
+    volumes = traits.List(mandatory=True, '%s', sep=',')
+
+
+class SelectOutputSpec(TraitedSpec):
+    # Specify which outputs there are
+    out_file = File(desc="Output file")
+
+
+class Select(QI.BaseCommand):
+    """
+    Selects a set of volumes from a timeseries and writes them to another series
+
+    """
+
+    _cmd = 'qi_select'
+    input_spec = SelectInputSpec
+    output_spec = SelectOutputSpec
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        fname = self._gen_fname(self.inputs.out_file)
+        outputs['out_file'] = fname
+        return outputs
