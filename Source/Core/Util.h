@@ -50,9 +50,10 @@ const std::string &OutExt();     //!< Return the extension stored in $QUIT_EXT
 std::string StripExt(const std::string &filename); //!< Remove the extension from a filename
 std::string GetExt(const std::string &filename);   //!< Return the extension from a filename with .
 std::string Basename(const std::string &path);     //!< Return only the filename part of a path
-std::mt19937_64::result_type RandomSeed();         //!< Thread-safe random seed
-std::vector<size_t>
-SortedUniqueIndices(Eigen::ArrayXd const &x); //!< Sorted, unique indices (for splines)
+std::vector<size_t> SortedUniqueIndices(Eigen::ArrayXd const &x); //!< For splines
+std::vector<int>    IntsFromString(const std::string &s); // !!< Ints from comma-separated string
+std::mt19937_64::result_type RandomSeed();                //!< Thread-safe random seed
+
 /*
  * Helper function to calculate the volume of a voxel in an image
  */
@@ -91,17 +92,12 @@ Eigen::Array<T, D, 1> Eigenify(const itk::Vector<T, D> &itk_vector) {
 }
 
 template <typename TRegion> TRegion RegionFromString(const std::string &a) {
-    std::istringstream          iss(a);
-    std::string                 el;
+    auto                        ints = IntsFromString(a);
     typename TRegion::IndexType start;
     typename TRegion::SizeType  size;
     for (size_t i = 0; i < TRegion::ImageDimension; i++) {
-        std::getline(iss, el, ',');
-        start[i] = std::stoi(el);
-    }
-    for (size_t i = 0; i < TRegion::ImageDimension; i++) {
-        std::getline(iss, el, ',');
-        size[i] = std::stoi(el);
+        start[i] = ints[i];
+        size[i]  = ints[i + TRegion::ImageDimension];
     }
     TRegion r;
     r.SetIndex(start);

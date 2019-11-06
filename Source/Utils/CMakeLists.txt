@@ -5,7 +5,7 @@ if( ${BUILD_UTILITIES} )
             qi_coil_combine
             qicomplex
             qi_gradient
-            qikfilter    
+            qikfilter
             qimask
             qi_pca
             qipolyfit
@@ -13,6 +13,7 @@ if( ${BUILD_UTILITIES} )
             qi_rfprofile
             qi_tvmask
             qi_ssfp_bands
+            qi_select
     )
 
     foreach(PROGRAM ${PROGRAMS})

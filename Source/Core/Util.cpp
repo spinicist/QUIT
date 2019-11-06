@@ -137,4 +137,14 @@ std::vector<size_t> SortedUniqueIndices(Eigen::ArrayXd const &x) {
     return indices;
 }
 
+std::vector<int> IntsFromString(const std::string &s) {
+    std::istringstream iss(s);
+    std::string        el;
+    std::vector<int>   list;
+    while (std::getline(iss, el, ',')) {
+        list.push_back(std::stoi(el));
+    }
+    return list;
+}
+
 } // namespace QI
