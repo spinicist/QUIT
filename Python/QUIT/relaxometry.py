@@ -17,15 +17,19 @@ class DESPOT1InputSpec(QI.FitInputSpec):
     # Additional Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     algo = traits.String(desc="Choose algorithm (l/w/n)", argstr="--algo=%s")
-    iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
-    clamp_PD = traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f')
-    clamp_T1 = traits.Float(desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
+    iterations = traits.Int(
+        desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
+    clamp_PD = traits.Float(
+        desc='Clamp PD between 0 and value', argstr='-f %f')
+    clamp_T1 = traits.Float(
+        desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
 
 
 class DESPOT1OutputSpec(TraitedSpec):
     t1_map = File('D1_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     pd_map = File('D1_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    rmse_map = File('D1_rmse.nii.gz', desc="Path to residual map", usedefault=True)
+    rmse_map = File('D1_rmse.nii.gz',
+                    desc="Path to residual map", usedefault=True)
 
 
 class DESPOT1(QI.FitCommand):
@@ -51,7 +55,7 @@ class DESPOT1(QI.FitCommand):
 
     """
 
-    _cmd = 'qidespot1'
+    _cmd = 'qi despot1'
     input_spec = DESPOT1InputSpec
     output_spec = DESPOT1OutputSpec
 
@@ -80,7 +84,7 @@ class DESPOT1Sim(QI.SimCommand):
 
     """
 
-    _cmd = 'qidespot1'
+    _cmd = 'qi despot1'
     _param_files = ['PD', 'T1']
     input_spec = DESPOT1SimInputSpec
     output_spec = QI.SimOutputSpec
@@ -97,15 +101,18 @@ class HIFIInputSpec(QI.InputSpec):
                        position=-1, desc='Path to MPRAGE data')
 
     # Options
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
-    clamp_T1 = traits.Float(desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
+    residuals = traits.Bool(
+        desc='Write out residuals for each data-point', argstr='--resids')
+    clamp_T1 = traits.Float(
+        desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
 
 
 class HIFIOutputSpec(TraitedSpec):
     t1_map = File('HIFI_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     pd_map = File('HIFI_PD.nii.gz', desc="Path to PD map", usedefault=True)
     b1_map = File('HIFI_B1.nii.gz', desc="Path to B1 map", usedefault=True)
-    rmse_map = File('HIFI_rmse.nii.gz', desc="Path to residual map", usedefault=True)
+    rmse_map = File('HIFI_rmse.nii.gz',
+                    desc="Path to residual map", usedefault=True)
 
 
 class HIFI(QI.FitCommand):
@@ -125,7 +132,7 @@ class HIFI(QI.FitCommand):
 
     """
 
-    _cmd = 'qidespot1hifi'
+    _cmd = 'qi despot1hifi'
     input_spec = HIFIInputSpec
     output_spec = HIFIOutputSpec
 
@@ -165,7 +172,7 @@ class HIFISim(QI.SimCommand):
 
     """
 
-    _cmd = 'qidespot1hifi'
+    _cmd = 'qi despot1hifi'
     _param_files = ['PD', 'T1', 'B1']
     input_spec = HIFISimInputSpec
     output_spec = HIFISimOutputSpec
@@ -186,17 +193,23 @@ class DESPOT2InputSpec(QI.FitInputSpec):
 
     # Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    algo = traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d")
-    ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
-    iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
-    clamp_PD = traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f')
-    clamp_T2 = traits.Float(desc='Clamp T2 between 0 and value', argstr='--clampT1=%f')
+    algo = traits.Enum("LLS", "WLS", "NLS",
+                       desc="Choose algorithm", argstr="--algo=%d")
+    ellipse = traits.Bool(
+        desc="Data is ellipse geometric solution", argstr='--gs')
+    iterations = traits.Int(
+        desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
+    clamp_PD = traits.Float(
+        desc='Clamp PD between 0 and value', argstr='-f %f')
+    clamp_T2 = traits.Float(
+        desc='Clamp T2 between 0 and value', argstr='--clampT1=%f')
 
 
 class DESPOT2OutputSpec(TraitedSpec):
     t2_map = File('D2_T2.nii.gz', desc="Path to T2 map", usedefault=True)
     pd_map = File('D2_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    rmse_map = File('D2_rmse.nii.gz', desc="Path to residual map", usedefault=True)
+    rmse_map = File('D2_rmse.nii.gz',
+                    desc="Path to residual map", usedefault=True)
 
 
 class DESPOT2(QI.FitCommand):
@@ -224,7 +237,7 @@ class DESPOT2(QI.FitCommand):
 
     """
 
-    _cmd = 'qidespot2'
+    _cmd = 'qi despot2'
     input_spec = DESPOT2InputSpec
     output_spec = DESPOT2OutputSpec
 
@@ -238,7 +251,8 @@ class DESPOT2SimInputSpec(QI.SimInputSpec):
 
     # Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    ellipse = traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs')
+    ellipse = traits.Bool(
+        desc="Data is ellipse geometric solution", argstr='--gs')
 
 
 class DESPOT2Sim(QI.SimCommand):
@@ -259,7 +273,7 @@ class DESPOT2Sim(QI.SimCommand):
 
     """
 
-    _cmd = 'qidespot2'
+    _cmd = 'qi despot2'
     _param_files = ['PD', 'T2']
     input_spec = DESPOT2SimInputSpec
     output_spec = QI.SimOutputSpec
@@ -274,15 +288,19 @@ class FMInputSpec(QI.FitInputSpec):
 
     # Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
-    algo = traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d")
+    asym = traits.Bool(
+        desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
+    algo = traits.Enum("LLS", "WLS", "NLS",
+                       desc="Choose algorithm", argstr="--algo=%d")
 
 
 class FMOutputSpec(TraitedSpec):
     t2_map = File('FM_T2.nii.gz', desc="Path to T2 map", usedefault=True)
     pd_map = File('FM_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    f0_map = File('FM_f0.nii.gz', desc="Path to f0 (off-resonance) map", usedefault=True)
-    rmse_map = File('FM_rmse.nii.gz', desc="Path to residual map", usedefault=True)
+    f0_map = File('FM_f0.nii.gz',
+                  desc="Path to f0 (off-resonance) map", usedefault=True)
+    rmse_map = File('FM_rmse.nii.gz',
+                    desc="Path to residual map", usedefault=True)
 
 
 class FM(QI.FitCommand):
@@ -301,7 +319,7 @@ class FM(QI.FitCommand):
 
     """
 
-    _cmd = 'qidespot2fm'
+    _cmd = 'qi despot2fm'
     input_spec = FMInputSpec
     output_spec = FMOutputSpec
 
@@ -313,7 +331,8 @@ class FMSimInputSpec(QI.SimInputSpec):
 
     # Options
     b1_map = File(desc='B1 map (ratio)', argstr='--B1=%s')
-    asym = traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
+    asym = traits.Bool(
+        desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
 
 
 class FMSim(QI.SimCommand):
@@ -322,7 +341,7 @@ class FMSim(QI.SimCommand):
 
     """
 
-    _cmd = 'qidespot2fm'
+    _cmd = 'qi despot2fm'
     _param_files = ['PD', 'T2', 'f0']
     input_spec = FMSimInputSpec
     output_spec = QI.SimOutputSpec
@@ -340,16 +359,20 @@ class JSRInputSpec(QI.InputSpec):
 
     # Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
-    npsi = traits.Int(desc='Number of psi/off-resonance starts', argstr='--npsi=%d')
+    residuals = traits.Bool(
+        desc='Write out residuals for each data-point', argstr='--resids')
+    npsi = traits.Int(
+        desc='Number of psi/off-resonance starts', argstr='--npsi=%d')
 
 
 class JSROutputSpec(TraitedSpec):
     pd_map = File('JSR_PD.nii.gz', desc='Path to PD map', usedefault=True)
     t1_map = File('JSR_T1.nii.gz', desc='Path to T1 map', usedefault=True)
     t2_map = File('JSR_T2.nii.gz', desc='Path to T2 map', usedefault=True)
-    f0_map = File('JSR_df0.nii.gz', desc='Path to off-resonance map', usedefault=True)
-    rmse_map = File('JSR_rmse.nii.gz', desc='Path to residual map', usedefault=True)
+    f0_map = File('JSR_df0.nii.gz',
+                  desc='Path to off-resonance map', usedefault=True)
+    rmse_map = File('JSR_rmse.nii.gz',
+                    desc='Path to residual map', usedefault=True)
 
 
 class JSR(QI.FitCommand):
@@ -358,7 +381,7 @@ class JSR(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_jsr'
+    _cmd = 'qi jsr'
     input_spec = JSRInputSpec
     output_spec = JSROutputSpec
 
@@ -380,16 +403,24 @@ class QIMCDespotInputSpec(QI.InputSpec):
     # Options
     f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
     B1_map = File(desc='B1 map (ratio)', argstr='--B1=%s', exists=True)
-    mask = File(desc='Only process voxels within the mask', argstr='--mask=%s', exists=True)
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resid')
+    mask = File(desc='Only process voxels within the mask',
+                argstr='--mask=%s', exists=True)
+    residuals = traits.Bool(
+        desc='Write out residuals for each data-point', argstr='--resid')
     model = traits.Enum("1", "2", "2nex", "3", "3_f0", "3nex", desc="Select model to fit - 1/2/2nex/3/3_f0/3nex, default 3",
                         argstr="--model=%d")
-    scale = traits.Bool(desc='Normalize signals to mean (a good idea)', argstr='--scale')
-    algo = traits.Enum("S", "G", desc="Select (S)tochastic or (G)aussian Region Contraction", argstr="--algo=%d")
-    iterations = traits.Int(desc='Max iterations, default 4', argstr='---its=%d')
-    field_strength = traits.Float(desc='Specify field-strength for fitting regions - 3/7/u for user input', argstr='--tesla=%f')
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
+    scale = traits.Bool(
+        desc='Normalize signals to mean (a good idea)', argstr='--scale')
+    algo = traits.Enum(
+        "S", "G", desc="Select (S)tochastic or (G)aussian Region Contraction", argstr="--algo=%d")
+    iterations = traits.Int(
+        desc='Max iterations, default 4', argstr='---its=%d')
+    field_strength = traits.Float(
+        desc='Specify field-strength for fitting regions - 3/7/u for user input', argstr='--tesla=%f')
+    threads = traits.Int(
+        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    prefix = traits.String(
+        desc='Add a prefix to output filenames', argstr='--out=%s')
 
 
 class QIMCDespotOutputSpec(TraitedSpec):
@@ -400,11 +431,14 @@ class QIMCDespotOutputSpec(TraitedSpec):
     output_3C_T2_ie = File(desc="T2 of intra/extra-cellular water")
     output_3C_T1_csf = File(desc="T1 of CSF")
     output_3C_T2_csf = File(desc="T2 of CSF")
-    output_3C_tau_m = File(desc="The residence time of myelin water (reciprocal of forward exchange rate)")
+    output_3C_tau_m = File(
+        desc="The residence time of myelin water (reciprocal of forward exchange rate)")
     output_3C_f_m = File(desc="The Myelin Water Fraction (MWF)")
     output_3C_f_csf = File(desc="The CSF Fraction")
-    output_3C_f0 = File(desc="The off-resonance frequency. If this was specified on the command line, it will be a copy of that file")
-    output_3C_B1 = File(desc="The relative flip-angle map. If this was specified on the command line, it will be a copy of that file")
+    output_3C_f0 = File(
+        desc="The off-resonance frequency. If this was specified on the command line, it will be a copy of that file")
+    output_3C_B1 = File(
+        desc="The relative flip-angle map. If this was specified on the command line, it will be a copy of that file")
 
 
 class QIMCDespot(QI.FitCommand):
@@ -417,7 +451,7 @@ class QIMCDespot(QI.FitCommand):
     >>> interface = QiMcDespot(prefix='nipype_', param_file='mcdespot_params.json')
     """
 
-    _cmd = 'qimcdespot'
+    _cmd = 'qi mcdespot'
     input_spec = QIMCDespotInputSpec
     output_spec = QIMCDespotOutputSpec
 
@@ -432,7 +466,8 @@ class QIMCDespot(QI.FitCommand):
         outputs = ['3C_T1_m', '3C_T2_m', '3C_T1_ie', '3C_T2_ie', '3C_T1_csf', '3C_T2_csf',
                    '3C_tau_m', '3C_f_m', '3C_f_csf', '3C_f0', '3C_B1']
         for op in outputs:
-            outputs['output_{}'.format(op)] = os.path.abspath(self._add_prefix('{}.nii.gz'.format(op)))
+            outputs['output_{}'.format(op)] = os.path.abspath(
+                self._add_prefix('{}.nii.gz'.format(op)))
         return outputs
 
 ############################ qimp2rage ############################
@@ -445,12 +480,16 @@ class MP2RAGEInputSpec(QI.InputSpec):
                        position=0, desc='Path to complex MP-RAGE data')
 
     # Options
-    mask = File(desc='Only process voxels within the mask', argstr='--mask=%s', exists=True)
-    automask = traits.Bool(desc='Create a mask from the sum of squares image', argstr='--automask')
+    mask = File(desc='Only process voxels within the mask',
+                argstr='--mask=%s', exists=True)
+    automask = traits.Bool(
+        desc='Create a mask from the sum of squares image', argstr='--automask')
 
     # Commonly used options
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
+    threads = traits.Int(
+        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    prefix = traits.String(
+        desc='Add a prefix to output filenames', argstr='--out=%s')
 
 
 class MP2RAGEOutputSpec(TraitedSpec):
@@ -470,7 +509,7 @@ class MP2RAGE(QI.FitCommand):
 
     """
 
-    _cmd = 'qimp2rage'
+    _cmd = 'qi mp2rage'
     input_spec = MP2RAGEInputSpec
     output_spec = MP2RAGEOutputSpec
 
@@ -485,8 +524,10 @@ class MP2RAGE(QI.FitCommand):
         input_bname = os.path.basename(self.inputs.mprage_data)
         input_fname = os.path.splitext(os.path.split(input_bname)[-1])
 
-        outputs['contrast'] = os.path.abspath(self._add_prefix(input_fname + '_contrast.nii.gz'))
-        outputs['t1map'] = os.path.abspath(self._add_prefix(input_fname + '_T1.nii.gz'))
+        outputs['contrast'] = os.path.abspath(
+            self._add_prefix(input_fname + '_contrast.nii.gz'))
+        outputs['t1map'] = os.path.abspath(
+            self._add_prefix(input_fname + '_T1.nii.gz'))
 
         return outputs
 
@@ -496,15 +537,21 @@ class MP2RAGE(QI.FitCommand):
 class MultiechoInputSpec(QI.FitInputSpec):
     # Options
     algo = traits.String(desc="Choose algorithm (l/a/n)", argstr="--algo=%s")
-    iterations = traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
-    thresh_PD = traits.Float(desc='Only output maps when PD exceeds threshold value', argstr='-t=%f')
-    clamp_T2 = traits.Float(desc='Clamp T2 between 0 and value', argstr='-p=%f')
+    iterations = traits.Int(
+        desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
+    thresh_PD = traits.Float(
+        desc='Only output maps when PD exceeds threshold value', argstr='-t=%f')
+    clamp_T2 = traits.Float(
+        desc='Clamp T2 between 0 and value', argstr='-p=%f')
 
 
 class MultiechoOutputSpec(TraitedSpec):
-    t2_map = File('ME_T2.nii.gz', desc='The T2 map. Units are the same as TE1 and ESP', usedefault=True)
-    pd_map = File('ME_PD.nii.gz', desc='The apparent proton-density map (intercept of the decay curve at TE=0)', usedefault=True)
-    rmse_map = File('ME_rmse.nii.gz', desc='Path to residual map', usedefault=True)
+    t2_map = File(
+        'ME_T2.nii.gz', desc='The T2 map. Units are the same as TE1 and ESP', usedefault=True)
+    pd_map = File(
+        'ME_PD.nii.gz', desc='The apparent proton-density map (intercept of the decay curve at TE=0)', usedefault=True)
+    rmse_map = File('ME_rmse.nii.gz',
+                    desc='Path to residual map', usedefault=True)
 
 
 class Multiecho(QI.FitCommand):
@@ -518,7 +565,7 @@ class Multiecho(QI.FitCommand):
 
     """
 
-    _cmd = 'qimultiecho'
+    _cmd = 'qi multiecho'
     input_spec = MultiechoInputSpec
     output_spec = MultiechoOutputSpec
 
@@ -534,7 +581,7 @@ class MultiechoSim(QI.SimCommand):
 
     """
 
-    _cmd = 'qimultiecho'
+    _cmd = 'qi multiecho'
     _param_files = ['PD', 'T2']
     input_spec = QI.SimInputSpec
     output_spec = QI.SimOutputSpec
@@ -554,14 +601,19 @@ class MPMR2sInputSpec(QI.InputSpec):
                     position=-1, desc='Path to MT-weighted data')
 
     # Options
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+    residuals = traits.Bool(
+        desc='Write out residuals for each data-point', argstr='--resids')
 
 
 class MPMR2sOutputSpec(TraitedSpec):
-    r2s_map = File('MPM_R2s.nii.gz', desc='The R2* map. Units are the same as TE1 and ESP', usedefault=True)
-    s0_pdw = File('MPM_S0_PDw.nii.gz', desc='Intercept of the decay curve at TE=0 for PDw', usedefault=True)
-    s0_t1w = File('MPM_S0_T1w.nii.gz', desc='Intercept of the decay curve at TE=0 for T1w', usedefault=True)
-    s0_mtw = File('MPM_S0_MTw.nii.gz', desc='Intercept of the decay curve at TE=0 for MTw', usedefault=True)
+    r2s_map = File(
+        'MPM_R2s.nii.gz', desc='The R2* map. Units are the same as TE1 and ESP', usedefault=True)
+    s0_pdw = File('MPM_S0_PDw.nii.gz',
+                  desc='Intercept of the decay curve at TE=0 for PDw', usedefault=True)
+    s0_t1w = File('MPM_S0_T1w.nii.gz',
+                  desc='Intercept of the decay curve at TE=0 for T1w', usedefault=True)
+    s0_mtw = File('MPM_S0_MTw.nii.gz',
+                  desc='Intercept of the decay curve at TE=0 for MTw', usedefault=True)
 
 
 class MPMR2s(QI.FitCommand):
@@ -570,7 +622,7 @@ class MPMR2s(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_mpm_r2s'
+    _cmd = 'qi mpm_r2s'
     input_spec = MPMR2sInputSpec
     output_spec = MPMR2sOutputSpec
 
@@ -584,11 +636,16 @@ class QIDreamInputSpec(QI.InputSpec):
                       position=0, desc='Input file. Must have 2 volumes (FID and STE)')
 
     # Options
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
-    order = traits.String(desc='Volume order - f/s/v - fid/ste/vst first', argstr='--order=%s')
-    mask_file = File(desc='Only process voxels within the mask', argstr='--mask=%s')
-    alpha = traits.Float(desc="Nominal flip-angle (default 55)", argstr="--alpha=%f")
+    threads = traits.Int(
+        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    prefix = traits.String(
+        desc='Add a prefix to output filenames', argstr='--out=%s')
+    order = traits.String(
+        desc='Volume order - f/s/v - fid/ste/vst first', argstr='--order=%s')
+    mask_file = File(
+        desc='Only process voxels within the mask', argstr='--mask=%s')
+    alpha = traits.Float(
+        desc="Nominal flip-angle (default 55)", argstr="--alpha=%f")
 
 
 class QIDreamOutputSpec(TraitedSpec):
@@ -607,7 +664,7 @@ class QIDream(QI.BaseCommand):
 
     """
 
-    _cmd = 'qidream'
+    _cmd = 'qi dream'
     input_spec = QIDreamInputSpec
     output_spec = QIDreamOutputSpec
 
@@ -617,8 +674,10 @@ class QIDream(QI.BaseCommand):
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        outputs['b1_rel_map'] = os.path.abspath(self._add_prefix('DREAM_B1.nii.gz'))
-        outputs['b1_act_map'] = os.path.abspath(self._add_prefix('DREAM_angle.nii.gz'))
+        outputs['b1_rel_map'] = os.path.abspath(
+            self._add_prefix('DREAM_B1.nii.gz'))
+        outputs['b1_act_map'] = os.path.abspath(
+            self._add_prefix('DREAM_angle.nii.gz'))
 
         return outputs
 
@@ -628,14 +687,20 @@ class QIDream(QI.BaseCommand):
 
 class QIAFIInputSpec(QI.InputSpec):
     # Inputs
-    afi_file = File(exists=True, argstr='%s', mandatory=True, position=0, desc='Input file')
+    afi_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=0, desc='Input file')
 
     # Options
-    threads = traits.Int(desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    prefix = traits.String(desc='Add a prefix to output filenames', argstr='--out=%s')
-    alpha = traits.Float(desc="Specify nominal flip-angle, default 55", argstr="--flip=%f")
-    tr_ratio = traits.Float(desc="Specify TR2:TR1 ratio, default 5", argstr="--ratio=%f")
-    save_act_b1 = traits.Bool(desc="Write out the actual flip-angle as well as B1", argstr="--save")
+    threads = traits.Int(
+        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    prefix = traits.String(
+        desc='Add a prefix to output filenames', argstr='--out=%s')
+    alpha = traits.Float(
+        desc="Specify nominal flip-angle, default 55", argstr="--flip=%f")
+    tr_ratio = traits.Float(
+        desc="Specify TR2:TR1 ratio, default 5", argstr="--ratio=%f")
+    save_act_b1 = traits.Bool(
+        desc="Write out the actual flip-angle as well as B1", argstr="--save")
 
 
 class QIAFIOutputSpec(TraitedSpec):
@@ -655,7 +720,7 @@ class QIAFI(QI.BaseCommand):
 
     """
 
-    _cmd = 'qiafi'
+    _cmd = 'qi afi'
     input_spec = QIAFIInputSpec
     output_spec = QIAFIOutputSpec
 
@@ -665,8 +730,10 @@ class QIAFI(QI.BaseCommand):
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        outputs['b1_rel_map'] = os.path.abspath(self._add_prefix('AFI_B1.nii.gz'))
-        outputs['b1_act_map'] = os.path.abspath(self._add_prefix('AFI_angle.nii.gz'))
+        outputs['b1_rel_map'] = os.path.abspath(
+            self._add_prefix('AFI_B1.nii.gz'))
+        outputs['b1_act_map'] = os.path.abspath(
+            self._add_prefix('AFI_angle.nii.gz'))
         return outputs
 
 ############################ qi_ssfp_elipse ############################
@@ -695,7 +762,7 @@ class Ellipse(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_ssfp_ellipse'
+    _cmd = 'qi ssfp_ellipse'
     input_spec = EllipseInputSpec
     output_spec = EllipseOutputSpec
 
@@ -706,7 +773,7 @@ class EllipseSim(QI.SimCommand):
 
     """
 
-    _cmd = 'qi_ssfp_ellipse'
+    _cmd = 'qi ssfp_ellipse'
     _param_files = ['G', 'a', 'b', 'theta_0', 'phi_rf']
     input_spec = QI.SimInputSpec
     output_spec = QI.SimOutputSpec
@@ -743,7 +810,7 @@ class PLANET(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_planet'
+    _cmd = 'qi planet'
     input_spec = PLANETInputSpec
     output_spec = PLANETOutputSpec
 
@@ -770,7 +837,7 @@ class PLANETSim(QI.SimCommand):
 
     """
 
-    _cmd = 'qi_planet'
+    _cmd = 'qi planet'
     _param_files = ['PD', 'T1', 'T2']
     input_spec = PLANETSimInputSpec
     output_spec = PLANETSimOutputSpec

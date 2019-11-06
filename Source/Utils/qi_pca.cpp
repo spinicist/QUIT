@@ -27,7 +27,7 @@
 
 using namespace std::literals;
 
-int main(int argc, char **argv) {
+int pca_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("De-noises using Principal Component Analysis"
                                 "\nhttp://github.com/spinicist/QUIT");

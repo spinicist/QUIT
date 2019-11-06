@@ -169,7 +169,7 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
 
 } // End namespace itk
 
-int main(int argc, char **argv) {
+int rfprofile_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Generates a relative B1 map from a B1+ and RF profile.\nInput is "
                                 "the B1+ map.\nhttp://github.com/spinicist/QUIT");

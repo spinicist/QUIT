@@ -56,7 +56,7 @@ class NewImage(CommandLine):
     >>> print(sim_res.outputs)
     """
 
-    _cmd = 'qinewimage'
+    _cmd = 'qi newimage'
     input_spec = NewImageInputSpec
     output_spec = NewImageOutputSpec
 
@@ -91,7 +91,7 @@ class Diff(CommandLine):
     Compare two images
     """
 
-    _cmd = 'qidiff'
+    _cmd = 'qi diff'
     input_spec = DiffInputSpec
     output_spec = DiffOutputSpec
 

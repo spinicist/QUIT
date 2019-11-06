@@ -14,7 +14,7 @@
 #include "Lineshape.h"
 #include "Util.h"
 
-int main(int argc, char **argv) {
+int lineshape_main(int argc, char **argv) {
     Eigen::initParallel();
 
     args::ArgumentParser parser(

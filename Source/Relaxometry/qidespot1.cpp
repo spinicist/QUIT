@@ -19,7 +19,6 @@
 #include "Model.h"
 #include "ModelFitFilter.h"
 #include "OnePoolSignals.h"
-#include "SPGRSequence.h"
 #include "SimulateModel.h"
 #include "Util.h"
 
@@ -165,7 +164,7 @@ struct DESPOT1NLLS : DESPOT1Fit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int despot1_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates T1 maps from SPGR data\nhttp://github.com/spinicist/QUIT");

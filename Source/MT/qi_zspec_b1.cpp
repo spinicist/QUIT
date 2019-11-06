@@ -25,7 +25,7 @@
 #include "Spline.h"
 #include "Util.h"
 
-int main(int argc, char **argv) {
+int zspec_b1_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "B1-correction for Z-spectrums using linear "
@@ -105,10 +105,10 @@ int main(int argc, char **argv) {
                 const double B1 = b1_it.Get();
                 if (!mask_image || mask_it.Get()) {
                     std::vector<Eigen::Map<const Eigen::ArrayXf>> in_z;
-                    std::vector<itk::VariableLengthVector<float>>       out_z;
+                    std::vector<itk::VariableLengthVector<float>> out_z;
                     for (const auto &ii : in_its) {
                         in_z.emplace_back(ii.Get().GetDataPointer(), Nz);
-			itk::VariableLengthVector<float> temp(Nz);
+                        itk::VariableLengthVector<float> temp(Nz);
                         out_z.push_back(temp);
                     }
 

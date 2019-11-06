@@ -356,7 +356,7 @@ class MinEnergyFilter : public ImageToImageFilter<QI::VectorVolumeXF, QI::Vector
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int ssfp_bands_main(int argc, char **argv) {
     Eigen::initParallel();
 
     args::ArgumentParser parser("Removes bands from SSFP images.\n"

@@ -101,7 +101,7 @@ struct PLANETFit {
     }
 };
 
-int main(int argc, char **argv) {
+int planet_main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Calculates T1&T2 from SSFP Ellipse Parameters.\nhttp://github.com/spinicist/QUIT");
 

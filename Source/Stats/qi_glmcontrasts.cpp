@@ -207,7 +207,7 @@ class ContrastsFilter : public itk::ImageToImageFilter<QI::VectorVolumeF, QI::Vo
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int glm_contrasts_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser          parser("A utility for calculating group means, differences etc.\n"
                                 "One output file will be generated for each contrast.\n"
@@ -256,4 +256,5 @@ int main(int argc, char **argv) {
                        outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt(),
                        verbose);
     }
+    return EXIT_SUCCESS;
 }

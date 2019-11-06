@@ -19,7 +19,7 @@
 #include "JSON.h"
 #include "Util.h"
 
-int main(int argc, char **argv) {
+int fieldmap_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Simple field-map via complex "
                                 "division\nhttp://github.com/spinicist/QUIT");

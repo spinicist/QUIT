@@ -166,7 +166,7 @@ using ASEFixDBVFit = QI::ScaledNLLSFitFunction<ASEFixDBVModel>;
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int ase_oef_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates the OEF from ASE data.\nhttp://github.com/spinicist/QUIT");

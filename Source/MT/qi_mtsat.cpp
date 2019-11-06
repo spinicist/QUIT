@@ -47,7 +47,7 @@ void to_json(json &j, const MTSatSequence &s) {
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int mtsat_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates MTsat from PDw, T1w, MTw data.\nhttp://github.com/spinicist/QUIT");

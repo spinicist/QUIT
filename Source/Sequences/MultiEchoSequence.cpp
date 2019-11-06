@@ -9,8 +9,8 @@
  *
  */
 
-#include "MultiEchoSequence.h"
 #include "Log.h"
+#include "MultiEchoSequence.h"
 
 namespace QI {
 

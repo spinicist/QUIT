@@ -73,10 +73,10 @@ class CoilCombineFilter : public itk::ImageToImageFilter<QI::VectorVolumeXF, QI:
             const auto input_vec = input_iter.Get();
             const auto ref_vec   = ref_iter.Get();
 
-            Eigen::Map<const Eigen::ArrayXXcf> data(input_vec.GetDataPointer(), m_images_per_coil,
-                                                    m_coils);
-            Eigen::Map<const Eigen::ArrayXcf>  ref(ref_vec.GetDataPointer(), m_coils);
-            const Eigen::ArrayXcf              correction = ref / ref.abs();
+            Eigen::Map<const Eigen::ArrayXXcf> data(
+                input_vec.GetDataPointer(), m_images_per_coil, m_coils);
+            Eigen::Map<const Eigen::ArrayXcf> ref(ref_vec.GetDataPointer(), m_coils);
+            const Eigen::ArrayXcf             correction = ref / ref.abs();
             // Remove phase
             const Eigen::ArrayXXcf phase_corrected = data.rowwise() / correction.transpose();
             // Then average
@@ -151,8 +151,8 @@ class HammondCombineFilter
         while (!input_iter.IsAtEnd()) {
             const auto input_vec = input_iter.Get();
 
-            Eigen::Map<const Eigen::ArrayXXcf> data(input_vec.GetDataPointer(), m_images_per_coil,
-                                                    m_coils);
+            Eigen::Map<const Eigen::ArrayXXcf> data(
+                input_vec.GetDataPointer(), m_images_per_coil, m_coils);
             // Remove phase
             const Eigen::ArrayXXcf phase_corrected = data.rowwise() / m_hammond_ref.transpose();
             // Then average
@@ -221,7 +221,7 @@ class ComplexVectorMeanFilter
     void operator=(const Self &);          // purposely not implemented
 };
 
-int main(int argc, char **argv) {
+int coil_combine_main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Combine multiple coil images into a single image.\n"
         "Default method is that of Hammond, 10.1016/j.neuroimage.2007.10.037\n"
@@ -230,23 +230,33 @@ int main(int argc, char **argv) {
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file to coil-combine");
     args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> region_arg(
-        parser, "REGION",
+        parser,
+        "REGION",
         "Region to average phase for Hammond method, default is 8x8x8 cube at center",
         {'r', "region"});
-    args::ValueFlag<std::string> ser_path(parser, "COMPOSER",
+    args::ValueFlag<std::string> ser_path(parser,
+                                          "COMPOSER",
                                           "Short Echo Time reference file for COMPOSER method",
                                           {'c', "composer"});
     args::ValueFlag<int>         coils_arg(
-        parser, "COILS", "Number of coils for Hammond method (default is number of volumes)",
-        {'C', "coils"}, -1);
-    args::ValueFlag<int> ref_vol(parser, "VOLUME",
+        parser,
+        "COILS",
+        "Number of coils for Hammond method (default is number of volumes)",
+        {'C', "coils"},
+        -1);
+    args::ValueFlag<int> ref_vol(parser,
+                                 "VOLUME",
                                  "Volume to use as reference for Hammond method (default is 1)",
-                                 {'V', "vol"}, 1);
+                                 {'V', "vol"},
+                                 1);
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     auto input_image = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);

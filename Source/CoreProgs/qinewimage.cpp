@@ -19,9 +19,7 @@
 #include "ImageIO.h"
 #include "Util.h"
 
-/*
- * Define arguments globally because I am lazy
- */
+namespace {
 args::ArgumentParser
     parser("This is a tool to create 3D Nifti files, either blank headers with orientation "
            "information, e.g. for registration, or files filled with simple patterns of "
@@ -45,6 +43,7 @@ args::ValueFlag<std::string>
 args::ValueFlag<int>
                        steps_arg(parser, "STEPS", "Number of discrete steps (steps)", {'t', "steps"}, 1);
 args::ValueFlag<float> wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
+} // namespace
 
 template <int dim> void make_image() {
     typedef itk::Image<float, dim> ImageType;
@@ -144,7 +143,7 @@ template <int dim> void make_image() {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int newimage_main(int argc, char **argv) {
 
     QI::ParseArgs(parser, argc, argv, verbose);
     if (dims_arg.Get() == 3) {

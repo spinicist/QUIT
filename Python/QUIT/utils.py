@@ -43,7 +43,7 @@ class PCA(QI.BaseCommand):
     """
     Denoise an image using Principal Components
     """
-    _cmd = 'qi_pca'
+    _cmd = 'qi pca'
     input_spec = PCAInputSpec
     output_spec = PCAOutputSpec
 
@@ -104,7 +104,7 @@ class RFProfile(QI.BaseCommand):
 
     """
 
-    _cmd = 'qi_rfprofile'
+    _cmd = 'qi rfprofile'
     input_spec = RFProfileInputSpec
     output_spec = RFProfileOutputSpec
 
@@ -166,7 +166,7 @@ class Affine(CommandLine):
 
     """
 
-    _cmd = 'qiaffine'
+    _cmd = 'qi affine'
     input_spec = AffineInputSpec
     output_spec = AffineOutputSpec
 
@@ -220,7 +220,7 @@ class Mask(QI.BaseCommand):
 
     """
 
-    _cmd = 'qimask'
+    _cmd = 'qi mask'
     input_spec = MaskInputSpec
     output_spec = MaskOutputSpec
 
@@ -285,7 +285,7 @@ class Complex(QI.BaseCommand):
 
     """
 
-    _cmd = 'qicomplex'
+    _cmd = 'qi complex'
     input_spec = ComplexInputSpec
     output_spec = ComplexOutputSpec
 
@@ -338,7 +338,7 @@ class Filter(QI.BaseCommand):
     """
     Filter an image in k-space
     """
-    _cmd = 'qikfilter'
+    _cmd = 'qi kfilter'
     input_spec = FilterInputSpec
     output_spec = FilterOutputSpec
 
@@ -379,7 +379,7 @@ class PolyImage(QI.BaseCommand):
     Produce a new image with qipolyimage
     """
 
-    _cmd = 'qipolyimg'
+    _cmd = 'qi polyimg'
     input_spec = PolyImageInputSpec
     output_spec = PolyImageOutputSpec
 
@@ -423,7 +423,7 @@ class PolyFit(QI.BaseCommand):
     """
     Fit a polynomial to an image
     """
-    _cmd = 'qipolyfit'
+    _cmd = 'qi polyfit'
     input_spec = PolyFitInputSpec
     output_spec = PolyFitOutputSpec
 
@@ -441,7 +441,7 @@ class SelectInputSpec(QI.InputBaseSpec):
                    position=0, desc='Input File')
     out_file = File(exists=False, argstr='%s',
                     position=1, desc='Output File')
-    volumes = traits.List(mandatory=True, '%s', sep=',')
+    volumes = traits.List(mandatory=True, argstr='%s', sep=',')
 
 
 class SelectOutputSpec(TraitedSpec):
@@ -455,7 +455,7 @@ class Select(QI.BaseCommand):
 
     """
 
-    _cmd = 'qi_select'
+    _cmd = 'qi select'
     input_spec = SelectInputSpec
     output_spec = SelectOutputSpec
 

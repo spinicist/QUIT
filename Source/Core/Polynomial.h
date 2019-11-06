@@ -18,7 +18,7 @@
 namespace QI {
 
 // From Knuth, surprised this isn't in STL
-unsigned long long Choose(unsigned long long n, unsigned long long k) {
+inline unsigned long long Choose(unsigned long long n, unsigned long long k) {
     if (k > n)
         return 0;
 

@@ -274,7 +274,7 @@ struct JSRFit {
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int jsr_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser          parser("Calculates T1/T2 from simultaneous fit to SPGR/SSFP "
                                 "data.\nhttp://github.com/spinicist/QUIT");

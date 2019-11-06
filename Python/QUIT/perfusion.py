@@ -49,7 +49,7 @@ class ASL(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_asl'
+    _cmd = 'qi asl'
     input_spec = ASLInputSpec
     output_spec = ASLOutputSpec
 
@@ -90,7 +90,7 @@ class ASE(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_ase_oef'
+    _cmd = 'qi ase_oef'
     input_spec = ASEInputSpec
     output_spec = ASEOutputSpec
 
@@ -119,7 +119,7 @@ class ASESim(QI.SimCommand):
 
     """
 
-    _cmd = 'qi_ase_oef'
+    _cmd = 'qi ase_oef'
     input_spec = ASESimInputSpec
     output_spec = QI.SimOutputSpec
 
@@ -150,7 +150,7 @@ class ZShim(QI.BaseCommand):
     """
     Combine an EPI image with Z/Y-shimming
     """
-    _cmd = 'qi_zshim'
+    _cmd = 'qi zshim'
     input_spec = ZShimInputSpec
     output_spec = ZShimOutputSpec
 

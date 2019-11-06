@@ -266,21 +266,24 @@ class DiscreteInverseLaplace2 : public ImageSource<QI::VolumeF> {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int unwrap_laplace_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Laplacian phase unwrapping\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
     args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                        {'o', "out"});
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<int> erode(parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"},
-                               1);
-    args::Flag           debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<std::string> mask(
+        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<int> erode(
+        parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"}, 1);
+    args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     auto        inFile = QI::ReadImage(QI::CheckPos(input_path), verbose);
@@ -318,8 +321,8 @@ int main(int argc, char **argv) {
             erodeFilter->Update();
             masker->SetMaskImage(erodeFilter->GetOutput());
             if (debug)
-                QI::WriteImage(erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt(),
-                               verbose);
+                QI::WriteImage(
+                    erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt(), verbose);
         } else {
             masker->SetMaskImage(mask_img);
         }
@@ -338,22 +341,24 @@ int main(int argc, char **argv) {
     padFFT->Update();
     if (debug)
         QI::WriteImage(padFFT->GetOutput(), prefix + "_step2_padFFT" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Padded image size: {}\nCalculating Forward FFT.",
+    QI::Log(verbose,
+            "Padded image size: {}\nCalculating Forward FFT.",
             padFFT->GetOutput()->GetLargestPossibleRegion().GetSize());
     typedef itk::ForwardFFTImageFilter<QI::VolumeF> FFFTType;
     auto                                            forwardFFT = FFFTType::New();
     forwardFFT->SetInput(padFFT->GetOutput());
     forwardFFT->Update();
     if (debug)
-        QI::WriteImage(forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt(),
-                       verbose);
+        QI::WriteImage(
+            forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt(), verbose);
     QI::Log(verbose, "Generating Inverse Laplace Kernel.");
     auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
     if (debug)
         QI::WriteImage(inverseLaplace->GetOutput(),
-                       prefix + "_inverse_laplace_filter" + QI::OutExt(), verbose);
+                       prefix + "_inverse_laplace_filter" + QI::OutExt(),
+                       verbose);
     QI::Log(verbose, "Multiplying.");
     auto mult = itk::MultiplyImageFilter<QI::VolumeXF, QI::VolumeF, QI::VolumeXF>::New();
     mult->SetInput1(forwardFFT->GetOutput());
@@ -365,8 +370,8 @@ int main(int argc, char **argv) {
     inverseFFT->SetInput(mult->GetOutput());
     inverseFFT->Update();
     if (debug)
-        QI::WriteImage(inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt(),
-                       verbose);
+        QI::WriteImage(
+            inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt(), verbose);
     QI::Log(verbose, "Extracting original size image");
     auto extract = itk::ExtractImageFilter<QI::VolumeF, QI::VolumeF>::New();
     extract->SetInput(inverseFFT->GetOutput());

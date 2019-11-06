@@ -20,7 +20,7 @@
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int diff_main(int argc, char **argv) {
     args::ArgumentParser parser("Checks if images are different within a tolerance.\n"
                                 "Intended for use with library tests.\n"
                                 "http://github.com/spinicist/QUIT");
@@ -72,4 +72,5 @@ int main(int argc, char **argv) {
             noise.Get(),
             diff);
     fmt::print("{}", diff);
+    return EXIT_SUCCESS;
 }

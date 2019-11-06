@@ -19,7 +19,7 @@
 #include "itkExtractImageFilter.h"
 #include "itkTileImageFilter.h"
 
-int main(int argc, char **argv) {
+int select_main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Extracts a set of volumes from a time-series and saves as a new series\n"
         "http://github.com/spinicist/QUIT");

@@ -1,13 +1,6 @@
 option( BUILD_B1 "Build the B1+/- programs" ON )
-if( ${BUILD_RELAX} )
-    set( PROGRAMS
-        qiafi qidream qi_b1_papp
-       )
-
-    foreach(PROGRAM ${PROGRAMS})
-        add_executable(${PROGRAM} ${PROGRAM}.cpp)
-        target_link_libraries(${PROGRAM} qi_sequences qi_imageio qi_core ${ITK_LIBRARIES} ${CERES_LIBRARIES})
-    endforeach(PROGRAM)
-
-    install( TARGETS ${PROGRAMS} RUNTIME DESTINATION bin )
+if( ${BUILD_B1} )
+    file(GLOB SOURCES *.cpp)
+    target_sources(qi PRIVATE ${SOURCES})
+    target_compile_definitions(qi PRIVATE "-DBUILD_B1")
 endif()

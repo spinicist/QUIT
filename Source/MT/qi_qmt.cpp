@@ -185,7 +185,7 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
                           FlagType &                        iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         p                   = RamaniFullModel::VaryingArray::Zero();
-        rmse           = 0;
+        rmse                = 0;
         if (scale < std::numeric_limits<double>::epsilon()) {
             return {false, "Maximum data value was not positive"};
         }
@@ -242,7 +242,7 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
         QI_DBVEC(inner_p);
         QI_DBVEC(p);
         iterations = summary.iterations.size();
-        rmse  = summary.final_cost * scale;
+        rmse       = summary.final_cost * scale;
         if (residuals.size() > 0) {
             std::vector<double> r_temp(data.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
@@ -256,7 +256,7 @@ struct RamaniFitFunction : QI::FitFunction<RamaniFullModel> {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int qmt_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates qMT maps from Gradient Echo Saturation data\nhttp://github.com/spinicist/QUIT");

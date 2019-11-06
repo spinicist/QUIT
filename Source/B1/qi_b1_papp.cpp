@@ -19,7 +19,7 @@
 #include "itkDivideImageFilter.h"
 #include "itkExtractImageFilter.h"
 
-int main(int argc, char **argv) {
+int b1_papp_main(int argc, char **argv) {
     args::ArgumentParser parser("Calculates B1- (receive bias) maps. Input file should have two "
                                 "volumes - body coil then head coil\n"
                                 "http://github.com/spinicist/QUIT");

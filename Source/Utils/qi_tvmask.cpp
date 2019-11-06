@@ -21,7 +21,7 @@
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int tvmask_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser          parser("Creates a mask for quantitative data using Total "
                                 "Variation.\nhttp://github.com/spinicist/QUIT");

@@ -11,8 +11,8 @@
  *
  */
 
-#include "MTSatSequence.h"
 #include "Log.h"
+#include "MTSatSequence.h"
 
 namespace QI {
 

@@ -14,6 +14,7 @@
 #include <Eigen/Core>
 #include <array>
 
+#include "SSFPSequence.h"
 #include "Args.h"
 #include "FitFunction.h"
 #include "ImageIO.h"
@@ -21,7 +22,6 @@
 #include "ModelFitFilter.h"
 #include "RegionContraction.h"
 #include "SPGRSequence.h"
-#include "SSFPSequence.h"
 #include "SimulateModel.h"
 #include "ThreePoolModel.h"
 #include "TwoPoolModel.h"
@@ -125,7 +125,7 @@ template <typename Model> struct SRCFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int mcdespot_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates MWF & other parameter maps from mcDESPOT data\n"

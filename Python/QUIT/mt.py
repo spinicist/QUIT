@@ -38,7 +38,7 @@ class Lineshape(QI.BaseCommand):
     Pre-calculate lineshapes and write them out for use with qMT
     """
 
-    _cmd = 'qi_lineshape'
+    _cmd = 'qi lineshape'
     input_spec = LineshapeInputSpec
     output_spec = LineshapeOutputSpec
 
@@ -70,7 +70,7 @@ class Lorentzian(QI.FitCommand):
     Fit a Lorentzian function to a Z-spectrum
     """
 
-    _cmd = 'qi_lorentzian'
+    _cmd = 'qi lorentzian'
     input_spec = LorentzianInputSpec
     output_spec = LorentzianOutputSpec
 
@@ -108,7 +108,7 @@ class LorentzianSimInputSpec(QI.SimInputSpec):
 
 
 class LorentzianSim(QI.SimCommand):
-    _cmd = 'qi_lorentzian'
+    _cmd = 'qi lorentzian'
     input_spec = LorentzianSimInputSpec
     output_spec = QI.SimOutputSpec
 
@@ -158,7 +158,7 @@ class qMT(QI.FitCommand):
     Fit the Ramani model to a Z-spectrum
     """
 
-    _cmd = 'qi_qmt'
+    _cmd = 'qi qmt'
     input_spec = qMTInputSpec
     output_spec = qMTOutputSpec
 
@@ -176,7 +176,7 @@ class qMTSimInputSpec(QI.SimInputSpec):
 
 
 class qMTSim(QI.SimCommand):
-    _cmd = 'qi_qmt'
+    _cmd = 'qi qmt'
     _param_files = ['PD', 'T1_f', 'T2_f', 'T2_b', 'k_bf', 'f_b']
     input_spec = qMTSimInputSpec
     output_spec = QI.SimOutputSpec
@@ -210,7 +210,7 @@ class ZSpec(QI.BaseCommand):
 
     """
 
-    _cmd = 'qi_zspec_interp'
+    _cmd = 'qi zspec_interp'
     input_spec = ZSpecInputSpec
     output_spec = ZSpecOutputSpec
 
@@ -265,7 +265,7 @@ class eMT(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_ssfp_emt'
+    _cmd = 'qi ssfp_emt'
     input_spec = eMTInputSpec
     output_spec = eMTOutputSpec
 
@@ -295,7 +295,7 @@ class eMTSim(QI.SimCommand):
 
     """
 
-    _cmd = 'qi_ssfp_emt'
+    _cmd = 'qi ssfp_emt'
     _param_files = ['PD', 'f_b', 'k_bf', 'T1_f', 'T2_f']
     input_spec = eMTSimInputSpec
     output_spec = eMTSimOutputSpec
@@ -322,13 +322,15 @@ class MTSatInputSpec(QI.InputSpec):
                     position=-1, desc='Path to MT-weighted data')
 
     # Options
-    residuals = traits.Bool(desc='Write out residuals for each data-point', argstr='--resids')
+    residuals = traits.Bool(
+        desc='Write out residuals for each data-point', argstr='--resids')
 
 
 class MTSatOutputSpec(TraitedSpec):
     s0_map = File('MTSat_S0.nii.gz', desc='S0/PD Map', usedefault=True)
     r1_map = File('MTSat_R1.nii.gz', desc='R1 map', usedefault=True)
-    delta_map = File('MTSat_delta.nii.gz', desc='MTSat delta map', usedefault=True)
+    delta_map = File('MTSat_delta.nii.gz',
+                     desc='MTSat delta map', usedefault=True)
 
 
 class MTSat(QI.FitCommand):
@@ -337,6 +339,6 @@ class MTSat(QI.FitCommand):
 
     """
 
-    _cmd = 'qi_mtsat'
+    _cmd = 'qi mtsat'
     input_spec = MTSatInputSpec
     output_spec = MTSatOutputSpec

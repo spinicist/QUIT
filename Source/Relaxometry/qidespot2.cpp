@@ -220,7 +220,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int despot2_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates T2 maps from SSFP data\nhttp://github.com/spinicist/QUIT");

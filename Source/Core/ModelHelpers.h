@@ -12,7 +12,11 @@
 #ifndef QI_MODELHELPERS_H
 #define QI_MODELHELPERS_H
 
+#include "Macro.h"
+#include "itkImage.h"
+#include "itkVectorImage.h"
 #include <cmath>
+#include <complex>
 
 namespace QI {
 
@@ -38,32 +42,8 @@ template <int ImageDimension, typename T> struct BlockTypes<false, ImageDimensio
     using Type = itk::Image<T, ImageDimension>;
 };
 
-template <typename T> auto add_noise(const QI_ARRAY(T) & s, const double sigma) -> QI_ARRAY(T);
-
-template <> auto add_noise(const QI_ARRAY(double) & s, const double sigma) -> QI_ARRAY(double) {
-    Eigen::ArrayXcd noise(s.rows());
-    // Simple Box Muller transform
-    Eigen::ArrayXd U = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
-    Eigen::ArrayXd V = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
-    noise.real()     = (sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
-    noise.imag()     = (sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
-    Eigen::ArrayXcd coutput(s.rows());
-    coutput.real() = s + noise.real();
-    coutput.imag() = noise.imag();
-    return coutput.abs();
-}
-
-template <>
-auto add_noise(const QI_ARRAY(std::complex<double>) & s, const double sigma)
-    -> QI_ARRAY(std::complex<double>) {
-    Eigen::ArrayXcd noise(s.rows());
-    // Simple Box Muller transform
-    Eigen::ArrayXd U = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
-    Eigen::ArrayXd V = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
-    noise.real()     = (sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
-    noise.imag()     = (sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
-    return s + noise;
-}
+Eigen::ArrayXd  add_noise(Eigen::ArrayXd const &s, double const sigma);
+Eigen::ArrayXcd add_noise(Eigen::ArrayXcd const &s, double const sigma);
 
 } // End namespace QI
 

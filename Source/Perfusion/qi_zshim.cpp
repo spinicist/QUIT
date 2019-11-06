@@ -20,7 +20,7 @@
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int zshim_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Combines Z-Shimmed data.\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> input_path(parser, "ZSHIM_FILE", "Input Z-Shimmed file");

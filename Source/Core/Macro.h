@@ -18,6 +18,7 @@
 #define QI_MACRO_H
 
 #include "fmt/format.h"
+#include <Eigen/Core>
 
 #if defined(_WIN32) && !defined(__MINGW32__)
 #define QI_LOCATION __FUNCSIG__

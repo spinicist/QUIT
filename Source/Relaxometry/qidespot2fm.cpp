@@ -145,7 +145,7 @@ struct FMNLLS : FMFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int despot2fm_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates a T2 map from SSFP data and a T1 map.\nhttp://github.com/spinicist/QUIT");

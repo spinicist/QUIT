@@ -60,7 +60,7 @@ One_MP2RAGE(const double &M0, const double &T1, const double &B1, const QI::MP2R
     return Me;
 }
 
-int main(int argc, char **argv) {
+int mp2rage_main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Calculates T1/B1 maps from MP2/3-RAGE data\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Path to complex MP-RAGE data");

@@ -187,7 +187,7 @@ struct EMTFit {
     }
 };
 
-int main(int argc, char **argv) {
+int ssfp_emt_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Calculates qMT parameters from ellipse parameters.\nInputs are G, "
                                 "a, b.\nhttp://github.com/spinicist/QUIT");

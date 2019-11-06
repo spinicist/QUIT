@@ -23,7 +23,7 @@
 #include "Spline.h"
 #include "Util.h"
 
-int main(int argc, char **argv) {
+int zspec_interp_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Interpolates Z-spectrums using Cubic "
                                 "Splines\nhttp://github.com/spinicist/QUIT");

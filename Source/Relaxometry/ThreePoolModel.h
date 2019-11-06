@@ -47,22 +47,31 @@ struct ThreePoolModel {
     bool           valid(const QI_ARRAYN(double, NV) & params) const; // For SRC
     size_t         num_outputs() const { return sequence.count(); }
     int            output_size(int i) { return sequence.at(i)->size(); }
-    Eigen::ArrayXd SSFP1(const double &PD, const double &T1, const double &T2, const double &f0,
-                         const double &B1, const QI::SSFPSequence *s) const;
+    Eigen::ArrayXd SSFP1(const double &          PD,
+                         const double &          T1,
+                         const double &          T2,
+                         const double &          f0,
+                         const double &          B1,
+                         const QI::SSFPSequence *s) const;
 
-    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &  varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SPGRSequence *s) const;
 
-    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &  varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SSFPSequence *s) const;
 
-    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SPGREchoSequence *s) const;
 
-    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SSFPEchoSequence *s) const;
 
-    Eigen::ArrayXd signal(const Eigen::ArrayXd &  varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) & fixed,
                           const QI::SequenceBase *s) const;
 
     Eigen::ArrayXd signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed) const;

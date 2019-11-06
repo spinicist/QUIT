@@ -91,7 +91,7 @@ template <typename TImage> class NegateFilter : public InPlaceImageFilter<TImage
 
 } // End namespace itk
 
-/* Arguments defined here so they are available in the templated run function */
+namespace {
 args::ArgumentParser
     parser("Input is specified with lower case letters. A valid combination of inputs "
            " must be specified, e.g. real & imaginary or magnitude & phase.\n"
@@ -101,8 +101,11 @@ args::ArgumentParser
 
 args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                             {'T', "threads"}, QI::GetDefaultThreads());
+args::ValueFlag<int> threads(parser,
+                             "THREADS",
+                             "Use N threads (default=4, 0=hardware limit)",
+                             {'T', "threads"},
+                             QI::GetDefaultThreads());
 args::Flag use_double(parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
 args::Flag fixge(parser, "FIX_GE", "Negate alternate slices (fixes lack of FFT shift)", {"fixge"});
 args::Flag negate(parser, "NEGATE", "Negate data (multiply by -1)", {"negate"});
@@ -112,15 +115,16 @@ args::ValueFlag<std::string> in_pha(parser, "IN_PHA", "Input phase file", {'p', 
 args::ValueFlag<std::string> in_real(parser, "IN_REAL", "Input real file", {'r', "real"});
 args::ValueFlag<std::string> in_imag(parser, "IN_IMAG", "Input imaginary file", {'i', "imag"});
 args::ValueFlag<std::string> in_complex(parser, "IN_CPLX", "Input complex file", {'x', "complex"});
-args::ValueFlag<std::string> in_realimag(parser, "IN_REALIMAG", "Input real & imaginary file",
-                                         {'l', "realimag"});
+args::ValueFlag<std::string>
+    in_realimag(parser, "IN_REALIMAG", "Input real & imaginary file", {'l', "realimag"});
 
 args::ValueFlag<std::string> out_mag(parser, "OUT_MAG", "Output magnitude file", {'M', "MAG"});
 args::ValueFlag<std::string> out_pha(parser, "OUT_PHA", "Output phase file", {'P', "PHA"});
 args::ValueFlag<std::string> out_real(parser, "OUT_REAL", "Output real file", {'R', "REAL"});
 args::ValueFlag<std::string> out_imag(parser, "OUT_IMAG", "Output imaginary file", {'I', "IMAG"});
-args::ValueFlag<std::string> out_complex(parser, "OUT_CPLX", "Output complex file",
-                                         {'X', "COMPLEX"});
+args::ValueFlag<std::string>
+    out_complex(parser, "OUT_CPLX", "Output complex file", {'X', "COMPLEX"});
+} // namespace
 
 template <typename TPixel> void Run() {
     typedef itk::Image<TPixel, 4>               TImage;
@@ -232,7 +236,7 @@ template <typename TPixel> void Run() {
     }
 }
 
-int main(int argc, char **argv) {
+int complex_main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     if (use_double) {
         QI::Log(verbose, "Using double precision");

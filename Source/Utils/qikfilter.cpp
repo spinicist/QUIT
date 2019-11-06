@@ -128,7 +128,7 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
 // Main
 //******************************************************************************
 
-int main(int argc, char **argv) {
+int kfilter_main(int argc, char **argv) {
     Eigen::initParallel();
 
     args::ArgumentParser parser("smooths images in k-space\nhttp://github.com/spinicist/QUIT");

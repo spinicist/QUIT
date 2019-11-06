@@ -9,8 +9,8 @@
  *
  */
 
-#include "SSFPSequence.h"
 #include "Log.h"
+#include "SSFPSequence.h"
 
 namespace QI {
 

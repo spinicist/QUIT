@@ -19,11 +19,9 @@
 #include "Args.h"
 #include "FitFunction.h"
 #include "ImageIO.h"
-#include "MPRAGESequence.h"
 #include "Model.h"
 #include "ModelFitFilter.h"
 #include "OnePoolSignals.h"
-#include "SPGRSequence.h"
 #include "SequenceGroup.h"
 #include "SimulateModel.h"
 #include "Util.h"
@@ -191,7 +189,7 @@ struct HIFIFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int despot1hifi_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser          parser("Calculates T1 and B1 maps from SPGR & IR-SPGR or MP-RAGE "
                                 "data.\nhttp://github.com/spinicist/QUIT");

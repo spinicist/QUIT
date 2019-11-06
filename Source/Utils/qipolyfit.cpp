@@ -118,7 +118,7 @@ class PolynomialFitImageFilter : public ImageToImageFilter<QI::VolumeF, QI::Volu
 
 } // End namespace itk
 
-int main(int argc, char **argv) {
+int polyfit_main(int argc, char **argv) {
     Eigen::initParallel();
 
     args::ArgumentParser parser(

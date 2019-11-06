@@ -16,38 +16,38 @@
 #include "itkImageFileReader.h"
 #include "itkMetaDataObject.h"
 
-args::ArgumentParser
-    parser("Extracts information from image headers.\n"
-           "By default, a summary of the header is printed. If any options are specified,"
-           "only those parts of the header will be printed. Multiple files can be input"
-           "in which case the header info is written for each in order.\n"
-           "http://github.com/spinicist/QUIT");
-
-args::PositionalList<std::string> filenames(parser, "FILES", "Input files");
-args::HelpFlag                    help(parser, "HELP", "Show this help menu", {'h', "help"});
-args::Flag verbose(parser, "VERBOSE", "Print description of each output line", {'v', "verbose"});
-args::Flag print_direction(parser, "DIRECTION", "Print the image direction/orientation",
-                           {'d', "direction"});
-args::Flag print_origin(parser, "ORIGIN", "Print the the origin", {'o', "origin"});
-args::ValueFlag<size_t> print_spacing(parser, "SPACING",
-                                      "Print voxel spacing (can specify one dimension)",
-                                      {'S', "spacing"});
-args::ValueFlag<size_t>
-           print_size(parser, "SIZE", "Print the matrix size (can specify one dimension)", {'s', "size"});
-args::Flag print_voxvol(parser, "VOLUME", "Calculate and print the volume of one voxel",
-                        {'v', "voxvol"});
-args::Flag print_type(parser, "DTYPE", "Print the data type", {'T', "dtype"});
-args::Flag print_dims(parser, "DIMS", "Print the number of dimensions", {'D', "dims"});
-args::Flag dim3(parser, "3D", "Treat input as 3D (discard higher dimensions)", {'3', "3D"});
-args::ValueFlagList<std::string>
-    header_fields(parser, "METADATA",
-                  "Print a header metadata field (can be specified multiple times)", {'m', "meta"});
-
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int hdr_main(int argc, char **argv) {
+    args::ArgumentParser parser(
+        "Extracts information from image headers.\n"
+        "By default, a summary of the header is printed. If any options are specified,"
+        "only those parts of the header will be printed. Multiple files can be input"
+        "in which case the header info is written for each in order.\n"
+        "http://github.com/spinicist/QUIT");
 
+    args::PositionalList<std::string> filenames(parser, "FILES", "Input files");
+    args::HelpFlag                    help(parser, "HELP", "Show this help menu", {'h', "help"});
+    args::Flag                        verbose(
+        parser, "VERBOSE", "Print description of each output line", {'v', "verbose"});
+    args::Flag print_direction(
+        parser, "DIRECTION", "Print the image direction/orientation", {'d', "direction"});
+    args::Flag              print_origin(parser, "ORIGIN", "Print the the origin", {'o', "origin"});
+    args::ValueFlag<size_t> print_spacing(
+        parser, "SPACING", "Print voxel spacing (can specify one dimension)", {'S', "spacing"});
+    args::ValueFlag<size_t> print_size(
+        parser, "SIZE", "Print the matrix size (can specify one dimension)", {'s', "size"});
+    args::Flag print_voxvol(
+        parser, "VOLUME", "Calculate and print the volume of one voxel", {'v', "voxvol"});
+    args::Flag print_type(parser, "DTYPE", "Print the data type", {'T', "dtype"});
+    args::Flag print_dims(parser, "DIMS", "Print the number of dimensions", {'D', "dims"});
+    args::Flag dim3(parser, "3D", "Treat input as 3D (discard higher dimensions)", {'3', "3D"});
+    args::ValueFlagList<std::string> header_fields(
+        parser,
+        "METADATA",
+        "Print a header metadata field (can be specified multiple times)",
+        {'m', "meta"});
     QI::ParseArgs(parser, argc, argv, verbose);
     bool print_all = !(print_direction || print_origin || print_spacing || print_size ||
                        print_voxvol || print_type || print_dims || header_fields);
@@ -69,7 +69,8 @@ int main(int argc, char **argv) {
         if (print_all || verbose)
             fmt::print("Voxel Type: ");
         if (print_all || print_type) {
-            fmt::print("{} {}", imageIO->GetPixelTypeAsString(imageIO->GetPixelType()),
+            fmt::print("{} {}",
+                       imageIO->GetPixelTypeAsString(imageIO->GetPixelType()),
                        imageIO->GetComponentTypeAsString(imageIO->GetComponentType()));
         }
         if (dim3 && dims > 3)

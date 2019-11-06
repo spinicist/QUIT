@@ -21,7 +21,6 @@
 #include "MTSatSequence.h"
 #include "Model.h"
 #include "ModelFitFilter.h"
-#include "SequenceBase.h"
 #include "SimulateModel.h"
 #include "Util.h"
 
@@ -88,7 +87,7 @@ template <int NP_> struct LorentzModel {
     }
 };
 
-// Declare here so available in Process function
+namespace {
 args::ArgumentParser parser("Simple Lorentzian fitting.\nhttp://github.com/spinicist/QUIT");
 
 args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
@@ -99,6 +98,7 @@ args::Flag additive(
     parser, "ADDITIVE", "Use an additive model instead of subtractive", {'a', "add"}, false);
 args::ValueFlag<double>
     Zref(parser, "Zref", "Reference value for Z-spectra, default 1.0", {'z', "zref"}, 1.0);
+} // namespace
 
 template <int N> void Process() {
     using LM   = LorentzModel<N>;
@@ -176,7 +176,7 @@ template <int N> void Process() {
     }
 }
 
-int main(int argc, char **argv) {
+int lorentzian_main(int argc, char **argv) {
     Eigen::initParallel();
 
     QI::ParseArgs(parser, argc, argv, verbose, threads);

@@ -53,7 +53,7 @@ class Fieldmap(QUITCommand):
 
     """
 
-    _cmd = 'qi_fieldmap'
+    _cmd = 'qi fieldmap'
     input_spec = FieldmapInputSpec
     output_spec = FieldmapOutputSpec
 

@@ -189,7 +189,7 @@ struct EllipseFit {
     }
 };
 
-int main(int argc, char **argv) {
+int ssfp_ellipse_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates the ellipse parameters G,a,b,f0 & psi0 from sequence data.\nInput must be "

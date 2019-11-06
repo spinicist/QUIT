@@ -97,7 +97,7 @@ class PolynomialImage : public ImageSource<QI::VolumeF> {
 
 } // End namespace itk
 
-int main(int argc, char **argv) {
+int polyimg_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Creates an image from polynomial coefficients, which are read from stdin.\n"

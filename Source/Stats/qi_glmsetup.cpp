@@ -33,7 +33,7 @@ An output file must be specified with --out.\n\
 \n\
 Additionally, simple GLM including co-variates can be generated.\n"};
 
-int main(int argc, char **argv) {
+int glm_setup_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "A utility for setting up merged 4D files for use with FSL randomise etc.\n"
@@ -43,20 +43,20 @@ int main(int argc, char **argv) {
     args::PositionalList<std::string> file_paths(parser, "INPUTS", "Input files to be merged.");
     args::HelpFlag                    help(parser, "HELP", "Show this help message", {'h', "help"});
     args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag sort(parser, "SORT", "Sort merged file and GLM in ascending group order",
-                    {'s', "sort"});
+    args::Flag sort(
+        parser, "SORT", "Sort merged file and GLM in ascending group order", {'s', "sort"});
     args::ValueFlag<std::string> group_path(
         parser, "GROUPS", "File to read group numbers from (REQUIRED)", {'g', "groups"});
-    args::ValueFlag<std::string> output_path(parser, "OUT", "Path for output merged file",
-                                             {'o', "out"});
+    args::ValueFlag<std::string> output_path(
+        parser, "OUT", "Path for output merged file", {'o', "out"});
     args::ValueFlag<std::string> covars_path(
         parser, "COVARS", "Path to covariates file (added to design matrix)", {'C', "covars"});
-    args::ValueFlag<std::string> design_path(parser, "DESIGN", "Path to save design matrix",
-                                             {'d', "design"});
-    args::ValueFlag<std::string> contrasts_path(parser, "CONTRASTS", "Generate and save contrasts",
-                                                {'c', "contrasts"});
-    args::ValueFlag<std::string> ftests_path(parser, "FTESTS", "Generate and save F-tests",
-                                             {'f', "ftests"});
+    args::ValueFlag<std::string> design_path(
+        parser, "DESIGN", "Path to save design matrix", {'d', "design"});
+    args::ValueFlag<std::string> contrasts_path(
+        parser, "CONTRASTS", "Generate and save contrasts", {'c', "contrasts"});
+    args::ValueFlag<std::string> ftests_path(
+        parser, "FTESTS", "Generate and save F-tests", {'f', "ftests"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
     std::ifstream group_file(QI::CheckValue(group_path));
@@ -67,8 +67,9 @@ int main(int argc, char **argv) {
         group_list.push_back(temp);
     }
     int n_groups = *std::max_element(group_list.begin(), group_list.end());
-    int n_images = std::count_if(group_list.begin(), group_list.end(),
-                                 [](int i) { return i > 0; }); // Count non-zero elements
+    int n_images = std::count_if(group_list.begin(), group_list.end(), [](int i) {
+        return i > 0;
+    }); // Count non-zero elements
 
     if (file_paths.Get().size() != group_list.size()) {
         QI::Fail("Group list size and number of files do not match.");

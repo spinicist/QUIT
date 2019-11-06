@@ -21,7 +21,7 @@
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int asl_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Calculates CBF from ASL data.\nhttp://github.com/spinicist/QUIT");
     args::Positional<std::string> input_path(parser, "ASL_FILE", "Input ASL file");

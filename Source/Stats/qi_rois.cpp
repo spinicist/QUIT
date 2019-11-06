@@ -21,7 +21,8 @@
 #include "itkLabelStatisticsImageFilter.h"
 typedef itk::LabelStatisticsImageFilter<QI::VolumeF, QI::VolumeI> TStatsFilter;
 typedef TStatsFilter::ValidLabelValuesContainerType               TLabels;
-// Declare arguments here so they are available in helper functions
+
+namespace {
 args::ArgumentParser              parser("Calculates average values or volumes of ROI labels.\n"
                             "If the --volumes flag is specified, only give the label images.\n"
                             "If --volumes is not specified, give label and value image pairs (all "
@@ -30,37 +31,48 @@ args::ArgumentParser              parser("Calculates average values or volumes o
                             "http://github.com/spinicist/QUIT");
 args::PositionalList<std::string> in_paths(parser, "INPUT", "Input file paths.");
 args::HelpFlag                    help(parser, "HELP", "Show this help menu", {'h', "help"});
-args::Flag                        verbose(parser, "VERBOSE",
+args::Flag                        verbose(parser,
+                   "VERBOSE",
                    "Print more information (will mess up output, for test runs only)",
                    {'v', "verbose"});
-args::Flag                        volumes(parser, "VOLUMES",
+args::Flag                        volumes(parser,
+                   "VOLUMES",
                    "Output ROI volumes, not average values (does not require value images)",
                    {'V', "volumes"});
 args::ValueFlag<std::string>      label_list_path(
-    parser, "LABELS",
+    parser,
+    "LABELS",
     "Specify labels and names to use in text file 'label number, label name' one per line",
     {'l', "labels"});
-args::Flag print_names(parser, "PRINT_NAMES",
+args::Flag print_names(parser,
+                       "PRINT_NAMES",
                        "Print label names in first column/row (LABEL_NUMBERS must be specified)",
                        {'n', "print_names"});
-args::Flag transpose(parser, "TRANSPOSE",
+args::Flag transpose(parser,
+                     "TRANSPOSE",
                      "Transpose output table (values go in rows instead of columns",
                      {'t', "transpose"});
 args::Flag ignore_zero(parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
 args::Flag sigma(parser, "SIGMA", "Print ±std along with mean", {'s', "sigma"});
-args::ValueFlag<int>         precision(parser, "PRECISION", "Number of decimal places (default 6)",
-                               {'p', "precision"}, 6);
-args::ValueFlag<std::string> delim(parser, "DELIMITER",
+args::ValueFlag<int>
+                                 precision(parser, "PRECISION", "Number of decimal places (default 6)", {'p', "precision"}, 6);
+args::ValueFlag<std::string>     delim(parser,
+                                   "DELIMITER",
                                    "Specify delimiter to use between entries (default ,)",
-                                   {'d', "delim"}, ",");
-args::ValueFlagList<std::string> header_paths(parser, "HEADER",
+                                   {'d', "delim"},
+                                   ",");
+args::ValueFlagList<std::string> header_paths(parser,
+                                              "HEADER",
                                               "Add a header (can be specified multiple times)",
                                               {'H', "header"});
 args::ValueFlagList<std::string>
-    header_names(parser, "HEADER NAME", "Header name (must be specified in same order as paths)",
+    header_names(parser,
+                 "HEADER NAME",
+                 "Header name (must be specified in same order as paths)",
                  {"header_name"});
 args::ValueFlagList<double>
     scales(parser, "SCALE", "Divide ROI values by scale (must be same order as paths)", {"scale"});
+} // namespace
 
 /*
  * Helper function to work out the label list
@@ -83,7 +95,8 @@ void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names)
         }
     } else {
         TStatsFilter::Pointer label_filter = TStatsFilter::New();
-        QI::Log(verbose, "Reading first label file to determine labels: {}",
+        QI::Log(verbose,
+                "Reading first label file to determine labels: {}",
                 QI::CheckList(in_paths).at(0));
         label_filter->SetLabelInput(
             QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0), verbose));
@@ -129,7 +142,9 @@ std::vector<std::vector<std::string>> GetHeaders(size_t n_files) {
         if (headers.at(h).size() != n_files) {
             QI::Fail(
                 "Number of input files ({}) does not match number of entries ({}) in header: {}",
-                n_files, headers.at(h).size(), header_path);
+                n_files,
+                headers.at(h).size(),
+                header_path);
         }
     }
     return headers;
@@ -138,7 +153,9 @@ std::vector<std::vector<std::string>> GetHeaders(size_t n_files) {
 /*
  * Helper function to actually work out all the values
  */
-void GetValues(const int n_files, const TLabels &labels, const std::vector<double> &scale_list,
+void GetValues(const int                         n_files,
+               const TLabels &                   labels,
+               const std::vector<double> &       scale_list,
                std::vector<std::vector<double>> &mean_table,
                std::vector<std::vector<double>> &sigma_table,
                std::vector<std::vector<double>> &volume_table) {
@@ -174,7 +191,7 @@ void GetValues(const int n_files, const TLabels &labels, const std::vector<doubl
 /*
  * MAIN
  */
-int main(int argc, char **argv) {
+int rois_main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
 
     size_t n_files = QI::CheckList(in_paths).size();

@@ -34,27 +34,32 @@ template <class TPixel> class DREAM {
     }
 };
 
-int main(int argc, char **argv) {
+int dream_main(int argc, char **argv) {
     args::ArgumentParser parser(
         "Calculates a B1 (flip-angle) map from DREAM data.\nhttp://github.com/spinicist/QUIT");
 
-    args::Positional<std::string> input_file(parser, "DREAM_FILE",
-                                             "Input file. Must have 2 volumes (FID and STE)");
+    args::Positional<std::string> input_file(
+        parser, "DREAM_FILE", "Input file. Must have 2 volumes (FID and STE)");
 
     args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser, "THREADS", "Use N threads (default=4, 0=hardware limit)",
-                                 {'T', "threads"}, QI::GetDefaultThreads());
-    args::ValueFlag<std::string> out_prefix(parser, "OUTPREFIX", "Add a prefix to output filenames",
-                                            {'o', "out"});
-    args::ValueFlag<char>        order(parser, "ORDER", "Volume order - f/s/v - fid/ste/vst first",
-                                {'O', "order"}, 'f');
-    args::ValueFlag<std::string> mask(parser, "MASK", "Only process voxels within the mask",
-                                      {'m', "mask"});
-    args::ValueFlag<double>      alpha(parser, "ALPHA", "Nominal flip-angle (default 55)",
-                                  {'a', "alpha"}, 55);
+    args::ValueFlag<int> threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=4, 0=hardware limit)",
+                                 {'T', "threads"},
+                                 QI::GetDefaultThreads());
+    args::ValueFlag<std::string> out_prefix(
+        parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
+    args::ValueFlag<char> order(
+        parser, "ORDER", "Volume order - f/s/v - fid/ste/vst first", {'O', "order"}, 'f');
+    args::ValueFlag<std::string> mask(
+        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    args::ValueFlag<double> alpha(
+        parser, "ALPHA", "Nominal flip-angle (default 55)", {'a', "alpha"}, 55);
     args::ValueFlag<std::string> subregion(
-        parser, "SUBREGION", "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
+        parser,
+        "SUBREGION",
+        "Process subregion starting at voxel I,J,K with size SI,SJ,SK",
         {'s', "subregion"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 

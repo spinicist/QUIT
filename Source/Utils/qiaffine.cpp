@@ -23,9 +23,7 @@
 #include "ImageIO.h"
 #include "Util.h"
 
-/*
- * Declare arguments here so they are available to pipeline
- */
+namespace {
 args::ArgumentParser
     parser("Applies simple affine transformations to images by manipulating the header\n"
            "transforms. If an output file is not specified, the input file will be\n"
@@ -38,21 +36,22 @@ args::Positional<std::string> dest_path(parser, "DEST", "Destination file");
 args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
 args::ValueFlag<std::string>
-                             center(parser, "CENTER", "Set the origin to geometric center (geo) or (cog)", {'c', "center"});
-args::ValueFlag<std::string> tfm_path(parser, "TFM", "Write out the transformation to a file",
-                                      {'t', "tfm"});
+    center(parser, "CENTER", "Set the origin to geometric center (geo) or (cog)", {'c', "center"});
 args::ValueFlag<std::string>
-    permute(parser, "PERMUTE",
+    tfm_path(parser, "TFM", "Write out the transformation to a file", {'t', "tfm"});
+args::ValueFlag<std::string>
+                             permute(parser,
+            "PERMUTE",
             "Permute axes in data-space, e.g. 2,0,1. Negative values mean flip as well",
             {"permute"});
+args::ValueFlag<std::string> flip(
+    parser, "FLIP", "Flip axes in data-space, e.g. 0,1,0. Occurs AFTER any permutation.", {"flip"});
+args::ValueFlag<double> scale(parser, "SCALE", "Scale by a constant", {'s', "scale"}, 1.);
 args::ValueFlag<std::string>
-                             flip(parser, "FLIP", "Flip axes in data-space, e.g. 0,1,0. Occurs AFTER any permutation.",
-         {"flip"});
-args::ValueFlag<double>      scale(parser, "SCALE", "Scale by a constant", {'s', "scale"}, 1.);
-args::ValueFlag<std::string> translate(parser, "TRANSLATE", "Translate image by X,Y,Z (mm)",
-                                       {"trans"}, "0,0,0");
+    translate(parser, "TRANSLATE", "Translate image by X,Y,Z (mm)", {"trans"}, "0,0,0");
 args::ValueFlag<std::string>
     rotate(parser, "ROTATE", "Rotate by Euler angles around X,Y,Z (degrees).", {"rotate"}, "0,0,0");
+} // namespace
 
 template <typename TImage> int Pipeline() {
     auto image = QI::ReadImage<TImage>(QI::CheckPos(source_path), verbose);
@@ -206,7 +205,7 @@ template <typename TImage> int Pipeline() {
     return EXIT_SUCCESS;
 }
 
-int main(int argc, char **argv) {
+int affine_main(int argc, char **argv) {
     QI::ParseArgs(parser, argc, argv, verbose);
     QI::Log(verbose, "Reading header for: {}", QI::CheckPos(source_path));
     auto header = itk::ImageIOFactory::CreateImageIO(QI::CheckPos(source_path).c_str(),
@@ -220,15 +219,15 @@ int main(int argc, char **argv) {
     auto dtype = header->GetComponentType();
     QI::Log(verbose, "Datatype is {}", header->GetComponentTypeAsString(dtype));
 
-#define DIM_SWITCH(TYPE)                                                                           \
-    switch (dims) {                                                                                \
-    case 3:                                                                                        \
-        return Pipeline<itk::Image<TYPE, 3>>();                                                    \
-    case 4:                                                                                        \
-        return Pipeline<itk::Image<TYPE, 4>>();                                                    \
-    default:                                                                                       \
-        QI::Fail("Unsupported dimension: {}", dims);                                               \
-        return EXIT_FAILURE;                                                                       \
+#define DIM_SWITCH(TYPE)                             \
+    switch (dims) {                                  \
+    case 3:                                          \
+        return Pipeline<itk::Image<TYPE, 3>>();      \
+    case 4:                                          \
+        return Pipeline<itk::Image<TYPE, 4>>();      \
+    default:                                         \
+        QI::Fail("Unsupported dimension: {}", dims); \
+        return EXIT_FAILURE;                         \
     }
 
     switch (dtype) {

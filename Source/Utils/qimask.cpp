@@ -28,7 +28,7 @@
 #include "Masking.h"
 #include "Util.h"
 
-int main(int argc, char **argv) {
+int mask_main(int argc, char **argv) {
     args::ArgumentParser parser("Generates masks in stages.\n"
                                 "Stage 1 - Otsu thresholding to generate binary mask\n"
                                 "Stage 2 - RATs (optional)\n"

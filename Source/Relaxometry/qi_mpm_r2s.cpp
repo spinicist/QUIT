@@ -196,7 +196,7 @@ struct MPMFit {
 /*
  * Main
  */
-int main(int argc, char **argv) {
+int mpm_r2s_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates R2* and S0 from PDw, T1w, MTw data.\nhttp://github.com/spinicist/QUIT");

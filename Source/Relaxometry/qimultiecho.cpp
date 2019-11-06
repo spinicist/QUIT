@@ -155,7 +155,7 @@ struct MultiEchoNLLS : MultiEchoFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int main(int argc, char **argv) {
+int multiecho_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser(
         "Calculates T2/T2* maps from multi-echo data\nhttp://github.com/spinicist/QUIT");

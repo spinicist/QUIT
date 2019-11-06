@@ -10,8 +10,8 @@ QI::Fail("Could not read sequence: {}", name());
  *
  */
 
-#include "MPRAGESequence.h"
 #include "Log.h"
+#include "MPRAGESequence.h"
 
 namespace QI {
 

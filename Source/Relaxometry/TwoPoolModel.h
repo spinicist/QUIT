@@ -45,22 +45,28 @@ struct TwoPoolModel {
     size_t num_outputs() const { return sequence.count(); }
     int    output_size(int i) { return sequence.at(i)->size(); }
 
-    Eigen::MatrixXd SSFP2(const Eigen::ArrayXd &  varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::MatrixXd SSFP2(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) & fixed,
                           const QI::SSFPSequence *s) const; // Helper function for SSFP
 
-    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &  varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SPGRSequence *s) const;
 
-    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &  varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SSFPSequence *s) const;
 
-    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SPGREchoSequence *s) const;
 
-    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
+                               const QI_ARRAYN(double, NF) & fixed,
                                const QI::SSFPEchoSequence *s) const;
 
-    Eigen::ArrayXd signal(const Eigen::ArrayXd &  varying, const QI_ARRAYN(double, NF) & fixed,
+    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
+                          const QI_ARRAYN(double, NF) & fixed,
                           const QI::SequenceBase *s) const;
 
     Eigen::ArrayXd signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed) const;
