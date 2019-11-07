@@ -84,13 +84,13 @@ int zspec_interp_main(int argc, char **argv) {
     output->Allocate(true);
 
     std::vector<size_t> indices = QI::SortedUniqueIndices(in_freqs);
-    auto const region = subregion ? QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
+    auto const process_region = subregion ? QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
                                     input->GetBufferedRegion();
     auto mt = itk::MultiThreaderBase::New();
     QI::Log(verbose, "Processing");
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
-        region,
+        process_region,
         [&](const QI::VectorVolumeF::RegionType &region) {
             itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input, region);
             itk::ImageRegionConstIterator<QI::VolumeF>       f0_it, ref_it, mask_it;

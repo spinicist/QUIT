@@ -8,3 +8,4 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${VERSION_FILE_NAME} PRO
 file(GLOB SOURCES *.cpp)
 target_sources(qi PRIVATE ${SOURCES})
 target_include_directories(qi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+add_dependencies(qi qi_version)

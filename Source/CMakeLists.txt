@@ -1,5 +1,12 @@
 add_executable(qi qi_main.cpp)
-target_link_libraries(qi ${ITK_LIBRARIES} ${CERES_LIBRARIES} fmtlib)
+set(ASAN $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>)
+target_compile_options(
+    qi PRIVATE
+    "-Werror" "-Wall" "-Wextra" "-Wshadow"
+    "-ftemplate-backtrace-limit=30"
+    ${ASAN}
+)
+target_link_libraries(qi ${ITK_LIBRARIES} ${CERES_LIBRARIES} fmtlib ${ASAN})
 install( TARGETS qi RUNTIME DESTINATION bin )
 
 add_subdirectory( Core )

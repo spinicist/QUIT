@@ -1,6 +1,6 @@
 [submodule "External/ITK"]
 	path = External/ITK
-	url = https://itk.org/ITK.git
+	url = https://github.com/InsightSoftwareConsortium/ITK
 [submodule "External/ceres-solver"]
 	path = External/ceres-solver
 	url = https://ceres-solver.googlesource.com/ceres-solver
