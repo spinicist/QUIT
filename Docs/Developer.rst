@@ -1,7 +1,7 @@
 Developer
 =========
 
-Below are a few introductory notes for anyone who wants to compile QUIT from source or might be interested in contributing to QUIT. Although I hope that most QUIT code is fairly clear, the following is provided to give a high-level overview of how most QUIT programs are structured.
+Below are a few introductory notes for anyone who wants to compile QUIT from source or might be interested in contributing to QUIT. Although I hope that most QUIT code is fairly clear, the following is provided to give a high-level overview of how most QUIT commands are structured.
 
 Basic Requirements
 ------------------
@@ -76,16 +76,16 @@ The available file formats are controlled by the main ``CMakeLists.txt`` in the 
 Tests
 -----
 
-QUIT programs are tested using the ``nipype`` wrappers and ``unittest``. To run the tests, first build and install ``QUIT`` (so that the executables are available in your ``$PATH`` variable), then ``cd`` into ``Python/Tests`` and then run ``python -m unittest discover``, which will run all of the tests. It is possible to run the test files individually as well.
+QUIT commands are tested using the ``nipype`` wrappers and ``unittest``. To run the tests, first build and install ``QUIT`` (so that the executables are available in your ``$PATH`` variable), then ``cd`` into ``Python/Tests`` and then run ``python -m unittest discover``, which will run all of the tests. It is possible to run the test files individually as well.
 
-Most QUIT programs are tested by generating ground-truth parameter files with ``qinewimage``, feeding these into each ``QUIT`` program with the ``--simulate`` argument to generate simulated MR images with added noise, and then running them back through the ``QUIT`` program to calculate the parameter maps, and comparing these to the ground-truth with ``qidiff``. ``qidiff`` calculates a figure-of-merit based on noise factors, i.e. they are a measure of how much the signal noise is amplified in the final maps. In this way the tests also serve to illustrate the quality of the methods as well as whether the programs run correctly. For programs where a ground-truth image cannot be generated easily, the tests at least ensure that the program runs and does not crash.
+Most QUIT commands are tested by generating ground-truth parameter files with ``qi newimage``, feeding these into each ``QUIT`` command with the ``--simulate`` argument to generate simulated MR images with added noise, and then running them back through the ``QUIT`` command to calculate the parameter maps, and comparing these to the ground-truth with ``qi diff``. ``qi diff`` calculates a figure-of-merit based on noise factors, i.e. they are a measure of how much the signal noise is amplified in the final maps. In this way the tests also serve to illustrate the quality of the methods as well as whether the commands run correctly. For commands where a ground-truth image cannot be generated easily, the tests at least ensure that the command runs and does not crash.
 
 The ModelFitFilter
 ------------------
 
-The core part of QUIT is the ``ModelFitFilter`` and its dependent type ``FitFunction``, found in ``Source/Core/``. This is a sub-class of the ITK ``ImageToImageFilter``. The vast majority of QUIT programs declare an `Model` and `FitFunction` sub-class and use these to process the data. ``ModelFitFilter`` abstracts out most of the heavy lifting of extracting voxel-wise data from multiple inputs and writing it out to multiple outputs, leaving the ``FitFunction`` to process a single-voxel. A ``Model`` defines the number of expected inputs and their size, the number of fixed & varying parameters, and the number of outputs.
+The core part of QUIT is the ``ModelFitFilter`` and its dependent type ``FitFunction``, found in ``Source/Core/``. This is a sub-class of the ITK ``ImageToImageFilter``. The vast majority of QUIT commands declare an `Model` and `FitFunction` sub-class and use these to process the data. ``ModelFitFilter`` abstracts out most of the heavy lifting of extracting voxel-wise data from multiple inputs and writing it out to multiple outputs, leaving the ``FitFunction`` to process a single-voxel. A ``Model`` defines the number of expected inputs and their size, the number of fixed & varying parameters, and the number of outputs.
 
-Example: ``qidespot1``
+Example: ``qi despot1``
 ----------------------
 
-The structure of ``qidespot1`` is similar to most QUIT programs, and is a good example of most features. At the start are the includes (obviously). After that several ``FitFunction`` subclasses are defined, as well as a Ceres cost-function. The Ceres documentation is excellent, so refer to that for more information. After all the ``FitFunction`` classes are defined, the main program body begins. At the start of the program, all the command-line options are defined and then parsed. Then the various inputs are read and passed to the ``ModelFitFilter``, which is then updated. Finally, the outputs are written back to disk.
+The structure of ``qi despot1`` is similar to most QUIT commands, and is a good example of most features. At the start are the includes (obviously). After that several ``FitFunction`` subclasses are defined, as well as a Ceres cost-function. The Ceres documentation is excellent, so refer to that for more information. After all the ``FitFunction`` classes are defined, the main command body begins. At the start of the command, all the command-line options are defined and then parsed. Then the various inputs are read and passed to the ``ModelFitFilter``, which is then updated. Finally, the outputs are written back to disk.

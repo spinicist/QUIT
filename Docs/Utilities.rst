@@ -1,31 +1,31 @@
 Utilities
 =========
 
-QUIT contains a number of utilities. Note that these are actually compiled in two separate modules - ``CoreProgs`` contains the bare minimum of programs for the QUIT tests to run, while the actual ``Utils`` modules contains a larger number of useful tools for neuro-imaging pipelines. Their documentation is combined here.
+QUIT contains a number of utilities. Note that these are actually compiled in two separate modules - ``CoreProgs`` contains the bare minimum of commands for the QUIT tests to run, while the actual ``Utils`` modules contains a larger number of useful tools for neuro-imaging pipelines. Their documentation is combined here.
 
-* `qi_coil_combine`_
-* `qi_rfprofile`_
-* `qiaffine`_
-* `qicomplex`_
-* `qihdr`_
-* `qikfilter`_
-* `qimask`_
-* `qipolyfit/qipolyimg`_
-* `qisplitsubjects`_
-* `qidiff`_
-* `qinewimage`_
-* `qi_select`_
+* `qi coil_combine`_
+* `qi rfprofile`_
+* `qi affine`_
+* `qi complex`_
+* `qi hdr`_
+* `qi kfilter`_
+* `qi mask`_
+* `qi polyfit/qi polyimg`_
+* `qi splitsubjects`_
+* `qi diff`_
+* `qi newimage`_
+* `qi select`_
 
-qi_coil_combine
+qi coil_combine
 ---------------
 
-The program implements both the COMPOSER and Hammond methods for coil combination. For COMPOSER, a wrapper script that includes registration and resampling of low resolution reference data to the image data can be found in ``qi_composer.sh``.
+The command implements both the COMPOSER and Hammond methods for coil combination. For COMPOSER, a wrapper script that includes registration and resampling of low resolution reference data to the image data can be found in ``qi composer.sh``.
 
 **Example Command Line**
 
 .. code-block:: bash
 
-    qi_coil_combine multicoil_data.nii.gz --composer=composer_reference.nii.gz
+    qi coil_combine multicoil_data.nii.gz --composer=composer_reference.nii.gz
 
 
 Both the input multi-coil file and the reference file must be complex valued. Does not read input from ``stdin``. If a COMPOSER reference file is not specifed, then the Hammond coil combination method is used.
@@ -54,7 +54,7 @@ Both the input multi-coil file and the reference file must be complex valued. Do
 - `COMPOSER <http://doi.wiley.com/10.1002/mrm.26093>`_
 - `Hammond Method <http://linkinghub.elsevier.com/retrieve/pii/S1053811907009998>`_
 
-qi_rfprofile
+qi rfprofile
 ------------
 
 This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excitation slab profile from ``stdin``. The two are multiplied together along the slab direction (assumed to be Z), to produce a relative flip-angle or B1 map.
@@ -63,7 +63,7 @@ This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excita
 
 .. code-block:: bash
 
-    qi_rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.json
+    qi rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.json
 
 **Example Command Line**
 
@@ -75,7 +75,7 @@ This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excita
                     [0, 2, 0]]
     }
 
-``rf_pos`` specifies the positions that values of the RF slab have been calculated at, which are specified in ``rf_vals``. Note that ``rf_vals`` is an array of arrays - this allows ``qi_rfprofile`` to calculate profiles for multiple flip-angles in a single pass. The units for ``rf_pos`` are the same as image spacing in the header (usually mm). ``rf_vals`` is a unitless fraction, relative to the nominal flip-angle.
+``rf_pos`` specifies the positions that values of the RF slab have been calculated at, which are specified in ``rf_vals``. Note that ``rf_vals`` is an array of arrays - this allows ``qi rfprofile`` to calculate profiles for multiple flip-angles in a single pass. The units for ``rf_pos`` are the same as image spacing in the header (usually mm). ``rf_vals`` is a unitless fraction, relative to the nominal flip-angle.
 
 These values should be generated with a Bloch simulation. Internally, they are used to create a spline to represent the slab profile. This is then interpolated to each voxel's Z position, and the value multiplied by the input B1+ value at that voxel to produce the output.
 
@@ -83,7 +83,7 @@ These values should be generated with a Bloch simulation. Internally, they are u
 
 * ``output_b1map.nii.gz`` - The relative flip-angle/B1 map
 
-qiaffine
+qi affine
 --------
 
 This tool applies simple affine transformations to the header data of an image, i.e. rotations or scalings. It was written because of the inconsistent definitions of co-ordinate systems in pre-clinical imaging. Non-primate mammals are usually scanned prone instead of supine, and are quadrupeds instead of bipeds. This means the definitions of superior/inferior and anterior/posterior are different than in clinical scanning. However, several pre-clinical atlases, e.g. Dorr et al, rotate their data so that the clinical conventions apply. It is hence useful as a pre-processing step to adopt the same co-ordinate system. In addition, packages such as SPM or ANTs have several hard-coded assumptions about their input images that are only appropriate for human brains. It can hence be useful to scale up rodent brains by a factor of 10 so that they have roughly human dimensions.
@@ -92,7 +92,7 @@ This tool applies simple affine transformations to the header data of an image, 
 
 .. code-block:: bash
 
-    qiaffine input_image.nii.gz --scale=10.0 --rotX=90
+    qi affine input_image.nii.gz --scale=10.0 --rotX=90
 
 If no output image is specified, the output will be written back to the input filename.
 
@@ -114,7 +114,7 @@ If no output image is specified, the output will be written back to the input fi
 
     Set the image origin to be the Center of Gravity of the image.
 
-qicomplex
+qi complex
 ---------
 
 Manipulate complex/real/imaginary/magnitude/phase data. Created because I was fed up with how ``fslcomplex`` works.
@@ -123,7 +123,7 @@ Manipulate complex/real/imaginary/magnitude/phase data. Created because I was fe
 
 .. code-block:: bash
 
-    qicomplex -m input_magnitude.nii.gz -p input_phase.nii.gz -R output_real.nii.gz -I output_imaginary.nii.gz
+    qi complex -m input_magnitude.nii.gz -p input_phase.nii.gz -R output_real.nii.gz -I output_imaginary.nii.gz
 
 Lower case arguments ``--mag, -m, --pha, -p, --real, -r, --imag, -i, --complex, -x`` are inputs (of which it is only valid to specify certain combinations, complex OR magnitude/phase OR real/imaginary).
 
@@ -133,7 +133,7 @@ An additional input argument, ``--realimag`` is for Bruker "complex" data, which
 
 The ``--fixge`` argument fixes the lack of an FFT shift in the slab direction on GE data by multiplying alternate slices by -1. ``--negate`` multiplies the entire volume by -1. ``--double`` reads and writes double precision data instead of floats.
 
-qihdr
+qi hdr
 -----
 
 Prints the header of input files as seen by ITK to ``stdout``. Can extract single header fields or print the entirety.
@@ -142,7 +142,7 @@ Prints the header of input files as seen by ITK to ``stdout``. Can extract singl
 
 .. code-block:: bash
 
-    qihdr input_file1.nii.gz input_file2.nii.gz --verbose
+    qi hdr input_file1.nii.gz input_file2.nii.gz --verbose
 
 Multiple files can be queried at the same time. The ``--verbose`` flag will make sure you can tell which is which.
 
@@ -156,7 +156,7 @@ If any of the following options are specified, then only those fields will be pr
 
 Another useful option is ``--meta, -m``. This will let you query specific image meta-data from the header. You must know the exact name of the meta-data field you wish to obtain.
 
-qikfilter
+qi kfilter
 ---------
 
 MR images often required smoothing or filtering. While this is best done during reconstruction, sometimes it is required as a post-processing step. Instead of filtering by performing a convolution in image space, this tool takes the Fourier Transfrom of input volumes, multiplies k-Space by the specified filter, and transforms back.
@@ -165,7 +165,7 @@ MR images often required smoothing or filtering. While this is best done during 
 
 .. code-block:: bash
 
-    qikfilter input_file.nii.gz --filter=Gauss,0.5
+    qi kfilter input_file.nii.gz --filter=Gauss,0.5
 
 **Outputs**
 
@@ -207,7 +207,7 @@ MR images often required smoothing or filtering. While this is best done during 
 
     Read / write complex data.
 
-qimask
+qi mask
 ------
 
 Implements several different masking strategies. For human data, BET, antsBrainExtraction of 3dSkullStrip are likely better ideas. For pre-clinical data, the strategies below can provide a reasonable mask with some tweaking. There are potentially three stages to generating the mask:
@@ -220,7 +220,7 @@ Implements several different masking strategies. For human data, BET, antsBrainE
 
 .. code-block:: bash
 
-    qimask input_image.nii.gz --lower=10 --rats=1200 --fillh=1
+    qi mask input_image.nii.gz --lower=10 --rats=1200 --fillh=1
 
 In this case an intensity value of 10 will be used as the threshold, RATs will be run with a target volume of 1200 mm^3, and then holes with a radius of 1 voxel will be filled.
 
@@ -246,20 +246,20 @@ In this case an intensity value of 10 will be used as the threshold, RATs will b
 
 - `RATs algorithm <http://dx.doi.org/10.1016/j.jneumeth.2013.09.021>`_
 
-qipolyfit/qipolyimg
+qi polyfit/qi polyimg
 -------------------
 
 These tools work together to fit Nth order polynomials to images. This is typically used for smoothing a B1 field.
 
-``qipolyfit`` will output the polynomial co-efficients and origin to ``stdout``. ``qipolyimg`` can then read these to generate the polyimage image, using a different image as the reference space. In this way the polynomial image can be created without having to use upsampling.
+``qi polyfit`` will output the polynomial co-efficients and origin to ``stdout``. ``qi polyimg`` can then read these to generate the polyimage image, using a different image as the reference space. In this way the polynomial image can be created without having to use upsampling.
 
 **Example Command Line**
 
 .. code-block:: bash
 
-    qipolyfit noisy_b1_map.nii.gz --mask=brain_mask.nii.gz --order=8 | qipolyimg hires_t1_image.nii.gz hires_smooth_b1_map.nii.gz --order=8
+    qi polyfit noisy_b1_map.nii.gz --mask=brain_mask.nii.gz --order=8 | qi polyimg hires_t1_image.nii.gz hires_smooth_b1_map.nii.gz --order=8
 
-With the above command-line the output of ``qipolyfit`` is piped directly to the output of ``qipolyimg``. You can instead redirect it to a file with ``>`` and read it in separately. The ``--order`` argument must match between the two commands.
+With the above command-line the output of ``qi polyfit`` is piped directly to the output of ``qi polyimg``. You can instead redirect it to a file with ``>`` and read it in separately. The ``--order`` argument must match between the two commands.
 
 **Important Options**
 
@@ -271,11 +271,11 @@ With the above command-line the output of ``qipolyfit`` is piped directly to the
 
     Only fit the data within a mask. This is usually the brain or only white-matter.
 
-- ``--robust`` (``qipolyimg`` only)
+- ``--robust`` (``qi polyimg`` only)
 
     Use Robust Polynomial Fitting with Huber weights. There is a good discussion of this topic in the Matlab help files.
 
-qi_ssfp_bands
+qi ssfp_bands
 -------------
 
 There are several different methods for removing SSFP bands in the literature. Most of them rely on acquiring multiple SSFP images with different phase-increments (also called phase-cycling or phase-cycling patterns). Changing the phase-increments moves the bands to a different location, after which the images can be combined to reduce the banding. The different approaches are discussed further below, but the recommended method is the Geometric Solution which requires complex data.
@@ -284,7 +284,7 @@ There are several different methods for removing SSFP bands in the literature. M
 
 .. code-block:: bash
 
-    qissfpbands ssfp.nii.gz --method=G --2pass --magnitude
+    qi ssfpbands ssfp.nii.gz --method=G --2pass --magnitude
 
 The SSFP file must be complex-valued to use the Geometric Solution or Complex Average methods. For the other methods magnitude data is sufficient. Phase-increments should be in opposing pairs, e.g. 180 & 0 degrees, 90 & 270 degrees. These should either be ordered in two blocks, e.g. 180, 90, 0, 270, or alternating, e.g. 180, 0, 90, 270.
 
@@ -324,7 +324,7 @@ The output filename is the input filename with a suffix that will depend on the 
 
 - ``--ph-incs``
 
-    Number of phase-increments. The default is 4. If you have multiple phase-increments and (for example) multiple flip-angles, ``qissfpbands`` can process them all in one pass.
+    Number of phase-increments. The default is 4. If you have multiple phase-increments and (for example) multiple flip-angles, ``qi ssfpbands`` can process them all in one pass.
 
 - ``--ph-order``
 
@@ -334,7 +334,7 @@ The output filename is the input filename with a suffix that will depend on the 
 
 - `Geometric Solution <http://doi.wiley.com/10.1002/mrm.25098>`_
 
-qidiff
+qi diff
 ------
 
 Calculates the mean square difference between two images and checks if it is below a tolerance value. Used in the QUIT tests to ensure that calculated parameter maps are close to their baseline values.
@@ -343,9 +343,9 @@ Calculates the mean square difference between two images and checks if it is bel
 
 .. code-block:: bash
 
-    qidiff --baseline=original.nii --input=calculated.nii --noise=0.01
+    qi diff --baseline=original.nii --input=calculated.nii --noise=0.01
 
-The program returns the dimensionless noise factor on `stdout`, which is read by the test suite. Note, to make useage clearer, unlike most other QUIT programs all input is specified as arguments.
+The command returns the dimensionless noise factor on `stdout`, which is read by the test suite. Note, to make useage clearer, unlike most other QUIT commands all input is specified as arguments.
 
 **Important Options**
 
@@ -369,7 +369,7 @@ The program returns the dimensionless noise factor on `stdout`, which is read by
 
     Use absolute difference instead of fractional difference (i.e. do not divide by the baseline image). Useful when images contain genuine zeros (e.g. off resonance maps).
 
-qinewimage
+qi newimage
 ----------
 
 Creates new images filled with specified patterns. Used for generating test data.
@@ -378,7 +378,7 @@ Creates new images filled with specified patterns. Used for generating test data
 
 .. code-block:: bash
 
-    qinewimage --size 32,32,32 --grad "0 0.5 1.5" output_image.nii.gz
+    qi newimage --size 32,32,32 --grad "0 0.5 1.5" output_image.nii.gz
 
 The file specified on the command line is the *output* file.
 
@@ -408,7 +408,7 @@ The file specified on the command line is the *output* file.
 
     Wrap output voxels at the specified value. Useful for simulating phase data.
 
-qi_select
+qi select
 ---------
 
 Selects a set of volumes from a 4D file and writes them to a new 4D file (a reimplemention of fslselectvols).
@@ -417,6 +417,6 @@ Selects a set of volumes from a 4D file and writes them to a new 4D file (a reim
 
 .. code-block:: bash
 
-    qi_select in_file.nii out_file.nii 2,4,6,8
+    qi select in_file.nii out_file.nii 2,4,6,8
 
 The last argument is a comma-separated list of the volumes you wish to select.

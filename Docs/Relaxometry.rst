@@ -3,24 +3,24 @@ Relaxometry
 
 Relaxometry is the measurement of the longitudinal and transverse relaxation times T1 and T2. There are a multitude of different techniques for measuring both. The main focus of QUIT has been on the Driven-Equilibrium Single-Pulse Observation of T1 (DESPOT1) family of techniques, but the classic multi-echo T2 method and the more recent MP2RAGE T1 measurement method are also implemented. It is common for relaxometry methods to need a :doc:`B1` map.
 
-The following programs are available:
+The following commands are available:
 
-* `qidespot1`_
-* `qidespot1hifi`_
-* `qidespot2`_
-* `qidespot2fm`_
-* `qi_jsr`_
-* `qimcdespot`_
-* `qimultiecho`_
-* `qimp2rage`_
-* `qi_mpm_r2s`_
-* `qi_ssfp_ellipse`_
-* `qi_planet`_
+* `qi despot1`_
+* `qi despot1hifi`_
+* `qi despot2`_
+* `qi despot2fm`_
+* `qi jsr`_
+* `qi mcdespot`_
+* `qi multiecho`_
+* `qi mp2rage`_
+* `qi mpm_r2s`_
+* `qi ssfp_ellipse`_
+* `qi planet`_
 
-qidespot1
+qi despot1
 ---------
 
-This program implements the classic Driven Equilibrium Single-Pulse Observation of T1 (DESPOT1) algorithm, also known as the Variable Flip-Angle (VFA) method in the literature. This is a fast way to measure longitudinal relaxation using a spoiled steady-state sequence, which is know by a different name by every scanner manufacturer just to be helpful. On GE, it's SPoiled Gradient Recalled echo (SPGR), on Siemens it's Fast Low-Angle SHot (FLASH) and on Phillips the sequence is Fast Field Echo (FFE).
+This command implements the classic Driven Equilibrium Single-Pulse Observation of T1 (DESPOT1) algorithm, also known as the Variable Flip-Angle (VFA) method in the literature. This is a fast way to measure longitudinal relaxation using a spoiled steady-state sequence, which is know by a different name by every scanner manufacturer just to be helpful. On GE, it's SPoiled Gradient Recalled echo (SPGR), on Siemens it's Fast Low-Angle SHot (FLASH) and on Phillips the sequence is Fast Field Echo (FFE).
 
 .. image:: T1_slices.png
     :alt: A T1 map
@@ -29,7 +29,7 @@ This program implements the classic Driven Equilibrium Single-Pulse Observation 
 
 .. code-block:: bash
 
-    qidespot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
+    qi despot1 input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 
 **Example JSON File**
 
@@ -63,16 +63,16 @@ This program implements the classic Driven Equilibrium Single-Pulse Observation 
 - `Chang et al, Weighted Least Squares Fitting <http://doi.wiley.com/10.1002/mrm.21669>`_
 - `Wood, Optimum Flip-Angle Formulas <http://doi.wiley.com/10.1002/mrm.25592>`_
 
-qidespot1hifi
+qi despot1hifi
 -------------
 
-This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / IR-SPGR type sequence. Although DESPOT1-HIFI can produce a rough estimate of B1, it often fails to produce reasonable values in the ventricles, and the fact that the MP-RAGE image is often acquired at lower resolution than the SPGR/FLASH data can also cause problems. Hence you should either smooth the B1 map produced as output, or fit it with a polynomial (:doc:`Utilities`), then recalculate T1 using the `qidespot1`_ program. Note that if your MP-RAGE image is not acquired at the same resolution as your SPGR data, it must be resampled to the same spacing before processing (and it should also be registered to your SPGR data).
+This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / IR-SPGR type sequence. Although DESPOT1-HIFI can produce a rough estimate of B1, it often fails to produce reasonable values in the ventricles, and the fact that the MP-RAGE image is often acquired at lower resolution than the SPGR/FLASH data can also cause problems. Hence you should either smooth the B1 map produced as output, or fit it with a polynomial (:doc:`Utilities`), then recalculate T1 using the `qi despot1`_ command. Note that if your MP-RAGE image is not acquired at the same resolution as your SPGR data, it must be resampled to the same spacing before processing (and it should also be registered to your SPGR data).
 
 **Example Command Line**
 
 .. code-block:: bash
 
-    qidespot1hifi spgr_file.nii.gz irspgr_file.nii.gz --mask=mask_file.nii.gz < input.json
+    qi despot1hifi spgr_file.nii.gz irspgr_file.nii.gz --mask=mask_file.nii.gz < input.json
 
 **Example JSON File**
 
@@ -106,10 +106,10 @@ For the MPRAGE sequence, the TR is the spacing between readouts/echoes, not the 
 
 - `Original HIFI Paper <http://doi.wiley.com/10.1002/jmri.21130>`_
 
-qidespot2
+qi despot2
 ---------
 
-DESPOT2 uses SSFP data and a separate T1 map to calculate T2, using the same maths as DESPOT1. It does not account for the banding artefacts present in SSFP data at field-strengths of 3T and above. See `qidespot2fm`_ for a method that does account for them, or if you have at least 4 phase-increments and complex data then see `qi_ssfp_bands` in :doc:`Utilities` for a way to remove them before using this program.
+DESPOT2 uses SSFP data and a separate T1 map to calculate T2, using the same maths as DESPOT1. It does not account for the banding artefacts present in SSFP data at field-strengths of 3T and above. See `qi despot2fm`_ for a method that does account for them, or if you have at least 4 phase-increments and complex data then see `qi ssfp_bands` in :doc:`Utilities` for a way to remove them before using this command.
 
 .. image:: T2_slices.png
     :alt: A T2 map
@@ -118,7 +118,7 @@ DESPOT2 uses SSFP data and a separate T1 map to calculate T2, using the same mat
 
 .. code-block:: bash
 
-    qidespot2 t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
+    qi despot2 t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 
 **Example JSON File**
 
@@ -157,7 +157,7 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. If the ellipse option is s
 
 - `Original DESPOT2 Paper <http://doi.wiley.com/10.1002/mrm.10407>`_
 
-qidespot2fm
+qi despot2fm
 -----------
 
 DESPOT2-FM uses SSFP data with mulitple phase-increments (also called phase-cycles or phase-cycling patterns) to produce T2 maps without banding artefacts.
@@ -166,7 +166,7 @@ DESPOT2-FM uses SSFP data with mulitple phase-increments (also called phase-cycl
 
 .. code-block:: bash
 
-    qidespot2fm t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
+    qi despot2fm t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 
 The input file should contain all SSFP images concatenated together as a 4D file. The preferred ordering is flip-angle, then phase-increment (i.e. all flip-angles at one phase-increment, then all flip-angles at the next phase-increment).
 
@@ -197,13 +197,13 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. The length of ``PhaseInc``
 
 * ``--asym, -A``
 
-    With the commonly used phase-increments of 180 and 0 degrees, due to symmetries in the SSFP magnitude profile, it is not possible to distinguish positive and negative off-resonance. Hence by default ``qidespot2fm`` only tries to fit for positive off-resonance frequences. If you acquire most phase-increments, e.g. 180, 0, 90 & 270, then add this switch to fit both negative and positive off-resonance frequencies.
+    With the commonly used phase-increments of 180 and 0 degrees, due to symmetries in the SSFP magnitude profile, it is not possible to distinguish positive and negative off-resonance. Hence by default ``qi despot2fm`` only tries to fit for positive off-resonance frequences. If you acquire most phase-increments, e.g. 180, 0, 90 & 270, then add this switch to fit both negative and positive off-resonance frequencies.
 
 **References**
 
 - `Orignal FM Paper <http://doi.wiley.com/10.1002/jmri.21849>`_
 
-qi_jsr
+qi jsr
 -------------
 
 Join-System Relaxometry fits T1 and T2 to spoiled and balanced gradient echo (SPGR and SSFP) data simultaneously, which improves the accuracy and precision in the fit of both.
@@ -212,7 +212,7 @@ Join-System Relaxometry fits T1 and T2 to spoiled and balanced gradient echo (SP
 
 .. code-block:: bash
 
-    qi_jsr spgr.nii.gz ssfp.nii.gz < input.json
+    qi jsr spgr.nii.gz ssfp.nii.gz < input.json
 
 **Example JSON File**
 
@@ -247,12 +247,12 @@ Note that the pulse-length for SSFP is required in order to apply to finite-puls
 - `Teixeira et al <http://doi.wiley.com/10.1002/mrm.26670>`_
 - `Crooijmans et al <http://doi.wiley.com/10.1002/mrm.22661>`_
 
-qimcdespot
+qi mcdespot
 ----------
 
 Multi-component DESPOT aims to separate SPGR and SSFP signals into multiple discrete pools with different T1 and T2. In the brain, the pool with shorter values is attributed to myelin water, while pools with longer values can be either intra/extra-cellular water or CSF.
 
-It is recommended to have an off-resonance map to stabilise the fitting. This can be generated by using `qidespot1`_ and then `qidespot2fm`_ above. A B1 map is also essential for good results.
+It is recommended to have an off-resonance map to stabilise the fitting. This can be generated by using `qi despot1`_ and then `qi despot2fm`_ above. A B1 map is also essential for good results.
 
 .. image:: mcdespot.png
     :alt: Processed mcDESPOT Images
@@ -261,9 +261,9 @@ It is recommended to have an off-resonance map to stabilise the fitting. This ca
 
 .. code-block:: bash
 
-    qimcdespot spgr_file.nii.gz ssfp_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz --f0=f0_file.nii.gz --scale < input.json
+    qi mcdespot spgr_file.nii.gz ssfp_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz --f0=f0_file.nii.gz --scale < input.json
 
-The SSFP input file should contain all SSFP images concatenated together as a 4D file (see `qidespot2fm`_ above).
+The SSFP input file should contain all SSFP images concatenated together as a 4D file (see `qi despot2fm`_ above).
 
 **Example JSON File**
 
@@ -334,7 +334,7 @@ The intra/extra-cellular water fraction is not output, as it is not a free param
 - `3 component model <http://doi.wiley.com/10.1002/mrm.24429>`_
 - `Stochastic/Gaussian Region Contraction <http://doi.wiley.com/10.1002/mrm.25108>`_
 
-qimp2rage
+qi mp2rage
 ---------
 
 MP2RAGE adds a second inversion time to the standard T1w MPRAGE sequence. Combining the (complex) images with the expression :math:`S_1 S_2^*/(|S_1^2 + S_2^2|)` produces a real-valued image that is corrected for receive coil (B1-) inhomogeneity. In addition, if the two inversion times are carefully selected, a one-to-one mapping exists between the values in that image and T1, which is also robust to transmit (B1+) inhomogeneity. Finally, as the two images are implicitly registered, this method has several advantages over DESPOT1.
@@ -343,7 +343,7 @@ MP2RAGE adds a second inversion time to the standard T1w MPRAGE sequence. Combin
 
 .. code-block:: bash
 
-    qimp2rage input_file.nii.gz --mask=mask_file.nii.gz < input.json
+    qi mp2rage input_file.nii.gz --mask=mask_file.nii.gz < input.json
 
 The input file must be complex-valued.
 
@@ -380,7 +380,7 @@ The input file must be complex-valued.
 - `Original MP2RAGE paper <https://www.sciencedirect.com/science/article/pii/S1053811909010738>`_
 - `Robust contrast <https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0099676>`_
 
-qimultiecho
+qi multiecho
 -----------
 
 Classic monoexponential decay fitting. Can be used to fit either T2 or T2*.
@@ -389,7 +389,7 @@ Classic monoexponential decay fitting. Can be used to fit either T2 or T2*.
 
 .. code-block:: bash
 
-    qimultiecho input_file.nii.gz --algo=a < input.json
+    qi multiecho input_file.nii.gz --algo=a < input.json
 
 **Example JSON File**
 
@@ -440,7 +440,7 @@ For irregularly spaced echoes:
 
 - `ARLO <http://doi.wiley.com/10.1002/mrm.25137>`_
 
-qi_mpm_r2s
+qi mpm_r2s
 -----------
 
 Implements the ECSTATICS method for estimating R2*, part of Multi-Parametric Mapping (MPM). This performs a simultaneous fit to PD-, T1- and MT-weighted multi-echo data for R2*, improving the SNR of the resulting fit compared to individual fits. In contrast to the original paper, which used linear least-squares, a bounded non-linear fit is used.
@@ -449,7 +449,7 @@ Implements the ECSTATICS method for estimating R2*, part of Multi-Parametric Map
 
 .. code-block:: bash
 
-    qi_mpm_r2s PDw.nii.gz T1w.nii.gz MTw.nii.gz < input.json
+    qi mpm_r2s PDw.nii.gz T1w.nii.gz MTw.nii.gz < input.json
 
 **Example JSON File**
 
@@ -491,11 +491,11 @@ For regularly spaced echoes:
 
 - `Weiskopf et al <http://journal.frontiersin.org/article/10.3389/fnins.2014.00278/abstract>`_
 
-qi_ssfp_ellipse
+qi ssfp_ellipse
 ---------------
 
-This tool is not a relaxometry tool as such but a pre-processing step for `qi_planet`_.
-Shcherbakova et al showed it was possible to recover the ellipse parameters *G*, *a*, *b* from at least six phase-increments. They then proceeded to recover T1 & T2 from the ellipse parameters. This utility calculates the ellipse parameters, and ``qi_planet`` then processes those parameters to calculate T1 & T2. A non-linear fit is used instead of the algebraic method used by Shcherbakova et al. This is slower, but robust across all flip-angles.
+This tool is not a relaxometry tool as such but a pre-processing step for `qi planet`_.
+Shcherbakova et al showed it was possible to recover the ellipse parameters *G*, *a*, *b* from at least six phase-increments. They then proceeded to recover T1 & T2 from the ellipse parameters. This utility calculates the ellipse parameters, and ``qi planet`` then processes those parameters to calculate T1 & T2. A non-linear fit is used instead of the algebraic method used by Shcherbakova et al. This is slower, but robust across all flip-angles.
 
 .. image:: ellipse.png
     :alt: SSFP Ellipse Parameters
@@ -504,7 +504,7 @@ Shcherbakova et al showed it was possible to recover the ellipse parameters *G*,
 
 .. code-block:: bash
 
-    qi_ssfp_ellipse ssfp_data.nii.gz < input.json
+    qi ssfp_ellipse ssfp_data.nii.gz < input.json
 
 The SSFP file must be complex-valued. At least three pairs of opposing phase-increments are recommended (six images in total).
 
@@ -520,7 +520,7 @@ The SSFP file must be complex-valued. At least three pairs of opposing phase-inc
 
 - `PLANET <http://dx.doi.org/10.1002/mrm.26717>`_
 
-qi_planet
+qi planet
 --------------
 
 Converts the SSFP Ellipse parameters into relaxation times.
@@ -529,7 +529,7 @@ Converts the SSFP Ellipse parameters into relaxation times.
 
 .. code-block:: bash
 
-    qi_planet ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+    qi planet ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
 
 **Outputs**
 

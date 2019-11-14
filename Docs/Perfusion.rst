@@ -3,15 +3,15 @@ Perfusion
 
 Perfusion is the study of blood flow within the brain. This module contains tools to calculate Cerebral Blood Flow (CBF) and the Oxygen Extraction Fraction (OEF).
 
-The following programs are available:
+The following commands are available:
 
-* `qi_asl`_
-* `qi_ase_oef`_
+* `qi asl`_
+* `qi ase_oef`_
 
-qi_asl
+qi asl
 ------
 
-This program implements the standard equation to calculate Cerebral Blood Flow (CBF) in units of ml/100 g/minute from either Continuous or pseudo-Continuous Arterial Spin Labelling data (CASL or pCASL). For the exact equation used, see the first reference below.
+This command implements the standard equation to calculate Cerebral Blood Flow (CBF) in units of ml/100 g/minute from either Continuous or pseudo-Continuous Arterial Spin Labelling data (CASL or pCASL). For the exact equation used, see the first reference below.
 
 .. image:: cbf.png
     :alt: A Rodent CBF Map
@@ -20,7 +20,7 @@ This program implements the standard equation to calculate Cerebral Blood Flow (
 
 .. code-block:: bash
 
-    qi_asl asl_file.nii.gz --blood=2.429 --alpha=0.9 --average --slicetime --pd=reference_file.nii.gz <input.json
+    qi asl asl_file.nii.gz --blood=2.429 --alpha=0.9 --average --slicetime --pd=reference_file.nii.gz <input.json
 
 The input file must contain pairs of label & control volumes. Currently the order of these is hard-coded to label, then control. The file can contain multiple pairs if you are studying timeseries data. The arguments are discussed further below. It is highly recommended to provide either a separated Proton Density reference image or a tissue T1 map.
 
@@ -70,7 +70,7 @@ The units for all these values must be consistent, seconds are preferred. If sin
 - `ISMRM Consortium Recommendations <http://dx.doi.org/10.1002/mrm.25197>`_
 - `High-field blood T1 times <http://dx.doi.org/10.1016/j.mri.2006.10.020>`_
 
-qi_ase_oef
+qi ase_oef
 ----------
 
 Estimates the Oxygen Extraction Fraction (OEF) from Asymmetric Spin-Echo (ASE) data. If the signal evolution each side of a spin-echo in the presence of blood vessels is observed carefully, it does not display simple monoexponential T2* decay close to the echo, but is instead quadratically exponential. By measuring the T2* decay in the linear regime using an ASE sequence, it is possible to extrapolate back to the echo and obtain an estimate of what the signal would be if no blood was presence. The difference between this and the observed signal can be attributed to the Deoxygenated Blood Volume (DBV), and from there the OEF can be calculated.
@@ -80,7 +80,7 @@ Estimates the Oxygen Extraction Fraction (OEF) from Asymmetric Spin-Echo (ASE) d
 
 .. code-block:: bash
 
-    qi_ase_oef ase_file.nii.gz --B0=9.4 $DB --fmap=fieldmap.nii.gz <input.json
+    qi ase_oef ase_file.nii.gz --B0=9.4 $DB --fmap=fieldmap.nii.gz <input.json
 
 
 **Example JSON File**

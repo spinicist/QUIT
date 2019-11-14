@@ -3,13 +3,13 @@ B1
 
 The B1 (RF) fields inside the scanner are not perfectly flat (homogeneous), particularly at field strengths of 3T or above. Hence in methods where the local flip-angle must be known (e.g. :doc:`Relaxometry`) the B1 field must be measured or fitted for. A distinction is drawn between B1+ (the transmit coil inhomogeneity) and B1- (the receive coil inhomogeneity). Generally it is B1+ that is important to know for quantitative techniques, and throughout ``QUIT`` it is expressed as a fraction - a value of 1 means the desired flip-angle was achieved in a voxel, and values lower/higher than this imply a lower/higher flip-angle. B1- is important if you are interested in measuring the Proton Density (PD / M0).
 
-The following programs are available:
+The following commands are available:
 
-* `qiafi`_
-* `qidream`_
-* `qi_b1_papp`_
+* `qi afi`_
+* `qi dream`_
+* `qi b1_papp`_
 
-qiafi
+qi afi
 -----
 
 Calculates a B1+ map using the Actual Flip-angle Imaging method.
@@ -18,7 +18,7 @@ Calculates a B1+ map using the Actual Flip-angle Imaging method.
 
 .. code-block:: bash
 
-    qiafi input_file.nii.gz
+    qi afi input_file.nii.gz
 
 Does not read any input from ``stdin``. The input file should contain two volumes, corresponding to TR1 and TR2.
 
@@ -46,7 +46,7 @@ Does not read any input from ``stdin``. The input file should contain two volume
 - `Optimal parameters <http://doi.wiley.com/10.1002/mrm.22394>`_
 - `Steady-State Conditions <http://doi.wiley.com/10.1002/mrm.21592>`_
 
-qidream
+qi dream
 -------
 
 Calculates a B1+ map using the DREAM method.
@@ -55,7 +55,7 @@ Calculates a B1+ map using the DREAM method.
 
 .. code-block:: bash
 
-    qidream input_file.nii.gz
+    qi dream input_file.nii.gz
 
 Does not read any input from `stdin`. The input file should contain two volumes, the FID and stimulated echo (STE).
 
@@ -81,7 +81,7 @@ Does not read any input from `stdin`. The input file should contain two volumes,
 - `Original DREAM Paper <http://doi.wiley.com/10.1002/mrm.24158>`_
 - `Virtual Stimulated Echo <http://doi.wiley.com/10.1002/mrm.24667>`_
 
-qi_b1_papp
+qi b1_papp
 -----
 
 Implements the method of measuring B1- from Papp et al, which takes the ratio of an image acquired with the body coil as receiver and one with the receive coil that was used to acquire the quantitative images.
@@ -90,7 +90,7 @@ Implements the method of measuring B1- from Papp et al, which takes the ratio of
 
 .. code-block:: bash
 
-    qi_b1_papp input_file.nii.gz
+    qi b1_papp input_file.nii.gz
 
 Does not read any input from ``stdin``. The input file should contain two volumes, corresponding to the body coil image and the receive coil respectively.
 
