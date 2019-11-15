@@ -9,7 +9,7 @@ void add_relax_commands(std::map<std::string, std::function<int(int, char **)>> 
     commands["despot1hifi"]  = &despot1hifi_main;
     commands["despot2"]      = &despot2_main;
     commands["despot2fm"]    = &despot2fm_main;
-    // commands["mcdespot"]     = &mcdespot_main;
-    commands["mp2rage"]   = &mp2rage_main;
-    commands["multiecho"] = &multiecho_main;
+    commands["mcdespot"]     = &mcdespot_main;
+    commands["mp2rage"]      = &mp2rage_main;
+    commands["multiecho"]    = &multiecho_main;
 }

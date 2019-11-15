@@ -10,7 +10,7 @@ int despot1_main(int argc, char **argv);
 int despot1hifi_main(int argc, char **argv);
 int despot2_main(int argc, char **argv);
 int despot2fm_main(int argc, char **argv);
-// int mcdespot_main(int argc, char **argv);
+int mcdespot_main(int argc, char **argv);
 int mp2rage_main(int argc, char **argv);
 int multiecho_main(int argc, char **argv);
 

@@ -31,53 +31,34 @@ struct ThreePoolModel {
     static constexpr int NV = 10;
     static constexpr int ND = 0;
     static constexpr int NF = 2;
+    static constexpr int NI = 2;
 
     static std::array<const std::string, NV> varying_names;
     static std::array<const std::string, NF> fixed_names;
     static const QI_ARRAYN(double, NF) fixed_defaults;
 
-    const SequenceType &sequence;
-    bool                scale_to_mean = false;
-    TwoPoolModel        two_pool;
+    SPGRSequence spgr;
+    SSFPSequence ssfp;
+    bool         scale_to_mean = false;
+    TwoPoolModel two_pool;
 
     QI_ARRAYN(double, NV) bounds_lo;
     QI_ARRAYN(double, NV) bounds_hi;
 
-    ThreePoolModel(const SequenceType &s, const bool scale);
-    bool           valid(const QI_ARRAYN(double, NV) & params) const; // For SRC
-    size_t         num_outputs() const { return sequence.count(); }
-    int            output_size(int i) { return sequence.at(i)->size(); }
-    Eigen::ArrayXd SSFP1(const double &          PD,
-                         const double &          T1,
-                         const double &          T2,
-                         const double &          f0,
-                         const double &          B1,
-                         const QI::SSFPSequence *s) const;
+    ThreePoolModel(SPGRSequence const &s1, SSFPSequence const &s2, const bool scale);
+    bool   valid(const QI_ARRAYN(double, NV) & params) const; // For SRC
+    size_t num_outputs() const;
+    int    output_size(int i) const;
 
     Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
-                               const QI_ARRAYN(double, NF) & fixed,
-                               const QI::SPGRSequence *s) const;
+                               const QI_ARRAYN(double, NF) & fixed) const;
 
     Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
-                               const QI_ARRAYN(double, NF) & fixed,
-                               const QI::SSFPSequence *s) const;
-
-    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
-                               const QI_ARRAYN(double, NF) & fixed,
-                               const QI::SPGREchoSequence *s) const;
-
-    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
-                               const QI_ARRAYN(double, NF) & fixed,
-                               const QI::SSFPEchoSequence *s) const;
-
-    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying,
-                          const QI_ARRAYN(double, NF) & fixed,
-                          const QI::SequenceBase *s) const;
-
-    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed) const;
+                               const QI_ARRAYN(double, NF) & fixed) const;
 
     std::vector<Eigen::ArrayXd> signals(const Eigen::ArrayXd &varying,
                                         const QI_ARRAYN(double, NF) & fixed) const;
+    Eigen::ArrayXd signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed) const;
 };
 
 } // End namespace QI

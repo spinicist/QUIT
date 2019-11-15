@@ -14,7 +14,6 @@
 #include <Eigen/Core>
 #include <array>
 
-#include "SSFPSequence.h"
 #include "Args.h"
 #include "FitFunction.h"
 #include "ImageIO.h"
@@ -22,6 +21,7 @@
 #include "ModelFitFilter.h"
 #include "RegionContraction.h"
 #include "SPGRSequence.h"
+#include "SSFPSequence.h"
 #include "SimulateModel.h"
 #include "ThreePoolModel.h"
 #include "TwoPoolModel.h"
@@ -42,7 +42,7 @@ template <typename Model> struct MCDSRCFunctor {
     }
 
     int inputs() const { return Model::NV; }
-    int values() const { return model.sequence.size(); }
+    int values() const { return model.spgr.size() + model.ssfp.size(); }
 
     bool constraint(const QI_ARRAYN(double, Model::NV) & varying) const {
         return model.valid(varying);
@@ -67,7 +67,7 @@ template <typename Model> struct SRCFit {
     using ModelType           = Model;
     Model &model;
 
-    int input_size(const int i) const { return model.sequence.at(i)->size(); }
+    int input_size(const int) const { return model.ssfp.size() + model.spgr.size(); }
     int n_outputs() const { return Model::NV; }
 
     int    max_iterations = 5;
@@ -80,7 +80,7 @@ template <typename Model> struct SRCFit {
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
-        Eigen::ArrayXd data(model.sequence.size());
+        Eigen::ArrayXd data(model.ssfp.size() + model.spgr.size());
         int            dataIndex = 0;
         for (size_t i = 0; i < inputs.size(); i++) {
             if (model.scale_to_mean) {
@@ -92,8 +92,10 @@ template <typename Model> struct SRCFit {
         }
         QI_ARRAYN(double, Model::NV) thresh = QI_ARRAYN(double, Model::NV)::Constant(0.05);
         const double & f0                   = fixed[0];
-        Eigen::ArrayXd weights              = model.sequence.weights(f0);
-        using Functor                       = MCDSRCFunctor<Model>;
+        Eigen::ArrayXd weights(model.spgr.size() + model.ssfp.size());
+        weights.head(model.spgr.size()) = 1;
+        weights.tail(model.ssfp.size()) = model.ssfp.weights(f0);
+        using Functor                   = MCDSRCFunctor<Model>;
         Functor                        func(model, fixed, data, weights);
         QI::RegionContraction<Functor> rc(func,
                                           model.bounds_lo,
@@ -111,11 +113,8 @@ template <typename Model> struct SRCFit {
         auto r   = func.residuals(v);
         residual = sqrt(r.square().sum() / r.rows());
         if (residuals.size() > 0) {
-            int index = 0;
-            for (size_t i = 0; i < model.sequence.count(); i++) {
-                residuals[i] = r.segment(index, model.sequence.at(i)->size());
-                index += model.sequence.at(i)->size();
-            }
+            residuals[0] = r.head(model.spgr.size());
+            residuals[1] = r.tail(model.ssfp.size());
         }
         iterations = rc.contractions();
         return {true, ""};
@@ -131,7 +130,8 @@ int mcdespot_main(int argc, char **argv) {
         "Calculates MWF & other parameter maps from mcDESPOT data\n"
         "All times (e.g. T1, TR) are in SECONDS. All angles are in degrees.\n"
         "http://github.com/spinicist/QUIT");
-    args::PositionalList<std::string> input_paths(parser, "INPUT FILES", "Input image files");
+    args::Positional<std::string> spgr_path(parser, "SPGR FILE", "Input SPGR file");
+    args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Input SSFP file");
     QI_COMMON_ARGS;
     args::ValueFlag<std::string> f0(parser, "f0", "f0 map (Hertz)", {'f', "f0"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
@@ -143,16 +143,22 @@ int mcdespot_main(int argc, char **argv) {
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i', "its"}, 4);
     args::Flag           bounds(parser, "BOUNDS", "Specify bounds in input", {"bounds"});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-    QI::CheckList(input_paths);
+    QI::CheckPos(spgr_path);
+    QI::CheckPos(ssfp_path);
 
     QI::Log(verbose, "Reading sequences");
-    rapidjson::Document input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::SequenceGroup   sequences(QI::GetMember(input, "Sequences"));
+    auto input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto spgr  = input.at("SPGR").get<QI::SPGRSequence>();
+    auto ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
 
     auto process = [&](auto model, const std::string &model_name) {
         if (simulate) {
-            QI::SimulateModel<decltype(model), true>(
-                input, model, {f0.Get(), B1.Get()}, input_paths.Get(), verbose, simulate.Get());
+            QI::SimulateModel<decltype(model), true>(input,
+                                                     model,
+                                                     {f0.Get(), B1.Get()},
+                                                     {spgr_path.Get(), ssfp_path.Get()},
+                                                     verbose,
+                                                     simulate.Get());
         } else {
             using FitType = SRCFit<decltype(model)>;
             FitType src{model};
@@ -166,7 +172,8 @@ int mcdespot_main(int argc, char **argv) {
 
             auto fit_filter =
                 QI::ModelFitFilter<FitType>::New(&src, verbose, resids, subregion.Get());
-            fit_filter->ReadInputs(input_paths.Get(), {f0.Get(), B1.Get()}, mask.Get());
+            fit_filter->ReadInputs(
+                {spgr_path.Get(), ssfp_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + model_name);
             QI::Log(verbose, "Finished.");
@@ -174,11 +181,11 @@ int mcdespot_main(int argc, char **argv) {
     };
     switch (modelarg.Get()) {
     case 2: {
-        QI::TwoPoolModel two_pool{sequences, scale.Get()};
+        QI::TwoPoolModel two_pool{spgr, ssfp, scale.Get()};
         process(two_pool, "2C_");
     } break;
     case 3: {
-        QI::ThreePoolModel three_pool{sequences, scale.Get()};
+        QI::ThreePoolModel three_pool{spgr, ssfp, scale.Get()};
         process(three_pool, "3C_");
     } break;
     default:
