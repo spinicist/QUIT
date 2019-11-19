@@ -12,4 +12,5 @@ void add_relax_commands(std::map<std::string, std::function<int(int, char **)>> 
     commands["mcdespot"]     = &mcdespot_main;
     commands["mp2rage"]      = &mp2rage_main;
     commands["multiecho"]    = &multiecho_main;
+    commands["mupa"]         = &mupa_main;
 }
