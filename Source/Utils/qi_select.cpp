@@ -67,7 +67,11 @@ int select_main(int argc, char **argv) {
         volumes.emplace_back(volume);
     }
     tiler->Update();
-    QI::WriteImage(tiler->GetOutput(), output_path.Get(), verbose);
+    auto out_file = tiler->GetOutput();
+    out_file->SetSpacing(in_file->GetSpacing());
+    out_file->SetOrigin(in_file->GetOrigin());
+    out_file->SetDirection(in_file->GetDirection());
+    QI::WriteImage(out_file, output_path.Get(), verbose);
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

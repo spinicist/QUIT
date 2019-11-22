@@ -439,7 +439,7 @@ class SelectInputSpec(QI.InputBaseSpec):
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Input File')
-    out_file = File(exists=False, argstr='%s',
+    out_file = File(exists=False, argstr='%s', mandatory=True,
                     position=1, desc='Output File')
     volumes = traits.List(mandatory=True, argstr='%s', sep=',')
 
