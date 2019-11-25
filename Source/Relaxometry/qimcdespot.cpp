@@ -67,7 +67,15 @@ template <typename Model> struct SRCFit {
     using ModelType           = Model;
     Model &model;
 
-    int input_size(const int) const { return model.ssfp.size() + model.spgr.size(); }
+    int input_size(const int &i) const { 
+        if (i == 0) {
+            return model.spgr.size();
+        } else if (i ==1) {
+            return model.ssfp.size();
+        } else {
+            QI::Fail("Incorrect input number {}", i);
+        }
+    }
     int n_outputs() const { return Model::NV; }
 
     int    max_iterations = 5;
