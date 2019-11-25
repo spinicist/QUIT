@@ -183,12 +183,8 @@ int rfprofile_main(int argc, char **argv) {
                                  "Use N threads (default=4, 0=hardware limit)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> mask(
-        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    args::Flag                   centerMask(parser,
-                          "CENTER ON MASK",
-                          "Set the center of the slab to the center of the mask",
-                          {'c', "center"});
+    args::ValueFlag<std::string> mask(parser, "MASK", "Only process within mask", {'m', "mask"});
+    args::Flag centerMask(parser, "CENTER ON MASK", "Set slab center to mask CoG", {'c', "center"});
     args::ValueFlag<std::string> subregion(
         parser,
         "REGION",
@@ -213,7 +209,6 @@ int rfprofile_main(int argc, char **argv) {
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
     image->SetDim(dimension.Get());
-    image->SetDebug(verbose);
     if (mask) {
         image->SetMask(QI::ReadImage(mask.Get(), verbose));
         image->SetCenterMask(centerMask);
