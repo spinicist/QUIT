@@ -39,7 +39,8 @@ class ModelSimFilter
     QI_ForwardNewMacro(Self);
     itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
-    ModelSimFilter(const ModelType &m, const bool vb) : m_model{m}, m_verbose{vb} {
+    ModelSimFilter(ModelType const &m, bool const vb, std::string const &subregion) :
+        m_model{m}, m_verbose{vb} {
         this->SetNumberOfRequiredInputs(ModelType::NV);
         if constexpr (MultiOutput) {
             this->SetNumberOfRequiredOutputs(m_model.num_outputs());
@@ -49,6 +50,10 @@ class ModelSimFilter
         } else {
             this->SetNumberOfRequiredOutputs(1);
             this->SetNthOutput(0, this->MakeOutput(0));
+        }
+        if (subregion != "") {
+            m_subregion    = RegionFromString<RegionType>(subregion);
+            m_hasSubregion = true;
         }
     }
 
@@ -102,6 +107,11 @@ class ModelSimFilter
         return dynamic_cast<OutputImageType *>(this->itk::ProcessObject::GetOutput(i));
     }
 
+    void SetSubregion(const RegionType &sr) {
+        m_subregion    = sr;
+        m_hasSubregion = true;
+    }
+
     void SetNoise(const double s) { m_sigma = s; }
 
   private:
@@ -112,6 +122,8 @@ class ModelSimFilter
     ModelType  m_model;
     double     m_sigma = 0.0;
     const bool m_verbose;
+    bool       m_hasSubregion = false;
+    RegionType m_subregion;
 
     ModelSimFilter() {}
     ~ModelSimFilter() {}
@@ -148,6 +160,13 @@ class ModelSimFilter
 
     virtual void GenerateData() override {
         auto region = this->GetInput(0)->GetLargestPossibleRegion();
+        if (m_hasSubregion) {
+            if (region.IsInside(m_subregion)) {
+                region = m_subregion;
+            } else {
+                itkExceptionMacro("Specified subregion is not entirely inside image.");
+            }
+        }
 
         Info(m_verbose, "Simulating...");
         this->GetMultiThreader()->SetNumberOfWorkUnits(this->GetNumberOfWorkUnits());

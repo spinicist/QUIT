@@ -165,8 +165,6 @@ class ModelFitFilter
     void SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
 
     void SetSubregion(const TRegion &sr) {
-        if (m_verbose)
-            std::cout << "Setting subregion to: " << std::endl << sr << std::endl;
         m_subregion    = sr;
         m_hasSubregion = true;
     }
