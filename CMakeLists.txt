@@ -16,6 +16,9 @@ include_directories( SYSTEM ${External_Include_DIR} )
 # Configure directory paths
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMake)
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${PROJECT_SOURCE_DIR}/CMake)
+if(${CMAKE_SYSTEM_VERSION} EQUAL "Linux")
+    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+endif()
 
 if( NOT DEFINED EIGEN3_INCLUDE_DIR )
     find_package( Eigen3 REQUIRED )
