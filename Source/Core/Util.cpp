@@ -10,6 +10,7 @@
  *
  */
 #include <fstream>
+#include <thread>
 
 #include "itkDivideImageFilter.h"
 #include "itkMultiplyImageFilter.h"
@@ -21,7 +22,7 @@ namespace QI {
 
 int GetDefaultThreads() {
     static const char *env_threads = getenv("QUIT_THREADS");
-    static int         threads     = 4;
+    static int         threads     = std::thread::hardware_concurrency();
     static bool        checked     = false;
     if (!checked) {
         if (env_threads) {

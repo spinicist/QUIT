@@ -367,8 +367,11 @@ int ssfp_bands_main(int argc, char **argv) {
     args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<std::string> out_arg(
         parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
-    args::ValueFlag<int> threads(
-        parser, "THREADS", "Use N threads (default=4, 0=hardware limit)", {'T', "threads"}, 4);
+    args::ValueFlag<int>         threads(parser,
+                                 "THREADS",
+                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
+                                 {'T', "threads"},
+                                 4);
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag alt_order(

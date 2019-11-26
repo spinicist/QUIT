@@ -33,7 +33,7 @@ int zspec_interp_main(int argc, char **argv) {
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser,
                                  "THREADS",
-                                 "Use N threads (default=4, 0=hardware limit)",
+                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(
@@ -83,8 +83,9 @@ int zspec_interp_main(int argc, char **argv) {
     output->SetNumberOfComponentsPerPixel(out_freqs.rows());
     output->Allocate(true);
 
-    std::vector<size_t> indices = QI::SortedUniqueIndices(in_freqs);
-    auto const process_region = subregion ? QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
+    std::vector<size_t> indices        = QI::SortedUniqueIndices(in_freqs);
+    auto const          process_region = subregion ?
+                                    QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
                                     input->GetBufferedRegion();
     auto mt = itk::MultiThreaderBase::New();
     QI::Log(verbose, "Processing");

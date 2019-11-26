@@ -82,7 +82,7 @@ template <typename TArray, const int size> void ArrayArgF(const std::string &a, 
                                                                                                \
     args::ValueFlag<int>   threads(parser,                                                     \
                                  "THREADS",                                                  \
-                                 "Use N threads (default=4, 0=hardware limit)",              \
+                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",  \
                                  {'T', "threads"},                                           \
                                  QI::GetDefaultThreads());                                   \
     args::ValueFlag<float> simulate(                                                           \

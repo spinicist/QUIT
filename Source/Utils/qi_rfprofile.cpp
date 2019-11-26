@@ -180,7 +180,7 @@ int rfprofile_main(int argc, char **argv) {
     args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::ValueFlag<int> threads(parser,
                                  "THREADS",
-                                 "Use N threads (default=4, 0=hardware limit)",
+                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process within mask", {'m', "mask"});

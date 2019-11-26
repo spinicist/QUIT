@@ -103,7 +103,7 @@ args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
 args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
 args::ValueFlag<int> threads(parser,
                              "THREADS",
-                             "Use N threads (default=4, 0=hardware limit)",
+                             "Use N threads (default=hardware limit or $QUIT_THREADS)",
                              {'T', "threads"},
                              QI::GetDefaultThreads());
 args::Flag use_double(parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
