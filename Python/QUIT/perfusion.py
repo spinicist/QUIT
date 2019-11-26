@@ -140,6 +140,8 @@ class ZShimInputSpec(QI.InputBaseSpec):
     yshims = traits.Int(argstr='--yshims=%d', desc='Number of Y-shums')
     prefix = traits.String(
         argstr='--out=%s', desc='Output prefix (default is input filename)')
+    noiseregion = traits.String(
+        desc='Noise region for background correction', argstr='--noiseregion=%s')
 
 
 class ZShimOutputSpec(TraitedSpec):

@@ -29,7 +29,7 @@ int zshim_main(int argc, char **argv) {
     args::Flag           debug(parser, "DEBUG", "Output debug messages", {'d', "debug"});
     args::ValueFlag<int> threads(parser,
                                  "THREADS",
-                                 "Use N threads (default=4, 0=hardware limit)",
+                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(
@@ -38,8 +38,11 @@ int zshim_main(int argc, char **argv) {
         parser, "ZSHIMS", "Number of Z-Shims (default 8)", {'z', "zshims"}, 8);
     args::ValueFlag<int> yshims(
         parser, "YSHIMS", "Number of Y-Shims (default 1)", {'y', "yshims"}, 1);
-    args::ValueFlag<int> zdrop(parser, "ZDROP", "Z-Shims to drop, default 0", {"zdrop"}, 0);
-    args::ValueFlag<int> ydrop(parser, "YDROP", "Y-Shims to drop, default 0", {"ydrop"}, 0);
+    args::ValueFlag<int>         zdrop(parser, "ZDROP", "Z-Shims to drop, default 0", {"zdrop"}, 0);
+    args::ValueFlag<int>         ydrop(parser, "YDROP", "Y-Shims to drop, default 0", {"ydrop"}, 0);
+    args::ValueFlag<std::string> noise(
+        parser, "NOISE REGION", "Subtract noise measured in region", {'n', "noiseregion"});
+
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
@@ -53,6 +56,35 @@ int zshim_main(int argc, char **argv) {
     output->SetNumberOfComponentsPerPixel(outsize);
     output->Allocate(true);
 
+    double noise_mean = 0., noise_sqr_mean = 0., noise_sigma = 0.;
+    if (noise) {
+        QI::Log(verbose, "Calculating noise statistics");
+        auto mt           = itk::MultiThreaderBase::New();
+        auto noise_region = QI::RegionFromString<QI::VectorVolumeF::RegionType>(noise.Get());
+        itk::ImageRegionConstIterator<QI::VectorVolumeF> noise_it(input, noise_region);
+        long                                             samples = 0;
+        for (noise_it.GoToBegin(); !noise_it.IsAtEnd(); ++noise_it) {
+            Eigen::Map<Eigen::VectorXf const> const noise_vec(noise_it.Get().GetDataPointer(),
+                                                              insize);
+            for (Eigen::Index ii = 0; ii < insize; ii++) {
+                auto const val = noise_vec[ii];
+                noise_mean += val;
+                noise_sqr_mean += val * val;
+                samples++;
+            }
+        }
+        noise_mean     = noise_mean / samples;
+        noise_sqr_mean = noise_sqr_mean / samples;
+        noise_sigma    = sqrt(noise_sqr_mean - noise_mean * noise_mean);
+        QI::Log(verbose,
+                "Noise samples {} mean {:.2f} sd {:.2f} ratio {:.2f} squared mean {:.2f}",
+                samples,
+                noise_mean,
+                noise_sigma,
+                noise_mean / noise_sigma,
+                noise_sqr_mean);
+    }
+
     QI::Log(verbose, "Processing");
     auto mt = itk::MultiThreaderBase::New();
     mt->SetNumberOfWorkUnits(threads.Get());
@@ -65,13 +97,16 @@ int zshim_main(int argc, char **argv) {
             for (in_it.GoToBegin(); !in_it.IsAtEnd(); ++in_it, ++out_it) {
                 itk::VariableLengthVector<float> itk_shimmed(outsize);
                 for (auto out = 0; out < outsize; out++) {
-                    const Eigen::Map<const Eigen::MatrixXf> grid(
+                    const Eigen::Map<const Eigen::ArrayXf> grid(
                         in_it.Get().GetDataPointer() + gridsize * out, zshims.Get(), yshims.Get());
-                    itk_shimmed[out] = grid.block(zdrop.Get(),
-                                                  ydrop.Get(),
-                                                  zshims.Get() - 2 * zdrop.Get(),
-                                                  yshims.Get() - 2 * ydrop.Get())
-                                           .norm();
+                    double val = (grid.block(zdrop.Get(),
+                                             ydrop.Get(),
+                                             zshims.Get() - 2 * zdrop.Get(),
+                                             yshims.Get() - 2 * ydrop.Get())
+                                      .square() -
+                                  noise_sqr_mean)
+                                     .sum();
+                    itk_shimmed[out] = sqrt(std::max(val, 0.));
                 }
                 out_it.Set(itk_shimmed);
             }
