@@ -53,7 +53,7 @@ struct ASEModel {
 
     const VaryingArray start{0.98, 0., 2.0, 0.02};
     const VaryingArray bounds_lo{0.1, -0.1, 0.25, 0.001};
-    const VaryingArray bounds_hi{2., 0.1, 10.0, 0.05};
+    const VaryingArray bounds_hi{2., 0.1, 20.0, 0.05};
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
@@ -122,7 +122,7 @@ struct ASEFixDBVModel {
 
     const VaryingArray start{0.98, 0., 1.0};
     const VaryingArray bounds_lo{0.1, -0.1, 0.25};
-    const VaryingArray bounds_hi{2., 0.1, 10.0};
+    const VaryingArray bounds_hi{2., 0.1, 20.0};
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
