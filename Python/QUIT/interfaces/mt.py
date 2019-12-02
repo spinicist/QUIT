@@ -8,7 +8,7 @@ Requires that the QUIT tools are in your your system path
 
 from os import path
 from nipype.interfaces.base import TraitedSpec, DynamicTraitedSpec, File, traits, isdefined
-from . import base as QI
+from .. import base as QI
 
 ############################ qi_lineshape ############################
 

@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
-from QUIT.core import NewImage, Diff
-from QUIT.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
+from QUIT.interfaces.core import NewImage, Diff
+from QUIT.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

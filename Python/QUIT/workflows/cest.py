@@ -1,8 +1,8 @@
 import numpy as np
 from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, FLIRT, ApplyXFM, ImageMaths, Smooth
-from QUIT.mt import Lorentzian, LorentzianSim, ZSpec
-from QUIT.utils import PCA, Select
+from QUIT.interfaces.mt import Lorentzian, LorentzianSim, ZSpec
+from QUIT.interfaces.utils import PCA, Select
 
 
 def prep(zfrqs, dummies=0, pca_retain=0, name='CEST_prep'):

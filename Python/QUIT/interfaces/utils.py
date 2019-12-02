@@ -15,7 +15,7 @@ Requires that the QUIT tools are in your your system path
 from json import dump, loads
 from os import path
 from nipype.interfaces.base import CommandLine, TraitedSpec, File, traits, isdefined
-from . import base as QI
+from .. import base as QI
 
 ############################### qi_pca ###############################
 

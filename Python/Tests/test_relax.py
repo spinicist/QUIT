@@ -1,7 +1,7 @@
 import unittest
 from nipype.interfaces.base import CommandLine
-from QUIT.core import NewImage, Diff
-from QUIT.relaxometry import Multiecho, MultiechoSim, MUPA, MUPASim
+from QUIT.interfaces.core import NewImage, Diff
+from QUIT.interfaces.relax import Multiecho, MultiechoSim, MUPA, MUPASim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

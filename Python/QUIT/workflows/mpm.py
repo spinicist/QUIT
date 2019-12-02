@@ -2,8 +2,8 @@ import numpy as np
 from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, ExtractROI, FLIRT, Merge, ApplyXFM, ImageMaths, BinaryMaths, ConvertXFM
 import nipype.interfaces.utility as util
-from QUIT.relaxometry import MPMR2s
-from QUIT.mt import MTSat
+from QUIT.interfaces.relax import MPMR2s
+from QUIT.interfaces.mt import MTSat
 from .interfaces import ApplyXfm4D
 
 

@@ -1,8 +1,8 @@
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from QUIT.core import NewImage, Diff
-from QUIT.perfusion import ASL, ASE, ASESim, ZShim
+from QUIT.interfaces.core import NewImage, Diff
+from QUIT.interfaces.perfusion import ASL, ASE, ASESim, ZShim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

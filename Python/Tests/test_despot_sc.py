@@ -1,7 +1,7 @@
 import unittest
 from nipype.interfaces.base import CommandLine
-from QUIT.core import NewImage, Diff
-from QUIT.relaxometry import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
+from QUIT.interfaces.core import NewImage, Diff
+from QUIT.interfaces.relax import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
-from QUIT.core import NewImage, Diff
-from QUIT.relaxometry import Ellipse, EllipseSim, PLANET, PLANETSim
-from QUIT.mt import eMT, eMTSim
+from QUIT.interfaces.core import NewImage, Diff
+from QUIT.interfaces.relax import Ellipse, EllipseSim, PLANET, PLANETSim
+from QUIT.interfaces.mt import eMT, eMTSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

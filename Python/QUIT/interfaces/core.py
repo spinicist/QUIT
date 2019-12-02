@@ -14,7 +14,7 @@ By: Emil Ljungberg and Tobias Wood
 
 from nipype.interfaces.base import CommandLine, TraitedSpec, File, traits
 from os import path
-from . import base as QI
+from .. import base as QI
 
 ############################ qinewimage ############################
 
