@@ -26,7 +26,7 @@
 #include "Util.h"
 
 struct MUPASequence : QI::SequenceBase {
-    double                   TR, FA;
+    double                   TR, Tramp, FA;
     int                      SPS;
     std::vector<std::string> prep_type;
     std::vector<double>      prep_time;
@@ -35,6 +35,7 @@ struct MUPASequence : QI::SequenceBase {
 };
 void from_json(const json &j, MUPASequence &s) {
     j.at("TR").get_to(s.TR);
+    j.at("Tramp").get_to(s.Tramp);
     s.FA = j.at("FA").get<double>() * M_PI / 180.0;
     j.at("SPS").get_to(s.SPS);
     j.at("prep_type").get_to(s.prep_type);
@@ -43,6 +44,7 @@ void from_json(const json &j, MUPASequence &s) {
 
 void to_json(json &j, const MUPASequence &s) {
     j = json{{"TR", s.TR},
+             {"Tramp", s.Tramp},
              {"FA", s.FA * 180 / M_PI},
              {"SPS", s.SPS},
              {"prep_type", s.prep_type},
@@ -67,8 +69,8 @@ struct MUPAModel {
     // Fitting start point and bounds
     // The PD will be scaled by the fitting function to keep parameters roughly the same magnitude
     VaryingArray const start{30., 1., 0.1};
-    VaryingArray const bounds_lo{1, 0.5, 0.01};
-    VaryingArray const bounds_hi{150, 3.0, 3.0};
+    VaryingArray const bounds_lo{1, 0.01, 0.01};
+    VaryingArray const bounds_hi{150, 10.0, 10.0};
 
     std::array<std::string, NV> const varying_names{"PD", "T1", "T2"};
     std::array<std::string, NF> const fixed_names{};
@@ -113,9 +115,10 @@ struct MUPAModel {
         auto const A     = RF(sequence.FA, 0);
         auto const R     = Relax(sequence.TR);
         auto const S     = Eigen::DiagonalMatrix<double, 4, 4>({0, 0, 1., 1.}).toDenseMatrix();
+        auto const ramp  = Relax(sequence.Tramp);
         auto const RUFIS = S * R * A;
         auto const seg2  = RUFIS.pow(sequence.SPS / 2.0);
-        auto const seg   = seg2 * seg2;
+        auto const seg   = ramp * seg2 * seg2 * ramp;
         // First calculate the system matrix
         Mat44 X = Mat44::Identity();
         for (int is = 0; is < sequence.size(); is++) {
@@ -169,10 +172,10 @@ struct MUPAModel {
                 auto const D = Relax(tprep);
                 m_aug        = D * m_aug;
             }
-            m_aug            = seg2 * m_aug;
+            m_aug            = seg2 * ramp * m_aug;
             auto const m_sig = A * m_aug;
             sig[is]          = m_sig[0]; // Real part
-            m_aug            = seg2 * m_aug;
+            m_aug            = ramp * seg2 * m_aug;
         }
         QI_DB(PD);
         QI_DB(1 / R1);
@@ -181,6 +184,8 @@ struct MUPAModel {
         return sig;
     }
 };
+
+template <> struct QI::NoiseFromModelType<MUPAModel> : QI::RealNoise {};
 
 struct MUPACost {
     MUPAModel const &     model;

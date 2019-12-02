@@ -42,8 +42,25 @@ template <int ImageDimension, typename T> struct BlockTypes<false, ImageDimensio
     using Type = itk::Image<T, ImageDimension>;
 };
 
-Eigen::ArrayXd  add_noise(Eigen::ArrayXd const &s, double const sigma);
-Eigen::ArrayXcd add_noise(Eigen::ArrayXcd const &s, double const sigma);
+/*
+ *  Which noise type to choose
+ */
+template <typename DataType> struct NoiseFromDataType;
+
+template <> struct NoiseFromDataType<double> {
+    static Eigen::ArrayXd add_noise(Eigen::ArrayXd const &s, double const sigma);
+};
+
+template <> struct NoiseFromDataType<std::complex<double>> {
+    static Eigen::ArrayXcd add_noise(Eigen::ArrayXcd const &s, double const sigma);
+};
+
+struct RealNoise {
+    static Eigen::ArrayXd add_noise(Eigen::ArrayXd const &s, double const sigma);
+};
+
+template <typename ModelType>
+struct NoiseFromModelType : NoiseFromDataType<typename ModelType::DataType> {};
 
 } // End namespace QI
 

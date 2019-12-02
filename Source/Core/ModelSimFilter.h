@@ -221,15 +221,16 @@ class ModelSimFilter
                 if constexpr (MultiOutput) {
                     const auto signals = m_model.signals(varying, fixed);
                     for (size_t i = 0; i < signals.size(); i++) {
-                        const auto output    = add_noise(signals[i], m_sigma);
+                        const auto output =
+                            NoiseFromModelType<ModelType>::add_noise(signals[i], m_sigma);
                         const auto output_io = output.template cast<OutputPixelType>().eval();
                         itk::VariableLengthVector<OutputPixelType> data_out(output_io.data(),
                                                                             output_io.rows());
                         output_iters[i].Set(data_out);
                     }
                 } else {
-                    const auto signal    = m_model.signal(varying, fixed);
-                    const auto output    = add_noise(signal, m_sigma);
+                    const auto signal = m_model.signal(varying, fixed);
+                    const auto output = NoiseFromModelType<ModelType>::add_noise(signal, m_sigma);
                     const auto output_io = output.template cast<OutputPixelType>().eval();
                     itk::VariableLengthVector<OutputPixelType> data_out(output_io.data(),
                                                                         output_io.rows());
