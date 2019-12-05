@@ -80,7 +80,9 @@ struct MUPAModel {
     template <typename Derived>
     auto signal(Eigen::ArrayBase<Derived> const &v, FixedArray const &) const
         -> QI_ARRAY(typename Derived::Scalar) {
-        using T     = typename Derived::Scalar;
+        using T    = typename Derived::Scalar;
+        using Vec3 = Eigen::Vector<T, 3>;
+        // using Vec4  = Eigen::Vector<T, 4>;
         using Mat33 = Eigen::Matrix<T, 3, 3>;
         using Mat44 = Eigen::Matrix<T, 4, 4>;
         T const &PD = v[0];
@@ -112,13 +114,12 @@ struct MUPAModel {
             return A;
         };
 
-        auto const A     = RF(sequence.FA, 0);
-        auto const R     = Relax(sequence.TR);
-        auto const S     = Eigen::DiagonalMatrix<double, 4, 4>({0, 0, 1., 1.}).toDenseMatrix();
-        auto const ramp  = Relax(sequence.Tramp);
-        auto const RUFIS = S * R * A;
-        auto const seg2  = RUFIS.pow(sequence.SPS / 2.0);
-        auto const seg   = ramp * seg2 * seg2 * ramp;
+        auto const  A     = RF(sequence.FA, 0);
+        auto const  R     = Relax(sequence.TR);
+        auto const  S     = Eigen::DiagonalMatrix<double, 4, 4>({0, 0, 1., 1.}).toDenseMatrix();
+        Mat44 const ramp  = Relax(sequence.Tramp);
+        Mat44 const RUFIS = S * R * A;
+        Mat44 const seg   = RUFIS.pow(sequence.SPS);
         // First calculate the system matrix
         Mat44 X = Mat44::Identity();
         for (int is = 0; is < sequence.size(); is++) {
@@ -127,25 +128,16 @@ struct MUPAModel {
                 auto const I  = RF(M_PI, 0);
                 auto const TI = Relax(tprep);
                 X             = S * TI * I * X;
-                QI_DBMAT(I);
-                QI_DBMAT(TI);
-                QI_DBMAT(X);
             } else if (sequence.prep_type[is] == "t2-prep") {
                 auto const TD = RF(M_PI_2, 0);
                 auto const TE = Relax(tprep);
                 auto const TU = RF(-M_PI_2, 0);
                 X             = S * TU * TE * TD * X;
-                QI_DBMAT(TD);
-                QI_DBMAT(TE);
-                QI_DBMAT(TU);
-                QI_DBMAT(X);
             } else if (sequence.prep_type[is] == "delay") {
                 auto const D = Relax(tprep);
                 X            = D * X;
-                QI_DBMAT(D);
-                QI_DBMAT(X);
             }
-            X = seg * X;
+            X = ramp * seg * ramp * X;
         }
 
         // Solve for steady-state and re-augment
@@ -172,10 +164,19 @@ struct MUPAModel {
                 auto const D = Relax(tprep);
                 m_aug        = D * m_aug;
             }
-            m_aug            = seg2 * ramp * m_aug;
-            auto const m_sig = A * m_aug;
-            sig[is]          = m_sig[0]; // Real part
-            m_aug            = ramp * seg2 * m_aug;
+            m_aug = ramp * m_aug;
+            // Geometric Sum formula to get average
+            Mat44 const LHS = (Mat44::Identity() - RUFIS);
+            QI_DBMAT(LHS);
+            Vec3 const RHS = ((Mat44::Identity() - seg) * m_aug).template head<3>() -
+                             (sequence.SPS * LHS.template topRightCorner<3, 1>());
+            QI_DBVEC(RHS);
+            Vec3 const m_gm =
+                LHS.template topLeftCorner<3, 3>().partialPivLu().solve(RHS) / sequence.SPS;
+            QI_DBVEC(m_gm);
+            sig[is] = m_gm[2] * sin(sequence.FA);
+            QI_DB(sig[is]);
+            m_aug = ramp * seg * m_aug;
         }
         QI_DB(PD);
         QI_DB(1 / R1);
