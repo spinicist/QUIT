@@ -19,6 +19,7 @@ This script automates the build process for QUIT.
 Options:
     -h        Print this help message
     -i        Install after building (default location /usr/local/bin)
+    -j N      Specify number of parallel build processes
     -p PREFIX Change the install location prefix (/bin will be added)
     -n        Add -march=native to build flags (improves performance)
     -s gci    Skip (g)it submodule update/(c)eres build/(i)TK build steps
@@ -32,7 +33,7 @@ CERES="true"        # Build Ceres
 ITK="true"          # Build ITK
 INSTALL=""          # Install as well as build
 QUIT_INSTALL_DIR="" # User can specify install directory (mainly for Travis)
-NUM_THREADS="2"     # Specify number of threads during make/ninja
+NUM_THREADS=""      # Specify number of threads during make/ninja
 NATIVE=""           # Specifieds march=native
 while getopts "hij:np:s:" opt; do
     case $opt in
@@ -81,19 +82,20 @@ cd $EXTERNAL
 # These are header only, no building required
 EIGEN_DIR="$EXTERNAL/eigen"
 ARGS_DIR="$EXTERNAL/args"
-BUILD_DIR="_build"
+BUILD_DIR="build"
 CXX_STANDARD="-DCMAKE_CXX_STANDARD=17"
 
 # Ceres
 CERES_DIR="$EXTERNAL/ceres-solver"
-CERES_BUILD_DIR="$CERES_DIR/$BUILD_DIR"
+# Needs an underscore because of Bazel BUILD file
+CERES_BUILD_DIR="${CERES_DIR}/_${BUILD_DIR}"
 if [ -n "$CERES" ]; then
     echo "Building ceres..."
     if [[ -d $CERES_BUILD_DIR ]]; then
         rm -r $CERES_BUILD_DIR
     fi
-    mkdir -p $CERES_BUILD_DIR
-    cd $CERES_BUILD_DIR
+    mkdir -p "$CERES_BUILD_DIR"
+    cd "$CERES_BUILD_DIR"
     CERES_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE $CXX_STANDARD\
     -DBUILD_DOCUMENTATION=OFF -DBUILD_EXAMPLES=OFF\
     -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF\
@@ -114,8 +116,8 @@ if [ -n "$ITK" ]; then
     if [[ -d $ITK_BUILD_DIR ]]; then
         rm -r $ITK_BUILD_DIR
     fi
-    mkdir -p $ITK_BUILD_DIR
-    cd $ITK_BUILD_DIR
+    mkdir -p "$ITK_BUILD_DIR"
+    cd "$ITK_BUILD_DIR"
     ITK_OPTS="$GENERATOR -DCMAKE_BUILD_TYPE=Release $NATIVE -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_FLAGS=-fpermissive
     -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF \
     -DITK_BUILD_DEFAULT_MODULES=OFF\
