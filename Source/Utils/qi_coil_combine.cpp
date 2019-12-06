@@ -313,7 +313,8 @@ int coil_combine_main(int argc, char **argv) {
     }
     QI::Log(verbose, "Correcting phase & combining");
     const std::string out_name =
-        (outarg ? outarg.Get() : QI::StripExt(input_path.Get())) + "_combined" + QI::OutExt();
+        (outarg ? outarg.Get() : QI::StripExt(QI::Basename(input_path.Get()))) + "_combined" +
+        QI::OutExt();
     QI::WriteImage(output, out_name, verbose);
     return EXIT_SUCCESS;
 }

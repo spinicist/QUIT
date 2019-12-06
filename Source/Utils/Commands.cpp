@@ -1,7 +1,7 @@
 #include "Commands.h"
 
 void add_utils(std::map<std::string, std::function<int(int, char **)>> &commands) {
-    commands["coil_combine"] = &coil_combine_main;
+    commands["coil-combine"] = &coil_combine_main;
     commands["gradient"]     = &gradient_main;
     commands["pca"]          = &pca_main;
     commands["rfprofile"]    = &rfprofile_main;

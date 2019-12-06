@@ -1,9 +1,77 @@
 import numpy as np
 from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, ExtractROI, FLIRT, Merge, ApplyXFM, ImageMaths, BinaryMaths, ConvertXFM
+from nipype.interfaces.ants import Registration, ApplyTransforms
 import nipype.interfaces.utility as util
-from QUIT.interfaces.utils import Mask, RFProfile, Complex, Filter
-from .interfaces import ApplyXfm4D
+from QUIT.interfaces.utils import Mask, RFProfile, Complex, Filter, CoilCombine
+from QUIT.interfaces.fsl import ApplyXfm4D
+
+
+def COMPOSER(verbose=False, is_bruker=False):
+    inputnode = Node(IdentityInterface(
+        fields=['in_file', 'ref_file']), name='input')
+    outputnode = Node(IdentityInterface(
+        fields=['out_file']), name='output')
+    wf = Workflow(name='COMPOSER')
+
+    in_mag = Node(Complex(magnitude_out_file='in_mag.nii.gz',
+                          verbose=verbose), name='in_magnitude')
+    ref_mag = Node(Complex(magnitude_out_file='ref_mag.nii.gz',
+                           verbose=verbose), name='ref_magnitude')
+    if is_bruker:
+        wf.connect([(inputnode, in_mag, [('in_file', 'realimag')])])
+        wf.connect([(inputnode, ref_mag, [('ref_file', 'realimag')])])
+    else:
+        wf.connect([(inputnode, in_mag, [('in_file', 'complex')])])
+        wf.connect([(inputnode, ref_mag, [('ref_file', 'complex')])])
+
+    in_mean = Node(maths.MeanImage(), name='in_mean')
+    ref_mean = Node(maths.MeanImage(), name='ref_mean')
+    wf.connect([(in_mag, in_mean, [('magnitude_out_file', 'in_file')]),
+                (ref_mag, ref_mean, [('magnitude_out_file', 'in_file')])])
+
+    register = Node(Registration(dimension=3,
+                                 initial_moving_transform_com=1,
+                                 transforms=['Rigid'],
+                                 metric=['Mattes'],
+                                 metric_weight=[1],
+                                 transform_parameters=[(0.1,)],
+                                 number_of_iterations=[[1000, 500, 250]],
+                                 collapse_output_transforms=False,
+                                 initialize_transforms_per_stage=False,
+                                 radius_or_number_of_bins=[32],
+                                 sampling_strategy=['Regular', None],
+                                 sampling_percentage=[0.25, None],
+                                 convergence_threshold=[1.e-6],
+                                 smoothing_sigmas=[[4, 2, 1]],
+                                 shrink_factors=[[8, 4, 2]],
+                                 sigma_units=['vox'],
+                                 output_warped_image=True,
+                                 verbose=True), name='register')
+    wf.connect([(in_mean, register, [('out_file', 'moving_image')]),
+                (ref_mean, register, [('out_file', 'fixed_image')])])
+
+    if is_bruker:
+        resample = Node(ApplyTransforms(
+            dimension=3, input_image_type=3), name='resample_reference')
+        in_x = Node(Complex(complex_out_file='in_x.nii.gz',
+                            verbose=verbose), name='in_x')
+        ref_x = Node(Complex(complex_out_file='ref_x.nii.gz',
+                             verbose=verbose), name='ref_x')
+        cc = Node(CoilCombine(), name='cc')
+        wf.connect([(inputnode, resample, [('ref_file', 'input_image')]),
+                    (in_mean, resample, [('out_file', 'reference_image')]),
+                    (register, resample, [
+                     ('reverse_transforms', 'transforms')]),
+                    (inputnode, in_x, [('in_file', 'realimag')]),
+                    (resample, ref_x, [('output_image', 'realimag')]),
+                    (in_x, cc, [('complex_out_file', 'in_file')]),
+                    (ref_x, cc, [('complex_out_file', 'composer_file')]),
+                    (cc, outputnode, [('out_file', 'out_file')])])
+    else:
+        raise('Not Yet Supported')
+
+    return wf
 
 
 def init_b1_mcf(rf_pulse, scale=150):

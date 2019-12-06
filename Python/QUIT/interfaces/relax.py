@@ -476,26 +476,22 @@ class QIMCDespot(QI.FitCommand):
 
 class MP2RAGEInputSpec(QI.InputSpec):
     # Inputs
-    mprage_data = File(exists=True, argstr='%s', mandatory=True,
-                       position=0, desc='Path to complex MP-RAGE data')
-
-    # Options
-    mask = File(desc='Only process voxels within the mask',
-                argstr='--mask=%s', exists=True)
-    automask = traits.Bool(
-        desc='Create a mask from the sum of squares image', argstr='--automask')
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+                   position=0, desc='Path to complex MP-RAGE data')
 
     # Commonly used options
     threads = traits.Int(
-        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+        desc='Use N threads (default=hardware)', argstr='--threads=%d')
     prefix = traits.String(
         desc='Add a prefix to output filenames', argstr='--out=%s')
+    beta = traits.Float(desc='Regularisation paramter', argstr='--beta=%f')
 
 
 class MP2RAGEOutputSpec(TraitedSpec):
     # Specify which outputs there are
-    contrast = File(desc='The MP2 contrast image. The range of this image is -0.5 to 0.5 unless the --automask option is specified, in which case it will be shifted to 0 to 1.')
-    t1map = File(desc='The T1 map. Units are the same as TR and SegTR.')
+    uni_file = File('MP2_UNI.nii.gz',
+                    desc='The Uniform MP2 contrast image', usedefault=True)
+    t1_map = File('MP2_T1.nii.gz', desc='T1 Map', usedefault=True)
 
 
 class MP2RAGE(QI.FitCommand):
@@ -512,24 +508,6 @@ class MP2RAGE(QI.FitCommand):
     _cmd = 'qi mp2rage'
     input_spec = MP2RAGEInputSpec
     output_spec = MP2RAGEOutputSpec
-
-    # If the command requires a json input file
-    def _format_arg(self, name, spec, value):
-        return self._process_params(name, spec, value)
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-
-        # Specify output files
-        input_bname = os.path.basename(self.inputs.mprage_data)
-        input_fname = os.path.splitext(os.path.split(input_bname)[-1])
-
-        outputs['contrast'] = os.path.abspath(
-            self._add_prefix(input_fname + '_contrast.nii.gz'))
-        outputs['t1map'] = os.path.abspath(
-            self._add_prefix(input_fname + '_T1.nii.gz'))
-
-        return outputs
 
 ############################ qimultiecho ############################
 

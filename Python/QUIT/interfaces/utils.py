@@ -4,11 +4,6 @@
 """
 Implementation of nipype interfaces for QUIT utilities.
 
-To be implemented:
-    - qi_coil_combine
-    - qihdr
-
-
 Requires that the QUIT tools are in your your system path
 """
 
@@ -235,9 +230,47 @@ class Mask(QI.BaseCommand):
 
 
 ############################ qi_coil_combine ############################
-# < To be implemented > #
+class CoilCombineInputSpec(QI.InputSpec):
+    in_file = traits.File(
+        desc='Input complex-valued file to coil-combine', argstr='%s', exists=True)
+    composer_file = traits.File(
+        desc='Short Echo-Time reference file for COMPOSER', argstr='--composer=%s', exists=True)
+    hammond_coils = traits.Int(
+        desc='Number of coils for Hammond method', argstr='--coils=%d')
+    hammond_volume = traits.Int(
+        desc='Volume to use for Hammond method', argstr='--vol=%d')
+    hammond_region = traits.Str(
+        desc='Region to use for Hammond method', argstr='--region=%s')
+
+
+class CoilCombineOutputSpec(TraitedSpec):
+    out_file = traits.File(desc='Output combined file')
+
+
+class CoilCombine(QI.BaseCommand):
+    """
+    Combine multi-coil data
+    """
+    _cmd = 'qi coil-combine'
+    input_spec = CoilCombineInputSpec
+    output_spec = CoilCombineOutputSpec
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        if isdefined(self.inputs.prefix):
+            outputs['out_file'] = path.abspath(
+                self.inputs.prefix + '_combined.nii.gz')
+        else:
+            p, f = path.split(self.inputs.in_file)
+            fname, ext = path.splitext(f)
+            if ext == '.gz':
+                fname = path.splitext(fname)[0]
+            outputs['out_file'] = path.abspath(fname + '_combined.nii.gz')
+        return outputs
 
 ############################ qicomplex ############################
+
+
 class ComplexInputSpec(QI.InputSpec):
 
     # Options
