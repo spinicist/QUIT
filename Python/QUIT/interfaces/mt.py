@@ -342,3 +342,47 @@ class MTSat(QI.FitCommand):
     _cmd = 'qi mtsat'
     input_spec = MTSatInputSpec
     output_spec = MTSatOutputSpec
+
+############################ qi mtr ############################
+
+
+class MTRInputSpec(QI.InputSpec):
+    # Options
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+                   position=-1, desc='Input file')
+
+
+class MTROutputSpec(DynamicTraitedSpec):
+    pass
+
+
+class MTR(QI.BaseCommand):
+    """
+    Calculate Magnetization Transfer Ratios
+    """
+
+    _cmd = 'qi mtr'
+    input_spec = MTRInputSpec
+    output_spec = MTROutputSpec
+
+    def __init__(self, contrasts={}, **kwargs):
+        super(MTR, self).__init__(**kwargs)
+        if contrasts:
+            self._json = {'contrasts': contrasts}
+            for con in contrasts:
+                cn = con['name']
+                setattr(self.output_spec, cn, File('%s.nii.gz' %
+                                                   cn, desc='Path to %s' % cn, usedefault=True))
+        else:
+            setattr(self.output_spec, 'MTR', File('MTR.nii.gz',
+                                                  desc='Path to MTR file', usedefault=True))
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        if self._json:
+            for con in self._json['contrasts']:
+                cn = con['name']
+                outputs[cn] = '%s.nii.gz' % cn
+        else:
+            outputs['MTR'] = 'MTR.nii.gz'
+        return self._add_prefixes(outputs)
