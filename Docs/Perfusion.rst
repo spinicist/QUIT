@@ -80,7 +80,7 @@ Estimates the Oxygen Extraction Fraction (OEF) from Asymmetric Spin-Echo (ASE) d
 
 .. code-block:: bash
 
-    qi ase_oef ase_file.nii.gz --B0=9.4 $DB --fmap=fieldmap.nii.gz <input.json
+    qi ase_oef ase_file.nii.gz --B0=9.4 --fmap=fieldmap.nii.gz <input.json
 
 
 **Example JSON File**

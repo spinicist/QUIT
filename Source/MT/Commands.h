@@ -4,6 +4,7 @@
 
 int lineshape_main(int argc, char **argv);
 int lorentzian_main(int argc, char **argv);
+int mtr_main(int argc, char **argv);
 int mtsat_main(int argc, char **argv);
 int qmt_main(int argc, char **argv);
 int ssfp_emt_main(int argc, char **argv);

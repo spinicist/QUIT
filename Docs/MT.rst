@@ -4,12 +4,12 @@ Magnetization Transfer
 MR voxels often contain complex microstructure with multiple different components or pools, each with unique relaxation properties. It is possible for magnetization to be transferred between these pools via several mechanisms, such as exchange of individual protons or entire molecules, or simple dipolar coupling from molecules that are in close proximity. These mechanisms can be studied in the related fields of Magnetization Transfer (MT) and Chemical Exchange Saturation Transfer (CEST). QUIT contains tools for quantitative MT (`qi qmt`_, `qi ssfp_emt`_), CEST (`qi zspec_interp`_, `qi lorentzian`_) and also for processing MPM data (`qi mtsat`_). Example `nipype workflows <https://github.com/spinicist/QUIT/tree/master/Python/QUIT/workflows/cest.py>`_ for CEST analysis are also provided.
 
 * `qi lineshape`_
+* `qi lorentzian`_
+* `qi mtr`_
+* `qi mtsat`_
+* `qi ssfp_emt`_
 * `qi qmt`_
 * `qi zspec_interp`_
-* `qi lorentzian`_
-* `qi dipolar_mtr.sh`_
-* `qi ssfp_emt`_
-* `qi mtsat`_
 
 qi lineshape
 ------------
@@ -200,56 +200,45 @@ For each pool three outputs will be written, prefixed by the pool name. For a si
 
 - `Deshmane et al <http://doi.wiley.com/10.1002/mrm.27569>`_
 
-qi dipolar_mtr.sh
+qi mtr
 -----------------
 
-Calculates dipolar/inhomogeneous Magnetization Transfer Ratios (MTRs). Dipolar/inhomogeneous MT is a new (see note) contrast mechanism that is present in highly structured materials such as myelin and tendon. By applying off-resonance saturation at both positive and negative frequencies (instead of only one side as in classic MTR) it is possible to decouple the dipolar pool and hence produce an enhanced Magnetization Transfer (eMT) effect. The different between eMT and normal MT is the dipolar/inhomogeneous MT and is potentially highly specific to myelin within the brain.
+Calculates Magnetization Transfer Ratio (MTR) and related quantities, e.g. MTasym and ihMTR.
 
-Although the majority of the existing literature refers to this effect as inhomogeneous MT, this name was chosen before the physical phenomena underlying the effect was well understood. Current theory does not rely on inhomogeneous effects at all, so the name is a misnomer.
-
-**Example Command Line**
-
-.. code-block:: bash
-
-    qi dipolar_mtr dipolar_mt_volumes.nii.gz
-
-The input must consist of 5 volumes: Dipolar +/-, Dipolar -/+, Unsaturated, MT+, MT-. This scheme is not flexible and will be improved in a future version.
-
-**Outputs**
-
-* ``DMT_mtr.nii.gz`` - The classic MTR, expressed as a percentage
-* ``DMT_emtr.nii.gz`` - The enhanced MTR, expressed as a percentage
-* ``DMT_dmtr.nii.gz`` - The dipolar MTR, expressed as a percentage. This is the difference between eMTR and MTR.
-* ``DMT_mta.nii.gz`` - The first-order MT-asymmetry (MT- subtracted from MT+, relative to unsaturated, in percent).
-
-**References**
-
-1. `Original full paper <http://doi.wiley.com/10.1002/mrm.25174>`_
-2. `Dipolar versus inhomogeneous naming <https://doi.org/10.1016/j.jmr.2016.11.013>`_
-
-qi ssfp_emt
------------
-
-Due to the short TR commonly used with SSFP, at high flip-angles the sequence becomes MT weighted. It is hence possible to extract qMT parameters from SSFP data. More details will be in a forthcoming paper.
+By default only the MTR is calculated, assuming that the input contains one MT-weighted and one PD-weighted (reference) volume. However it can be used to calculate other quantities by passing in a JSON file specifying the formulas to calculate these. An example is given below to calculate MTR, ihMTR and MTasym from an acquisition with five volumes which correspond to ihMTw (+/-), ihMTw (-/+), PDw, MTw (+), MTw (-) where +/- correspond to applying the saturation pulse at positive or negative frequency.
 
 **Example Command Line**
 
 .. code-block:: bash
 
-    qi ssfp_emt ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+    qi mtr mt_volumes.nii.gz --json=contrasts.json
+
+**Example JSON File**
+
+.. code-block:: json
+
+    {
+      'contrasts': [
+        { 'name' : 'MTR',    'ref': [2, 2], 'add': [3, 4], 'sub': [],     'reverse': true },
+        { 'name' : 'MTasym', 'ref': [2],    'add': [3],    'sub': [4],    'reverse': false },
+        { 'name' : 'eMTR',   'ref': [2, 2], 'add': [0, 1], 'sub': [],     'reverse': true },
+        { 'name' : 'ihMTR',  'ref': [2, 2], 'add': [3, 4], 'sub': [0, 1], 'reverse': false }
+      ]
+    }
+
+The fields `ref`, `add`, `sub` refer to the indices of volumes that should be used as a reference, added or subtracted. `reverse` means that the contrast is reversed, i.e. it should be subtracted from the reference value before output (which is standard for MTR because it is a negative quantity).
 
 **Outputs**
 
-- ``EMT_T1f.nii.gz`` - Longitudinal relaxation time of the free water bool
-- ``EMT_T2f.nii.gz`` - Transverse relaxation time of the free water pool
-- ``EMT_M0.nii.gz`` - Apparent Proton Density
-- ``EMT_F.nii.gz`` - Bound pool fraction
-- ``EMT_kf.nii.gz`` - Forward exchange rate
+All outputs are expressed as percentages (multiplied by 100). By default there is one output:
+
+* ``MTR.nii.gz`` - The classic MTR, expressed as a percentage
+
+If you use a custom contrasts file then the outputs will have the names specified in the `.json` file.
 
 **References**
 
-- `Bieri et al <http://doi.wiley.com/10.1002/mrm.21056>`_
-- `Gloor et al <http://doi.wiley.com/10.1002/mrm.21705>`_
+1. `ihMTR <http://doi.wiley.com/10.1002/mrm.25174>`_
 
 qi mtsat
 -----------
@@ -287,3 +276,27 @@ Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and t
 
 - `Helms et al <http://doi.wiley.com/10.1002/mrm.21732>`_
 - `Erratum <http://doi.wiley.com/10.1002/mrm.22607>`_
+
+qi ssfp_emt
+-----------
+
+Due to the short TR commonly used with SSFP, at high flip-angles the sequence becomes MT weighted. It is hence possible to extract qMT parameters from SSFP data. More details will be in a forthcoming paper.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi ssfp_emt ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+
+**Outputs**
+
+- ``EMT_T1f.nii.gz`` - Longitudinal relaxation time of the free water bool
+- ``EMT_T2f.nii.gz`` - Transverse relaxation time of the free water pool
+- ``EMT_M0.nii.gz`` - Apparent Proton Density
+- ``EMT_F.nii.gz`` - Bound pool fraction
+- ``EMT_kf.nii.gz`` - Forward exchange rate
+
+**References**
+
+- `Bieri et al <http://doi.wiley.com/10.1002/mrm.21056>`_
+- `Gloor et al <http://doi.wiley.com/10.1002/mrm.21705>`_
