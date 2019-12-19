@@ -61,14 +61,15 @@ Note that a T1 map is a required input to stabilise the fitting.
     {
         "MTSat" : {
             "TR": 0.055,
+            "Trf": 0.015,
             "FA": 5,
             "sat_f0": [56360, 47180, 12060, 1000, 1000, 2750, 2770, 2790, 2890, 1000, 1000],
             "sat_angle": [332, 628, 628, 332, 333, 628, 628, 628, 628, 628, 628],
-            "pulse": { "name": "Gauss", "Trf": 0.015, "p1": 0.416, "p2": 0.295 }
+            "pulse": { "name": "Gauss", "bandwidth": 100, "p1": 0.416, "p2": 0.295 }
         }
     }
 
-``Trf`` is the pulse-width (RF Time). ``p1`` and ``p2`` are the ratio of the integral of :math:`B_1` and :math:`B_1^2` (the integrals of the pulse amplitude and the square of the pulse amplitude) to the maximum amplitude of the pulse. Both ``Trf`` and ``TR`` should be in seconds. ``sat_f0`` is in Hertz.
+``Trf`` is the pulse-width (RF Time). ``p1`` and ``p2`` are the ratio of the integral of :math:`B_1` and :math:`B_1^2` (the integrals of the pulse amplitude and the square of the pulse amplitude) to the maximum amplitude of the pulse. Both ``Trf`` and ``TR`` should be in seconds. ``sat_f0`` is in Hertz. The ``bandwidth`` parameter is currently unused, any value will do.
 
 **Outputs**
 
@@ -145,37 +146,37 @@ The Z-spectrum must be a 4D file with each volume acquired at a different offset
 .. code-block:: json
 
     {
-        'MTSat': {
-            'pulse': {
-                'p1': 0.4,
-                'p2': 0.3,
-                'bandwidth': 0.39
+        "MTSat": {
+            "pulse": {
+                "p1": 0.4,
+                "p2": 0.3,
+                "bandwidth": 0.39
             },
-            'Trf': 0.02,
-            'TR': 4,
-            'FA': 5,
-            'sat_f0': [0, 1, 2, 3, 4, 5],
-            'sat_angle': [180, 180, 180, 180, 180],
+            "Trf": 0.02,
+            "TR": 4,
+            "FA": 5,
+            "sat_f0": [0, 1, 2, 3, 4, 5],
+            "sat_angle": [180, 180, 180, 180, 180],
         },
-        'pools' :
+        "pools" :
         [
             { 
-                'name': 'DS',
-                'df0': [0, -2.5, 2.5],
-                'fwhm': [1.0, 1.e-6, 3.0],
-                'A': [0.2, 1.e-3, 1.0],
-                'use_bandwidth': True
+                "name": "DS",
+                "df0": [0, -2.5, 2.5],
+                "fwhm": [1.0, 1.e-6, 3.0],
+                "A": [0.2, 1.e-3, 1.0],
+                "use_bandwidth": True
             },
             {
-                'name': 'MT',
-                'df0': [-2.5, -5.0, -0.5],
-                'fwhm': [50.0, 35.0, 200.0],
-                'A': [0.3, 1.e-3, 1.0]
+                "name": "MT",
+                "df0": [-2.5, -5.0, -0.5],
+                "fwhm": [50.0, 35.0, 200.0],
+                "A": [0.3, 1.e-3, 1.0]
             }
         ]
     }
 
-The input needs to include both the sequence parameters and the characteristics of the Lorentzian "pools" that you wish to fit. Currently the only important information used from the sequence are the saturation offsets, and optionally the bandwidth of the pulse. For each pool a name is required, and then triples of values representing the starting, lower and upper bound for the center frequency ``df0``, the Full-Width Half-Maximum ``fwhm`` and amplitude ``A`` of the Lorentzian. You can also specify that the modified Lorentzian including the pulse bandwidth should be used `'use_bandwith' : True`. See the reference for details.
+The input needs to include both the sequence parameters and the characteristics of the Lorentzian "pools" that you wish to fit. Currently the only important information used from the sequence are the saturation offsets, and optionally the bandwidth of the pulse. For each pool a name is required, and then triples of values representing the starting, lower and upper bound for the center frequency ``df0``, the Full-Width Half-Maximum ``fwhm`` and amplitude ``A`` of the Lorentzian. You can also specify that the modified Lorentzian including the pulse bandwidth should be used `"use_bandwith" : True`. See the reference for details.
 
 *Important Options*
 
@@ -218,11 +219,11 @@ By default only the MTR is calculated, assuming that the input contains one MT-w
 .. code-block:: json
 
     {
-      'contrasts': [
-        { 'name' : 'MTR',    'ref': [2, 2], 'add': [3, 4], 'sub': [],     'reverse': true },
-        { 'name' : 'MTasym', 'ref': [2],    'add': [3],    'sub': [4],    'reverse': false },
-        { 'name' : 'eMTR',   'ref': [2, 2], 'add': [0, 1], 'sub': [],     'reverse': true },
-        { 'name' : 'ihMTR',  'ref': [2, 2], 'add': [3, 4], 'sub': [0, 1], 'reverse': false }
+      "contrasts": [
+        { "name" : "MTR",    "ref": [2, 2], "add": [3, 4], "sub": [],     "reverse": true },
+        { "name" : "MTasym", "ref": [2],    "add": [3],    "sub": [4],    "reverse": false },
+        { "name" : "eMTR",   "ref": [2, 2], "add": [0, 1], "sub": [],     "reverse": true },
+        { "name" : "ihMTR",  "ref": [2, 2], "add": [3, 4], "sub": [0, 1], "reverse": false }
       ]
     }
 
