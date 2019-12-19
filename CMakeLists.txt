@@ -66,4 +66,3 @@ find_package(ITK 5.0.0 REQUIRED
 include( ${ITK_USE_FILE} )
 
 add_subdirectory( Source )
-add_subdirectory( Scripts )
