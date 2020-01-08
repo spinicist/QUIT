@@ -130,7 +130,7 @@ struct MultiEchoNLLS : MultiEchoFit {
         ceres::Problem problem;
         using Cost      = QI::ModelCost<MultiEcho>;
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, MultiEcho::NV>;
-        auto *cost      = new Cost(model, fixed, data);
+        auto *cost      = new Cost{model, fixed, data};
         auto *auto_cost = new AutoCost(cost, model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
         problem.SetParameterLowerBound(p.data(), 0, 1.0e-6);
@@ -204,7 +204,8 @@ int multiecho_main(int argc, char **argv) {
         default:
             QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
-        auto fit = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, covar, resids, subregion.Get());
+        auto fit =
+            QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
         const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
         if (nvols % sequence.size() == 0) {

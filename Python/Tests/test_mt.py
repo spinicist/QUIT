@@ -131,7 +131,7 @@ class MT(unittest.TestCase):
                }
         qmt_file = 'qmt_sim.nii.gz'
         t1app = 'qmt_t1app.nii.gz'
-        img_sz = [32, 32, 32]
+        img_sz = [32, 32, 1]
         noise = 0.001
 
         lineshape_file = '_qmt_lineshape.json'
@@ -148,9 +148,9 @@ class MT(unittest.TestCase):
         NewImage(out_file='T2_b.nii.gz', verbose=vb, img_size=img_sz,
                  fill=12e-6).run()
         NewImage(out_file='RM0a.nii.gz', verbose=vb, img_size=img_sz,
-                 grad_dim=1, grad_vals=(1.0, 5.0)).run()
+                 fill=1.0).run()
         NewImage(out_file=t1app, verbose=vb, img_size=img_sz,
-                 grad_dim=2, grad_vals=(0.5, 1.5)).run()
+                 fill=1.0).run()
 
         qMTSim(sequence=qmt, in_file=qmt_file, t1_map=t1app, lineshape=lineshape_file,
                noise=noise, verbose=vb,

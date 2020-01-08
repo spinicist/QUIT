@@ -27,6 +27,7 @@ using namespace std::literals;
 struct DESPOT1 : QI::Model<double, double, 2, 1> {
     using SequenceType = QI::SPGRSequence;
     SequenceType const &sequence;
+    long const          max_iterations;
 
     std::array<const std::string, 2> const varying_names{"PD"s, "T1"s};
     std::array<const std::string, 1> const fixed_names{"B1"s};
@@ -93,7 +94,7 @@ struct DESPOT1WLLS : DESPOT1Fit {
         X.col(1).setOnes();
         Eigen::Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
         Eigen::Array2d  out{b[1] / (1. - b[0]), -model.sequence.TR / log(b[0])};
-        for (iterations = 0; iterations < max_iterations; iterations++) {
+        for (iterations = 0; iterations < model.max_iterations; iterations++) {
             Eigen::VectorXd W =
                 (flip.sin() / (1. - (exp(-model.sequence.TR / out[1]) * flip.cos()))).square();
             b = (X.transpose() * W.asDiagonal() * X)
@@ -138,7 +139,7 @@ struct DESPOT1NLLS : DESPOT1Fit {
         ceres::Problem problem;
         using Cost      = QI::ModelCost<DESPOT1>;
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, DESPOT1::NV>;
-        auto *cost      = new Cost(model, fixed, data);
+        auto *cost      = new Cost{model, fixed, data};
         auto *auto_cost = new AutoCost(cost, model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
         problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0]);
@@ -147,7 +148,7 @@ struct DESPOT1NLLS : DESPOT1Fit {
         problem.SetParameterUpperBound(p.data(), 1, model.bounds_hi[1]);
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
-        options.max_num_iterations  = max_iterations;
+        options.max_num_iterations  = model.max_iterations;
         options.function_tolerance  = 1e-5;
         options.gradient_tolerance  = 1e-6;
         options.parameter_tolerance = 1e-4;
@@ -192,7 +193,7 @@ int despot1_main(int argc, char **argv) {
     json input        = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto spgrSequence = input.at("SPGR").get<QI::SPGRSequence>();
 
-    DESPOT1 model{{}, spgrSequence};
+    DESPOT1 model{{}, spgrSequence, its.Get()};
     if (simulate) {
         QI::SimulateModel<DESPOT1, false>(
             input, model, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());
@@ -214,8 +215,6 @@ int despot1_main(int argc, char **argv) {
         default:
             QI::Fail("Unknown algorithm type: {}", algorithm.Get());
         }
-        if (its)
-            d1->max_iterations = its.Get();
         auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(spgr_path)}, {B1.Get()}, mask.Get());
         fit->Update();

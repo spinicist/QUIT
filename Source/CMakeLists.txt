@@ -1,5 +1,5 @@
 add_executable(qi qi_main.cpp)
-set(ASAN $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>)
+# set(ASAN $<$<CONFIG:RelWithDebInfo>:-fsanitize=address>)
 target_compile_options(
     qi PRIVATE
     "-Werror" "-Wall" "-Wextra" "-Wshadow"
@@ -17,6 +17,7 @@ add_subdirectory( B1 )
 add_subdirectory( MT )
 add_subdirectory( Perfusion )
 add_subdirectory( Relaxometry )
+add_subdirectory( RUFIS )
 add_subdirectory( Stats )
 add_subdirectory( Susceptibility )
 add_subdirectory( Utils )

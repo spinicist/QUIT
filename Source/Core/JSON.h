@@ -25,7 +25,8 @@ json          ReadJSON(const std::string &path);
 std::ostream &WriteJSON(std::ostream &os, const json &doc);
 void          WriteJSON(const std::string &path, const json &doc);
 
-Eigen::ArrayXd ArrayFromJSON(const json &json, const std::string &key, const double &scale = 1);
+Eigen::ArrayXd  ArrayFromJSON(const json &json, const std::string &key, const double &scale = 1);
+Eigen::ArrayXcd CArrayFromJSON(const json &json, const std::string &key, const double &scale = 1);
 
 } // End namespace QI
 

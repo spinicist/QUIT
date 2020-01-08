@@ -69,10 +69,11 @@ struct InterpLineshape {
                     const int             freq_count,
                     const Eigen::ArrayXd &vals,
                     const double          T2b);
+    InterpLineshape(double const T2b, Eigen::ArrayXd &freqs, Eigen::ArrayXd &vals);
 
     template <typename T> QI_ARRAY(T) operator()(const Eigen::ArrayXd &f, const T T2) const {
         const auto scale = T2 / T2_nominal;
-        const auto sf    = (f * scale - freq_min) / freq_step;
+        const auto sf    = (f.abs() * scale - freq_min) / freq_step;
         QI_ARRAY(T) interp_vals(f.rows());
         for (auto i = 0; i < f.rows(); i++) {
             if (sf[i] < 0.0) {
@@ -85,6 +86,22 @@ struct InterpLineshape {
             }
         }
         return interp_vals;
+    }
+
+    template <typename T> T operator()(double const &f, const T T2) const {
+        const auto scale = T2 / T2_nominal;
+        const auto sf    = (std::abs(f) * scale - freq_min) / freq_step;
+
+        if (sf < 0.0) {
+            return values[0] * scale;
+        } else if (sf > (freq_count - 1.0)) {
+            return values[freq_count - 1] * scale;
+        } else {
+            T val;
+            interpolator->Evaluate(sf, &val);
+            val *= scale;
+            return val;
+        }
     }
 };
 

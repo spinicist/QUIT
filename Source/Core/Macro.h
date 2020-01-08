@@ -18,6 +18,7 @@
 #define QI_MACRO_H
 
 #include "fmt/format.h"
+#include "fmt/ostream.h"
 #include <Eigen/Core>
 
 #if defined(_WIN32) && !defined(__MINGW32__)

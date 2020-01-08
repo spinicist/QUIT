@@ -4,6 +4,7 @@
 #include "CoreProgs/Commands.h"
 #include "MT/Commands.h"
 #include "Perfusion/Commands.h"
+#include "RUFIS/Commands.h"
 #include "Relaxometry/Commands.h"
 #include "Stats/Commands.h"
 #include "Susceptibility/Commands.h"
@@ -29,6 +30,9 @@ int main(int argc, char **argv) {
 #endif
 #ifdef BUILD_RELAX
     add_relax_commands(commands);
+#endif
+#ifdef BUILD_RUFIS
+    add_rufis_commands(commands);
 #endif
 #ifdef BUILD_STATS
     add_stats_commands(commands);

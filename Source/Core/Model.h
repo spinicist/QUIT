@@ -38,6 +38,10 @@ template <typename DT_, typename PT_, int NV_, int NF_, int NI_ = 1, int ND_ = 0
     using CovarArray   = QI_ARRAYN(ParameterType, NCov);
     using DerivedArray = QI_ARRAYN(ParameterType, ND);
 
+    using VaryingNames = std::array<std::string const, NV>;
+    using FixedNames   = std::array<std::string const, NF>;
+    using DerivedNames = std::array<std::string const, ND>;
+
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray &fixed) const
         -> QI_ARRAY(typename Derived::Scalar);
@@ -83,16 +87,13 @@ template <typename Model> struct ModelCost {
     using DataArray    = QI_ARRAY(typename Model::DataType);
     const Model &    model;
     const FixedArray fixed;
-    const QI_ARRAY(typename Model::DataType) data;
-
-    ModelCost(const Model &m, const FixedArray &f, const DataArray &d) :
-        model(m), fixed(f), data(d) {}
+    const DataArray  data;
 
     template <typename T> bool operator()(const T *const vin, T *rin) const {
         Eigen::Map<QI_ARRAY(T)>                         r(rin, data.rows());
-        const Eigen::Map<const QI_ARRAYN(T, Model::NV)> v(vin);
-        const auto                                      calc = model.signal(v, fixed);
-        r                                                    = data - calc;
+        Eigen::Map<QI_ARRAYN(T, Model::NV) const> const v(vin);
+
+        r = data - model.signal(v, fixed);
         return true;
     }
 };

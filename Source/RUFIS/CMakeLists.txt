@@ -1,0 +1,6 @@
+option( BUILD_RUFIS "Build the relaxometry (DESPOT etc.) programs" ON )
+if( ${BUILD_RUFIS} )
+    file(GLOB SOURCES *.cpp)
+    target_sources(qi PRIVATE ${SOURCES})
+    target_compile_definitions(qi PRIVATE "-DBUILD_RUFIS")
+endif()

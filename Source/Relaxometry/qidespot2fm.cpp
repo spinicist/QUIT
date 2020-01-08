@@ -68,6 +68,7 @@ using FMFit = QI::FitFunction<FMModel>;
 
 struct FMNLLS : FMFit {
     using FMFit::FMFit;
+    long              max_iterations;
     bool              asymmetric = false;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           FMModel::FixedArray const &        fixed,
@@ -95,7 +96,7 @@ struct FMNLLS : FMFit {
             ceres::Problem problem;
             using Cost      = QI::ModelCost<FMModel>;
             using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, FMModel::NV>;
-            auto *cost      = new Cost(model, fixed, data);
+            auto *cost      = new Cost{model, fixed, data};
             auto *auto_cost = new AutoCost(cost, model.sequence.size());
             problem.AddResidualBlock(auto_cost, NULL, p.data());
             problem.SetParameterLowerBound(p.data(), 0, 1.);

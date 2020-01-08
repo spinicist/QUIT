@@ -85,7 +85,7 @@ struct ASEModel : QI::Model<double, double, 4, 0, 1, 3> {
         derived[2] = dHb;
     }
 };
-using ASEFit = QI::ScaledNLLSFitFunction<ASEModel>;
+using ASEFit = QI::ScaledAutoDiffFit<ASEModel>;
 
 struct ASEFixDBVModel : QI::Model<double, double, 3, 0, 1, 3> {
     using SequenceType = QI::MultiEchoSequence;
@@ -138,7 +138,7 @@ struct ASEFixDBVModel : QI::Model<double, double, 3, 0, 1, 3> {
         derived[2] = dHb;
     }
 };
-using ASEFixDBVFit = QI::ScaledNLLSFitFunction<ASEFixDBVModel>;
+using ASEFixDBVFit = QI::ScaledAutoDiffFit<ASEFixDBVModel>;
 
 /*
  * Main
@@ -183,11 +183,11 @@ int ase_oef_main(int argc, char **argv) {
         };
         if (DBV) {
             ASEFixDBVModel model{{}, sequence, B0.Get(), DBV.Get()};
-            ASEFixDBVFit   fit(model);
+            ASEFixDBVFit   fit{model};
             process(fit);
         } else {
             ASEModel model{{}, sequence, B0.Get()};
-            ASEFit   fit(model);
+            ASEFit   fit{model};
             process(fit);
         }
     }

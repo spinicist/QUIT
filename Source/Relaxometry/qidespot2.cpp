@@ -27,6 +27,7 @@ using namespace std::literals;
 
 struct DESPOT2 : QI::Model<double, double, 2, 2> {
     QI::SSFPSequence const &         sequence;
+    long const                       max_iterations;
     std::array<const std::string, 2> varying_names{{"PD"s, "T2"s}};
 
     VaryingArray const               bounds_lo{1e-6, 1e-3};
@@ -133,7 +134,7 @@ struct DESPOT2WLLS : DESPOT2Fit {
             PD = b[1] * (1. - E1 * E2) / (1. - E1);
         }
         Eigen::VectorXd W(model.sequence.size());
-        for (iterations = 0; iterations < max_iterations; iterations++) {
+        for (iterations = 0; iterations < model.max_iterations; iterations++) {
             if (model.elliptical) {
                 W = ((1. - E1 * E2) * angles.sin() /
                      (1. - E1 * E2 * E2 - (E1 - E2 * E2) * angles.cos()))
@@ -188,7 +189,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
         ceres::Problem problem;
         using Cost      = QI::ModelCost<DESPOT2>;
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, DESPOT2::NV>;
-        auto *cost      = new Cost(model, fixed, data);
+        auto *cost      = new Cost{model, fixed, data};
         auto *auto_cost = new AutoCost(cost, model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
         problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0] / scale);
@@ -198,7 +199,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
             p.data(), 1, std::min(model.bounds_hi[1], fixed[0])); // T2 cannot be > T1
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
-        options.max_num_iterations  = max_iterations;
+        options.max_num_iterations  = model.max_iterations;
         options.function_tolerance  = 1e-5;
         options.gradient_tolerance  = 1e-6;
         options.parameter_tolerance = 1e-4;
@@ -245,7 +246,7 @@ int despot2_main(int argc, char **argv) {
     QI::Log(verbose, "Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto    ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
-    DESPOT2 model{{}, ssfp};
+    DESPOT2 model{{}, ssfp, its.Get()};
     if (simulate) {
         if (gs_arg)
             model.elliptical = true;
@@ -271,8 +272,6 @@ int despot2_main(int argc, char **argv) {
             QI::Log(verbose, "NLLS algorithm selected.");
             break;
         }
-        if (its)
-            d2->max_iterations = its.Get();
         if (gs_arg) {
             QI::Log(verbose, "GS Mode selected");
             d2->model.elliptical = true;

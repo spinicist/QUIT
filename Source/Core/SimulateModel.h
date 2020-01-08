@@ -19,13 +19,13 @@
 namespace QI {
 
 template <typename Model, bool MultiOutput>
-void SimulateModel(json &                          json,
-                   const Model &                   model,
-                   const std::vector<std::string> &fixedpaths,
-                   const std::vector<std::string> &outpaths,
-                   const bool                      verbose,
-                   const double                    noise,
-                   std::string const &             subRegion = "") {
+void SimulateModel(json &                                    json,
+                   Model const &                             model,
+                   typename Model::FixedNames const &        fixedpaths,
+                   std::array<std::string, Model::NI> const &outpaths,
+                   bool const                                verbose,
+                   double const                              noise,
+                   std::string const &                       subRegion = "") {
     auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, verbose, subRegion);
     simulator->SetNoise(noise);
     for (auto i = 0; i < Model::NV; i++) {

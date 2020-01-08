@@ -62,4 +62,14 @@ Eigen::ArrayXd ArrayFromJSON(const json &val, const std::string &key, const doub
     return array;
 }
 
+Eigen::ArrayXcd CArrayFromJSON(const json &json, const std::string &key, const double &scale) {
+
+    const auto &    json_array = json[key].get<std::vector<double>>();
+    Eigen::ArrayXcd array(json_array.size());
+    for (size_t i = 0; i < json_array.size(); i++) {
+        array[i] = json_array[i] * scale;
+    }
+    return array;
+}
+
 } // End namespace QI

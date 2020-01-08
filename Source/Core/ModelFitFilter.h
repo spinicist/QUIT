@@ -242,9 +242,9 @@ class ModelFitFilter
      * I would prefer this to go in the constructor, but the ForwardNew macro can't cope with
      * container construction, i.e. {} in the call itself.
      */
-    void ReadInputs(std::vector<std::string> const &              inputs,
-                    std::array<std::string, ModelType::NF> const &fixed,
-                    std::string const &                           mask) {
+    void ReadInputs(std::vector<std::string> const &      inputs,
+                    typename ModelType::FixedNames const &fixed,
+                    std::string const &                   mask) {
         if (static_cast<size_t>(ModelType::NI) != inputs.size()) {
             QI::Fail("Number of input file paths did not match number of inputs for model");
         }
@@ -464,7 +464,7 @@ class ModelFitFilter
                     itk::ImageRegionIterator<TResidualsImage>(this->GetResidualsOutput(i), region);
             }
         }
-        std::vector<itk::ImageRegionConstIterator<TFixedImage>> fixed_iters(ModelType::NF);
+        std::array<itk::ImageRegionConstIterator<TFixedImage>, ModelType::NF> fixed_iters;
         for (int i = 0; i < ModelType::NF; i++) {
             typename TFixedImage::ConstPointer c = this->GetFixed(i);
             if (c) {
@@ -472,12 +472,12 @@ class ModelFitFilter
             }
         }
 
-        std::vector<itk::ImageRegionIterator<TOutputImage>> output_iters(ModelType::NV);
+        std::array<itk::ImageRegionIterator<TOutputImage>, ModelType::NV> output_iters;
         for (int i = 0; i < ModelType::NV; i++) {
             output_iters[i] = itk::ImageRegionIterator<TOutputImage>(this->GetOutput(i), region);
         }
 
-        std::vector<itk::ImageRegionIterator<TOutputImage>> derived_iters(ModelType::ND);
+        std::array<itk::ImageRegionIterator<TOutputImage>, ModelType::ND> derived_iters;
         if constexpr (HasDerived) {
             for (int i = 0; i < ModelType::ND; i++) {
                 derived_iters[i] =
@@ -575,8 +575,7 @@ class ModelFitFilter
                         }
                     }
                     if constexpr (HasDerived) {
-                        using DerivedArray = QI_ARRAYN(typename FitType::OutputType, ModelType::ND);
-                        DerivedArray derived;
+                        typename ModelType::DerivedArray derived;
                         m_fit->model.derived(outputs, fixed, derived);
                         for (int i = 0; i < ModelType::ND; i++) {
                             derived_iters[i].Set(derived[i]);
