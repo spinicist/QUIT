@@ -25,18 +25,7 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
 
-struct JSRModel {
-    using DataType      = double;
-    using ParameterType = double;
-
-    static constexpr int NV = 4; // Number of varying parameters
-    static constexpr int ND = 0; // Number of derived parameters
-    static constexpr int NF = 1; // Number of fixed parameters
-    static constexpr int NI = 2; // Number of inputs
-
-    using VaryingArray = QI_ARRAYN(ParameterType, NV); // Type for the varying parameter array
-    using FixedArray   = QI_ARRAYN(ParameterType, NF); // Type for the fixed parameter array
-
+struct JSRModel : QI::Model<double, double, 4, 1, 2> {
     // Sequence paramter structs
     QI::SPGREchoSequence &  spgr;
     QI::SSFPFiniteSequence &ssfp;
@@ -192,10 +181,11 @@ struct JSRFit {
     // also the reason for failure
     QI::FitReturnType
     fit(std::vector<Eigen::ArrayXd> const &inputs,       // Input: signal data
-        Eigen::ArrayXd const &             fixed,        // Input: Fixed parameters
+        ModelType::FixedArray const &      fixed,        // Input: Fixed parameters
         ModelType::VaryingArray &          best_varying, // Output: Varying parameters
-        RMSErrorType &                     rmse,         // Output: root-mean-square error
-        std::vector<Eigen::ArrayXd> &      residuals,    // Optional output: point residuals
+        ModelType::CovarArray *            covar,
+        RMSErrorType &                     rmse,      // Output: root-mean-square error
+        std::vector<Eigen::ArrayXd> &      residuals, // Optional output: point residuals
         FlagType &                         iterations /* Usually iterations */) const {
         // First scale down the raw data so that PD will be roughly the same magnitude as other
         // parameters This is important for numerical stability in the optimiser
@@ -254,14 +244,18 @@ struct JSRFit {
                 best_cost    = summary.final_cost;
             }
         }
-        Eigen::ArrayXd const spgr_residual =
-            (spgr_data - model.spgr_signal(best_varying, fixed)) * scale;
-        Eigen::ArrayXd const ssfp_residual =
-            (ssfp_data - model.ssfp_signal(best_varying, fixed)) * scale;
-        rmse = sqrt(spgr_residual.square().mean() + ssfp_residual.square().mean());
+        Eigen::ArrayXd const spgr_residual = (spgr_data - model.spgr_signal(best_varying, fixed));
+        Eigen::ArrayXd const ssfp_residual = (ssfp_data - model.ssfp_signal(best_varying, fixed));
         if (residuals.size() > 0) {
-            residuals[0] = spgr_residual;
-            residuals[1] = ssfp_residual;
+            residuals[0] = spgr_residual * scale;
+            residuals[1] = ssfp_residual * scale;
+        }
+        double const var   = spgr_residual.square().sum() + ssfp_residual.square().sum();
+        int const    dsize = model.spgr.size() + model.ssfp.size();
+        rmse               = sqrt(spgr_residual.square().mean() + ssfp_residual.square().mean());
+        if (covar) {
+            varying = best_varying;
+            QI::GetModelCovariance<JSRModel>(problem, varying, var / (dsize - JSRModel::NV), covar);
         }
         best_varying[0] *= scale; // Multiply signals/proton density back up
         // Wrap and convert to frequency
@@ -281,25 +275,8 @@ int jsr_main(int argc, char **argv) {
     args::Positional<std::string> spgr_path(parser, "SPGR", "Input SPGR file");
     args::Positional<std::string> ssfp_path(parser, "SSFP", "Input SSFP file");
 
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag           resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});
-    args::ValueFlag<int> threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
-    args::ValueFlag<std::string> prefix(
-        parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
-    args::ValueFlag<std::string> mask_path(
-        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser,
-        "SUBREGION",
-        "Process voxels in a block from I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::ValueFlag<std::string> json_file(
-        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
+    QI_COMMON_ARGS;
+
     args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
     args::ValueFlag<int>         npsi(
         parser, "N PSI", "Number of starts for psi/off-resonance, default 2", {'p', "npsi"}, 2);
@@ -315,10 +292,11 @@ int jsr_main(int argc, char **argv) {
     QI::SPGREchoSequence   spgr_seq(doc["SPGR"]);
     QI::SSFPFiniteSequence ssfp_seq(doc["SSFP"]);
 
-    JSRModel model{spgr_seq, ssfp_seq};
+    JSRModel model{{}, spgr_seq, ssfp_seq};
     JSRFit   jsr_fit{model, npsi.Get()};
-    auto fit_filter = QI::ModelFitFilter<JSRFit>::New(&jsr_fit, verbose, resids, subregion.Get());
-    fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask_path.Get());
+    auto     fit_filter =
+        QI::ModelFitFilter<JSRFit>::New(&jsr_fit, verbose, covar, resids, subregion.Get());
+    fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask.Get());
     fit_filter->Update();
     fit_filter->WriteOutputs(prefix.Get() + "JSR_");
     QI::Log(verbose, "Finished.");

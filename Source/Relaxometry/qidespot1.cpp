@@ -24,24 +24,34 @@
 
 using namespace std::literals;
 
-using DESPOT1 = QI::Model<2, 1, QI::SPGRSequence>;
-template <> std::array<const std::string, 2> DESPOT1::varying_names{{"PD"s, "T1"s}};
-template <> std::array<const std::string, 1> DESPOT1::fixed_names{{"B1"s}};
-template <> const QI_ARRAYN(double, 1) DESPOT1::fixed_defaults{1.0};
-template <>
-template <typename Derived>
-auto DESPOT1::signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
-    -> QI_ARRAY(typename Derived::Scalar) {
-    return QI::SPGRSignal(v[0], v[1], f[0], sequence);
-}
+struct DESPOT1 : QI::Model<double, double, 2, 1> {
+    using SequenceType = QI::SPGRSequence;
+    SequenceType const &sequence;
+
+    std::array<const std::string, 2> const varying_names{"PD"s, "T1"s};
+    std::array<const std::string, 1> const fixed_names{"B1"s};
+    FixedArray const                       fixed_defaults{1.0};
+
+    VaryingArray const bounds_lo{1.e-6, 1.e-6};
+    VaryingArray const bounds_hi{100., 10.};
+
+    int input_size(const int /* Unused */) const { return sequence.size(); }
+
+    template <typename Derived>
+    auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
+        -> QI_ARRAY(typename Derived::Scalar) {
+        return QI::SPGRSignal(v[0], v[1], f[0], sequence);
+    }
+};
 
 using DESPOT1Fit = QI::FitFunction<DESPOT1>;
 
 struct DESPOT1LLS : DESPOT1Fit {
     using DESPOT1Fit::DESPOT1Fit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, DESPOT1::NV) & outputs,
+                          DESPOT1::FixedArray const &        fixed,
+                          DESPOT1::VaryingArray &            outputs,
+                          DESPOT1::CovarArray * /* Unused */,
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
@@ -68,8 +78,9 @@ struct DESPOT1LLS : DESPOT1Fit {
 struct DESPOT1WLLS : DESPOT1Fit {
     using DESPOT1Fit::DESPOT1Fit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, DESPOT1::NV) & outputs,
+                          DESPOT1::FixedArray const &        fixed,
+                          DESPOT1::VaryingArray &            outputs,
+                          DESPOT1::CovarArray * /* Unused */,
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const override {
@@ -107,22 +118,19 @@ struct DESPOT1WLLS : DESPOT1Fit {
 };
 
 struct DESPOT1NLLS : DESPOT1Fit {
-    DESPOT1NLLS(DESPOT1 &m) : DESPOT1Fit(m) {
-        // Do not let these go negative for non-linear fitting
-        model.bounds_lo[0] = 1e-6;
-        model.bounds_lo[1] = 1e-6;
-    }
+    DESPOT1NLLS(DESPOT1 &m) : DESPOT1Fit(m) {}
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, DESPOT1::NV) & p,
-                          RMSErrorType &               residual,
-                          std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const override {
+                          DESPOT1::FixedArray const &        fixed,
+                          DESPOT1::VaryingArray &            p,
+                          DESPOT1::CovarArray *              cov,
+                          RMSErrorType &                     rmse,
+                          std::vector<Eigen::ArrayXd> &      residuals,
+                          FlagType &                         iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
-            residual = 0;
+            rmse = 0;
             return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
@@ -133,8 +141,8 @@ struct DESPOT1NLLS : DESPOT1Fit {
         auto *cost      = new Cost(model, fixed, data);
         auto *auto_cost = new AutoCost(cost, model.sequence.size());
         problem.AddResidualBlock(auto_cost, NULL, p.data());
-        problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0] / scale);
-        problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0] / scale);
+        problem.SetParameterLowerBound(p.data(), 0, model.bounds_lo[0]);
+        problem.SetParameterUpperBound(p.data(), 0, model.bounds_hi[0]);
         problem.SetParameterLowerBound(p.data(), 1, model.bounds_lo[1]);
         problem.SetParameterUpperBound(p.data(), 1, model.bounds_hi[1]);
         ceres::Solver::Options options;
@@ -145,18 +153,22 @@ struct DESPOT1NLLS : DESPOT1Fit {
         options.parameter_tolerance = 1e-4;
         options.logging_type        = ceres::SILENT;
         ceres::Solve(options, &problem, &summary);
-        p[0] = p[0] * scale;
+
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
-        residual   = summary.final_cost * scale;
+
+        Eigen::ArrayXd const rs  = (data - model.signal(p, fixed));
+        double const         var = rs.square().sum();
+        rmse                     = sqrt(var / data.rows()) * scale;
         if (residuals.size() > 0) {
-            std::vector<double> r_temp(data.size());
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (size_t i = 0; i < r_temp.size(); i++)
-                residuals[0][i] = r_temp[i] * scale;
+            residuals[0] = rs * scale;
         }
+        if (cov) {
+            QI::GetModelCovariance<DESPOT1>(problem, p, var / (data.rows() - DESPOT1::NV), cov);
+        }
+        p[0] = p[0] * scale;
         return {true, ""};
     }
 };
@@ -174,23 +186,13 @@ int despot1_main(int argc, char **argv) {
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/w/n)", {'a', "algo"}, 'l');
     args::ValueFlag<int>  its(
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
-    args::ValueFlag<float> clampPD(parser,
-                                   "CLAMP PD",
-                                   "Clamp PD between 0 and value",
-                                   {'p', "clampPD"},
-                                   std::numeric_limits<float>::infinity());
-    args::ValueFlag<float> clampT1(parser,
-                                   "CLAMP T1",
-                                   "Clamp T1 between 0 and value",
-                                   {'t', "clampT1"},
-                                   std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose, threads);
     QI::CheckPos(spgr_path);
     QI::Log(verbose, "Reading sequence information");
     json input        = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto spgrSequence = input.at("SPGR").get<QI::SPGRSequence>();
 
-    DESPOT1 model{spgrSequence};
+    DESPOT1 model{{}, spgrSequence};
     if (simulate) {
         QI::SimulateModel<DESPOT1, false>(
             input, model, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());
@@ -212,18 +214,9 @@ int despot1_main(int argc, char **argv) {
         default:
             QI::Fail("Unknown algorithm type: {}", algorithm.Get());
         }
-        if (clampPD) {
-            d1->model.bounds_lo[0] = 1e-6;
-            d1->model.bounds_hi[0] = clampPD.Get();
-        }
-        if (clampT1) {
-            d1->model.bounds_lo[1] = 1e-6;
-            d1->model.bounds_hi[1] = clampT1.Get();
-        }
         if (its)
             d1->max_iterations = its.Get();
-        auto fit =
-            QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose.Get(), resids.Get(), subregion.Get());
+        auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(spgr_path)}, {B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D1_");

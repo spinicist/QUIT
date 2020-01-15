@@ -33,7 +33,8 @@ class InputSpec(InputBaseSpec):
     # Most QUIT programs take similar arguments
     json = traits.File(exists=True, desc='JSON Input file', argstr='--json=%s')
 
-    subregion = traits.String(desc='Only process a subregion of the image. Argument should be a string "start_x,start_y,start_z,size_x,size_y,size_z"', argstr='--subregion=%s')
+    subregion = traits.String(
+        desc='Only process a subregion of the image. Argument should be a string "start_x,start_y,start_z,size_x,size_y,size_z"', argstr='--subregion=%s')
     threads = traits.Int(
         desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
     prefix = traits.String(
@@ -49,6 +50,8 @@ class FitInputSpec(InputSpec):
     # Input nifti
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-1, desc='Input file')
+    covar = traits.Bool(
+        decsc='Write out parameter covar images', argstr='--covar')
     residuals = traits.Bool(
         desc='Write out residuals for each data-point', argstr='--resids')
 

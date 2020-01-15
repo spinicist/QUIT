@@ -12,10 +12,10 @@
 #ifndef QI_THREEPOOLMODEL_H
 #define QI_THREEPOOLMODEL_H
 
+#include "Model.h"
 #include "OnePoolSignals.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
-#include "SequenceGroup.h"
 #include "TwoPoolModel.h"
 #include <Eigen/Core>
 #include <array>
@@ -23,24 +23,16 @@
 
 namespace QI {
 
-struct ThreePoolModel {
-    using DataType      = double;
-    using ParameterType = double;
-    using SequenceType  = QI::SequenceGroup;
-
-    static constexpr int NV = 10;
-    static constexpr int ND = 0;
-    static constexpr int NF = 2;
-    static constexpr int NI = 2;
-
-    static std::array<const std::string, NV> varying_names;
-    static std::array<const std::string, NF> fixed_names;
-    static const QI_ARRAYN(double, NF) fixed_defaults;
-
+struct ThreePoolModel : Model<double, double, 10, 2, 2> {
     SPGRSequence spgr;
     SSFPSequence ssfp;
     bool         scale_to_mean = false;
     TwoPoolModel two_pool;
+
+    std::array<const std::string, ThreePoolModel::NV> const varying_names{
+        "PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "T1_csf", "T2_csf", "tau_m", "f_m", "f_csf"};
+    std::array<const std::string, ThreePoolModel::NF> const fixed_names{"f0", "B1"};
+    FixedArray const                                        fixed_defaults{0.0, 1.0};
 
     QI_ARRAYN(double, NV) bounds_lo;
     QI_ARRAYN(double, NV) bounds_hi;

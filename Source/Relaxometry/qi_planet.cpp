@@ -9,9 +9,8 @@
  *
  */
 
-#include <array>
-
 #include <Eigen/Core>
+#include <array>
 
 #include "Args.h"
 #include "ImageIO.h"
@@ -22,20 +21,12 @@
 
 using namespace std::literals;
 
-struct PLANETModel {
-    using DataType      = double;
-    using ParameterType = double;
-    using SequenceType  = QI::SSFPSequence;
-
-    static constexpr int NV = 3;
-    static constexpr int ND = 0;
-    static constexpr int NF = 1;
-    static constexpr int NI = 3;
+struct PLANETModel : QI::Model<double, double, 3, 1, 3> {
+    const QI::SSFPSequence &sequence;
 
     static std::array<const std::string, NV> varying_names;
     static std::array<const std::string, NF> fixed_names;
     static const QI_ARRAYN(double, NF) fixed_defaults;
-    const SequenceType &sequence;
 
     size_t num_outputs() const { return 3; }
     int    output_size(int /* Unused */) { return sequence.size(); }
@@ -76,7 +67,8 @@ struct PLANETFit {
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, PLANETModel::NV) & out,
+                          PLANETModel::VaryingArray &        out,
+                          PLANETModel::CovarArray * /* Unused */,
                           RMSErrorType & /* Unused */,
                           std::vector<Eigen::ArrayXd> & /* Unused */,
                           FlagType & /* Unused */,
@@ -110,6 +102,7 @@ int planet_main(int argc, char **argv) {
     args::Positional<std::string> b_path(parser, "b", "Ellipse parameter b");
 
     QI_COMMON_ARGS;
+
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
 
     QI::ParseArgs(parser, argc, argv, verbose, threads);
@@ -121,7 +114,7 @@ int planet_main(int argc, char **argv) {
     QI::Log(verbose, "Reading sequence information");
     json             input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence ssfp(input.at("SSFP"));
-    PLANETModel      model{ssfp};
+    PLANETModel      model{{}, ssfp};
     if (simulate) {
         QI::SimulateModel<PLANETModel, true>(input,
                                              model,
@@ -131,7 +124,8 @@ int planet_main(int argc, char **argv) {
                                              simulate.Get());
     } else {
         PLANETFit fit{model};
-        auto fit_filter = QI::ModelFitFilter<PLANETFit>::New(&fit, verbose, false, subregion.Get());
+        auto      fit_filter =
+            QI::ModelFitFilter<PLANETFit>::New(&fit, verbose, false, false, subregion.Get());
         fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get()}, mask.Get());
         fit_filter->SetBlocks(ssfp.size());
         fit_filter->Update();

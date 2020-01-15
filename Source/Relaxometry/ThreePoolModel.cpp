@@ -11,9 +11,9 @@
  *
  */
 
+#include "ThreePoolModel.h"
 #include "Helpers.h"
 #include "Log.h"
-#include "ThreePoolModel.h"
 
 #include <Eigen/Dense>
 // There's a bug in matrix log that leads to duplicate symbol definitions if
@@ -57,19 +57,6 @@ Eigen::ArrayXd SSFP1(const double &          PD,
 } // namespace
 
 namespace QI {
-
-std::array<const std::string, ThreePoolModel::NV> ThreePoolModel::varying_names{{"PD"s,
-                                                                                 "T1_m"s,
-                                                                                 "T2_m"s,
-                                                                                 "T1_ie"s,
-                                                                                 "T2_ie"s,
-                                                                                 "T1_csf"s,
-                                                                                 "T2_csf"s,
-                                                                                 "tau_m"s,
-                                                                                 "f_m"s,
-                                                                                 "f_csf"s}};
-std::array<const std::string, ThreePoolModel::NF> ThreePoolModel::fixed_names{{"f0"s, "B1"s}};
-const QI_ARRAYN(double, ThreePoolModel::NF) ThreePoolModel::fixed_defaults{0.0, 1.0};
 
 /* The inner two-pool model must not be scaled, as scaling will be done once signals are added */
 ThreePoolModel::ThreePoolModel(SPGRSequence const &s1, SSFPSequence const &s2, const bool scale) :

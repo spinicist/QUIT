@@ -29,7 +29,7 @@
 
 #include "FitFunction.h"
 #include "Log.h"
-#include "ModelHelpers.h"
+#include "Model.h"
 #include "Monitor.h"
 #include "Util.h"
 
@@ -48,6 +48,12 @@ class ModelFitFilter
     using DataType      = typename ModelType::DataType;
     using ParameterType = typename ModelType::ParameterType;
     using RMSErrorType  = typename FitType::RMSErrorType;
+
+    using VaryingArray  = typename ModelType::VaryingArray;
+    using FixedArray    = typename ModelType::FixedArray;
+    using CovarArray    = typename ModelType::CovarArray;
+    using DataArray     = QI_ARRAY(DataType);
+    using ResidualArray = QI_ARRAY(DataType);
 
     using InputPixelType    = typename IOPrecision<DataType>::Type;
     using OutputPixelType   = typename IOPrecision<ParameterType>::Type;
@@ -89,15 +95,17 @@ class ModelFitFilter
     static constexpr int DerivedOffset = HasDerived ? ModelType::NV : -1;
     static constexpr int FlagOffset    = HasDerived ? DerivedOffset + ModelType::ND : ModelType::NV;
     static constexpr int RMSErrorOffset  = FlagOffset + 1;
-    static constexpr int ResidualsOffset = RMSErrorOffset + 1;
+    static constexpr int CovarOffset     = RMSErrorOffset + 1;
+    static constexpr int ResidualsOffset = CovarOffset + ModelType::NCov;
     static constexpr int TotalOutputs    = ResidualsOffset + ModelType::NI;
 
     ModelFitFilter(FitType const *    f,
                    const bool         verbose,
+                   const bool         covar,
                    const bool         allResids,
                    std::string const &subregion) :
         m_fit(f),
-        m_verbose(verbose), m_allResiduals(allResids) {
+        m_verbose(verbose), m_allResiduals(allResids), m_covar(covar) {
         this->SetNumberOfRequiredInputs(ModelType::NI);
         this->SetNumberOfRequiredOutputs(TotalOutputs);
         for (int i = 0; i < TotalOutputs; i++) {
@@ -163,6 +171,7 @@ class ModelFitFilter
     }
 
     void SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
+    void SetOutputCovar(const bool covar) { m_covar = covar; }
 
     void SetSubregion(const TRegion &sr) {
         m_subregion    = sr;
@@ -195,6 +204,18 @@ class ModelFitFilter
     TResidualsImage *GetResidualsOutput(const int i) {
         return dynamic_cast<TResidualsImage *>(
             this->itk::ProcessObject::GetOutput(ResidualsOffset + i));
+    }
+
+    TOutputImage *GetCovarOutput(const int i) {
+        if (i < ModelType::NCov) {
+            return dynamic_cast<TOutputImage *>(
+                this->itk::ProcessObject::GetOutput(CovarOffset + i));
+        } else {
+            QI::Fail("Requested covar output {} but {} has {}",
+                     i,
+                     typeid(ModelType).name(),
+                     ModelType::NV);
+        }
     }
 
     TFlagImage *GetFlagOutput() {
@@ -253,6 +274,23 @@ class ModelFitFilter
         }
         QI::WriteImage(GetRMSErrorOutput(), prefix + "rmse" + QI::OutExt(), m_verbose);
         QI::WriteImage(GetFlagOutput(), prefix + "iterations" + QI::OutExt(), m_verbose);
+        if (m_covar) {
+            for (int ii = 0; ii < ModelType::NV; ii++) {
+                auto const &name = m_fit->model.varying_names.at(ii);
+                QI::WriteImage(
+                    GetCovarOutput(ii), prefix + "CoV_" + name + QI::OutExt(), m_verbose);
+            }
+            int index = ModelType::NV;
+            for (int ii = 0; ii < ModelType::NV; ii++) {
+                auto const &name1 = m_fit->model.varying_names.at(ii);
+                for (int jj = ii + 1; jj < ModelType::NV; jj++) {
+                    auto const &name2 = m_fit->model.varying_names.at(jj);
+                    QI::WriteImage(GetCovarOutput(index++),
+                                   prefix + "Corr_" + name1 + "_" + name2 + QI::OutExt(),
+                                   m_verbose);
+                }
+            }
+        }
         if (m_allResiduals) {
             for (int i = 0; i < ModelType::NI; i++) {
                 QI::WriteImage(GetResidualsOutput(i),
@@ -271,14 +309,16 @@ class ModelFitFilter
     MakeOutput(itk::ProcessObject::DataObjectPointerArraySizeType idx) override {
         using itype = itk::ProcessObject::DataObjectPointerArraySizeType; // Stop unsigned long
                                                                           // versus int warnings
-        if (idx < static_cast<itype>(ModelType::NV)) {
+        if (idx < static_cast<itype>(ModelType::NV)) { // Varying parameter outputs
             return TOutputImage::New().GetPointer();
-        } else if (idx < static_cast<itype>(FlagOffset)) {
+        } else if (idx < static_cast<itype>(FlagOffset)) { // Derived parameter outputs
             return TOutputImage::New().GetPointer();
         } else if (idx == static_cast<itype>(FlagOffset)) {
             return TFlagImage::New().GetPointer();
         } else if (idx == static_cast<itype>(RMSErrorOffset)) {
             return TRMSErrorImage::New().GetPointer();
+        } else if (idx < static_cast<itype>(CovarOffset + ModelType::NCov)) {
+            return TOutputImage::New().GetPointer();
         } else if (idx < static_cast<itype>(ResidualsOffset + ModelType::NI)) {
             return TResidualsImage::New().GetPointer();
         } else {
@@ -290,7 +330,7 @@ class ModelFitFilter
     }
 
     const FitType *m_fit;
-    const bool     m_verbose, m_allResiduals;
+    const bool     m_verbose, m_allResiduals, m_covar;
     bool           m_hasSubregion = false;
     TRegion        m_subregion;
     int            m_blocks = 1;
@@ -359,6 +399,20 @@ class ModelFitFilter
             rms->SetNumberOfComponentsPerPixel(m_blocks);
         }
         rms->Allocate(true);
+
+        if (m_covar) {
+            for (int ii = 0; ii < ModelType::NCov; ii++) {
+                auto op = this->GetCovarOutput(ii);
+                op->SetRegions(region);
+                op->SetSpacing(spacing);
+                op->SetOrigin(origin);
+                op->SetDirection(direction);
+                if constexpr (Blocked) {
+                    op->SetNumberOfComponentsPerPixel(m_blocks);
+                }
+                op->Allocate(true);
+            }
+        }
 
         if (m_allResiduals) {
             for (int i = 0; i < ModelType::NI; i++) {
@@ -431,14 +485,23 @@ class ModelFitFilter
             }
         }
 
+        std::array<itk::ImageRegionIterator<TOutputImage>, ModelType::NCov> covar_iters;
+        if (m_covar) {
+            for (int ii = 0; ii < ModelType::NCov; ii++) {
+                covar_iters[ii] =
+                    itk::ImageRegionIterator<TOutputImage>(this->GetCovarOutput(ii), region);
+            }
+        }
+
         // Keep the index on this one to report voxel locations where algorithm fails.
         itk::ImageRegionIteratorWithIndex<TRMSErrorImage> rmse_iter(this->GetRMSErrorOutput(),
                                                                     region);
         itk::ImageRegionIterator<TFlagImage>              flag_iter(this->GetFlagOutput(), region);
 
-        using DataArray      = QI_ARRAY(DataType);
-        using ParameterArray = QI_ARRAYN(ParameterType, ModelType::NV);
-        using ResidualArray  = QI_ARRAY(DataType);
+        VaryingArray outputs;
+        FixedArray   fixed;
+        CovarArray * covar = m_covar ? new CovarArray : nullptr;
+
         while (!input_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {
                 for (int b = 0; b < m_blocks; b++) {
@@ -452,35 +515,40 @@ class ModelFitFilter
                         }
                     }
 
-                    auto fixed = m_fit->model.fixed_defaults;
-                    for (size_t i = 0; i < fixed_iters.size(); i++) {
-                        if (this->GetFixed(i)) {
-                            fixed[i] = fixed_iters[i].Get();
+                    outputs = VaryingArray::Zero();
+                    if constexpr (ModelType::NF > 0) {
+                        fixed = m_fit->model.fixed_defaults;
+                        for (size_t i = 0; i < fixed_iters.size(); i++) {
+                            if (this->GetFixed(i)) {
+                                fixed[i] = fixed_iters[i].Get();
+                            }
                         }
                     }
+                    if (m_covar) {
+                        *covar = CovarArray::Zero();
+                    }
 
-                    ParameterArray                 outputs;
                     typename FitType::RMSErrorType rmse = 0;
                     typename FitType::FlagType     flag = 0;
-                    std::vector<ResidualArray> residuals; // Leave size 0 if user doesn't want them
+                    std::vector<ResidualArray>     rs; // Leave size 0 if user doesn't want them
                     if (m_allResiduals) {
                         for (int i = 0; i < ModelType::NI; i++) {
                             const int block_size = m_fit->input_size(i);
-                            residuals.push_back(ResidualArray::Zero(block_size));
+                            rs.push_back(ResidualArray::Zero(block_size));
                         }
                     }
 
                     QI::FitReturnType status;
                     if constexpr (Blocked && Indexed) {
                         status = m_fit->fit(
-                            inputs, fixed, outputs, rmse, residuals, flag, b, rmse_iter.GetIndex());
+                            inputs, fixed, outputs, covar, rmse, rs, flag, b, rmse_iter.GetIndex());
                     } else if constexpr (Blocked) {
-                        status = m_fit->fit(inputs, fixed, outputs, rmse, residuals, flag, b);
+                        status = m_fit->fit(inputs, fixed, outputs, covar, rmse, rs, flag, b);
                     } else if constexpr (Indexed) {
                         status = m_fit->fit(
-                            inputs, fixed, outputs, rmse, residuals, flag, rmse_iter.GetIndex());
+                            inputs, fixed, outputs, covar, rmse, rs, flag, rmse_iter.GetIndex());
                     } else {
-                        status = m_fit->fit(inputs, fixed, outputs, rmse, residuals, flag);
+                        status = m_fit->fit(inputs, fixed, outputs, covar, rmse, rs, flag);
                     }
 
                     if (!status.success && m_verbose) {
@@ -500,6 +568,11 @@ class ModelFitFilter
                         for (int i = 0; i < ModelType::NV; i++) {
                             output_iters[i].Set(outputs[i]);
                         }
+                        if (m_covar) {
+                            for (int ii = 0; ii < ModelType::NCov; ii++) {
+                                covar_iters[ii].Set((*covar)[ii]);
+                            }
+                        }
                     }
                     if constexpr (HasDerived) {
                         using DerivedArray = QI_ARRAYN(typename FitType::OutputType, ModelType::ND);
@@ -513,7 +586,7 @@ class ModelFitFilter
                         for (int i = 0; i < ModelType::NI; i++) {
                             const int block_start = m_fit->input_size(i) * b;
                             for (int j = 0; j < m_fit->input_size(i); j++) {
-                                residuals_iters[i].Get()[j + block_start] = residuals[i][j];
+                                residuals_iters[i].Get()[j + block_start] = rs[i][j];
                             }
                         }
                     }
@@ -530,6 +603,11 @@ class ModelFitFilter
                     flag_iter.Set(0);
                     for (auto &o : output_iters) {
                         o.Set(0);
+                    }
+                    if (m_covar) {
+                        for (auto &c : covar_iters) {
+                            c.Set(0);
+                        }
                     }
                 }
                 if constexpr (HasDerived) {
@@ -561,6 +639,11 @@ class ModelFitFilter
             if constexpr (HasDerived) {
                 for (auto &d : derived_iters) {
                     ++d;
+                }
+            }
+            if (m_covar) {
+                for (auto &c : covar_iters) {
+                    ++c;
                 }
             }
             ++flag_iter;

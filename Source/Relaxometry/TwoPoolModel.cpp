@@ -76,11 +76,6 @@ Eigen::MatrixXd SSFP2(const Eigen::ArrayXd &varying,
 
 namespace QI {
 
-std::array<const std::string, 7> TwoPoolModel::varying_names{
-    {"PD"s, "T1_m"s, "T2_m"s, "T1_ie"s, "T2_ie"s, "tau_m"s, "f_m"s}};
-std::array<const std::string, 2> TwoPoolModel::fixed_names{{"f0"s, "B1"s}};
-const QI_ARRAYN(double, 2) TwoPoolModel::fixed_defaults{0.0, 1.0};
-
 TwoPoolModel::TwoPoolModel(const SPGRSequence &s1, const SSFPSequence &s2, const bool scale) :
     spgr{s1}, ssfp{s2}, scale_to_mean{scale} {
     bounds_lo << 1.0, 0.300, 0.010, 0.9, 0.040, 0.025, 0.001;
@@ -101,7 +96,7 @@ int TwoPoolModel::output_size(int i) const {
     }
 }
 
-bool TwoPoolModel::valid(const QI_ARRAYN(double, NV) & params) const {
+bool TwoPoolModel::valid(VaryingArray const &params) const {
     // Negative T1/T2 makes no sense
     if ((params[1] <= 0.) || (params[2] <= 0.))
         return false;
@@ -113,8 +108,8 @@ bool TwoPoolModel::valid(const QI_ARRAYN(double, NV) & params) const {
     }
 }
 
-std::vector<Eigen::ArrayXd> TwoPoolModel::signals(const Eigen::ArrayXd &v,
-                                                  const QI_ARRAYN(double, NF) & f) const {
+std::vector<Eigen::ArrayXd> TwoPoolModel::signals(VaryingArray const &v,
+                                                  FixedArray const &  f) const {
     return {spgr_signal(v, f), ssfp_signal(v, f)};
 }
 

@@ -25,11 +25,17 @@
 
 using namespace std::literals;
 
-struct DESPOT2 : QI::Model<2, 2, QI::SSFPSequence> {
-    static std::array<const std::string, NV> varying_names;
-    static std::array<const std::string, NF> fixed_names;
-    static const QI_ARRAYN(double, NF) fixed_defaults;
-    bool elliptical = false;
+struct DESPOT2 : QI::Model<double, double, 2, 2> {
+    QI::SSFPSequence const &         sequence;
+    std::array<const std::string, 2> varying_names{{"PD"s, "T2"s}};
+
+    VaryingArray const               bounds_lo{1e-6, 1e-3};
+    VaryingArray const               bounds_hi{100, 5};
+    std::array<const std::string, 2> fixed_names{{"T1"s, "B1"s}};
+    FixedArray const                 fixed_defaults{1.0, 1.0};
+    bool                             elliptical = false;
+
+    int input_size(const int /* Unused */) const { return sequence.size(); }
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
@@ -49,17 +55,15 @@ struct DESPOT2 : QI::Model<2, 2, QI::SSFPSequence> {
         return numer / denom;
     }
 };
-std::array<const std::string, 2> DESPOT2::varying_names{{"PD"s, "T2"s}};
-std::array<const std::string, 2> DESPOT2::fixed_names{{"T1"s, "B1"s}};
-const QI_ARRAYN(double, 2) DESPOT2::fixed_defaults{1.0, 1.0};
 
 using DESPOT2Fit = QI::FitFunction<DESPOT2>;
 
 struct DESPOT2LLS : DESPOT2Fit {
     using DESPOT2Fit::DESPOT2Fit;
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
-                          const Eigen::ArrayXd &                  fixed,
-                          QI_ARRAYN(OutputType, DESPOT2::NV) & outputs,
+                          DESPOT2::FixedArray const &             fixed,
+                          DESPOT2::VaryingArray &                 outputs,
+                          DESPOT2::CovarArray * /* Unused */,
                           RMSErrorType &                    residual,
                           std::vector<QI_ARRAY(InputType)> &residuals,
                           FlagType &                        iterations) const override {
@@ -100,8 +104,9 @@ struct DESPOT2LLS : DESPOT2Fit {
 struct DESPOT2WLLS : DESPOT2Fit {
     using DESPOT2Fit::DESPOT2Fit;
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
-                          const Eigen::ArrayXd &                  fixed,
-                          QI_ARRAYN(OutputType, DESPOT2::NV) & outputs,
+                          DESPOT2::FixedArray const &             fixed,
+                          DESPOT2::VaryingArray &                 outputs,
+                          DESPOT2::CovarArray * /* Unused*/,
                           RMSErrorType &                    residual,
                           std::vector<QI_ARRAY(InputType)> &residuals,
                           FlagType &                        iterations) const override {
@@ -163,21 +168,19 @@ struct DESPOT2WLLS : DESPOT2Fit {
 };
 
 struct DESPOT2NLLS : DESPOT2Fit {
-    DESPOT2NLLS(DESPOT2 &m) : DESPOT2Fit{m} {
-        model.bounds_lo[0] = 1e-6; // Don't go negative PD
-        model.bounds_lo[1] = 1e-3; // The sqrt(E2) term goes crazy for T2 below this
-    }
+    DESPOT2NLLS(DESPOT2 &m) : DESPOT2Fit{m} {}
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, DESPOT2::NV) & p,
-                          RMSErrorType &               residual,
-                          std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const override {
+                          DESPOT2::FixedArray const &        fixed,
+                          DESPOT2::VaryingArray &            p,
+                          DESPOT2::CovarArray *              cov,
+                          RMSErrorType &                     rmse,
+                          std::vector<Eigen::ArrayXd> &      residuals,
+                          FlagType &                         iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
-            residual = 0;
+            rmse = 0;
             return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
@@ -206,13 +209,17 @@ struct DESPOT2NLLS : DESPOT2Fit {
             return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
-        residual   = summary.final_cost * scale;
+
+        Eigen::ArrayXd const rs  = (data - model.signal(p, fixed));
+        double const         var = rs.square().sum();
+        rmse                     = sqrt(var / data.rows()) * scale;
         if (residuals.size() > 0) {
-            std::vector<double> r_temp(data.size());
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (size_t i = 0; i < r_temp.size(); i++)
-                residuals[0][i] = r_temp[i] * scale;
+            residuals[0] = rs * scale;
         }
+        if (cov) {
+            QI::GetModelCovariance<ModelType>(problem, p, var / (data.rows() - ModelType::NV), cov);
+        }
+        p[0] *= scale; // Multiply signals/proton density back up
         return {true, ""};
     }
 };
@@ -233,22 +240,12 @@ int despot2_main(int argc, char **argv) {
         parser, "GS", "Data is band-free geometric solution / ellipse data", {'g', "gs"});
     args::ValueFlag<int> its(
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
-    args::ValueFlag<float> clampPD(parser,
-                                   "CLAMP PD",
-                                   "Clamp PD between 0 and value",
-                                   {'p', "clampPD"},
-                                   std::numeric_limits<float>::infinity());
-    args::ValueFlag<float> clampT2(parser,
-                                   "CLAMP T2",
-                                   "Clamp T2 between 0 and value",
-                                   {'t', "clampT2"},
-                                   std::numeric_limits<float>::infinity());
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::Log(verbose, "Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto    ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
-    DESPOT2 model{ssfp};
+    DESPOT2 model{{}, ssfp};
     if (simulate) {
         if (gs_arg)
             model.elliptical = true;
@@ -274,21 +271,13 @@ int despot2_main(int argc, char **argv) {
             QI::Log(verbose, "NLLS algorithm selected.");
             break;
         }
-        if (clampPD) {
-            d2->model.bounds_lo[0] = 1e-6;
-            d2->model.bounds_hi[0] = clampPD.Get();
-        }
-        if (clampT2) {
-            d2->model.bounds_lo[1] = 1e-6;
-            d2->model.bounds_hi[1] = clampT2.Get();
-        }
         if (its)
             d2->max_iterations = its.Get();
         if (gs_arg) {
             QI::Log(verbose, "GS Mode selected");
             d2->model.elliptical = true;
         }
-        auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(d2, verbose, resids, subregion.Get());
+        auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(d2, verbose, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D2_");

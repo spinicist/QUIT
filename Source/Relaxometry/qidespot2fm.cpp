@@ -25,39 +25,44 @@
 
 using namespace std::literals;
 
-using FMModel = QI::Model<3, 2, QI::SSFPSequence>;
-template <> std::array<const std::string, 3> FMModel::varying_names{{"PD"s, "T2"s, "f0"s}};
-template <> std::array<const std::string, 2> FMModel::fixed_names{{"T1"s, "B1"s}};
-template <> const QI_ARRAYN(double, 2) FMModel::fixed_defaults{1.0, 1.0};
-template <>
-template <typename Derived>
-auto FMModel::signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
-    -> QI_ARRAY(typename Derived::Scalar) {
-    using T                      = typename Derived::Scalar;
-    const T &     PD             = v[0];
-    const T &     T2             = v[1];
-    const T &     f0             = v[2];
-    const double &T1             = f[0];
-    const double &B1             = f[1];
-    const double  E1             = exp(-sequence.TR / T1);
-    const T       E2             = exp(-sequence.TR / T2);
-    const T       psi            = 2. * M_PI * f0 * sequence.TR;
-    const QI_ARRAY(double) alpha = sequence.FA * B1;
-    const QI_ARRAY(T) d          = (1. - E1 * E2 * E2 - (E1 - E2 * E2) * cos(alpha));
-    const QI_ARRAY(T) G          = -PD * (1. - E1) * sin(alpha) / d;
-    const QI_ARRAY(T) b          = E2 * (1. - E1) * (1. + cos(alpha)) / d;
+struct FMModel : QI::Model<double, double, 3, 2> {
+    QI::SSFPSequence const &sequence;
 
-    const QI_ARRAY(T) theta  = sequence.PhaseInc + psi;
-    const QI_ARRAY(T) cos_th = cos(theta);
-    const QI_ARRAY(T) sin_th = sin(theta);
-    const T cos_psi          = cos(psi);
-    const T sin_psi          = sin(psi);
-    const QI_ARRAY(T) re_m =
-        (cos_psi - E2 * (cos_th * cos_psi - sin_th * sin_psi)) * G / (1.0 - b * cos_th);
-    const QI_ARRAY(T) im_m =
-        (sin_psi - E2 * (cos_th * sin_psi + sin_th * cos_psi)) * G / (1.0 - b * cos_th);
-    return sqrt(re_m.square() + im_m.square());
-}
+    std::array<const std::string, NV> const varying_names{{"PD"s, "T2"s, "f0"s}};
+    std::array<const std::string, NF> const fixed_names{{"T1"s, "B1"s}};
+    FixedArray const                        fixed_defaults{1.0, 1.0};
+
+    int input_size(const int /* Unused */) const { return sequence.size(); }
+
+    template <typename Derived>
+    auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
+        -> QI_ARRAY(typename Derived::Scalar) {
+        using T                      = typename Derived::Scalar;
+        const T &     PD             = v[0];
+        const T &     T2             = v[1];
+        const T &     f0             = v[2];
+        const double &T1             = f[0];
+        const double &B1             = f[1];
+        const double  E1             = exp(-sequence.TR / T1);
+        const T       E2             = exp(-sequence.TR / T2);
+        const T       psi            = 2. * M_PI * f0 * sequence.TR;
+        const QI_ARRAY(double) alpha = sequence.FA * B1;
+        const QI_ARRAY(T) d          = (1. - E1 * E2 * E2 - (E1 - E2 * E2) * cos(alpha));
+        const QI_ARRAY(T) G          = -PD * (1. - E1) * sin(alpha) / d;
+        const QI_ARRAY(T) b          = E2 * (1. - E1) * (1. + cos(alpha)) / d;
+
+        const QI_ARRAY(T) theta  = sequence.PhaseInc + psi;
+        const QI_ARRAY(T) cos_th = cos(theta);
+        const QI_ARRAY(T) sin_th = sin(theta);
+        const T cos_psi          = cos(psi);
+        const T sin_psi          = sin(psi);
+        const QI_ARRAY(T) re_m =
+            (cos_psi - E2 * (cos_th * cos_psi - sin_th * sin_psi)) * G / (1.0 - b * cos_th);
+        const QI_ARRAY(T) im_m =
+            (sin_psi - E2 * (cos_th * sin_psi + sin_th * cos_psi)) * G / (1.0 - b * cos_th);
+        return sqrt(re_m.square() + im_m.square());
+    }
+};
 
 using FMFit = QI::FitFunction<FMModel>;
 
@@ -65,11 +70,12 @@ struct FMNLLS : FMFit {
     using FMFit::FMFit;
     bool              asymmetric = false;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, FMModel::NV) & bestP,
-                          RMSErrorType &               residual,
-                          std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const override {
+                          FMModel::FixedArray const &        fixed,
+                          FMModel::VaryingArray &            bestP,
+                          FMModel::CovarArray *              cov,
+                          RMSErrorType &                     rmse,
+                          std::vector<Eigen::ArrayXd> &      residuals,
+                          FlagType &                         iterations) const override {
         const double &T1 = fixed[0];
         if (std::isfinite(T1) && (T1 > model.sequence.TR)) {
             // Improve scaling by dividing the PD down to something sensible.
@@ -109,10 +115,8 @@ struct FMNLLS : FMFit {
             options.parameter_tolerance = 1e-5;
             options.logging_type        = ceres::SILENT;
             for (const double &f0 : f0_starts) {
-                p = {
-                    5.,
-                    std::max(0.1 * T1, 1.5 * model.sequence.TR),
-                    f0}; // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
+                p = {5., std::max(0.1 * T1, 1.5 * model.sequence.TR), f0};
+                // Yarnykh gives T2 = 0.045 * T1 in brain, but best to overestimate for CSF
                 ceres::Solve(options, &problem, &summary);
                 if (!summary.IsSolutionUsable()) {
                     return {false, summary.FullReport()};
@@ -121,20 +125,29 @@ struct FMNLLS : FMFit {
                 if (r < best) {
                     best       = r;
                     bestP      = p;
-                    residual   = summary.final_cost * scale;
                     iterations = summary.iterations.size();
                 }
             }
             if (!summary.IsSolutionUsable()) {
                 return {false, summary.FullReport()};
             }
+            iterations = summary.iterations.size();
+
+            Eigen::ArrayXd const rs  = (data - model.signal(p, fixed));
+            double const         var = rs.square().sum();
+            rmse                     = sqrt(var / data.rows()) * scale;
             if (residuals.size() > 0) {
-                residuals[0] = (data - model.signal(bestP, fixed.cast<double>())) * scale;
+                residuals[0] = rs * scale;
+            }
+            if (cov) {
+                p = bestP;
+                QI::GetModelCovariance<ModelType>(
+                    problem, p, var / (data.rows() - ModelType::NV), cov);
             }
             bestP[0] = bestP[0] * scale;
         } else {
             bestP << 0.0, 0.0, 0.0;
-            residual   = 0;
+            rmse       = 0;
             iterations = 0;
             return {false, "T1 was either infinite or shorter than TR"};
         }
@@ -163,7 +176,7 @@ int despot2fm_main(int argc, char **argv) {
     QI::Log(verbose, "Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto    ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
-    FMModel model{ssfp};
+    FMModel model{{}, ssfp};
     if (simulate) {
         QI::SimulateModel<FMModel, false>(input,
                                           model,
@@ -175,7 +188,8 @@ int despot2fm_main(int argc, char **argv) {
         FMNLLS fm{model};
         fm.max_iterations = its.Get();
         fm.asymmetric     = asym.Get();
-        auto fit_filter   = QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, resids, subregion.Get());
+        auto fit_filter =
+            QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, covar, resids, subregion.Get());
         fit_filter->ReadInputs(
             {QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()}, mask.Get());
         fit_filter->Update();

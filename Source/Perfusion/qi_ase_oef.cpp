@@ -30,30 +30,19 @@ constexpr double delta_X0   = 0.264e-6;            // Susc diff oxy and fully de
 constexpr double Hct        = 0.34;
 constexpr double Hb         = Hct / kappa;
 
-struct ASEModel {
-    using SequenceType  = QI::MultiEchoSequence;
-    using DataType      = double;
-    using ParameterType = double;
-
+struct ASEModel : QI::Model<double, double, 4, 0, 1, 3> {
+    using SequenceType = QI::MultiEchoSequence;
     const SequenceType &sequence;
     const double        B0;
 
-    static constexpr int NV = 4;
-    static constexpr int ND = 3;
-    static constexpr int NF = 1;
-    static constexpr int NI = 1;
-
-    using VaryingArray = QI_ARRAYN(ParameterType, NV);
-    using DerivedArray = QI_ARRAYN(ParameterType, ND);
-    using FixedArray   = QI_ARRAYN(ParameterType, NF);
-    const std::array<const std::string, NV> varying_names{{"S0"s, "dT"s, "R2p"s, "DBV"s}};
-    const std::array<const std::string, ND> derived_names{{"Tc"s, "OEF"s, "dHb"s}};
-    const std::array<const std::string, NF> fixed_names{{}};
-    const FixedArray                        fixed_defaults{};
+    const std::array<const std::string, NV> varying_names{"S0"s, "dT"s, "R2p"s, "DBV"s};
+    const std::array<const std::string, ND> derived_names{"Tc"s, "OEF"s, "dHb"s};
 
     const VaryingArray start{0.98, 0., 2.0, 0.02};
     const VaryingArray bounds_lo{0.1, -0.1, 0.25, 0.001};
     const VaryingArray bounds_hi{2., 0.1, 20.0, 0.05};
+
+    int input_size(const int /* Unused */) const { return sequence.size(); }
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
@@ -98,31 +87,19 @@ struct ASEModel {
 };
 using ASEFit = QI::ScaledNLLSFitFunction<ASEModel>;
 
-struct ASEFixDBVModel {
-    using SequenceType  = QI::MultiEchoSequence;
-    using DataType      = double;
-    using ParameterType = double;
-
-    static constexpr int NV = 3;
-    static constexpr int ND = 3;
-    static constexpr int NF = 1;
-    static constexpr int NI = 1;
-
-    using VaryingArray = QI_ARRAYN(ParameterType, NV);
-    using DerivedArray = QI_ARRAYN(ParameterType, ND);
-    using FixedArray   = QI_ARRAYN(ParameterType, NF);
-
+struct ASEFixDBVModel : QI::Model<double, double, 3, 0, 1, 3> {
+    using SequenceType = QI::MultiEchoSequence;
     const SequenceType &sequence;
     const double        B0, DBV;
 
-    const std::array<const std::string, NV> varying_names{{"S0"s, "dT"s, "R2p"s}};
-    const std::array<const std::string, ND> derived_names{{"Tc"s, "OEF"s, "dHb"s}};
-    const std::array<const std::string, NF> fixed_names{{}};
-    const FixedArray                        fixed_defaults{};
+    const std::array<const std::string, NV> varying_names{"S0"s, "dT"s, "R2p"s};
+    const std::array<const std::string, ND> derived_names{"Tc"s, "OEF"s, "dHb"s};
 
     const VaryingArray start{0.98, 0., 1.0};
     const VaryingArray bounds_lo{0.1, -0.1, 0.25};
     const VaryingArray bounds_hi{2., 0.1, 20.0};
+
+    int input_size(const int /* Unused */) const { return sequence.size(); }
 
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
@@ -188,28 +165,28 @@ int ase_oef_main(int argc, char **argv) {
 
     if (simulate) {
         if (DBV) {
-            ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
+            ASEFixDBVModel model{{}, sequence, B0.Get(), DBV.Get()};
             QI::SimulateModel<ASEFixDBVModel, false>(
                 input, model, {}, {input_path.Get()}, verbose, simulate.Get());
         } else {
-            ASEModel model{sequence, B0.Get()};
+            ASEModel model{{}, sequence, B0.Get()};
             QI::SimulateModel<ASEModel, false>(
                 input, model, {}, {input_path.Get()}, verbose, simulate.Get());
         }
     } else {
         auto process = [&](auto fit_func) {
             auto fit_filter = QI::ModelFitFilter<decltype(fit_func)>::New(
-                &fit_func, verbose, resids, subregion.Get());
+                &fit_func, verbose, covar, resids, subregion.Get());
             fit_filter->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + "ASE_");
         };
         if (DBV) {
-            ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
+            ASEFixDBVModel model{{}, sequence, B0.Get(), DBV.Get()};
             ASEFixDBVFit   fit(model);
             process(fit);
         } else {
-            ASEModel model{sequence, B0.Get()};
+            ASEModel model{{}, sequence, B0.Get()};
             ASEFit   fit(model);
             process(fit);
         }

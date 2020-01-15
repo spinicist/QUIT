@@ -79,6 +79,8 @@ template <typename TArray, const int size> void ArrayArgF(const std::string &a, 
     args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});              \
     args::Flag     verbose(parser, "VERBOSE", "Print more messages", {'v', "verbose"});        \
     args::Flag     resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});         \
+    args::Flag     covar(                                                                      \
+        parser, "COVAR", "Write out covariance matrix (CoV and Corr) images", {"covar"});  \
                                                                                                \
     args::ValueFlag<int>   threads(parser,                                                     \
                                  "THREADS",                                                  \

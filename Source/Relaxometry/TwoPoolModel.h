@@ -9,9 +9,9 @@
  *
  */
 
-#ifndef QI_TWOPOOLMODEL_H
-#define QI_TWOPOOLMODEL_H
+#pragma once
 
+#include "Model.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
 #include "SequenceGroup.h"
@@ -21,19 +21,11 @@
 
 namespace QI {
 
-struct TwoPoolModel {
-    using DataType      = double;
-    using ParameterType = double;
-    using SequenceType  = QI::SequenceGroup;
-
-    static constexpr int NV = 7;
-    static constexpr int ND = 0;
-    static constexpr int NF = 2;
-    static constexpr int NI = 2;
-
-    static std::array<const std::string, 7> varying_names;
-    static std::array<const std::string, 2> fixed_names;
-    static const QI_ARRAYN(double, 2) fixed_defaults;
+struct TwoPoolModel : Model<double, double, 7, 2, 2> {
+    std::array<const std::string, 7> const varying_names{
+        "PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "tau_m", "f_m"};
+    std::array<const std::string, 2> const fixed_names{"f0", "B1"};
+    FixedArray const                       fixed_defaults{0.0, 1.0};
 
     SPGRSequence spgr;
     SSFPSequence ssfp;
@@ -43,7 +35,7 @@ struct TwoPoolModel {
     QI_ARRAYN(double, 7) bounds_hi;
 
     TwoPoolModel(SPGRSequence const &s1, SSFPSequence const &s2, const bool scale);
-    bool   valid(const QI_ARRAYN(double, NV) & params) const; // For SRC
+    bool   valid(VaryingArray const &params) const; // For SRC
     size_t num_outputs() const;
     int    output_size(int i) const;
 
@@ -53,11 +45,8 @@ struct TwoPoolModel {
     Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
                                const QI_ARRAYN(double, NF) & fixed) const;
 
-    std::vector<Eigen::ArrayXd> signals(const Eigen::ArrayXd &varying,
-                                        const QI_ARRAYN(double, NF) & fixed) const;
+    std::vector<Eigen::ArrayXd> signals(VaryingArray const &varying, FixedArray const &fixed) const;
     Eigen::ArrayXd signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed) const;
 };
 
 } // End namespace QI
-
-#endif // QI_TWOPOOLMODEL_H

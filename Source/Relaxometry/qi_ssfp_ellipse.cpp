@@ -18,23 +18,10 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-struct EllipseModel {
-    using SequenceType  = QI::SSFPSequence;
-    using DataType      = std::complex<double>;
-    using ParameterType = double;
+struct EllipseModel : QI::Model<std::complex<double>, double, 5, 0> {
+    QI::SSFPSequence const &sequence;
 
-    static constexpr int NV = 5;
-    static constexpr int ND = 0;
-    static constexpr int NF = 0;
-    static constexpr int NI = 1;
-
-    using VaryingArray = QI_ARRAYN(ParameterType, NV);
-    using FixedArray   = QI_ARRAYN(ParameterType, NF);
-
-    const SequenceType &                    sequence;
     std::array<const std::string, NV> const varying_names{"G", "a", "b", "theta_0", "phi_rf"};
-    std::array<std::string, NF> const       fixed_names{};
-    FixedArray const                        fixed_defaults{};
 
     QI_ARRAY(std::complex<double>)
     signal(VaryingArray const &v, FixedArray const & /* Unused */) const {
@@ -124,11 +111,12 @@ struct EllipseFit {
     int n_outputs() const { return model.NV; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXcd> &inputs,
-                          const Eigen::ArrayXd &              fixed,
-                          QI_ARRAYN(OutputType, EllipseModel::NV) & p,
-                          double &                      rmse,
-                          std::vector<Eigen::ArrayXcd> &residuals,
-                          FlagType &                    iterations,
+                          EllipseModel::FixedArray const &    fixed,
+                          EllipseModel::VaryingArray &        p,
+                          EllipseModel::CovarArray *          cov,
+                          double &                            rmse,
+                          std::vector<Eigen::ArrayXcd> &      residuals,
+                          FlagType &                          iterations,
                           const int /* Unused */) const {
         const double               scale  = inputs[0].abs().maxCoeff();
         const Eigen::ArrayXcd      data   = inputs[0] / scale;
@@ -176,12 +164,18 @@ struct EllipseFit {
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
-        iterations   = summary.iterations.size();
-        auto tresids = (data - this->model.signal(p, fixed)) * scale;
-        rmse         = sqrt(tresids.abs2().mean());
+        iterations = summary.iterations.size();
+
+        Eigen::ArrayXcd const rs  = (data - model.signal(p, fixed));
+        double const          var = rs.abs().square().sum();
+        rmse                      = sqrt(var / data.rows()) * scale;
         if (residuals.size() > 0) {
-            residuals[0] = tresids;
+            residuals[0] = rs * scale;
         }
+        if (cov) {
+            QI::GetModelCovariance<ModelType>(problem, p, var / (data.rows() - ModelType::NV), cov);
+        }
+
         p[0] *= scale;
         p[3] = std::fmod(p[3] + 3 * M_PI, 2 * M_PI) - M_PI;
         p[4] = std::fmod(p[4] + 3 * M_PI, 2 * M_PI) - M_PI;
@@ -209,14 +203,14 @@ int ssfp_ellipse_main(int argc, char **argv) {
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("SSFP").get<QI::SSFPSequence>();
     QI::Log(verbose, "{}", sequence);
-    EllipseModel model{sequence};
+    EllipseModel model{{}, sequence};
     if (simulate) {
         QI::SimulateModel<EllipseModel, false>(
             input, model, {}, {sequence_path.Get()}, verbose, simulate.Get());
     } else {
         EllipseFit fit{model};
         auto       fit_filter =
-            QI::ModelFitFilter<EllipseFit>::New(&fit, verbose, resids, subregion.Get());
+            QI::ModelFitFilter<EllipseFit>::New(&fit, verbose, covar, resids, subregion.Get());
         fit_filter->ReadInputs({sequence_path.Get()}, {}, mask.Get());
         fit_filter->SetBlocks(fit_filter->GetInput(0)->GetNumberOfComponentsPerPixel() /
                               sequence.size());

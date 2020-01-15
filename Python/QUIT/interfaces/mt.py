@@ -177,7 +177,7 @@ class qMTSimInputSpec(QI.SimInputSpec):
 
 class qMTSim(QI.SimCommand):
     _cmd = 'qi qmt'
-    _param_files = ['PD', 'T1_f', 'T2_f', 'T2_b', 'k_bf', 'f_b']
+    _param_files = ['RM0a', 'f_over_R_af', 'T2_b', 'T1_a_over_T2_a', 'gM0_a']
     input_spec = qMTSimInputSpec
     output_spec = QI.SimOutputSpec
 

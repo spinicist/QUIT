@@ -34,17 +34,19 @@ void SimulateModel(json &                          json,
         QI::Log(verbose, "Reading {} from file: {}", vname, vfile);
         simulator->SetVarying(i, QI::ReadImage(vfile, false));
     }
-    if (fixedpaths.size() != Model::NF) {
-        QI::Fail("Number of fixed paths {} does not match number of parameters {}",
-                 fixedpaths.size(),
-                 Model::NF);
-    }
-    for (auto i = 0; i < Model::NF; i++) {
-        if (fixedpaths[i].size() > 0) {
-            std::string const &fname = model.fixed_names[i];
-            std::string const &ffile = fixedpaths[i];
-            QI::Log(verbose, "Reading {} from file: {}", fname, ffile);
-            simulator->SetFixed(i, QI::ReadImage(ffile, false));
+    if constexpr (Model::NF > 0) {
+        if (fixedpaths.size() != Model::NF) {
+            QI::Fail("Number of fixed paths {} does not match number of parameters {}",
+                     fixedpaths.size(),
+                     Model::NF);
+        }
+        for (auto i = 0; i < Model::NF; i++) {
+            if (fixedpaths[i].size() > 0) {
+                std::string const &fname = model.fixed_names[i];
+                std::string const &ffile = fixedpaths[i];
+                QI::Log(verbose, "Reading {} from file: {}", fname, ffile);
+                simulator->SetFixed(i, QI::ReadImage(ffile, false));
+            }
         }
     }
     QI::Log(verbose, "Noise level is {}\nSimulating model...", noise);

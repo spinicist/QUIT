@@ -25,21 +25,9 @@
 
 using namespace std::literals;
 
-struct EMTModel {
-    using DataType      = double;
-    using ParameterType = double;
-    using SequenceType  = QI::SSFPMTSequence;
-
-    static constexpr int NV = 4;
-    static constexpr int ND = 0;
-    static constexpr int NF = 2;
-    static constexpr int NI = 3;
-
-    using VaryingArray = QI_ARRAYN(double, NV);
-    using FixedArray   = QI_ARRAYN(double, NF);
-
-    SequenceType const &  sequence;
-    Eigen::ArrayXd const &W;
+struct EMTModel : QI::Model<double, double, 4, 2, 3> {
+    QI::SSFPMTSequence const &sequence;
+    Eigen::ArrayXd const &    W;
 
     std::array<std::string, NV> const varying_names{"PD"s, "f_b"s, "k_bf"s, "T1_f"s};
     std::array<std::string, NF> const fixed_names{"B1"s, "T2_f"s};
@@ -136,11 +124,12 @@ struct EMTFit {
     int n_outputs() const { return 5; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, EMTModel::NV) & p,
-                          RMSErrorType &               rmse,
-                          std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const {
+                          ModelType::FixedArray const &      fixed,
+                          ModelType::VaryingArray &          p,
+                          ModelType::CovarArray *            cov,
+                          RMSErrorType &                     rmse,
+                          std::vector<Eigen::ArrayXd> &      residuals,
+                          FlagType &                         iterations) const {
         const double          scale = inputs[0].mean();
         const Eigen::ArrayXd &G     = inputs[0] / scale;
         const Eigen::ArrayXd &a     = inputs[1];
@@ -167,8 +156,12 @@ struct EMTFit {
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
-        p[0] *= scale;
         rmse = summary.final_cost;
+        if (cov) {
+            // QI::GetModelCovariance<EMTModel>(problem, p, cov);
+            // Not even trying this for now
+        }
+        p[0] *= scale;
         if (residuals.size() > 0) {
             std::vector<double> r_temp(G.size() + b.size());
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
@@ -215,7 +208,7 @@ int ssfp_emt_main(int argc, char **argv) {
         M_PI * G0.Get() * (ssfp.pulse.p2 / pow(ssfp.pulse.p1, 2)) * pow(ssfp.FA / ssfp.Trf, 2);
     QI::Log(verbose, "Calculated saturation rate W = {}\n", W.transpose());
 
-    EMTModel model{ssfp, W};
+    EMTModel model{{}, ssfp, W};
     if (simulate) {
         QI::SimulateModel<EMTModel, true>(input,
                                           model,
@@ -250,7 +243,8 @@ int ssfp_emt_main(int argc, char **argv) {
             nullptr);
 
         EMTFit fit{model};
-        auto   fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, verbose, resids, subregion.Get());
+        auto   fit_filter =
+            QI::ModelFitFilter<EMTFit>::New(&fit, verbose, covar, resids, subregion.Get());
         fit_filter->ReadInputs(
             {G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get(), ""}, mask.Get());
         fit_filter->SetFixed(1, T2_f_calc);

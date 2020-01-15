@@ -20,25 +20,13 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
 
-struct MPMModel {
-    using SequenceType  = QI::MultiEchoSequence;
-    using DataType      = double;
-    using ParameterType = double;
+struct MPMModel : QI::Model<double, double, 4, 0, 3> {
+    QI::MultiEchoSequence &pdw_s, &t1w_s, &mtw_s;
 
-    static constexpr int NV = 4;
-    static constexpr int ND = 0;
-    static constexpr int NF = 0;
-    static constexpr int NI = 3;
-
-    using VaryingArray = QI_ARRAYN(ParameterType, NV);
-    using FixedArray   = QI_ARRAYN(ParameterType, NF);
-
-    SequenceType &                    pdw_s, &t1w_s, &mtw_s;
-    VaryingArray const                bounds_lo{1e-6, 1e-6, 1e-6, 1e-6};
-    VaryingArray const                bounds_hi{1e4, 1e2, 1e2, 1e2}; // Signal values will be scaled
     std::array<std::string, NV> const varying_names{"R2s", "S0_PDw", "S0_T1w", "S0_MTw"};
-    std::array<std::string, 0> const  fixed_names{};
-    FixedArray const                  fixed_defaults{};
+
+    VaryingArray const lo{1e-6, 1e-6, 1e-6, 1e-6};
+    VaryingArray const hi{1e4, 1e2, 1e2, 1e2}; // Signal values will be scaled
 
     template <typename Derived>
     auto pdw_signal(const Eigen::ArrayBase<Derived> &v) const
@@ -142,13 +130,14 @@ struct MPMFit {
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd & /* Unused */,
                           ModelType::VaryingArray &    v,
-                          RMSErrorType &               residual,
+                          ModelType::CovarArray *      cov,
+                          RMSErrorType &               rmse,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
         double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff(), inputs[2].maxCoeff()});
         if (scale < std::numeric_limits<double>::epsilon()) {
-            v        = ModelType::VaryingArray::Zero();
-            residual = 0.0;
+            v    = ModelType::VaryingArray::Zero();
+            rmse = 0.0;
             return {false, "Maximum data value was zero or less"};
         }
         Eigen::ArrayXd const pdw_data = inputs[0] / scale;
@@ -167,8 +156,8 @@ struct MPMFit {
         problem.AddResidualBlock(t1w_cost, loss, v.data());
         problem.AddResidualBlock(mtw_cost, loss, v.data());
         for (int i = 0; i < ModelType::NV; i++) {
-            problem.SetParameterLowerBound(v.data(), i, model.bounds_lo[i]);
-            problem.SetParameterUpperBound(v.data(), i, model.bounds_hi[i]);
+            problem.SetParameterLowerBound(v.data(), i, model.lo[i]);
+            problem.SetParameterUpperBound(v.data(), i, model.hi[i]);
         }
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
@@ -182,12 +171,22 @@ struct MPMFit {
             return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
-        residual   = summary.final_cost * scale;
+
+        Eigen::ArrayXd const pdw_resid = pdw_data - model.pdw_signal(v);
+        Eigen::ArrayXd const t1w_resid = t1w_data - model.t1w_signal(v);
+        Eigen::ArrayXd const mtw_resid = mtw_data - model.mtw_signal(v);
         if (residuals.size() > 0) {
-            residuals[0] = (pdw_data - model.pdw_signal(v)) * scale;
-            residuals[1] = (t1w_data - model.t1w_signal(v)) * scale;
-            residuals[2] = (mtw_data - model.mtw_signal(v)) * scale;
+            residuals[0] = pdw_resid * scale;
+            residuals[1] = t1w_resid * scale;
+            residuals[2] = mtw_resid * scale;
         }
+        double const var =
+            pdw_resid.square().sum() + t1w_resid.square().sum() + mtw_resid.square().sum();
+        int const dsize = model.pdw_s.size() + model.t1w_s.size() + model.mtw_s.size();
+        if (cov) {
+            QI::GetModelCovariance<MPMModel>(problem, v, var / (dsize - ModelType::NV), cov);
+        }
+        rmse      = sqrt(var / dsize);
         v.tail(3) = v.tail(3) * scale; // Multiply signals/proton densities back up
         return {true, ""};
     }
@@ -204,25 +203,8 @@ int mpm_r2s_main(int argc, char **argv) {
     args::Positional<std::string> t1w_path(parser, "T1w", "Input multi-echo T1-weighted file");
     args::Positional<std::string> mtw_path(parser, "MTw", "Input multi-echo MT-weighted file");
 
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag           resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});
-    args::ValueFlag<int> threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
-    args::ValueFlag<std::string> prefix(
-        parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
-    args::ValueFlag<std::string> mask_path(
-        parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    args::ValueFlag<std::string> subregion(
-        parser,
-        "SUBREGION",
-        "Process voxels in a block from I,J,K with size SI,SJ,SK",
-        {'s', "subregion"});
-    args::ValueFlag<std::string> json_file(
-        parser, "JSON", "Read JSON from file instead of stdin", {"json"});
+    QI_COMMON_ARGS;
+
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
     QI::CheckPos(pdw_path);
@@ -233,10 +215,11 @@ int mpm_r2s_main(int argc, char **argv) {
     json                  doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MultiEchoSequence pdw_seq(doc["PDw"]), t1w_seq(doc["T1w"]), mtw_seq(doc["MTw"]);
 
-    MPMModel model{pdw_seq, t1w_seq, mtw_seq};
+    MPMModel model{{}, pdw_seq, t1w_seq, mtw_seq};
     MPMFit   mpm_fit{model};
-    auto fit_filter = QI::ModelFitFilter<MPMFit>::New(&mpm_fit, verbose, resids, subregion.Get());
-    fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask_path.Get());
+    auto     fit_filter =
+        QI::ModelFitFilter<MPMFit>::New(&mpm_fit, verbose, covar, resids, subregion.Get());
+    fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask.Get());
     fit_filter->Update();
     fit_filter->WriteOutputs(prefix.Get() + "MPM_");
     QI::Log(verbose, "Finished.");

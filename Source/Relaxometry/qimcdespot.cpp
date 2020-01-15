@@ -67,10 +67,10 @@ template <typename Model> struct SRCFit {
     using ModelType           = Model;
     Model &model;
 
-    int input_size(const int &i) const { 
+    int input_size(const int &i) const {
         if (i == 0) {
             return model.spgr.size();
-        } else if (i ==1) {
+        } else if (i == 1) {
             return model.ssfp.size();
         } else {
             QI::Fail("Incorrect input number {}", i);
@@ -83,8 +83,9 @@ template <typename Model> struct SRCFit {
     bool   src_gauss = true;
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, Model::NV) & v,
+                          typename Model::FixedArray const & fixed,
+                          typename Model::VaryingArray &     v,
+                          typename Model::CovarArray * /*Unused */,
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
@@ -179,7 +180,7 @@ int mcdespot_main(int argc, char **argv) {
             QI::Log(verbose, "High bounds: {}", src.model.bounds_hi.transpose());
 
             auto fit_filter =
-                QI::ModelFitFilter<FitType>::New(&src, verbose, resids, subregion.Get());
+                QI::ModelFitFilter<FitType>::New(&src, verbose, covar, resids, subregion.Get());
             fit_filter->ReadInputs(
                 {spgr_path.Get(), ssfp_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();

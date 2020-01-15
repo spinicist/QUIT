@@ -26,23 +26,17 @@
 
 using namespace std::literals;
 
-template <int NP_> struct LorentzModel {
-    using SequenceType  = QI::MTSatSequence;
-    using DataType      = double;
-    using ParameterType = double;
-
+template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
+    using Super = QI::Model<double, double, NP_ * 3, 0>;
+    using Super::NV;
+    using Super::Super;
+    using typename Super::FixedArray;
+    using typename Super::VaryingArray;
     static constexpr int NP   = NP_;
     static constexpr int NVpP = 3; // Number of varying parameters per pool - A and FWHM
-    static constexpr int NVg  = 0;
-    static constexpr int NV   = NVg + NVpP * NP;
-    static constexpr int ND   = 0;
-    static constexpr int NF   = 0;
-    static constexpr int NI   = 1;
+    using SequenceType        = QI::MTSatSequence;
 
-    using VaryingArray = QI_ARRAYN(ParameterType, NV);
-    using FixedArray   = QI_ARRAYN(ParameterType, NF);
-
-    SequenceType &              sequence;
+    SequenceType const &        sequence;
     std::array<std::string, NV> varying_names;
     VaryingArray                bounds_lo;
     VaryingArray                bounds_hi;
@@ -51,11 +45,22 @@ template <int NP_> struct LorentzModel {
     double                      Zref;
     bool                        additive;
 
-    const std::array<std::string, NF> fixed_names{};
-    const FixedArray                  fixed_defaults{};
+    LorentzModel(SequenceType const &               s,
+                 std::array<std::string, NV> const &v,
+                 VaryingArray const &               lo,
+                 VaryingArray const &               hi,
+                 VaryingArray const &               st,
+                 std::array<bool, NP> const &       ub,
+                 double const &                     Z,
+                 bool const &                       a) :
+        sequence{s},
+        varying_names{v}, bounds_lo{lo}, bounds_hi{hi}, start{st},
+        use_bandwidth{ub}, Zref{Z}, additive{a} {}
+
+    int input_size(const int /* Unused */) const { return sequence.size(); }
 
     template <typename Derived>
-    auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) &
+    auto signal(const Eigen::ArrayBase<Derived> &v, FixedArray const &
                 /* Unused */) const -> QI_ARRAY(typename Derived::Scalar) {
         using T       = typename Derived::Scalar;
         QI_ARRAY(T) S = QI_ARRAY(T)::Constant(sequence.sat_f0.rows(), T(Zref));
@@ -63,7 +68,7 @@ template <int NP_> struct LorentzModel {
 
         QI_ARRAY(T) const Z = QI_ARRAY(T)::Zero(sequence.sat_f0.rows());
         for (auto i = 0; i < NP; i++) {
-            auto const indN = NVg + NVpP * i;
+            auto const indN = NVpP * i;
             T const &  df   = v[indN + 0];
             T const &  fwhm = v[indN + 1];
             T const &  A    = v[indN + 2];
@@ -121,9 +126,9 @@ template <int N> void Process() {
         auto const &pool = pools_json[i];
         auto const &name = pool["name"].get<std::string>();
 
-        varying_names[LM::NVg + LM::NVpP * i + 0] = name + "_f0"s;
-        varying_names[LM::NVg + LM::NVpP * i + 1] = name + "_fwhm"s;
-        varying_names[LM::NVg + LM::NVpP * i + 2] = name + "_A"s;
+        varying_names[LM::NVpP * i + 0] = name + "_f0"s;
+        varying_names[LM::NVpP * i + 1] = name + "_fwhm"s;
+        varying_names[LM::NVpP * i + 2] = name + "_A"s;
 
         auto const &df_json   = pool["df0"];
         auto const &fwhm_json = pool["fwhm"];
@@ -138,15 +143,15 @@ template <int N> void Process() {
             QI::Fail("Must specify start, low, high for A in {}", name);
         }
 
-        start[LM::NVg + LM::NVpP * i + 0] = df_json[0].get<double>();
-        start[LM::NVg + LM::NVpP * i + 1] = fwhm_json[0].get<double>();
-        start[LM::NVg + LM::NVpP * i + 2] = A_json[0].get<double>();
-        low[LM::NVg + LM::NVpP * i + 0]   = df_json[1].get<double>();
-        low[LM::NVg + LM::NVpP * i + 1]   = fwhm_json[1].get<double>();
-        low[LM::NVg + LM::NVpP * i + 2]   = A_json[1].get<double>();
-        high[LM::NVg + LM::NVpP * i + 0]  = df_json[2].get<double>();
-        high[LM::NVg + LM::NVpP * i + 1]  = fwhm_json[2].get<double>();
-        high[LM::NVg + LM::NVpP * i + 2]  = A_json[2].get<double>();
+        start[LM::NVpP * i + 0] = df_json[0].get<double>();
+        start[LM::NVpP * i + 1] = fwhm_json[0].get<double>();
+        start[LM::NVpP * i + 2] = A_json[0].get<double>();
+        low[LM::NVpP * i + 0]   = df_json[1].get<double>();
+        low[LM::NVpP * i + 1]   = fwhm_json[1].get<double>();
+        low[LM::NVpP * i + 2]   = A_json[1].get<double>();
+        high[LM::NVpP * i + 0]  = df_json[2].get<double>();
+        high[LM::NVpP * i + 1]  = fwhm_json[2].get<double>();
+        high[LM::NVpP * i + 2]  = A_json[2].get<double>();
 
         if (pool.find("use_bandwidth") != pool.end()) {
             use_bandwidth[i] = pool.at("use_bandwidth").get<bool>();
@@ -168,7 +173,8 @@ template <int N> void Process() {
         QI::SimulateModel<LM, false>(input, model, {}, {input_path.Get()}, verbose, simulate.Get());
     } else {
         LFit fit{model};
-        auto fit_filter = QI::ModelFitFilter<LFit>::New(&fit, verbose, resids, subregion.Get());
+        auto fit_filter =
+            QI::ModelFitFilter<LFit>::New(&fit, verbose, covar, resids, subregion.Get());
         fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "LTZ_");

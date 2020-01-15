@@ -19,7 +19,7 @@
 #include "itkTimeProbe.h"
 
 #include "ImageTypes.h"
-#include "ModelHelpers.h"
+#include "Model.h"
 
 namespace QI {
 
@@ -211,10 +211,14 @@ class ModelSimFilter
                 for (int i = 0; i < ModelType::NV; i++) {
                     varying[i] = varying_iters[i].Get();
                 }
-                Eigen::ArrayXd fixed = m_model.fixed_defaults;
-                for (int i = 0; i < ModelType::NF; i++) {
-                    if (this->GetFixed(i)) {
-                        fixed[i] = fixed_iters[i].Get();
+
+                typename ModelType::FixedArray fixed;
+                if constexpr (ModelType::NF > 0) {
+                    fixed = m_model.fixed_defaults;
+                    for (int i = 0; i < ModelType::NF; i++) {
+                        if (this->GetFixed(i)) {
+                            fixed[i] = fixed_iters[i].Get();
+                        }
                     }
                 }
 

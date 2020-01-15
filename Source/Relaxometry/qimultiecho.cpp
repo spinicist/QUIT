@@ -26,27 +26,34 @@
 
 using namespace std::literals;
 
-using MultiEcho = QI::Model<2, 0, QI::MultiEchoSequence>;
-template <>
-template <typename Derived>
-auto MultiEcho::signal(const Eigen::ArrayBase<Derived> &p, const QI_ARRAYN(double, 0) &
-                       /*Unused*/) const -> QI_ARRAY(typename Derived::Scalar) {
-    using T     = typename Derived::Scalar;
-    const T &PD = p[0];
-    const T &T2 = p[1];
-    return PD * exp(-sequence.TE / T2);
-}
-template <> std::array<const std::string, 2> MultiEcho::varying_names{{"PD"s, "T2"s}};
-template <> std::array<const std::string, 0> MultiEcho::fixed_names{{}};
-template <> const QI_ARRAYN(double, 0) MultiEcho::fixed_defaults{};
+struct MultiEcho : QI::Model<double, double, 2, 0> {
+    QI::MultiEchoSequence const &sequence;
+
+    std::array<const std::string, 2> const varying_names{{"PD"s, "T2"s}};
+    VaryingArray const                     start{10., 0.05};
+    VaryingArray const                     bounds_lo{0.1, 0.001};
+    VaryingArray const                     bounds_hi{100., 5.};
+
+    int input_size(const int /* Unused */) const { return sequence.size(); }
+
+    template <typename Derived>
+    auto signal(Eigen::ArrayBase<Derived> const &p, FixedArray const &
+                /*Unused*/) const -> QI_ARRAY(typename Derived::Scalar) {
+        using T     = typename Derived::Scalar;
+        const T &PD = p[0];
+        const T &T2 = p[1];
+        return PD * exp(-sequence.TE / T2);
+    }
+};
 
 using MultiEchoFit = QI::BlockFitFunction<MultiEcho>;
 
 struct MultiEchoLogLin : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, MultiEcho::NV) & outputs,
+                          MultiEcho::FixedArray const &      fixed,
+                          MultiEcho::VaryingArray &          outputs,
+                          MultiEcho::CovarArray * /* Unused */,
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations,
@@ -71,8 +78,9 @@ struct MultiEchoLogLin : MultiEchoFit {
 struct MultiEchoARLO : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, MultiEcho::NV) & outputs,
+                          MultiEcho::FixedArray const &      fixed,
+                          MultiEcho::VaryingArray &          outputs,
+                          MultiEcho::CovarArray * /*Unused*/,
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations,
@@ -104,20 +112,21 @@ struct MultiEchoARLO : MultiEchoFit {
 struct MultiEchoNLLS : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          QI_ARRAYN(OutputType, MultiEcho::NV) & p,
-                          RMSErrorType &               residual,
-                          std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations,
+                          MultiEcho::FixedArray const &      fixed,
+                          MultiEcho::VaryingArray &          p,
+                          MultiEcho::CovarArray *            cov,
+                          RMSErrorType &                     rmse,
+                          std::vector<Eigen::ArrayXd> &      residuals,
+                          FlagType &                         iterations,
                           const int /*Unused*/) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
-            residual = 0;
+            rmse = 0;
             return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
-        p << 10., 0.05;
+        p                         = model.start;
         ceres::Problem problem;
         using Cost      = QI::ModelCost<MultiEcho>;
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, MultiEcho::NV>;
@@ -136,18 +145,21 @@ struct MultiEchoNLLS : MultiEchoFit {
         options.parameter_tolerance = 1e-4;
         options.logging_type        = ceres::SILENT;
         ceres::Solve(options, &problem, &summary);
-        p[0] = p[0] * scale;
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
-        residual   = summary.final_cost * scale;
+
+        Eigen::ArrayXd const rs  = (data - model.signal(p, fixed));
+        double const         var = rs.square().sum();
+        rmse                     = sqrt(var / data.rows()) * scale;
         if (residuals.size() > 0) {
-            std::vector<double> r_temp(data.size());
-            problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
-            for (size_t i = 0; i < r_temp.size(); i++)
-                residuals[0][i] = r_temp[i] * scale;
+            residuals[0] = rs * scale;
         }
+        if (cov) {
+            QI::GetModelCovariance<ModelType>(problem, p, var / (data.rows() - ModelType::NV), cov);
+        }
+        p[0] = p[0] * scale;
         return {true, ""};
     }
 };
@@ -170,7 +182,7 @@ int multiecho_main(int argc, char **argv) {
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("MultiEcho").get<QI::MultiEchoSequence>();
 
-    MultiEcho model{sequence};
+    MultiEcho model{{}, sequence};
     if (simulate) {
         QI::SimulateModel<MultiEcho, false>(
             input, model, {}, {QI::CheckPos(input_path)}, verbose, simulate.Get());
@@ -192,7 +204,7 @@ int multiecho_main(int argc, char **argv) {
         default:
             QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
-        auto fit = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, resids, subregion.Get());
+        auto fit = QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
         const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
         if (nvols % sequence.size() == 0) {
