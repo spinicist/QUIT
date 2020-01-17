@@ -11,7 +11,6 @@ QUIT contains a number of utilities. Note that these are actually compiled in tw
 * `qi kfilter`_
 * `qi mask`_
 * `qi polyfit/qi polyimg`_
-* `qi splitsubjects`_
 * `qi diff`_
 * `qi newimage`_
 * `qi select`_
