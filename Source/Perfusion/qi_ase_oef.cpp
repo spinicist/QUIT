@@ -176,8 +176,6 @@ int ase_oef_main(int argc, char **argv) {
     QI_COMMON_ARGS;
     args::ValueFlag<double> B0(parser, "B0", "Field-strength (Tesla), default 3", {'B', "B0"}, 3.0);
     args::ValueFlag<double> DBV(parser, "DBV", "Fix DBV and only fit R2'", {'d', "DBV"}, 0.0);
-    args::ValueFlag<std::string> gradz(
-        parser, "GRADZ", "Gradient of field-map in z-direction for MFG correction", {'z', "gradz"});
     args::ValueFlag<double> slice_arg(
         parser,
         "SLICE THICKNESS",
@@ -192,23 +190,17 @@ int ase_oef_main(int argc, char **argv) {
         if (DBV) {
             ASEFixDBVModel model{sequence, B0.Get(), DBV.Get()};
             QI::SimulateModel<ASEFixDBVModel, false>(
-                input, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
+                input, model, {}, {input_path.Get()}, verbose, simulate.Get());
         } else {
             ASEModel model{sequence, B0.Get()};
             QI::SimulateModel<ASEModel, false>(
-                input, model, {gradz.Get()}, {input_path.Get()}, verbose, simulate.Get());
+                input, model, {}, {input_path.Get()}, verbose, simulate.Get());
         }
     } else {
         auto process = [&](auto fit_func) {
             auto fit_filter = QI::ModelFitFilter<decltype(fit_func)>::New(
                 &fit_func, verbose, resids, subregion.Get());
             fit_filter->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
-            // QI::VolumeF::SpacingType  vox_size = input->GetSpacing();
-            // if (slice_arg) {
-            //     vox_size[2] = slice_arg.Get();
-            // }
-            // if (gradz)
-            //     fit_filter->SetFixed(2, QI::ReadImage(gradz.Get(), verbose));
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + "ASE_");
         };
