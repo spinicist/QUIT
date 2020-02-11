@@ -48,9 +48,13 @@ void WriteJSON(const std::string &path, const json &doc) {
     }
 }
 
-Eigen::ArrayXd ArrayFromJSON(const json &json, const std::string &key, const double &scale) {
-
-    const auto &   json_array = json[key].get<std::vector<double>>();
+Eigen::ArrayXd ArrayFromJSON(const json &val, const std::string &key, const double &scale) {
+    std::vector<double> json_array;
+    try {
+        json_array = val[key].get<std::vector<double>>();
+    } catch (std::exception &e) {
+        QI::Fail("Error reading from JSON array {}: {}", key, e.what());
+    }
     Eigen::ArrayXd array(json_array.size());
     for (size_t i = 0; i < json_array.size(); i++) {
         array[i] = json_array[i] * scale;
