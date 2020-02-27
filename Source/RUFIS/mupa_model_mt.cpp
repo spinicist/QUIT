@@ -18,6 +18,7 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     T const &k_bf = k * M0_f;
     T const &k_fb = k * M0_b;
     T const &B1   = v[4];
+    T const &G0   = 1.4e-5;
 
     AugMat R;
     R << -R2_f, 0, 0, 0, 0,          //
@@ -43,7 +44,7 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     std::vector<AugMat> seg_mats(sequence.FA.rows());
     for (int is = 0; is < sequence.FA.rows(); is++) {
         double const B1x = B1 * sequence.FA[is] / sequence.Trf[is];
-        double const W   = M_PI * lineshape({0}, lineshape.T2_nominal) * B1x * B1x;
+        double const W   = M_PI * G0 * B1x * B1x;
         AugMat       rf;
         rf << 0, 0, 0, 0, 0,  //
             0, 0, B1x, 0, 0,  //
@@ -61,12 +62,14 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     for (int is = 0; is < sequence.size(); is++) {
         auto const & name = sequence.prep[is];
         auto const & p    = sequence.prep_pulses[name];
-        double const W    = M_PI * 1.4e-5 * B1 * B1 * p.int_b1_sq;
+        double const Ew   = exp(-M_PI * 1.4e-5 * B1 * B1 * p.int_b1_sq);
         AugMat       C;
-        C << 0, 0, 0, 0, 0,                                    //
-            0, 0, 0, 0, 0,                                     //
-            0, 0, exp(-R2_f * p.T_trans) * cos(p.FAeff), 0, 0, //
-            0, 0, 0, exp(-W), 0,                               //
+        double const E2 = exp(-R2_f * p.T_trans);
+        double const E1 = exp(-R1_f * p.T_long);
+        C << 0, 0, 0, 0, 0,                                   //
+            0, 0, 0, 0, 0,                                    //
+            0, 0, E1 * E2 * cos(p.FAeff), 0, M0_f * (1 - E1), //
+            0, 0, 0, Ew, 0,                                   //
             0, 0, 0, 0, 1;
         prep_mats[is] = C;
     }

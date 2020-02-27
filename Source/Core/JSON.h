@@ -21,12 +21,12 @@ using nlohmann::json;
 namespace QI {
 
 json          ReadJSON(std::istream &is);
-json          ReadJSON(const std::string &path);
-std::ostream &WriteJSON(std::ostream &os, const json &doc);
-void          WriteJSON(const std::string &path, const json &doc);
+json          ReadJSON(std::string const &path);
+std::ostream &WriteJSON(std::ostream &os, json const &doc);
+void          WriteJSON(std::string const &path, json const &doc);
 
-Eigen::ArrayXd  ArrayFromJSON(const json &json, const std::string &key, const double &scale = 1);
-Eigen::ArrayXcd CArrayFromJSON(const json &json, const std::string &key, const double &scale = 1);
+Eigen::ArrayXd ArrayFromJSON(json const &json, std::string const &key, double const &scale = 1);
+template <typename T> extern void GetJSON(json const &j, std::string const &key, T &val);
 
 } // End namespace QI
 

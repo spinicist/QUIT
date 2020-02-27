@@ -4,6 +4,7 @@
 #include "mupa_sequence.h"
 
 struct MUPAB1Model : QI::Model<double, double, 4, 0> {
+    static int const   NS = 1;
     MUPASequence &     sequence;
     VaryingArray const start{30., 1., 0.1, 1.0};
     VaryingArray const lo{1, 0.01, 0.01, 0.5};

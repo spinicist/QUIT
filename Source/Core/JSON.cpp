@@ -25,7 +25,7 @@ json ReadJSON(std::istream &is) {
     return json::parse(is);
 }
 
-json ReadJSON(const std::string &path) {
+json ReadJSON(std::string const &path) {
     std::ifstream ifs(path);
     if (ifs) {
         return ReadJSON(ifs);
@@ -34,12 +34,12 @@ json ReadJSON(const std::string &path) {
     }
 }
 
-std::ostream &WriteJSON(std::ostream &os, const json &doc) {
+std::ostream &WriteJSON(std::ostream &os, json const &doc) {
     os << doc.dump(2) << std::endl;
     return os;
 }
 
-void WriteJSON(const std::string &path, const json &doc) {
+void WriteJSON(std::string const &path, json const &doc) {
     std::ofstream ofs(path);
     if (ofs) {
         WriteJSON(ofs, doc);
@@ -48,7 +48,7 @@ void WriteJSON(const std::string &path, const json &doc) {
     }
 }
 
-Eigen::ArrayXd ArrayFromJSON(const json &val, const std::string &key, const double &scale) {
+Eigen::ArrayXd ArrayFromJSON(json const &val, std::string const &key, double const &scale) {
     std::vector<double> json_array;
     try {
         json_array = val[key].get<std::vector<double>>();
@@ -62,14 +62,15 @@ Eigen::ArrayXd ArrayFromJSON(const json &val, const std::string &key, const doub
     return array;
 }
 
-Eigen::ArrayXcd CArrayFromJSON(const json &json, const std::string &key, const double &scale) {
-
-    const auto &    json_array = json[key].get<std::vector<double>>();
-    Eigen::ArrayXcd array(json_array.size());
-    for (size_t i = 0; i < json_array.size(); i++) {
-        array[i] = json_array[i] * scale;
+template <typename T> void GetJSON(json const &j, std::string const &key, T &val) {
+    try {
+        j.at(key).get_to(val);
+    } catch (std::exception &e) {
+        QI::Fail("Error reading from JSON value {}: {}", key, e.what());
     }
-    return array;
 }
+
+template void GetJSON<double>(json const &j, std::string const &key, double &val);
+template void GetJSON<int>(json const &j, std::string const &key, int &val);
 
 } // End namespace QI

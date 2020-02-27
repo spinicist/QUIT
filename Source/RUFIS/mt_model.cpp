@@ -15,7 +15,7 @@ auto MTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRA
     T const &R1_b = R1_f;
     T const &R2_f = 1. / v[3];
     T const &T2_b = v[4];
-    T const &k    = v[5];
+    T const &k    = 5; // v[5];
     T const &k_bf = k * M0_f / (M0_f + M0_b);
     T const &k_fb = k * M0_b / (M0_f + M0_b);
     T const &B1   = v[6];
@@ -46,7 +46,7 @@ auto MTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRA
     Eigen::ArrayXd sig(sequence.size());
     for (long is = 0; is < sequence.RUFIS_FA.rows(); is++) {
         double const rf1_B1x = B1 * sequence.RUFIS_FA[is] / sequence.Trf;
-        double const rf1_W   = M_PI * lineshape({0}, T2_b) * rf1_B1x * rf1_B1x;
+        double const rf1_W   = M_PI * 1.4e-5 * rf1_B1x * rf1_B1x;
         AugMat       rf1;
         rf1 << 0, 0, 0, 0, 0,     //
             0, 0, rf1_B1x, 0, 0,  //
@@ -66,7 +66,10 @@ auto MTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRA
         for (long im = 0; im < p.B1x.size(); im++) {
             double const gamma  = 267.52219; // radians per second per uT
             double const MT_B1x = gamma * B1 * p.B1x[im] * MT_scale;
-            double const MT_W   = M_PI * lineshape(sequence.MT_offsets[is], T2_b) * MT_B1x * MT_B1x;
+            double const G      = (sequence.MT_offsets[is] < 1000.) ?
+                                 1.4e-5 :
+                                 lineshape(sequence.MT_offsets[is], T2_b);
+            double const MT_W = M_PI * G * MT_B1x * MT_B1x;
             AugMat       MT_rf;
             MT_rf << 0, dw, 0, 0, 0,  //
                 -dw, 0, MT_B1x, 0, 0, //

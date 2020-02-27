@@ -20,10 +20,8 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-#include "mupa_model_1c.h"
 #include "mupa_model_b1.h"
 #include "mupa_model_mt.h"
-#include "mupa_model_mtb1.h"
 
 /*
  * Main
@@ -51,14 +49,15 @@ int mupa_main(int argc, char **argv) {
     json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
     MUPASequence sequence(doc["MUPA"]);
-    auto         process = [&](auto                                       model,
+
+    auto process = [&](auto                                       model,
                        const std::string &                        model_name,
                        typename decltype(model)::FixedNames const fixed) {
         if (simulate) {
             QI::SimulateModel<decltype(model), false>(
                 doc, model, fixed, {input_path.Get()}, verbose, simulate.Get());
         } else {
-            using FitType = QI::ScaledNumericDiffFit<decltype(model), 2>;
+            using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;
             FitType fit{model};
             auto    fit_filter =
                 QI::ModelFitFilter<FitType>::New(&fit, verbose, covar, resids, subregion.Get());
@@ -68,15 +67,8 @@ int mupa_main(int argc, char **argv) {
         }
     };
 
-    if (mt && B1) {
-        QI::Log(verbose, "Reading lineshape file: {}", ls_arg.Get());
-        json          ls_file = QI::ReadJSON(ls_arg.Get());
-        MUPAMTB1Model model{{}, sequence, ls_file.at("lineshape").get<QI::InterpLineshape>()};
-        process(model, "MUPAMTB1_", {B1.Get()});
-    } else if (mt) {
-        QI::Log(verbose, "Reading lineshape file: {}", ls_arg.Get());
-        json        ls_file = QI::ReadJSON(ls_arg.Get());
-        MUPAMTModel model{{}, sequence, ls_file.at("lineshape").get<QI::InterpLineshape>()};
+    if (mt) {
+        MUPAMTModel model{{}, sequence};
         process(model, "MUPAMT_", {});
     } else {
         MUPAB1Model model{{}, sequence};

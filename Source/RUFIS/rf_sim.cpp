@@ -19,8 +19,6 @@
 #include "Macro.h"
 #include "Util.h"
 
-#include "mupa_model_1c.h"
-#include "mupa_model_mt.h"
 #include "mupa_sequence.h"
 #include "rufis_pulse.h"
 

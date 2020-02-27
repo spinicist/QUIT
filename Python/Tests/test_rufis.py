@@ -69,16 +69,20 @@ class RUFIS(unittest.TestCase):
 
         diff_M0_f = Diff(in_file='MUPAMT_M0_f.nii.gz', baseline='M0_f.nii.gz',
                          noise=noise, verbose=vb).run()
+        diff_M0_b = Diff(in_file='MUPAMT_M0_b.nii.gz',
+                         baseline='M0_b.nii.gz', noise=noise, verbose=vb).run()
         diff_T1 = Diff(in_file='MUPAMT_T1_f.nii.gz', baseline='T1_f.nii.gz',
                        noise=noise, verbose=vb).run()
         diff_T2 = Diff(in_file='MUPAMT_T2_f.nii.gz', baseline='T2_f.nii.gz',
                        noise=noise, verbose=vb).run()
-        diff_M0_b = Diff(in_file='MUPAMT_M0_b.nii.gz',
-                         baseline='M0_b.nii.gz', noise=noise, verbose=vb).run()
+        diff_B1 = Diff(in_file='MUPAMT_B1.nii.gz',
+                       baseline='B1.nii.gz', noise=noise, verbose=vb).run()
+
         self.assertLessEqual(diff_M0_f.outputs.out_diff, 30)
+        self.assertLessEqual(diff_M0_b.outputs.out_diff, 30)
         self.assertLessEqual(diff_T1.outputs.out_diff, 30)
         self.assertLessEqual(diff_T2.outputs.out_diff, 30)
-        self.assertLessEqual(diff_M0_b.outputs.out_diff, 30)
+        self.assertLessEqual(diff_B1.outputs.out_diff, 1)
 
     def test_MT(self):
         seq = {
