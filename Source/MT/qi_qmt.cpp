@@ -15,6 +15,7 @@
 // #define QI_DEBUG_BUILD 1
 #include "Args.h"
 #include "FitFunction.h"
+#include "FitScaledAuto.h"
 #include "ImageIO.h"
 #include "Lineshape.h"
 #include "MTSatSequence.h"

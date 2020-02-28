@@ -22,10 +22,11 @@ class MUPAInputSpec(QI.FitInputSpec):
 
 
 class MUPAOutputSpec(TraitedSpec):
-    pd_map = File('MUPA_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    t1_map = File('MUPA_T1.nii.gz', desc="Path to T1 map", usedefault=True)
-    t2_map = File('MUPA_T2.nii.gz', desc="Path to T2 map", usedefault=True)
-    rmse_map = File('MUPA_rmse.nii.gz',
+    m0_map = File('MUPAB1_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    t1_map = File('MUPAB1_T1.nii.gz', desc="Path to T1 map", usedefault=True)
+    t2_map = File('MUPAB1_T2.nii.gz', desc="Path to T2 map", usedefault=True)
+    b1_map = File('MUPAB1_B1.nii.gz', desc="Path to B1 map", usedefault=True)
+    rmse_map = File('MUPAB1_rmse.nii.gz',
                     desc="Path to residual map", usedefault=True)
 
 
@@ -41,8 +42,6 @@ class MUPA(QI.FitCommand):
 
 
 class MUPASimInputSpec(QI.SimInputSpec):
-    # Inputs
-
     # Options
     pass
 
@@ -54,8 +53,8 @@ class MUPASim(QI.SimCommand):
     """
 
     _cmd = 'qi mupa'
-    _param_files = ['PD', 'T1', 'T2']
-    input_spec = MUPASimInputSpec
+    _param_files = ['M0', 'T1', 'T2', 'B1']
+    input_spec = QI.SimInputSpec
     output_spec = QI.SimOutputSpec
 
 ############################ MUPA-MT ############################
@@ -63,8 +62,7 @@ class MUPASim(QI.SimCommand):
 
 class MUPAMTInputSpec(QI.FitInputSpec):
     # Inputs - none
-
-    lineshape = File(desc='Path to linshape file', argstr='--lineshape=%s')
+    pass
 
 
 class MUPAMTOutputSpec(TraitedSpec):
@@ -97,8 +95,7 @@ class MUPAMT(QI.FitCommand):
 
 class MUPAMTSimInputSpec(QI.SimInputSpec):
     # Inputs
-
-    lineshape = File(desc='Path to linshape file', argstr='--lineshape=%s')
+    pass
 
 
 class MUPAMTSim(QI.SimCommand):
@@ -108,7 +105,7 @@ class MUPAMTSim(QI.SimCommand):
     """
 
     _cmd = 'qi mupa --mt'
-    _param_files = ['M0_f', 'T1_f', 'T2_f', 'M0_b', 'B1']
+    _param_files = ['M0_f', 'M0_b', 'T1_f', 'T2_f', 'B1']
     input_spec = MUPAMTSimInputSpec
     output_spec = QI.SimOutputSpec
 

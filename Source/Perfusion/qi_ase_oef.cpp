@@ -15,6 +15,7 @@
 
 #include "Args.h"
 #include "FitFunction.h"
+#include "FitScaledAuto.h"
 #include "ImageIO.h"
 #include "Model.h"
 #include "ModelFitFilter.h"

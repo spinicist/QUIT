@@ -15,11 +15,18 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     T const &R1_b = R1_f;
     T const &R2_f = 1. / v[3];
     T const &k    = 4.3;
-    T const &k_bf = k * M0_f;
-    T const &k_fb = k * M0_b;
+    T const &k_bf = k * M0_f / (M0_f + M0_b);
+    T const &k_fb = k * M0_b / (M0_f + M0_b);
     T const &B1   = v[4];
     T const &G0   = 1.4e-5;
-
+    QI_DBVEC(v)
+    QI_DB(M0_f)
+    QI_DB(M0_b)
+    QI_DB(R1_f)
+    QI_DB(R2_f)
+    QI_DB(k_bf)
+    QI_DB(k_fb)
+    QI_DB(B1)
     AugMat R;
     R << -R2_f, 0, 0, 0, 0,          //
         0, -R2_f, 0, 0, 0,           //
@@ -55,6 +62,7 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
         AugMat const Ard = ((RpK + rf) * sequence.Trf[is]).exp();
         TR_mats[is]      = S * Rrd * Ard;
         seg_mats[is]     = TR_mats[is].pow(sequence.SPS);
+        QI_DB(W)
     }
 
     // Setup pulse matrices
@@ -65,11 +73,13 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
         double const Ew   = exp(-M_PI * 1.4e-5 * B1 * B1 * p.int_b1_sq);
         AugMat       C;
         double const E2 = exp(-R2_f * p.T_trans);
-        double const E1 = exp(-R1_f * p.T_long);
-        C << 0, 0, 0, 0, 0,                                   //
-            0, 0, 0, 0, 0,                                    //
-            0, 0, E1 * E2 * cos(p.FAeff), 0, M0_f * (1 - E1), //
-            0, 0, 0, Ew, 0,                                   //
+        // double const E1 = exp(-R1_f * p.T_long);
+        QI_DB(Ew)
+        QI_DB(E2)
+        C << 0, 0, 0, 0, 0,                //
+            0, 0, 0, 0, 0,                 //
+            0, 0, E2 * cos(p.FAeff), 0, 0, //
+            0, 0, 0, Ew, 0,                //
             0, 0, 0, 0, 1;
         prep_mats[is] = C;
     }
@@ -91,7 +101,6 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
         auto const signal = m_gm[2] * sin(B1 * sequence.FA[is]);
         sig[is]           = signal;
         m_aug             = ramp * seg_mats[is] * m_aug;
-        QI_DBVEC(m_gm);
     }
     QI_DBVEC(v);
     QI_DBVEC(sig);
@@ -102,6 +111,10 @@ void MUPAMTModel::derived(const VaryingArray &varying,
                           const FixedArray & /* Unused */,
                           DerivedArray &derived) const {
     const auto &M0_f = varying[0];
-    const auto &M0_b = varying[3];
+    const auto &M0_b = varying[1];
     derived[0]       = 100.0 * M0_b / (M0_f + M0_b);
+    QI_DBVEC(varying)
+    QI_DB(M0_f)
+    QI_DB(M0_b)
+    QI_DBVEC(derived)
 }

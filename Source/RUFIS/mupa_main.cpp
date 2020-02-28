@@ -14,6 +14,7 @@
 // #define QI_DEBUG_BUILD 1
 
 #include "Args.h"
+#include "FitScaledNumeric.h"
 #include "ImageIO.h"
 #include "Macro.h"
 #include "ModelFitFilter.h"
@@ -57,6 +58,7 @@ int mupa_main(int argc, char **argv) {
             QI::SimulateModel<decltype(model), false>(
                 doc, model, fixed, {input_path.Get()}, verbose, simulate.Get());
         } else {
+            QI::Log(verbose, "NS {}", decltype(model)::NS);
             using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;
             FitType fit{model};
             auto    fit_filter =

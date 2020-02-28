@@ -9,13 +9,82 @@ CommandLine.terminal_output = 'allatonce'
 
 
 class RUFIS(unittest.TestCase):
+    def test_MUPA(self):
+        seq = {
+            'MUPA': {
+                'TR': 2e-3,
+                'Tramp': 10e-3,
+                'FA': [2, 2, 2, 6, 2, 2],
+                'Trf': [24, 24, 24, 24, 24, 8],
+                'SPS': 512,
+                'prep': ['inv', 'null', 'null', 'null', 't2-80', 'null'],
+                'prep_pulses': {
+                    'inv': {
+                        'FAeff': 175.32508531003188,
+                        'T_long': 0.036487,
+                        'T_trans': 0.004396,
+                        'int_b1_sq': 53390.0
+                    },
+                    't2-80': {
+                        'FAeff': 0.0716197243913529,
+                        'T_long': 0.005472,
+                        'T_trans': 0.08083,
+                        'int_b1_sq': 279600.0
+                    },
+                    'null': {
+                        'FAeff': 0.0,
+                        'T_long': 0.0,
+                        'T_trans': 0.0,
+                        'int_b1_sq': 0.0
+                    }
+                }
+            }
+        }
+        sim_file = 'sim_mupa.nii.gz'
+        img_sz = [16, 16, 16]
+        noise = 0.005
+
+        NewImage(img_size=img_sz, fill=100.0,
+                 out_file='M0.nii.gz', verbose=vb).run()
+        NewImage(img_size=img_sz, grad_dim=0, grad_vals=(0.8, 2.0),
+                 out_file='T1.nii.gz', verbose=vb).run()
+        NewImage(img_size=img_sz, grad_dim=1, grad_vals=(0.05, 0.15),
+                 out_file='T2.nii.gz', verbose=vb).run()
+        NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.8, 1.2),
+                 out_file='B1.nii.gz', verbose=vb).run()
+
+        MUPASim(sequence=seq, in_file=sim_file,
+                M0='M0.nii.gz', T1='T1.nii.gz', T2='T2.nii.gz', B1='B1.nii.gz',
+                noise=noise, verbose=vb).run()
+        MUPA(sequence=seq,
+             in_file=sim_file, verbose=vb, threads=-1, covar=True).run()
+
+        diff_M0 = Diff(in_file='MUPAB1_M0.nii.gz',
+                       baseline='M0.nii.gz', noise=noise, verbose=vb).run()
+        diff_T1 = Diff(in_file='MUPAB1_T1.nii.gz', baseline='T1.nii.gz',
+                       noise=noise, verbose=vb).run()
+        diff_T2 = Diff(in_file='MUPAB1_T2.nii.gz', baseline='T2.nii.gz',
+                       noise=noise, verbose=vb).run()
+        diff_B1 = Diff(in_file='MUPAB1_B1.nii.gz',
+                       baseline='B1.nii.gz', noise=noise, verbose=vb).run()
+
+        print('M0', diff_M0.outputs.out_diff)
+        print('T1', diff_T1.outputs.out_diff)
+        print('T2', diff_T2.outputs.out_diff)
+        print('B1', diff_B1.outputs.out_diff)
+
+        self.assertLessEqual(diff_M0.outputs.out_diff, 2)
+        self.assertLessEqual(diff_T1.outputs.out_diff, 2)
+        self.assertLessEqual(diff_T2.outputs.out_diff, 6)
+        self.assertLessEqual(diff_B1.outputs.out_diff, 2)
+
     def test_MUPAMT(self):
         seq = {
             'MUPA': {
-                'TR': 2.5e-3,
-                'Tramp': 5e-3,
-                'FA': [6, 2, 2, 2, 2, 2],
-                'Trf': [24, 24, 24, 24, 8, 8],
+                'TR': 2e-3,
+                'Tramp': 10e-3,
+                'FA': [2, 2, 2, 6, 2, 2],
+                'Trf': [24, 24, 24, 24, 24, 8],
                 'SPS': 512,
                 'prep': ['inv', 'null', 'null', 'null', 't2-80', 'null'],
                 'prep_pulses': {
@@ -46,43 +115,43 @@ class RUFIS(unittest.TestCase):
 
         NewImage(img_size=img_sz, fill=100.0,
                  out_file='M0_f.nii.gz', verbose=vb).run()
-        NewImage(img_size=img_sz, grad_dim=0, grad_vals=(5.0, 25.0),
+        NewImage(img_size=img_sz, grad_dim=0, grad_vals=(1.0, 25.0),
                  out_file='M0_b.nii.gz', verbose=vb).run()
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.8, 1.5),
                  out_file='T1_f.nii.gz', verbose=vb).run()
         NewImage(img_size=img_sz, grad_dim=1, grad_vals=(0.06, 0.25),
                  out_file='T2_f.nii.gz', verbose=vb).run()
-        NewImage(img_size=img_sz, grad_dim=0, grad_vals=(1.0, 25.0),
-                 out_file='M0_b.nii.gz', verbose=vb).run()
         NewImage(img_size=img_sz, fill=1.0,
                  out_file='B1.nii.gz', verbose=vb).run()
-        NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.8, 1.5),
-                 out_file='T1_f.nii.gz', verbose=vb).run()
 
-        Lineshape(lineshape='SuperLorentzian',
-                  out_file='lineshape.json', t2b=12e-6).run()
-        MUPAMTSim(sequence=seq, in_file=sim_file, lineshape='lineshape.json',
+        MUPAMTSim(sequence=seq, in_file=sim_file,
                   M0_f='M0_f.nii.gz', T1_f='T1_f.nii.gz', T2_f='T2_f.nii.gz', M0_b='M0_b.nii.gz', B1='B1.nii.gz',
                   noise=noise, verbose=vb).run()
-        MUPAMT(sequence=seq, lineshape='lineshape.json',
-               in_file=sim_file, verbose=vb, threads=-1, covar=True).run()
+        MUPAMT(sequence=seq,
+               in_file=sim_file, verbose=vb, threads=-1, covar=False).run()
 
         diff_M0_f = Diff(in_file='MUPAMT_M0_f.nii.gz', baseline='M0_f.nii.gz',
                          noise=noise, verbose=vb).run()
         diff_M0_b = Diff(in_file='MUPAMT_M0_b.nii.gz',
                          baseline='M0_b.nii.gz', noise=noise, verbose=vb).run()
-        diff_T1 = Diff(in_file='MUPAMT_T1_f.nii.gz', baseline='T1_f.nii.gz',
-                       noise=noise, verbose=vb).run()
-        diff_T2 = Diff(in_file='MUPAMT_T2_f.nii.gz', baseline='T2_f.nii.gz',
-                       noise=noise, verbose=vb).run()
+        diff_T1_f = Diff(in_file='MUPAMT_T1_f.nii.gz', baseline='T1_f.nii.gz',
+                         noise=noise, verbose=vb).run()
+        diff_T2_f = Diff(in_file='MUPAMT_T2_f.nii.gz', baseline='T2_f.nii.gz',
+                         noise=noise, verbose=vb).run()
         diff_B1 = Diff(in_file='MUPAMT_B1.nii.gz',
                        baseline='B1.nii.gz', noise=noise, verbose=vb).run()
 
+        print('M0_f', diff_M0_f.outputs.out_diff)
+        print('M0_b', diff_M0_b.outputs.out_diff)
+        print('T1_f', diff_T1_f.outputs.out_diff)
+        print('T2_f', diff_T2_f.outputs.out_diff)
+        print('B1', diff_B1.outputs.out_diff)
+
         self.assertLessEqual(diff_M0_f.outputs.out_diff, 30)
         self.assertLessEqual(diff_M0_b.outputs.out_diff, 30)
-        self.assertLessEqual(diff_T1.outputs.out_diff, 30)
-        self.assertLessEqual(diff_T2.outputs.out_diff, 30)
-        self.assertLessEqual(diff_B1.outputs.out_diff, 1)
+        self.assertLessEqual(diff_T1_f.outputs.out_diff, 30)
+        self.assertLessEqual(diff_T2_f.outputs.out_diff, 30)
+        self.assertLessEqual(diff_B1.outputs.out_diff, 10)
 
     def test_MT(self):
         seq = {

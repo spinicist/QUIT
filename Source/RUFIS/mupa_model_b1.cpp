@@ -1,6 +1,6 @@
 // #define QI_DEBUG_BUILD 1
-#include "Macro.h"
 #include "mupa_model_b1.h"
+#include "Macro.h"
 #include "rufis_ss.hpp"
 
 using AugMat = Eigen::Matrix<double, 4, 4>;
@@ -9,19 +9,24 @@ using AugVec = Eigen::Vector<double, 4>;
 auto MUPAB1Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(double) {
     using T = double;
 
-    T const &PD = v[0];
+    T const &M0 = v[0];
     T const &R1 = 1. / v[1];
     T const &R2 = 1. / v[2];
     T const &B1 = v[3];
 
-    QI_DB(PD);
+    QI_DBVEC(v);
+    QI_DB(M0);
     QI_DB(R1);
     QI_DB(R2);
+    QI_DB(B1);
+    QI_DBVEC(sequence.Trf)
+    QI_DBVEC(sequence.FA)
+    QI_DB(sequence.SPS)
 
     AugMat R;
     R << -R2, 0, 0, 0,      //
         0, -R2, 0, 0,       //
-        0, 0, -R1, PD * R1, //
+        0, 0, -R1, M0 * R1, //
         0, 0, 0, 0;
 
     AugMat const Rrd  = (R * sequence.TR).exp();
@@ -46,12 +51,14 @@ auto MUPAB1Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     // Setup pulse matrices
     std::vector<AugMat> prep_mats(sequence.size());
     for (int is = 0; is < sequence.size(); is++) {
-        auto const &name = sequence.prep[is];
-        auto const &p    = sequence.prep_pulses[name];
-        AugMat      C;
-        C << 0, 0, 0, 0,                                                               //
-            0, 0, 0, 0,                                                                //
-            0, 0, exp(-R2 * p.T_trans) * cos(p.FAeff), PD * (1 - exp(-R1 * p.T_long)), //
+        auto const & name = sequence.prep[is];
+        auto const & p    = sequence.prep_pulses[name];
+        double const E2   = exp(-R2 * p.T_trans);
+        double const E1   = exp(-R1 * p.T_long);
+        AugMat       C;
+        C << 0, 0, 0, 0,                                 //
+            0, 0, 0, 0,                                  //
+            0, 0, E1 * E2 * cos(p.FAeff), M0 * (1 - E1), //
             0, 0, 0, 1;
         prep_mats[is] = C;
     }

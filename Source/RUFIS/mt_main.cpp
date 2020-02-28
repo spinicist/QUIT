@@ -14,6 +14,7 @@
 // #define QI_DEBUG_BUILD 1
 
 #include "Args.h"
+#include "FitScaledNumeric.h"
 #include "ImageIO.h"
 #include "Macro.h"
 #include "ModelFitFilter.h"
