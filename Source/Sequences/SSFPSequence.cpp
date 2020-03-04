@@ -94,8 +94,8 @@ Eigen::Index SSFPMTSequence::size() const {
 }
 
 void from_json(const json &j, SSFPMTSequence &s) {
-    s.TR  = ArrayFromJSON(j, "TR");
-    s.Trf = ArrayFromJSON(j, "Trf");
+    s.TR  = ArrayFromJSON(j, "TR", 1.);
+    s.Trf = ArrayFromJSON(j, "Trf", 1.);
     s.FA  = ArrayFromJSON(j, "FA", M_PI / 180);
     j.at("pulse").get_to(s.pulse);
     if ((s.TR.rows() != s.Trf.rows()) || (s.TR.rows() != s.FA.rows())) {

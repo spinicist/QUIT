@@ -17,7 +17,7 @@ namespace QI {
 void from_json(const json &j, CASLSequence &s) {
     j.at("TR").get_to(s.TR);
     j.at("label_time").get_to(s.label_time);
-    s.post_label_delay = ArrayFromJSON(j, "post_label_delay");
+    s.post_label_delay = ArrayFromJSON(j, "post_label_delay", 1.);
 }
 
 void to_json(json &j, const CASLSequence &s) {

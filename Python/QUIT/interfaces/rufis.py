@@ -22,7 +22,7 @@ class MUPAInputSpec(QI.FitInputSpec):
 
 
 class MUPAOutputSpec(TraitedSpec):
-    m0_map = File('MUPAB1_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    pd_map = File('MUPAB1_M0.nii.gz', desc="Path to M0 map", usedefault=True)
     t1_map = File('MUPAB1_T1.nii.gz', desc="Path to T1 map", usedefault=True)
     t2_map = File('MUPAB1_T2.nii.gz', desc="Path to T2 map", usedefault=True)
     b1_map = File('MUPAB1_B1.nii.gz', desc="Path to B1 map", usedefault=True)
@@ -54,8 +54,14 @@ class MUPASim(QI.SimCommand):
 
     _cmd = 'qi mupa'
     _param_files = ['M0', 'T1', 'T2', 'B1']
-    input_spec = QI.SimInputSpec
-    output_spec = QI.SimOutputSpec
+
+
+<< << << < HEAD
+input_spec = QI.SimInputSpec
+== == == =
+input_spec = MUPASimInputSpec
+>>>>>> > 921ad03... ENH Allow variable segment length in MUPA
+output_spec = QI.SimOutputSpec
 
 ############################ MUPA-MT ############################
 

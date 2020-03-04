@@ -173,8 +173,8 @@ int mcdespot_main(int argc, char **argv) {
             FitType src{model};
             src.src_gauss = !use_src;
             if (bounds) {
-                src.model.bounds_lo = QI::ArrayFromJSON(input, "lower_bounds");
-                src.model.bounds_hi = QI::ArrayFromJSON(input, "upper_bounds");
+                src.model.bounds_lo = QI::ArrayFromJSON<double>(input, "lower_bounds");
+                src.model.bounds_hi = QI::ArrayFromJSON<double>(input, "upper_bounds");
             }
             QI::Log(verbose, "Low bounds: {}", src.model.bounds_lo.transpose());
             QI::Log(verbose, "High bounds: {}", src.model.bounds_hi.transpose());

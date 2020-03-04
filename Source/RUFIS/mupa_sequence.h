@@ -7,7 +7,7 @@
 struct MUPASequence : QI::SequenceBase {
     double                                     TR, Tramp;
     Eigen::ArrayXd                             FA, Trf;
-    int                                        SPS;
+    Eigen::ArrayXi                             SPS;
     std::unordered_map<std::string, PrepPulse> prep_pulses;
     std::vector<std::string>                   prep;
     QI_SEQUENCE_DECLARE(MUPA);

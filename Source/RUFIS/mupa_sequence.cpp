@@ -4,7 +4,7 @@
 void from_json(const json &j, MUPASequence &s) {
     QI::GetJSON(j, "TR", s.TR);
     QI::GetJSON(j, "Tramp", s.Tramp);
-    QI::GetJSON(j, "SPS", s.SPS);
+    s.SPS = QI::ArrayFromJSON(j, "SPS", 1);
     s.FA  = QI::ArrayFromJSON(j, "FA", M_PI / 180.0);
     s.Trf = QI::ArrayFromJSON(j, "Trf", 1.e-6);
 

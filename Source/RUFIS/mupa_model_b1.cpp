@@ -45,7 +45,7 @@ auto MUPAB1Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_
             0, 0, 0, 0;
         AugMat const Ard = ((R + rf) * sequence.Trf[is]).exp();
         TR_mats[is]      = S * Rrd * Ard;
-        seg_mats[is]     = TR_mats[is].pow(sequence.SPS);
+        seg_mats[is]     = TR_mats[is].pow(sequence.SPS[is]);
     }
 
     // Setup pulse matrices
@@ -76,7 +76,7 @@ auto MUPAB1Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     Eigen::ArrayXd sig(sequence.size());
     for (int is = 0; is < sequence.size(); is++) {
         m_aug     = ramp * prep_mats[is] * m_aug;
-        auto m_gm = GeometricAvg(TR_mats[is], seg_mats[is], m_aug, sequence.SPS);
+        auto m_gm = GeometricAvg(TR_mats[is], seg_mats[is], m_aug, sequence.SPS[is]);
         sig[is]   = m_gm[2] * sin(B1 * sequence.FA[is]);
         m_aug     = ramp * seg_mats[is] * m_aug;
     }

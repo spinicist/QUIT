@@ -73,13 +73,13 @@ int zspec_b1_main(int argc, char **argv) {
 
     json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
-    auto b1_rms = QI::ArrayFromJSON(doc, "b1_rms");
+    auto const b1_rms = QI::ArrayFromJSON<double>(doc, "b1_rms");
     if (b1_rms.rows() != static_cast<Eigen::Index>(inputs.size())) {
         QI::Fail("The number of B1 RMS entries must match the number of inputs");
     }
     QI::Log(verbose, "B1 RMS Powers: {}", b1_rms.transpose());
 
-    const QI::VolumeF::Pointer mask_image = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
+    QI::VolumeF::Pointer const mask_image = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
 
     auto mt = itk::MultiThreaderBase::New();
     QI::Log(verbose, "Processing");

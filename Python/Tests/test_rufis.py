@@ -7,48 +7,28 @@ from QUIT.interfaces.mt import Lineshape
 vb = True
 CommandLine.terminal_output = 'allatonce'
 
+pp = {
+    'inv': {'FAeff': 175.3, 'T_long': 0.0365, 'T_trans': 0.004, 'int_b1_sq': 53390.0},
+    't2-40': {'FAeff': 0.07, 'T_long': 0.0055, 'T_trans': 0.040, 'int_b1_sq': 279600.0},
+    't2-60': {'FAeff': 0.07, 'T_long': 0.0055, 'T_trans': 0.060, 'int_b1_sq': 279600.0},
+    't2-80': {'FAeff': 0.07, 'T_long': 0.0055, 'T_trans': 0.080, 'int_b1_sq': 279600.0},
+    't2-120': {'FAeff': 0.07, 'T_long': 0.0055, 'T_trans': 0.120, 'int_b1_sq': 279600.0},
+    't2-inv': {'FAeff': 180., 'T_long': 0.0055, 'T_trans': 0.020, 'int_b1_sq': 279600.0},
+    'null': {'FAeff': 0.0, 'T_long': 0.0, 'T_trans': 0.0, 'int_b1_sq': 0.0}
+}
+
 
 class RUFIS(unittest.TestCase):
-    def test_MUPA(self):
-        seq = {
-            'MUPA': {
-                'TR': 2e-3,
-                'Tramp': 10e-3,
-                'FA': [2, 2, 2, 6, 2, 2],
-                'Trf': [24, 24, 24, 24, 24, 8],
-                'SPS': 512,
-                'prep': ['inv', 'null', 'null', 'null', 't2-80', 'null'],
-                'prep_pulses': {
-                    'inv': {
-                        'FAeff': 175.32508531003188,
-                        'T_long': 0.036487,
-                        'T_trans': 0.004396,
-                        'int_b1_sq': 53390.0
-                    },
-                    't2-80': {
-                        'FAeff': 0.0716197243913529,
-                        'T_long': 0.005472,
-                        'T_trans': 0.08083,
-                        'int_b1_sq': 279600.0
-                    },
-                    'null': {
-                        'FAeff': 0.0,
-                        'T_long': 0.0,
-                        'T_trans': 0.0,
-                        'int_b1_sq': 0.0
-                    }
-                }
-            }
-        }
+    def run_MUPA(self, seq):
         sim_file = 'sim_mupa.nii.gz'
         img_sz = [16, 16, 16]
-        noise = 0.005
+        noise = 0.001
 
-        NewImage(img_size=img_sz, fill=100.0,
+        NewImage(img_size=img_sz, fill=1.0,
                  out_file='M0.nii.gz', verbose=vb).run()
-        NewImage(img_size=img_sz, grad_dim=0, grad_vals=(0.8, 2.0),
+        NewImage(img_size=img_sz, grad_dim=0, grad_vals=(0.8, 1.5),
                  out_file='T1.nii.gz', verbose=vb).run()
-        NewImage(img_size=img_sz, grad_dim=1, grad_vals=(0.05, 0.15),
+        NewImage(img_size=img_sz, grad_dim=1, grad_vals=(0.06, 0.25),
                  out_file='T2.nii.gz', verbose=vb).run()
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.8, 1.2),
                  out_file='B1.nii.gz', verbose=vb).run()
@@ -56,27 +36,78 @@ class RUFIS(unittest.TestCase):
         MUPASim(sequence=seq, in_file=sim_file,
                 M0='M0.nii.gz', T1='T1.nii.gz', T2='T2.nii.gz', B1='B1.nii.gz',
                 noise=noise, verbose=vb).run()
-        MUPA(sequence=seq,
-             in_file=sim_file, verbose=vb, threads=-1, covar=True).run()
+        MUPA(sequence=seq, in_file=sim_file, verbose=vb).run()
 
-        diff_M0 = Diff(in_file='MUPAB1_M0.nii.gz',
-                       baseline='M0.nii.gz', noise=noise, verbose=vb).run()
-        diff_T1 = Diff(in_file='MUPAB1_T1.nii.gz', baseline='T1.nii.gz',
-                       noise=noise, verbose=vb).run()
-        diff_T2 = Diff(in_file='MUPAB1_T2.nii.gz', baseline='T2.nii.gz',
-                       noise=noise, verbose=vb).run()
-        diff_B1 = Diff(in_file='MUPAB1_B1.nii.gz',
-                       baseline='B1.nii.gz', noise=noise, verbose=vb).run()
+        diff_M0 = Diff(in_file='MUPAB1_M0.nii.gz', noise=noise,
+                       baseline='M0.nii.gz', verbose=vb).run()
+        diff_T1 = Diff(in_file='MUPAB1_T1.nii.gz', noise=noise,
+                       baseline='T1.nii.gz', verbose=vb).run()
+        diff_T2 = Diff(in_file='MUPAB1_T2.nii.gz', noise=noise,
+                       baseline='T2.nii.gz', verbose=vb).run()
+        diff_B1 = Diff(in_file='MUPAB1_B1.nii.gz', noise=noise,
+                       baseline='B1.nii.gz', verbose=vb).run()
 
         print('M0', diff_M0.outputs.out_diff)
         print('T1', diff_T1.outputs.out_diff)
         print('T2', diff_T2.outputs.out_diff)
         print('B1', diff_B1.outputs.out_diff)
 
-        self.assertLessEqual(diff_M0.outputs.out_diff, 2)
-        self.assertLessEqual(diff_T1.outputs.out_diff, 2)
-        self.assertLessEqual(diff_T2.outputs.out_diff, 6)
-        self.assertLessEqual(diff_B1.outputs.out_diff, 2)
+        self.assertLessEqual(diff_M0.outputs.out_diff, 5)
+        self.assertLessEqual(diff_T1.outputs.out_diff, 5)
+        self.assertLessEqual(diff_T2.outputs.out_diff, 5)
+        self.assertLessEqual(diff_B1.outputs.out_diff, 5)
+
+    def test_MUPA1(self):
+        seq = {
+            'MUPA': {
+                'TR': 2e-3,
+                'Tramp': 10e-3,
+                'FA': [2, 2, 6, 2, 2, 2],
+                'Trf': [24, 24, 24, 24, 24, 8],
+                'SPS': 512,
+                'prep': ['t2-inv', 'null', 'null', 'null', 't2-80', 'null'],
+                'prep_pulses': pp}
+        }
+        self.run_MUPA(seq)
+
+    def test_MUPA2(self):
+        seq = {
+            'MUPA': {
+                'TR': 2e-3,
+                'Tramp': 10e-3,
+                'FA': [2, 2, 2, 2, 2, 2, 2, 6, 2, 2],
+                'Trf': [24, 24, 24, 24, 24, 24, 24, 24, 24, 24],
+                'SPS': [384, 384, 384, 96, 96, 96, 96, 384, 384, 384],
+                'prep': ['inv', 'null', 'null', 't2-60', 't2-60', 't2-60', 't2-60', 'null', 'null', 'null'],
+                'prep_pulses': pp}
+        }
+        self.run_MUPA(seq)
+
+    def test_MUPA2A(self):
+        seq = {
+            'MUPA': {
+                'TR': 2e-3,
+                'Tramp': 10e-3,
+                'FA': [2, 2, 2, 2, 6, 2, 2],
+                'Trf': [24, 24, 24, 24, 24, 24, 24],
+                'SPS': [384, 384, 384, 96, 384, 384, 384],
+                'prep': ['inv', 'null', 'null', 't2-80', 'null', 'null', 'null'],
+                'prep_pulses': pp}
+        }
+        self.run_MUPA(seq)
+
+    def test_MUPA3(self):
+        seq = {
+            'MUPA': {
+                'TR': 2e-3,
+                'Tramp': 10e-3,
+                'FA': [2, 2, 6, 2, 2, 2],
+                'Trf': [24, 24, 24, 24, 24, 24],
+                'SPS': [512, 512, 512, 512, 512, 512],
+                'prep': ['inv', 'null', 'null', 'null', 't2-80', 'null'],
+                'prep_pulses': pp}
+        }
+        self.run_MUPA(seq)
 
     def test_MUPAMT(self):
         seq = {
@@ -87,27 +118,7 @@ class RUFIS(unittest.TestCase):
                 'Trf': [24, 24, 24, 24, 24, 8],
                 'SPS': 512,
                 'prep': ['inv', 'null', 'null', 'null', 't2-80', 'null'],
-                'prep_pulses': {
-                    'inv': {
-                        'FAeff': 175.32508531003188,
-                        'T_long': 0.006487,
-                        'T_trans': 0.004396,
-                        'int_b1_sq': 53390.0
-                    },
-                    't2-80': {
-                        'FAeff': 0.0716197243913529,
-                        'T_long': 0.005472,
-                        'T_trans': 0.08083,
-                        'int_b1_sq': 279600.0
-                    },
-                    'null': {
-                        'FAeff': 0.0,
-                        'T_long': 0.0,
-                        'T_trans': 0.0,
-                        'int_b1_sq': 0.0
-                    }
-                }
-            }
+                'prep_pulses': pp}
         }
         sim_file = 'sim_mupa_mt.nii.gz'
         img_sz = [16, 16, 16]

@@ -1,5 +1,5 @@
-#include "mt_sequence.h"
 #include "Log.h"
+#include "mt_sequence.h"
 
 void from_json(json const &j, MTSequence &s) {
     j.at("TR").get_to(s.TR);
@@ -11,7 +11,7 @@ void from_json(json const &j, MTSequence &s) {
     j.at("MT_pulsewidth").get_to(s.MT_pulsewidth);
     s.RUFIS_FA   = QI::ArrayFromJSON(j, "RUFIS_FA", M_PI / 180.0);
     s.MT_FA      = QI::ArrayFromJSON(j, "MT_FA", M_PI / 180.0);
-    s.MT_offsets = QI::ArrayFromJSON(j, "MT_offsets");
+    s.MT_offsets = QI::ArrayFromJSON(j, "MT_offsets", 1.);
     if (s.RUFIS_FA.rows() != s.MT_FA.rows()) {
         QI::Fail("Number of RUFIS FAs {} does not match number of MT FAs {}",
                  s.RUFIS_FA.rows(),

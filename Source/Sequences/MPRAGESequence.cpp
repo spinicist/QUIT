@@ -49,7 +49,7 @@ Eigen::Index MP2RAGESequence::size() const {
 
 void from_json(const json &j, MP2RAGESequence &s) {
     j.at("TR").get_to(s.TR);
-    auto TI     = ArrayFromJSON(j, "TI");
+    auto TI     = ArrayFromJSON(j, "TI", 1.);
     auto TRPrep = j.at("TRPrep").get<double>();
     s.FA        = ArrayFromJSON(j, "FA", M_PI / 180.0);
     j.at("SegLength").get_to(s.SegLength);

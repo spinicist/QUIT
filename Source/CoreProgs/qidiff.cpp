@@ -12,11 +12,7 @@
 #include "Args.h"
 #include "ImageIO.h"
 #include "Util.h"
-#include "itkDivideImageFilter.h"
-#include "itkSquareImageFilter.h"
-#include "itkStatisticsImageFilter.h"
-#include "itkSubtractImageFilter.h"
-
+#include "itkImageRegionConstIterator.h"
 //******************************************************************************
 // Main
 //******************************************************************************
@@ -43,34 +39,55 @@ int diff_main(int argc, char **argv) {
     auto input    = QI::ReadImage(QI::CheckValue(input_path), verbose);
     auto baseline = QI::ReadImage(QI::CheckValue(baseline_path), verbose);
 
-    auto diffFilter = itk::SubtractImageFilter<QI::VolumeF>::New();
-    diffFilter->SetInput1(input);
-    diffFilter->SetInput2(baseline);
+    double accum_bias = 0.;
+    double accum_var  = 0.;
+    auto   mt         = itk::MultiThreaderBase::New();
+    mt->SetNumberOfWorkUnits(1);
+    mt->ParallelizeImageRegion<3>(
+        input->GetBufferedRegion(),
+        [&](const QI::VolumeF::RegionType &region) {
+            auto input_it = itk::ImageRegionConstIterator<QI::VolumeF>(input, region);
+            auto base_it  = itk::ImageRegionConstIterator<QI::VolumeF>(baseline, region);
 
-    auto sqr_norm = itk::SquareImageFilter<QI::VolumeF, QI::VolumeF>::New();
+            for (input_it.GoToBegin(); !input_it.IsAtEnd(); ++input_it, ++base_it) {
+                auto const i    = input_it.Get();
+                auto const b    = base_it.Get();
+                auto const bias = (i - b) / (absolute ? 1. : b);
+                accum_bias += bias;
+                accum_var += bias * bias;
+            }
+        },
+        nullptr);
+    auto const n         = input->GetLargestPossibleRegion().GetNumberOfPixels();
+    auto const mean_bias = accum_bias / n;
+    auto const var       = accum_var / (n - 1);
+    auto const std       = sqrt(var);
+    auto const mse       = var + mean_bias * mean_bias;
+    auto const me        = sqrt(mse);
+    auto const NF        = me / noise.Get();
+
     if (absolute) {
-        sqr_norm->SetInput(diffFilter->GetOutput());
+        QI::Log(verbose,
+                "Mean Bias : {}\nVariance  : {}\nSD        : {}\nMSE       : {}\nME        : "
+                "{}\nNF           : {}",
+                mean_bias,
+                var,
+                std,
+                mse,
+                me,
+                NF);
     } else {
-        auto diff_norm = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
-        diff_norm->SetInput1(diffFilter->GetOutput());
-        diff_norm->SetInput2(baseline);
-        diff_norm->Update();
-        sqr_norm->SetInput(diff_norm->GetOutput());
+        QI::Log(verbose,
+                "Mean Bias (%): {}\nVariance  (%): {}\nSD        (%): {}\nMSE       (%): {}\nME    "
+                "    (%): {}\nNF    "
+                "       : {}",
+                mean_bias * 100,
+                var * 100,
+                std * 100,
+                mse * 100,
+                me * 100,
+                NF);
     }
-    auto stats = itk::StatisticsImageFilter<QI::VolumeF>::New();
-    stats->SetInput(sqr_norm->GetOutput());
-    stats->Update();
-
-    const double mean_sqr_diff      = stats->GetMean();
-    const double root_mean_sqr_diff = sqrt(mean_sqr_diff);
-    const double diff = (noise.Get() > 0) ? root_mean_sqr_diff / noise.Get() : root_mean_sqr_diff;
-    QI::Log(verbose,
-            "Mean Square Diff: {}\nSquare-root mean square diff: {}\nRelative noise: {}\nRelative "
-            "Diff: {}",
-            mean_sqr_diff,
-            root_mean_sqr_diff,
-            noise.Get(),
-            diff);
-    fmt::print("{}", diff);
+    fmt::print("{}\n", (noise.Get() > 0.) ? NF : me);
     return EXIT_SUCCESS;
 }

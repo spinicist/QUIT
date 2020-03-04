@@ -199,9 +199,9 @@ int rfprofile_main(int argc, char **argv) {
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path), verbose);
 
     QI::Log(verbose, "Reading slab profile");
-    json input   = infile ? QI::ReadJSON(infile.Get()) : QI::ReadJSON(std::cin);
-    auto rf_pos  = QI::ArrayFromJSON(input, "rf_pos");
-    auto rf_vals = QI::ArrayFromJSON(input, "rf_vals");
+    json       input   = infile ? QI::ReadJSON(infile.Get()) : QI::ReadJSON(std::cin);
+    auto const rf_pos  = QI::ArrayFromJSON(input, "rf_pos", 1.);
+    auto const rf_vals = QI::ArrayFromJSON(input, "rf_vals", 1.);
 
     QI::Log(verbose, "Profile points = {}", rf_pos.rows());
     QI::Log(verbose, "Generating image...");

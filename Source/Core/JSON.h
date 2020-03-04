@@ -25,7 +25,10 @@ json          ReadJSON(std::string const &path);
 std::ostream &WriteJSON(std::ostream &os, json const &doc);
 void          WriteJSON(std::string const &path, json const &doc);
 
-Eigen::ArrayXd ArrayFromJSON(json const &json, std::string const &key, double const &scale = 1);
+template <typename T>
+extern Eigen::Array<T, -1, 1>
+ArrayFromJSON(json const &json, std::string const &key, T const &scale = 1);
+
 template <typename T> extern void GetJSON(json const &j, std::string const &key, T &val);
 
 } // End namespace QI

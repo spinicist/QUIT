@@ -3,9 +3,9 @@
 #include "rufis_pulse.h"
 
 void from_json(const json &j, RFPulse &p) {
-    p.B1x      = QI::ArrayFromJSON(j, "B1x");
-    p.B1y      = QI::ArrayFromJSON(j, "B1y");
-    p.timestep = QI::ArrayFromJSON(j, "timestep");
+    p.B1x      = QI::ArrayFromJSON(j, "B1x", 1.);
+    p.B1y      = QI::ArrayFromJSON(j, "B1y", 1.);
+    p.timestep = QI::ArrayFromJSON(j, "timestep", 1.);
 
     if (p.B1x.rows() != p.B1y.rows()) {
         QI::Fail("B1x and B1y array lengths did not match {} vs {}", p.B1x.rows(), p.B1y.rows());
@@ -17,8 +17,8 @@ void to_json(json &j, RFPulse const &p) {
 }
 
 void from_json(const json &j, MTPulse &p) {
-    p.B1x = QI::ArrayFromJSON(j, "B1x");
-    p.B1y = QI::ArrayFromJSON(j, "B1y");
+    p.B1x = QI::ArrayFromJSON(j, "B1x", 1.);
+    p.B1y = QI::ArrayFromJSON(j, "B1y", 1.);
     p.FA  = j.at("FA").get<double>() * M_PI / 180;
     j.at("width").get_to(p.width);
 

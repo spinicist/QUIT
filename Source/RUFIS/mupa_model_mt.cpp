@@ -1,6 +1,6 @@
 // #define QI_DEBUG_BUILD 1
-#include "mupa_model_mt.h"
 #include "Macro.h"
+#include "mupa_model_mt.h"
 #include "rufis_ss.hpp"
 
 using AugMat = Eigen::Matrix<double, 5, 5>; // Short for Augmented Matrix
@@ -61,8 +61,7 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
         AugMat const Rrd = (RpK * (sequence.TR - sequence.Trf[is])).exp();
         AugMat const Ard = ((RpK + rf) * sequence.Trf[is]).exp();
         TR_mats[is]      = S * Rrd * Ard;
-        seg_mats[is]     = TR_mats[is].pow(sequence.SPS);
-        QI_DB(W)
+        seg_mats[is]     = TR_mats[is].pow(sequence.SPS[is]);
     }
 
     // Setup pulse matrices
@@ -97,7 +96,7 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     AugVec m_aug = m_ss;
     for (int is = 0; is < sequence.size(); is++) {
         m_aug             = ramp * S * prep_mats[is] * m_aug;
-        auto       m_gm   = GeometricAvg(TR_mats[is], seg_mats[is], m_aug, sequence.SPS);
+        auto       m_gm   = GeometricAvg(TR_mats[is], seg_mats[is], m_aug, sequence.SPS[is]);
         auto const signal = m_gm[2] * sin(B1 * sequence.FA[is]);
         sig[is]           = signal;
         m_aug             = ramp * seg_mats[is] * m_aug;

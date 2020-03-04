@@ -24,7 +24,7 @@ Eigen::Index MultiEchoSequence::size() const {
 void from_json(const json &j, MultiEchoSequence &s) {
     j.at("TR").get_to(s.TR);
     if (j.find("TE") != j.end()) {
-        s.TE = ArrayFromJSON(j, "TE");
+        s.TE = ArrayFromJSON(j, "TE", 1.);
     } else {
         auto TE1 = j.at("TE1").get<double>();
         auto ESP = j.at("ESP").get<double>();

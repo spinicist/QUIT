@@ -38,7 +38,7 @@ QI::InterpLineshape adl_serializer<QI::InterpLineshape>::from_json(const json &j
 
     auto fstep  = j.at("freq_step").get<double>();
     auto fcount = j.at("freq_count").get<int>();
-    auto vals   = QI::ArrayFromJSON(j, "values");
+    auto vals   = QI::ArrayFromJSON<double>(j, "values");
 
     return QI::InterpLineshape(fmin, fstep, fcount, vals, T2nom);
 }
