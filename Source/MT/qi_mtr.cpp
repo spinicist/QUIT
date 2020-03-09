@@ -21,15 +21,26 @@
 struct MTContrast {
     std::string               name;
     std::vector<Eigen::Index> add_indices, sub_indices, ref_indices;
-    bool                      reverse = false;
+    float                     scale   = 1.f;
+    bool                      reverse = false, inverse = false;
 };
 
 void from_json(const json &j, MTContrast &s) {
     j.at("name").get_to(s.name);
     j.at("add").get_to(s.add_indices);
     j.at("sub").get_to(s.sub_indices);
-    j.at("ref").get_to(s.ref_indices);
-    j.at("reverse").get_to(s.reverse);
+    if (j.contains("ref")) {
+        j.at("ref").get_to(s.ref_indices);
+    }
+    if (j.contains("reverse")) {
+        j.at("reverse").get_to(s.reverse);
+    }
+    if (j.contains("inverse")) {
+        j.at("inverse").get_to(s.inverse);
+    }
+    if (j.contains("scale")) {
+        j.at("scale").get_to(s.scale);
+    }
 }
 
 void to_json(json &j, const MTContrast &s) {
@@ -66,9 +77,13 @@ int mtr_main(int argc, char **argv) {
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read custom contrasts from JSON file", {"json"});
+    args::ValueFlag<std::string> reference(parser, "REF", "External reference image", {"ref", 'r'});
     QI::ParseArgs(parser, argc, argv, verbose, threads);
 
-    auto input_img = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
+    auto const input_img = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
+    QI::VolumeF::Pointer const ref_img =
+        reference ? QI::ReadImage(reference.Get(), verbose) : nullptr;
+
     std::vector<MTContrast> contrasts;
     if (json_file) {
         QI::Log(verbose, "Reading contrasts");
@@ -95,7 +110,11 @@ int mtr_main(int argc, char **argv) {
     mt->ParallelizeImageRegion<3>(
         input_img->GetBufferedRegion(),
         [&](const QI::VolumeF::RegionType &region) {
-            itk::ImageRegionConstIterator<QI::VectorVolumeF>   in_it(input_img, region);
+            itk::ImageRegionConstIterator<QI::VectorVolumeF> in_it(input_img, region);
+            itk::ImageRegionConstIterator<QI::VolumeF>       ref_it;
+            if (ref_img) {
+                ref_it = itk::ImageRegionConstIterator<QI::VolumeF>(ref_img, region);
+            }
             std::vector<itk::ImageRegionIterator<QI::VolumeF>> out_its;
             for (auto const &img : out_imgs) {
                 out_its.push_back(itk::ImageRegionIterator<QI::VolumeF>(img, region));
@@ -114,17 +133,26 @@ int mtr_main(int argc, char **argv) {
                         auto &con = contrasts[ii];
                         float pos = 0.f, neg = 0.f, ref = 0.f;
                         for (auto const &ind : con.add_indices) {
-                            pos += in[ind];
+                            auto const &pos_val = in[ind];
+                            pos += con.inverse ? 1. / (pos_val * con.add_indices.size()) :
+                                                 pos_val / con.add_indices.size();
                         }
                         for (auto const &ind : con.sub_indices) {
-                            neg += in[ind];
+                            auto const &neg_val = in[ind];
+                            neg += con.inverse ? 1. / (neg_val * con.sub_indices.size()) :
+                                                 neg_val / con.sub_indices.size();
                         }
+
                         for (auto const &ind : con.ref_indices) {
-                            ref += in[ind];
+                            if (ind == -1 && ref_img) {
+                                ref += ref_it.Get() / con.ref_indices.size();
+                            } else {
+                                ref += in[ind] / con.ref_indices.size();
+                            }
                         }
-                        float const diff    = (pos - neg);
+                        float const diff    = con.scale * (pos - neg);
                         float const value   = con.reverse ? ref - diff : diff;
-                        float const percent = 100.f * value / ref;
+                        float const percent = 100.f * (con.inverse ? (ref * value) : (value / ref));
                         it.Set(percent);
                     }
                 } else {
@@ -137,6 +165,9 @@ int mtr_main(int argc, char **argv) {
                 }
                 if (mask_img) {
                     ++mask_it;
+                }
+                if (ref_img) {
+                    ++ref_it;
                 }
             }
         },
