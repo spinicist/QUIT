@@ -1,0 +1,57 @@
+name: Build
+# This workflow is triggered on pushes to the repository.
+on: push
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          submodules: true
+      - name: Build Binary
+        run: ./build.sh -j 8
+        shell: bash
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: Prepare Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install nipype
+          pip install -e ./Python/
+        shell: bash
+      - name: Run Tests
+        run: export PATH="$PWD/../../build/Source:$PATH"; echo $PATH; python -m unittest discover
+        working-directory: ./Python/Tests
+        shell: bash
+
+      # - name: GZip Release
+      #   run: |
+      #     mv ./build/Source/qi ./qi-${{ matrix.os }}
+      #     gzip ./qi-${{ matrix.os }}
+      #   shell: bash
+      # - name: Create Release
+      #   id: create_release
+      #   uses: actions/create-release@latest
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: ${{ github.ref }}
+      #     release_name: Release ${{ github.ref }}
+      #     draft: true
+      # - name: Upload Release Asset
+      #   id: upload-release-asset
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./qi-${{ matrix.os }}.gz
+      #     asset_name: qi-${{ matrix.os }}.gz
+      #     asset_content_type: application/gzip

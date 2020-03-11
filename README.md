@@ -1,6 +1,6 @@
 ![Logo](Docs/logo.png)
 
-[![Build Status](https://dev.azure.com/spinicist/QUIT/_apis/build/status/QUIT-CI?branchName=master)](https://dev.azure.com/spinicist/QUIT/_build/latest?definitionId=4&branchName=master)
+![Build Status](https://github.com/actions/hello-world/workflows/Build/badge.svg)
 [![DOI](http://joss.theoj.org/papers/10.21105/joss.00656/status.svg)](https://doi.org/10.21105/joss.00656)
 [![DOI](https://zenodo.org/badge/37066948.svg)](https://zenodo.org/badge/latestdoi/37066948)
 
