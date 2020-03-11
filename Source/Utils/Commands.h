@@ -2,6 +2,8 @@
 #include <map>
 #include <string>
 
+int affine_main(int argc, char **argv);
+int affine_angle_main(int argc, char **argv);
 int coil_combine_main(int argc, char **argv);
 int gradient_main(int argc, char **argv);
 int pca_main(int argc, char **argv);
@@ -9,7 +11,6 @@ int rfprofile_main(int argc, char **argv);
 int select_main(int argc, char **argv);
 int ssfp_bands_main(int argc, char **argv);
 int tvmask_main(int argc, char **argv);
-int affine_main(int argc, char **argv);
 int complex_main(int argc, char **argv);
 int kfilter_main(int argc, char **argv);
 int mask_main(int argc, char **argv);
