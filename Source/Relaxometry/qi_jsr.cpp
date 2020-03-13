@@ -113,8 +113,8 @@ struct JSRModel : QI::Model<double, double, 4, 1, 2> {
         QI_ARRAY(T)
         const im_m =
             (sin_psi - E2 * (cos_th * sin_psi + sin_th * cos_psi)) * G / (1.0 - b * cos_th);
-        QI_ARRAY(T) const signal = sqrt(re_m.square() + im_m.square());
-        return signal;
+        QI_ARRAY(T) const s = sqrt(re_m.square() + im_m.square());
+        return s;
     }
 
     auto signals(VaryingArray const &v, FixedArray const &f) const
