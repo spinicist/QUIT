@@ -24,20 +24,19 @@ int affine_angle_main(int argc, char **argv) {
 
     args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
     args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     inverse(parser, "INVERSE", "Apply inverse transforms", {'i', "inverse"});
     QI::ParseArgs(parser, argc, argv, verbose);
 
     using Tfm      = itk::AffineTransform<double, 3>;
     auto composite = Tfm::New();
     composite->SetIdentity();
-    // using Tfm = itk::CompositeTransform<double, 3>;
 
     for (auto const &tfm_path : tfm_paths.Get()) {
-
-        QI::Info(verbose, "Transform file: {}", tfm_path);
+        bool const inverse = (tfm_path[0] == '^');
+        std::string const path = inverse? tfm_path.substr(1) : tfm_path;
+        QI::Info(verbose, "{}Transform file: {}", inverse ? "Inverse " : "", path);
 
         auto reader = itk::TransformFileReader::New();
-        reader->SetFileName(tfm_path);
+        reader->SetFileName(path);
         reader->Update();
 
         auto const &tfm  = *(reader->GetTransformList()->begin());
