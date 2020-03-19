@@ -1,7 +1,7 @@
 /*
- *  mupa_main.cpp
+ *  ss_main.cpp
  *
- *  Copyright (c) 2019 Tobias Wood.
+ *  Copyright (c) 2020 Tobias Wood.
  *
  *  This Source Code Form is subject to the terms of the Mozilla Public
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,12 +21,13 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-#include "mt_model.h"
+#include "ss_T2.h"
+#include "ss_model.h"
 
 /*
  * Main
  */
-int rufis_mt_main(int argc, char **argv) {
+int rufis_ss_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Calculates parametric maps from MUPA data "
                                 "data.\nhttp://github.com/spinicist/QUIT");
@@ -35,27 +36,31 @@ int rufis_mt_main(int argc, char **argv) {
 
     QI_COMMON_ARGS;
 
-    args::ValueFlag<std::string> B1(parser, "B1", "Fix B1", {"B1"});
+    args::Flag                   T2(parser, "T2", "Fit T2 model", {"T2"});
     args::ValueFlag<double>      T2_b(parser, "T2_b", "T2 of bound pool", {"T2b"}, 12e-6);
     args::ValueFlag<std::string> ls_arg(
         parser, "LINESHAPE", "Path to lineshape file", {"lineshape"});
 
     QI::ParseArgs(parser, argc, argv, verbose, threads);
-
     QI::CheckPos(input_path);
-
     QI::Log(verbose, "Reading sequence parameters");
-    json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    json       doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    SSSequence sequence(doc);
 
-    MTSequence sequence(doc["MT"]);
-    auto       process = [&](auto                                       model,
+    auto process = [&](auto                                       model,
                        const std::string &                        model_name,
                        typename decltype(model)::FixedNames const fixed) {
         if (simulate) {
-            QI::SimulateModel<decltype(model), false>(
-                doc, model, fixed, {input_path.Get()}, verbose, simulate.Get());
+            QI::SimulateModel<decltype(model), false>(doc,
+                                                      model,
+                                                      fixed,
+                                                      {input_path.Get()},
+                                                      mask.Get(),
+                                                      verbose,
+                                                      simulate.Get(),
+                                                      subregion.Get());
         } else {
-            using FitType = QI::ScaledNumericDiffFit<decltype(model), 2>;
+            using FitType = QI::ScaledNumericDiffFit<decltype(model), 1>;
             FitType fit(model);
 
             auto fit_filter =
@@ -66,10 +71,16 @@ int rufis_mt_main(int argc, char **argv) {
         }
     };
 
-    QI::Log(verbose, "Reading lineshape file: {}", ls_arg.Get());
-    json    ls_file = QI::ReadJSON(ls_arg.Get());
-    MTModel model{{}, sequence, ls_file.at("lineshape").get<QI::InterpLineshape>()};
-    process(model, "MT_", {});
+    // QI::Log(verbose, "Reading lineshape file: {}", ls_arg.Get());
+    // json    ls_file = QI::ReadJSON(ls_arg.Get());
+
+    if (T2) {
+        SS_T1T2_Model model{{}, sequence};
+        process(model, "SS_", {});
+    } else {
+        SS_T1_Model model{{}, sequence}; //, ls_file.at("lineshape").get<QI::InterpLineshape>()};
+        process(model, "SS_", {});
+    }
 
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;

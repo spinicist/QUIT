@@ -185,7 +185,7 @@ int multiecho_main(int argc, char **argv) {
     MultiEcho model{{}, sequence};
     if (simulate) {
         QI::SimulateModel<MultiEcho, false>(
-            input, model, {}, {QI::CheckPos(input_path)}, verbose, simulate.Get());
+            input, model, {}, {QI::CheckPos(input_path)}, mask.Get(), verbose, simulate.Get(), subregion.Get());
     } else {
         MultiEchoFit *me = nullptr;
         switch (algorithm.Get()) {

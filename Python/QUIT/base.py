@@ -89,6 +89,12 @@ class SimInputBaseSpec(DynamicTraitedSpec):
     json = traits.File(exists=True, desc='JSON Input file', argstr='--json=%s')
     noise = traits.Float(desc='Noise level to add to simulation',
                          argstr='--simulate=%f', default_value=0.0, usedefault=True)
+    subregion = traits.String(
+        desc='Only process a subregion of the image. Argument should be a string "start_x,start_y,start_z,size_x,size_y,size_z"', argstr='--subregion=%s')
+    threads = traits.Int(
+        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
+    mask_file = File(
+        desc='Only process voxels within the mask', argstr='--mask=%s')
 
 
 class SimInputSpec(SimInputBaseSpec):
@@ -178,7 +184,7 @@ class BaseCommand(CommandLine):
             fname = '_input.json'
             with open(fname, 'w') as outfile:
                 json.dump(self._json, outfile, indent=2)
-            self.inputs.json = path.abspath(fname)
+            self.inputs.json = fname
         return super()._parse_inputs(skip)
 
 
@@ -200,13 +206,22 @@ class FitCommand(BaseCommand):
                     value, prefix=self.inputs.prefix)
         return outputs
 
-    def _list_outputs(self, outputs=None):
-        if outputs is None:
-            outputs = self.output_spec().get()
+    def _list_outputs(self):
+        outputs = {}  # self.output_spec().get()
+        for p in self._param_files:
+            pname = '{}_file'.format(p)
+            fname = '{}_{}.nii.gz'.format(self._prefix, p)
+            outputs[pname] = fname
         return self._add_prefixes(outputs)
 
     def __init__(self, sequence={}, **kwargs):
         self._json = deepcopy(sequence)
+        for p in self._param_files:
+            pname = '{}_file'.format(p)
+            fname = '{}_{}.nii.gz'.format(self._prefix, p)
+            desc = 'Path to {}'.format(p)
+            setattr(self.output_spec, pname, File(
+                fname, desc=desc, usedefault=True))
         super().__init__(**kwargs)
 
 

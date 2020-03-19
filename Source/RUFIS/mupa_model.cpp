@@ -1,24 +1,22 @@
 // #define QI_DEBUG_BUILD 1
 #include "Macro.h"
-#include "mupa_model_b1.h"
+#include "mupa_model.h"
 #include "rufis_ss.hpp"
 
 using AugMat = Eigen::Matrix<double, 4, 4>;
 using AugVec = Eigen::Vector<double, 4>;
 
-auto MUPAB1Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(double) {
+auto MUPAModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(double) {
     using T = double;
 
     T const &M0 = v[0];
     T const &R1 = 1. / v[1];
     T const &R2 = 1. / v[2];
-    T const &B1 = v[3];
 
     QI_DBVEC(v);
     QI_DB(M0);
     QI_DB(R1);
     QI_DB(R2);
-    QI_DB(B1);
     QI_DBVEC(sequence.Trf)
     QI_DBVEC(sequence.FA)
     QI_DB(sequence.spokes_per_seg)
@@ -39,7 +37,7 @@ auto MUPAB1Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     std::vector<AugMat> seg_mats(sequence.size());
     for (int is = 0; is < sequence.size(); is++) {
         AugMat rf;
-        float  B1x = B1 * sequence.FA[is] / sequence.Trf[is];
+        float  B1x = sequence.FA[is] / sequence.Trf[is];
         rf << 0, 0, 0, 0,  //
             0, 0, B1x, 0,  //
             0, -B1x, 0, 0, //
@@ -87,9 +85,9 @@ auto MUPAB1Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_
                              seg_mats[is],
                              m_prepped,
                              sequence.spokes_per_seg / sequence.groups_per_seg[is]);
-            segment_accumulate += m_group_avg[2] * sin(B1 * sequence.FA[is]);
+            segment_accumulate += m_group_avg[2] * sin(sequence.FA[is]);
             QI_DBVEC(m_group_avg);
-            QI_DB(sin(B1 * sequence.FA[is]));
+            QI_DB(sin(sequence.FA[is]));
             QI_DB(segment_accumulate);
             m_current = ramp * seg_mats[is] * m_prepped;
         }

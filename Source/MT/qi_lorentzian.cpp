@@ -170,7 +170,14 @@ template <int N> void Process() {
     LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
 
     if (simulate) {
-        QI::SimulateModel<LM, false>(input, model, {}, {input_path.Get()}, verbose, simulate.Get());
+        QI::SimulateModel<LM, false>(input,
+                                     model,
+                                     {},
+                                     {input_path.Get()},
+                                     mask.Get(),
+                                     verbose,
+                                     simulate.Get(),
+                                     subregion.Get());
     } else {
         LFit fit{model};
         auto fit_filter =

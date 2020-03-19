@@ -21,13 +21,14 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
+#include "mupa_model.h"
 #include "mupa_model_b1.h"
 #include "mupa_model_mt.h"
 
 /*
  * Main
  */
-int mupa_main(int argc, char **argv) {
+int rufis_mupa_main(int argc, char **argv) {
     Eigen::initParallel();
     args::ArgumentParser parser("Calculates parametric maps from MUPA data "
                                 "data.\nhttp://github.com/spinicist/QUIT");
@@ -36,7 +37,6 @@ int mupa_main(int argc, char **argv) {
 
     QI_COMMON_ARGS;
 
-    args::ValueFlag<std::string> B1(parser, "B1", "Fix B1", {"B1"});
     args::Flag                   mt(parser, "MT", "Use MT model", {"mt"});
     args::ValueFlag<double>      T2_b(parser, "T2_b", "T2 of bound pool", {"T2b"}, 12e-6);
     args::ValueFlag<std::string> ls_arg(
@@ -49,14 +49,20 @@ int mupa_main(int argc, char **argv) {
     QI::Log(verbose, "Reading sequence parameters");
     json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
-    MUPASequence sequence(doc["MUPA"]);
+    RUFISSequence sequence(doc["MUPA"]);
 
     auto process = [&](auto                                       model,
                        const std::string &                        model_name,
                        typename decltype(model)::FixedNames const fixed) {
         if (simulate) {
-            QI::SimulateModel<decltype(model), false>(
-                doc, model, fixed, {input_path.Get()}, verbose, simulate.Get());
+            QI::SimulateModel<decltype(model), false>(doc,
+                                                      model,
+                                                      fixed,
+                                                      {input_path.Get()},
+                                                      mask.Get(),
+                                                      verbose,
+                                                      simulate.Get(),
+                                                      subregion.Get());
         } else {
             QI::Log(verbose, "NS {}", decltype(model)::NS);
             using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;

@@ -183,8 +183,10 @@ int despot2fm_main(int argc, char **argv) {
                                           model,
                                           {QI::CheckPos(t1_path), B1.Get()},
                                           {QI::CheckPos(ssfp_path)},
+                                          mask.Get(),
                                           verbose,
-                                          simulate.Get());
+                                          simulate.Get(),
+                                          subregion.Get());
     } else {
         FMNLLS fm{model};
         fm.max_iterations = its.Get();

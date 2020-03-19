@@ -196,7 +196,7 @@ int despot1_main(int argc, char **argv) {
     DESPOT1 model{{}, spgrSequence, its.Get()};
     if (simulate) {
         QI::SimulateModel<DESPOT1, false>(
-            input, model, {B1.Get()}, {spgr_path.Get()}, verbose, simulate.Get());
+            input, model, {B1.Get()}, {spgr_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
     } else {
         DESPOT1Fit *d1 = nullptr;
         switch (algorithm.Get()) {

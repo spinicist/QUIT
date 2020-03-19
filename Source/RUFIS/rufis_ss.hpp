@@ -42,17 +42,3 @@ auto GeometricAvg(AugmentedMatrix const &X,
         LHS.template topLeftCorner<N - 1, N - 1>().partialPivLu().solve(RHS) / n;
     return m_gm;
 }
-
-template <typename AugMat>
-AugMat CalcPulse(RFPulse const &                                              p,
-                 AugMat const &                                               nonRF,
-                 std::function<AugMat(double const &, double const &)> const &RF) {
-    AugMat C = AugMat::Identity();
-    for (long ii = 0; ii < p.B1x.rows(); ii++) {
-        AugMat const rf   = RF(p.B1x[ii], p.B1y[ii]);
-        AugMat const both = nonRF + rf;
-        AugMat const A    = (both * p.timestep[ii]).exp();
-        C                 = A * C;
-    }
-    return C;
-}

@@ -19,8 +19,8 @@
 #include "Macro.h"
 #include "Util.h"
 
-#include "mupa_sequence.h"
 #include "rufis_pulse.h"
+#include "rufis_sequence.h"
 
 double round_sig(double value, int digits) {
     if (value == 0.0) // otherwise it will return 'nan' due to the log10() of zero

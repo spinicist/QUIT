@@ -240,6 +240,14 @@ class ModelSimFilter
                                                                         output_io.rows());
                     output_iters[0].Set(data_out);
                 }
+            } else {
+                if constexpr (MultiOutput) {
+                    for (auto &o : output_iters) {
+                        o.Get().Fill(0);
+                    }
+                } else {
+                    output_iters[0].Get().Fill(0);
+                }
             }
             if (mask) {
                 ++mask_iter;

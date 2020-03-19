@@ -1,12 +1,13 @@
 #include "Log.h"
-#include "mupa_sequence.h"
+#include "rufis_sequence.h"
 
-void from_json(const json &j, MUPASequence &s) {
+void from_json(const json &j, RUFISSequence &s) {
     QI::GetJSON(j, "TR", s.TR);
     QI::GetJSON(j, "Tramp", s.Tramp);
-    s.SPS = QI::ArrayFromJSON(j, "SPS", 1);
-    s.FA  = QI::ArrayFromJSON(j, "FA", M_PI / 180.0);
-    s.Trf = QI::ArrayFromJSON(j, "Trf", 1.e-6);
+    QI::GetJSON(j, "spokes_per_seg", s.spokes_per_seg);
+    s.FA             = QI::ArrayFromJSON(j, "FA", M_PI / 180.0);
+    s.Trf            = QI::ArrayFromJSON(j, "Trf", 1.e-6);
+    s.groups_per_seg = QI::ArrayFromJSON(j, "groups_per_seg", 1);
 
     j.at("prep_pulses").get_to(s.prep_pulses);
     j.at("prep").get_to(s.prep);

@@ -214,8 +214,10 @@ int ssfp_emt_main(int argc, char **argv) {
                                           model,
                                           {B1.Get(), T2_f.Get()},
                                           {G_path.Get(), a_path.Get(), b_path.Get()},
+                                          mask.Get(),
                                           verbose,
-                                          simulate.Get());
+                                          simulate.Get(),
+                                          subregion.Get());
     } else {
         // First calculate T2_f
         auto a_input = QI::ReadImage<QI::VectorVolumeF>(a_path.Get(), verbose);

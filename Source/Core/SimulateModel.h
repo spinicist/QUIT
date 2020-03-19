@@ -23,9 +23,10 @@ void SimulateModel(json &                                    json,
                    Model const &                             model,
                    typename Model::FixedNames const &        fixedpaths,
                    std::array<std::string, Model::NI> const &outpaths,
+                   std::string const &                       mask_path,
                    bool const                                verbose,
                    double const                              noise,
-                   std::string const &                       subRegion = "") {
+                   std::string const &                       subRegion) {
     auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, verbose, subRegion);
     simulator->SetNoise(noise);
     for (auto i = 0; i < Model::NV; i++) {
@@ -48,6 +49,9 @@ void SimulateModel(json &                                    json,
                 simulator->SetFixed(i, QI::ReadImage(ffile, false));
             }
         }
+    }
+    if (mask_path != "") {
+        simulator->SetMask(QI::ReadImage(mask_path, verbose));
     }
     QI::Log(verbose, "Noise level is {}\nSimulating model...", noise);
     srand((unsigned int)time(0));

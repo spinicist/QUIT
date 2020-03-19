@@ -49,10 +49,14 @@ void WriteJSON(std::string const &path, json const &doc) {
 }
 
 template <typename T>
-Eigen::Array<T, -1, 1> ArrayFromJSON(json const &val, std::string const &key, T const &scale) {
+Eigen::Array<T, -1, 1>
+ArrayFromJSON(json const &val, std::string const &key, T const &scale, Eigen::Index const &sz) {
     try {
         std::vector<T> json_array;
         json_array = val[key].get<std::vector<T>>();
+        if (sz > -1 && static_cast<Eigen::Index>(json_array.size()) != sz) {
+            QI::Fail("JSON array {} had {} elements, expected {}", key, json_array.size(), sz);
+        }
         Eigen::Array<T, -1, 1> array(json_array.size());
         for (size_t i = 0; i < json_array.size(); i++) {
             array[i] = json_array[i] * scale;
@@ -62,8 +66,10 @@ Eigen::Array<T, -1, 1> ArrayFromJSON(json const &val, std::string const &key, T 
         QI::Fail("Error reading from JSON array {}: {}", key, e.what());
     }
 }
-template Eigen::ArrayXd ArrayFromJSON(json const &val, std::string const &key, double const &scale);
-template Eigen::ArrayXi ArrayFromJSON(json const &val, std::string const &key, int const &scale);
+template Eigen::ArrayXd
+ArrayFromJSON(json const &val, std::string const &key, double const &scale, Eigen::Index const &sz);
+template Eigen::ArrayXi
+ArrayFromJSON(json const &val, std::string const &key, int const &scale, Eigen::Index const &sz);
 
 template <typename T> void GetJSON(json const &j, std::string const &key, T &val) {
     try {

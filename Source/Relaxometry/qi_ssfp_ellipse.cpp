@@ -206,7 +206,7 @@ int ssfp_ellipse_main(int argc, char **argv) {
     EllipseModel model{{}, sequence};
     if (simulate) {
         QI::SimulateModel<EllipseModel, false>(
-            input, model, {}, {sequence_path.Get()}, verbose, simulate.Get());
+            input, model, {}, {sequence_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
     } else {
         EllipseFit fit{model};
         auto       fit_filter =

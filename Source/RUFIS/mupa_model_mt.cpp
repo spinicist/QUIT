@@ -61,7 +61,7 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
         AugMat const Rrd = (RpK * (sequence.TR - sequence.Trf[is])).exp();
         AugMat const Ard = ((RpK + rf) * sequence.Trf[is]).exp();
         TR_mats[is]      = S * Rrd * Ard;
-        seg_mats[is]     = TR_mats[is].pow(sequence.SPS[is]);
+        seg_mats[is]     = TR_mats[is].pow(sequence.spokes_per_seg / sequence.groups_per_seg[is]);
     }
 
     // Setup pulse matrices
@@ -86,20 +86,29 @@ auto MUPAMTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_
     // First calculate the system matrix
     AugMat X = AugMat::Identity();
     for (int is = 0; is < sequence.size(); is++) {
-        X = ramp * seg_mats[is] * ramp * S * prep_mats[is] * X;
+        for (int ig = 0; ig < sequence.groups_per_seg[is]; ig++) {
+            X = ramp * seg_mats[is] * ramp * S * prep_mats[is] * X;
+        }
     }
     AugVec m_ss = SolveSteadyState(X);
 
     // Now loop through the segments and record the signal for each
     Eigen::ArrayXd sig(sequence.size());
     QI_DBVEC(m_ss);
-    AugVec m_aug = m_ss;
+    AugVec m_current = m_ss;
     for (int is = 0; is < sequence.size(); is++) {
-        m_aug             = ramp * S * prep_mats[is] * m_aug;
-        auto       m_gm   = GeometricAvg(TR_mats[is], seg_mats[is], m_aug, sequence.SPS[is]);
-        auto const signal = m_gm[2] * sin(B1 * sequence.FA[is]);
-        sig[is]           = signal;
-        m_aug             = ramp * seg_mats[is] * m_aug;
+        double segment_accumulate = 0.;
+        for (int ig = 0; ig < sequence.groups_per_seg[is]; ig++) {
+            AugVec const m_prepped = ramp * S * prep_mats[is] * m_current;
+            auto const   m_group_avg =
+                GeometricAvg(TR_mats[is],
+                             seg_mats[is],
+                             m_prepped,
+                             sequence.spokes_per_seg / sequence.groups_per_seg[is]);
+            segment_accumulate += m_group_avg[2] * sin(B1 * sequence.FA[is]);
+            m_current = ramp * seg_mats[is] * m_prepped;
+        }
+        sig[is] = segment_accumulate / sequence.groups_per_seg[is];
     }
     QI_DBVEC(v);
     QI_DBVEC(sig);

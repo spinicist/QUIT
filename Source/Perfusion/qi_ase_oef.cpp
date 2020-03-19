@@ -168,11 +168,11 @@ int ase_oef_main(int argc, char **argv) {
         if (DBV) {
             ASEFixDBVModel model{{}, sequence, B0.Get(), DBV.Get()};
             QI::SimulateModel<ASEFixDBVModel, false>(
-                input, model, {}, {input_path.Get()}, verbose, simulate.Get());
+                input, model, {}, {input_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
         } else {
             ASEModel model{{}, sequence, B0.Get()};
             QI::SimulateModel<ASEModel, false>(
-                input, model, {}, {input_path.Get()}, verbose, simulate.Get());
+                input, model, {}, {input_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
         }
     } else {
         auto process = [&](auto fit_func) {
