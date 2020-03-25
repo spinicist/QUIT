@@ -508,6 +508,20 @@ Shcherbakova et al showed it was possible to recover the ellipse parameters *G*,
 
 The SSFP file must be complex-valued. At least three pairs of opposing phase-increments are recommended (six images in total).
 
+**Example JSON File**
+
+.. code-block:: json
+
+    {
+        "SSFP": {
+            "TR": 0.005,
+            "PhaseInc": [180, 240, 300, 0, 60, 120],
+            "FA": [12, 12, 12, 12, 12, 12]
+        }
+    }
+
+Both ``PhaseInc`` and ``FA`` are measured in degrees. The length of ``PhaseInc`` and ``FA`` must match, but the value of ``FA`` is unused so a dummy value is permissible. If multiple ellipses with different flip-angles are present in the input data, do not specify the extra flip-angles.
+
 **Outputs**
 
 - ``ES_G`` - The Geometric Solution point of the ellipse. Influences the overall size of the ellipse. This is called \(M\) in the Hoff and Shcherbakova papers, but it is not a measurable magnetization and hence to distinguish it a different letter is used.
