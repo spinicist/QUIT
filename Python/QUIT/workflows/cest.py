@@ -104,20 +104,20 @@ def cert(zfrqs):
     cert_sub = Node(ImageMaths(op_string='-sub', out_file='cert.nii.gz'),
                     name='cert_subtract')
     amide_index = (np.abs(zfrqs - 3.5)).argmin()
-    amide = Node(ExtractROI(t_min=amide_index, t_size=1),
-                 name='amide_extract')
+    amide = Node(Select(volumes=[amide_index], out_file='amide.nii.gz'),
+                            name='select_amide')
 
     cert = Workflow(name='CERT')
     cert.connect([(inputnode, cert_sub, [('cert_360', 'in_file'), ('cert_180', 'in_file2')]),
                   (cert_sub, amide, [('out_file', 'in_file')]),
                   (cert_sub, outputnode, [('out_file', 'cert_spectrum')]),
-                  (amide, outputnode, [('roi_file', 'cert_amide')])
+                  (amide, outputnode, [('out_file', 'cert_amide')])
                   ])
 
     return cert
 
 
-def amide_noe(zfrqs):
+def amide_noe(zfrqs, name='Amide_NOE'):
     inputnode = Node(IdentityInterface(fields=['zspec_file', 'mask_file']),
                      name='inputnode')
     outputnode = Node(IdentityInterface(fields=['diff_file', 'DS', 'MT', 'Amide', 'NOE']),
@@ -192,7 +192,7 @@ def amide_noe(zfrqs):
                                                 'Amide',
                                                 'NOE']),
                       name='outputnode')
-    wf = Workflow(name='Amide_NOE')
+    wf = Workflow(name=name)
     wf.connect([(inputnode, backg_select, [('zspec_file', 'in_file')]),
                 (backg_select, backg_fit, [('out_file', 'in_file')]),
                 (inputnode, backg_fit, [('mask_file', 'mask_file')]),
