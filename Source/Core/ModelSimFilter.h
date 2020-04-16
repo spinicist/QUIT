@@ -142,7 +142,16 @@ class ModelSimFilter
 
     void GenerateOutputInformation() override {
         Superclass::GenerateOutputInformation();
+
         const auto ip = this->GetInput(0);
+        // Verify images are all the same size (ITK checks they have valid orientation)
+        for (size_t i = 1; i < this->GetNumberOfRequiredInputs(); i++) {
+            const auto ip2 = this->GetInput(i);
+            if (ip->GetLargestPossibleRegion() != ip2->GetLargestPossibleRegion()) {
+                QI::Fail("Input parameter images are not all the same size");
+            }
+        }
+
         for (size_t i = 0; i < this->GetNumberOfRequiredOutputs(); i++) {
             const auto op = this->GetOutput(i);
             op->SetRegions(ip->GetLargestPossibleRegion());
