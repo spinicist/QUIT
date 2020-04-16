@@ -17,6 +17,7 @@
 #include "Util.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
+#include "itkMultiThreaderBase.h"
 
 struct MTContrast {
     std::string               name;

@@ -17,6 +17,7 @@
 #include "Util.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIteratorWithIndex.h"
+#include "itkMultiThreaderBase.h"
 
 /*
  * Main

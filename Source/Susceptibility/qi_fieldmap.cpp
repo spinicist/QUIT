@@ -13,6 +13,7 @@
 
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
+#include "itkMultiThreaderBase.h"
 
 #include "Args.h"
 #include "ImageIO.h"

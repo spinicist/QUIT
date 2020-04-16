@@ -15,6 +15,7 @@
 
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
+#include "itkMultiThreaderBase.h"
 
 // #define QI_DEBUG_BUILD 1
 

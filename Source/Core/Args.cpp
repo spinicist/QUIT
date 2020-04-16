@@ -11,6 +11,7 @@
 
 #include "Args.h"
 #include "Util.h"
+#include "itkMultiThreaderBase.h"
 
 /*
  * Moved these here to avoid duplicate symbol errors

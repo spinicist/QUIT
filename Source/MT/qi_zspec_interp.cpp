@@ -13,6 +13,7 @@
 
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
+#include "itkMultiThreaderBase.h"
 
 // #define QI_DEBUG_BUILD 1
 
@@ -108,7 +109,7 @@ int zspec_interp_main(int argc, char **argv) {
                     const Eigen::Map<const Eigen::ArrayXf> zdata(in_it.Get().GetDataPointer(),
                                                                  in_freqs.rows());
                     QI::SplineInterpolator                 zspec(
-                                        in_freqs, zdata.cast<double>(), order.Get(), indices);
+                        in_freqs, zdata.cast<double>(), order.Get(), indices);
 
                     float f0 = f0_image ? f0_it.Get() : 0.0;
                     for (int f = 0; f < out_freqs.rows(); f++) {

@@ -17,6 +17,7 @@
 #include "Util.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
+#include "itkMultiThreaderBase.h"
 
 struct MTSatSequence : QI::SequenceBase {
     double TR_pd, al_pd, TR_t1, al_t1, TR_mt, al_mt;
