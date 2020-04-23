@@ -4,6 +4,7 @@
 #include "ss_sequence.h"
 
 struct SS_T1_Model : QI::Model<double, double, 3, 0> {
+    static int const   NS = 1;
     SSSequence &       sequence;
     VaryingArray const start{30.0, 1.0, 1};
     VaryingArray const lo{0.1, 0.5, 0.5};

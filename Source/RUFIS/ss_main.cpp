@@ -23,6 +23,7 @@
 
 #include "ss_T2.h"
 #include "ss_model.h"
+#include "ss_mt.h"
 
 /*
  * Main
@@ -37,7 +38,7 @@ int rufis_ss_main(int argc, char **argv) {
     QI_COMMON_ARGS;
 
     args::Flag                   T2(parser, "T2", "Fit T2 model", {"T2"});
-    args::ValueFlag<double>      T2_b(parser, "T2_b", "T2 of bound pool", {"T2b"}, 12e-6);
+    args::Flag                   MT(parser, "MT", "Fit MT model", {"MT"});
     args::ValueFlag<std::string> ls_arg(
         parser, "LINESHAPE", "Path to lineshape file", {"lineshape"});
 
@@ -60,7 +61,7 @@ int rufis_ss_main(int argc, char **argv) {
                                                       simulate.Get(),
                                                       subregion.Get());
         } else {
-            using FitType = QI::ScaledNumericDiffFit<decltype(model), 1>;
+            using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;
             FitType fit(model);
 
             auto fit_filter =
@@ -71,13 +72,18 @@ int rufis_ss_main(int argc, char **argv) {
         }
     };
 
-    // QI::Log(verbose, "Reading lineshape file: {}", ls_arg.Get());
-    // json    ls_file = QI::ReadJSON(ls_arg.Get());
-
-    if (T2) {
+    if (MT) {
+        QI::Log(verbose, "Using MT model");
+        QI::Log(verbose, "Reading lineshape file: {}", ls_arg.Get());
+        json        ls_file = QI::ReadJSON(ls_arg.Get());
+        SS_MT_Model model{{}, sequence, ls_file.at("lineshape").get<QI::InterpLineshape>()};
+        process(model, "SS_", {});
+    } else if (T2) {
+        QI::Log(verbose, "Using T2 model");
         SS_T1T2_Model model{{}, sequence};
         process(model, "SS_", {});
     } else {
+        QI::Log(verbose, "Using T1 model");
         SS_T1_Model model{{}, sequence}; //, ls_file.at("lineshape").get<QI::InterpLineshape>()};
         process(model, "SS_", {});
     }

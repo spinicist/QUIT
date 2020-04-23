@@ -1,12 +1,12 @@
 // #define QI_DEBUG_BUILD 1
 #include "Macro.h"
-#include "mt_model.h"
 #include "rufis_ss.hpp"
+#include "ss_mt.h"
 
 using AugMat = Eigen::Matrix<double, 5, 5>; // Short for Augmented Matrix
 using AugVec = Eigen::Vector<double, 5>;
 
-auto MTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(double) {
+auto SS_MT_Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(double) {
     using T = double;
 
     T const &M0_f = v[0];
@@ -15,10 +15,11 @@ auto MTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRA
     T const &R1_b = R1_f;
     T const &R2_f = 1. / v[3];
     T const &T2_b = v[4];
-    T const &k    = 5; // v[5];
+    T const &k    = v[5];
     T const &k_bf = k * M0_f / (M0_f + M0_b);
     T const &k_fb = k * M0_b / (M0_f + M0_b);
-    T const &B1   = v[6];
+    T const &f0   = v[6];
+    T const &B1p  = v[7];
 
     AugMat R;
     R << -R2_f, 0, 0, 0, 0,          //
@@ -39,71 +40,58 @@ auto MTModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRA
     AugMat const RpK = R + K;
 
     // Setup constant matrices
-    AugMat const Rrd          = (RpK * (sequence.TR - sequence.Trf)).exp();
-    AugMat const ramp         = (RpK * sequence.Tramp).exp();
-    AugMat const prep_spoiler = S * (RpK * sequence.Tspoil).exp();
+    AugMat const Rrd  = (RpK * (sequence.TR - sequence.Trf)).exp();
+    AugMat const ramp = (RpK * sequence.Tramp).exp();
+
+    auto RF = [&RpK, &T2_b, &f0, &B1p, this](double const alpha,
+                                             double const tau,
+                                             double const df,
+                                             double const p1,
+                                             double const p2) {
+        T const B1 = B1p * alpha / (p1 * tau);
+        T const dw = 2. * M_PI * (f0 + df);
+
+        T const G = this->lineshape(f0 + df, T2_b);
+        T const W = M_PI * B1p * B1p * G * (p2 / (p1 * p1)) * (alpha * alpha) / (tau * tau);
+
+        AugMat rf;
+        rf << 0, dw, 0, 0, 0, //
+            -dw, 0, B1, 0, 0, //
+            0, -B1, 0, 0, 0,  //
+            0, 0, 0, -W, 0,   //
+            0, 0, 0, 0, 0;
+        QI_DBMAT(rf);
+        AugMat const Arf = ((rf + RpK) * tau).exp();
+        QI_DBMAT(Arf);
+        return Arf;
+    };
 
     Eigen::ArrayXd sig(sequence.size());
-    for (long is = 0; is < sequence.RUFIS_FA.rows(); is++) {
-        double const rf1_B1x = B1 * sequence.RUFIS_FA[is] / sequence.Trf;
-        double const rf1_W   = M_PI * 1.4e-5 * rf1_B1x * rf1_B1x;
-        AugMat       rf1;
-        rf1 << 0, 0, 0, 0, 0,     //
-            0, 0, rf1_B1x, 0, 0,  //
-            0, -rf1_B1x, 0, 0, 0, //
-            0, 0, 0, -rf1_W, 0,   //
-            0, 0, 0, 0, 0;
+    for (long is = 0; is < sequence.size(); is++) {
+        AugMat const rfp     = RF(sequence.prep_FA[is],
+                              sequence.prep_Trf,
+                              sequence.prep_df[is],
+                              sequence.prep_p1,
+                              sequence.prep_p2);
+        AugMat const rf1     = RF(sequence.FA[is], sequence.Trf, 0., 1., 1.);
+        AugMat       TR_mat  = S * Rrd * rf1;
+        AugMat       seg_mat = TR_mat.pow(sequence.spokes_per_seg);
 
-        AugMat const Ard     = ((RpK + rf1) * sequence.Trf).exp();
-        AugMat       TR_mat  = S * Rrd * Ard;
-        AugMat       seg_mat = TR_mat.pow(sequence.SPS);
-
-        auto const & p        = sequence.MT_pulse;
-        AugMat       MT       = AugMat::Identity();
-        double const dt_act   = sequence.MT_pulsewidth / p.B1x.size();
-        double const MT_scale = (sequence.MT_FA[is] / p.FA) * (p.width / sequence.MT_pulsewidth);
-        double const dw       = 2 * M_PI * sequence.MT_offsets[is];
-        for (long im = 0; im < p.B1x.size(); im++) {
-            double const gamma  = 267.52219; // radians per second per uT
-            double const MT_B1x = gamma * B1 * p.B1x[im] * MT_scale;
-            double const G      = (sequence.MT_offsets[is] < 1000.) ?
-                                 1.4e-5 :
-                                 lineshape(sequence.MT_offsets[is], T2_b);
-            double const MT_W = M_PI * G * MT_B1x * MT_B1x;
-            AugMat       MT_rf;
-            MT_rf << 0, dw, 0, 0, 0,  //
-                -dw, 0, MT_B1x, 0, 0, //
-                0, -MT_B1x, 0, 0, 0,  //
-                0, 0, 0, -MT_W, 0,    //
-                0, 0, 0, 0, 0;
-            AugMat const MT_step = ((RpK + MT_rf) * dt_act).exp();
-            MT                   = MT_step * MT;
-        }
-        QI_DB(dt_act)
-        QI_DB(MT_scale)
-        QI_DB(sequence.MT_FA[is])
-        QI_DB(p.FA)
-        QI_DB(p.width)
-        QI_DB(sequence.MT_pulsewidth)
-        QI_DB(sequence.MT_FA[is])
-        QI_DB(sequence.MT_offsets[is])
-        QI_DBMAT(MT)
         // Calculate the steady-state just before the segment readout
         AugMat X    = AugMat::Identity();
-        X           = ramp * prep_spoiler * MT * ramp * seg_mat * X;
+        X           = ramp * S * rfp * ramp * seg_mat * X;
         AugVec m_ss = SolveSteadyState(X);
 
-        auto       m_gm   = GeometricAvg(TR_mat, seg_mat, m_ss, sequence.SPS);
-        auto const signal = m_gm[2] * sin(B1 * sequence.RUFIS_FA[is]);
-        sig[is]           = signal;
+        auto m_gm = GeometricAvg(TR_mat, seg_mat, m_ss, sequence.spokes_per_seg);
+        sig[is]   = m_gm[2] * sin(B1p * sequence.FA[is]);
     }
     QI_DBVEC(sig)
     return sig;
 }
 
-void MTModel::derived(const VaryingArray &varying,
-                      const FixedArray & /* Unused */,
-                      DerivedArray &derived) const {
+void SS_MT_Model::derived(const VaryingArray &varying,
+                          const FixedArray & /* Unused */,
+                          DerivedArray &derived) const {
     const auto &M0_f = varying[0];
     const auto &M0_b = varying[1];
     derived[0]       = 100.0 * M0_b / (M0_f + M0_b);

@@ -160,6 +160,9 @@ class MUPAMTSim(QI.SimCommand):
 
 class SteadyStateInputSpec(QI.FitInputSpec):
     fitT2 = traits.Bool(desc='Fit T2 model', argstr='--T2')
+    fitMT = traits.Bool(desc='Fit MT model', argstr='--MT')
+    lineshape = traits.File(
+        exists=True, desc='Lineshape file', argstr='--lineshape=%s')
 
 
 class SteadyStateOutputSpec(DynamicTraitedSpec):
@@ -178,7 +181,10 @@ class SteadyState(QI.FitCommand):
     output_spec = SteadyStateOutputSpec
 
     def __init__(self, **kwargs):
-        if 'fitT2' in kwargs and kwargs['fitT2']:
+        if 'fitMT' in kwargs and kwargs['fitMT']:
+            self._param_files = ['M0_f', 'M0_b',
+                                 'T1_f', 'T2_f', 'T2_b', 'k', 'f0', 'B1']
+        elif 'fitT2' in kwargs and kwargs['fitT2']:
             self._param_files = ['M0', 'T1', 'T2', 'f0', 'B1']
         else:
             self._param_files = ['M0', 'T1', 'B1']
@@ -187,6 +193,9 @@ class SteadyState(QI.FitCommand):
 
 class SteadyStateSimInputSpec(QI.SimInputSpec):
     fitT2 = traits.Bool(desc='Fit T2 model', argstr='--T2')
+    fitMT = traits.Bool(desc='Fit MT model', argstr='--MT')
+    lineshape = traits.File(
+        exists=True, desc='Lineshape file', argstr='--lineshape=%s')
 
 
 class SteadyStateSim(QI.SimCommand):
@@ -200,7 +209,10 @@ class SteadyStateSim(QI.SimCommand):
     output_spec = QI.SimOutputSpec
 
     def __init__(self, **kwargs):
-        if 'fitT2' in kwargs and kwargs['fitT2']:
+        if 'fitMT' in kwargs and kwargs['fitMT']:
+            self._param_files = ['M0_f', 'M0_b',
+                                 'T1_f', 'T2_f', 'T2_b', 'k', 'f0', 'B1']
+        elif 'fitT2' in kwargs and kwargs['fitT2']:
             self._param_files = ['M0', 'T1', 'T2', 'f0', 'B1']
         else:
             self._param_files = ['M0', 'T1', 'B1']

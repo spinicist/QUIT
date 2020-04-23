@@ -86,6 +86,8 @@ class SimInputBaseSpec(DynamicTraitedSpec):
               ' is ignored'),
         nohash=True)
 
+    verbose = traits.Bool(desc='Print more information', argstr='--verbose')
+    environ = {'QUIT_EXT': 'NIFTI_GZ'}
     json = traits.File(exists=True, desc='JSON Input file', argstr='--json=%s')
     noise = traits.Float(desc='Noise level to add to simulation',
                          argstr='--simulate=%f', default_value=0.0, usedefault=True)

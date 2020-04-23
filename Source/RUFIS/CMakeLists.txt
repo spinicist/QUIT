@@ -9,6 +9,7 @@ if( ${BUILD_RUFIS} )
             ${CMAKE_CURRENT_SOURCE_DIR}/ss_main.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/ss_model.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/ss_T2.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/ss_mt.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/mupa_main.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/mupa_model_b1.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/mupa_model_mt.cpp
