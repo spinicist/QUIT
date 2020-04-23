@@ -61,15 +61,16 @@ int hdr_main(int argc, char **argv) {
         imageIO->SetFileName(std::string(fname));
         imageIO->ReadImageInformation();
         size_t dims = imageIO->GetNumberOfDimensions();
-        QI::Log(verbose, "File: {}", fname);
+        if (print_all || verbose)
+            fmt::print("File: {}\n", fname);
         if (print_all || verbose)
             fmt::print("Dimension:  ");
         if (print_all || print_dims)
-            fmt::print("{}", dims);
+            fmt::print("{}\n", dims);
         if (print_all || verbose)
             fmt::print("Voxel Type: ");
         if (print_all || print_type) {
-            fmt::print("{} {}",
+            fmt::print("{} {}\n",
                        imageIO->GetPixelTypeAsString(imageIO->GetPixelType()),
                        imageIO->GetComponentTypeAsString(imageIO->GetComponentType()));
         }
