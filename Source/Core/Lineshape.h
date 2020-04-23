@@ -30,7 +30,7 @@ template <typename T> QI_ARRAY(T) Gaussian(const Eigen::ArrayXd &f0, const T T2b
 }
 
 template <typename T> QI_ARRAY(T) Lorentzian(const Eigen::ArrayXd &f0, const T T2b) {
-    return (T2b / M_PI) / (1.0 + pow(2.0 * M_PI * f0 * T2b, 2.0));
+    return T2b / (1.0 + pow(2.0 * M_PI * f0 * T2b, 2.0));
 }
 
 template <typename T> struct SLFunctor {
