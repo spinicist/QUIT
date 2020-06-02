@@ -64,7 +64,7 @@ struct DESPOT1LLS : DESPOT1Fit {
         X.col(0) = data / flip.tan();
         X.col(1).setOnes();
         Eigen::Vector2d b = (X.transpose() * X).partialPivLu().solve(X.transpose() * Y);
-        outputs << QI::Clamp(b[1] / (1. - b[0]), model.bounds_lo[0], model.bounds_hi[0]),
+        outputs << QI::Clamp(b[1] / (1. - b[0]), 0., std::numeric_limits<double>::max()),
             QI::Clamp(-model.sequence.TR / log(b[0]), model.bounds_lo[1], model.bounds_hi[1]);
         const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed);
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
@@ -107,7 +107,7 @@ struct DESPOT1WLLS : DESPOT1Fit {
                 out = newOut;
         }
         // std::cout << "PD " << out[0] << " T1 " << out[1] << std::endl;
-        outputs << QI::Clamp(out[0], model.bounds_lo[0], model.bounds_hi[0]),
+        outputs << QI::Clamp(out[0], 0., std::numeric_limits<double>::max()),
             QI::Clamp(out[1], model.bounds_lo[1], model.bounds_hi[1]);
         const Eigen::ArrayXd temp_residuals = data - model.signal(outputs, fixed.cast<double>());
         if (residuals.size() > 0) { // Residuals will only be allocated if the user asked for them
@@ -195,8 +195,14 @@ int despot1_main(int argc, char **argv) {
 
     DESPOT1 model{{}, spgrSequence, its.Get()};
     if (simulate) {
-        QI::SimulateModel<DESPOT1, false>(
-            input, model, {B1.Get()}, {spgr_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
+        QI::SimulateModel<DESPOT1, false>(input,
+                                          model,
+                                          {B1.Get()},
+                                          {spgr_path.Get()},
+                                          mask.Get(),
+                                          verbose,
+                                          simulate.Get(),
+                                          subregion.Get());
     } else {
         DESPOT1Fit *d1 = nullptr;
         switch (algorithm.Get()) {

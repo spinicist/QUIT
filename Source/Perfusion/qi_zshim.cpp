@@ -59,6 +59,7 @@ int zshim_main(int argc, char **argv) {
 
     double noise_mean = 0., noise_sqr_mean = 0., noise_sigma = 0.;
     if (noise) {
+        // As per https://linkinghub.elsevier.com/retrieve/pii/0730725X93902253
         QI::Log(verbose, "Calculating noise statistics");
         auto mt           = itk::MultiThreaderBase::New();
         auto noise_region = QI::RegionFromString<QI::VectorVolumeF::RegionType>(noise.Get());
