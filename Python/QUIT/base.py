@@ -209,21 +209,23 @@ class FitCommand(BaseCommand):
         return outputs
 
     def _list_outputs(self):
-        outputs = {}  # self.output_spec().get()
-        for p in self._param_files:
-            pname = '{}_file'.format(p)
-            fname = '{}_{}.nii.gz'.format(self._prefix, p)
-            outputs[pname] = fname
+        outputs = {}
+        if hasattr(self, '_param_files'):
+            for p in self._param_files:
+                pname = '{}_file'.format(p)
+                fname = '{}_{}.nii.gz'.format(self._prefix, p)
+                outputs[pname] = fname
         return self._add_prefixes(outputs)
 
     def __init__(self, sequence={}, **kwargs):
         self._json = deepcopy(sequence)
-        for p in self._param_files:
-            pname = '{}_file'.format(p)
-            fname = '{}_{}.nii.gz'.format(self._prefix, p)
-            desc = 'Path to {}'.format(p)
-            setattr(self.output_spec, pname, File(
-                fname, desc=desc, usedefault=True))
+        if hasattr(self, '_param_files'):
+            for p in self._param_files:
+                pname = '{}_file'.format(p)
+                fname = '{}_{}.nii.gz'.format(self._prefix, p)
+                desc = 'Path to {}'.format(p)
+                setattr(self.output_spec, pname, File(
+                    fname, desc=desc, usedefault=True))
         super().__init__(**kwargs)
 
 

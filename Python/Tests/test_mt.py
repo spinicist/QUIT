@@ -48,7 +48,7 @@ class MT(unittest.TestCase):
                          noise=noise, verbose=vb).run()
         diff_A = Diff(in_file='LTZ_DS_A.nii.gz', baseline='A.nii.gz',
                       noise=noise, verbose=vb).run()
-        self.assertLessEqual(diff_f0.outputs.out_diff, 60)
+        self.assertLessEqual(diff_f0.outputs.out_diff, 70)
         self.assertLessEqual(diff_fwhm.outputs.out_diff, 20)
         self.assertLessEqual(diff_A.outputs.out_diff, 25)
 
@@ -121,14 +121,15 @@ class MT(unittest.TestCase):
         self.assertLessEqual(diff_MTA.outputs.out_diff, 300)
 
     def test_qMT(self):
-        qmt = {'MTSat': {'sat_f0': [1000, 3000, 5000, 7000, 9000, 1000, 3000, 5000, 7000, 9000],
-                         'sat_angle': [360, 360, 360, 360, 360, 720, 720, 720, 720, 720],
-                         'bw': 100,
-                         'FA': 5,
-                         'TR': 0.03,
-                         'Trf': 0.015,
-                         'pulse': {'p1': 0.416, 'p2': 0.295, 'bandwidth': 100}},
-               }
+        qmt = {'MTSat': {
+            'TR': 0.032,
+            'Trf': 0.020,
+            'FA': 5,
+            'sat_f0': [1000, 1000, 2236, 2236, 5000, 5000, 11180, 11180, 250000, 250000],
+            'sat_angle': [750, 360, 750, 360, 750, 360, 750, 360, 750, 360],
+            'pulse': {'name': 'Gauss', 'p1': 0.416, 'p2': 0.295, 'bandwidth': 200}
+        }
+        }
         qmt_file = 'qmt_sim.nii.gz'
         t1app = 'qmt_t1app.nii.gz'
         img_sz = [32, 32, 1]
@@ -139,28 +140,34 @@ class MT(unittest.TestCase):
         Lineshape(out_file=lineshape_file, lineshape='SuperLorentzian',
                   frq_start=500, frq_space=500, frq_count=150).run()
 
-        NewImage(out_file='gM0_a.nii.gz', verbose=vb, img_size=img_sz,
+        NewImage(out_file='M0_f.nii.gz', verbose=vb, img_size=img_sz,
                  fill=1.0).run()
-        NewImage(out_file='T1_a_over_T2_a.nii.gz', verbose=vb, img_size=img_sz,
-                 grad_dim=0, grad_vals=(5, 15)).run()
-        NewImage(out_file='f_over_R_af.nii.gz', verbose=vb, img_size=img_sz,
+        NewImage(out_file='F_over_R1_f.nii.gz', verbose=vb, img_size=img_sz,
                  fill=0.1).run()
         NewImage(out_file='T2_b.nii.gz', verbose=vb, img_size=img_sz,
                  fill=12e-6).run()
-        NewImage(out_file='RM0a.nii.gz', verbose=vb, img_size=img_sz,
-                 fill=1.0).run()
+        NewImage(out_file='T1_f_over_T2_f.nii.gz', verbose=vb, img_size=img_sz,
+                 grad_dim=0, grad_vals=(5, 15)).run()
+        NewImage(out_file='k.nii.gz', verbose=vb, img_size=img_sz,
+                 fill=4.0).run()
         NewImage(out_file=t1app, verbose=vb, img_size=img_sz,
                  fill=1.0).run()
 
         qMTSim(sequence=qmt, in_file=qmt_file, t1_map=t1app, lineshape=lineshape_file,
                noise=noise, verbose=vb,
-               RM0a='RM0a.nii.gz', f_over_R_af='f_over_R_af.nii.gz', T2_b='T2_b.nii.gz', T1_a_over_T2_a='T1_a_over_T2_a.nii.gz', gM0_a='gM0_a.nii.gz').run()
+               M0_f='M0_f.nii.gz', F_over_R1_f='F_over_R1_f.nii.gz', T2_b='T2_b.nii.gz', T1_f_over_T2_f='T1_f_over_T2_f.nii.gz', k='k.nii.gz').run()
         qMT(sequence=qmt, in_file=qmt_file, t1_map=t1app,
             lineshape=lineshape_file, verbose=vb).run()
 
-        diff_PD = Diff(in_file='QMT_PD.nii.gz', baseline='gM0_a.nii.gz',
+        diff_PD = Diff(in_file='QMT_M0_f.nii.gz', baseline='M0_f.nii.gz',
                        noise=noise, verbose=vb).run()
-        self.assertLessEqual(diff_PD.outputs.out_diff, 32)
+        diff_F = Diff(in_file='QMT_F_over_R1_f.nii.gz', baseline='F_over_R1_f.nii.gz',
+                      noise=noise, verbose=vb).run()
+        diff_k = Diff(in_file='QMT_k.nii.gz', baseline='k.nii.gz',
+                      noise=noise, verbose=vb).run()
+        self.assertLessEqual(diff_PD.outputs.out_diff, 10)
+        self.assertLessEqual(diff_F.outputs.out_diff, 30)
+        self.assertLessEqual(diff_k.outputs.out_diff, 35)
 
     def test_ZSpec(self):
         NewImage(out_file='zspec_linear.nii.gz', verbose=vb, img_size=[8, 8, 8, 4],

@@ -138,15 +138,15 @@ class qMTInputSpec(QI.FitInputSpec):
 
 
 class qMTOutputSpec(TraitedSpec):
-    pd_map = File('QMT_PD.nii.gz', desc="Path to PD map", usedefault=True)
+    pd_map = File('QMT_M0_f.nii.gz', desc="Path to M0 map", usedefault=True)
     T1_f_map = File('QMT_T1_f.nii.gz',
                     desc="Path to T1 of free pool", usedefault=True)
     T2_f_map = File('QMT_T2_f.nii.gz',
                     desc="Path to T2 of free pool", usedefault=True)
     T2_b_map = File('QMT_T2_b.nii.gz',
                     desc="Path to T2 of bound pool", usedefault=True)
-    k_bf_map = File('QMT_k_bf.nii.gz',
-                    desc="Path to exchange rate from bound to free pool", usedefault=True)
+    k_bf_map = File('QMT_k.nii.gz',
+                    desc="Path to exchange rate", usedefault=True)
     f_b_map = File('QMT_f_b.nii.gz',
                    desc="Path to bound pool fraction", usedefault=True)
     rmse_map = File('QMT_rmse.nii.gz',
@@ -177,7 +177,7 @@ class qMTSimInputSpec(QI.SimInputSpec):
 
 class qMTSim(QI.SimCommand):
     _cmd = 'qi qmt'
-    _param_files = ['RM0a', 'f_over_R_af', 'T2_b', 'T1_a_over_T2_a', 'gM0_a']
+    _param_files = ['M0_f', 'F_over_R1_f', 'T2_b', 'T1_f_over_T2_f', 'k']
     input_spec = qMTSimInputSpec
     output_spec = QI.SimOutputSpec
 
