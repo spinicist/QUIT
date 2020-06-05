@@ -37,4 +37,4 @@ void to_json(json &j, const MultiEchoSequence &s) {
     j = json{{"TR", s.TR}, {"TE", s.TE}};
 }
 
-} // End namespace QI
+} // namespace QI

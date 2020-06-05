@@ -161,11 +161,10 @@ template <int N> void Process() {
     }
 
     QI::Log(verbose,
-            "Fitting check:\nLow:   {}\nHigh:  {}\nStart:  {}\nBandwidth: {}",
+            "Fitting check:\nLow:   {}\nHigh:  {}\nStart:  {}",
             low.transpose(),
             high.transpose(),
-            start.transpose(),
-            fmt::join(use_bandwidth, ", "));
+            start.transpose());
 
     LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
 

@@ -119,7 +119,6 @@ int glm_setup_main(int argc, char **argv) {
                     covar.push_back(c);
                 }
                 covars.at(group - 1).push_back(covar);
-                QI::Log(verbose, "Covariate: {}", fmt::join(covar, ","));
             }
             if (!sort) {
                 tiler->SetInput(out_index, ptr);

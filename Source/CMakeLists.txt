@@ -1,6 +1,15 @@
 add_executable(qi qi_main.cpp)
 
-target_link_libraries(qi ${ITK_LIBRARIES} ${CERES_LIBRARIES} fmtlib)
+target_link_libraries(qi PRIVATE
+    taywee::args
+    nlohmann_json nlohmann_json::nlohmann_json
+    fmt::fmt
+    ITKCommon ITKStatistics ITKTransform ITKSpatialObjects ITKLabelMap
+    ITKIOImageBase ITKIONIFTI
+    ITKTransformFactory ITKIOTransformBase ITKIOTransformInsightLegacy
+    ceres
+    Eigen3::Eigen
+)
 install( TARGETS qi RUNTIME DESTINATION bin )
 
 add_subdirectory( Core )

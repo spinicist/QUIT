@@ -10,12 +10,11 @@
  *
  */
 
-#ifndef QUIT_LOG_H
-#define QUIT_LOG_H
+#pragma once
 
+#include "fmt/chrono.h"
 #include "fmt/color.h"
 #include "fmt/ostream.h"
-#include "fmt/time.h"
 using namespace fmt::literals;
 
 namespace QI {
@@ -56,5 +55,3 @@ template <typename S, typename... Args>
 }
 
 } // End namespace QI
-
-#endif

@@ -1,9 +1,0 @@
-[submodule "External/ITK"]
-	path = External/ITK
-	url = https://github.com/InsightSoftwareConsortium/ITK
-[submodule "External/ceres-solver"]
-	path = External/ceres-solver
-	url = https://ceres-solver.googlesource.com/ceres-solver
-[submodule "External/eigen"]
-	path = External/eigen
-	url = https://github.com/eigenteam/eigen-git-mirror.git
