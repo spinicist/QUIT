@@ -1,0 +1,2 @@
+/Library/Developer/CommandLineTools/usr/bin/ar qc libfmtlib.a  CMakeFiles/fmtlib.dir/External/include/fmt/format.cc.o CMakeFiles/fmtlib.dir/External/include/fmt/posix.cc.o
+/Library/Developer/CommandLineTools/usr/bin/ranlib libfmtlib.a
