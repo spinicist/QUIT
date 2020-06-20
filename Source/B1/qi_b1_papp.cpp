@@ -19,21 +19,16 @@
 #include "itkDivideImageFilter.h"
 #include "itkExtractImageFilter.h"
 
-int b1_papp_main(int argc, char **argv) {
-    args::ArgumentParser parser("Calculates B1- (receive bias) maps. Input file should have two "
-                                "volumes - body coil then head coil\n"
-                                "http://github.com/spinicist/QUIT");
+int b1_papp_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> out_prefix(
+    args::ValueFlag<std::string>  out_prefix(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto inFile    = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
     auto body_coil = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();

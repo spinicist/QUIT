@@ -60,18 +60,14 @@ One_MP2RAGE(const double &M0, const double &T1, const double &B1, const QI::MP2R
     return Me;
 }
 
-int mp2rage_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Calculates T1/B1 maps from MP2/3-RAGE data\nhttp://github.com/spinicist/QUIT");
+int mp2rage_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Path to complex MP-RAGE data");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> json_file(
         parser, "FILE", "Read JSON input from file instead of stdin", {"json"});
@@ -82,7 +78,7 @@ int mp2rage_main(int argc, char **argv) {
         "(https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0099676)",
         {'b', "beta"},
         0.0);
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path), verbose);
 

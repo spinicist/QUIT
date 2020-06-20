@@ -36,7 +36,7 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
     static constexpr int NVpP = 3; // Number of varying parameters per pool - A and FWHM
     using SequenceType        = QI::MTSatSequence;
 
-    SequenceType const &        sequence;
+    SequenceType                sequence;
     std::array<std::string, NV> varying_names;
     VaryingArray                bounds_lo;
     VaryingArray                bounds_hi;
@@ -45,6 +45,7 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
     double                      Zref;
     bool                        additive;
 
+    LorentzModel() {}
     LorentzModel(SequenceType const &               s,
                  std::array<std::string, NV> const &v,
                  VaryingArray const &               lo,
@@ -92,116 +93,110 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
     }
 };
 
-namespace {
-args::ArgumentParser parser("Simple Lorentzian fitting.\nhttp://github.com/spinicist/QUIT");
-
-args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
-args::ValueFlag<int>
-    pools(parser, "POOLS", "Number of Lorentzians to fit, default 1", {'p', "pools"}, 1);
-QI_COMMON_ARGS;
-args::Flag additive(
-    parser, "ADDITIVE", "Use an additive model instead of subtractive", {'a', "add"}, false);
-args::ValueFlag<double>
-    Zref(parser, "Zref", "Reference value for Z-spectra, default 1.0", {'z', "zref"}, 1.0);
-} // namespace
-
-template <int N> void Process() {
-    using LM   = LorentzModel<N>;
-    using LFit = QI::NLLSFitFunction<LM>;
+int lorentzian_main(args::Subparser &parser) {
+    args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
+    args::ValueFlag<int>          pools(
+        parser, "POOLS", "Number of Lorentzians to fit, default 1", {'p', "pools"}, 1);
+    QI_COMMON_ARGS;
+    args::Flag additive(
+        parser, "ADDITIVE", "Use an additive model instead of subtractive", {'a', "add"}, false);
+    args::ValueFlag<double> Zref(
+        parser, "Zref", "Reference value for Z-spectra, default 1.0", {'z', "zref"}, 1.0);
+    parser.Parse();
 
     QI::CheckPos(input_path);
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::Log(verbose, "Reading sequence information");
     auto sequence = input.at("MTSat").get<QI::MTSatSequence>();
 
-    auto const &pools_json = input.at("pools");
-    if (pools_json.size() != N) {
-        QI::Fail("Incorrect number of pools in JSON ({}, should be {})", pools_json.size(), N);
-    }
+    auto process = [&]<int N>() {
+        using LM   = LorentzModel<N>;
+        using LFit = QI::NLLSFitFunction<LM>;
 
-    std::array<std::string, LM::NV> varying_names;
-    typename LM::VaryingArray       low, high, start;
-    std::array<bool, N>             use_bandwidth;
-    for (size_t i = 0; i < N; i++) {
-        auto const &pool = pools_json[i];
-        auto const &name = pool["name"].get<std::string>();
-
-        varying_names[LM::NVpP * i + 0] = name + "_f0"s;
-        varying_names[LM::NVpP * i + 1] = name + "_fwhm"s;
-        varying_names[LM::NVpP * i + 2] = name + "_A"s;
-
-        auto const &df_json   = pool["df0"];
-        auto const &fwhm_json = pool["fwhm"];
-        auto const &A_json    = pool["A"];
-        if (df_json.size() != 3) {
-            QI::Fail("Must specify start, low, high for df0 in {}", name);
-        }
-        if (fwhm_json.size() != 3) {
-            QI::Fail("Must specify start, low, high for FWHM in {}", name);
-        }
-        if (A_json.size() != 3) {
-            QI::Fail("Must specify start, low, high for A in {}", name);
+        auto const &pools_json = input.at("pools");
+        if (pools_json.size() != N) {
+            QI::Fail("Incorrect number of pools in JSON ({}, should be {})", pools_json.size(), N);
         }
 
-        start[LM::NVpP * i + 0] = df_json[0].get<double>();
-        start[LM::NVpP * i + 1] = fwhm_json[0].get<double>();
-        start[LM::NVpP * i + 2] = A_json[0].get<double>();
-        low[LM::NVpP * i + 0]   = df_json[1].get<double>();
-        low[LM::NVpP * i + 1]   = fwhm_json[1].get<double>();
-        low[LM::NVpP * i + 2]   = A_json[1].get<double>();
-        high[LM::NVpP * i + 0]  = df_json[2].get<double>();
-        high[LM::NVpP * i + 1]  = fwhm_json[2].get<double>();
-        high[LM::NVpP * i + 2]  = A_json[2].get<double>();
+        std::array<std::string, LM::NV> varying_names;
+        typename LM::VaryingArray       low, high, start;
+        std::array<bool, N>             use_bandwidth;
+        for (size_t i = 0; i < N; i++) {
+            auto const &pool = pools_json[i];
+            auto const &name = pool["name"].get<std::string>();
 
-        if (pool.find("use_bandwidth") != pool.end()) {
-            use_bandwidth[i] = pool.at("use_bandwidth").get<bool>();
+            varying_names[LM::NVpP * i + 0] = name + "_f0"s;
+            varying_names[LM::NVpP * i + 1] = name + "_fwhm"s;
+            varying_names[LM::NVpP * i + 2] = name + "_A"s;
+
+            auto const &df_json   = pool["df0"];
+            auto const &fwhm_json = pool["fwhm"];
+            auto const &A_json    = pool["A"];
+            if (df_json.size() != 3) {
+                QI::Fail("Must specify start, low, high for df0 in {}", name);
+            }
+            if (fwhm_json.size() != 3) {
+                QI::Fail("Must specify start, low, high for FWHM in {}", name);
+            }
+            if (A_json.size() != 3) {
+                QI::Fail("Must specify start, low, high for A in {}", name);
+            }
+
+            start[LM::NVpP * i + 0] = df_json[0].get<double>();
+            start[LM::NVpP * i + 1] = fwhm_json[0].get<double>();
+            start[LM::NVpP * i + 2] = A_json[0].get<double>();
+            low[LM::NVpP * i + 0]   = df_json[1].get<double>();
+            low[LM::NVpP * i + 1]   = fwhm_json[1].get<double>();
+            low[LM::NVpP * i + 2]   = A_json[1].get<double>();
+            high[LM::NVpP * i + 0]  = df_json[2].get<double>();
+            high[LM::NVpP * i + 1]  = fwhm_json[2].get<double>();
+            high[LM::NVpP * i + 2]  = A_json[2].get<double>();
+
+            if (pool.find("use_bandwidth") != pool.end()) {
+                use_bandwidth[i] = pool.at("use_bandwidth").get<bool>();
+            } else {
+                use_bandwidth[i] = false;
+            }
+        }
+
+        QI::Log(verbose,
+                "Fitting check:\nLow:   {}\nHigh:  {}\nStart:  {}",
+                low.transpose(),
+                high.transpose(),
+                start.transpose());
+
+        LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
+
+        if (simulate) {
+            QI::SimulateModel<LM, false>(input,
+                                         model,
+                                         {},
+                                         {input_path.Get()},
+                                         mask.Get(),
+                                         verbose,
+                                         simulate.Get(),
+                                         subregion.Get());
         } else {
-            use_bandwidth[i] = false;
+            LFit fit{model};
+            auto fit_filter =
+                QI::ModelFitFilter<LFit>::New(&fit, verbose, covar, resids, subregion.Get());
+            fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
+            fit_filter->Update();
+            fit_filter->WriteOutputs(prefix.Get() + "LTZ_");
+            QI::Log(verbose, "Finished.");
         }
-    }
+    };
 
-    QI::Log(verbose,
-            "Fitting check:\nLow:   {}\nHigh:  {}\nStart:  {}",
-            low.transpose(),
-            high.transpose(),
-            start.transpose());
-
-    LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
-
-    if (simulate) {
-        QI::SimulateModel<LM, false>(input,
-                                     model,
-                                     {},
-                                     {input_path.Get()},
-                                     mask.Get(),
-                                     verbose,
-                                     simulate.Get(),
-                                     subregion.Get());
-    } else {
-        LFit fit{model};
-        auto fit_filter =
-            QI::ModelFitFilter<LFit>::New(&fit, verbose, covar, resids, subregion.Get());
-        fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
-        fit_filter->Update();
-        fit_filter->WriteOutputs(prefix.Get() + "LTZ_");
-        QI::Log(verbose, "Finished.");
-    }
-}
-
-int lorentzian_main(int argc, char **argv) {
-    Eigen::initParallel();
-
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
     switch (pools.Get()) {
-    case 1:
-        Process<1>();
-        break;
-    case 2:
-        Process<2>();
-        break;
-    case 3:
-        Process<3>();
-        break;
+    case 1: {
+        process.operator()<1>();
+    } break;
+    case 2: {
+        process.operator()<2>();
+    } break;
+    case 3: {
+        process.operator()<3>();
+    } break;
     default:
         QI::Fail("Desired number of pools ({}) has not been implemented", pools.Get());
     }

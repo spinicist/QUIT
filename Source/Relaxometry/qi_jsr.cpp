@@ -268,20 +268,16 @@ struct JSRFit {
 /*
  * Main
  */
-int jsr_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser          parser("Calculates T1/T2 from simultaneous fit to SPGR/SSFP "
-                                "data.\nhttp://github.com/spinicist/QUIT");
+int jsr_main(args::Subparser &parser) {
     args::Positional<std::string> spgr_path(parser, "SPGR", "Input SPGR file");
     args::Positional<std::string> ssfp_path(parser, "SSFP", "Input SSFP file");
 
     QI_COMMON_ARGS;
-
     args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
     args::ValueFlag<int>         npsi(
         parser, "N PSI", "Number of starts for psi/off-resonance, default 2", {'p', "npsi"}, 2);
 
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::CheckPos(spgr_path);
     QI::CheckPos(ssfp_path);

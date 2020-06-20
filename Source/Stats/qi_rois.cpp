@@ -20,64 +20,69 @@
 
 #include "itkLabelStatisticsImageFilter.h"
 typedef itk::LabelStatisticsImageFilter<QI::VolumeF, QI::VolumeI> TStatsFilter;
-typedef TStatsFilter::ValidLabelValuesContainerType               TLabels;
-
-namespace {
-args::ArgumentParser              parser("Calculates average values or volumes of ROI labels.\n"
-                            "If the --volumes flag is specified, only give the label images.\n"
-                            "If --volumes is not specified, give label and value image pairs (all "
-                            "labels first, then all values).\n"
-                            "Output goes to stdout\n"
-                            "http://github.com/spinicist/QUIT");
-args::PositionalList<std::string> in_paths(parser, "INPUT", "Input file paths.");
-args::HelpFlag                    help(parser, "HELP", "Show this help menu", {'h', "help"});
-args::Flag                        verbose(parser,
-                   "VERBOSE",
-                   "Print more information (will mess up output, for test runs only)",
-                   {'v', "verbose"});
-args::Flag                        volumes(parser,
-                   "VOLUMES",
-                   "Output ROI volumes, not average values (does not require value images)",
-                   {'V', "volumes"});
-args::ValueFlag<std::string>      label_list_path(
-    parser,
-    "LABELS",
-    "Specify labels and names to use in text file 'label number, label name' one per line",
-    {'l', "labels"});
-args::Flag print_names(parser,
-                       "PRINT_NAMES",
-                       "Print label names in first column/row (LABEL_NUMBERS must be specified)",
-                       {'n', "print_names"});
-args::Flag transpose(parser,
-                     "TRANSPOSE",
-                     "Transpose output table (values go in rows instead of columns",
-                     {'t', "transpose"});
-args::Flag ignore_zero(parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
-args::Flag sigma(parser, "SIGMA", "Print ±std along with mean", {'s', "sigma"});
-args::ValueFlag<int>
-                                 precision(parser, "PRECISION", "Number of decimal places (default 6)", {'p', "precision"}, 6);
-args::ValueFlag<std::string>     delim(parser,
-                                   "DELIMITER",
-                                   "Specify delimiter to use between entries (default ,)",
-                                   {'d', "delim"},
-                                   ",");
-args::ValueFlagList<std::string> header_paths(parser,
-                                              "HEADER",
-                                              "Add a header (can be specified multiple times)",
-                                              {'H', "header"});
-args::ValueFlagList<std::string>
-    header_names(parser,
-                 "HEADER NAME",
-                 "Header name (must be specified in same order as paths)",
-                 {"header_name"});
-args::ValueFlagList<double>
-    scales(parser, "SCALE", "Divide ROI values by scale (must be same order as paths)", {"scale"});
-} // namespace
+typedef TStatsFilter::ValidLabelValuesContainerType               Tlabels;
 
 /*
- * Helper function to work out the label list
+ * MAIN
  */
-void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names) {
+int rois_main(args::Subparser &parser) {
+    args::PositionalList<std::string> in_paths(parser, "INPUT", "Input file paths.");
+
+    args::Flag volumes(parser,
+                       "VOLUMES",
+                       "Output ROI volumes, not average values (does not require value images)",
+                       {'V', "volumes"});
+
+    args::ValueFlag<std::string> label_list_path(parser,
+                                                 "labels",
+                                                 "Specify labels and names to use in text "
+                                                 "file 'label number, label name' one per line",
+                                                 {'l', "labels"});
+    args::Flag                   print_names(parser,
+                           "PRINT_NAMES",
+                           "Print label names in first column/row (labels must be specified)",
+                           {'n', "print_names"});
+    args::Flag                   transpose(parser,
+                         "TRANSPOSE",
+                         "Transpose output table (values go in rows instead of columns",
+                         {'t', "transpose"});
+    args::Flag                   ignore_zero(
+        parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
+    args::Flag           sigma(parser, "SIGMA", "Print ±std along with mean", {'s', "sigma"});
+    args::ValueFlag<int> precision(
+        parser, "PRECISION", "Number of decimal places (default 6)", {'p', "precision"}, 6);
+    args::ValueFlag<std::string>     delim(parser,
+                                       "DELIMITER",
+                                       "Specify delimiter to use between entries (default ,)",
+                                       {'d', "delim"},
+                                       ",");
+    args::ValueFlagList<std::string> header_paths(
+        parser, "HEADER", "Add a header (can be specified multiple times)", {'H', "header"});
+    args::ValueFlagList<std::string> header_names(
+        parser,
+        "HEADER NAME",
+        "Header name (must be specified in same order as paths)",
+        {"header_name"});
+    args::ValueFlagList<double> scales(
+        parser, "SCALE", "Divide ROI values by scale (must be same order as paths)", {"scale"});
+    parser.Parse();
+
+    size_t n_files = QI::CheckList(in_paths).size();
+    if (volumes) {
+        QI::Log(verbose, "There are {} input images, finding ROI volumes", n_files);
+    } else {
+        // For ROI values, we have label and value image pairs
+        if (n_files % 2 != 0) {
+            QI::Fail("Require an even number of input images when finding ROI values");
+        }
+        n_files = n_files / 2;
+        QI::Log(verbose, "There are {} input image pairs, finding mean ROI values", n_files);
+    }
+
+    //**********************************************************************************************
+    // Setup label number list
+    Tlabels                  labels;
+    std::vector<std::string> label_names;
     if (label_list_path) {
         QI::Log(verbose, "Opening label list file: {}", label_list_path.Get());
         std::ifstream file(label_list_path.Get());
@@ -86,12 +91,12 @@ void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names)
         }
         std::string temp;
         while (std::getline(file, temp, ',')) {
-            label_numbers.push_back(stoi(temp));
+            labels.push_back(stoi(temp));
             std::getline(file, temp);
             temp.erase(std::remove(temp.begin(), temp.end(), '\r'),
                        temp.end()); // Deal with rogue ^M characters
             label_names.push_back(temp);
-            QI::Log(verbose, "Read label: {}, name: {}", label_numbers.back(), label_names.back());
+            QI::Log(verbose, "Read label: {}, name: {}", labels.back(), label_names.back());
         }
     } else {
         TStatsFilter::Pointer label_filter = TStatsFilter::New();
@@ -103,26 +108,22 @@ void GetLabelList(TLabels &label_numbers, std::vector<std::string> &label_names)
         // Dummy value because ITK complains input primary is not set
         label_filter->SetInput(QI::ReadImage<QI::VolumeF>(QI::CheckList(in_paths).at(0), verbose));
         label_filter->Update();
-        label_numbers = label_filter->GetValidLabelValues();
-        std::sort(label_numbers.begin(), label_numbers.end());
+        labels = label_filter->GetValidLabelValues();
+        std::sort(labels.begin(), labels.end());
         if (verbose) {
             std::cout << "Found the following labels:\n";
-            for (auto &l : label_numbers)
+            for (auto &l : labels)
                 std::cout << l << " ";
             std::cout << std::endl;
         }
     }
     if (ignore_zero) {
         QI::Log(verbose, "Removing zero from label list.");
-        label_numbers.erase(std::remove(label_numbers.begin(), label_numbers.end(), 0),
-                            label_numbers.end());
+        labels.erase(std::remove(labels.begin(), labels.end(), 0), labels.end());
     }
-}
 
-/*
- * Helper function to read in all the header lines
- */
-std::vector<std::vector<std::string>> GetHeaders(size_t n_files) {
+    //**********************************************************************************************
+    // Setup headers (if any)
     if (header_names && (header_names.Get().size() != header_paths.Get().size())) {
         QI::Fail("Number of header names must match number of header paths");
     }
@@ -147,25 +148,33 @@ std::vector<std::vector<std::string>> GetHeaders(size_t n_files) {
                 header_path);
         }
     }
-    return headers;
-}
 
-/*
- * Helper function to actually work out all the values
- */
-void GetValues(const int                         n_files,
-               const TLabels &                   labels,
-               const std::vector<double> &       scale_list,
-               std::vector<std::vector<double>> &mean_table,
-               std::vector<std::vector<double>> &sigma_table,
-               std::vector<std::vector<double>> &volume_table) {
+    // Setup scales
+    std::vector<double> scale_list = scales.Get();
+    if (scale_list.size() < n_files) {
+        int old_size = scale_list.size();
+        scale_list.resize(n_files);
+        for (size_t i = old_size; i < n_files; i++) {
+            scale_list.at(i) = 1.0;
+        }
+    }
+    if (verbose) {
+        std::cout << "Scales are: ";
+        for (const auto &s : scale_list)
+            std::cout << s << " ";
+        std::cout << std::endl;
+    }
+
+    //**********************************************************************************************
+    // Now get the values/volumes
+    std::vector<std::vector<double>> mean_table, sigma_table, volume_table;
     mean_table   = std::vector<std::vector<double>>(n_files, std::vector<double>(labels.size()));
     sigma_table  = std::vector<std::vector<double>>(n_files, std::vector<double>(labels.size()));
     volume_table = std::vector<std::vector<double>>(n_files, std::vector<double>(labels.size()));
     TStatsFilter::Pointer label_filter = TStatsFilter::New();
     QI::VolumeI::Pointer  label_img    = ITK_NULLPTR;
     QI::VolumeF::Pointer  value_img    = ITK_NULLPTR;
-    for (int f = 0; f < n_files; f++) {
+    for (size_t f = 0; f < n_files; f++) {
         if (volumes) {
             QI::Log(verbose, "Reading label file: {}", in_paths.Get().at(f));
             label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f), verbose);
@@ -186,53 +195,8 @@ void GetValues(const int                         n_files,
             volume_table.at(f).at(i) = label_filter->GetCount(labels.at(i)) * vox_volume;
         }
     }
-}
 
-/*
- * MAIN
- */
-int rois_main(int argc, char **argv) {
-    QI::ParseArgs(parser, argc, argv, verbose);
-
-    size_t n_files = QI::CheckList(in_paths).size();
-    if (volumes) {
-        QI::Log(verbose, "There are {} input images, finding ROI volumes", n_files);
-    } else {
-        // For ROI values, we have label and value image pairs
-        if (n_files % 2 != 0) {
-            QI::Fail("Require an even number of input images when finding ROI values");
-        }
-        n_files = n_files / 2;
-        QI::Log(verbose, "There are {} input image pairs, finding mean ROI values", n_files);
-    }
-    // Setup label number list
-    TLabels                  labels;
-    std::vector<std::string> label_names;
-    GetLabelList(labels, label_names);
-
-    // Setup headers (if any)
-    auto headers = GetHeaders(n_files);
-
-    // Setup scales
-    std::vector<double> scale_list = scales.Get();
-    if (scale_list.size() < n_files) {
-        int old_size = scale_list.size();
-        scale_list.resize(n_files);
-        for (size_t i = old_size; i < n_files; i++) {
-            scale_list.at(i) = 1.0;
-        }
-    }
-    if (verbose) {
-        std::cout << "Scales are: ";
-        for (const auto &s : scale_list)
-            std::cout << s << " ";
-        std::cout << std::endl;
-    }
-
-    // Now get the values/volumes
-    std::vector<std::vector<double>> mean_table, sigma_table, volume_table;
-    GetValues(n_files, labels, scale_list, mean_table, sigma_table, volume_table);
-
+    //**********************************************************************************************
     QI::Log(verbose, "Writing CSV: ");
     if (precision)
         std::cout << std::fixed << std::setprecision(precision.Get());

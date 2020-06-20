@@ -28,21 +28,14 @@
 /*
  * Main
  */
-int rufis_ss_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Calculates parametric maps from MUPA data "
-                                "data.\nhttp://github.com/spinicist/QUIT");
-
+int rufis_ss_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input MUPA file");
-
     QI_COMMON_ARGS;
-
     args::Flag                   T2(parser, "T2", "Fit T2 model", {"T2"});
     args::Flag                   MT(parser, "MT", "Fit MT model", {"MT"});
     args::ValueFlag<std::string> ls_arg(
         parser, "LINESHAPE", "Path to lineshape file", {"lineshape"});
-
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence parameters");
     json       doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

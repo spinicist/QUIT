@@ -19,21 +19,16 @@
 /*
  * Main
  */
-int gradient_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates the gradient of an image (e.g. fieldmap).\nhttp://github.com/spinicist/QUIT");
+int gradient_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "FILE", "Input file");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::Log(verbose, "Reading data from: {}", QI::CheckPos(input_path));
     auto              image     = QI::ReadImage(QI::CheckPos(input_path), verbose);
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());

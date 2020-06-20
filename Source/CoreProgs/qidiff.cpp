@@ -15,15 +15,7 @@
 #include "itkImageRegionConstIterator.h"
 #include "itkMultiThreaderBase.h"
 
-//******************************************************************************
-// Main
-//******************************************************************************
-int diff_main(int argc, char **argv) {
-    args::ArgumentParser parser("Checks if images are different within a tolerance.\n"
-                                "Intended for use with library tests.\n"
-                                "http://github.com/spinicist/QUIT");
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+int diff_main(args::Subparser &parser) {
     args::ValueFlag<std::string> input_path(
         parser, "INPUT", "Input file for difference", {"input"});
     args::ValueFlag<std::string> baseline_path(
@@ -37,7 +29,7 @@ int diff_main(int argc, char **argv) {
                         "ABSOLUTE",
                         "Use absolute difference, not relative (avoids 0/0 problems)",
                         {'a', "abs"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    parser.Parse();
     auto input    = QI::ReadImage(QI::CheckValue(input_path), verbose);
     auto baseline = QI::ReadImage(QI::CheckValue(baseline_path), verbose);
 

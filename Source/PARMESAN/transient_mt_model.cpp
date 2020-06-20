@@ -1,7 +1,7 @@
 // #define QI_DEBUG_BUILD 1
 #include "Macro.h"
-#include "mupa_model_mt.h"
-#include "rufis_ss.hpp"
+#include "parmesan.hpp"
+#include "transient_mt_model.h"
 
 using AugMat = Eigen::Matrix<double, 5, 5>; // Short for Augmented Matrix
 using AugVec = Eigen::Vector<double, 5>;

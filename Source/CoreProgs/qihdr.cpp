@@ -16,21 +16,9 @@
 #include "itkImageFileReader.h"
 #include "itkMetaDataObject.h"
 
-//******************************************************************************
-// Main
-//******************************************************************************
-int hdr_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Extracts information from image headers.\n"
-        "By default, a summary of the header is printed. If any options are specified,"
-        "only those parts of the header will be printed. Multiple files can be input"
-        "in which case the header info is written for each in order.\n"
-        "http://github.com/spinicist/QUIT");
-
+int hdr_main(args::Subparser &parser) {
     args::PositionalList<std::string> filenames(parser, "FILES", "Input files");
-    args::HelpFlag                    help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag                        verbose(
-        parser, "VERBOSE", "Print description of each output line", {'v', "verbose"});
+
     args::Flag print_direction(
         parser, "DIRECTION", "Print the image direction/orientation", {'d', "direction"});
     args::Flag              print_origin(parser, "ORIGIN", "Print the the origin", {'o', "origin"});
@@ -48,7 +36,7 @@ int hdr_main(int argc, char **argv) {
         "METADATA",
         "Print a header metadata field (can be specified multiple times)",
         {'m', "meta"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    parser.Parse();
     bool print_all = !(print_direction || print_origin || print_spacing || print_size ||
                        print_voxvol || print_type || print_dims || header_fields);
     for (const std::string &fname : QI::CheckList(filenames)) {

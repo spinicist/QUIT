@@ -22,14 +22,10 @@
 /*
  * Main
  */
-int asl_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Calculates CBF from ASL data.\nhttp://github.com/spinicist/QUIT");
+int asl_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "ASL_FILE", "Input ASL file");
 
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>         threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
@@ -68,7 +64,7 @@ int asl_main(int argc, char **argv) {
                                    {'l', "lambda"},
                                    0.9);
 
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Reading sequence parameters");
     json                 doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

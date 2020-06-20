@@ -183,21 +183,12 @@ struct EllipseFit {
     }
 };
 
-int ssfp_ellipse_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates the ellipse parameters G,a,b,f0 & psi0 from sequence data.\nInput must be "
-        "a "
-        "single "
-        "complex image with at least 6 phase increments.\nhttp://github.com/spinicist/QUIT");
-
+int ssfp_ellipse_main(args::Subparser &parser) {
     args::Positional<std::string> sequence_path(parser, "sequence_FILE", "Input sequence file");
-
     QI_COMMON_ARGS;
-    args::Flag            debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::ValueFlag<char> algorithm(
         parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::CheckPos(sequence_path);
     QI::Log(verbose, "Reading sequence information");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -205,8 +196,14 @@ int ssfp_ellipse_main(int argc, char **argv) {
     QI::Log(verbose, "{}", sequence);
     EllipseModel model{{}, sequence};
     if (simulate) {
-        QI::SimulateModel<EllipseModel, false>(
-            input, model, {}, {sequence_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
+        QI::SimulateModel<EllipseModel, false>(input,
+                                               model,
+                                               {},
+                                               {sequence_path.Get()},
+                                               mask.Get(),
+                                               verbose,
+                                               simulate.Get(),
+                                               subregion.Get());
     } else {
         EllipseFit fit{model};
         auto       fit_filter =

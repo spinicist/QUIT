@@ -10,8 +10,7 @@
  *
  */
 
-#ifndef QUIT_UTIL_H
-#define QUIT_UTIL_H
+#pragma once
 
 #include <Eigen/Core>
 #include <functional>
@@ -106,5 +105,3 @@ template <typename TRegion> TRegion RegionFromString(const std::string &a) {
 }
 
 } // namespace QI
-
-#endif // QUIT_UTIL_H

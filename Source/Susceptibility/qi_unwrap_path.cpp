@@ -30,26 +30,18 @@
 /*
  * Main
  */
-int unwrap_path_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser          parser("Path-based phase unwrapping\n"
-                                "See Abdul-Rahman et al. Fast and Robust three-dimensional best "
-                                "path phase unwrapping algorithm\n"
-                                "http://ao.osa.org/abstract.cfm?URI=ao-46-26-6623\n"
-                                "http://github.com/spinicist/QUIT");
+int unwrap_path_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPUT PREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<std::string> maskarg(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
 

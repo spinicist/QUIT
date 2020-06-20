@@ -14,15 +14,7 @@
 #include "Lineshape.h"
 #include "Util.h"
 
-int lineshape_main(int argc, char **argv) {
-    Eigen::initParallel();
-
-    args::ArgumentParser parser(
-        "Calculates different lineshapes then saves them as a splineshape for fast qMT lookup.\n"
-        "http://github.com/spinicist/QUIT");
-
-    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+int lineshape_main(args::Subparser &parser) {
     args::Positional<std::string> out_path(parser, "OUTPUT", "Output lineshape JSON path");
     args::ValueFlag<std::string>  shape_arg(parser,
                                            "LINESHAPE",
@@ -43,8 +35,7 @@ int lineshape_main(int argc, char **argv) {
                                         "Spacing of frequencies (default 1000 Hz)",
                                         {'p', "frq_space"},
                                         1e3);
-
-    QI::ParseArgs(parser, argc, argv, verbose);
+    parser.Parse();
     QI::Log(verbose, "Bound-pool T2: {}", T2b.Get());
     auto frqs =
         Eigen::ArrayXd::LinSpaced(frq_count.Get(),

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Model.h"
-#include "rufis_sequence.h"
+#include "transient_sequence.h"
 
 struct MUPAMTModel : QI::Model<double, double, 5, 0, 1, 1> {
     static int const   NS = 2;

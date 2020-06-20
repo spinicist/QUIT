@@ -1,5 +1,5 @@
 /*
- *  mupa_main.cpp
+ *  transient_main.cpp
  *
  *  Copyright (c) 2019 Tobias Wood.
  *
@@ -21,28 +21,22 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-#include "mupa_model.h"
-#include "mupa_model_b1.h"
-#include "mupa_model_mt.h"
+#include "transient_b1_model.h"
+#include "transient_model.h"
+#include "transient_mt_model.h"
 
 /*
  * Main
  */
-int rufis_mupa_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Calculates parametric maps from MUPA data "
-                                "data.\nhttp://github.com/spinicist/QUIT");
-
+int rufis_transient_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input MUPA file");
-
     QI_COMMON_ARGS;
-
     args::Flag                   mt(parser, "MT", "Use MT model", {"mt"});
     args::ValueFlag<double>      T2_b(parser, "T2_b", "T2 of bound pool", {"T2b"}, 12e-6);
     args::ValueFlag<std::string> ls_arg(
         parser, "LINESHAPE", "Path to lineshape file", {"lineshape"});
 
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::CheckPos(input_path);
 

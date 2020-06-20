@@ -28,20 +28,14 @@
 
 using namespace std::literals;
 
-int pca_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("De-noises using Principal Component Analysis"
-                                "\nhttp://github.com/spinicist/QUIT");
-
+int pca_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input 4D file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPUT", "Change ouput filename (default is input_pca)", {'o', "out"});
     args::ValueFlag<std::string> project(
         parser, "PROJECT", "Save proj_img onto PCs to specified 4D file", {'p', "project"});
@@ -51,7 +45,7 @@ int pca_main(int argc, char **argv) {
         parser, "RETAIN", "Number of PCs to retain, default 3", {'r', "retain"}, 3);
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask (recommended)", {'m', "mask"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto const input  = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     auto const region = input->GetLargestPossibleRegion();

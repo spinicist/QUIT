@@ -33,16 +33,9 @@ An output file must be specified with --out.\n\
 \n\
 Additionally, simple GLM including co-variates can be generated.\n"};
 
-int glm_setup_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "A utility for setting up merged 4D files for use with FSL randomise etc.\n"
-        "The group for each input file must be specified with --groups (one per line)\n"
-        "A value of 0 means ignore this file.\n"
-        "\nhttp://github.com/spinicist/QUIT");
+int glm_setup_main(args::Subparser &parser) {
     args::PositionalList<std::string> file_paths(parser, "INPUTS", "Input files to be merged.");
-    args::HelpFlag                    help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+
     args::Flag sort(
         parser, "SORT", "Sort merged file and GLM in ascending group order", {'s', "sort"});
     args::ValueFlag<std::string> group_path(
@@ -57,7 +50,7 @@ int glm_setup_main(int argc, char **argv) {
         parser, "CONTRASTS", "Generate and save contrasts", {'c', "contrasts"});
     args::ValueFlag<std::string> ftests_path(
         parser, "FTESTS", "Generate and save F-tests", {'f', "ftests"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    parser.Parse();
 
     std::ifstream group_file(QI::CheckValue(group_path));
     QI::Log(verbose, "Reading group file");

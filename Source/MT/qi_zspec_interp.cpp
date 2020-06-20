@@ -24,20 +24,14 @@
 #include "Spline.h"
 #include "Util.h"
 
-int zspec_interp_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Interpolates Z-spectrums using Cubic "
-                                "Splines\nhttp://github.com/spinicist/QUIT");
-
+int zspec_interp_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPUT", "Change ouput filename (default is input_interp)", {'o', "out"});
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
@@ -60,10 +54,9 @@ int zspec_interp_main(int argc, char **argv) {
         "REFERENCE",
         "Divide output by reference and multiply by 100 (output %)",
         {'r', "ref"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
-    auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
-
+    auto       input     = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     json       doc       = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto const in_freqs  = QI::ArrayFromJSON<double>(doc, "input_freqs");
     auto const out_freqs = QI::ArrayFromJSON<double>(doc, "output_freqs");

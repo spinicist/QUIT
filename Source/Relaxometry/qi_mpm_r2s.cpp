@@ -195,18 +195,12 @@ struct MPMFit {
 /*
  * Main
  */
-int mpm_r2s_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates R2* and S0 from PDw, T1w, MTw data.\nhttp://github.com/spinicist/QUIT");
+int mpm_r2s_main(args::Subparser &parser) {
     args::Positional<std::string> pdw_path(parser, "PDw", "Input multi-echo PD-weighted file");
     args::Positional<std::string> t1w_path(parser, "T1w", "Input multi-echo T1-weighted file");
     args::Positional<std::string> mtw_path(parser, "MTw", "Input multi-echo MT-weighted file");
-
     QI_COMMON_ARGS;
-
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
-
+    parser.Parse();
     QI::CheckPos(pdw_path);
     QI::CheckPos(t1w_path);
     QI::CheckPos(mtw_path);

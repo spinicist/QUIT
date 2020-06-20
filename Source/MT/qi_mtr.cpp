@@ -57,17 +57,10 @@ void to_json(json &j, const MTContrast &s) {
 /*
  * Main
  */
-int mtr_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates MTR/ihMTR/MTasym etc. By default calculate MTR assuming input file has two"
-        "volumes, first MTw second Ref\nhttp://github.com/spinicist/QUIT");
+int mtr_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(
         parser, "INPUT", "Input file with different MT contrasts");
-
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>         threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
@@ -79,7 +72,7 @@ int mtr_main(int argc, char **argv) {
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read custom contrasts from JSON file", {"json"});
     args::ValueFlag<std::string> reference(parser, "REF", "External reference image", {"ref", 'r'});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto const input_img = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     QI::VolumeF::Pointer const ref_img =

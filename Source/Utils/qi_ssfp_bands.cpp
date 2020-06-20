@@ -108,8 +108,8 @@ BandFunctor::BandFunctor(const int isz, const int p, const bool rp, const bool r
     m_flips  = isz / m_phases;
 }
 
-itk::VariableLengthVector<std::complex<float>> BandFunctor::
-                                               operator()(const itk::VariableLengthVector<std::complex<float>> &vec) const {
+itk::VariableLengthVector<std::complex<float>>
+BandFunctor::operator()(const itk::VariableLengthVector<std::complex<float>> &vec) const {
     size_t phase_stride = m_flips;
     size_t flip_stride  = 1;
     if (m_phaseFirst)
@@ -356,15 +356,9 @@ class MinEnergyFilter : public ImageToImageFilter<QI::VectorVolumeXF, QI::Vector
 /*
  * Main
  */
-int ssfp_bands_main(int argc, char **argv) {
-    Eigen::initParallel();
-
-    args::ArgumentParser parser("Removes bands from SSFP images.\n"
-                                "http://github.com/spinicist/QUIT");
-
+int ssfp_bands_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input filename");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
+
     args::ValueFlag<std::string> out_arg(
         parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<int>         threads(parser,
@@ -399,7 +393,7 @@ int ssfp_bands_main(int argc, char **argv) {
         "L");
     args::Flag two_pass(
         parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2', "2pass"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::Log(verbose, "Opening input file: {}", QI::CheckPos(input_path));
     auto         inFile = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);

@@ -159,20 +159,15 @@ struct FMNLLS : FMFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int despot2fm_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates a T2 map from SSFP data and a T1 map.\nhttp://github.com/spinicist/QUIT");
-
+int despot2fm_main(args::Subparser &parser) {
     args::Positional<std::string> t1_path(parser, "T1_MAP", "Input T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
-
     QI_COMMON_ARGS;
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<int>         its(
         parser, "ITERS", "Max iterations for NLLS (default 75)", {'i', "its"}, 75);
     args::Flag asym(parser, "ASYM", "Fit +/- off-resonance frequency", {'A', "asym"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::Log(verbose, "Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

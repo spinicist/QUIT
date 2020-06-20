@@ -15,24 +15,17 @@
 #include "itkCompositeTransform.h"
 #include "itkTransformFileReader.h"
 
-int affine_angle_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Calculates the composite rotation angle of the Z-axis by a set of transforms\n"
-        "http://github.com/spinicist/QUIT");
-
+int affine_angle_main(args::Subparser &parser) {
     args::PositionalList<std::string> tfm_paths(parser, "TRANSFORM", "List of transform files");
-
-    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    parser.Parse();
 
     using Tfm      = itk::AffineTransform<double, 3>;
     auto composite = Tfm::New();
     composite->SetIdentity();
 
     for (auto const &tfm_path : tfm_paths.Get()) {
-        bool const inverse = (tfm_path[0] == '^');
-        std::string const path = inverse? tfm_path.substr(1) : tfm_path;
+        bool const        inverse = (tfm_path[0] == '^');
+        std::string const path    = inverse ? tfm_path.substr(1) : tfm_path;
         QI::Info(verbose, "{}Transform file: {}", inverse ? "Inverse " : "", path);
 
         auto reader = itk::TransformFileReader::New();

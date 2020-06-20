@@ -251,7 +251,7 @@ class CoilCombine(QI.BaseCommand):
     """
     Combine multi-coil data
     """
-    _cmd = 'qi coil-combine'
+    _cmd = 'qi coil_combine'
     input_spec = CoilCombineInputSpec
     output_spec = CoilCombineOutputSpec
 

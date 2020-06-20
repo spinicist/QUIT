@@ -39,19 +39,14 @@ template <class TPixel> class AFI {
     }
 };
 
-int afi_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Calculates B1 maps from AFI data. Input file should have two volumes\n"
-        "http://github.com/spinicist/QUIT");
+int afi_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> out_prefix(
+    args::ValueFlag<std::string>  out_prefix(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<double> nom_flip(
         parser, "NOMINAL FLIP", "Specify nominal flip-angle, default 55", {'f', "flip"}, 55.0);
@@ -59,7 +54,7 @@ int afi_main(int argc, char **argv) {
         parser, "TR RATIO", "Specify TR2:TR1 ratio, default 5", {'r', "ratio"}, 5.0);
     args::Flag save_angle(
         parser, "SAVE ANGLE", "Write out the actual flip-angle as well as B1", {'s', "save"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
     QI::Log(verbose, "Nominal flip-angle = {} degrees", nom_flip.Get());

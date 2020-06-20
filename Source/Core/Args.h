@@ -9,21 +9,13 @@
  *
  */
 
-#ifndef QI_ARGS_H
-#define QI_ARGS_H
+#pragma once
 
 #include "ImageTypes.h"
 #include "Log.h"
 #include "args.hxx"
 
 namespace QI {
-
-void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose);
-void ParseArgs(args::ArgumentParser &parser,
-               int                   argc,
-               char **               argv,
-               const args::Flag &    verbose,
-               args::ValueFlag<int> &threads);
 
 template <typename T> T CheckPos(args::Positional<T> &a) {
     if (a) {
@@ -75,12 +67,14 @@ template <typename TArray, const int size> void ArrayArgF(const std::string &a, 
 
 } // End namespace QI
 
+extern args::Group    global_group;
+extern args::HelpFlag help;
+extern args::Flag     verbose;
+
 #define QI_COMMON_ARGS                                                                         \
-    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});              \
-    args::Flag     verbose(parser, "VERBOSE", "Print more messages", {'v', "verbose"});        \
-    args::Flag     resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});         \
-    args::Flag     covar(                                                                      \
-        parser, "COVAR", "Write out covariance matrix (CoV and Corr) images", {"covar"});  \
+    args::Flag resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});             \
+    args::Flag covar(                                                                          \
+        parser, "COVAR", "Write out covariance matrix (CoV and Corr) images", {"covar"});      \
                                                                                                \
     args::ValueFlag<int>   threads(parser,                                                     \
                                  "THREADS",                                                  \
@@ -100,5 +94,3 @@ template <typename TArray, const int size> void ArrayArgF(const std::string &a, 
         parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});                   \
     args::ValueFlag<std::string> json_file(                                                    \
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
-
-#endif // QI_ARGS_H

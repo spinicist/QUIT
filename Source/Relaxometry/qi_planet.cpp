@@ -93,20 +93,13 @@ struct PLANETFit {
     }
 };
 
-int planet_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Calculates T1&T2 from SSFP Ellipse Parameters.\nhttp://github.com/spinicist/QUIT");
-
+int planet_main(args::Subparser &parser) {
     args::Positional<std::string> G_path(parser, "G", "Ellipse parameter G");
     args::Positional<std::string> a_path(parser, "a", "Ellipse parameter a");
     args::Positional<std::string> b_path(parser, "b", "Ellipse parameter b");
-
+    args::ValueFlag<std::string>  B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     QI_COMMON_ARGS;
-
-    args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
-
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
-
+    parser.Parse();
     QI::CheckPos(G_path);
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);

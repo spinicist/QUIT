@@ -26,18 +26,11 @@
 #include "Spline.h"
 #include "Util.h"
 
-int zspec_b1_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "B1-correction for Z-spectrums using linear "
-        "interpolation as in Windschuh et al\nhttp://github.com/spinicist/QUIT");
-
+int zspec_b1_main(args::Subparser &parser) {
     args::Positional<std::string>     b1_path(parser, "B1", "Path to B1-map");
     args::PositionalList<std::string> input_paths(
         parser, "INPUTS", "Input Z-spectra files (1 file per B1 level)");
-    args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>         threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
@@ -49,7 +42,7 @@ int zspec_b1_main(int argc, char **argv) {
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
 
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     const auto b1_image = QI::ReadImage(QI::CheckPos(b1_path), verbose);
     QI::CheckList(input_paths);

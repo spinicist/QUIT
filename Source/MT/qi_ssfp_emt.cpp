@@ -180,22 +180,17 @@ struct EMTFit {
     }
 };
 
-int ssfp_emt_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Calculates qMT parameters from ellipse parameters.\nInputs are G, "
-                                "a, b.\nhttp://github.com/spinicist/QUIT");
-
+int ssfp_emt_main(args::Subparser &parser) {
     args::Positional<std::string> G_path(parser, "G_FILE", "Input G file");
     args::Positional<std::string> a_path(parser, "a_FILE", "Input a file");
     args::Positional<std::string> b_path(parser, "b_FILE", "Input b file");
 
     QI_COMMON_ARGS;
-    args::Flag debug(parser, "DEBUG", "Output debugging messages", {'d', "debug"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio)", {'b', "B1"});
     args::ValueFlag<std::string> T2_f(parser, "T2f", "T2 Free map (for simulation only)", {"T2f"});
     args::ValueFlag<double>      G0(
         parser, "G0", "Lineshape value at resonance (default 1.4e-5)", {"G0"}, 1.4e-5);
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::CheckPos(G_path);
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);

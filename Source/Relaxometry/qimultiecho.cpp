@@ -167,16 +167,11 @@ struct MultiEchoNLLS : MultiEchoFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int multiecho_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates T2/T2* maps from multi-echo data\nhttp://github.com/spinicist/QUIT");
-
+int multiecho_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Input multi-echo data");
-
     QI_COMMON_ARGS;
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/a/n)", {'a', "algo"}, 'l');
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence parameters");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -184,8 +179,14 @@ int multiecho_main(int argc, char **argv) {
 
     MultiEcho model{{}, sequence};
     if (simulate) {
-        QI::SimulateModel<MultiEcho, false>(
-            input, model, {}, {QI::CheckPos(input_path)}, mask.Get(), verbose, simulate.Get(), subregion.Get());
+        QI::SimulateModel<MultiEcho, false>(input,
+                                            model,
+                                            {},
+                                            {QI::CheckPos(input_path)},
+                                            mask.Get(),
+                                            verbose,
+                                            simulate.Get(),
+                                            subregion.Get());
     } else {
         MultiEchoFit *me = nullptr;
         switch (algorithm.Get()) {

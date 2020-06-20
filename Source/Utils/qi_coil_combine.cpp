@@ -221,21 +221,14 @@ class ComplexVectorMeanFilter
     void operator=(const Self &);          // purposely not implemented
 };
 
-int coil_combine_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Combine multiple coil images into a single image.\n"
-        "Default method is that of Hammond, 10.1016/j.neuroimage.2007.10.037\n"
-        "If the COMPOSER option is specified, see 10.1002/mrm.26093\n"
-        "http://github.com/spinicist/QUIT");
+int coil_combine_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file to coil-combine");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> region_arg(
         parser,
@@ -257,7 +250,7 @@ int coil_combine_main(int argc, char **argv) {
                                  "Volume to use as reference for Hammond method (default is 1)",
                                  {'V', "vol"},
                                  1);
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto input_image = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);
 

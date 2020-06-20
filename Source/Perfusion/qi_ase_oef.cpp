@@ -144,11 +144,7 @@ using ASEFixDBVFit = QI::ScaledAutoDiffFit<ASEFixDBVModel>;
 /*
  * Main
  */
-int ase_oef_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates the OEF from ASE data.\nhttp://github.com/spinicist/QUIT");
-
+int ase_oef_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "ASE_FILE", "Input ASE file");
 
     QI_COMMON_ARGS;
@@ -160,19 +156,31 @@ int ase_oef_main(int argc, char **argv) {
         "Slice-thickness for MFG calculation (useful if there was a slice gap)",
         {'s', "slice"});
 
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("MultiEcho").get<QI::MultiEchoSequence>();
 
     if (simulate) {
         if (DBV) {
             ASEFixDBVModel model{{}, sequence, B0.Get(), DBV.Get()};
-            QI::SimulateModel<ASEFixDBVModel, false>(
-                input, model, {}, {input_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
+            QI::SimulateModel<ASEFixDBVModel, false>(input,
+                                                     model,
+                                                     {},
+                                                     {input_path.Get()},
+                                                     mask.Get(),
+                                                     verbose,
+                                                     simulate.Get(),
+                                                     subregion.Get());
         } else {
             ASEModel model{{}, sequence, B0.Get()};
-            QI::SimulateModel<ASEModel, false>(
-                input, model, {}, {input_path.Get()}, mask.Get(), verbose, simulate.Get(), subregion.Get());
+            QI::SimulateModel<ASEModel, false>(input,
+                                               model,
+                                               {},
+                                               {input_path.Get()},
+                                               mask.Get(),
+                                               verbose,
+                                               simulate.Get(),
+                                               subregion.Get());
         }
     } else {
         auto process = [&](auto fit_func) {

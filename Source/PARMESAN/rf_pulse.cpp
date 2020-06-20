@@ -1,6 +1,6 @@
 #include "JSON.h"
 #include "Log.h"
-#include "rufis_pulse.h"
+#include "rf_pulse.h"
 
 void from_json(const json &j, RFPulse &p) {
     p.B1x      = QI::ArrayFromJSON(j, "B1x", 1.);

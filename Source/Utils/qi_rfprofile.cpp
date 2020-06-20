@@ -169,16 +169,11 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
 
 } // End namespace itk
 
-int rfprofile_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Generates a relative B1 map from a B1+ and RF profile.\nInput is "
-                                "the B1+ map.\nhttp://github.com/spinicist/QUIT");
+int rfprofile_main(args::Subparser &parser) {
     args::Positional<std::string> b1plus_path(parser, "B1+_FILE", "Input B1+ file");
     args::Positional<std::string> output_path(parser, "B1_FILE", "Output relative B1 file");
 
-    args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>         threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
@@ -194,7 +189,7 @@ int rfprofile_main(int argc, char **argv) {
         parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 2);
     args::ValueFlag<std::string> infile(
         parser, "FILE", "Read JSON input from file instead of stdin", {"json"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path), verbose);
 

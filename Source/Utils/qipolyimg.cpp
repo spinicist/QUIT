@@ -97,28 +97,22 @@ class PolynomialImage : public ImageSource<QI::VolumeF> {
 
 } // End namespace itk
 
-int polyimg_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Creates an image from polynomial coefficients, which are read from stdin.\n"
-        "\nhttp://github.com/spinicist/QUIT");
+int polyimg_main(args::Subparser &parser) {
     args::Positional<std::string> ref_path(
         parser, "REFERENCE", "Reference image space to create the polynomial");
     args::Positional<std::string> out_path(parser, "OUTPUT", "Output image path");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<int> order(
+    args::ValueFlag<int>          order(
         parser, "ORDER", "Specify the polynomial order (default 2)", {'o', "order"}, 2);
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path), verbose);
     QI::Log(verbose, "Reading polynomial");

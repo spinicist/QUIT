@@ -133,12 +133,7 @@ template <typename Model> struct SRCFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int mcdespot_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates MWF & other parameter maps from mcDESPOT data\n"
-        "All times (e.g. T1, TR) are in SECONDS. All angles are in degrees.\n"
-        "http://github.com/spinicist/QUIT");
+int mcdespot_main(args::Subparser &parser) {
     args::Positional<std::string> spgr_path(parser, "SPGR FILE", "Input SPGR file");
     args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Input SSFP file");
     QI_COMMON_ARGS;
@@ -151,7 +146,7 @@ int mcdespot_main(int argc, char **argv) {
         parser, "SRC", "Use flat prior (stochastic region contraction), not gaussian", {"SRC"});
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i', "its"}, 4);
     args::Flag           bounds(parser, "BOUNDS", "Specify bounds in input", {"bounds"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::CheckPos(spgr_path);
     QI::CheckPos(ssfp_path);
 

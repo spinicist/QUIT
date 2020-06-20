@@ -22,25 +22,19 @@
 /*
  * Main
  */
-int tvmask_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser          parser("Creates a mask for quantitative data using Total "
-                                "Variation.\nhttp://github.com/spinicist/QUIT");
+int tvmask_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Output progress messages", {'v', "verbose"});
-    args::Flag           debug(parser, "DEBUG", "Output debug messages", {'d', "debug"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<float> thresh(
         parser, "THRESH", "Threshold for TV mask (default 2)", {'t', "thresh"}, 2.0);
 
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     const int         insize    = input->GetNumberOfComponentsPerPixel();

@@ -177,17 +177,14 @@ struct DESPOT1NLLS : DESPOT1Fit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int despot1_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates T1 maps from SPGR data\nhttp://github.com/spinicist/QUIT");
+int despot1_main(args::Subparser &parser) {
     args::Positional<std::string> spgr_path(parser, "SPGR FILE", "Path to SPGR data");
     QI_COMMON_ARGS;
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/w/n)", {'a', "algo"}, 'l');
     args::ValueFlag<int>  its(
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::CheckPos(spgr_path);
     QI::Log(verbose, "Reading sequence information");
     json input        = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

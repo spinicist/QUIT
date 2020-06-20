@@ -19,8 +19,8 @@
 #include "Macro.h"
 #include "Util.h"
 
-#include "rufis_pulse.h"
-#include "rufis_sequence.h"
+#include "rf_pulse.h"
+#include "transient_sequence.h"
 
 double round_sig(double value, int digits) {
     if (value == 0.0) // otherwise it will return 'nan' due to the log10() of zero
@@ -33,23 +33,16 @@ double round_sig(double value, int digits) {
 /*
  * Main
  */
-int rf_sim_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Calculates the time integral of a pulse in JSON format "
-                                "\nhttp://github.com/spinicist/QUIT");
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more messages", {'v', "verbose"});
+int rf_sim_main(args::Subparser &parser) {
     args::Flag uT(parser, "uT", "Units are microTesla, not radians per second", {'u', "uT"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-
     args::Positional<std::string> in_file(parser, "INPUT", "Input JSON file");
     // args::Positional<std::string> output_path(parser, "OUTPUT", "Output JSON file");
-
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
     QI::CheckPos(in_file);
 
     double const R1 = 1. / 1.0;

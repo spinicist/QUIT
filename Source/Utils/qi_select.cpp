@@ -19,21 +19,16 @@
 #include "itkExtractImageFilter.h"
 #include "itkTileImageFilter.h"
 
-int select_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Extracts a set of volumes from a time-series and saves as a new series\n"
-        "http://github.com/spinicist/QUIT");
+int select_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
     args::Positional<std::string> output_path(parser, "OUTPUT", "Output file");
     args::Positional<std::string> volume_list(parser, "VOLUMES", "Comma separated list of volumes");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto in_file        = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
     auto volume_indices = QI::IntsFromString(volume_list.Get());

@@ -28,18 +28,9 @@
 #include "Masking.h"
 #include "Util.h"
 
-int mask_main(int argc, char **argv) {
-    args::ArgumentParser parser("Generates masks in stages.\n"
-                                "Stage 1 - Otsu thresholding to generate binary mask\n"
-                                "Stage 2 - RATs (optional)\n"
-                                "Stage 3 - Hole filling (optional)\n"
-                                "http://github.com/spinicist/QUIT");
-
+int mask_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file");
-
-    args::HelpFlag help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPUT FILE", "Set output filename, default is input + _mask", {'o', "out"});
     args::ValueFlag<int> volume(
         parser,
@@ -71,8 +62,7 @@ int mask_main(int argc, char **argv) {
         parser, "RATS START RADIUS", "Starting radius for RATS, default 1", {"rats_radius"}, 1);
     args::ValueFlag<int> fillh_radius(
         parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
-
-    QI::ParseArgs(parser, argc, argv, verbose);
+    parser.Parse();
 
     QI::SeriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {

@@ -181,10 +181,7 @@ struct HIFIFit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int despot1hifi_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser          parser("Calculates T1 and B1 maps from SPGR & IR-SPGR or MP-RAGE "
-                                "data.\nhttp://github.com/spinicist/QUIT");
+int despot1hifi_main(args::Subparser &parser) {
     args::Positional<std::string> spgr_path(parser, "SPGR_FILE", "Input SPGR file");
     args::Positional<std::string> mprage_path(parser, "MPRAGE_FILE", "Input MP-RAGE file");
     QI_COMMON_ARGS;
@@ -193,7 +190,7 @@ int despot1hifi_main(int argc, char **argv) {
                                  "Clamp output T1 values to this value",
                                  {'c', "clamp"},
                                  std::numeric_limits<float>::infinity());
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::Log(verbose, "Reading sequence information");
     json input          = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

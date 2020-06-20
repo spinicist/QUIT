@@ -1,6 +1,6 @@
 // #define QI_DEBUG_BUILD 1
 #include "Macro.h"
-#include "rufis_ss.hpp"
+#include "parmesan.hpp"
 #include "ss_T2.h"
 
 auto SS_T1T2_Model::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(double) {

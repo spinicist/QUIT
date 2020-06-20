@@ -48,22 +48,16 @@ void to_json(json &j, const MTSatSequence &s) {
 /*
  * Main
  */
-int mtsat_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates MTsat from PDw, T1w, MTw data.\nhttp://github.com/spinicist/QUIT");
+int mtsat_main(args::Subparser &parser) {
     args::Positional<std::string> pdw_path(parser, "PDw", "Input PD-weighted file");
     args::Positional<std::string> t1w_path(parser, "T1w", "Input T1-weighted file");
     args::Positional<std::string> mtw_path(parser, "MTw", "Input MT-weighted file");
-
-    args::HelpFlag       help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask_path(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
@@ -72,7 +66,7 @@ int mtsat_main(int argc, char **argv) {
     args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
     args::ValueFlag<double>      C(
         parser, "C", "Correction factor for delta (default 0.4)", {'C', "C"}, 0.4);
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto pdw_img = QI::ReadImage(QI::CheckPos(pdw_path), verbose);
     auto t1w_img = QI::ReadImage(QI::CheckPos(t1w_path), verbose);

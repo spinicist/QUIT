@@ -19,33 +19,16 @@
 #include "ImageIO.h"
 #include "Util.h"
 
-namespace {
-args::ArgumentParser
-    parser("This is a tool to create 3D Nifti files, either blank headers with orientation "
-           "information, e.g. for registration, or files filled with simple patterns of "
-           "data e.g. solid values, gradients, or blocks. The default is to create a 3D file "
-           "filled with zeros. Choose from the options below to create something else."
-           "\nhttp://github.com/spinicist/QUIT");
-
-args::Positional<std::string> fName(parser, "OUTPUT", "Output filename");
-
-args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
-args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-args::ValueFlag<int> dims_arg(parser, "DIMS", "Image dimension, default 3", {'d', "dims"}, 3);
-args::ValueFlag<std::string> size_arg(parser, "SIZE", "Image size", {'s', "size"});
-args::ValueFlag<std::string> spacing_arg(parser, "SPACING", "Voxel spacing", {'p', "spacing"});
-args::ValueFlag<std::string> origin_arg(parser, "ORIGIN", "Image origin", {'o', "origin"});
-args::ValueFlag<float>       fill_arg(parser, "FILL", "Fill with value", {'f', "fill"});
-args::ValueFlag<int>
-    grad_dim(parser, "GRAD DIM", "Fill with a gradient along this axis", {'g', "grad_dim"}, 0);
-args::ValueFlag<std::string>
-    grad_arg(parser, "GRAD END", "Gradient low/high values (low, high)", {'v', "grad_vals"}, "0,0");
-args::ValueFlag<int>
-                       steps_arg(parser, "STEPS", "Number of discrete steps (steps)", {'t', "steps"}, 1);
-args::ValueFlag<float> wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
-} // namespace
-
-template <int dim> void make_image() {
+template <int dim>
+void make_image(args::Positional<std::string> &fName,
+                args::ValueFlag<std::string> & size_arg,
+                args::ValueFlag<std::string> & spacing_arg,
+                args::ValueFlag<std::string> & origin_arg,
+                args::ValueFlag<float> &       fill_arg,
+                args::ValueFlag<int> &         grad_dim,
+                args::ValueFlag<std::string> & grad_arg,
+                args::ValueFlag<int> &         steps_arg,
+                args::ValueFlag<float> &       wrap_arg) {
     typedef itk::Image<float, dim> ImageType;
     using RegionType  = typename ImageType::RegionType;
     using IndexType   = typename ImageType::IndexType;
@@ -140,16 +123,43 @@ template <int dim> void make_image() {
     QI::WriteImage(newimg, QI::CheckPos(fName), verbose);
 }
 
-//******************************************************************************
-// Main
-//******************************************************************************
-int newimage_main(int argc, char **argv) {
+int newimage_main(args::Subparser &parser) {
+    args::Positional<std::string> fName(parser, "OUTPUT", "Output filename");
 
-    QI::ParseArgs(parser, argc, argv, verbose);
+    args::ValueFlag<int> dims_arg(parser, "DIMS", "Image dimension, default 3", {'d', "dims"}, 3);
+    args::ValueFlag<std::string> size_arg(parser, "SIZE", "Image size", {'s', "size"});
+    args::ValueFlag<std::string> spacing_arg(parser, "SPACING", "Voxel spacing", {'p', "spacing"});
+    args::ValueFlag<std::string> origin_arg(parser, "ORIGIN", "Image origin", {'o', "origin"});
+    args::ValueFlag<float>       fill_arg(parser, "FILL", "Fill with value", {'f', "fill"});
+    args::ValueFlag<int>         grad_dim(
+        parser, "GRAD DIM", "Fill with a gradient along this axis", {'g', "grad_dim"}, 0);
+    args::ValueFlag<std::string> grad_arg(
+        parser, "GRAD END", "Gradient low/high values (low, high)", {'v', "grad_vals"}, "0,0");
+    args::ValueFlag<int> steps_arg(
+        parser, "STEPS", "Number of discrete steps (steps)", {'t', "steps"}, 1);
+    args::ValueFlag<float> wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
+    parser.Parse();
+
     if (dims_arg.Get() == 3) {
-        make_image<3>();
+        make_image<3>(fName,
+                      size_arg,
+                      spacing_arg,
+                      origin_arg,
+                      fill_arg,
+                      grad_dim,
+                      grad_arg,
+                      steps_arg,
+                      wrap_arg);
     } else if (dims_arg.Get() == 4) {
-        make_image<4>();
+        make_image<4>(fName,
+                      size_arg,
+                      spacing_arg,
+                      origin_arg,
+                      fill_arg,
+                      grad_dim,
+                      grad_arg,
+                      steps_arg,
+                      wrap_arg);
     } else {
         std::cerr << "Unsupported dimension: " << dims_arg.Get() << std::endl;
         return EXIT_FAILURE;

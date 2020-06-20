@@ -10,43 +10,7 @@
  */
 
 #include "Args.h"
-#include "Util.h"
-#include "itkMultiThreaderBase.h"
 
-namespace QI {
-
-void ParseArgs(args::ArgumentParser &parser, int argc, char **argv, const args::Flag &verbose) {
-    try {
-        parser.ParseCLI(argc, argv);
-        QI::Info(verbose, "Starting {} {}", argv[0], QI::GetVersion());
-    } catch (args::Help) {
-        fmt::print("{}\n", parser);
-        exit(EXIT_SUCCESS);
-    } catch (args::ParseError e) {
-        QI::Fail("{}\n{}", parser, e.what());
-    } catch (args::ValidationError e) {
-        QI::Fail("{}\n{}", parser, e.what());
-    }
-}
-
-void ParseArgs(args::ArgumentParser &parser,
-               int                   argc,
-               char **               argv,
-               const args::Flag &    verbose,
-               args::ValueFlag<int> &threads) {
-    try {
-        parser.ParseCLI(argc, argv);
-        QI::Info(verbose, "Starting {} {}", argv[0], QI::GetVersion());
-        QI::Log(verbose, "Max threads = {}", threads.Get());
-        itk::MultiThreaderBase::SetGlobalMaximumNumberOfThreads(threads.Get());
-    } catch (args::Help) {
-        fmt::print("{}\n", parser);
-        exit(EXIT_SUCCESS);
-    } catch (args::ParseError e) {
-        QI::Fail("{}\n{}", parser, e.what());
-    } catch (args::ValidationError e) {
-        QI::Fail("{}\n{}", parser, e.what());
-    }
-}
-
-} // End namespace QI
+args::Group    global_group("GLOBAL OPTIONS");
+args::HelpFlag help(global_group, "HELP", "Show this help message", {'h', "help"});
+args::Flag     verbose(global_group, "VERBOSE", "Talk more", {'v', "verbose"});

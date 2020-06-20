@@ -20,25 +20,19 @@
 #include "JSON.h"
 #include "Util.h"
 
-int fieldmap_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Simple field-map via complex "
-                                "division\nhttp://github.com/spinicist/QUIT");
-
+int fieldmap_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input multi-echo GRE file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<double> delta_te(parser, "ΔTE", "Echo time difference (ms)", {"delta_te"});
     args::ValueFlag<double> B0(
         parser, "B0", "Field-strength in Tesla. Output will be in PPM", {"B0"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::Log(verbose, "Opening file: {}", QI::CheckPos(input_path));
     auto input = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);

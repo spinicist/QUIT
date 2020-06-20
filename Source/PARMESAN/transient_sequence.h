@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SequenceBase.h"
-#include "rufis_pulse.h"
+#include "rf_pulse.h"
 #include <unordered_map>
 
 struct RUFISSequence : QI::SequenceBase {

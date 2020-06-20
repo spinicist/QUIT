@@ -207,24 +207,18 @@ class ContrastsFilter : public itk::ImageToImageFilter<QI::VectorVolumeF, QI::Vo
 /*
  * Main
  */
-int glm_contrasts_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser          parser("A utility for calculating group means, differences etc.\n"
-                                "One output file will be generated for each contrast.\n"
-                                "\nhttp://github.com/spinicist/QUIT");
+int glm_contrasts_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(
         parser, "IMAGE", "The combined image file from qi_glmsetup");
     args::Positional<std::string> design_path(
         parser, "DESIGN", "GLM Design matrix from qi_glmsetup");
     args::Positional<std::string> contrasts_path(
         parser, "CONTRASTS", "Contrasts matrix from qi_glmsetup");
-    args::HelpFlag help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag     verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::Flag     fraction(
+    args::Flag fraction(
         parser, "FRACTION", "Output contrasts as fraction of grand mean", {'F', "frac"});
     args::ValueFlag<std::string> outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
-    QI::ParseArgs(parser, argc, argv, verbose);
+    parser.Parse();
 
     QI::Log(verbose, "Reading input file {}", QI::CheckPos(input_path));
     QI::VectorVolumeF::Pointer merged =

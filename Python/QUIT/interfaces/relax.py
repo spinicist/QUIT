@@ -740,7 +740,7 @@ class Ellipse(QI.FitCommand):
 
     """
 
-    _cmd = 'qi ssfp-ellipse'
+    _cmd = 'qi ssfp_ellipse'
     input_spec = EllipseInputSpec
     output_spec = EllipseOutputSpec
 
@@ -751,7 +751,7 @@ class EllipseSim(QI.SimCommand):
 
     """
 
-    _cmd = 'qi ssfp-ellipse'
+    _cmd = 'qi ssfp_ellipse'
     _param_files = ['G', 'a', 'b', 'theta_0', 'phi_rf']
     input_spec = QI.SimInputSpec
     output_spec = QI.SimOutputSpec

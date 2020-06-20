@@ -266,25 +266,21 @@ class DiscreteInverseLaplace2 : public ImageSource<QI::VolumeF> {
 //******************************************************************************
 // Main
 //******************************************************************************
-int unwrap_laplace_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser("Laplacian phase unwrapping\nhttp://github.com/spinicist/QUIT");
+int unwrap_laplace_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
-    args::HelpFlag                help(parser, "HELP", "Show this help message", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> outarg(
+    args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<int> erode(
         parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"}, 1);
     args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto        inFile = QI::ReadImage(QI::CheckPos(input_path), verbose);
     std::string prefix = (outarg ? outarg.Get() : QI::StripExt(input_path.Get()));

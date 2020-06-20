@@ -1,5 +1,5 @@
 #include "Log.h"
-#include "rufis_sequence.h"
+#include "transient_sequence.h"
 
 void from_json(const json &j, RUFISSequence &s) {
     QI::GetJSON(j, "TR", s.TR);

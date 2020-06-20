@@ -34,16 +34,11 @@ template <class TPixel> class DREAM {
     }
 };
 
-int dream_main(int argc, char **argv) {
-    args::ArgumentParser parser(
-        "Calculates a B1 (flip-angle) map from DREAM data.\nhttp://github.com/spinicist/QUIT");
-
+int dream_main(args::Subparser &parser) {
     args::Positional<std::string> input_file(
         parser, "DREAM_FILE", "Input file. Must have 2 volumes (FID and STE)");
 
-    args::HelpFlag       help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>         threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
@@ -56,7 +51,7 @@ int dream_main(int argc, char **argv) {
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<double> alpha(
         parser, "ALPHA", "Nominal flip-angle (default 55)", {'a', "alpha"}, 55);
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file), verbose);
 

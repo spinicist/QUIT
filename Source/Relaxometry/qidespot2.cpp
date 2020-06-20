@@ -228,10 +228,7 @@ struct DESPOT2NLLS : DESPOT2Fit {
 //******************************************************************************
 // Main
 //******************************************************************************
-int despot2_main(int argc, char **argv) {
-    Eigen::initParallel();
-    args::ArgumentParser parser(
-        "Calculates T2 maps from SSFP data\nhttp://github.com/spinicist/QUIT");
+int despot2_main(args::Subparser &parser) {
     args::Positional<std::string> t1_path(parser, "T1 MAP", "Path to T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Path to SSFP data");
     QI_COMMON_ARGS;
@@ -241,7 +238,7 @@ int despot2_main(int argc, char **argv) {
         parser, "GS", "Data is band-free geometric solution / ellipse data", {'g', "gs"});
     args::ValueFlag<int> its(
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     QI::Log(verbose, "Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

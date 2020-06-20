@@ -128,19 +128,14 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
 // Main
 //******************************************************************************
 
-int kfilter_main(int argc, char **argv) {
-    Eigen::initParallel();
-
-    args::ArgumentParser parser("smooths images in k-space\nhttp://github.com/spinicist/QUIT");
+int kfilter_main(args::Subparser &parser) {
     args::Positional<std::string> in_path(parser, "INPUT", "Input file.");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag           verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
-    args::ValueFlag<int> threads(parser,
+    args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
                                  {'T', "threads"},
                                  QI::GetDefaultThreads());
-    args::ValueFlag<std::string> out_prefix(
+    args::ValueFlag<std::string>  out_prefix(
         parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<int> zero_padding(
         parser, "ZEROPAD", "Zero-pad volume by N voxels in each direction", {'z', "zero_pad"}, 0);
@@ -156,7 +151,7 @@ int kfilter_main(int argc, char **argv) {
                                  {"filter_per_volume"});
     args::ValueFlagList<std::string> filters(
         parser, "FILTER", "Specify a filter to use (can be multiple)", {'f', "filter"});
-    QI::ParseArgs(parser, argc, argv, verbose, threads);
+    parser.Parse();
 
     std::vector<std::shared_ptr<QI::FilterKernel>> kernels;
     if (filters) {

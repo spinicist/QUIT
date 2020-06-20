@@ -118,24 +118,16 @@ class PolynomialFitImageFilter : public ImageToImageFilter<QI::VolumeF, QI::Volu
 
 } // End namespace itk
 
-int polyfit_main(int argc, char **argv) {
-    Eigen::initParallel();
-
-    args::ArgumentParser parser(
-        "Fits a 3D polynomial to a volume and prints the co-efficients to stdout.\n"
-        "http://github.com/spinicist/QUIT");
-
+int polyfit_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
-    args::HelpFlag                help(parser, "HELP", "Show this help menu", {'h', "help"});
-    args::Flag verbose(parser, "VERBOSE", "Print more information", {'v', "verbose"});
     args::Flag print_terms(parser, "TERMS", "Print out the polynomial terms", {"print-terms"});
     args::Flag robust(parser, "ROBUST", "Use a robust (Huber) fit", {'r', "robust"});
     args::ValueFlag<int> order(
         parser, "ORDER", "Specify the polynomial order (default 4)", {'o', "order"}, 4);
     args::ValueFlag<std::string> mask_path(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
+    parser.Parse();
 
-    QI::ParseArgs(parser, argc, argv, verbose);
     auto input = QI::ReadImage(QI::CheckPos(input_path), verbose);
     auto fit   = itk::PolynomialFitImageFilter::New();
 
