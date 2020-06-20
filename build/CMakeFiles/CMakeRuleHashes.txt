@@ -1,3 +1,0 @@
-# Hashes of file build rules.
-8d846a85baecf406a4b8d7d7a646ceb0 Source/Core/CMakeFiles/qi_version
-58608f3f2e20712dfac671ae9341b1e5 Source/Core/version_depend_dummy
