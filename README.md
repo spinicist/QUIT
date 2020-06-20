@@ -56,7 +56,7 @@ Each product has some basic usage instructions that will be printed with either
 the -h or --help options, e.g. `qimcdespot -h`. The majority of programs take
 the input filenames as arguments on the command-line, and in addition will read
 an input text file from `stdin`. For further details, see the 
-[documentation](https://spinicist.github.io/QUIT), which is also available in 
+[documentation](http://quit.readthedocs.io/), which is also available in 
 the `Docs` folder.
 
 ## Getting Help
