@@ -9,9 +9,10 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${PROJECT_SOURCE_DIR}/CMake)
 include(CheckCXXCompilerFlag)
 include(CMakeToolsHelpers OPTIONAL)
 include(CMakePrintHelpers)
+
 include( ${PROJECT_SOURCE_DIR}/CMake/BuildType.cmake )
-if(${CMAKE_SYSTEM_VERSION} EQUAL "Linux")
-    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++" CACHE INTERNAL "" FORCE)
 endif()
 
 # Configure directory paths
