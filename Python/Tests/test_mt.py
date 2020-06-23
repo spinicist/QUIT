@@ -48,7 +48,7 @@ class MT(unittest.TestCase):
                          noise=noise, verbose=vb).run()
         diff_A = Diff(in_file='LTZ_DS_A.nii.gz', baseline='A.nii.gz',
                       noise=noise, verbose=vb).run()
-        self.assertLessEqual(diff_f0.outputs.out_diff, 70)
+        self.assertLessEqual(diff_f0.outputs.out_diff, 100)
         self.assertLessEqual(diff_fwhm.outputs.out_diff, 20)
         self.assertLessEqual(diff_A.outputs.out_diff, 25)
 
