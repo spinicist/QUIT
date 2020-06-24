@@ -7,7 +7,8 @@ int main(int argc, char **argv) {
     args::ArgumentParser parser("QUIT http://github.com/spinicist/QUIT");
     args::Group          commands(parser, "COMMANDS");
     args::GlobalOptions  globals(parser, global_group);
-    args::Flag           version(parser, "VERSION", "Print the version of QUIT", {"version"});
+    args::Group          top(parser, "TOP");
+    args::Flag           version(top, "VERSION", "Print the version of QUIT", {"version"});
 
 #define ADD(CMD, HELP) args::Command CMD(commands, #CMD, HELP, &CMD##_main);
     ADD(newimage, "Create a new image");
@@ -84,11 +85,13 @@ int main(int argc, char **argv) {
         std::cerr << parser << '\n';
         exit(EXIT_SUCCESS);
     } catch (args::Error e) {
+        if (version) {
+            std::cout << QI::GetVersion() << '\n';
+            exit(EXIT_SUCCESS);
+        }
         std::cerr << parser << '\n' << e.what() << '\n';
         exit(EXIT_FAILURE);
     }
-    if (version) {
-        std::cout << QI::GetVersion() << '\n';
-    }
+
     exit(EXIT_SUCCESS);
 }

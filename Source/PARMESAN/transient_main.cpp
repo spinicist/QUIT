@@ -28,7 +28,7 @@
 /*
  * Main
  */
-int rufis_transient_main(args::Subparser &parser) {
+int transient_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input MUPA file");
     QI_COMMON_ARGS;
     args::Flag                   mt(parser, "MT", "Use MT model", {"mt"});
@@ -58,7 +58,6 @@ int rufis_transient_main(args::Subparser &parser) {
                                                       simulate.Get(),
                                                       subregion.Get());
         } else {
-            QI::Log(verbose, "NS {}", decltype(model)::NS);
             using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;
             FitType fit{model};
             auto    fit_filter =

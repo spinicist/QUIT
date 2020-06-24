@@ -37,9 +37,7 @@ template <typename Model> struct MCDSRCFunctor {
                   const Eigen::ArrayXd &d,
                   const Eigen::ArrayXd &w) :
         data(d),
-        weights(w), fixed(f), model(m) {
-        assert(data.rows() == model.sequence.size());
-    }
+        weights(w), fixed(f), model(m) {}
 
     int inputs() const { return Model::NV; }
     int values() const { return model.spgr.size() + model.ssfp.size(); }
