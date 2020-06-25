@@ -30,9 +30,7 @@ class InputSpec(InputBaseSpec):
     """
     Input Specification for most QUIT tools
     """
-    # Most QUIT programs take similar arguments
     json = traits.File(exists=True, desc='JSON Input file', argstr='--json=%s')
-
     subregion = traits.String(
         desc='Only process a subregion of the image. Argument should be a string "start_x,start_y,start_z,size_x,size_y,size_z"', argstr='--subregion=%s')
     threads = traits.Int(
@@ -56,59 +54,48 @@ class FitInputSpec(InputSpec):
         desc='Write out residuals for each data-point', argstr='--resids')
 
 
-class SimInputBaseSpec(DynamicTraitedSpec):
+def SimInputSpec(name, varying, fixed=[], out_files=None, extras=None):
     """
     Input specification for tools in simulation mode
     """
-    ignore_exception = traits.Bool(
-        False,
-        usedefault=True,
-        nohash=True,
-        deprecated='1.0.0',
-        desc='Print an error message instead of throwing an exception '
-        'in case the interface fails to run')
-    args = traits.Str(argstr='%s', desc='Additional parameters to the command')
-    environ = traits.DictStrStr(
-        desc='Environment variables', usedefault=True, nohash=True)
-    # This input does not have a "usedefault=True" so the set_default_terminal_output()
-    # method would work
-    terminal_output = traits.Enum(
-        'stream',
-        'allatonce',
-        'file',
-        'none',
-        deprecated='1.0.0',
-        desc=('Control terminal output: `stream` - '
-              'displays to terminal immediately (default), '
-              '`allatonce` - waits till command is '
-              'finished to display output, `file` - '
-              'writes output to file, `none` - output'
-              ' is ignored'),
-        nohash=True)
+    if out_files is None:
+        out_files = ['out']
 
-    verbose = traits.Bool(desc='Print more information', argstr='--verbose')
-    environ = {'QUIT_EXT': 'NIFTI_GZ'}
-    json = traits.File(exists=True, desc='JSON Input file', argstr='--json=%s')
-    noise = traits.Float(desc='Noise level to add to simulation',
-                         argstr='--simulate=%f', default_value=0.0, usedefault=True)
-    subregion = traits.String(
-        desc='Only process a subregion of the image. Argument should be a string "start_x,start_y,start_z,size_x,size_y,size_z"', argstr='--subregion=%s')
-    threads = traits.Int(
-        desc='Use N threads (default=4, 0=hardware limit)', argstr='--threads=%d')
-    mask_file = File(
-        desc='Only process voxels within the mask', argstr='--mask=%s')
+    attrs = {'noise': traits.Float(desc='Noise level to add to simulation',
+                                   argstr='--simulate=%f', default_value=0.0, usedefault=True)}
+    varying_names = []
+    for v in varying:
+        aname = '{}_map'.format(v)
+        desc = 'Path to input {} map'.format(v)
+        attrs[aname] = File(exists=True, desc='Path to %s map' % v)
+        varying_names.append(aname)
+    attrs['varying_names'] = varying_names
 
+    for f in fixed:
+        aname = '{}_map'.format(f)
+        desc = 'Path to fixed {} map'.format(f)
+        args = '--{}=%s'.format(f)
+        attrs[aname] = File(argstr=args, exists=True, desc=desc)
 
-class SimInputSpec(SimInputBaseSpec):
-    """
-    Input specification for tools in simulation mode
-    """
-    out_file = File(argstr='%s', mandatory=True,
-                    position=-1, desc='Output simulated file')
+    for idx, o in enumerate(out_files):
+        aname = '{}_file'.format(o)
+        desc = 'Output {} file'.format(o)
+        attrs[aname] = File(argstr='%s', mandatory=True,
+                            position=idx, desc=desc)
+    if extras:
+        for k, v in extras.items():
+            attrs[k] = v
+
+    T = type(name + 'SimInputSpec', (InputSpec,), attrs)
+    return T
+
 ################################# Output Specs #################################
+#
+# QUIT output specifications follow a consistent pattern, so these are defined
+# as functions that return a type. Closest thing to C++ templates I could find
 
 
-def FitOutputSpec(name, prefix, parameters):
+def FitOutputSpec(prefix, parameters):
     attrs = {}
     for p in parameters:
         pname = '{}_map'.format(p)
@@ -117,12 +104,20 @@ def FitOutputSpec(name, prefix, parameters):
         attrs[pname] = File(fname, desc=desc, usedefault=True)
     attrs['rmse_map'] = File('{}_rmse.nii.gz'.format(
         prefix), desc='Path to RMSE', usedefault=True)
-    T = type(name, (TraitedSpec,), attrs)
+    T = type(prefix + 'FitOutputSpec', (TraitedSpec,), attrs)
     return T
 
 
-class SimOutputSpec(TraitedSpec):
-    out_file = File(desc="Path to output image")
+def SimOutputSpec(name, files=None):
+    if files is None:
+        files = ['out']
+    attrs = {}
+    for f in files:
+        aname = '{}_file'.format(f)
+        desc = 'Path to {} image file'.format(f)
+        attrs[aname] = File(desc=desc)
+    T = type(name + 'SimOutputSpec', (TraitedSpec,), attrs)
+    return T
 
 ################################### Commands ###################################
 
@@ -196,7 +191,7 @@ class BaseCommand(CommandLine):
     def _parse_inputs(self, skip=None):
         # Make sequence dictionary into a .json file for input to interface
         if hasattr(self, '_json') and not isdefined(self.inputs.json):
-            fname = '_input.json'
+            fname = '_' + self.__class__.__name__ + '_input.json'
             with open(fname, 'w') as outfile:
                 json.dump(self._json, outfile, indent=2)
             self.inputs.json = fname
@@ -209,12 +204,10 @@ class FitCommand(BaseCommand):
     """
 
     def _list_outputs(self):
-        outputs = self.output_spec()
+        outputs = self.output_spec().get()
         prefixed = {}
         for key, trait in outputs.items():
-            print(key, trait)
-            prefixed[key] = self._gen_fname(
-                trait.get_trait(), prefix=self.inputs.prefix)
+            prefixed[key] = self._gen_fname(trait, prefix=self.inputs.prefix)
         return prefixed
 
     def __init__(self, sequence={}, **kwargs):
@@ -229,22 +222,23 @@ class SimCommand(BaseCommand):
 
     def __init__(self, sequence={}, **kwargs):
         self._json = deepcopy(sequence)
-        for p in self._param_files:
-            pname = '{}_map'.format(p)
-            setattr(self.input_spec, pname, File(
-                exists=True, desc='Path to %s map' % p))
         super().__init__(**kwargs)
 
     def _parse_inputs(self, skip=[]):
-        for pf in self._param_files:
-            if isdefined(getattr(self.inputs, pf)):
-                self._json[pf] = getattr(self.inputs, pf)
-                skip.append(pf)
-        return super()._parse_inputs(skip)
+        for v in self.input_spec.varying_names:
+            if isdefined(getattr(self.inputs, v)):
+                self._json[v] = getattr(self.inputs, v)
+                skip.append(v)
+        print(self.inputs)
+        parsed = super()._parse_inputs(skip)
+        print(parsed)
+        return parsed
 
     def _list_outputs(self):
+        inputs = self.inputs.get()
         outputs = self.output_spec().get()
-        outputs['out_file'] = path.abspath(self.inputs.out_file)
+        for k, v in outputs.items():
+            outputs[k] = path.abspath(inputs[k])
         return outputs
 
 

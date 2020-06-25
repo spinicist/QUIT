@@ -1,7 +1,7 @@
 import unittest
 from nipype.interfaces.base import CommandLine
-from quit.interfaces.core import NewImage, Diff
-from quit.interfaces.relax import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.relax import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -21,7 +21,7 @@ class DESPOT_SC(unittest.TestCase):
 
         DESPOT1Sim(sequence=seq, out_file=spgr_file,
                    noise=noise, verbose=vb,
-                   PD='PD.nii.gz', T1='T1.nii.gz').run()
+                   PD_map='PD.nii.gz', T1_map='T1.nii.gz').run()
         DESPOT1(sequence=seq, in_file=spgr_file,
                 verbose=vb, residuals=True).run()
 
@@ -50,7 +50,7 @@ class DESPOT_SC(unittest.TestCase):
 
         HIFISim(sequence=seqs, spgr_file=spgr_file, mprage_file=mprage_file,
                 noise=noise, verbose=vb,
-                PD='PD.nii.gz', T1='T1.nii.gz', B1='B1.nii.gz').run()
+                PD_map='PD.nii.gz', T1_map='T1.nii.gz', B1_map='B1.nii.gz').run()
         HIFI(sequence=seqs, spgr_file=spgr_file,
              mprage_file=mprage_file, verbose=vb, residuals=True).run()
 
@@ -80,10 +80,10 @@ class DESPOT_SC(unittest.TestCase):
                  out_file='T2.nii.gz', verbose=vb).run()
 
         DESPOT2Sim(sequence=seq, out_file=ssfp_file,
-                   t1_file='T1.nii.gz', ellipse=gs, noise=noise, verbose=vb,
-                   PD='PD.nii.gz', T2='T2.nii.gz').run()
+                   ellipse=gs, noise=noise, verbose=vb,
+                   PD_map='PD.nii.gz', T2_map='T2.nii.gz', T1_map='T1.nii.gz').run()
         DESPOT2(sequence=seq, in_file=ssfp_file,
-                t1_file='T1.nii.gz', ellipse=gs, verbose=vb, residuals=True).run()
+                T1_map='T1.nii.gz', ellipse=gs, verbose=vb, residuals=True).run()
 
         diff_T2 = Diff(in_file='D2_T2.nii.gz', baseline='T2.nii.gz',
                        noise=noise, verbose=vb).run()
@@ -113,11 +113,13 @@ class DESPOT_SC(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(-100, 100),
                  out_file='f0.nii.gz', verbose=vb).run()
 
-        FMSim(sequence=seq, out_file=ssfp_file, asym=False,
-              t1_file='T1.nii.gz', noise=noise, verbose=vb,
-              PD='PD.nii.gz', T2='T2.nii.gz', f0='f0.nii.gz').run()
+        sim = FMSim(sequence=seq, out_file=ssfp_file, asym=False,
+                    T1_map='T1.nii.gz', noise=noise, verbose=vb,
+                    PD_map='PD.nii.gz', T2_map='T2.nii.gz', f0_map='f0.nii.gz')
+        print(sim.cmdline)
+        sim.run()
         FM(sequence=seq, in_file=ssfp_file, asym=False,
-           t1_file='T1.nii.gz', verbose=vb, residuals=True).run()
+           T1_map='T1.nii.gz', verbose=vb, residuals=True).run()
 
         diff_T2 = Diff(in_file='FM_T2.nii.gz', baseline='T2.nii.gz',
                        noise=noise, verbose=vb).run()

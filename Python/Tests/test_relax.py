@@ -1,8 +1,7 @@
 import unittest
 from nipype.interfaces.base import CommandLine
-from quit.interfaces.core import NewImage, Diff
-from quit.interfaces.relax import Multiecho, MultiechoSim
-from quit.interfaces.mt import Lineshape
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.relax import Multiecho, MultiechoSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -22,7 +21,7 @@ class Relax(unittest.TestCase):
                  out_file='T2.nii.gz', verbose=vb).run()
 
         MultiechoSim(sequence=me, out_file=me_file,
-                     PD='PD.nii.gz', T2='T2.nii.gz',
+                     PD_map='PD.nii.gz', T2_map='T2.nii.gz',
                      noise=noise, verbose=vb).run()
         Multiecho(sequence=me, in_file=me_file, verbose=vb).run()
 

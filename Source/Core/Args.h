@@ -37,7 +37,7 @@ template <typename T> T CheckValue(args::ValueFlag<T> &v) {
     if (v) {
         return v.Get();
     } else {
-        QI::Fail("{} was not specified. Use --help to see usage.", v.Name());
+        QI::Fail("{} was not specified but is required. Use --help to see usage.", v.Name());
     }
 }
 
