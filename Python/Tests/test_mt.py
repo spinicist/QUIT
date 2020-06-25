@@ -1,14 +1,23 @@
+from pathlib import Path
+from os import chdir
 import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
 
 
 class MT(unittest.TestCase):
+    def setUp(self):
+        Path('testdata').mkdir(exist_ok=True)
+        chdir('testdata')
+
+    def tearDown(self):
+        chdir('../')
+
     def test_lorentzian(self):
         sequence = {'MTSat': {'pulse': {'p1': 0.4,
                                         'p2': 0.3,
@@ -34,13 +43,14 @@ class MT(unittest.TestCase):
         NewImage(out_file='A.nii.gz', verbose=vb, img_size=img_sz,
                  grad_dim=2, grad_vals=(0.5, 1)).run()
 
-        LorentzianSim(sequence=sequence, pools=pools, in_file=lorentz_file,
-                      noise=noise, verbose=vb,
-                      DS_f0='f0.nii.gz',
-                      DS_fwhm='fwhm.nii.gz',
-                      DS_A='A.nii.gz').run()
-        Lorentzian(sequence=sequence, pools=pools,
-                   in_file=lorentz_file, verbose=vb).run()
+        L1Sim = LorentzianSim(pools)
+        L1Sim(sequence=sequence, out_file=lorentz_file,
+              noise=noise, verbose=vb,
+              DS_f0_map='f0.nii.gz',
+              DS_fwhm_map='fwhm.nii.gz',
+              DS_A_map='A.nii.gz').run()
+        L1Fit = Lorentzian(pools)
+        L1Fit(sequence=sequence, in_file=lorentz_file, verbose=vb).run()
 
         diff_f0 = Diff(in_file='LTZ_DS_f0.nii.gz', baseline='f0.nii.gz',
                        noise=noise, verbose=vb).run()
@@ -94,16 +104,17 @@ class MT(unittest.TestCase):
         NewImage(out_file='MTA.nii.gz', verbose=vb, img_size=img_sz,
                  fill=0.4).run()
 
-        LorentzianSim(sequence=sequence, pools=pools, in_file=lorentz_file,
-                      noise=noise, verbose=vb,
-                      DS_f0='f0.nii.gz',
-                      DS_fwhm='fwhm.nii.gz',
-                      DS_A='A.nii.gz',
-                      MT_fwhm='MTfwhm.nii.gz',
-                      MT_f0='f0.nii.gz',
-                      MT_A='MTA.nii.gz').run()
-        Lorentzian(sequence=sequence, pools=pools,
-                   in_file=lorentz_file, verbose=vb).run()
+        L2Sim = LorentzianSim(pools)
+        L2Sim(sequence=sequence, out_file=lorentz_file,
+              noise=noise, verbose=vb,
+              DS_f0_map='f0.nii.gz',
+              DS_fwhm_map='fwhm.nii.gz',
+              DS_A_map='A.nii.gz',
+              MT_fwhm_map='MTfwhm.nii.gz',
+              MT_f0_map='f0.nii.gz',
+              MT_A_map='MTA.nii.gz').run()
+        L2Fit = Lorentzian(pools)
+        L2Fit(sequence=sequence, in_file=lorentz_file, verbose=vb).run()
 
         diff_fwhm = Diff(in_file='LTZ_DS_fwhm.nii.gz', baseline='fwhm.nii.gz',
                          noise=noise, verbose=vb).run()
@@ -153,10 +164,14 @@ class MT(unittest.TestCase):
         NewImage(out_file=t1app, verbose=vb, img_size=img_sz,
                  fill=1.0).run()
 
-        qMTSim(sequence=qmt, in_file=qmt_file, t1_map=t1app, lineshape=lineshape_file,
+        qMTSim(sequence=qmt, out_file=qmt_file, T1_map=t1app, lineshape=lineshape_file,
                noise=noise, verbose=vb,
-               M0_f='M0_f.nii.gz', F_over_R1_f='F_over_R1_f.nii.gz', T2_b='T2_b.nii.gz', T1_f_over_T2_f='T1_f_over_T2_f.nii.gz', k='k.nii.gz').run()
-        qMT(sequence=qmt, in_file=qmt_file, t1_map=t1app,
+               M0_f_map='M0_f.nii.gz',
+               F_over_R1_f_map='F_over_R1_f.nii.gz',
+               T2_b_map='T2_b.nii.gz',
+               T1_f_over_T2_f_map='T1_f_over_T2_f.nii.gz',
+               k_map='k.nii.gz').run()
+        qMT(sequence=qmt, in_file=qmt_file, T1_map=t1app,
             lineshape=lineshape_file, verbose=vb).run()
 
         diff_PD = Diff(in_file='QMT_M0_f.nii.gz', baseline='M0_f.nii.gz',

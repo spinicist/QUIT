@@ -1,14 +1,22 @@
+from pathlib import Path
+from os import chdir
 import unittest
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.relax import Multiecho, MultiechoSim
-from QUIT.interfaces.mt import Lineshape
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.relax import Multiecho, MultiechoSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
 
 
 class Relax(unittest.TestCase):
+    def setUp(self):
+        Path('testdata').mkdir(exist_ok=True)
+        chdir('testdata')
+
+    def tearDown(self):
+        chdir('../')
+
     def test_multiecho(self):
         me = {'MultiEcho': {'TR': 10, 'TE1': 0.01, 'ESP': 0.01,
                             'ETL': 5}}
@@ -21,8 +29,8 @@ class Relax(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.04, 0.1),
                  out_file='T2.nii.gz', verbose=vb).run()
 
-        MultiechoSim(sequence=me, in_file=me_file,
-                     PD='PD.nii.gz', T2='T2.nii.gz',
+        MultiechoSim(sequence=me, out_file=me_file,
+                     PD_map='PD.nii.gz', T2_map='T2.nii.gz',
                      noise=noise, verbose=vb).run()
         Multiecho(sequence=me, in_file=me_file, verbose=vb).run()
 

@@ -94,7 +94,7 @@ class RFProfile(QI.BaseCommand):
 
     Example 1
     -------
-    >>> from QUIT.nipype.utils import RFProfile
+    >>> from quit.nipype.utils import RFProfile
     >>> interface = RFProfile()
 
     """
@@ -156,7 +156,7 @@ class Affine(CommandLine):
 
     Example 1
     -------
-    >>> from QUIT.nipype.utils import Affine
+    >>> from quit.nipype.utils import Affine
     >>> interface = Affine()
 
     """
@@ -210,7 +210,7 @@ class Mask(QI.BaseCommand):
 
     Example 1
     -------
-    >>> from QUIT.nipype.utils import RFProfile
+    >>> from quit.nipype.utils import RFProfile
     >>> interface = RFProfile()
 
     """
@@ -313,7 +313,7 @@ class Complex(QI.BaseCommand):
 
     Example 1
     -------
-    >>> from QUIT.nipype.utils import Complex
+    >>> from quit.nipype.utils import Complex
     >>> interface = Complex()
 
     """

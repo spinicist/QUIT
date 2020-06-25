@@ -1,14 +1,23 @@
+from pathlib import Path
+from os import chdir
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.utils import PolyImage, PolyFit, Filter, RFProfile
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.utils import PolyImage, PolyFit, Filter, RFProfile
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
 
 
 class Utils(unittest.TestCase):
+    def setUp(self):
+        Path('testdata').mkdir(exist_ok=True)
+        chdir('testdata')
+
+    def tearDown(self):
+        chdir('../')
+
     def test_poly(self):
         sz = 16
         scale = sqrt(3 * (sz/2)**2)

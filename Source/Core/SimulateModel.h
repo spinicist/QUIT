@@ -30,7 +30,7 @@ void SimulateModel(json &                                    json,
     auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, verbose, subRegion);
     simulator->SetNoise(noise);
     for (auto i = 0; i < Model::NV; i++) {
-        const std::string vname = model.varying_names[i];
+        const std::string vname = fmt::format("{}_map", model.varying_names[i]);
         const std::string vfile = json.at(vname).get<std::string>();
         QI::Log(verbose, "Reading {} from file: {}", vname, vfile);
         simulator->SetVarying(i, QI::ReadImage(vfile, false));

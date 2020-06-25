@@ -123,9 +123,9 @@ using RamaniFitFunction = QI::ScaledAutoDiffFit<RamaniModel>;
 // Main
 //******************************************************************************
 int qmt_main(args::Subparser &parser) {
-    args::Positional<std::string> T1(parser, "T1", "T1 map (seconds) file");
     args::Positional<std::string> mtsat_path(parser, "MTSAT FILE", "Path to MT-Sat data");
     QI_COMMON_ARGS;
+    args::ValueFlag<std::string> T1(parser, "T1", "T1 map (seconds) file ** REQUIRED **", {"T1"});
     args::ValueFlag<std::string> f0(parser, "f0", "f0 map (Hz) file", {'f', "f0"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<std::string> lineshape_arg(
@@ -162,7 +162,7 @@ int qmt_main(args::Subparser &parser) {
     if (simulate) {
         QI::SimulateModel<RamaniModel, false>(input,
                                               model,
-                                              {f0.Get(), B1.Get(), T1.Get()},
+                                              {f0.Get(), B1.Get(), QI::CheckValue(T1)},
                                               {mtsat_path.Get()},
                                               mask.Get(),
                                               verbose,
@@ -173,7 +173,8 @@ int qmt_main(args::Subparser &parser) {
 
         auto fit_filter = QI::ModelFitFilter<RamaniFitFunction>::New(
             &fit, verbose, covar, resids, subregion.Get());
-        fit_filter->ReadInputs({mtsat_path.Get()}, {f0.Get(), B1.Get(), T1.Get()}, mask.Get());
+        fit_filter->ReadInputs(
+            {mtsat_path.Get()}, {f0.Get(), B1.Get(), QI::CheckValue(T1)}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "QMT_");
         QI::Log(verbose, "Finished.");

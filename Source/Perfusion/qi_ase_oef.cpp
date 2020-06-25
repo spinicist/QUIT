@@ -150,11 +150,6 @@ int ase_oef_main(args::Subparser &parser) {
     QI_COMMON_ARGS;
     args::ValueFlag<double> B0(parser, "B0", "Field-strength (Tesla), default 3", {'B', "B0"}, 3.0);
     args::ValueFlag<double> DBV(parser, "DBV", "Fix DBV and only fit R2'", {'d', "DBV"}, 0.0);
-    args::ValueFlag<double> slice_arg(
-        parser,
-        "SLICE THICKNESS",
-        "Slice-thickness for MFG calculation (useful if there was a slice gap)",
-        {'s', "slice"});
 
     parser.Parse();
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

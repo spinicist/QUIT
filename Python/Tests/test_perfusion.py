@@ -1,14 +1,23 @@
+from pathlib import Path
+from os import chdir
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.perfusion import ASL, ASE, ASESim, ZShim
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.perfusion import ASL, ASE, ASESim, ASEDBVSim, ZShim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
 
 
 class Perfusion(unittest.TestCase):
+    def setUp(self):
+        Path('testdata').mkdir(exist_ok=True)
+        chdir('testdata')
+
+    def tearDown(self):
+        chdir('../')
+
     def test_asl(self):
         seq = {'CASL': {'TR': 4.0, 'label_time': 3.0,
                         'post_label_delay': [0.3]}}
@@ -42,11 +51,11 @@ class Perfusion(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.005, 0.025),
                  out_file='DBV.nii.gz', verbose=vb).run()
 
-        ASESim(sequence=seq, in_file=ase_file, noise=noise, verbose=vb,
-               S0='S0.nii.gz',
-               dT='dT.nii.gz',
-               R2p='R2p.nii.gz',
-               DBV='DBV.nii.gz').run()
+        ASEDBVSim(sequence=seq, out_file=ase_file, noise=noise, verbose=vb,
+                  S0_map='S0.nii.gz',
+                  dT_map='dT.nii.gz',
+                  R2p_map='R2p.nii.gz',
+                  DBV_map='DBV.nii.gz').run()
         ASE(sequence=seq, in_file=ase_file, verbose=vb).run()
 
         diff_R2p = Diff(in_file='ASE_R2p.nii.gz', baseline='R2p.nii.gz',
@@ -72,11 +81,11 @@ class Perfusion(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=1, grad_vals=(1.0, 3.0),
                  out_file='R2p.nii.gz', verbose=vb).run()
 
-        ASESim(sequence=seq, in_file=ase_file,
+        ASESim(sequence=seq, out_file=ase_file,
                fix_DBV=DBV, noise=noise, verbose=vb,
-               S0='S0.nii.gz',
-               dT='dT.nii.gz',
-               R2p='R2p.nii.gz').run()
+               S0_map='S0.nii.gz',
+               dT_map='dT.nii.gz',
+               R2p_map='R2p.nii.gz').run()
         ASE(sequence=seq, in_file=ase_file, fix_DBV=DBV, verbose=vb).run()
 
         diff_R2p = Diff(in_file='ASE_R2p.nii.gz', baseline='R2p.nii.gz',

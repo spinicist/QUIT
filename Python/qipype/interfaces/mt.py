@@ -8,12 +8,12 @@ Requires that the QUIT tools are in your your system path
 
 from os import path
 from nipype.interfaces.base import TraitedSpec, DynamicTraitedSpec, File, traits, isdefined
-from .. import base as QI
+from .. import base
 
 ############################ qi_lineshape ############################
 
 
-class LineshapeInputSpec(QI.InputBaseSpec):
+class LineshapeInputSpec(base.InputBaseSpec):
     # Options
     out_file = traits.File(argstr='%s', mandatory=True,
                            exists=False, position=-1, desc='Output file')
@@ -33,7 +33,7 @@ class LineshapeOutputSpec(TraitedSpec):
     out_file = File(desc='JSON Lineshape file')
 
 
-class Lineshape(QI.BaseCommand):
+class Lineshape(base.BaseCommand):
     """
     Pre-calculate lineshapes and write them out for use with qMT
     """
@@ -50,91 +50,82 @@ class Lineshape(QI.BaseCommand):
 ############################ qi_lorentzian ############################
 
 
-class LorentzianInputSpec(QI.FitInputSpec):
+class LorentzianInputSpec(base.FitInputSpec):
     # Options
-    pools = traits.Int(argstr='--pools=%d',
-                       desc='Number of pools, set from pool arg')
     additive = traits.Bool(argstr='--add',
                            desc='Use an additive instead of subtractive model')
     Zref = traits.Float(argstr='--zref=%f',
                         desc='Set reference Z-spectrum value (usually 1 or 0)')
 
 
-class LorentzianOutputSpec(DynamicTraitedSpec):
-    rmse_map = File('LTZ_rmse.nii.gz',
-                    desc='Path to residual map', usedefault=True)
-
-
-class Lorentzian(QI.FitCommand):
+def Lorentzian(pools):
     """
-    Fit a Lorentzian function to a Z-spectrum
+    Returns a type for fitting a Lorentzian function to a Z-spectrum with the specified pools
     """
+    pars = []
+    for pool in pools:
+        poolname = pool['name']
+        for par in ['f0', 'fwhm', 'A']:
+            pname = '{}_{}'.format(poolname, par)
+            pars.append(pname)
+    ospec = base.FitOutputSpec('LTZ', pars)
 
-    _cmd = 'qi lorentzian'
-    input_spec = LorentzianInputSpec
-    output_spec = LorentzianOutputSpec
-
-    def __init__(self, pools={}, **kwargs):
-        super(Lorentzian, self).__init__(pools=len(pools), **kwargs)
+    def T_init(self, **kwargs):
+        base.FitCommand.__init__(self, **kwargs)
         self._json['pools'] = pools
-        for pool in pools:
-            pn = pool['name']
-            setattr(self.output_spec, pn + '_f0', File('LTZ_%s_f0.nii.gz' %
-                                                       pn, desc='Path to %s Δf0 map' % pn, usedefault=True))
-            setattr(self.output_spec, pn + '_fwhm', File('LTZ_%s_fwhm.nii.gz' %
-                                                         pn, desc='Path to %s FWHM map' % pn, usedefault=True))
-            setattr(self.output_spec, pn + '_A', File('LTZ_%s_A.nii.gz' %
-                                                      pn, desc='Path to %s A map' % pn, usedefault=True))
 
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-        for pool in self._json['pools']:
-            pn = pool['name']
-            outputs[pn + '_f0'] = 'LTZ_%s_f0.nii.gz' % pn
-            outputs[pn + '_fwhm'] = 'LTZ_%s_fwhm.nii.gz' % pn
-            outputs[pn + '_A'] = 'LTZ_%s_A.nii.gz' % pn
-        return self._add_prefixes(outputs)
+    attrs = {'_cmd': 'qi lorentzian --pools={}'.format(len(pools)),
+             'input_spec': LorentzianInputSpec,
+             'output_spec': ospec,
+             '__init__': T_init}
+
+    name = 'Lorentzian{}Sim'.format(len(pools))
+
+    T = type(name, (base.FitCommand,), attrs)
+    return T
 
 
-class LorentzianSimInputSpec(QI.SimInputSpec):
-    # Options
-    # Options
-    pools = traits.Int(argstr='--pools=%d',
-                       desc='Number of pools, set from pool arg')
-    additive = traits.Bool(argstr='--add',
-                           desc='Use an additive instead of subtractive model')
-    Zref = traits.Float(argstr='--zref=%f',
-                        desc='Set reference Z-spectrum value (usually 1 or 0)')
+def LorentzianSim(pools):
+    """
+    Returns a type for simulating a Lorentzian Z-spectrum with the specified pools
+    """
+    pars = []
+    for pool in pools:
+        poolname = pool['name']
+        for par in ['f0', 'fwhm', 'A']:
+            pname = '{}_{}'.format(poolname, par)
+            pars.append(pname)
+    ispec = base.SimInputSpec('LTZ', pars, extras={'additive': traits.Bool(argstr='--add',
+                                                                           desc='Use an additive instead of subtractive model'),
+                                                   'Zref': traits.Float(argstr='--zref=%f',
+                                                                        desc='Set reference Z-spectrum value (usually 1 or 0)')})
+    ospec = base.SimOutputSpec('LTZ')
 
-
-class LorentzianSim(QI.SimCommand):
-    _cmd = 'qi lorentzian'
-    input_spec = LorentzianSimInputSpec
-    output_spec = QI.SimOutputSpec
-
-    def __init__(self, pools={}, **kwargs):
-        self._param_files = []
-        for pool in pools:
-            pn = pool['name']
-            self._param_files.append(pn + '_f0')
-            self._param_files.append(pn + '_fwhm')
-            self._param_files.append(pn + '_A')
-        super().__init__(pools=len(pools), **kwargs)
+    def T_init(self, **kwargs):
+        base.SimCommand.__init__(self, **kwargs)
         self._json['pools'] = pools
+
+    attrs = {'_cmd': 'qi lorentzian --pools={}'.format(len(pools)),
+             'input_spec': ispec,
+             'output_spec': ospec,
+             '__init__': T_init}
+
+    name = 'Lorentzian{}Sim'.format(len(pools))
+
+    T = type(name, (base.SimCommand,), attrs)
+    return T
+
 
 ############################ qi_qmt ############################
 
 
-class qMTInputSpec(QI.FitInputSpec):
-    # Inputs
-    t1_map = File(exists=True, argstr='%s', mandatory=True,
-                  position=-2, desc='Path to T1 map')
-
-    # Options
+class qMTInputSpec(base.FitInputSpec):
+    T1_map = File(exists=True, argstr='--T1=%s',
+                  mandatory=True, desc='Path to T1 map')
+    f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
+    B1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     lineshape = traits.String(argstr='--lineshape=%s', mandatory=True,
                               desc='Gauss/Lorentzian/SuperLorentzian/path to JSON file')
-    f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
-    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
 
 
 class qMTOutputSpec(TraitedSpec):
@@ -153,38 +144,36 @@ class qMTOutputSpec(TraitedSpec):
                     desc="Path to residual map", usedefault=True)
 
 
-class qMT(QI.FitCommand):
+class qMT(base.FitCommand):
     """
-    Fit the Ramani model to a Z-spectrum
+    Fit the Ramani model to a Z-spectrum. The output parameters here are the interesting (derived)
+    parameters, not the intrinsic model parameters.
     """
 
     _cmd = 'qi qmt'
     input_spec = qMTInputSpec
-    output_spec = qMTOutputSpec
+    output_spec = base.FitOutputSpec(
+        'QMT', ['PD', 'T1_f', 'T2_f', 'k_bf', 'f_b'])
 
 
-class qMTSimInputSpec(QI.SimInputSpec):
-    # Inputs
-    t1_map = File(argstr='%s', mandatory=True,
-                  position=-2, desc='Path to T1 map')
-
-    # Options
-    lineshape = traits.String(argstr='--lineshape=%s', mandatory=True,
-                              desc='Gauss/Lorentzian/SuperLorentzian/path to JSON file')
-    f0_map = File(desc='f0 map (Hertz)', argstr='--f0=%s', exists=True)
-    b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-
-
-class qMTSim(QI.SimCommand):
+class qMTSim(base.SimCommand):
+    """
+    Simulate a Z-spectrum using the Ramani model. Note that the parameters here are the intrinsic
+    model parameters, which are different to the derived parameters output from the fitting
+    """
     _cmd = 'qi qmt'
-    _param_files = ['M0_f', 'F_over_R1_f', 'T2_b', 'T1_f_over_T2_f', 'k']
-    input_spec = qMTSimInputSpec
-    output_spec = QI.SimOutputSpec
+    input_spec = base.SimInputSpec('qMT',
+                                   varying=['M0_f', 'F_over_R1_f',
+                                            'T2_b', 'T1_f_over_T2_f', 'k'],
+                                   fixed=['f0', 'B1', 'T1'],
+                                   extras={'lineshape': traits.String(argstr='--lineshape=%s', mandatory=True,
+                                                                      desc='Gauss/Lorentzian/SuperLorentzian/path to JSON file')})
+    output_spec = base.SimOutputSpec('qMT')
 
 ############################ qi_zspec ############################
 
 
-class ZSpecInputSpec(QI.InputSpec):
+class ZSpecInputSpec(base.InputSpec):
     # Input nifti
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-1, desc='Input file')
@@ -204,7 +193,7 @@ class ZSpecOutputSpec(TraitedSpec):
     out_file = File(desc="Path to interpolated Z-spectrum/MTA-spectrum")
 
 
-class ZSpec(QI.BaseCommand):
+class ZSpec(base.BaseCommand):
     """
     Interpolate a Z-spectrum (with correction for off-resonance)
 
@@ -230,7 +219,7 @@ class ZSpec(QI.BaseCommand):
 ############################ qi_ssfp_emt ############################
 
 
-class eMTInputSpec(QI.InputSpec):
+class eMTInputSpec(base.InputSpec):
     # Inputs
     G_map = File(exists=True, argstr='%s', mandatory=True,
                  position=-3, desc='Path to G parameter map')
@@ -240,26 +229,12 @@ class eMTInputSpec(QI.InputSpec):
                  position=-1, desc='Path to b parameter map')
 
     # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    f0map_file = File(desc='f0 map (Hertz) file', argstr='--f0=%s')
+    B1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
+    f0_map = File(desc='f0 map (Hertz) file', argstr='--f0=%s')
     T2b = traits.Float(desc='T2 of bound pool', argstr='--T2b=%f')
 
 
-class eMTOutputSpec(TraitedSpec):
-    PD_map = File('EMT_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    f_b_map = File('EMT_f_b.nii.gz',
-                   desc="Path to bound-pool fraction map", usedefault=True)
-    k_bf_map = File('EMT_k_bf.nii.gz',
-                    desc="Path to exchange rate map", usedefault=True)
-    T1_f_map = File('EMT_T1_f.nii.gz',
-                    desc="Path to free-pool T1 map", usedefault=True)
-    T2_f_map = File('EMT_T2_f.nii.gz',
-                    desc="Path to free-pool T2 map", usedefault=True)
-    rmse_map = File('EMT_rmse.nii.gz',
-                    desc="Path to residual map", usedefault=True)
-
-
-class eMT(QI.FitCommand):
+class eMT(base.FitCommand):
     """
     Fit MT parameters to ellipse parameters
 
@@ -267,50 +242,29 @@ class eMT(QI.FitCommand):
 
     _cmd = 'qi ssfp_emt'
     input_spec = eMTInputSpec
-    output_spec = eMTOutputSpec
+    output_spec = base.FitOutputSpec(
+        'EMT', ['PD', 'T1_f', 'T2_f', 'k_bf', 'f_b'])
 
 
-class eMTSimInputSpec(QI.SimInputBaseSpec):
-    # Options
-    b1map_file = File(desc='B1 map (ratio) file', argstr='--B1=%s')
-    f0map_file = File(desc='f0 map (Hertz) file', argstr='--f0=%s')
-    T2b = traits.Float(desc='T2 of bound pool', argstr='--T2b=%f')
-    G_file = File(argstr='%s', mandatory=True,
-                  position=-3, desc='Output G file')
-    a_file = File(argstr='%s', mandatory=True,
-                  position=-2, desc='Output a file')
-    b_file = File(argstr='%s', mandatory=True,
-                  position=-1, desc='Output b file')
-
-
-class eMTSimOutputSpec(TraitedSpec):
-    G_file = File(desc='Output G file')
-    a_file = File(desc='Output a file')
-    b_file = File(desc='Output b file')
-
-
-class eMTSim(QI.SimCommand):
+class eMTSim(base.SimCommand):
     """
     Simulate ellipse parameters from MT parameters
 
     """
 
     _cmd = 'qi ssfp_emt'
-    _param_files = ['PD', 'f_b', 'k_bf', 'T1_f', 'T2_f']
-    input_spec = eMTSimInputSpec
-    output_spec = eMTSimOutputSpec
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-        outputs['G_file'] = path.abspath(self.inputs.G_file)
-        outputs['a_file'] = path.abspath(self.inputs.a_file)
-        outputs['b_file'] = path.abspath(self.inputs.b_file)
-        return outputs
+    input_spec = base.SimInputSpec('EMT',
+                                   varying=['PD', 'f_b',
+                                            'k_bf', 'T1_f', 'T2_f'],
+                                   fixed=['f0', 'B1'],
+                                   out_files=['G', 'a', 'b'],
+                                   extras={'T2b': traits.Float(desc='T2 of bound pool', argstr='--T2b=%f')})
+    output_spec = base.SimOutputSpec('EMT', ['G', 'a', 'b'])
 
 ############################ qi_mtsat ############################
 
 
-class MTSatInputSpec(QI.InputSpec):
+class MTSatInputSpec(base.InputSpec):
     # Inputs
     pdw_file = File(exists=True, argstr='%s', mandatory=True,
                     position=-3, desc='Path to PD-weighted data')
@@ -333,7 +287,7 @@ class MTSatOutputSpec(TraitedSpec):
                      desc='MTSat delta map', usedefault=True)
 
 
-class MTSat(QI.FitCommand):
+class MTSat(base.FitCommand):
     """
     Runs qi_mtsat
 
@@ -346,7 +300,7 @@ class MTSat(QI.FitCommand):
 ############################ qi mtr ############################
 
 
-class MTRInputSpec(QI.InputSpec):
+class MTRInputSpec(base.InputSpec):
     # Options
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-1, desc='Input file')
@@ -356,7 +310,7 @@ class MTROutputSpec(DynamicTraitedSpec):
     pass
 
 
-class MTR(QI.BaseCommand):
+class MTR(base.BaseCommand):
     """
     Calculate Magnetization Transfer Ratios
     """

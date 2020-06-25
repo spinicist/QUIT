@@ -15,12 +15,12 @@ Requires that the QUIT tools are in your your system path
 
 from os import path
 from nipype.interfaces.base import CommandLine, TraitedSpec, File, traits, isdefined
-from .. import base as QI
+from .. import base
 
 ############################ qi_asl ############################
 
 
-class ASLInputSpec(QI.FitInputSpec):
+class ASLInputSpec(base.FitInputSpec):
     # Additional Options
     average = traits.Bool(
         desc='Average across time-series', argstr='--average')
@@ -39,11 +39,7 @@ class ASLInputSpec(QI.FitInputSpec):
         desc='Apply slice-timing correction (number of PLDs and slices must match)', argstr='--slicetime')
 
 
-class ASLOutputSpec(TraitedSpec):
-    CBF_map = File('CASL_CBF.nii.gz', desc="Path to CBF map", usedefault=True)
-
-
-class ASL(QI.FitCommand):
+class ASL(base.FitCommand):
     """
     Calculate CBF from CASL data
 
@@ -51,12 +47,12 @@ class ASL(QI.FitCommand):
 
     _cmd = 'qi asl'
     input_spec = ASLInputSpec
-    output_spec = ASLOutputSpec
+    output_spec = base.FitOutputSpec('CASL', 'CBF')
 
 ############################ qi_ase_oef ############################
 
 
-class ASEInputSpec(QI.FitInputSpec):
+class ASEInputSpec(base.FitInputSpec):
     # Additional Options
     B0 = traits.Float(
         desc='Field-strength (Tesla), default 3', argstr='--B0=%f')
@@ -84,7 +80,7 @@ class ASEOutputSpec(TraitedSpec):
         'ASE_dHb.nii.gz', desc='Path to Deoxyhaemoglobin concentration map', usedefault=True)
 
 
-class ASE(QI.FitCommand):
+class ASE(base.FitCommand):
     """
     Calculate the Oxygen Extraction Fraction from Asymmetric Spin Echo data
 
@@ -92,48 +88,37 @@ class ASE(QI.FitCommand):
 
     _cmd = 'qi ase_oef'
     input_spec = ASEInputSpec
-    output_spec = ASEOutputSpec
-
-    def _list_outputs(self):
-        outputs = self.output_spec().get()
-        if not isdefined(self.inputs.fix_DBV):
-            outputs.pop('DBV_map', None)
-        return self._add_prefixes(outputs)
+    output_spec = base.FitOutputSpec(
+        'ASE', ['S0', 'dT', 'R2p', 'DBV', 'Tc', 'OEF', 'dHb'])
 
 
-class ASESimInputSpec(QI.SimInputSpec):
-    # Additional Options
-    B0 = traits.Float(
-        desc='Field-strength (Tesla), default 3', argstr='--B0=%f')
-    fix_DBV = traits.Float(
-        desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f')
-    gradz = traits.String(
-        desc='Field gradient in z/slice-direction for MFG correction', argstr='--gradz=%s')
-    slice_thickness = traits.Float(
-        desc='Actual slice-thickness for MFG correction if slice-gap was used', argstr='--slice=%f')
-
-
-class ASESim(QI.SimCommand):
+class ASESim(base.SimCommand):
     """
-    Simulate the Oxygen Extraction Fraction from Asymmetric Spin Echo data
-
+    Simulate the Oxygen Extraction Fraction from Asymmetric Spin Echo data with fixed DBV
     """
 
     _cmd = 'qi ase_oef'
-    input_spec = ASESimInputSpec
-    output_spec = QI.SimOutputSpec
+    input_spec = base.SimInputSpec('ASE',
+                                   varying=['S0', 'dT', 'R2p'],
+                                   extras={'B0': traits.Float(desc='Field-strength (Tesla), default 3', argstr='--B0=%f'),
+                                           'fix_DBV': traits.Float(desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f', mandatory=True)})
+    output_spec = base.SimOutputSpec('ASE')
 
-    def __init__(self, **kwargs):
-        if not 'fix_DBV' in kwargs:
-            self._param_files = ['S0', 'dT', 'R2p', 'DBV']
-        else:
-            self._param_files = ['S0', 'dT', 'R2p']
-        super().__init__(**kwargs)
+
+class ASEDBVSim(base.SimCommand):
+    """
+    Simulate OEF with a varying DBV
+    """
+    _cmd = 'qi ase_oef'
+    input_spec = base.SimInputSpec('ASE',
+                                   varying=['S0', 'dT', 'R2p', 'DBV'],
+                                   extras={'B0': traits.Float(desc='Field-strength (Tesla), default 3', argstr='--B0=%f')})
+    output_spec = base.SimOutputSpec('ASE')
 
 ############################ qi_zshim ############################
 
 
-class ZShimInputSpec(QI.InputBaseSpec):
+class ZShimInputSpec(base.InputBaseSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file to fit polynomial to')
     zshims = traits.Int(argstr='--zshims=%d', desc='Number of Z-shims')
@@ -148,7 +133,7 @@ class ZShimOutputSpec(TraitedSpec):
     out_file = File(desc="Shimmed Image")
 
 
-class ZShim(QI.BaseCommand):
+class ZShim(base.BaseCommand):
     """
     Combine an EPI image with Z/Y-shimming
     """

@@ -160,9 +160,9 @@ struct FMNLLS : FMFit {
 // Main
 //******************************************************************************
 int despot2fm_main(args::Subparser &parser) {
-    args::Positional<std::string> t1_path(parser, "T1_MAP", "Input T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP_FILE", "Input SSFP file");
     QI_COMMON_ARGS;
+    args::ValueFlag<std::string> t1_path(parser, "T1_MAP", "Input T1 map ** REQUIRED **", {"T1"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<int>         its(
         parser, "ITERS", "Max iterations for NLLS (default 75)", {'i', "its"}, 75);
@@ -176,7 +176,7 @@ int despot2fm_main(args::Subparser &parser) {
     if (simulate) {
         QI::SimulateModel<FMModel, false>(input,
                                           model,
-                                          {QI::CheckPos(t1_path), B1.Get()},
+                                          {QI::CheckValue(t1_path), B1.Get()},
                                           {QI::CheckPos(ssfp_path)},
                                           mask.Get(),
                                           verbose,
@@ -189,7 +189,7 @@ int despot2fm_main(args::Subparser &parser) {
         auto fit_filter =
             QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, covar, resids, subregion.Get());
         fit_filter->ReadInputs(
-            {QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()}, mask.Get());
+            {QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "FM_");
         QI::Log(verbose, "Finished.");

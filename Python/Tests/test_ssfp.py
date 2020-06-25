@@ -1,15 +1,24 @@
 import unittest
 import numpy as np
+from pathlib import Path
+from os import chdir
 from nipype.interfaces.base import CommandLine, DynamicTraitedSpec
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.relax import Ellipse, EllipseSim, PLANET, PLANETSim
-from QUIT.interfaces.mt import eMT, eMTSim
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.relax import Ellipse, EllipseSim, PLANET, PLANETSim
+from qipype.interfaces.mt import eMT, eMTSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
 
 
 class SSFP(unittest.TestCase):
+    def setUp(self):
+        Path('testdata').mkdir(exist_ok=True)
+        chdir('testdata')
+
+    def tearDown(self):
+        chdir('../')
+
     def test_planet(self):
         ellipse_seq = {"SSFP": {
             "FA": [15, 15, 15, 15, 15, 15],
@@ -42,12 +51,13 @@ class SSFP(unittest.TestCase):
 
         PLANETSim(sequence=planet_seq, G_file=planet_G, a_file=planet_a, b_file=planet_b,
                   noise=0, verbose=vb,
-                  PD='PD.nii.gz',
-                  T1='T1.nii.gz',
-                  T2='T2.nii.gz').run()
-        EllipseSim(sequence=ellipse_seq, in_file=ellipse_file,
+                  PD_map='PD.nii.gz',
+                  T1_map='T1.nii.gz',
+                  T2_map='T2.nii.gz').run()
+        EllipseSim(sequence=ellipse_seq, out_file=ellipse_file,
                    noise=noise, verbose=vb,
-                   G=planet_G, a=planet_a, b=planet_b, theta_0='zero.nii.gz', phi_rf='zero.nii.gz').run()
+                   G_map=planet_G, a_map=planet_a, b_map=planet_b,
+                   theta_0_map='zero.nii.gz', phi_rf_map='zero.nii.gz').run()
         Ellipse(sequence=ellipse_seq, in_file=ellipse_file, verbose=vb).run()
         PLANET(sequence=planet_seq, G_map=planet_G,
                a_map=planet_a, b_map=planet_b, verbose=vb).run()
@@ -113,14 +123,14 @@ class SSFP(unittest.TestCase):
 
         eMTSim(sequence=emt_seq, G_file=emt_G, a_file=emt_a, b_file=emt_b,
                noise=0, verbose=vb,
-               PD='PD.nii.gz',
-               T1_f='T1_f.nii.gz',
-               T2_f='T2_f.nii.gz',
-               f_b='f_b.nii.gz',
-               k_bf='k_bf.nii.gz').run()
-        EllipseSim(sequence=ellipse_sim, in_file=ellipse_file,
+               PD_map='PD.nii.gz',
+               T1_f_map='T1_f.nii.gz',
+               T2_f_map='T2_f.nii.gz',
+               f_b_map='f_b.nii.gz',
+               k_bf_map='k_bf.nii.gz').run()
+        EllipseSim(sequence=ellipse_sim, out_file=ellipse_file,
                    noise=noise, verbose=vb,
-                   G=emt_G, a=emt_a, b=emt_b, theta_0='zero.nii.gz', phi_rf='zero.nii.gz').run()
+                   G_map=emt_G, a_map=emt_a, b_map=emt_b, theta_0_map='zero.nii.gz', phi_rf_map='zero.nii.gz').run()
         Ellipse(sequence=ellipse_fit, in_file=ellipse_file, verbose=vb).run()
         eMT(sequence=emt_seq, G_map=emt_G,
             a_map=emt_a, b_map=emt_b, verbose=vb).run()

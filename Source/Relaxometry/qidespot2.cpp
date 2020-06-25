@@ -229,9 +229,9 @@ struct DESPOT2NLLS : DESPOT2Fit {
 // Main
 //******************************************************************************
 int despot2_main(args::Subparser &parser) {
-    args::Positional<std::string> t1_path(parser, "T1 MAP", "Path to T1 map");
     args::Positional<std::string> ssfp_path(parser, "SSFP FILE", "Path to SSFP data");
     QI_COMMON_ARGS;
+    args::ValueFlag<std::string> t1_path(parser, "T1 MAP", "Path to T1 map **REQUIRED**", {"T1"});
     args::ValueFlag<std::string> B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/w/n)", {'a', "algo"}, 'l');
     args::Flag            gs_arg(
@@ -249,7 +249,7 @@ int despot2_main(args::Subparser &parser) {
             model.elliptical = true;
         QI::SimulateModel<DESPOT2, false>(input,
                                           model,
-                                          {QI::CheckPos(t1_path), B1.Get()},
+                                          {QI::CheckValue(t1_path), B1.Get()},
                                           {QI::CheckPos(ssfp_path)},
                                           mask.Get(),
                                           verbose,
@@ -276,7 +276,7 @@ int despot2_main(args::Subparser &parser) {
             d2->model.elliptical = true;
         }
         auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(d2, verbose, covar, resids, subregion.Get());
-        fit->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckPos(t1_path), B1.Get()}, mask.Get());
+        fit->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D2_");
         QI::Log(verbose, "Finished.");
