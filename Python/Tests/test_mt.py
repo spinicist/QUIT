@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
+from quit.interfaces.core import NewImage, Diff
+from quit.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -34,7 +34,7 @@ class MT(unittest.TestCase):
         NewImage(out_file='A.nii.gz', verbose=vb, img_size=img_sz,
                  grad_dim=2, grad_vals=(0.5, 1)).run()
 
-        LorentzianSim(sequence=sequence, pools=pools, in_file=lorentz_file,
+        LorentzianSim(sequence=sequence, pools=pools, out_file=lorentz_file,
                       noise=noise, verbose=vb,
                       DS_f0='f0.nii.gz',
                       DS_fwhm='fwhm.nii.gz',
@@ -94,7 +94,7 @@ class MT(unittest.TestCase):
         NewImage(out_file='MTA.nii.gz', verbose=vb, img_size=img_sz,
                  fill=0.4).run()
 
-        LorentzianSim(sequence=sequence, pools=pools, in_file=lorentz_file,
+        LorentzianSim(sequence=sequence, pools=pools, out_file=lorentz_file,
                       noise=noise, verbose=vb,
                       DS_f0='f0.nii.gz',
                       DS_fwhm='fwhm.nii.gz',
@@ -153,7 +153,7 @@ class MT(unittest.TestCase):
         NewImage(out_file=t1app, verbose=vb, img_size=img_sz,
                  fill=1.0).run()
 
-        qMTSim(sequence=qmt, in_file=qmt_file, t1_map=t1app, lineshape=lineshape_file,
+        qMTSim(sequence=qmt, out_file=qmt_file, t1_map=t1app, lineshape=lineshape_file,
                noise=noise, verbose=vb,
                M0_f='M0_f.nii.gz', F_over_R1_f='F_over_R1_f.nii.gz', T2_b='T2_b.nii.gz', T1_f_over_T2_f='T1_f_over_T2_f.nii.gz', k='k.nii.gz').run()
         qMT(sequence=qmt, in_file=qmt_file, t1_map=t1app,

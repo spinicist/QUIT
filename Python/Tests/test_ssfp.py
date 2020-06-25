@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine, DynamicTraitedSpec
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.relax import Ellipse, EllipseSim, PLANET, PLANETSim
-from QUIT.interfaces.mt import eMT, eMTSim
+from quit.interfaces.core import NewImage, Diff
+from quit.interfaces.relax import Ellipse, EllipseSim, PLANET, PLANETSim
+from quit.interfaces.mt import eMT, eMTSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -45,7 +45,7 @@ class SSFP(unittest.TestCase):
                   PD='PD.nii.gz',
                   T1='T1.nii.gz',
                   T2='T2.nii.gz').run()
-        EllipseSim(sequence=ellipse_seq, in_file=ellipse_file,
+        EllipseSim(sequence=ellipse_seq, out_file=ellipse_file,
                    noise=noise, verbose=vb,
                    G=planet_G, a=planet_a, b=planet_b, theta_0='zero.nii.gz', phi_rf='zero.nii.gz').run()
         Ellipse(sequence=ellipse_seq, in_file=ellipse_file, verbose=vb).run()
@@ -118,7 +118,7 @@ class SSFP(unittest.TestCase):
                T2_f='T2_f.nii.gz',
                f_b='f_b.nii.gz',
                k_bf='k_bf.nii.gz').run()
-        EllipseSim(sequence=ellipse_sim, in_file=ellipse_file,
+        EllipseSim(sequence=ellipse_sim, out_file=ellipse_file,
                    noise=noise, verbose=vb,
                    G=emt_G, a=emt_a, b=emt_b, theta_0='zero.nii.gz', phi_rf='zero.nii.gz').run()
         Ellipse(sequence=ellipse_fit, in_file=ellipse_file, verbose=vb).run()

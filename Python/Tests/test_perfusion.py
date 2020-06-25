@@ -1,8 +1,8 @@
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.perfusion import ASL, ASE, ASESim, ZShim
+from quit.interfaces.core import NewImage, Diff
+from quit.interfaces.perfusion import ASL, ASE, ASESim, ZShim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -42,7 +42,7 @@ class Perfusion(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.005, 0.025),
                  out_file='DBV.nii.gz', verbose=vb).run()
 
-        ASESim(sequence=seq, in_file=ase_file, noise=noise, verbose=vb,
+        ASESim(sequence=seq, out_file=ase_file, noise=noise, verbose=vb,
                S0='S0.nii.gz',
                dT='dT.nii.gz',
                R2p='R2p.nii.gz',
@@ -72,7 +72,7 @@ class Perfusion(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=1, grad_vals=(1.0, 3.0),
                  out_file='R2p.nii.gz', verbose=vb).run()
 
-        ASESim(sequence=seq, in_file=ase_file,
+        ASESim(sequence=seq, out_file=ase_file,
                fix_DBV=DBV, noise=noise, verbose=vb,
                S0='S0.nii.gz',
                dT='dT.nii.gz',

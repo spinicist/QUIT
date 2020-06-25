@@ -1,8 +1,8 @@
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.utils import PolyImage, PolyFit, Filter, RFProfile
+from quit.interfaces.core import NewImage, Diff
+from quit.interfaces.utils import PolyImage, PolyFit, Filter, RFProfile
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

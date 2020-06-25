@@ -1,7 +1,7 @@
 import unittest
 from nipype.interfaces.base import CommandLine
-from QUIT.interfaces.core import NewImage, Diff
-from QUIT.interfaces.relax import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
+from quit.interfaces.core import NewImage, Diff
+from quit.interfaces.relax import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -19,7 +19,7 @@ class DESPOT_SC(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=1, grad_vals=(
             0.8, 1.3), out_file='T1.nii.gz', verbose=vb).run()
 
-        DESPOT1Sim(sequence=seq, in_file=spgr_file,
+        DESPOT1Sim(sequence=seq, out_file=spgr_file,
                    noise=noise, verbose=vb,
                    PD='PD.nii.gz', T1='T1.nii.gz').run()
         DESPOT1(sequence=seq, in_file=spgr_file,
@@ -79,7 +79,7 @@ class DESPOT_SC(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(0.04, 0.1),
                  out_file='T2.nii.gz', verbose=vb).run()
 
-        DESPOT2Sim(sequence=seq, in_file=ssfp_file,
+        DESPOT2Sim(sequence=seq, out_file=ssfp_file,
                    t1_file='T1.nii.gz', ellipse=gs, noise=noise, verbose=vb,
                    PD='PD.nii.gz', T2='T2.nii.gz').run()
         DESPOT2(sequence=seq, in_file=ssfp_file,
@@ -113,7 +113,7 @@ class DESPOT_SC(unittest.TestCase):
         NewImage(img_size=img_sz, grad_dim=2, grad_vals=(-100, 100),
                  out_file='f0.nii.gz', verbose=vb).run()
 
-        FMSim(sequence=seq, in_file=ssfp_file, asym=False,
+        FMSim(sequence=seq, out_file=ssfp_file, asym=False,
               t1_file='T1.nii.gz', noise=noise, verbose=vb,
               PD='PD.nii.gz', T2='T2.nii.gz', f0='f0.nii.gz').run()
         FM(sequence=seq, in_file=ssfp_file, asym=False,

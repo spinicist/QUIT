@@ -34,6 +34,7 @@ def init_brainweb():
             url='https://brainweb.bic.mni.mcgill.ca/cgi/brainweb1', params=params)
         b1_file = open('rf20_C.mnc', 'wb')
         b1_file.write(response.content)
+    print('Finished')
 
 
 def make_phantom(parameters, subsamp=1, B1=True, f0=False):
@@ -55,6 +56,7 @@ def make_phantom(parameters, subsamp=1, B1=True, f0=False):
             class_data[::subsamp, ::subsamp, ::subsamp], np.array(vals)).astype('float32')
         img = nib.nifti1.Nifti1Image(data, affine=classes.affine)
         nib.save(img, key + '.nii.gz')
+        print('Wrote', key + '.nii.gz')
 
     if B1:
         b1_img = nib.load('rf20_C.mnc')
@@ -62,9 +64,11 @@ def make_phantom(parameters, subsamp=1, B1=True, f0=False):
             'float32')[::subsamp, ::subsamp, ::subsamp]
         img = nib.nifti1.Nifti1Image(b1_data, affine=b1_img.affine)
         nib.save(img, 'B1.nii.gz')
+        print('Wrote B1.nii.gz')
     if f0:
         shape = [int(np.ceil(x / subsamp)) for x in class_data.shape]
         f0data = np.tile(
             np.linspace(-60, 60, shape[2]), [shape[0], shape[1], 1])
         img = nib.nifti1.Nifti1Image(f0data, affine=classes.affine)
         nib.save(img, 'f0.nii.gz')
+        print('Wrote f0.nii.gz')

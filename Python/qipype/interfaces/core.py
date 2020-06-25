@@ -50,7 +50,7 @@ class NewImage(CommandLine):
 
     Example usage
     -------
-    >>> from QUIT.nipype.CoreProgs import QINewImage
+    >>> from quit.nipype.CoreProgs import QINewImage
     >>> qinewimage = QINewImage(out_file='test.nii', imsize=256)
     >>> sim_res = qinewimage.run()
     >>> print(sim_res.outputs)

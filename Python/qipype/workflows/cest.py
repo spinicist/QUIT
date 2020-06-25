@@ -1,8 +1,8 @@
 import numpy as np
 from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, FLIRT, ApplyXFM, ImageMaths, Smooth
-from QUIT.interfaces.mt import Lorentzian, LorentzianSim, ZSpec
-from QUIT.interfaces.utils import PCA, Select
+from quit.interfaces.mt import Lorentzian, LorentzianSim, ZSpec
+from quit.interfaces.utils import PCA, Select
 
 
 def prep(zfrqs, dummies=0, pca_retain=0, name='CEST_prep'):
@@ -105,7 +105,7 @@ def cert(zfrqs):
                     name='cert_subtract')
     amide_index = (np.abs(zfrqs - 3.5)).argmin()
     amide = Node(Select(volumes=[amide_index], out_file='amide.nii.gz'),
-                            name='select_amide')
+                 name='select_amide')
 
     cert = Workflow(name='CERT')
     cert.connect([(inputnode, cert_sub, [('cert_360', 'in_file'), ('cert_180', 'in_file2')]),

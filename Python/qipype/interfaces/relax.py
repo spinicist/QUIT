@@ -8,37 +8,26 @@ Requires that the QUIT tools are in your your system path
 
 from os import path, getcwd
 from nipype.interfaces.base import TraitedSpec, File, traits
-from .. import base as QI
+from .. import base
 
 
 ############################ qidespot1 ############################
 
-class DESPOT1InputSpec(QI.FitInputSpec):
+class DESPOT1InputSpec(base.FitInputSpec):
     # Additional Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
     algo = traits.String(desc="Choose algorithm (l/w/n)", argstr="--algo=%s")
     iterations = traits.Int(
         desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')
-    clamp_PD = traits.Float(
-        desc='Clamp PD between 0 and value', argstr='-f %f')
-    clamp_T1 = traits.Float(
-        desc='Clamp T1 between 0 and value', argstr='--clampT1=%f')
 
 
-class DESPOT1OutputSpec(TraitedSpec):
-    t1_map = File('D1_T1.nii.gz', desc="Path to T1 map", usedefault=True)
-    pd_map = File('D1_PD.nii.gz', desc="Path to PD map", usedefault=True)
-    rmse_map = File('D1_rmse.nii.gz',
-                    desc="Path to residual map", usedefault=True)
-
-
-class DESPOT1(QI.FitCommand):
+class DESPOT1(base.FitCommand):
     """
     Run DESPOT1 analysis with qidespot1
 
     Example with parameter file
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot1
+    >>> from quit.nipype.relaxometry import QIDespot1
     >>> d1 = QIDespot1(prefix='nipype_', param_file='spgr_params.json')
     >>> d1.inputs.in_file = 'SPGR.nii.gz'
     >>> d1_res = d1.run()
@@ -46,7 +35,7 @@ class DESPOT1(QI.FitCommand):
 
     Example with parameter dictionary
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot1
+    >>> from quit.nipype.relaxometry import QIDespot1
     >>> params = {'SPGR': {'TR':5E-3, 'FA':[5,10]} }
     >>> d1 = QIDespot1(prefix='nipype_', param_dict=params)
     >>> d1.inputs.in_file = 'SPGR.nii.gz'
@@ -57,23 +46,23 @@ class DESPOT1(QI.FitCommand):
 
     _cmd = 'qi despot1'
     input_spec = DESPOT1InputSpec
-    output_spec = DESPOT1OutputSpec
+    output_spec = base.FitOutputSpec('DESPOT1OutputSpec', 'D1', ['PD', 'T1'])
 
 ############################ qidespot1sim ############################
 
 
-class DESPOT1SimInputSpec(QI.SimInputSpec):
+class DESPOT1SimInputSpec(base.SimInputSpec):
     # Options
     b1_map = File(desc='B1 map (ratio) file', argstr='--B1=%s')
 
 
-class DESPOT1Sim(QI.SimCommand):
+class DESPOT1Sim(base.SimCommand):
     """
     Run DESPOT1 simulation with qidespot1
 
     Example with parameter dictionary
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot1Sim
+    >>> from quit.nipype.relaxometry import QIDespot1Sim
     >>> params = {'SPGR': {'TR':5E-3, 'FA':[5,10]},
                   'T1File': 'D1_T1.nii.gz',
                   'PDFile': 'D1_PD.nii.gz'}
@@ -87,12 +76,12 @@ class DESPOT1Sim(QI.SimCommand):
     _cmd = 'qi despot1'
     _param_files = ['PD', 'T1']
     input_spec = DESPOT1SimInputSpec
-    output_spec = QI.SimOutputSpec
+    output_spec = base.SimOutputSpec
 
 ############################ qidespot1hifi ############################
 
 
-class HIFIInputSpec(QI.InputSpec):
+class HIFIInputSpec(base.InputSpec):
     # Inputs
     spgr_file = File(exists=True, argstr='%s', mandatory=True,
                      position=-2, desc='Path to SPGR data')
@@ -115,13 +104,13 @@ class HIFIOutputSpec(TraitedSpec):
                     desc="Path to residual map", usedefault=True)
 
 
-class HIFI(QI.FitCommand):
+class HIFI(base.FitCommand):
     """
     Calculate T1 & B1 map with the DESPOT1-HIFI method
 
     Example
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot1Hifi
+    >>> from quit.nipype.relaxometry import QIDespot1Hifi
     >>> params = {'SPGR': {'TR':5E-3, 'FA':[5,10]}, 
                   'MPRAGE': { 'FA': 5, 'TR': 5E-3, 'TI': 0.45, 'TD': 0, 'eta': 1, 'ETL': 64, 'k0': 0 }}
     >>> hifi = QIDespot1Hifi(prefix='nipype_', param_dict=params)
@@ -139,7 +128,7 @@ class HIFI(QI.FitCommand):
 ############################ qidespot1hifisim ############################
 
 
-class HIFISimInputSpec(QI.SimInputBaseSpec):
+class HIFISimInputSpec(base.SimInputBaseSpec):
     # Inputs
     spgr_file = File(exists=False, argstr='%s', mandatory=True,
                      position=-2, desc='Path for output SPGR image')
@@ -153,13 +142,13 @@ class HIFISimOutputSpec(TraitedSpec):
     mprage_file = File(desc="Output MPRAGE image")
 
 
-class HIFISim(QI.SimCommand):
+class HIFISim(base.SimCommand):
     """
     Simulate SPGR/FLASH and MPRAGE images using DESPOT1-HIFI model
 
     Example
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot1HifiSim
+    >>> from quit.nipype.relaxometry import QIDespot1HifiSim
     >>> params = {'SPGR': {'TR':5E-3, 'FA':[5,10]}, 
                   'MPRAGE': { 'FA': 5, 'TR': 5E-3, 'TI': 0.45, 'TD': 0, 'eta': 1, 'ETL': 64, 'k0': 0 },
                   'PDFile': 'PD.nii.gz',
@@ -186,7 +175,7 @@ class HIFISim(QI.SimCommand):
 ############################ qidespot2 ############################
 
 
-class DESPOT2InputSpec(QI.FitInputSpec):
+class DESPOT2InputSpec(base.FitInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-2, desc='Path to T1 map')
@@ -212,13 +201,13 @@ class DESPOT2OutputSpec(TraitedSpec):
                     desc="Path to residual map", usedefault=True)
 
 
-class DESPOT2(QI.FitCommand):
+class DESPOT2(base.FitCommand):
     """
     Run DESPOT2 analysis with qidespot2
 
     Example with parameter file
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot2
+    >>> from quit.nipype.relaxometry import QIDespot2
     >>> d1 = QIDespot2(prefix='nipype_', param_file='ssfp_params.json')
     >>> d2.inputs.in_file = 'SSFP.nii.gz'
     >>> d2.inputs.t1_file = 'D1_T1.nii.gz'
@@ -227,7 +216,7 @@ class DESPOT2(QI.FitCommand):
 
     Example with parameter dictionary
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot2
+    >>> from quit.nipype.relaxometry import QIDespot2
     >>> params = {'SSFP': {'TR':5E-3, 'FA':[10,50]} }
     >>> d2 = QIDespot2(prefix='nipype_', param_dict=params)
     >>> d2.inputs.in_file = 'SSFP.nii.gz'
@@ -244,7 +233,7 @@ class DESPOT2(QI.FitCommand):
 ############################ qidespot2sim ############################
 
 
-class DESPOT2SimInputSpec(QI.SimInputSpec):
+class DESPOT2SimInputSpec(base.SimInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-2, desc='Path for input T1 map')
@@ -255,13 +244,13 @@ class DESPOT2SimInputSpec(QI.SimInputSpec):
         desc="Data is ellipse geometric solution", argstr='--gs')
 
 
-class DESPOT2Sim(QI.SimCommand):
+class DESPOT2Sim(base.SimCommand):
     """
     Run DESPOT2 simulation
 
     Example with parameter dictionary
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot2Sim
+    >>> from quit.nipype.relaxometry import QIDespot2Sim
     >>> params = {'SSFP': {'TR':5E-3, 'FA':[10,50]},
                   'PDFile': 'PD.nii.gz',
                   'T1File': 'T1.nii.gz' }
@@ -276,12 +265,12 @@ class DESPOT2Sim(QI.SimCommand):
     _cmd = 'qi despot2'
     _param_files = ['PD', 'T2']
     input_spec = DESPOT2SimInputSpec
-    output_spec = QI.SimOutputSpec
+    output_spec = base.SimOutputSpec
 
 ############################ qidespot2fm ############################
 
 
-class FMInputSpec(QI.FitInputSpec):
+class FMInputSpec(base.FitInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-2, desc='Path to T1 map')
@@ -303,13 +292,13 @@ class FMOutputSpec(TraitedSpec):
                     desc="Path to residual map", usedefault=True)
 
 
-class FM(QI.FitCommand):
+class FM(base.FitCommand):
     """
     Run DESPOT2-FM analysis
 
     Example
     -------
-    >>> from QUIT.nipype.relaxometry import QIDespot2FM
+    >>> from quit.nipype.relaxometry import QIDespot2FM
     >>> params = {'SSFP': {'TR':5E-3, 'FA':[10,10,50,50], 'PhaseInc':[180,180,0,0] }
     >>> fm = QIDespot2FM(prefix='nipype_', param_dict=params)
     >>> fm.inputs.in_file = 'SSFP.nii.gz'
@@ -324,7 +313,7 @@ class FM(QI.FitCommand):
     output_spec = FMOutputSpec
 
 
-class FMSimInputSpec(QI.SimInputSpec):
+class FMSimInputSpec(base.SimInputSpec):
     # Inputs
     t1_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-2, desc='Path for input T1 map')
@@ -335,7 +324,7 @@ class FMSimInputSpec(QI.SimInputSpec):
         desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym')
 
 
-class FMSim(QI.SimCommand):
+class FMSim(base.SimCommand):
     """
     Run DESPOT2-FM simulation
 
@@ -344,12 +333,12 @@ class FMSim(QI.SimCommand):
     _cmd = 'qi despot2fm'
     _param_files = ['PD', 'T2', 'f0']
     input_spec = FMSimInputSpec
-    output_spec = QI.SimOutputSpec
+    output_spec = base.SimOutputSpec
 
 ############################ qi_jsr ############################
 
 
-class JSRInputSpec(QI.InputSpec):
+class JSRInputSpec(base.InputSpec):
     # Inputs
     spgr_file = File(exists=True, argstr='%s', mandatory=True,
                      position=-2, desc='Path to SPGR data')
@@ -375,7 +364,7 @@ class JSROutputSpec(TraitedSpec):
                     desc='Path to residual map', usedefault=True)
 
 
-class JSR(QI.FitCommand):
+class JSR(base.FitCommand):
     """
     Calculate T1 &T2 map with Joint System Relaxometry
 
@@ -389,7 +378,7 @@ class JSR(QI.FitCommand):
 # Status: Everything is there but not tested
 
 
-class QIMCDespotInputSpec(QI.InputSpec):
+class QIMCDespotInputSpec(base.InputSpec):
     # Inputs
     spgr_file = File(exists=True, argstr='%s', mandatory=True,
                      position=0, desc='SPGR file')
@@ -441,13 +430,13 @@ class QIMCDespotOutputSpec(TraitedSpec):
         desc="The relative flip-angle map. If this was specified on the command line, it will be a copy of that file")
 
 
-class QIMCDespot(QI.FitCommand):
+class QIMCDespot(base.FitCommand):
     """
     Interace for qimcdespot
 
     Example 1
     -------
-    >>> from QUIT.nipype.relaxometry import QiMcDespot
+    >>> from quit.nipype.relaxometry import QiMcDespot
     >>> interface = QiMcDespot(prefix='nipype_', param_file='mcdespot_params.json')
     """
 
@@ -474,7 +463,7 @@ class QIMCDespot(QI.FitCommand):
 # Implemented but not tested #
 
 
-class MP2RAGEInputSpec(QI.InputSpec):
+class MP2RAGEInputSpec(base.InputSpec):
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Path to complex MP-RAGE data')
@@ -494,13 +483,13 @@ class MP2RAGEOutputSpec(TraitedSpec):
     t1_map = File('MP2_T1.nii.gz', desc='T1 Map', usedefault=True)
 
 
-class MP2RAGE(QI.FitCommand):
+class MP2RAGE(base.FitCommand):
     """
     Interface for qimp2rage
 
     Example 1
     -------
-    >>> from QUIT.nipype.relaxometry import QIMP2RAGE
+    >>> from quit.nipype.relaxometry import QIMP2RAGE
     >>> interface = QIMP2RAGE(prefix='nipype_', param_file='spgr_params.json')
 
     """
@@ -512,7 +501,7 @@ class MP2RAGE(QI.FitCommand):
 ############################ qimultiecho ############################
 
 
-class MultiechoInputSpec(QI.FitInputSpec):
+class MultiechoInputSpec(base.FitInputSpec):
     # Options
     algo = traits.String(desc="Choose algorithm (l/a/n)", argstr="--algo=%s")
     iterations = traits.Int(
@@ -532,13 +521,13 @@ class MultiechoOutputSpec(TraitedSpec):
                     desc='Path to residual map', usedefault=True)
 
 
-class Multiecho(QI.FitCommand):
+class Multiecho(base.FitCommand):
     """
     help for myInterface
 
     Example 1
     -------
-    >>> from QUIT.nipype.relaxometry import QiMultiecho
+    >>> from quit.nipype.relaxometry import QiMultiecho
     >>> interface = QiMultiecho(prefix='nipype_', param_file='me_params.json')
 
     """
@@ -548,26 +537,26 @@ class Multiecho(QI.FitCommand):
     output_spec = MultiechoOutputSpec
 
 
-class MultiechoSim(QI.SimCommand):
+class MultiechoSim(base.SimCommand):
     """
     help for myInterface
 
     Example 1
     -------
-    >>> from QUIT.nipype.relaxometry import QiMultiecho
+    >>> from quit.nipype.relaxometry import QiMultiecho
     >>> interface = QiMultiecho(prefix='nipype_', param_file='me_params.json')
 
     """
 
     _cmd = 'qi multiecho'
     _param_files = ['PD', 'T2']
-    input_spec = QI.SimInputSpec
-    output_spec = QI.SimOutputSpec
+    input_spec = base.SimInputSpec
+    output_spec = base.SimOutputSpec
 
 ############################ qi_mpm_r2s ############################
 
 
-class MPMR2sInputSpec(QI.InputSpec):
+class MPMR2sInputSpec(base.InputSpec):
     # Inputs
     pdw_file = File(exists=True, argstr='%s', mandatory=True,
                     position=-3, desc='Path to PD-weighted data')
@@ -594,7 +583,7 @@ class MPMR2sOutputSpec(TraitedSpec):
                   desc='Intercept of the decay curve at TE=0 for MTw', usedefault=True)
 
 
-class MPMR2s(QI.FitCommand):
+class MPMR2s(base.FitCommand):
     """
     Runs qi_mpm_r2s
 
@@ -608,7 +597,7 @@ class MPMR2s(QI.FitCommand):
 # Implemented but not tested #
 
 
-class QIDreamInputSpec(QI.InputSpec):
+class QIDreamInputSpec(base.InputSpec):
     # Inputs
     dream_file = File(exists=True, argstr='%s', mandatory=True,
                       position=0, desc='Input file. Must have 2 volumes (FID and STE)')
@@ -631,13 +620,13 @@ class QIDreamOutputSpec(TraitedSpec):
     b1_act_map = File(desc="The actual achieved angle in each voxel.")
 
 
-class QIDream(QI.BaseCommand):
+class QIDream(base.BaseCommand):
     """
     Interface for qidream
 
     Example 1
     -------
-    >>> from QUIT.nipype.relaxometry import QiDream
+    >>> from quit.nipype.relaxometry import QiDream
     >>> interface = QiDream(prefix='nipype_', param_file='spgr_params.json')
 
     """
@@ -663,7 +652,7 @@ class QIDream(QI.BaseCommand):
 # Implemented but not tested #
 
 
-class QIAFIInputSpec(QI.InputSpec):
+class QIAFIInputSpec(base.InputSpec):
     # Inputs
     afi_file = File(exists=True, argstr='%s', mandatory=True,
                     position=0, desc='Input file')
@@ -687,13 +676,13 @@ class QIAFIOutputSpec(TraitedSpec):
     b1_act_map = File(desc="The actual flip-angle map.")
 
 
-class QIAFI(QI.BaseCommand):
+class QIAFI(base.BaseCommand):
     """
     help for myInterface
 
     Example 1
     -------
-    >>> from QUIT.nipype.relaxometry import QiAfi
+    >>> from quit.nipype.relaxometry import QiAfi
     >>> interface = QiAfi(prefix='nipype_', param_file='spgr_params.json')
 
     """
@@ -717,7 +706,7 @@ class QIAFI(QI.BaseCommand):
 ############################ qi_ssfp_elipse ############################
 
 
-class EllipseInputSpec(QI.FitInputSpec):
+class EllipseInputSpec(base.FitInputSpec):
     # Additional Options
     algo = traits.String(desc='Choose algorithm (h/d)', argstr='--algo=%s')
 
@@ -734,7 +723,7 @@ class EllipseOutputSpec(TraitedSpec):
                     desc='Path to residual map', usedefault=True)
 
 
-class Ellipse(QI.FitCommand):
+class Ellipse(base.FitCommand):
     """
     Fit an ellipse to SSFP data
 
@@ -745,7 +734,7 @@ class Ellipse(QI.FitCommand):
     output_spec = EllipseOutputSpec
 
 
-class EllipseSim(QI.SimCommand):
+class EllipseSim(base.SimCommand):
     """
     Simulate SSFP data from ellipse parameters
 
@@ -753,13 +742,13 @@ class EllipseSim(QI.SimCommand):
 
     _cmd = 'qi ssfp_ellipse'
     _param_files = ['G', 'a', 'b', 'theta_0', 'phi_rf']
-    input_spec = QI.SimInputSpec
-    output_spec = QI.SimOutputSpec
+    input_spec = base.SimInputSpec
+    output_spec = base.SimOutputSpec
 
 ############################ qi_planet ############################
 
 
-class PLANETInputSpec(QI.InputSpec):
+class PLANETInputSpec(base.InputSpec):
     # Inputs
     G_map = File(exists=True, argstr='%s', mandatory=True,
                  position=-3, desc='Path to G parameter map')
@@ -782,7 +771,7 @@ class PLANETOutputSpec(TraitedSpec):
                     desc="Path to residual map", usedefault=True)
 
 
-class PLANET(QI.FitCommand):
+class PLANET(base.FitCommand):
     """
     Calculate T1/T2 from ellipse parameters
 
@@ -793,7 +782,7 @@ class PLANET(QI.FitCommand):
     output_spec = PLANETOutputSpec
 
 
-class PLANETSimInputSpec(QI.SimInputBaseSpec):
+class PLANETSimInputSpec(base.SimInputBaseSpec):
     G_file = File(argstr='%s', mandatory=True,
                   position=-3, desc='Output G file')
     a_file = File(argstr='%s', mandatory=True,
@@ -809,7 +798,7 @@ class PLANETSimOutputSpec(TraitedSpec):
     b_file = File(desc='Output b file')
 
 
-class PLANETSim(QI.SimCommand):
+class PLANETSim(base.SimCommand):
     """
     Simulate ellipse parameters from T1/T2
 
