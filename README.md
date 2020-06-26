@@ -1,8 +1,10 @@
 ![Logo](Docs/logo.png)
 
-![Build](https://github.com/spinicist/QUIT/workflows/Build/badge.svg)
+[![Build](https://github.com/spinicist/QUIT/workflows/Build/badge.svg)](https://github.com/spinicist/QUIT/actions)
 [![DOI](http://joss.theoj.org/papers/10.21105/joss.00656/status.svg)](https://doi.org/10.21105/joss.00656)
 [![DOI](https://zenodo.org/badge/37066948.svg)](https://zenodo.org/badge/latestdoi/37066948)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/spinicist/qipype-binder/master?filepath=T1_mapping.ipynb)
+
 
 Credit / Blame / Contact - Tobias Wood - tobias.wood@kcl.ac.uk
 
@@ -59,11 +61,9 @@ QUIT comes as a single executable file with multiple commands, similar to `git`
 or `bart`. Type `qi` to see a list of all the available commands. The majority 
 of commands require an input 4D Nifti file containing the image data to fit, 
 and a `.json` file containing the sequence parameters (e.g. `TR`). See 
-examples for each command at http://quit.readthedocs.io.
+examples for each command at https://quit.readthedocs.io.
 
-There is an example iPython notebooks available in this 
-directory https://mybinder.org/v2/gh/spinicist/QUIT/master?filepath=Python%2FNotebooks%2FT1_mapping.ipynb.
-Workflows for CEST and MPM are provided in `qipype.workflows`.
+An example iPython notebook is available here in a separate repo https://github.com/spinicist/qipype-binder. Workflows for CEST and MPM are provided in `qipype.workflows`.
 
 ## Getting Help
 

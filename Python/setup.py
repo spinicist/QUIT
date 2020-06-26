@@ -8,12 +8,12 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-with open(path.abspath(path.join(here, '../README.md')), encoding='utf-8') as f:
+with open(path.abspath(path.join(here, 'README.md'))) as f:
     long_description = f.read()
 
 setup(
     name='qipype',
-    version='0.1',
+    version='0.2',
     description='nipype interfaces to QUantitative Imaging Tools',
     long_description=long_description,
     long_description_content_type="text/markdown",
