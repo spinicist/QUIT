@@ -224,14 +224,14 @@ class SimCommand(BaseCommand):
         self._json = deepcopy(sequence)
         super().__init__(**kwargs)
 
-    def _parse_inputs(self, skip=[]):
+    def _parse_inputs(self, skip=None):
+        if skip is None:
+            skip = []
         for v in self.input_spec.varying_names:
             if isdefined(getattr(self.inputs, v)):
                 self._json[v] = getattr(self.inputs, v)
                 skip.append(v)
-        print(self.inputs)
         parsed = super()._parse_inputs(skip)
-        print(parsed)
         return parsed
 
     def _list_outputs(self):

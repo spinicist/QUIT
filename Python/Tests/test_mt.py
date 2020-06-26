@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
-from quit.interfaces.core import NewImage, Diff
-from quit.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -155,7 +155,11 @@ class MT(unittest.TestCase):
 
         qMTSim(sequence=qmt, out_file=qmt_file, t1_map=t1app, lineshape=lineshape_file,
                noise=noise, verbose=vb,
-               M0_f='M0_f.nii.gz', F_over_R1_f='F_over_R1_f.nii.gz', T2_b='T2_b.nii.gz', T1_f_over_T2_f='T1_f_over_T2_f.nii.gz', k='k.nii.gz').run()
+               M0_f_map='M0_f.nii.gz',
+               F_over_R1_f_map='F_over_R1_f.nii.gz',
+               T2_b_map='T2_b.nii.gz',
+               T1_f_over_T2_f_map='T1_f_over_T2_f.nii.gz',
+               k_map='k.nii.gz').run()
         qMT(sequence=qmt, in_file=qmt_file, t1_map=t1app,
             lineshape=lineshape_file, verbose=vb).run()
 

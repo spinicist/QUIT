@@ -116,7 +116,6 @@ class DESPOT_SC(unittest.TestCase):
         sim = FMSim(sequence=seq, out_file=ssfp_file, asym=False,
                     T1_map='T1.nii.gz', noise=noise, verbose=vb,
                     PD_map='PD.nii.gz', T2_map='T2.nii.gz', f0_map='f0.nii.gz')
-        print(sim.cmdline)
         sim.run()
         FM(sequence=seq, in_file=ssfp_file, asym=False,
            T1_map='T1.nii.gz', verbose=vb, residuals=True).run()

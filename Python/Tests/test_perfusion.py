@@ -1,8 +1,8 @@
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from quit.interfaces.core import NewImage, Diff
-from quit.interfaces.perfusion import ASL, ASE, ASESim, ZShim
+from qipype.interfaces.core import NewImage, Diff
+from qipype.interfaces.perfusion import ASL, ASE, ASESim, ZShim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -43,10 +43,10 @@ class Perfusion(unittest.TestCase):
                  out_file='DBV.nii.gz', verbose=vb).run()
 
         ASESim(sequence=seq, out_file=ase_file, noise=noise, verbose=vb,
-               S0='S0.nii.gz',
-               dT='dT.nii.gz',
-               R2p='R2p.nii.gz',
-               DBV='DBV.nii.gz').run()
+               S0_map='S0.nii.gz',
+               dT_map='dT.nii.gz',
+               R2p_map='R2p.nii.gz',
+               DBV_map='DBV.nii.gz').run()
         ASE(sequence=seq, in_file=ase_file, verbose=vb).run()
 
         diff_R2p = Diff(in_file='ASE_R2p.nii.gz', baseline='R2p.nii.gz',
@@ -74,9 +74,9 @@ class Perfusion(unittest.TestCase):
 
         ASESim(sequence=seq, out_file=ase_file,
                fix_DBV=DBV, noise=noise, verbose=vb,
-               S0='S0.nii.gz',
-               dT='dT.nii.gz',
-               R2p='R2p.nii.gz').run()
+               S0_map='S0.nii.gz',
+               dT_map='dT.nii.gz',
+               R2p_map='R2p.nii.gz').run()
         ASE(sequence=seq, in_file=ase_file, fix_DBV=DBV, verbose=vb).run()
 
         diff_R2p = Diff(in_file='ASE_R2p.nii.gz', baseline='R2p.nii.gz',
