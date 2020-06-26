@@ -1,0 +1,5 @@
+#!/bin/bash
+
+pip install nanslice qipype
+wget https://github.com/spinicist/QUIT/releases/download/v3.0/qi-linux.tar.gz
+tar xvzf qi-linux.tar.gz

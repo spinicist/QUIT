@@ -4,3 +4,4 @@ _*.json
 *-checkpoint.ipynb
 *.pyc
 *.egg-info
+dist/

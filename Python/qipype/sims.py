@@ -37,7 +37,7 @@ def init_brainweb():
     print('Finished')
 
 
-def make_phantom(parameters, subsamp=1, B1=True, f0=False):
+def make_phantom(parameters, subsamp=1, mask=None, B1=True, f0=False):
     # Full class list:
     # 0=Background
     # 1=CSF
@@ -58,6 +58,13 @@ def make_phantom(parameters, subsamp=1, B1=True, f0=False):
         nib.save(img, key + '.nii.gz')
         print('Wrote', key + '.nii.gz')
 
+    if mask:
+        mask_data = np.choose(
+            class_data[::subsamp, ::subsamp, ::subsamp], np.array(mask))
+        img = nib.nifti1.Nifti1Image(mask_data, affine=classes.affine)
+        nib.save(img, 'mask.nii.gz')
+        print('Wrote mask.nii.gz')
+
     if B1:
         b1_img = nib.load('rf20_C.mnc')
         b1_data = b1_img.get_data().astype(
@@ -65,6 +72,7 @@ def make_phantom(parameters, subsamp=1, B1=True, f0=False):
         img = nib.nifti1.Nifti1Image(b1_data, affine=b1_img.affine)
         nib.save(img, 'B1.nii.gz')
         print('Wrote B1.nii.gz')
+
     if f0:
         shape = [int(np.ceil(x / subsamp)) for x in class_data.shape]
         f0data = np.tile(
