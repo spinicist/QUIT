@@ -13,7 +13,7 @@ with open(path.abspath(path.join(here, '../README.md')), encoding='utf-8') as f:
 
 setup(
     name='qipype',
-    version='1.0',
+    version='0.1',
     description='nipype interfaces to QUantitative Imaging Tools',
     long_description=long_description,
     long_description_content_type="text/markdown",

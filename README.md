@@ -51,7 +51,7 @@ in the documentation.
 
 ### Python
 
-QUIT now comes with `nipype` wrappers. Install with `pip install QUIT`.
+QUIT now comes with `nipype` wrappers. Install with `pip install qipype`.
 
 ## Usage
 
@@ -61,11 +61,9 @@ of commands require an input 4D Nifti file containing the image data to fit,
 and a `.json` file containing the sequence parameters (e.g. `TR`). See 
 examples for each command at http://quit.readthedocs.io.
 
-For the `nipype` wrappers, there are example iPython notebooks available in this 
-directory https://github.com/spinicist/QUIT/blob/master/Python/. You can 
-download the one for T1 mapping here https://github.com/spinicist/QUIT/raw/master/Python/T1_mapping.ipynb.
-Alternatively, look at the example workflows for CEST and MPM to see how to 
-build a complete pipeline.
+There is an example iPython notebooks available in this 
+directory https://mybinder.org/v2/gh/spinicist/QUIT/master?filepath=Python%2FNotebooks%2FT1_mapping.ipynb.
+Workflows for CEST and MPM are provided in `qipype.workflows`.
 
 ## Getting Help
 
