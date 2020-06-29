@@ -16,6 +16,7 @@
 #include "Model.h"
 #include "ModelFitFilter.h"
 #include "MultiEchoSequence.h"
+#include "SimulateModel.h"
 #include "Util.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
@@ -27,6 +28,20 @@ struct MPMModel : QI::Model<double, double, 4, 0, 3> {
 
     VaryingArray const lo{1e-6, 1e-6, 1e-6, 1e-6};
     VaryingArray const hi{1e4, 1e2, 1e2, 1e2}; // Signal values will be scaled
+
+    int output_size(int const o) {
+        switch (o) {
+        case 0:
+            return pdw_s.size();
+        case 1:
+            return t1w_s.size();
+        case 2:
+            return mtw_s.size();
+        default:
+            QI::Fail("Incorrect output requested {}", o);
+        }
+    }
+    size_t num_outputs() const { return 3; }
 
     template <typename Derived>
     auto pdw_signal(const Eigen::ArrayBase<Derived> &v) const
@@ -206,16 +221,27 @@ int mpm_r2s_main(args::Subparser &parser) {
     QI::CheckPos(mtw_path);
 
     QI::Log(verbose, "Reading sequence parameters");
-    json                  doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::MultiEchoSequence pdw_seq(doc["PDw"]), t1w_seq(doc["T1w"]), mtw_seq(doc["MTw"]);
+    json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    QI::MultiEchoSequence pdw_seq(input["PDw"]), t1w_seq(input["T1w"]), mtw_seq(input["MTw"]);
 
     MPMModel model{{}, pdw_seq, t1w_seq, mtw_seq};
     MPMFit   mpm_fit{model};
-    auto     fit_filter =
-        QI::ModelFitFilter<MPMFit>::New(&mpm_fit, verbose, covar, resids, subregion.Get());
-    fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask.Get());
-    fit_filter->Update();
-    fit_filter->WriteOutputs(prefix.Get() + "MPM_");
+    if (simulate) {
+        QI::SimulateModel<MPMModel, true>(input,
+                                          model,
+                                          {},
+                                          {pdw_path.Get(), t1w_path.Get(), mtw_path.Get()},
+                                          mask.Get(),
+                                          verbose,
+                                          simulate.Get(),
+                                          subregion.Get());
+    } else {
+        auto fit_filter =
+            QI::ModelFitFilter<MPMFit>::New(&mpm_fit, verbose, covar, resids, subregion.Get());
+        fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask.Get());
+        fit_filter->Update();
+        fit_filter->WriteOutputs(prefix.Get() + "MPM_");
+    }
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }
