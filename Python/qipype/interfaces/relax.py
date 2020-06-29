@@ -371,6 +371,14 @@ class MPMR2s(base.FitCommand):
         'MPM', ['R2s', 'S0_PDw', 'S0_T1w', 'S0_MTw'])
 
 
+class MPMR2sSim(base.SimCommand):
+    _cmd = 'qi mpm_r2s'
+    input_spec = base.SimInputSpec('MPMR2s',
+                                   varying=['R2s', 'S0_PDw',
+                                            'S0_T1w', 'S0_MTw'],
+                                   out_files=['PDw', 'T1w', 'MTw'])
+    output_spec = base.SimOutputSpec('MPMR2s', files=['PDw', 'T1w', 'MTw'])
+
 ############################ qi_ssfp_elipse ############################
 
 
