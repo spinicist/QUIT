@@ -1,3 +1,4 @@
+#pragma once
 /*
  *  ImageIO.h
  *
@@ -8,9 +9,6 @@
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  */
-
-#ifndef QUIT_IMAGEIO_H
-#define QUIT_IMAGEIO_H
 
 #include "ImageTypes.h"
 #include <string>
@@ -52,5 +50,3 @@ extern void WriteScaledImage(const itk::SmartPointer<TImg> &       ptr,
                              const bool                            verbose);
 
 } // namespace QI
-
-#endif // QUIT_IMAGEIO_H

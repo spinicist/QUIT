@@ -21,9 +21,8 @@
 #include "ModelFitFilter.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
+#include "SimulateModel.h"
 #include "Util.h"
-#include "itkImageRegionConstIterator.h"
-#include "itkImageRegionIterator.h"
 
 struct JSRModel : QI::Model<double, double, 4, 1, 2> {
     // Sequence paramter structs
@@ -41,7 +40,17 @@ struct JSRModel : QI::Model<double, double, 4, 1, 2> {
     std::array<std::string, NF> const fixed_names{"B1"};
     // If fixed parameters not supplied, use these default values
     FixedArray const fixed_defaults{1.0};
-
+    size_t           num_outputs() const { return 2; }
+    int              output_size(int const o) {
+        switch (o) {
+        case 0:
+            return spgr.size();
+        case 1:
+            return ssfp.size();
+        default:
+            QI::Fail("Incorrect output requested {}", o);
+        }
+    }
     // Signal functions. These have to be templated to allow automatic differentiation within Ceres
     template <typename Derived>
     auto spgr_signal(Eigen::ArrayBase<Derived> const &v, FixedArray const &f) const
@@ -283,10 +292,10 @@ int jsr_main(args::Subparser &parser) {
     QI::CheckPos(ssfp_path);
 
     QI::Log(verbose, "Reading sequence parameters");
-    json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
-    QI::SPGREchoSequence   spgr_seq(doc["SPGR"]);
-    QI::SSFPFiniteSequence ssfp_seq(doc["SSFP"]);
+    QI::SPGREchoSequence   spgr_seq(input["SPGR"]);
+    QI::SSFPFiniteSequence ssfp_seq(input["SSFP"]);
 
     JSRModel model{{}, spgr_seq, ssfp_seq};
     JSRFit   jsr_fit{model, npsi.Get()};

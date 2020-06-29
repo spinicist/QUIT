@@ -266,25 +266,18 @@ class eMTSim(base.SimCommand):
 
 class MTSatInputSpec(base.InputSpec):
     # Inputs
-    pdw_file = File(exists=True, argstr='%s', mandatory=True,
+    PDw_file = File(exists=True, argstr='%s', mandatory=True,
                     position=-3, desc='Path to PD-weighted data')
 
-    t1w_file = File(exists=True, argstr='%s', mandatory=True,
+    T1w_file = File(exists=True, argstr='%s', mandatory=True,
                     position=-2, desc='Path to T1-weighted data')
 
-    mtw_file = File(exists=True, argstr='%s', mandatory=True,
+    MTw_file = File(exists=True, argstr='%s', mandatory=True,
                     position=-1, desc='Path to MT-weighted data')
 
     # Options
     residuals = traits.Bool(
         desc='Write out residuals for each data-point', argstr='--resids')
-
-
-class MTSatOutputSpec(TraitedSpec):
-    s0_map = File('MTSat_S0.nii.gz', desc='S0/PD Map', usedefault=True)
-    r1_map = File('MTSat_R1.nii.gz', desc='R1 map', usedefault=True)
-    delta_map = File('MTSat_delta.nii.gz',
-                     desc='MTSat delta map', usedefault=True)
 
 
 class MTSat(base.FitCommand):
@@ -295,7 +288,14 @@ class MTSat(base.FitCommand):
 
     _cmd = 'qi mtsat'
     input_spec = MTSatInputSpec
-    output_spec = MTSatOutputSpec
+    output_spec = base.FitOutputSpec('MTSat', ['PD', 'R1', 'delta'])
+
+
+class MTSatSim(base.SimCommand):
+    _cmd = 'qi mtsat'
+    input_spec = base.SimInputSpec('MTSat', varying=['PD', 'R1', 'delta'], fixed=[
+                                   'B1'], out_files=['PDw', 'T1w', 'MTw'])
+    output_spec = base.SimOutputSpec('MTSat', ['PDw', 'T1w', 'MTw'])
 
 ############################ qi mtr ############################
 
