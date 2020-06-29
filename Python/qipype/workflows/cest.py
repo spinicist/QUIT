@@ -53,7 +53,10 @@ def prep(zfrqs, dummies=0, pca_retain=0, name='CEST_prep'):
                   'df0': [-2.5, -5.0, -0.5],
                   'fwhm': [50.0, 35.0, 200.0],
                   'A': [0.3, 1.e-3, 1.0]}]
-    f0_fit = Node(Lorentzian(sequence=sequence, pools=two_pools, verbose=True),
+
+    # Need to instantiate a fit type for the number of pools we are doing
+    L2Fit = Lorentzian(two_pools)
+    f0_fit = Node(L2Fit(sequence=sequence, verbose=True),
                   name='f0_fit')
 
     out_frqs = np.sort(zfrqs)
@@ -143,18 +146,18 @@ def amide_noe(zfrqs, name='Amide_NOE'):
                   'A': [0.3, 1.e-3, 1.0]}]
     backg_select = Node(Select(volumes=np.where(f0_indices)[0].tolist(), out_file='bg_zspec.nii.gz'),
                         name='backg_select')
+    L2Fit = Lorentzian(two_pools)
     backg_fit = Node(Lorentzian(sequence=sequence,
-                                pools=two_pools,
                                 verbose=True),
                      name='backg_fit')
     # Simulate data for all frequencies
     sequence['MTSat']['sat_f0'] = zfrqs.tolist()
     sequence['MTSat']['sat_angle'] = np.repeat(180.0, len(zfrqs)).tolist()
-    backg_sim = Node(LorentzianSim(sequence=sequence,
-                                   pools=two_pools,
-                                   noise=0,
-                                   in_file='backg_sim.nii.gz',
-                                   verbose=True),
+    L2Sim = LorentzianSim(two_pools)
+    backg_sim = Node(L2Sim(sequence=sequence,
+                           noise=0,
+                           in_file='backg_sim.nii.gz',
+                           verbose=True),
                      name='backg_sim')
     backg_sub = Node(ImageMaths(op_string='-sub',
                                 out_file='no_backg_sub.nii.gz'),
@@ -177,11 +180,11 @@ def amide_noe(zfrqs, name='Amide_NOE'):
     an_select = Node(Select(volumes=np.where(f0_indices)[0].tolist(), out_file='fg_zspec.nii.gz'),
                      name='an_select')
 
-    an_fit = Node(Lorentzian(sequence=sequence,
-                             pools=an_pools,
-                             Zref=0.0,
-                             additive=True,
-                             verbose=True),
+    LANFit = Lorentzian(an_pools)
+    an_fit = Node(LANFit(sequence=sequence,
+                         Zref=0.0,
+                         additive=True,
+                         verbose=True),
                   name='an_pool')
 
     outputnode = Node(IdentityInterface(fields=['zspec',
