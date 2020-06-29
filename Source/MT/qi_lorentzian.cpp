@@ -18,7 +18,7 @@
 #include "FitFunction.h"
 #include "ImageIO.h"
 #include "JSON.h"
-#include "MTSatSequence.h"
+#include "MTSequences.h"
 #include "Model.h"
 #include "ModelFitFilter.h"
 #include "SimulateModel.h"
@@ -34,7 +34,7 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
     using typename Super::VaryingArray;
     static constexpr int NP   = NP_;
     static constexpr int NVpP = 3; // Number of varying parameters per pool - A and FWHM
-    using SequenceType        = QI::MTSatSequence;
+    using SequenceType        = QI::ZSpecSequence;
 
     SequenceType                sequence;
     std::array<std::string, NV> varying_names;
@@ -107,7 +107,7 @@ int lorentzian_main(args::Subparser &parser) {
     QI::CheckPos(input_path);
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::Log(verbose, "Reading sequence information");
-    auto sequence = input.at("MTSat").get<QI::MTSatSequence>();
+    auto sequence = input.at("MTSat").get<QI::ZSpecSequence>();
 
     auto process = [&]<int N>() {
         using LM   = LorentzModel<N>;

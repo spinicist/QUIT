@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  *  ModelSimFilter.h
  *
@@ -9,9 +11,6 @@
  *
  */
 
-#ifndef QI_MODELSIMFILTER_H
-#define QI_MODELSIMFILTER_H
-
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageToImageFilter.h"
@@ -20,6 +19,7 @@
 
 #include "ImageTypes.h"
 #include "Model.h"
+#include "Util.h"
 
 namespace QI {
 
@@ -277,5 +277,3 @@ class ModelSimFilter
 };
 
 } // namespace QI
-
-#endif

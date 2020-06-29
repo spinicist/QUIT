@@ -9,14 +9,6 @@
  *
  */
 
-#include "AFISequence.h"
-#include "CASLSequence.h"
-#include "Log.h"
-#include "MPRAGESequence.h"
-#include "MTSatSequence.h"
-#include "MultiEchoSequence.h"
-#include "SPGRSequence.h"
-#include "SSFPSequence.h"
 #include "SequenceBase.h"
 
 using namespace std::string_literals;

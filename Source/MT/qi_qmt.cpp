@@ -18,7 +18,7 @@
 #include "FitScaledAuto.h"
 #include "ImageIO.h"
 #include "Lineshape.h"
-#include "MTSatSequence.h"
+#include "MTSequences.h"
 #include "Macro.h"
 #include "Model.h"
 #include "ModelFitFilter.h"
@@ -28,7 +28,7 @@
 using namespace std::literals;
 
 struct RamaniModel : QI::Model<double, double, 5, 3, 1, 3> {
-    QI::MTSatSequence const &                  sequence;
+    QI::ZSpecSequence const &                  sequence;
     const QI::Lineshapes                       lineshape;
     const std::shared_ptr<QI::InterpLineshape> interp = nullptr;
 
@@ -138,7 +138,7 @@ int qmt_main(args::Subparser &parser) {
     QI::CheckPos(mtsat_path);
     QI::Log(verbose, "Reading sequence information");
     json           input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    auto           mtsat_sequence = input.at("MTSat").get<QI::MTSatSequence>();
+    auto           mtsat_sequence = input.at("MTSat").get<QI::ZSpecSequence>();
     QI::Lineshapes lineshape;
     std::shared_ptr<QI::InterpLineshape> interp = nullptr;
     if (lineshape_arg.Get() == "Gaussian") {

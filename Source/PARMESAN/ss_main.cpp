@@ -28,7 +28,7 @@
 /*
  * Main
  */
-int rufis_ss_main(args::Subparser &parser) {
+int ss_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input MUPA file");
     QI_COMMON_ARGS;
     args::Flag                   T2(parser, "T2", "Fit T2 model", {"T2"});

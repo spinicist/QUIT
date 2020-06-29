@@ -1,3 +1,5 @@
+#pragma once
+
 /*
  *  ModelFitFilter.h
  *
@@ -8,9 +10,6 @@
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  */
-
-#ifndef QI_MODELFITFILTER_H
-#define QI_MODELFITFILTER_H
 
 #include <Eigen/Core>
 #include <array>
@@ -663,5 +662,3 @@ class ModelFitFilter
 }; // namespace QI
 
 } // namespace QI
-
-#endif // MODELFITFILTER_H
