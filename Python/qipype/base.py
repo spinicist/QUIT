@@ -41,23 +41,46 @@ class InputSpec(InputBaseSpec):
         desc='Only process voxels within the mask', argstr='--mask=%s')
 
 
-class FitInputSpec(InputSpec):
+def FitInputSpec(name, fixed=None, in_files=None, extra=None):
     """
     Input Specification for tools in fitting mode
     """
-    # Input nifti
-    in_file = File(exists=True, argstr='%s', mandatory=True,
-                   position=-1, desc='Input file')
-    covar = traits.Bool(
-        decsc='Write out parameter covar images', argstr='--covar')
-    residuals = traits.Bool(
-        desc='Write out residuals for each data-point', argstr='--resids')
+    if fixed is None:
+        fixed = []
+
+    if in_files is None:
+        in_files = ['in']
+
+    attrs = {'covar': traits.Bool(decsc='Write out parameter covar images',
+                                  argstr='--covar'),
+             'residuals': traits.Bool(desc='Write out residuals for each data-point',
+                                      argstr='--resids')}
+
+    for f in fixed:
+        aname = '{}_map'.format(f)
+        desc = 'Path to fixed {} map'.format(f)
+        args = '--{}=%s'.format(f)
+        attrs[aname] = File(argstr=args, exists=True, desc=desc)
+
+    for idx, o in enumerate(in_files):
+        aname = '{}_file'.format(o)
+        desc = 'Output {} file'.format(o)
+        attrs[aname] = File(argstr='%s', mandatory=True,
+                            position=idx, desc=desc)
+    if extra:
+        for k, v in extra.items():
+            attrs[k] = v
+    T = type(name + 'SimInputSpec', (InputSpec,), attrs)
+    return T
 
 
-def SimInputSpec(name, varying, fixed=[], out_files=None, extras=None):
+def SimInputSpec(name, varying, fixed=None, out_files=None, extra=None):
     """
     Input specification for tools in simulation mode
     """
+    if fixed is None:
+        fixed = []
+
     if out_files is None:
         out_files = ['out']
 
@@ -82,8 +105,8 @@ def SimInputSpec(name, varying, fixed=[], out_files=None, extras=None):
         desc = 'Output {} file'.format(o)
         attrs[aname] = File(argstr='%s', mandatory=True,
                             position=idx, desc=desc)
-    if extras:
-        for k, v in extras.items():
+    if extra:
+        for k, v in extra.items():
             attrs[k] = v
     T = type(name + 'SimInputSpec', (InputSpec,), attrs)
     return T
@@ -94,9 +117,11 @@ def SimInputSpec(name, varying, fixed=[], out_files=None, extras=None):
 # as functions that return a type. Closest thing to C++ templates I could find
 
 
-def FitOutputSpec(prefix, parameters):
+def FitOutputSpec(prefix, varying, derived=None):
     attrs = {}
-    for p in parameters:
+    if derived is None:
+        derived = []
+    for p in varying + derived:
         pname = '{}_map'.format(p)
         fname = '{}_{}.nii.gz'.format(prefix, p)
         desc = 'Path to {}'.format(p)
@@ -211,7 +236,7 @@ class FitCommand(BaseCommand):
 
     def __init__(self, sequence={}, **kwargs):
         self._json = deepcopy(sequence)
-        super().__init__(**kwargs)
+        BaseCommand.__init__(self, **kwargs)
 
 
 class SimCommand(BaseCommand):
@@ -221,7 +246,7 @@ class SimCommand(BaseCommand):
 
     def __init__(self, sequence={}, **kwargs):
         self._json = deepcopy(sequence)
-        super().__init__(**kwargs)
+        BaseCommand.__init__(self, **kwargs)
 
     def _parse_inputs(self, skip=None):
         if skip is None:
@@ -239,6 +264,36 @@ class SimCommand(BaseCommand):
         for k, v in outputs.items():
             outputs[k] = path.abspath(inputs[k])
         return outputs
+
+
+def Command(toolname, cmd, file_prefix, varying,
+            derived=None, fixed=None, files=None, extra=None,
+            init=None):
+    fit_ispec = FitInputSpec(file_prefix,
+                             fixed=fixed,
+                             in_files=files,
+                             extra=extra)
+    sim_ispec = SimInputSpec(file_prefix,
+                             varying=varying,
+                             fixed=fixed,
+                             out_files=files,
+                             extra=extra)
+
+    fit_ospec = FitOutputSpec(file_prefix, varying=varying, derived=derived)
+    sim_ospec = SimOutputSpec(file_prefix, files=files)
+
+    fit_attrs = {'_cmd': cmd, 'input_spec': fit_ispec,
+                 'output_spec': fit_ospec}
+    sim_attrs = {'_cmd': cmd, 'input_spec': sim_ispec,
+                 'output_spec': sim_ospec}
+    if init:
+        fit_attrs['__init__'] = init
+        sim_attrs['__init__'] = init
+
+    fit_T = type(toolname, (FitCommand,), fit_attrs)
+    sim_T = type(toolname, (SimCommand,), sim_attrs)
+
+    return (fit_T, sim_T)
 
 
 def check_QUIT():

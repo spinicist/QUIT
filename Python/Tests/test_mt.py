@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
 from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
+from qipype.interfaces.mt import Lorentzian, Lineshape, qMT, qMTSim, ZSpec
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -43,13 +43,12 @@ class MT(unittest.TestCase):
         NewImage(out_file='A.nii.gz', verbose=vb, img_size=img_sz,
                  grad_dim=2, grad_vals=(0.5, 1)).run()
 
-        L1Sim = LorentzianSim(pools)
+        L1Fit, L1Sim = Lorentzian(pools)
         L1Sim(sequence=sequence, out_file=lorentz_file,
               noise=noise, verbose=vb,
               DS_f0_map='f0.nii.gz',
               DS_fwhm_map='fwhm.nii.gz',
               DS_A_map='A.nii.gz').run()
-        L1Fit = Lorentzian(pools)
         L1Fit(sequence=sequence, in_file=lorentz_file, verbose=vb).run()
 
         diff_f0 = Diff(in_file='LTZ_DS_f0.nii.gz', baseline='f0.nii.gz',
@@ -104,7 +103,7 @@ class MT(unittest.TestCase):
         NewImage(out_file='MTA.nii.gz', verbose=vb, img_size=img_sz,
                  fill=0.4).run()
 
-        L2Sim = LorentzianSim(pools)
+        L2Fit, L2Sim = Lorentzian(pools)
         L2Sim(sequence=sequence, out_file=lorentz_file,
               noise=noise, verbose=vb,
               DS_f0_map='f0.nii.gz',
@@ -113,7 +112,6 @@ class MT(unittest.TestCase):
               MT_fwhm_map='MTfwhm.nii.gz',
               MT_f0_map='f0.nii.gz',
               MT_A_map='MTA.nii.gz').run()
-        L2Fit = Lorentzian(pools)
         L2Fit(sequence=sequence, in_file=lorentz_file, verbose=vb).run()
 
         diff_fwhm = Diff(in_file='LTZ_DS_fwhm.nii.gz', baseline='fwhm.nii.gz',

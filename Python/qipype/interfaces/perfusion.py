@@ -20,25 +20,6 @@ from .. import base
 ############################ qi_asl ############################
 
 
-class ASLInputSpec(base.FitInputSpec):
-    # Additional Options
-    average = traits.Bool(
-        desc='Average across time-series', argstr='--average')
-    dummies = traits.Int(
-        desc='Remove dummies from timeseries', argstr='--dummies=%d')
-    T1_blood = traits.Float(
-        desc='Value of blood T1 (default 1.65)', argstr='--blood=%f')
-    T1_tissue = traits.String(
-        desc='Path to tissue T1 map (units are seconds)', argstr='--tissue=%s')
-    PD_map = traits.String(desc='Path to PD weighted image', argstr='--pd=%s')
-    label_efficiency = traits.Float(
-        desc='Labelling efficiency, default 0.9', argstr='--alpha=%f')
-    blood_brain_partition = traits.Float(
-        desc='Blood-Brain Partition Co-efficient, default 0.9 mL/g', argstr='--lambda=%f')
-    slicetime = traits.Bool(
-        desc='Apply slice-timing correction (number of PLDs and slices must match)', argstr='--slicetime')
-
-
 class ASL(base.FitCommand):
     """
     Calculate CBF from CASL data
@@ -46,22 +27,27 @@ class ASL(base.FitCommand):
     """
 
     _cmd = 'qi asl'
-    input_spec = ASLInputSpec
-    output_spec = base.FitOutputSpec('CASL', 'CBF')
+    input_spec = base.FitInputSpec('CASL',
+                                   extra={'average': traits.Bool(desc='Average across time-series', argstr='--average'),
+                                          'dummies': traits.Int(desc='Remove dummies from timeseries', argstr='--dummies=%d'),
+                                          'T1_blood': traits.Float(desc='Value of blood T1 (default 1.65)', argstr='--blood=%f'),
+                                          'T1_tissue': traits.String(desc='Path to tissue T1 map (units are seconds)', argstr='--tissue=%s'),
+                                          'PD_map': traits.String(desc='Path to PD weighted image', argstr='--pd=%s'),
+                                          'label_efficiency': traits.Float(desc='Labelling efficiency, default 0.9', argstr='--alpha=%f'),
+                                          'blood_brain_partition': traits.Float(desc='Blood-Brain Partition Co-efficient, default 0.9 mL/g', argstr='--lambda=%f'),
+                                          'slicetime': traits.Bool(desc='Apply slice-timing correction (number of PLDs and slices must match)', argstr='--slicetime')
+                                          })
+    output_spec = base.FitOutputSpec('CASL', varying=['CBF'])
+
 
 ############################ qi_ase_oef ############################
 
-
-class ASEInputSpec(base.FitInputSpec):
-    # Additional Options
-    B0 = traits.Float(
-        desc='Field-strength (Tesla), default 3', argstr='--B0=%f')
-    fix_DBV = traits.Float(
-        desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f')
-    gradz = traits.String(
-        desc='Field gradient in z/slice-direction for MFG correction', argstr='--gradz=%s')
-    slice_thickness = traits.Float(
-        desc='Actual slice-thickness for MFG correction if slice-gap was used', argstr='--slice=%f')
+ASEInputSpec = base.FitInputSpec('ASE',
+                                 extra={'B0': traits.Float(desc='Field-strength (Tesla), default 3', argstr='--B0=%f'),
+                                        'fix_DBV': traits.Float(desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f'),
+                                        'gradz': traits.String(desc='Field gradient in z/slice-direction for MFG correction', argstr='--gradz=%s'),
+                                        'slice_thickness': traits.Float(desc='Actual slice-thickness for MFG correction if slice-gap was used', argstr='--slice=%f')
+                                        })
 
 
 class ASEOutputSpec(TraitedSpec):
@@ -100,8 +86,8 @@ class ASESim(base.SimCommand):
     _cmd = 'qi ase_oef'
     input_spec = base.SimInputSpec('ASE',
                                    varying=['S0', 'dT', 'R2p'],
-                                   extras={'B0': traits.Float(desc='Field-strength (Tesla), default 3', argstr='--B0=%f'),
-                                           'fix_DBV': traits.Float(desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f', mandatory=True)})
+                                   extra={'B0': traits.Float(desc='Field-strength (Tesla), default 3', argstr='--B0=%f'),
+                                          'fix_DBV': traits.Float(desc='Fix Deoxygenated Blood Volume to value (fraction)', argstr='--DBV=%f', mandatory=True)})
     output_spec = base.SimOutputSpec('ASE')
 
 
@@ -112,7 +98,7 @@ class ASEDBVSim(base.SimCommand):
     _cmd = 'qi ase_oef'
     input_spec = base.SimInputSpec('ASE',
                                    varying=['S0', 'dT', 'R2p', 'DBV'],
-                                   extras={'B0': traits.Float(desc='Field-strength (Tesla), default 3', argstr='--B0=%f')})
+                                   extra={'B0': traits.Float(desc='Field-strength (Tesla), default 3', argstr='--B0=%f')})
     output_spec = base.SimOutputSpec('ASE')
 
 ############################ qi_zshim ############################

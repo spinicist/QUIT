@@ -289,12 +289,23 @@ int jsr_main(args::Subparser &parser) {
     QI::SSFPFiniteSequence ssfp_seq(doc["SSFP"]);
 
     JSRModel model{{}, spgr_seq, ssfp_seq};
-    JSRFit   jsr_fit{model, npsi.Get()};
-    auto     fit_filter =
-        QI::ModelFitFilter<JSRFit>::New(&jsr_fit, verbose, covar, resids, subregion.Get());
-    fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask.Get());
-    fit_filter->Update();
-    fit_filter->WriteOutputs(prefix.Get() + "JSR_");
+    if (simulate) {
+        QI::SimulateModel<JSRModel, true>(input,
+                                          model,
+                                          {b1_path.Get()},
+                                          {spgr_path.Get(), ssfp_path.Get()},
+                                          mask.Get(),
+                                          verbose,
+                                          simulate.Get(),
+                                          subregion.Get());
+    } else {
+        JSRFit jsr_fit{model, npsi.Get()};
+        auto   fit_filter =
+            QI::ModelFitFilter<JSRFit>::New(&jsr_fit, verbose, covar, resids, subregion.Get());
+        fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask.Get());
+        fit_filter->Update();
+        fit_filter->WriteOutputs(prefix.Get() + "JSR_");
+    }
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }
