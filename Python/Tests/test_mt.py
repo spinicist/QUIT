@@ -3,8 +3,8 @@ from os import chdir
 import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
-from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.mt import Lorentzian, LorentzianSim, Lineshape, qMT, qMTSim, ZSpec
+from qipype.fitting import LtzWaterMT, LtzWaterMTSim, qMT, qMTSim
+from qipype.commands import NewImage, Diff, ZSpec, Lineshape
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -18,51 +18,7 @@ class MT(unittest.TestCase):
     def tearDown(self):
         chdir('../')
 
-    def test_lorentzian(self):
-        sequence = {'MTSat': {'pulse': {'p1': 0.4,
-                                        'p2': 0.3,
-                                        'bandwidth': 0.39},
-                              'TR': 4,
-                              'Trf': 0.02,
-                              'FA': 5,
-                              'sat_f0': np.linspace(-5, 5, 21).squeeze().tolist(),
-                              'sat_angle': np.repeat(180.0, 21).squeeze().tolist()}}
-        pools = [{'name': 'DS',
-                  'df0': [0, -2.5, 2.5],
-                  'fwhm': [1.0, 1.e-6, 3.0],
-                  'A': [0.2, 1.e-3, 1.0],
-                  'use_bandwidth': True}]
-        lorentz_file = 'lorentz_sim.nii.gz'
-        img_sz = [32, 32, 32]
-        noise = 0.001
-
-        NewImage(out_file='f0.nii.gz', verbose=vb, img_size=img_sz,
-                 grad_dim=0, grad_vals=(-0.5, 0.5)).run()
-        NewImage(out_file='fwhm.nii.gz', verbose=vb, img_size=img_sz,
-                 grad_dim=1, grad_vals=(0.5, 2.5)).run()
-        NewImage(out_file='A.nii.gz', verbose=vb, img_size=img_sz,
-                 grad_dim=2, grad_vals=(0.5, 1)).run()
-
-        L1Sim = LorentzianSim(pools)
-        L1Sim(sequence=sequence, out_file=lorentz_file,
-              noise=noise, verbose=vb,
-              DS_f0_map='f0.nii.gz',
-              DS_fwhm_map='fwhm.nii.gz',
-              DS_A_map='A.nii.gz').run()
-        L1Fit = Lorentzian(pools)
-        L1Fit(sequence=sequence, in_file=lorentz_file, verbose=vb).run()
-
-        diff_f0 = Diff(in_file='LTZ_DS_f0.nii.gz', baseline='f0.nii.gz',
-                       noise=noise, verbose=vb).run()
-        diff_fwhm = Diff(in_file='LTZ_DS_fwhm.nii.gz', baseline='fwhm.nii.gz',
-                         noise=noise, verbose=vb).run()
-        diff_A = Diff(in_file='LTZ_DS_A.nii.gz', baseline='A.nii.gz',
-                      noise=noise, verbose=vb).run()
-        self.assertLessEqual(diff_f0.outputs.out_diff, 100)
-        self.assertLessEqual(diff_fwhm.outputs.out_diff, 20)
-        self.assertLessEqual(diff_A.outputs.out_diff, 25)
-
-    def test_lorentzian2(self):
+    def test_ltz(self):
         sat_f0 = [*np.linspace(-40, 40,
                                12).squeeze().tolist(), -0.5, -0.25, 0, 0.25, 0.5]
         sequence = {'MTSat': {'pulse': {'p1': 0.4,
@@ -73,16 +29,6 @@ class MT(unittest.TestCase):
                               'FA': 5,
                               'sat_f0': sat_f0,
                               'sat_angle': np.repeat(180.0, 17).squeeze().tolist()}}
-        pools = [{'name': 'DS',
-                  'df0': [0, -2.5, 2.5],
-                  'fwhm': [1.0, 1.e-6, 3.0],
-                  'A': [0.2, 1.e-3, 1.0],
-                  'use_bandwidth': True},
-                 {'name': 'MT',
-                  'df0': [-2.5, -5.0, -0.5],
-                  'fwhm': [50.0, 35.0, 200.0],
-                  'A': [0.3, 1.e-3, 1.0]}]
-
         lorentz_file = 'lorentz_sim.nii.gz'
         img_sz = [32, 32, 32]
         noise = 0.001
@@ -104,17 +50,15 @@ class MT(unittest.TestCase):
         NewImage(out_file='MTA.nii.gz', verbose=vb, img_size=img_sz,
                  fill=0.4).run()
 
-        L2Sim = LorentzianSim(pools)
-        L2Sim(sequence=sequence, out_file=lorentz_file,
-              noise=noise, verbose=vb,
-              DS_f0_map='f0.nii.gz',
-              DS_fwhm_map='fwhm.nii.gz',
-              DS_A_map='A.nii.gz',
-              MT_fwhm_map='MTfwhm.nii.gz',
-              MT_f0_map='f0.nii.gz',
-              MT_A_map='MTA.nii.gz').run()
-        L2Fit = Lorentzian(pools)
-        L2Fit(sequence=sequence, in_file=lorentz_file, verbose=vb).run()
+        LtzWaterMTSim(sequence=sequence, out_file=lorentz_file,
+                      noise=noise, verbose=vb,
+                      DS_f0_map='f0.nii.gz',
+                      DS_fwhm_map='fwhm.nii.gz',
+                      DS_A_map='A.nii.gz',
+                      MT_fwhm_map='MTfwhm.nii.gz',
+                      MT_f0_map='f0.nii.gz',
+                      MT_A_map='MTA.nii.gz').run()
+        LtzWaterMT(sequence=sequence, in_file=lorentz_file, verbose=vb).run()
 
         diff_fwhm = Diff(in_file='LTZ_DS_fwhm.nii.gz', baseline='fwhm.nii.gz',
                          noise=noise, verbose=vb).run()

@@ -3,8 +3,8 @@ from os import chdir
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.utils import PolyImage, PolyFit, Filter, RFProfile
+from qipype.commands import NewImage, Diff
+from qipype.utils import PolyImage, PolyFit, Filter, RFProfile
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

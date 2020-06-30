@@ -10,12 +10,12 @@ Requires that the QUIT tools are in your your system path
 from json import dump, loads
 from os import path
 from nipype.interfaces.base import CommandLine, TraitedSpec, File, traits, isdefined
-from .. import base as QI
+from . import base
 
 ############################### qi_pca ###############################
 
 
-class PCAInputSpec(QI.InputSpec):
+class PCAInputSpec(base.InputSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file for PCA denoising')
     retain = traits.Int(argstr='--retain=%d', desc='Number of PCs to retain')
@@ -34,7 +34,7 @@ class PCAOutputSpec(TraitedSpec):
     pc_json_file = File(desc='JSON containing Principal Components')
 
 
-class PCA(QI.BaseCommand):
+class PCA(base.BaseCommand):
     """
     Denoise an image using Principal Components
     """
@@ -63,7 +63,7 @@ class PCA(QI.BaseCommand):
 ############################ qi_rfprofile ############################
 
 
-class RFProfileInputSpec(QI.InputSpec):
+class RFProfileInputSpec(base.InputSpec):
     rf = traits.Dict(desc='Dictionary with rf_pos and rf_vals lists', argstr='',
                      mandatory=True)
 
@@ -88,7 +88,7 @@ class RFProfileOutputSpec(TraitedSpec):
     out_file = File(desc="output slab profile file")
 
 
-class RFProfile(QI.BaseCommand):
+class RFProfile(base.BaseCommand):
     """
     help for myInterface
 
@@ -117,7 +117,7 @@ class RFProfile(QI.BaseCommand):
 ############################ qiaffine ############################
 
 
-class AffineInputSpec(QI.InputSpec):
+class AffineInputSpec(base.InputSpec):
 
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
@@ -173,7 +173,7 @@ class Affine(CommandLine):
 ############################ qimask ############################
 
 
-class MaskInputSpec(QI.InputBaseSpec):
+class MaskInputSpec(base.InputBaseSpec):
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Input File')
@@ -204,7 +204,7 @@ class MaskOutputSpec(TraitedSpec):
     out_file = File(desc="Output mask file")
 
 
-class Mask(QI.BaseCommand):
+class Mask(base.BaseCommand):
     """
     help for myInterface
 
@@ -230,7 +230,7 @@ class Mask(QI.BaseCommand):
 
 
 ############################ qi_coil_combine ############################
-class CoilCombineInputSpec(QI.InputSpec):
+class CoilCombineInputSpec(base.InputSpec):
     in_file = traits.File(
         desc='Input complex-valued file to coil-combine', argstr='%s', exists=True)
     composer_file = traits.File(
@@ -247,7 +247,7 @@ class CoilCombineOutputSpec(TraitedSpec):
     out_file = traits.File(desc='Output combined file')
 
 
-class CoilCombine(QI.BaseCommand):
+class CoilCombine(base.BaseCommand):
     """
     Combine multi-coil data
     """
@@ -271,7 +271,7 @@ class CoilCombine(QI.BaseCommand):
 ############################ qicomplex ############################
 
 
-class ComplexInputSpec(QI.InputSpec):
+class ComplexInputSpec(base.InputSpec):
 
     # Options
     mag = traits.String(desc='Magnitude input', argstr='--mag=%s', exists=True)
@@ -307,7 +307,7 @@ class ComplexOutputSpec(TraitedSpec):
     imag_out_file = File()
 
 
-class Complex(QI.BaseCommand):
+class Complex(base.BaseCommand):
     """
     Deals with magnitude/phase/real/imaginary/complex data
 
@@ -343,7 +343,7 @@ class Complex(QI.BaseCommand):
 ############################ qikfilter ############################
 
 
-class FilterInputSpec(QI.InputSpec):
+class FilterInputSpec(base.InputSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file to fit polynomial to')
     filter_spec = traits.String(argstr='--filter=%s', mandatory=True,
@@ -367,7 +367,7 @@ class FilterOutputSpec(TraitedSpec):
     out_file = File(desc="Simulated Image")
 
 
-class Filter(QI.BaseCommand):
+class Filter(base.BaseCommand):
     """
     Filter an image in k-space
     """
@@ -391,7 +391,7 @@ class Filter(QI.BaseCommand):
 ############################ qipolyimg ############################
 
 
-class PolyImageInputSpec(QI.InputSpec):
+class PolyImageInputSpec(base.InputSpec):
     # Options
     ref_file = File(argstr='%s', mandatory=True, exists=True, position=-2,
                     desc='Reference file for co-ordinate space and size')
@@ -407,7 +407,7 @@ class PolyImageOutputSpec(TraitedSpec):
     out_file = File(desc='Output polynomial image')
 
 
-class PolyImage(QI.BaseCommand):
+class PolyImage(base.BaseCommand):
     """
     Produce a new image with qipolyimage
     """
@@ -437,7 +437,7 @@ class PolyImage(QI.BaseCommand):
 ############################ qipolyfit ############################
 
 
-class PolyFitInputSpec(QI.InputBaseSpec):
+class PolyFitInputSpec(base.InputBaseSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file to fit polynomial to')
     mask_file = File(argstr='--mask=%s', exists=True,
@@ -452,7 +452,7 @@ class PolyFitOutputSpec(TraitedSpec):
     poly = traits.Dict(desc="Polynomial parameters")
 
 
-class PolyFit(QI.BaseCommand):
+class PolyFit(base.BaseCommand):
     """
     Fit a polynomial to an image
     """
@@ -468,7 +468,7 @@ class PolyFit(QI.BaseCommand):
 ############################ qi_select ############################
 
 
-class SelectInputSpec(QI.InputBaseSpec):
+class SelectInputSpec(base.InputBaseSpec):
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Input File')
@@ -482,7 +482,7 @@ class SelectOutputSpec(TraitedSpec):
     out_file = File(desc="Output file")
 
 
-class Select(QI.BaseCommand):
+class Select(base.BaseCommand):
     """
     Selects a set of volumes from a timeseries and writes them to another series
 

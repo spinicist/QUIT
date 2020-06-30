@@ -2,10 +2,9 @@ import unittest
 import numpy as np
 from pathlib import Path
 from os import chdir
-from nipype.interfaces.base import CommandLine, DynamicTraitedSpec
-from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.relax import Ellipse, EllipseSim, PLANET, PLANETSim
-from qipype.interfaces.mt import eMT, eMTSim
+from nipype.interfaces.base import CommandLine
+from qipype.commands import NewImage, Diff
+from qipype.fitting import Ellipse, EllipseSim, PLANET, PLANETSim, eMT, eMTSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -59,8 +58,8 @@ class SSFP(unittest.TestCase):
                    G_map=planet_G, a_map=planet_a, b_map=planet_b,
                    theta_0_map='zero.nii.gz', phi_rf_map='zero.nii.gz').run()
         Ellipse(sequence=ellipse_seq, in_file=ellipse_file, verbose=vb).run()
-        PLANET(sequence=planet_seq, G_map=planet_G,
-               a_map=planet_a, b_map=planet_b, verbose=vb).run()
+        PLANET(sequence=planet_seq, G_file=planet_G,
+               a_file=planet_a, b_file=planet_b, verbose=vb).run()
 
         diff_G = Diff(in_file='ES_G.nii.gz', baseline=planet_G,
                       noise=noise, verbose=vb).run()
@@ -132,8 +131,8 @@ class SSFP(unittest.TestCase):
                    noise=noise, verbose=vb,
                    G_map=emt_G, a_map=emt_a, b_map=emt_b, theta_0_map='zero.nii.gz', phi_rf_map='zero.nii.gz').run()
         Ellipse(sequence=ellipse_fit, in_file=ellipse_file, verbose=vb).run()
-        eMT(sequence=emt_seq, G_map=emt_G,
-            a_map=emt_a, b_map=emt_b, verbose=vb).run()
+        eMT(sequence=emt_seq, G_file=emt_G,
+            a_file=emt_a, b_file=emt_b, verbose=vb).run()
 
         # Currently the simulation framework does not support blocked algorithms
         # Hence simulating a proper eMT dataset would involve individually simulating

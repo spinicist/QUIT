@@ -2,8 +2,8 @@ from pathlib import Path
 from os import chdir
 import unittest
 from nipype.interfaces.base import CommandLine
-from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.relax import Multiecho, MultiechoSim
+from qipype.commands import NewImage, Diff
+from qipype.fitting import Multiecho, MultiechoSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

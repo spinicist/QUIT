@@ -3,8 +3,8 @@ from os import chdir
 import unittest
 from math import sqrt
 from nipype.interfaces.base import CommandLine
-from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.perfusion import ASL, ASE, ASESim, ASEDBVSim, ZShim
+from qipype.commands import NewImage, Diff, ZShim
+from qipype.fitting import ASL, ASE, ASESim, ASEDBV, ASEDBVSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
@@ -56,7 +56,7 @@ class Perfusion(unittest.TestCase):
                   dT_map='dT.nii.gz',
                   R2p_map='R2p.nii.gz',
                   DBV_map='DBV.nii.gz').run()
-        ASE(sequence=seq, in_file=ase_file, verbose=vb).run()
+        ASEDBV(sequence=seq, in_file=ase_file, verbose=vb).run()
 
         diff_R2p = Diff(in_file='ASE_R2p.nii.gz', baseline='R2p.nii.gz',
                         noise=noise, verbose=vb).run()

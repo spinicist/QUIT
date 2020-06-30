@@ -3,8 +3,8 @@ from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, ExtractROI, FLIRT, Merge, ApplyXFM, ImageMaths, BinaryMaths, ConvertXFM
 from nipype.interfaces.ants import Registration, ApplyTransforms
 import nipype.interfaces.utility as util
-from quit.interfaces.utils import Mask, RFProfile, Complex, Filter, CoilCombine
-from quit.interfaces.fsl import ApplyXfm4D
+from qipype.interfaces.utils import Mask, RFProfile, Complex, Filter, CoilCombine
+from qipype.interfaces.fsl import ApplyXfm4D
 
 
 def COMPOSER(verbose=False, is_bruker=False):
@@ -74,10 +74,10 @@ def COMPOSER(verbose=False, is_bruker=False):
     return wf
 
 
-def init_b1_mcf(rf_pulse, scale=150):
+def init_b1_mcf(rf_pulse=None, scale=150):
     inputnode = Node(IdentityInterface(fields=['2db1map_file', 'ref_file']),
                      name='inputnode')
-    outputnode = Node(IdentityInterface(fields=['b1_map']),
+    outputnode = Node(IdentityInterface(fields=['b1_plus', 'b1_pulse']),
                       name='outputnode')
 
     b1_b1 = Node(ExtractROI(t_min=0, t_size=1), name='b1_extract_b1')
@@ -89,7 +89,6 @@ def init_b1_mcf(rf_pulse, scale=150):
     b1_invert = Node(ConvertXFM(invert_xfm=True), name='b1_invert')
     b1_apply = Node(FLIRT(apply_xfm=True), name='b1_reg_apply')
     b1_scale = Node(ImageMaths(op_string='-div %f' % scale), name='b1_scale')
-    b1_rf = Node(RFProfile(rf=rf_pulse, out_file='b1_rf.nii.gz'), name='b1_rf')
 
     wf = Workflow(name='b1_prep')
     wf.connect([(inputnode, b1_b1, [('2db1map_file', 'in_file')]),
@@ -102,8 +101,12 @@ def init_b1_mcf(rf_pulse, scale=150):
                 (b1_b1, b1_filter, [('roi_file', 'in_file')]),
                 (b1_filter, b1_apply, [('out_file', 'in_file')]),
                 (b1_apply, b1_scale, [('out_file', 'in_file')]),
-                (b1_scale, b1_rf, [('out_file', 'in_file')]),
-                (b1_rf, outputnode, [('out_file', 'b1_map')])])
+                (b1_scale, outputnode, [('out_file', 'b1_plus')])])
+    if rf_pulse:
+        b1_rf = Node(
+            RFProfile(rf=rf_pulse, out_file='b1_rf.nii.gz'), name='b1_rf')
+        wf.connect([(b1_scale, b1_rf, [('out_file', 'in_file')]),
+                    (b1_rf, outputnode, [('out_file', 'b1_pulse')])])
     return wf
 
 

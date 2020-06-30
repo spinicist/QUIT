@@ -2,8 +2,8 @@ from pathlib import Path
 from os import chdir
 import unittest
 from nipype.interfaces.base import CommandLine
-from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.relax import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
+from qipype.commands import NewImage, Diff
+from qipype.fitting import DESPOT1, DESPOT1Sim, DESPOT2, DESPOT2Sim, HIFI, HIFISim, FM, FMSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'
