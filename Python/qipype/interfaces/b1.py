@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Implementation of nipype interfaces for QUIT B1 utilities
+Implementation of nipype interfaces for QUIT relaxometry utilities
 Requires that the QUIT tools are in your your system path
 """
 
@@ -14,7 +14,7 @@ from .. import base
 # Implemented but not tested #
 
 
-class QIDreamInputSpec(base.InputSpec):
+class DreamInputSpec(base.InputSpec):
     # Inputs
     dream_file = File(exists=True, argstr='%s', mandatory=True,
                       position=0, desc='Input file. Must have 2 volumes (FID and STE)')
@@ -32,25 +32,15 @@ class QIDreamInputSpec(base.InputSpec):
         desc="Nominal flip-angle (default 55)", argstr="--alpha=%f")
 
 
-class QIDreamOutputSpec(TraitedSpec):
+class DreamOutputSpec(TraitedSpec):
     b1_rel_map = File(desc="The relative flip-angle map.")
     b1_act_map = File(desc="The actual achieved angle in each voxel.")
 
 
-class QIDream(base.BaseCommand):
-    """
-    Interface for qidream
-
-    Example 1
-    -------
-    >>> from qipype.interfaces.relax import QiDream
-    >>> interface = QiDream(prefix='nipype_', param_file='spgr_params.json')
-
-    """
-
+class Dream(base.BaseCommand):
     _cmd = 'qi dream'
-    input_spec = QIDreamInputSpec
-    output_spec = QIDreamOutputSpec
+    input_spec = DreamInputSpec
+    output_spec = DreamOutputSpec
 
     # If the command requires a json input file
     def _format_arg(self, name, spec, value):
@@ -69,7 +59,7 @@ class QIDream(base.BaseCommand):
 # Implemented but not tested #
 
 
-class QIAFIInputSpec(base.InputSpec):
+class AFIInputSpec(base.InputSpec):
     # Inputs
     afi_file = File(exists=True, argstr='%s', mandatory=True,
                     position=0, desc='Input file')
@@ -87,26 +77,16 @@ class QIAFIInputSpec(base.InputSpec):
         desc="Write out the actual flip-angle as well as B1", argstr="--save")
 
 
-class QIAFIOutputSpec(TraitedSpec):
+class AFIOutputSpec(TraitedSpec):
     # Specify which outputs there are
     b1_rel_map = File(desc="The relative flip-angle map.")
     b1_act_map = File(desc="The actual flip-angle map.")
 
 
-class QIAFI(base.BaseCommand):
-    """
-    help for myInterface
-
-    Example 1
-    -------
-    >>> from qipype.interfaces.relax import QiAfi
-    >>> interface = QiAfi(prefix='nipype_', param_file='spgr_params.json')
-
-    """
-
+class AFI(base.BaseCommand):
     _cmd = 'qi afi'
-    input_spec = QIAFIInputSpec
-    output_spec = QIAFIOutputSpec
+    input_spec = AFIInputSpec
+    output_spec = AFIOutputSpec
 
     # If the command requires a json input file
     def _format_arg(self, name, spec, value):
@@ -119,3 +99,18 @@ class QIAFI(base.BaseCommand):
         outputs['b1_act_map'] = os.path.abspath(
             self._add_prefix('AFI_angle.nii.gz'))
         return outputs
+
+############################ B1- via Papp Method ############################
+# Implemented but not tested #
+
+class B1MinusInputSpec(base.InputSpec):
+    in_file = File(exists=True, argstr='%s', mandatory=True,
+                    position=0, desc='Input file')
+
+class B1MinusOutputSpec(TraitedSpec):
+    out_file = File('B1minus.nii.gz', desc="The B1 minus map.", usedefault=True)
+
+class B1Minus(base.BaseCommand):
+    _cmd = 'qi b1-papp'
+    input_spec = B1MinusInputSpec
+    output_spec = B1MinusOutputSpec
