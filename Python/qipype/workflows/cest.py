@@ -1,8 +1,34 @@
 import numpy as np
 from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, FLIRT, ApplyXFM, ImageMaths, Smooth
-from qipype.interfaces.mt import Lorentzian, LorentzianSim, ZSpec
+from qipype.interfaces.mt import Lorentzian, ZSpec
 from qipype.interfaces.utils import PCA, Select
+
+two_pools = [{'name': 'DS',
+                'df0': [0, -2.5, 2.5],
+                'fwhm': [1.0, 1.e-6, 3.0],
+                'A': [0.2, 1.e-3, 1.0],
+                'use_bandwidth': True},
+                {'name': 'MT',
+                'df0': [-2.5, -5.0, -0.5],
+                'fwhm': [50.0, 35.0, 200.0],
+                'A': [0.3, 1.e-3, 1.0]}]
+L2Fit, L2Sim = Lorentzian('L2', two_pools)
+print(dir(L2Fit))
+print(type(L2Fit.__module__))
+L2Fit.__module__ = 'qipype.workflows.cest'
+
+an_pools = [{'name': 'Amide',
+                'df0': [3.5, 2.0, 6.0],
+                'fwhm': [2.0, 0.4, 4.0],
+                'A': [0.2, 1.e-3, 0.2],
+                'use_bandwidth': True},
+            {'name': 'NOE',
+                'df0': [-4.0, -6.0, -2.0],
+                'fwhm': [2.0, 0.4, 4.0],
+                'A': [0.2, 1.e-3, 0.2],
+                'use_bandwidth': True}]
+LamideFit, _ = Lorentzian('Lamide', an_pools)
 
 
 def prep(zfrqs, dummies=0, pca_retain=0, name='CEST_prep'):
@@ -13,29 +39,39 @@ def prep(zfrqs, dummies=0, pca_retain=0, name='CEST_prep'):
                                                 'DS', 'MT']),
                       name='outputnode')
 
+    prep = Workflow(name=name)
+
     moco = Node(MCFLIRT(cost='mutualinfo', mean_vol=True),
                 name='moco')
     mask = Node(BET(mask=True, no_output=True), name='mask')
+    prep.connect([(inputnode, moco, [('zspec_file', 'in_file'), ('ref_file', 'ref_file')]),
+                  (moco, mask, [('mean_img', 'in_file')])])
 
+    zspec_norm = Node(ImageMaths(op_string='-div', out_file='zspec.nii.gz'),
+                      name='zspec_norm', iterfield=['in_file'])
     if (dummies > 0):
         ref_index = dummies - 1
         zspec_select = Node(Select(volumes=list(range(dummies, len(zfrqs))), out_file='zspec.nii.gz'),
                             name='zspec_select')
         zfrqs = np.array(zfrqs[dummies:])
+        prep.connect([(moco, zspec_select, [('out_file', 'in_file')]),
+                      (zspec_select, zspec_norm, [('out_file', 'in_file')])])
     else:
         ref_index = 0
         zfrqs = np.array(zfrqs)
-
+        prep.connect([(moco, zspec_norm, [('out_file', 'in_file')])])
     zspec_ref = Node(Select(volumes=[ref_index, ], out_file='reference.nii.gz'),
                      name='zspec_ref')
-    zspec_norm = Node(ImageMaths(op_string='-div', out_file='zspec.nii.gz'),
-                      name='zspec_norm')
+    prep.connect([(moco, zspec_ref, [('out_file', 'in_file')]),
+                  (zspec_ref, zspec_norm, [('out_file', 'in_file2')])])
 
     f0_indices = (np.abs(zfrqs) > 7) | (np.abs(zfrqs) < 1.1)
     sat_frqs = zfrqs[f0_indices]
     sat_angles = np.repeat(180.0, len(f0_indices))
     f0_select = Node(Select(volumes=np.where(f0_indices)[0].tolist(), out_file='background_zspec.nii.gz'),
                      name='f0_select')
+    prep.connect([(zspec_norm, f0_select, [('out_file', 'in_file')])])
+    
     sequence = {'MTSat': {'pulse': {'p1': 0.4,
                                     'p2': 0.3,
                                     'bandwidth': 0.39},
@@ -44,44 +80,17 @@ def prep(zfrqs, dummies=0, pca_retain=0, name='CEST_prep'):
                           'FA': 5,
                           'sat_f0': sat_frqs.tolist(),
                           'sat_angle': sat_angles.tolist()}}
-    two_pools = [{'name': 'DS',
-                  'df0': [0, -2.5, 2.5],
-                  'fwhm': [1.0, 1.e-6, 3.0],
-                  'A': [0.2, 1.e-3, 1.0],
-                  'use_bandwidth': True},
-                 {'name': 'MT',
-                  'df0': [-2.5, -5.0, -0.5],
-                  'fwhm': [50.0, 35.0, 200.0],
-                  'A': [0.3, 1.e-3, 1.0]}]
-    f0_fit = Node(Lorentzian(sequence=sequence, pools=two_pools, verbose=True),
+    f0_fit = Node(L2Fit(sequence=sequence, verbose=True),
                   name='f0_fit')
+    prep.connect([(f0_select, f0_fit, [('out_file', 'in_file')]),
+                  (mask, f0_fit, [('mask_file', 'mask_file')])])
 
     out_frqs = np.sort(zfrqs)
     f0_correct = Node(ZSpec(in_freqs=zfrqs.tolist(), out_freqs=out_frqs.tolist(),
                             verbose=True), name='f0_correct')
-
-    prep = Workflow(name=name)
-    prep.connect([(inputnode, moco, [('zspec_file', 'in_file'), ('ref_file', 'ref_file')]),
-                  (moco, zspec_ref, [('out_file', 'in_file')]),
-                  (moco, mask, [('mean_img', 'in_file')]),
-                  (zspec_ref, zspec_norm, [('out_file', 'in_file2')]),
-                  (zspec_norm, f0_select, [('out_file', 'in_file')]),
-                  (f0_select, f0_fit, [('out_file', 'in_file')]),
-                  (mask, f0_fit, [('mask_file', 'mask_file')]),
-                  (zspec_norm, f0_correct, [('out_file', 'in_file')]),
-                  (f0_fit, f0_correct, [('DS_f0', 'f0_map')]),
-                  (mask, f0_correct, [('mask_file', 'mask_file')]),
-                  (moco, outputnode, [('mean_img', 'ref_file')]),
-                  (mask, outputnode, [('out_file', 'mask_file')]),
-                  (f0_fit, outputnode, [('DS_f0', 'f0_map'),
-                                        ('DS_A', 'DS'),
-                                        ('MT_A', 'MT')])
-                  ])
-    if (dummies > 0):
-        prep.connect([(moco, zspec_select, [('out_file', 'in_file')]),
-                      (zspec_select, zspec_norm, [('out_file', 'in_file')])])
-    else:
-        prep.connect([(moco, zspec_norm, [('out_file', 'in_file')])])
+    prep.connect([(zspec_norm, f0_correct, [('out_file', 'in_file')]),
+                  (f0_fit, f0_correct, [('DS_f0_map', 'f0_map')]),
+                  (mask, f0_correct, [('mask_file', 'mask_file')])])
 
     if pca_retain > 0:
         f0_pca = Node(
@@ -91,6 +100,12 @@ def prep(zfrqs, dummies=0, pca_retain=0, name='CEST_prep'):
                       ])
     else:
         prep.connect([(f0_correct, outputnode, [('out_file', 'zspec_file')])])
+
+    prep.connect([(moco, outputnode, [('mean_img', 'ref_file')]),
+                  (mask, outputnode, [('out_file', 'mask_file')]),
+                  (f0_fit, outputnode, [('DS_f0_map', 'f0_map'),
+                                        ('DS_A_map', 'DS'),
+                                        ('MT_A_map', 'MT')])])
 
     return (prep, out_frqs)
 
@@ -102,7 +117,7 @@ def cert(zfrqs):
                       name='outputnode')
 
     cert_sub = Node(ImageMaths(op_string='-sub', out_file='cert.nii.gz'),
-                    name='cert_subtract')
+                    name='cert_subtract', iterfield=['in_file'])
     amide_index = (np.abs(zfrqs - 3.5)).argmin()
     amide = Node(Select(volumes=[amide_index], out_file='amide.nii.gz'),
                  name='select_amide')
@@ -132,44 +147,23 @@ def amide_noe(zfrqs, name='Amide_NOE'):
                           'FA': 5,
                           'sat_f0': zfrqs[f0_indices].tolist(),
                           'sat_angle': np.repeat(180.0, len(f0_indices)).tolist()}}
-    two_pools = [{'name': 'DS',
-                  'df0': [0, -2.5, 2.5],
-                  'fwhm': [1.0, 1.e-6, 3.0],
-                  'A': [0.2, 1.e-3, 1.0],
-                  'use_bandwidth': True},
-                 {'name': 'MT',
-                  'df0': [-2.5, -5.0, -0.5],
-                  'fwhm': [50.0, 35.0, 200.0],
-                  'A': [0.3, 1.e-3, 1.0]}]
     backg_select = Node(Select(volumes=np.where(f0_indices)[0].tolist(), out_file='bg_zspec.nii.gz'),
                         name='backg_select')
-    backg_fit = Node(Lorentzian(sequence=sequence,
-                                pools=two_pools,
-                                verbose=True),
+    
+    backg_fit = Node(L2Fit(sequence=sequence, verbose=True),
                      name='backg_fit')
     # Simulate data for all frequencies
     sequence['MTSat']['sat_f0'] = zfrqs.tolist()
     sequence['MTSat']['sat_angle'] = np.repeat(180.0, len(zfrqs)).tolist()
-    backg_sim = Node(LorentzianSim(sequence=sequence,
-                                   pools=two_pools,
-                                   noise=0,
-                                   in_file='backg_sim.nii.gz',
-                                   verbose=True),
+    backg_sim = Node(L2Sim(sequence=sequence,
+                           noise=0,
+                           out_file='backg_sim.nii.gz',
+                           verbose=True),
                      name='backg_sim')
     backg_sub = Node(ImageMaths(op_string='-sub',
                                 out_file='no_backg_sub.nii.gz'),
-                     name='backg_sub')
+                     name='backg_sub', iterfield=['in_file'])
 
-    an_pools = [{'name': 'Amide',
-                 'df0': [3.5, 2.0, 6.0],
-                 'fwhm': [2.0, 0.4, 4.0],
-                 'A': [0.2, 1.e-3, 0.2],
-                 'use_bandwidth': True},
-                {'name': 'NOE',
-                 'df0': [-4.0, -6.0, -2.0],
-                 'fwhm': [2.0, 0.4, 4.0],
-                 'A': [0.2, 1.e-3, 0.2],
-                 'use_bandwidth': True}]
     f0_indices = (np.abs(zfrqs) > 0.99) & (np.abs(zfrqs) < 10.1)
     sequence['MTSat']['sat_f0'] = zfrqs[f0_indices].tolist()
     sequence['MTSat']['sat_angle'] = np.repeat(
@@ -177,11 +171,10 @@ def amide_noe(zfrqs, name='Amide_NOE'):
     an_select = Node(Select(volumes=np.where(f0_indices)[0].tolist(), out_file='fg_zspec.nii.gz'),
                      name='an_select')
 
-    an_fit = Node(Lorentzian(sequence=sequence,
-                             pools=an_pools,
-                             Zref=0.0,
-                             additive=True,
-                             verbose=True),
+    an_fit = Node(LamideFit(sequence=sequence,
+                         Zref=0.0,
+                         additive=True,
+                         verbose=True),
                   name='an_pool')
 
     outputnode = Node(IdentityInterface(fields=['zspec',
@@ -196,20 +189,20 @@ def amide_noe(zfrqs, name='Amide_NOE'):
     wf.connect([(inputnode, backg_select, [('zspec_file', 'in_file')]),
                 (backg_select, backg_fit, [('out_file', 'in_file')]),
                 (inputnode, backg_fit, [('mask_file', 'mask_file')]),
-                (backg_fit, backg_sim, [('DS_f0', 'DS_f0'),
-                                        ('DS_fwhm', 'DS_fwhm'),
-                                        ('DS_A', 'DS_A'),
-                                        ('MT_f0', 'MT_f0'),
-                                        ('MT_fwhm', 'MT_fwhm'),
-                                        ('MT_A', 'MT_A')]),
-                (inputnode, backg_sub, [('zspec_file', 'in_file2')]),
+                (backg_fit, backg_sim, [('DS_f0_map', 'DS_f0_map'),
+                                        ('DS_fwhm_map', 'DS_fwhm_map'),
+                                        ('DS_A_map', 'DS_A_map'),
+                                        ('MT_f0_map', 'MT_f0_map'),
+                                        ('MT_fwhm_map', 'MT_fwhm_map'),
+                                        ('MT_A_map', 'MT_A_map')]),
                 (backg_sim, backg_sub, [('out_file', 'in_file')]),
+                (inputnode, backg_sub, [('zspec_file', 'in_file2')]),
                 (backg_sub, an_select, [('out_file', 'in_file')]),
                 (an_select, an_fit, [('out_file', 'in_file')]),
                 (inputnode, an_fit, [('mask_file', 'mask_file')]),
                 (backg_sub, outputnode, [('out_file', 'diff_file')]),
-                (backg_fit, outputnode, [('DS_A', 'DS'), ('MT_A', 'MT')]),
-                (an_fit, outputnode, [('Amide_A', 'Amide'),
-                                      ('NOE_A', 'NOE')])
+                (backg_fit, outputnode, [('DS_A_map', 'DS'), ('MT_A_map', 'MT')]),
+                (an_fit, outputnode, [('Amide_A_map', 'Amide'),
+                                      ('NOE_A_map', 'NOE')])
                 ])
     return wf

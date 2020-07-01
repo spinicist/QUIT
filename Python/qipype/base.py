@@ -117,7 +117,7 @@ def SimInputSpec(name, varying, fixed=None, out_files=None, extra=None):
 # as functions that return a type. Closest thing to C++ templates I could find
 
 
-def FitOutputSpec(prefix, varying, derived=None):
+def FitOutputSpec(name, prefix, varying, derived=None):
     attrs = {}
     if derived is None:
         derived = []
@@ -128,7 +128,7 @@ def FitOutputSpec(prefix, varying, derived=None):
         attrs[pname] = File(fname, desc=desc, usedefault=True)
     attrs['rmse_map'] = File('{}_rmse.nii.gz'.format(
         prefix), desc='Path to RMSE', usedefault=True)
-    T = type(prefix + 'FitOutputSpec', (TraitedSpec,), attrs)
+    T = type(name + 'FitOutputSpec', (TraitedSpec,), attrs)
     return T
 
 
@@ -269,18 +269,18 @@ class SimCommand(BaseCommand):
 def Command(toolname, cmd, file_prefix, varying,
             derived=None, fixed=None, files=None, extra=None,
             init=None):
-    fit_ispec = FitInputSpec(file_prefix,
+    fit_ispec = FitInputSpec(toolname,
                              fixed=fixed,
                              in_files=files,
                              extra=extra)
-    sim_ispec = SimInputSpec(file_prefix,
+    sim_ispec = SimInputSpec(toolname,
                              varying=varying,
                              fixed=fixed,
                              out_files=files,
                              extra=extra)
 
-    fit_ospec = FitOutputSpec(file_prefix, varying=varying, derived=derived)
-    sim_ospec = SimOutputSpec(file_prefix, files=files)
+    fit_ospec = FitOutputSpec(toolname, file_prefix, varying=varying, derived=derived)
+    sim_ospec = SimOutputSpec(toolname, files=files)
 
     fit_attrs = {'_cmd': cmd, 'input_spec': fit_ispec,
                  'output_spec': fit_ospec}
@@ -290,8 +290,8 @@ def Command(toolname, cmd, file_prefix, varying,
         fit_attrs['__init__'] = init
         sim_attrs['__init__'] = init
 
-    fit_T = type(toolname, (FitCommand,), fit_attrs)
-    sim_T = type(toolname, (SimCommand,), sim_attrs)
+    fit_T = type(toolname + 'Fit', (FitCommand,), fit_attrs)
+    sim_T = type(toolname + 'Sim', (SimCommand,), sim_attrs)
 
     return (fit_T, sim_T)
 

@@ -32,11 +32,13 @@ eMT, eMTSim = base.Command('eMT', 'qi ssfp_emt', 'EMT',
                            extra={'T2b': traits.Float(desc='T2 of bound pool', argstr='--T2b=%f')})
 
 
-def Lorentzian(pools):
+def Lorentzian(name, pools):
     ###
     #  Lorentzian fitting is a bit special as it can have a variable number of pools, and the
     #  varying parameters will change name depending on the pools. Hence provide a function
     #  to create the correct Fit/Sim types for the specified pools
+    #  The specified name must match the name that is used for the class in the module you call this
+    #  function from if you ever intend to pickle it (which nipype does)
     ###
     """
     Returns a type for fitting a Lorentzian function to a Z-spectrum with the specified pools
@@ -51,8 +53,6 @@ def Lorentzian(pools):
     def T_init(self, **kwargs):
         base.FitCommand.__init__(self, **kwargs)
         self._json['pools'] = pools
-
-    name = 'Lorentzian{}'.format(len(pools))
 
     Fit, Sim = base.Command(name, 'qi lorentzian --pools={}'.format(len(pools)), 'LTZ',
                             varying=pars,
