@@ -22,8 +22,7 @@
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
 #include "Util.h"
-#include "itkImageRegionConstIterator.h"
-#include "itkImageRegionIterator.h"
+#include "SimulateModel.h"
 
 struct JSRModel : QI::Model<double, double, 4, 1, 2> {
     // Sequence paramter structs
