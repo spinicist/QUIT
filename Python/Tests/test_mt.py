@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from nipype.interfaces.base import CommandLine
 from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.mt import Lorentzian, Lineshape, qMT, qMTSim, ZSpec
+from qipype.commands import Lorentzian, Lineshape, qMT, qMTSim, ZSpec
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

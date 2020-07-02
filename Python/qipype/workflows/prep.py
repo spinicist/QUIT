@@ -3,8 +3,8 @@ from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, ExtractROI, FLIRT, Merge, ApplyXFM, ImageMaths, BinaryMaths, ConvertXFM
 from nipype.interfaces.ants import Registration, ApplyTransforms
 import nipype.interfaces.utility as util
-from quit.interfaces.utils import Mask, RFProfile, Complex, Filter, CoilCombine
-from quit.interfaces.fsl import ApplyXfm4D
+from qipype.interfaces.utils import Mask, RFProfile, Complex, Filter, CoilCombine
+from qipype.interfaces.fsl import ApplyXfm4D
 
 
 def COMPOSER(verbose=False, is_bruker=False):
@@ -103,7 +103,8 @@ def init_b1_mcf(rf_pulse=None, scale=150):
                 (b1_apply, b1_scale, [('out_file', 'in_file')]),
                 (b1_scale, outputnode, [('out_file', 'b1_plus')])])
     if rf_pulse:
-        b1_rf = Node(RFProfile(rf=rf_pulse, out_file='b1_rf.nii.gz'), name='b1_rf')
+        b1_rf = Node(
+            RFProfile(rf=rf_pulse, out_file='b1_rf.nii.gz'), name='b1_rf')
         wf.connect([(b1_scale, b1_rf, [('out_file', 'in_file')]),
                     (b1_rf, outputnode, [('out_file', 'b1_pulse')])])
     return wf

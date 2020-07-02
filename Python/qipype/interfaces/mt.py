@@ -10,27 +10,6 @@ from os import path
 from nipype.interfaces.base import TraitedSpec, DynamicTraitedSpec, File, traits, isdefined
 from .. import base
 
-MTSat, MTSatSim = base.Command('MTSat', 'qi mtsat', 'MTSat',
-                               varying=['PD', 'R1', 'delta'],
-                               fixed=['B1'],
-                               files=['PDw', 'T1w', 'MTw'])
-
-qMT, qMTSim = base.Command('qMT', 'qi qmt', 'QMT',
-                           varying=['M0_f', 'F_over_R1_f',
-                                    'T2_b', 'T1_f_over_T2_f', 'k'],
-                           derived=['PD', 'T1_f', 'T2_f',
-                                    'T2_b', 'k_bf', 'f_b'],
-                           fixed=['f0', 'B1', 'T1'],
-                           extra={'lineshape': traits.String(argstr='--lineshape=%s', mandatory=True,
-                                                             desc='Gauss/Lorentzian/SuperLorentzian/path to JSON file')})
-
-
-eMT, eMTSim = base.Command('eMT', 'qi ssfp_emt', 'EMT',
-                           varying=['PD', 'f_b', 'k_bf', 'T1_f', 'T2_f'],
-                           fixed=['f0', 'B1'],
-                           files=['G', 'a', 'b'],
-                           extra={'T2b': traits.Float(desc='T2 of bound pool', argstr='--T2b=%f')})
-
 
 def Lorentzian(name, pools):
     ###

@@ -4,8 +4,7 @@ from pathlib import Path
 from os import chdir
 from nipype.interfaces.base import CommandLine, DynamicTraitedSpec
 from qipype.interfaces.core import NewImage, Diff
-from qipype.interfaces.relax import Ellipse, EllipseSim, PLANET, PLANETSim
-from qipype.interfaces.mt import eMT, eMTSim
+from qipype.commands import Ellipse, EllipseSim, PLANET, PLANETSim, eMT, eMTSim
 
 vb = True
 CommandLine.terminal_output = 'allatonce'

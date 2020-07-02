@@ -10,67 +10,6 @@ from os import path, getcwd
 from nipype.interfaces.base import TraitedSpec, File, traits
 from .. import base
 
-DESPOT1, DESPOT1Sim = base.Command('DESPOT1', 'qi despot1', 'D1',
-                                   varying=['PD', 'T1'],
-                                   fixed=['B1'],
-                                   extra={'algo': traits.String(desc="Choose algorithm (l/w/n)", argstr="--algo=%s"),
-                                          'iterations': traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d')})
-
-HIFI, HIFISim = base.Command('HIFI', 'qi despot1hifi', 'HIFI',
-                             varying=['PD', 'T1', 'B1'],
-                             files=['spgr', 'mprage'],
-                             extra={'clamp_T1': traits.Float(desc='Clamp T1 between 0 and value', argstr='--clamp=%f')})
-
-DESPOT2, DESPOT2Sim = base.Command('DESPOT2', 'qi despot2', 'D2',
-                                   varying=['PD', 'T2'],
-                                   fixed=['T1', 'B1'],
-                                   extra={'algo': traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d"),
-                                          'ellipse': traits.Bool(desc="Data is ellipse geometric solution", argstr='--gs'),
-                                          'iterations': traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d'),
-                                          'clamp_PD': traits.Float(desc='Clamp PD between 0 and value', argstr='-f %f'),
-                                          'clamp_T2': traits.Float(desc='Clamp T2 between 0 and value', argstr='--clampT1=%f')})
-
-FM, FMSim = base.Command('FM', 'qi despot2fm', 'FM',
-                         varying=['PD', 'T2', 'f0'],
-                         fixed=['B1', 'T1'],
-                         extra={'asym': traits.Bool(desc="Fit asymmetric (+/-) off-resonance frequency", argstr='--asym'),
-                                'algo': traits.Enum("LLS", "WLS", "NLS", desc="Choose algorithm", argstr="--algo=%d")})
-
-JSR, JSRSim = base.Command('JSR', 'qi jsr', 'JSR',
-                           varying=['PD', 'T1', 'T2', 'df0'],
-                           fixed=['B1'],
-                           files=['spgr', 'ssfp'],
-                           extra={'npsi': traits.Int(desc='Number of psi/off-resonance starts', argstr='--npsi=%d')})
-
-Multiecho, MultiechoSim = base.Command('Multiecho',
-                                       'qi multiecho',
-                                       'ME',
-                                       varying=['PD', 'T2'],
-                                       extra={'algo': traits.String(desc="Choose algorithm (l/a/n)", argstr="--algo=%s"),
-                                              'iterations': traits.Int(desc='Max iterations for WLLS/NLLS (default 15)', argstr='--its=%d'),
-                                              'thresh_PD': traits.Float(desc='Only output maps when PD exceeds threshold value', argstr='-t=%f'),
-                                              'clamp_T2': traits.Float(desc='Clamp T2 between 0 and value', argstr='-p=%f')})
-
-MPMR2s, MPMR2sSim = base.Command('MPMR2s',
-                                 'qi mpm_r2s',
-                                 'MPM',
-                                 varying=['R2s', 'S0_PDw', 'S0_T1w', 'S0_MTw'],
-                                 files=['PDw', 'T1w', 'MTw'])
-
-Ellipse, EllipseSim = base.Command('Ellipse',
-                                   'qi ssfp_ellipse',
-                                   'ES',
-                                   varying=['G', 'a', 'b',
-                                            'theta_0', 'phi_rf'],
-                                   extra={'algo': traits.String(desc='Choose algorithm (h/d)', argstr='--algo=%s')})
-
-PLANET, PLANETSim = base.Command('PLANET',
-                                 'qi planet',
-                                 'PLANET',
-                                 varying=['PD', 'T1', 'T2'],
-                                 fixed=['B1'],
-                                 files=['G', 'a', 'b'])
-
 
 class MP2RAGEInputSpec(base.InputSpec):
     # Inputs

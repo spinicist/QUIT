@@ -103,14 +103,18 @@ class AFI(base.BaseCommand):
 ############################ B1- via Papp Method ############################
 # Implemented but not tested #
 
+
 class B1MinusInputSpec(base.InputSpec):
     in_file = File(exists=True, argstr='%s', mandatory=True,
-                    position=0, desc='Input file')
+                   position=0, desc='Input file')
+
 
 class B1MinusOutputSpec(TraitedSpec):
-    out_file = File('B1minus.nii.gz', desc="The B1 minus map.", usedefault=True)
+    out_file = File('B1minus.nii.gz',
+                    desc="The B1 minus map.", usedefault=True)
+
 
 class B1Minus(base.BaseCommand):
-    _cmd = 'qi b1-papp'
+    _cmd = 'qi b1_papp'
     input_spec = B1MinusInputSpec
     output_spec = B1MinusOutputSpec
