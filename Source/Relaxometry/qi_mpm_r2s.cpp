@@ -24,6 +24,8 @@
 struct MPMModel : QI::Model<double, double, 4, 0, 3> {
     QI::MultiEchoSequence &pdw_s, &t1w_s, &mtw_s;
 
+    double noise = 0.;
+
     std::array<std::string, NV> const varying_names{"R2s", "S0_PDw", "S0_T1w", "S0_MTw"};
 
     VaryingArray const lo{1e-6, 1e-6, 1e-6, 1e-6};
@@ -85,7 +87,11 @@ struct PDwCost {
 
         Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
 
-        r = data - model.pdw_signal(v);
+        if (model.noise > 0.) {
+            r = (data.square() - model.noise) - model.pdw_signal(v).square();
+        } else {
+            r = data - model.pdw_signal(v);
+        }
         return true;
     }
 };
@@ -99,7 +105,11 @@ struct T1wCost {
 
         Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
 
-        r = data - model.t1w_signal(v);
+        if (model.noise > 0.) {
+            r = (data.square() - model.noise) - model.t1w_signal(v).square();
+        } else {
+            r = data - model.t1w_signal(v);
+        }
         return true;
     }
 };
@@ -113,7 +123,11 @@ struct MTwCost {
 
         Eigen::Map<QI_ARRAY(T)> r(rin, data.rows());
 
-        r = data - model.mtw_signal(v);
+        if (model.noise > 0.) {
+            r = (data.square() - model.noise) - model.mtw_signal(v).square();
+        } else {
+            r = data - model.mtw_signal(v);
+        }
         return true;
     }
 };
@@ -214,6 +228,8 @@ int mpm_r2s_main(args::Subparser &parser) {
     args::Positional<std::string> pdw_path(parser, "PDw", "Input multi-echo PD-weighted file");
     args::Positional<std::string> t1w_path(parser, "T1w", "Input multi-echo T1-weighted file");
     args::Positional<std::string> mtw_path(parser, "MTw", "Input multi-echo MT-weighted file");
+    args::ValueFlag<double>       rician_noise(
+        parser, "RICIAN", "Mean squared noise level for Rician correction", {"rician"}, 0.);
     QI_COMMON_ARGS;
     parser.Parse();
     QI::CheckPos(pdw_path);
@@ -224,7 +240,7 @@ int mpm_r2s_main(args::Subparser &parser) {
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MultiEchoSequence pdw_seq(input["PDw"]), t1w_seq(input["T1w"]), mtw_seq(input["MTw"]);
 
-    MPMModel model{{}, pdw_seq, t1w_seq, mtw_seq};
+    MPMModel model{{}, pdw_seq, t1w_seq, mtw_seq, rician_noise.Get()};
     MPMFit   mpm_fit{model};
     if (simulate) {
         QI::SimulateModel<MPMModel, true>(input,

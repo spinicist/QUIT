@@ -68,4 +68,5 @@ int kfilter_main(args::Subparser &parser);
 int mask_main(args::Subparser &parser);
 int polyfit_main(args::Subparser &parser);
 int polyimg_main(args::Subparser &parser);
+int noise_est_main(args::Subparser &parser);
 #endif

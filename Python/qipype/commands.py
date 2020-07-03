@@ -69,8 +69,10 @@ class NewImage(base.CommandLine):
 class DiffInputSpec(base.InputBaseSpec):
 
     # Options
-    in_file = traits.String(desc='Input file', argstr='--input=%s')
-    baseline = traits.String(desc='Baseline file', argstr='--baseline=%s')
+    in_file = File(desc='Input file', argstr='--input=%s',
+                   exists=True, mandatory=True)
+    baseline = File(desc='Baseline file', argstr='--baseline=%s',
+                    exists=True, mandatory=True)
     noise = traits.Float(desc='Added noise level', argstr='--noise=%f')
     abs_diff = traits.Bool(
         desc='Use absolute difference, not relative', argstr='--abs')
@@ -88,11 +90,45 @@ class Diff(base.CommandLine):
     _cmd = 'qi diff'
     input_spec = DiffInputSpec
     output_spec = DiffOutputSpec
+    terminal_output = 'allatonce'
 
     def aggregate_outputs(self, runtime=None, needed_outputs=None):
         outputs = self._outputs()
         outputs.out_diff = float(runtime.stdout)
         return outputs
+
+############################ NOISE ESTIMATION ############################
+
+
+class NoiseInputSpec(base.InputBaseSpec):
+    in_file = File(desc='Input file', argstr='%s',
+                   position=0, mandatory=True, exists=True)
+    mask_file = File(desc='Noise mark', argstr='--mask=%s', exists=True)
+    region = traits.String(
+        desc='Noise region. Argument should be a string "start_x,start_y,start_z,size_x,size_y,size_z"', argstr='--region=%s')
+    meansqr = traits.Bool(
+        desc='Return mean of squared values, not standard deviation', argstr='--meansqr')
+
+
+class NoiseOutputSpec(TraitedSpec):
+    noise = traits.Float(desc='Measured noise')
+
+
+class Noise(base.CommandLine):
+    """
+    Calculate noise levels in an image
+    """
+
+    _cmd = 'qi noise_est'
+    input_spec = NoiseInputSpec
+    output_spec = NoiseOutputSpec
+    terminal_output = 'allatonce'
+
+    def aggregate_outputs(self, runtime=None, needed_outputs=None):
+        outputs = self._outputs()
+        outputs.noise = float(runtime.stdout)
+        return outputs
+
 
 ############################ qidream ############################
 

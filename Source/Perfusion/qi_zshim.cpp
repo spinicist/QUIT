@@ -23,7 +23,6 @@
  */
 int zshim_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "ZSHIM_FILE", "Input Z-Shimmed file");
-    args::Flag                    debug(parser, "DEBUG", "Output debug messages", {'d', "debug"});
     args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",

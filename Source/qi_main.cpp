@@ -65,17 +65,18 @@ int main(int argc, char **argv) {
     ADD(affine, "Edit the affine transformation in an image header");
     ADD(affine_angle, "Calculuate the angle from the Z-axis of the header affine transform");
     ADD(coil_combine, "Combine images from multi-channel coils");
+    ADD(complex, "Convert real/imaginary/magnitude/phase/complex data");
     ADD(gradient, "Calculate the gradients of an image");
+    ADD(kfilter, "Filter an image via k-space");
+    ADD(mask, "Calculate a mask using various threshold based methods");
+    ADD(noise_est, "Calculate noise values in a region/mask");
     ADD(pca, "Perform PCA noise reduction on multi-volume data");
+    ADD(polyfit, "Fit a polynomial to an image");
+    ADD(polyimg, "Create an image from a polynomial");
     ADD(rfprofile, "Multiply a B1 map by a slab profile");
     ADD(select, "Choose volumes from a 4D image");
     ADD(ssfp_bands, "Remove banding artefacts from SSFP images");
     ADD(tvmask, "Calculate a mask from 4D data using Total-Variation");
-    ADD(complex, "Convert real/imaginary/magnitude/phase/complex data");
-    ADD(kfilter, "Filter an image via k-space");
-    ADD(mask, "Calculate a mask using various threshold based methods");
-    ADD(polyfit, "Fit a polynomial to an image");
-    ADD(polyimg, "Create an image from a polynomial");
 #endif
 #undef ADD
 

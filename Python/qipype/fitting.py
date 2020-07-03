@@ -256,14 +256,20 @@ PLANET, PLANETSim, PLANETFitIS, PLANETFitOS, PLANETSimIS, PLANETSimOS = Command(
 
 
 MPMR2s, MPMR2sSim, MPMR2sFitIS, MPMR2sFitOS, MPMR2sSimIS, MPMR2sSimOS = Command(
-    'MPMR2s', 'qi mpm_r2s', 'MPM', varying=['R2s', 'S0_PDw', 'S0_T1w', 'S0_MTw'], files=['PDw', 'T1w', 'MTw'])
+    'MPMR2s', 'qi mpm_r2s', 'MPM',
+    varying=['R2s', 'S0_PDw', 'S0_T1w', 'S0_MTw'],
+    files=['PDw', 'T1w', 'MTw'],
+    extra={'rician': traits.Float(argstr='--rician=%f', desc='Rician noise level correction')})
 
 ###
 # MT Commands
 ###
 
 MTSat, MTSatSim, MTSatFitIS, MTSatFitOS, MTSatSimIS, MTSatSimOS = Command(
-    'MTSat', 'qi mtsat', 'MTSat', varying=['PD', 'R1', 'delta'], fixed=['B1'], files=['PDw', 'T1w', 'MTw'])
+    'MTSat', 'qi mtsat', 'MTSat',
+    varying=['PD', 'R1', 'delta'],
+    fixed=['B1'],
+    files=['PDw', 'T1w', 'MTw'])
 
 qMT, qMTSim, qMTFitIS, qMTFitOS, qMTSimIS, qMTSimOS = Command(
     'qMT', 'qi qmt', 'QMT',
