@@ -26,7 +26,8 @@ typedef TStatsFilter::ValidLabelValuesContainerType               Tlabels;
  * MAIN
  */
 int rois_main(args::Subparser &parser) {
-    args::PositionalList<std::string> in_paths(parser, "INPUT", "Input file paths.");
+    args::PositionalList<std::string> in_paths(
+        parser, "INPUT", "List of all label images, followed by all parameter images.");
 
     args::Flag volumes(parser,
                        "VOLUMES",
