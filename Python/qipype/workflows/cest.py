@@ -110,7 +110,7 @@ def cert(zfrqs):
 def amide_noe(zfrqs, name='Amide_NOE'):
     inputnode = Node(IdentityInterface(fields=['zspec_file', 'mask_file']),
                      name='inputnode')
-    outputnode = Node(IdentityInterface(fields=['diff_file', 'DS', 'MT', 'Amide', 'NOE']),
+    outputnode = Node(IdentityInterface(fields=['zspec', 'DS_A', 'DS_fwhm', 'DS_f0', 'MT_A', 'MT_fwhm', 'MT_f0', 'Amide', 'NOE']),
                       name='outputnode')
     # Repeat 2-pool fit
     f0_indices = (np.abs(zfrqs) > 9.9) | (np.abs(zfrqs) < 1.1)
@@ -124,12 +124,6 @@ def amide_noe(zfrqs, name='Amide_NOE'):
                           'sat_angle': np.repeat(180.0, len(f0_indices)).tolist()}}
     backg_select = Node(Select(volumes=np.where(f0_indices)[0].tolist(), out_file='bg_zspec.nii.gz'),
                         name='backg_select')
-
-
-<< << << < HEAD
-== == == =
-
->>>>>> > e5874a2... BUG Fixed CEST workflow
     backg_fit = Node(LtzWaterMT(sequence=sequence, verbose=True),
                      name='backg_fit')
     # Simulate data for all frequencies
@@ -150,28 +144,12 @@ def amide_noe(zfrqs, name='Amide_NOE'):
         180.0, len(f0_indices)).tolist()
     an_select = Node(Select(volumes=np.where(f0_indices)[0].tolist(), out_file='fg_zspec.nii.gz'),
                      name='an_select')
-<< << << < HEAD
-    an_fit = Node(LamideFit(sequence=sequence,
-                            Zref=0.0,
-                            additive=True,
-                            verbose=True),
-== == == =
-
     an_fit=Node(LtzAmNOE(sequence=sequence,
                            Zref=0.0,
                            additive=True,
                            verbose=True),
->>>>>> > e5874a2... BUG Fixed CEST workflow
                   name='an_pool')
 
-    outputnode=Node(IdentityInterface(fields=['zspec',
-                                                'f0_map',
-                                                'mask',
-                                                'DS',
-                                                'MT',
-                                                'Amide',
-                                                'NOE']),
-                      name='outputnode')
     wf=Workflow(name=name)
     wf.connect([(inputnode, backg_select, [('zspec_file', 'in_file')]),
                 (backg_select, backg_fit, [('out_file', 'in_file')]),
@@ -187,9 +165,12 @@ def amide_noe(zfrqs, name='Amide_NOE'):
                 (backg_sub, an_select, [('out_file', 'in_file')]),
                 (an_select, an_fit, [('out_file', 'in_file')]),
                 (inputnode, an_fit, [('mask_file', 'mask_file')]),
-                (backg_sub, outputnode, [('out_file', 'diff_file')]),
-                (backg_fit, outputnode, [
-                 ('DS_A_map', 'DS'), ('MT_A_map', 'MT')]),
+                (backg_fit, outputnode, [('DS_A_map', 'DS_A'),
+                                         ('DS_fwhm_map', 'DS_fwhm'),
+                                         ('DS_f0_map', 'DS_f0'),
+                                         ('MT_A_map', 'MT_A'),
+                                         ('MT_fwhm_map', 'MT_fwhm'),
+                                         ('MT_f0_map', 'MT_f0')]),
                 (an_fit, outputnode, [('Amide_A_map', 'Amide'),
                                       ('NOE_A_map', 'NOE')])
                 ])

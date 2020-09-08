@@ -7,11 +7,7 @@
 import json
 from copy import deepcopy
 from os import path, getcwd
-from nipype import logging
-from nipype.utils.filemanip import fname_presuffix
 from nipype.interfaces.base import traits, isdefined, CommandLine, CommandLineInputSpec, TraitedSpec, DynamicTraitedSpec, File, PackageInfo
-from nipype.external.due import BibTeX
-
 from qipype.base import InputSpec, BaseCommand
 
 ####################################################################################################

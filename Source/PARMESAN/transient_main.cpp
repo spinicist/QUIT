@@ -70,10 +70,10 @@ int transient_main(args::Subparser &parser) {
 
     if (mt) {
         MUPAMTModel model{{}, sequence};
-        process(model, "MUPAMT_", {});
+        process(model, "PT_", {});
     } else {
         MUPAB1Model model{{}, sequence};
-        process(model, "MUPAB1_", {});
+        process(model, "PT_B1_", {});
     }
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
