@@ -1,0 +1,12 @@
+{
+    "name": "quit",
+    "version-string": "3.1",
+    "dependencies": [
+        "args",
+        "eigen3",
+        "fmt",
+        "itk",
+        "ceres",
+        "nlohmann-json"
+    ]
+}
