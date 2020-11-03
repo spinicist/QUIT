@@ -238,6 +238,7 @@ int affine_main(args::Subparser &parser) {
             pipeline.operator()<float, 4>();
             break;
         }
+        break;
     case itk::ImageIOBase::DOUBLE:
         switch (dims) {
         case 3:
@@ -247,6 +248,7 @@ int affine_main(args::Subparser &parser) {
             pipeline.operator()<double, 4>();
             break;
         }
+        break;
     default:
         QI::Fail("Unimplemented component type: {} in image {}", dtype, source_path);
     }
