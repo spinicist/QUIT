@@ -2,6 +2,6 @@
 vcpkg/bootstrap-vcpkg.sh -allowAppleClang
 cmake -B build -S . \
     -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake \
-    -DVCPKG_TARGET_TRIPLET=x64-osx-asan \
+    -DVCPKG_TARGET_TRIPLET=x64-osx-asan -DCMAKE_BUILD_TYPE=Release \
     -GNinja
 cmake --build build
