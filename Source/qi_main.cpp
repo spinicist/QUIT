@@ -44,6 +44,7 @@ int main(int argc, char **argv) {
     ADD(despot2, relax, "DESPOT2");
     ADD(despot2fm, relax, "DESPOT2-FM simultaneous T2/B0 mapping");
     ADD(jsr, relax, "Fit Joint System Relaxometry model (T1/T2)")
+    ADD(mcdespot, relax, "mcDESPOT");
     ADD(mpm_r2s, relax, "Fit for R2* across multiple contrasts (ECSTATICS)");
     ADD(mp2rage, relax, "MP2-RAGE estimation of T1");
     ADD(multiecho, relax, "Multi-echo T2/T2*");
