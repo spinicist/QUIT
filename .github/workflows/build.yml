@@ -26,9 +26,10 @@ jobs:
         }
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
         with:
           submodules: 'true'
+          fetch-depth: 0
 
       - name: Install GNU tar
         shell: bash
@@ -51,6 +52,12 @@ jobs:
           vcpkgArguments: '@${{ env.VCPKGRESPONSEFILE }}'
           vcpkgDirectory: ${{github.workspace}}/vcpkg
           appendedCacheKey: ${{ hashFiles( env.VCPKGRESPONSEFILE ) }}
+
+      - name: Check name
+        run: |
+          git status
+          git describe --tags --dirty
+        shell: bash
 
       - name: CMake
         uses: lukka/run-cmake@v2
