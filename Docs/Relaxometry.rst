@@ -270,21 +270,19 @@ The SSFP input file should contain all SSFP images concatenated together as a 4D
 .. code-block:: json
 
     {
-        "Sequences": [
-            {
-                "SPGR": {
-                    "TR": 0.01,
-                    "FA": [3,4,5,7,9,12,15,18]
-                }
-            },
-            {
-                "SSFP": {
-                    "TR": 0.05,
-                    "FA": [12,16,20,24,30,40,50,60,12,16,20,24,30,40,50,60],
-                    "PhaseInc": [180,180,180,180,180,180,180,180,0,0,0,0,0,0,0,0]
-                }
+        {
+            "SPGR": {
+                "TR": 0.01,
+                "FA": [3,4,5,7,9,12,15,18]
             }
-        ]
+        },
+        {
+            "SSFP": {
+                "TR": 0.05,
+                "FA": [12,16,20,24,30,40,50,60,12,16,20,24,30,40,50,60],
+                "PhaseInc": [180,180,180,180,180,180,180,180,0,0,0,0,0,0,0,0]
+            }
+        }
     }
 
 The order that the sequences are listed must match the order the input files are specified on the command-line.
