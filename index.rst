@@ -28,7 +28,7 @@ Thank you.
 Installation
 ------------
 
-Pre-compiled binaries are provided for Linux and Mac OS X from the `releases page <http://github.com/spinicist/QUIT/releases "Releases">`_.
+Pre-compiled binaries are provided for Linux and Mac OS X from http://github.com/spinicist/QUIT/releases.
 
 Download the correct archive for your platform, untar it and then ensure that the binaries can be found via your `PATH` environment variable. Either edit your shell profile (e.g. ``.bashrc``) and add the QUIT directory your ``$PATH`` variable there, or copy the files to somewhere that will be on your path, e.g. ``/usr/local/bin`` (this will likely require ``sudo`` permissions).
 
