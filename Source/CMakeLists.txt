@@ -1,5 +1,8 @@
 add_executable(qi qi_main.cpp)
-
+set_target_properties(qi PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
 target_link_libraries(qi PRIVATE
     taywee::args
     nlohmann_json nlohmann_json::nlohmann_json
