@@ -53,8 +53,7 @@ int denoise_main(args::Subparser &parser) {
         typename TT::Dimensions dims;
         std::copy_n(sz.begin(), 4, dims.begin());
         Eigen::TensorMap<TT> input(iimg->GetBufferPointer(), dims);
-        fmt::print(FMT_STRING("dims {}\n"), fmt::join(dims, ","));
-        TT output(dims);
+        TT                   output(dims);
         for (long ii = 0; ii < dims[3]; ii++) {
             QI::Log(verbose, "Processing volume {}", ii);
             Eigen::Tensor<T, 3> vol     = input.template chip<3>(ii);

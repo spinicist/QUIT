@@ -23,11 +23,6 @@ auto ForwardDiff(T const &a, Eigen::Index const d, Eigen::array<long, 3> const d
     Dims const st1{1, 1, 1};
     Dims       fwd{1, 1, 1};
     fwd[d] = 2;
-    fmt::print(FMT_STRING("dims {} sz {} st1 {} fwd {}\n"),
-               fmt::join(dims, ","),
-               fmt::join(sz, ","),
-               fmt::join(st1, ","),
-               fmt::join(fwd, ","));
     return (a.slice(fwd, sz) - a.slice(st1, sz));
 }
 
@@ -60,7 +55,6 @@ void Grad(Eigen::Tensor<T, 3> const &a, Eigen::Tensor<T, 4> &g, Eigen::ThreadPoo
     using Dims = typename Eigen::Tensor<T, 3>::Dimensions;
     Dims const sz{a.dimension(0) - 2, a.dimension(1) - 2, a.dimension(2) - 2};
     Dims const st1{1, 1, 1};
-    fmt::print(FMT_STRING("GRAD size {} st1 {}\n"), fmt::join(sz, ","), fmt::join(st1, ","));
     g.template chip<3>(0).slice(st1, sz).device(dev) = ForwardDiff(a, 0, a.dimensions());
     g.template chip<3>(1).slice(st1, sz).device(dev) = ForwardDiff(a, 1, a.dimensions());
     g.template chip<3>(2).slice(st1, sz).device(dev) = ForwardDiff(a, 2, a.dimensions());
@@ -126,7 +120,8 @@ Div(Eigen::Tensor<T, 4> const &x, Eigen::Tensor<T, 4> &div, Eigen::ThreadPoolDev
         ForwardDiff(x.template chip<3>(2), 2, sz1);
 }
 
-template <typename T> auto ProjectP(Eigen::Tensor<T, 4> const &p, float const a) {
+template <typename T>
+auto ProjectP(Eigen::Tensor<T, 4> &p, float const a, Eigen::ThreadPoolDevice &dev) {
     Eigen::IndexList<int, int, int, Eigen::type2index<1>> res;
     res.set(0, p.dimension(0));
     res.set(1, p.dimension(1));
@@ -137,17 +132,15 @@ template <typename T> auto ProjectP(Eigen::Tensor<T, 4> const &p, float const a)
                      Eigen::type2index<3>>
         brd;
 
-    Eigen::Tensor<float, 3> const normp =
-        (p * p.conjugate()).sum(Eigen::array<int, 1>{3}).real().sqrt() / a;
-    fmt::print(FMT_STRING("normp {}\n"), fmt::join(normp.dimensions(), ","));
-    Eigen::Tensor<float, 3> const clamped = (normp > 1.f).select(normp, normp.constant(1.f));
-    fmt::print(FMT_STRING("clamped {}\n"), fmt::join(clamped.dimensions(), ","));
-    Eigen::Tensor<T, 4> result = p / clamped.reshape(res).broadcast(brd).template cast<T>();
-    fmt::print(FMT_STRING("result {}\n"), fmt::join(result.dimensions(), ","));
-    return result;
+    Eigen::Tensor<float, 3> normp(p.dimension(0), p.dimension(1), p.dimension(2));
+    normp.device(dev) =
+        (p * p.conjugate()).sum(Eigen::array<int, 1>{3}).real().sqrt() / normp.constant(a);
+    auto const clamped = (normp > 1.f).select(normp, normp.constant(1.f));
+    p.device(dev)      = p / clamped.reshape(res).broadcast(brd).template cast<T>();
 }
 
-template <typename T> auto ProjectQ(Eigen::Tensor<T, 4> const &q, float const a) {
+template <typename T>
+auto ProjectQ(Eigen::Tensor<T, 4> &q, float const a, Eigen::ThreadPoolDevice &dev) {
     Eigen::IndexList<int, int, int, Eigen::type2index<1>> res;
     res.set(0, q.dimension(0));
     res.set(1, q.dimension(1));
@@ -162,17 +155,13 @@ template <typename T> auto ProjectQ(Eigen::Tensor<T, 4> const &q, float const a)
         q.slice(Dims4{0, 0, 0, 0}, Dims4{q.dimension(0), q.dimension(1), q.dimension(2), 3});
     auto const q2 =
         q.slice(Dims4{0, 0, 0, 3}, Dims4{q.dimension(0), q.dimension(1), q.dimension(2), 3});
-    Eigen::Tensor<float, 3> const normq =
-        ((q1 * q1.conjugate()).sum(Eigen::array<int, 1>{3}).real() +
-         (q2 * q2.conjugate()).sum(Eigen::array<int, 1>{3}).real() * 2.f)
-            .sqrt() /
-        a;
-    fmt::print(FMT_STRING("normq {}\n"), fmt::join(normq.dimensions(), ","));
-    Eigen::Tensor<float, 3> const clamped = (normq > 1.f).select(normq, normq.constant(1.f));
-    fmt::print(FMT_STRING("clamped {}\n"), fmt::join(clamped.dimensions(), ","));
-    Eigen::Tensor<T, 4> result = q / clamped.reshape(res).broadcast(brd).template cast<T>();
-    fmt::print(FMT_STRING("result {}\n"), fmt::join(result.dimensions(), ","));
-    return result;
+    Eigen::Tensor<float, 3> normq(q.dimension(0), q.dimension(1), q.dimension(2));
+    normq.device(dev) = ((q1 * q1.conjugate()).sum(Eigen::array<int, 1>{3}).real() +
+                         (q2 * q2.conjugate()).sum(Eigen::array<int, 1>{3}).real() * 2.f)
+                            .sqrt() /
+                        normq.constant(a);
+    auto const clamped = (normq > 1.f).select(normq, normq.constant(1.f));
+    q.device(dev)      = q / clamped.reshape(res).broadcast(brd).template cast<T>();
 }
 
 template <typename T>
@@ -234,24 +223,17 @@ Eigen::Tensor<T, 3> tgvdenoise(Eigen::Tensor<T, 3> const &image,
         float const alpha1 = std::exp(std::log(alpha11) * prog + std::log(alpha10) * (1.f - prog));
 
         // Update p
-        fmt::print("UPDATE P\n");
-        fmt::print(FMT_STRING("u_ {} grad_u {}\n"),
-                   fmt::join(u_.dimensions(), ","),
-                   fmt::join(grad_u.dimensions(), ","));
         Grad(u_, grad_u, dev);
-        fmt::print("Finished grad\n");
         p.device(dev) =
             p - p.constant(tau_d) * (grad_u + v_); // Paper says +tau, but code says -tau
-        p.device(dev) = ProjectP(p, alpha1);
+        ProjectP(p, alpha1, dev);
 
         // Update q
-        fmt::print("UPDATE Q\n");
         Grad(v_, grad_v, dev);
         q.device(dev) = q - q.constant(tau_d) * grad_v;
-        q.device(dev) = ProjectQ(q, alpha0);
+        ProjectQ(q, alpha0, dev);
 
         // Update u
-        fmt::print("UPDATE U\n");
         u_old.device(dev) = u;
         Div(p, divp, dev);
         u.device(dev) = ((u - u.constant(tau_p) * divp) + (image * u.constant(tau_p / scale))) /
@@ -259,14 +241,12 @@ Eigen::Tensor<T, 3> tgvdenoise(Eigen::Tensor<T, 3> const &image,
         u_.device(dev) = 2.0 * u - u_old;
 
         // Update v
-        fmt::print("UPDATE V\n");
         v_old.device(dev) = v;
         Div(q, divq, dev);
         v.device(dev)  = v - v.constant(tau_p) * (divq - p);
         v_.device(dev) = 2.0 * v - v_old;
 
         // Check for convergence
-        fmt::print("CONVERGENCE\n");
         float const delta = Norm(u - u_old);
         QI::Info(vb, FMT_STRING("TGV {}: ɑ0 {:.2g} ɑ1 {:.2g} δ {}"), ii + 1, alpha0, alpha1, delta);
         if (delta < thresh) {
