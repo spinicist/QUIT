@@ -29,10 +29,7 @@ Eigen::ArrayXcd NoiseFromDataType<std::complex<double>>::add_noise(Eigen::ArrayX
 }
 
 Eigen::ArrayXd RealNoise::add_noise(Eigen::ArrayXd const &s, double const sigma) {
-    std::random_device       rd;
-    std::mt19937             generator(rd());
-    std::normal_distribution norm(0., sigma);
-    return s + Eigen::ArrayXd::NullaryExpr(s.rows(), [&]() { return norm(generator); });
+    return s + Eigen::ArrayXd::Random(s.rows()) * sigma;
 }
 
 } // namespace QI

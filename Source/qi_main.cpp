@@ -75,6 +75,7 @@ int main(int argc, char **argv) {
     ADD(affine_angle, utils, "Calculuate the angle from the Z-axis of the header affine transform");
     ADD(coil_combine, utils, "Combine images from multi-channel coils");
     ADD(complex, utils, "Convert real/imaginary/magnitude/phase/complex data");
+    ADD(denoise, utils, "Apply TGV denoising");
     ADD(gradient, utils, "Calculate the gradients of an image");
     ADD(kfilter, utils, "Filter an image via k-space");
     ADD(mask, utils, "Calculate a mask using various threshold based methods");
