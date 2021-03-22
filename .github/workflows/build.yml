@@ -79,9 +79,12 @@ jobs:
         shell: bash
 
       - name: Run Tests
-        run: export PATH="$PWD/../../build/Source:$PATH"; python -m unittest discover
         working-directory: ./Python/Tests
         shell: bash
+        run: |
+          if [ "${{runner.os}}" != "macOS" ]; then # MacOS runners do not have AVX2
+            export PATH="$PWD/../../build/Source:$PATH"; python -m unittest discover
+          fi
 
       - name: Save release
         run: |
