@@ -30,10 +30,10 @@ int denoise_main(args::Subparser &parser) {
         parser, "MAX ITS", "Maximum number of iterations (16)", {'i', "max_its"}, 16);
     args::ValueFlag<float> thr(
         parser, "TRESHOLD", "Threshold for termination (1e-10)", {"thresh"}, 1.e-10);
-    args::ValueFlag<float> l1_weight(
-        parser, "L1", "L1-Regularisation weighting (1e-5)", {"l1"}, 1.e-5f);
-    args::ValueFlag<float> l1_reduction(
-        parser, "L1 REDUCTION", "Reduce L1 by factor over iters (suggest 0.1)", {"l1reduce"}, 1.f);
+    args::ValueFlag<float> alpha(
+        parser, "ALPHA", "Regularisation weighting (1e-5)", {"alpha", 'a'}, 1.e-5f);
+    args::ValueFlag<float> alpha_reduction(
+        parser, "ALPHA REDUCE", "Reduce by factor (suggest 0.1)", {"reduce", 'r'}, 1.f);
     args::ValueFlag<float> step_size(
         parser, "STEP SIZE", "Inverse of step size (default 8)", {"step"}, 8.f);
     args::Flag complex(parser, "COMPLEX", "Input is complex-valued", {"complex", 'x'});
@@ -60,8 +60,8 @@ int denoise_main(args::Subparser &parser) {
             output.template chip<3>(ii) = tgvdenoise(vol,
                                                      its.Get(),
                                                      thr.Get(),
-                                                     l1_weight.Get(),
-                                                     l1_reduction.Get(),
+                                                     alpha.Get(),
+                                                     alpha_reduction.Get(),
                                                      step_size.Get(),
                                                      verbose,
                                                      device);
