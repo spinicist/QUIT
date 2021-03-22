@@ -50,16 +50,12 @@ int pca_main(args::Subparser &parser) {
     auto const input  = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
     auto const region = input->GetLargestPossibleRegion();
 
-    Eigen::Index const Nq   = input->GetNumberOfComponentsPerPixel();
-    Eigen::Index const Nret = n_retain ? n_retain.Get() : Nq;
-
     QI::VolumeF::Pointer const mask_img = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
-
-    auto const Nvox = [&]() {
+    auto const                 Nvox     = [&]() {
         if (mask) {
             QI::Log(verbose, "Counting voxels in mask...");
             auto         mask_it = itk::ImageRegionConstIterator<QI::VolumeF>(mask_img, region);
-            Eigen::Index Nv      = 0;
+            Eigen::Index Nv = 0;
             while (!mask_it.IsAtEnd()) {
                 if (mask_it.Get())
                     ++Nv;
@@ -72,6 +68,9 @@ int pca_main(args::Subparser &parser) {
         }
     }();
     QI::Log(verbose, "Total voxels = {}", Nvox);
+
+    Eigen::Index const Nq   = input->GetNumberOfComponentsPerPixel();
+    Eigen::Index const Nret = (n_retain.Get() > Nq) ? Nq : n_retain.Get();
 
     Eigen::MatrixXd X(Nvox, Nq);
     {

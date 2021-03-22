@@ -22,10 +22,11 @@
 /*
  * Main
  */
-int denoise_main(args::Subparser &parser) {
+int tgv_main(args::Subparser &parser) {
     args::Positional<std::string> iname(parser, "INPUT", "Input filename");
-    args::Positional<std::string> oname(parser, "OUTPUT", "Output filename");
 
+    args::ValueFlag<std::string> outarg(
+        parser, "OUTPUT", "Change ouput filename (default is input_denoise)", {'o', "out"});
     args::ValueFlag<long> its(
         parser, "MAX ITS", "Maximum number of iterations (16)", {'i', "max_its"}, 16);
     args::ValueFlag<float> thr(
@@ -36,10 +37,10 @@ int denoise_main(args::Subparser &parser) {
         parser, "ALPHA REDUCE", "Reduce by factor (suggest 0.1)", {"reduce", 'r'}, 1.f);
     args::ValueFlag<float> step_size(
         parser, "STEP SIZE", "Inverse of step size (default 8)", {"step"}, 8.f);
-    args::Flag complex(parser, "COMPLEX", "Input is complex-valued", {"complex", 'x'});
+    args::Flag complex(parser, "COMPLEX", "Input is complex valued", {"complex", 'x'});
     parser.Parse();
-    if (!iname && !oname) {
-        QI::Fail("Both input and output filename must be set");
+    if (!iname) {
+        QI::Fail("Input filename must be set");
     }
 
     Eigen::ThreadPool       pool(std::thread::hardware_concurrency());
@@ -74,7 +75,10 @@ int denoise_main(args::Subparser &parser) {
         import->SetDirection(iimg->GetDirection());
         import->SetImportPointer(output.data(), output.size(), false);
         import->Update();
-        QI::WriteImage(import->GetOutput(), oname.Get(), verbose);
+
+        std::string outname =
+            outarg ? outarg.Get() : QI::StripExt(QI::Basename(iname.Get())) + "_tgv" + QI::OutExt();
+        QI::WriteImage(import->GetOutput(), outname, verbose);
     };
 
     if (complex) {

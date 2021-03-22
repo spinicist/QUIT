@@ -15,6 +15,52 @@ from . import base
 ############################### qi_pca ###############################
 
 
+class TGVInputSpec(base.InputSpec):
+    in_file = File(argstr='%s', mandatory=True, exists=True,
+                   position=-1, desc='Input file for TGV denoising')
+    max_its = traits.Int(argstr='--max_its=%d',
+                         desc='Maximum number of iterations')
+    threshold = traits.Float(argstr='--thresh=%f',
+                             desc='Termination threshold')
+    alpha = traits.Float(
+        argstr='--alpha=%f', desc='Regularisation weighting (default 1e-5)')
+    alpha_reduce = traits.Float(
+        argstr='--reduce=%f', desc='Reduce alpha over iterations')
+    step_size = traits.Float(
+        argstr='--step=%f', desc='Inverse of step-size (default 8)')
+    is_complex = traits.Bool(
+        argstrs='--complex', desc='Input is complex valued')
+    out_file = traits.String(
+        argstr='--out=%s', desc='Name of output file (default is input_tgv)')
+
+
+class TGVOutputSpec(TraitedSpec):
+    out_file = File(desc='Denoised image')
+
+
+class TGV(base.BaseCommand):
+    """
+    Denoise an image using Total Generalized Variation
+    """
+    _cmd = 'qi tgv'
+    input_spec = TGVInputSpec
+    output_spec = TGVOutputSpec
+
+    def _list_outputs(self):
+        outputs = self.output_spec().get()
+        if isdefined(self.inputs.out_file):
+            outputs['out_file'] = path.abspath(self.inputs.out_file)
+        else:
+            p, f = path.split(self.inputs.in_file)
+            fname, ext = path.splitext(f)
+            if ext == '.gz':
+                fname = path.splitext(fname)[0]
+            outputs['out_file'] = path.abspath(fname + '_tgv.nii.gz')
+        return outputs
+
+############################### qi_pca ###############################
+
+
 class PCAInputSpec(base.InputSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file for PCA denoising')

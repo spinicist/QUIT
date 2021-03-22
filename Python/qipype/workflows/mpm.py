@@ -2,10 +2,10 @@ import numpy as np
 from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, ExtractROI, FLIRT, Merge, ApplyXFM, ImageMaths, BinaryMaths, ConvertXFM
 import nipype.interfaces.utility as util
-from qipype.commands import MPMR2s, MTSat
-from qipype.interfaces.b1 import B1Minus
-from qipype.interfaces.fsl import ApplyXfm4D
-from qipype.interfaces.utils import Select
+from qipype.fitting import MPMR2s, MTSat
+from qipype.commands import B1Minus
+from qipype.fsl import ApplyXfm4D
+from qipype.utils import Select
 
 
 def init_mpm_wf(me_params, mtsat_params):

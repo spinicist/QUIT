@@ -3,8 +3,8 @@ from nipype import Workflow, Node, MapNode, IdentityInterface
 from nipype.interfaces.fsl import maths, BET, MCFLIRT, ExtractROI, FLIRT, Merge, ApplyXFM, ImageMaths, BinaryMaths, ConvertXFM
 from nipype.interfaces.ants import Registration, ApplyTransforms
 import nipype.interfaces.utility as util
-from qipype.interfaces.utils import Mask, RFProfile, Complex, Filter, CoilCombine
-from qipype.interfaces.fsl import ApplyXfm4D
+from qipype.utils import Mask, RFProfile, Complex, Filter, CoilCombine
+from qipype.fsl import ApplyXfm4D
 
 
 def COMPOSER(verbose=False, is_bruker=False):

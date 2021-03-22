@@ -58,7 +58,6 @@ int affine_main(args::Subparser &parser);
 int affine_angle_main(args::Subparser &parser);
 int coil_combine_main(args::Subparser &parser);
 int complex_main(args::Subparser &parser);
-int denoise_main(args::Subparser &parser);
 int gradient_main(args::Subparser &parser);
 int kfilter_main(args::Subparser &parser);
 int mask_main(args::Subparser &parser);
@@ -69,5 +68,6 @@ int polyimg_main(args::Subparser &parser);
 int rfprofile_main(args::Subparser &parser);
 int select_main(args::Subparser &parser);
 int ssfp_bands_main(args::Subparser &parser);
+int tgv_main(args::Subparser &parser);
 int tvmask_main(args::Subparser &parser);
 #endif
