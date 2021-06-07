@@ -557,6 +557,12 @@ class ModelFitFilter
                     } else if constexpr (Indexed) {
                         status = m_fit->fit(
                             inputs, fixed, outputs, covar, rmse, rs, flag, rmse_iter.GetIndex());
+                    } else if constexpr (HasDerived) {
+                        typename ModelType::DerivedArray derived;
+                        status = m_fit->fit(inputs, fixed, outputs, derived, covar, rmse, rs, flag);
+                        for (int i = 0; i < ModelType::ND; i++) {
+                            derived_iters[i].Set(derived[i]);
+                        }
                     } else {
                         status = m_fit->fit(inputs, fixed, outputs, covar, rmse, rs, flag);
                     }
@@ -582,13 +588,6 @@ class ModelFitFilter
                             for (int ii = 0; ii < ModelType::NCov; ii++) {
                                 covar_iters[ii].Set((*covar)[ii]);
                             }
-                        }
-                    }
-                    if constexpr (HasDerived) {
-                        typename ModelType::DerivedArray derived;
-                        m_fit->model.derived(outputs, fixed, derived);
-                        for (int i = 0; i < ModelType::ND; i++) {
-                            derived_iters[i].Set(derived[i]);
                         }
                     }
                     if (m_allResiduals) {

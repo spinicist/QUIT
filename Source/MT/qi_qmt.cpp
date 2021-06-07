@@ -27,20 +27,21 @@
 
 using namespace std::literals;
 
-struct RamaniModel : QI::Model<double, double, 5, 3, 1, 3> {
+struct RamaniModel : QI::Model<double, double, 5, 3, 1, 2> {
     QI::ZSpecSequence const &                  sequence;
-    const QI::Lineshapes                       lineshape;
-    const std::shared_ptr<QI::InterpLineshape> interp = nullptr;
+    ParameterType const                        R1_b;
+    QI::Lineshapes const                       lineshape;
+    std::shared_ptr<QI::InterpLineshape> const interp = nullptr;
 
     std::array<const std::string, NV> const varying_names{
-        {"M0_f"s, "F_over_R1_f"s, "T2_b"s, "T1_f_over_T2_f"s, "k"s}};
-    std::array<const std::string, 3> const  derived_names{{"T1_f"s, "T2_f"s, "f_b"s}};
+        {"M0_f"s, "f_b"s, "T2_b"s, "T2_f"s, "k"s}};
+    std::array<const std::string, 2> const  derived_names{{"T1_f"s, "k_bf"s}};
     std::array<const std::string, NF> const fixed_names{{"f0"s, "B1"s, "T1_app"}};
 
     FixedArray const   fixed_defaults{0.0, 1.0, 1.0};
-    VaryingArray const bounds_lo{0.5, 1.e-12, 1.e-7, 1, 1};
-    VaryingArray const bounds_hi{1.5, 1, 100.e-6, 100., 1e2};
-    VaryingArray const start{1., 0.1, 10.e-6, 25., 10.};
+    VaryingArray const bounds_lo{0.1, 1.e-6, 0.1e-6, 0.01, 1.};
+    VaryingArray const bounds_hi{10., 0.99, 100.e-6, 1., 100.};
+    VaryingArray const start{1., 0.1, 10.e-6, 0.1, 10.};
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
 
@@ -48,15 +49,15 @@ struct RamaniModel : QI::Model<double, double, 5, 3, 1, 3> {
     auto signal(const Eigen::ArrayBase<Derived> &v, const FixedArray &f) const
         -> QI_ARRAY(typename Derived::Scalar) {
         // Don't use Ramani's notation
-        const auto &R1_b           = 2.5;  // Fix
-        const auto &M0_f           = v[0]; // We normalise out the gain in the fit-function
-        const auto &F_over_R1_f    = v[1];
-        const auto &T2b            = v[2];
-        const auto &T1_f_over_T2_f = v[3];
-        const auto &k              = v[4];
-        const auto &f0             = f[0];
-        const auto &B1             = f[1];
-        const auto  kM0_f          = k * M0_f;
+        auto const &M0_f   = v[0]; // We normalise out the gain in the fit-function
+        auto const &f_b    = v[1];
+        auto const &T2b    = v[2];
+        auto const &T2_f   = v[3];
+        auto const &k      = v[4];
+        auto const &f0     = f[0];
+        auto const &B1     = f[1];
+        auto const &T1_obs = f[2];
+
         QI_ARRAY(typename Derived::Scalar) lsv;
         switch (lineshape) {
         case QI::Lineshapes::Gaussian:
@@ -73,14 +74,21 @@ struct RamaniModel : QI::Model<double, double, 5, 3, 1, 3> {
             break;
         }
 
-        const auto w_cwpe = (B1 * sequence.sat_angle / sequence.pulse.p1) *
+        auto const w_cwpe = (B1 * sequence.sat_angle / sequence.pulse.p1) *
                             sqrt(sequence.pulse.p2 / (sequence.Trf * sequence.TR));
-        const auto R_rfb = M_PI * (w_cwpe * w_cwpe) * lsv;
+        auto const R_rfb = M_PI * (w_cwpe * w_cwpe) * lsv;
 
-        const auto S = M0_f * (R1_b * kM0_f * F_over_R1_f + R_rfb + R1_b + kM0_f) /
-                       ((kM0_f * F_over_R1_f) * (R1_b + R_rfb) +
-                        (1.0 + pow(w_cwpe / (2 * M_PI * sequence.sat_f0), 2.0) * T1_f_over_T2_f) *
-                            (R_rfb + R1_b + kM0_f));
+        auto const F    = f_b / (1. - f_b);
+        auto const k_bf = k * F;
+
+        auto const R1_obs = 1. / T1_obs;
+        auto const R1_f   = R1_obs - (k_bf * (R1_b - R1_obs)) / (R1_b - R1_obs + k);
+
+        auto const S =
+            M0_f * (R1_b * k_bf / R1_f + R_rfb + R1_b + k) /
+            (k_bf / R1_f * (R1_b + R_rfb) +
+             (1.0 + pow(w_cwpe / (2 * M_PI * sequence.sat_f0), 2.0) * 1. / (R1_f * T2_f)) *
+                 (R_rfb + R1_b + k));
         QI_DBVEC(v)
         QI_DBVEC(w_cwpe)
         QI_DBVEC(R_rfb)
@@ -89,31 +97,20 @@ struct RamaniModel : QI::Model<double, double, 5, 3, 1, 3> {
         return S;
     }
 
-    void derived(const VaryingArray &p, const FixedArray &f, DerivedArray &d) const {
+    void derived(const VaryingArray &v, const FixedArray &f, DerivedArray &d) const {
         // Convert from the fitted parameters to useful ones
-        const auto &R1_b = 2.5; // Fix
-        // const auto &M0_f           = p[0];
-        const auto &F_over_R1_f = p[1];
-        // const auto &T2b            = p[2];
-        const auto &T1_f_over_T2_f = p[3];
-        const auto &k              = p[4];
-        const auto &T1_obs         = f[2];
+        auto const &f_b    = v[1];
+        auto const &k      = v[4];
+        auto const &T1_obs = f[2];
 
-        const auto R_obs = 1 / T1_obs;
-        // ((R1_b < R_obs) && (R1_b - R_obs + k) > 0) ?
-        //                     R_obs :
-        const auto Ra  = R_obs / (1.0 + ((k * F_over_R1_f * (R1_b - R_obs)) / (R1_b - R_obs + k)));
-        const auto F   = F_over_R1_f * Ra;
-        const auto f_b = F / (1.0 - F);
+        auto const F      = f_b / (1.f - f_b);
+        auto const k_bf   = k * F;
+        auto const R1_obs = 1. / T1_obs;
+        auto const R1_f   = R1_obs - (k_bf * (R1_b - R1_obs)) / (R1_b - R1_obs + k);
 
-        //{"T1_f"s, "T2_f"s, "f_b"s}
-        d[0] = QI::Clamp(1.0 / Ra, 0., 5.0);
-        d[1] = QI::Clamp(F_over_R1_f / (F * T1_f_over_T2_f), 0., 3.);
-        d[2] = QI::Clamp(100. * f_b, 0., 100.);
-        QI_DBVEC(p)
-        QI_DB(R_obs)
-        QI_DB(Ra)
-        QI_DBVEC(d)
+        //{"T1_f"s}
+        d[0] = QI::Clamp(1.0 / R1_f, 0., 5.0);
+        d[1] = k_bf;
     }
 };
 
@@ -134,6 +131,8 @@ int qmt_main(args::Subparser &parser) {
         "Either Gaussian, Lorentzian, Superlorentzian, or a .json file generated by qi_lineshape",
         {'l', "lineshape"},
         "Gaussian");
+    args::ValueFlag<float> R1_b(
+        parser, "R1b", "R1 (not T1) of the bound pool. Default 2.5s^-1", {'r', "R1b"}, 2.5f);
     parser.Parse();
     QI::CheckPos(mtsat_path);
     QI::Log(verbose, "Reading sequence information");
@@ -158,7 +157,7 @@ int qmt_main(args::Subparser &parser) {
         lineshape = QI::Lineshapes::Interpolated;
     }
 
-    RamaniModel model{{}, mtsat_sequence, lineshape, interp};
+    RamaniModel model{{}, mtsat_sequence, R1_b.Get(), lineshape, interp};
     if (simulate) {
         QI::SimulateModel<RamaniModel, false>(input,
                                               model,

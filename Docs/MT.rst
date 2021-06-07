@@ -20,9 +20,9 @@ A utility to sample lineshapes and write them out to files, which can then be re
 
 .. code-block:: bash
 
-    qi lineshape --lineshape=SuperLorentzian --frq_start=500 --frq_space=500 --frq_count=150 > superlorentz.json
+    qi lineshape --lineshape=SuperLorentzian --frq_start=500 --frq_space=500 --frq_count=150 superlorentz.json
 
-No input file required. Output is to ``stdout`` in JSON format, so should be redirected into a file for further use.
+The output will be written to the file specified on the command-line (in this case superlorentz.json).
 
 **Important Options**
 
@@ -50,9 +50,9 @@ Calculates Quantitative Magnetization Transfer parameters using the Ramani model
 
 .. code-block:: bash
 
-    qi qmt --verbose MTSatData.nii.gz T1.nii.gz --mask brain_mask.nii.gz --lineshape=superlorentz.json --B1=B1_map.nii.gz --f0=B0_map.nii.gz < input.json
+    qi qmt MTSatData.nii.gz --T1=T1.nii.gz --mask brain_mask.nii.gz --lineshape=superlorentz.json --B1=B1_map.nii.gz --f0=B0_map.nii.gz --json=input.json
 
-Note that a T1 map is a required input to stabilise the fitting.
+Note that the T1 map argument is required input to stabilise the fitting.
 
 **Example JSON File**
 
@@ -74,13 +74,18 @@ Note that a T1 map is a required input to stabilise the fitting.
 **Outputs**
 
 - ``QMT_f_b.nii.gz`` - The bound pool fraction
+- ``QMT_k.nii.gz`` - The fundamental exchange rate between pools
 - ``QMT_k_bf.nii.gz`` - The forward exchange rate from bound to free pool
 - ``QMT_T1_f.nii.gz`` - T1 of the free pool
 - ``QMT_T2_f.nii.gz`` - T2 of the free pool
 - ``QMT_T2_b.nii.gz`` - T2 of the bound pool
 - ``QMT_PD.nii.gz`` - The apparent Proton Density / size of the free pool
 
-Note that ``T1_b``, the longitudinal relaxation rate of the bound pool, is fixed to 1 second in this model and so is not written out.
+*Important Options*
+
+* ``--R1b, -r``
+
+    Specify the relaxation rate of the bound pool. Default is 2.5 per second.
 
 **References**
 

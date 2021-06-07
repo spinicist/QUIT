@@ -4,28 +4,30 @@
 
 namespace QI {
 
-template <typename ModelType, typename FlagType_ = int>
-struct ScaledAutoDiffFit : FitFunction<ModelType, FlagType_> {
-    using Super = FitFunction<ModelType, FlagType_>;
-    using Super::Super;
-    using typename Super::RMSErrorType;
-    using InputType  = typename ModelType::DataType;
-    using OutputType = typename ModelType::ParameterType;
-    using FlagType   = FlagType_; // Iterations
+template <typename ModelType_, typename FlagType_ = int> struct ScaledAutoDiffFit {
+    using ModelType           = ModelType_;
+    using InputType           = typename ModelType::DataType;
+    using OutputType          = typename ModelType::ParameterType;
+    using FlagType            = FlagType_; // Iterations
+    using RMSErrorType        = double;
+    static const bool Blocked = false;
+    static const bool Indexed = false;
 
-    ScaledAutoDiffFit(ModelType &m) : Super{m} {}
+    ModelType model;
+    long      input_size(long const &i) const { return model.input_size(i); }
 
     FitReturnType fit(std::vector<QI_ARRAY(InputType)> const &inputs,
                       typename ModelType::FixedArray const &  fixed,
-                      typename ModelType::VaryingArray &      p,
+                      typename ModelType::VaryingArray &      varying,
+                      typename ModelType::DerivedArray &      derived,
                       typename ModelType::CovarArray *        cov,
                       RMSErrorType &                          rmse,
                       std::vector<QI_ARRAY(InputType)> &      residuals,
-                      FlagType &                              iterations) const override {
+                      FlagType &                              iterations) const {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
-            p    = ModelType::VaryingArray::Zero();
-            rmse = 0;
+            varying = ModelType::VaryingArray::Zero();
+            rmse    = 0;
             return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd data = inputs[0] / scale;
@@ -34,34 +36,36 @@ struct ScaledAutoDiffFit : FitFunction<ModelType, FlagType_> {
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ModelType::NV>;
         auto *cost      = new Cost{this->model, fixed, data};
         auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
-        problem.AddResidualBlock(auto_cost, NULL, p.data());
+        problem.AddResidualBlock(auto_cost, NULL, varying.data());
         for (int i = 0; i < ModelType::NV; i++) {
-            problem.SetParameterLowerBound(p.data(), i, this->model.bounds_lo[i]);
-            problem.SetParameterUpperBound(p.data(), i, this->model.bounds_hi[i]);
+            problem.SetParameterLowerBound(varying.data(), i, this->model.bounds_lo[i]);
+            problem.SetParameterUpperBound(varying.data(), i, this->model.bounds_hi[i]);
         }
         ceres::Solver::Options options;
         ceres::Solver::Summary summary;
-        options.max_num_iterations  = 30;
+        options.max_num_iterations  = 100;
         options.function_tolerance  = 1e-6;
         options.gradient_tolerance  = 1e-7;
         options.parameter_tolerance = 1e-5;
         options.logging_type        = ceres::SILENT;
-        p << this->model.start;
+        varying << this->model.start;
         ceres::Solve(options, &problem, &summary);
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
         iterations               = summary.iterations.size();
-        Eigen::ArrayXd const rs  = (data - this->model.signal(p, fixed));
+        Eigen::ArrayXd const rs  = (data - this->model.signal(varying, fixed));
         double const         var = rs.square().sum();
         rmse                     = sqrt(var / data.rows()) * scale;
         if (residuals.size() > 0) {
             residuals[0] = rs * scale;
         }
         if (cov) {
-            QI::GetModelCovariance<ModelType>(problem, p, var / (data.rows() - ModelType::NV), cov);
+            QI::GetModelCovariance<ModelType>(
+                problem, varying, var / (data.rows() - ModelType::NV), cov);
         }
-        p[0] = p[0] * scale;
+        this->model.derived(varying, fixed, derived);
+        varying[0] = varying[0] * scale;
         return {true, ""};
     }
 };
