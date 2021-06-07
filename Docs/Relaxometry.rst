@@ -285,8 +285,6 @@ The SSFP input file should contain all SSFP images concatenated together as a 4D
         }
     }
 
-The order that the sequences are listed must match the order the input files are specified on the command-line.
-
 **Outputs**
 
 Note - the output prefix will change depending on the model selected (see below). The outputs listed here are for the 3 component model.
