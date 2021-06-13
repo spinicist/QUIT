@@ -10,6 +10,8 @@
  *
  */
 
+// #define QI_DEBUG_BUILD
+
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include <array>
@@ -87,22 +89,24 @@ template <typename Model> struct SRCFit {
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
-        Eigen::ArrayXd data(model.ssfp.size() + model.spgr.size());
-        int            dataIndex = 0;
-        for (size_t i = 0; i < inputs.size(); i++) {
-            if (model.scale_to_mean) {
-                data.segment(dataIndex, inputs[i].rows()) = inputs[i] / inputs[i].mean();
-            } else {
-                data.segment(dataIndex, inputs[i].rows()) = inputs[i];
-            }
-            dataIndex += inputs[i].rows();
+        Eigen::ArrayXd data = Eigen::ArrayXd::Zero(model.ssfp.size() + model.spgr.size());
+        if (model.scale_to_mean) {
+            QI_DBMSG("Scaling\n");
+            data.head(model.spgr.size()) = inputs[0] / inputs[0].mean();
+            data.tail(model.ssfp.size()) = inputs[1] / inputs[1].mean();
+        } else {
+            data.head(model.spgr.size()) = inputs[0];
+            data.tail(model.ssfp.size()) = inputs[1];
         }
+        QI_DBVEC(data);
         QI_ARRAYN(double, Model::NV) thresh = QI_ARRAYN(double, Model::NV)::Constant(0.05);
         const double & f0                   = fixed[0];
         Eigen::ArrayXd weights(model.spgr.size() + model.ssfp.size());
         weights.head(model.spgr.size()) = 1;
         weights.tail(model.ssfp.size()) = model.ssfp.weights(f0);
-        using Functor                   = MCDSRCFunctor<Model>;
+        QI_DBVEC(fixed);
+        QI_DBVEC(weights);
+        using Functor = MCDSRCFunctor<Model>;
         Functor                        func(model, fixed, data, weights);
         QI::RegionContraction<Functor> rc(func,
                                           model.bounds_lo,
@@ -123,6 +127,9 @@ template <typename Model> struct SRCFit {
             residuals[0] = r.head(model.spgr.size());
             residuals[1] = r.tail(model.ssfp.size());
         }
+        QI_DBVEC(residuals[0]);
+        QI_DBVEC(residuals[1]);
+        QI_DBVEC(v);
         iterations = rc.contractions();
         return {true, ""};
     }
@@ -150,7 +157,7 @@ int mcdespot_main(args::Subparser &parser) {
 
     QI::Log(verbose, "Reading sequences");
     auto input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    auto spgr  = input.at("SPGR").get<QI::SPGRSequence>();
+    auto spgr  = input.at("SPGR").get<QI::SPGREchoSequence>();
     auto ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
 
     auto process = [&](auto model, const std::string &model_name) {
@@ -176,6 +183,8 @@ int mcdespot_main(args::Subparser &parser) {
 
             auto fit_filter =
                 QI::ModelFitFilter<FitType>::New(&src, verbose, covar, resids, subregion.Get());
+            if (threads)
+                fit_filter->SetNumberOfWorkUnits(threads.Get());
             fit_filter->ReadInputs(
                 {spgr_path.Get(), ssfp_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();

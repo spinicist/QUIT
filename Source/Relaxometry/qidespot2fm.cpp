@@ -19,6 +19,7 @@
 #include "ImageIO.h"
 #include "Model.h"
 #include "ModelFitFilter.h"
+#include "OnePoolSignals.h"
 #include "SSFPSequence.h"
 #include "SimulateModel.h"
 #include "Util.h"
@@ -37,29 +38,35 @@ struct FMModel : QI::Model<double, double, 3, 2> {
     template <typename Derived>
     auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
         -> QI_ARRAY(typename Derived::Scalar) {
-        using T                      = typename Derived::Scalar;
-        const T &     PD             = v[0];
-        const T &     T2             = v[1];
-        const T &     f0             = v[2];
-        const double &T1             = f[0];
-        const double &B1             = f[1];
-        const double  E1             = exp(-sequence.TR / T1);
-        const T       E2             = exp(-sequence.TR / T2);
-        const T       psi            = 2. * M_PI * f0 * sequence.TR;
-        const QI_ARRAY(double) alpha = sequence.FA * B1;
-        const QI_ARRAY(T) d          = (1. - E1 * E2 * E2 - (E1 - E2 * E2) * cos(alpha));
-        const QI_ARRAY(T) G          = -PD * (1. - E1) * sin(alpha) / d;
-        const QI_ARRAY(T) b          = E2 * (1. - E1) * (1. + cos(alpha)) / d;
+        using T          = typename Derived::Scalar;
+        const T &     PD = v[0];
+        const T &     T2 = v[1];
+        const T &     f0 = v[2];
+        const double &T1 = f[0];
+        const double &B1 = f[1];
+        auto const &  s  = sequence;
 
-        const QI_ARRAY(T) theta  = sequence.PhaseInc + psi;
+        const double E1 = exp(-s.TR / T1);
+        const T      E2 = exp(-s.TR / T2);
+
+        const QI_ARRAY(T) d = (1 - E1 * cos(B1 * s.FA) - (E2 * E2) * (E1 - cos(B1 * s.FA)));
+        const T a           = E2;
+        const QI_ARRAY(T) b = E2 * (1 - E1) * (1 + cos(B1 * s.FA)) / d;
+
+        const T theta0           = 2. * M_PI * f0 * sequence.TR;
+        const QI_ARRAY(T) theta  = theta0 + sequence.PhaseInc;
         const QI_ARRAY(T) cos_th = cos(theta);
         const QI_ARRAY(T) sin_th = sin(theta);
+        const T psi              = theta0 / 2.0;
         const T cos_psi          = cos(psi);
         const T sin_psi          = sin(psi);
+
+        const QI_ARRAY(T) G = PD * sqrt(E2) * (1. - E1) * sin(B1 * s.FA) / d;
+
         const QI_ARRAY(T) re_m =
-            (cos_psi - E2 * (cos_th * cos_psi - sin_th * sin_psi)) * G / (1.0 - b * cos_th);
+            (cos_psi - a * (cos_th * cos_psi - sin_th * sin_psi)) * G / (1.0 - b * cos_th);
         const QI_ARRAY(T) im_m =
-            (sin_psi - E2 * (cos_th * sin_psi + sin_th * cos_psi)) * G / (1.0 - b * cos_th);
+            (sin_psi - a * (cos_th * sin_psi + sin_th * cos_psi)) * G / (1.0 - b * cos_th);
         return sqrt(re_m.square() + im_m.square());
     }
 };
