@@ -18,20 +18,20 @@
 
 namespace QI {
 
-struct SPGRBase : SequenceBase {
+struct SPGRSequence : SequenceBase {
     Eigen::ArrayXd FA;
-    Eigen::Index   size() const override;
-};
-
-struct SPGRSequence : SPGRBase {
-    double TR;
+    double         TR;
+    SPGRSequence(Eigen::ArrayXd const &FA, double const &TR);
+    Eigen::Index size() const override;
     QI_SEQUENCE_DECLARE(SPGR);
 };
 void from_json(const json &j, SPGRSequence &s);
 void to_json(json &j, const SPGRSequence &s);
 
-struct SPGREchoSequence : SPGRBase {
-    double TR, TE;
+struct SPGREchoSequence : SequenceBase {
+    Eigen::ArrayXd FA;
+    double         TR, TE;
+    Eigen::Index   size() const override;
     QI_SEQUENCE_DECLARE(SPGREcho);
 };
 void from_json(const json &j, SPGREchoSequence &s);

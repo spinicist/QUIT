@@ -27,23 +27,24 @@ struct TwoPoolModel : Model<double, double, 7, 2, 2> {
     std::array<const std::string, 2> const fixed_names{"f0", "B1"};
     FixedArray const                       fixed_defaults{0.0, 1.0};
 
-    SPGRSequence spgr;
-    SSFPSequence ssfp;
-    bool         scale_to_mean = false;
+    SPGREchoSequence spgr;
+    SSFPSequence     ssfp;
+    bool             scale_to_mean = false;
 
     QI_ARRAYN(double, 7) bounds_lo;
     QI_ARRAYN(double, 7) bounds_hi;
 
-    TwoPoolModel(SPGRSequence const &s1, SSFPSequence const &s2, const bool scale);
+    TwoPoolModel(SPGREchoSequence const &s1, SSFPSequence const &s2, const bool scale);
     bool   valid(VaryingArray const &params) const; // For SRC
     size_t num_outputs() const;
     int    output_size(int i) const;
 
-    Eigen::ArrayXd spgr_signal(const Eigen::ArrayXd &varying,
-                               const QI_ARRAYN(double, NF) & fixed) const;
-
-    Eigen::ArrayXd ssfp_signal(const Eigen::ArrayXd &varying,
-                               const QI_ARRAYN(double, NF) & fixed) const;
+    Eigen::ArrayXd  spgr_signal(const Eigen::ArrayXd &varying,
+                                const QI_ARRAYN(double, NF) & fixed) const;
+    Eigen::ArrayXd  ssfp_signal(const Eigen::ArrayXd &varying,
+                                const QI_ARRAYN(double, NF) & fixed) const;
+    Eigen::ArrayXcd ssfp_signalx(const Eigen::ArrayXd &varying,
+                                 const QI_ARRAYN(double, NF) & fixed) const;
 
     std::vector<Eigen::ArrayXd> signals(VaryingArray const &varying, FixedArray const &fixed) const;
     Eigen::ArrayXd signal(const Eigen::ArrayXd &varying, const QI_ARRAYN(double, NF) & fixed) const;

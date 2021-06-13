@@ -11,13 +11,15 @@
  *
  */
 
-#include "SPGRSequence.h"
 #include "JSON.h"
 #include "Log.h"
+#include "SPGRSequence.h"
 
 namespace QI {
 
-Eigen::Index SPGRBase::size() const {
+SPGRSequence::SPGRSequence(Eigen::ArrayXd const &FA_, double const &TR_) : FA{FA_}, TR{TR_} {}
+
+Eigen::Index SPGRSequence::size() const {
     return FA.rows();
 }
 
@@ -28,6 +30,10 @@ void from_json(const json &j, SPGRSequence &s) {
 
 void to_json(json &j, const SPGRSequence &s) {
     j = nlohmann::json{{"TR", s.TR}, {"FA", s.FA * 180.0 / M_PI}};
+}
+
+Eigen::Index SPGREchoSequence::size() const {
+    return FA.rows();
 }
 
 void from_json(const json &j, SPGREchoSequence &s) {

@@ -16,7 +16,6 @@
 #include "OnePoolSignals.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
-#include "TwoPoolModel.h"
 #include <Eigen/Core>
 #include <array>
 #include <string>
@@ -24,10 +23,9 @@
 namespace QI {
 
 struct ThreePoolModel : Model<double, double, 10, 2, 2> {
-    SPGRSequence spgr;
-    SSFPSequence ssfp;
-    bool         scale_to_mean = false;
-    TwoPoolModel two_pool;
+    SPGREchoSequence spgr;
+    SSFPSequence     ssfp;
+    bool             scale_to_mean = false;
 
     std::array<const std::string, ThreePoolModel::NV> const varying_names{
         "PD", "T1_m", "T2_m", "T1_ie", "T2_ie", "T1_csf", "T2_csf", "tau_m", "f_m", "f_csf"};
@@ -37,7 +35,7 @@ struct ThreePoolModel : Model<double, double, 10, 2, 2> {
     QI_ARRAYN(double, NV) bounds_lo;
     QI_ARRAYN(double, NV) bounds_hi;
 
-    ThreePoolModel(SPGRSequence const &s1, SSFPSequence const &s2, const bool scale);
+    ThreePoolModel(SPGREchoSequence const &s1, SSFPSequence const &s2, const bool scale);
     bool   valid(const QI_ARRAYN(double, NV) & params) const; // For SRC
     size_t num_outputs() const;
     int    output_size(int i) const;
