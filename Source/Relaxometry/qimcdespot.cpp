@@ -89,19 +89,16 @@ template <typename Model> struct SRCFit {
                           RMSErrorType &               residual,
                           std::vector<Eigen::ArrayXd> &residuals,
                           FlagType &                   iterations) const {
-        Eigen::ArrayXd data      = Eigen::ArrayXd::Zero(model.ssfp.size() + model.spgr.size());
-        int            dataIndex = 0;
-        QI_DBMSG("Scaling\n");
-        QI_DBVEC(data);
-        for (size_t i = 0; i < inputs.size(); i++) {
-            if (model.scale_to_mean) {
-                data.segment(dataIndex, inputs[i].rows()) = inputs[i] / inputs[i].mean();
-            } else {
-                data.segment(dataIndex, inputs[i].rows()) = inputs[i];
-            }
-            QI_DBVEC(data);
-            dataIndex += inputs[i].rows();
+        Eigen::ArrayXd data = Eigen::ArrayXd::Zero(model.ssfp.size() + model.spgr.size());
+        if (model.scale_to_mean) {
+            QI_DBMSG("Scaling\n");
+            data.head(model.spgr.size()) = inputs[0] / inputs[0].mean();
+            data.tail(model.ssfp.size()) = inputs[1] / inputs[1].mean();
+        } else {
+            data.head(model.spgr.size()) = inputs[0];
+            data.tail(model.ssfp.size()) = inputs[1];
         }
+        QI_DBVEC(data);
         QI_ARRAYN(double, Model::NV) thresh = QI_ARRAYN(double, Model::NV)::Constant(0.05);
         const double & f0                   = fixed[0];
         Eigen::ArrayXd weights(model.spgr.size() + model.ssfp.size());
@@ -186,6 +183,8 @@ int mcdespot_main(args::Subparser &parser) {
 
             auto fit_filter =
                 QI::ModelFitFilter<FitType>::New(&src, verbose, covar, resids, subregion.Get());
+            if (threads)
+                fit_filter->SetNumberOfWorkUnits(threads.Get());
             fit_filter->ReadInputs(
                 {spgr_path.Get(), ssfp_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();

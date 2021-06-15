@@ -11,6 +11,8 @@
 
 #pragma once
 
+// #define QI_DEBUG_BUILD
+
 #include "MPRAGESequence.h"
 #include "Macro.h"
 #include "SPGRSequence.h"

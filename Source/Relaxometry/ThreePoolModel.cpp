@@ -108,7 +108,6 @@ Eigen::ArrayXd ThreePoolModel::ssfp_signal(const Eigen::ArrayXd &v,
     auto const     m_c    = SSFP1(v[0] * v[9], v[5], v[6], fixed[0], fixed[1], ssfp);
     Eigen::ArrayXd signal = (m_ab + m_c).abs();
     QI_DBMSG("ssfp\n");
-    QI_DBVEC(two_pool_varying);
     QI_DBVEC(v);
     QI_DBVEC(m_ab);
     QI_DBVEC(m_c);

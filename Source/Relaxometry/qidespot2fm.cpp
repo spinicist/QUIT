@@ -54,7 +54,7 @@ struct FMModel : QI::Model<double, double, 3, 2> {
         const QI_ARRAY(T) b = E2 * (1 - E1) * (1 + cos(B1 * s.FA)) / d;
 
         const T theta0           = 2. * M_PI * f0 * sequence.TR;
-        const QI_ARRAY(T) theta  = -(theta0 - sequence.PhaseInc);
+        const QI_ARRAY(T) theta  = theta0 + sequence.PhaseInc;
         const QI_ARRAY(T) cos_th = cos(theta);
         const QI_ARRAY(T) sin_th = sin(theta);
         const T psi              = theta0 / 2.0;
