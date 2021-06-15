@@ -22,7 +22,7 @@ Eigen::Index SSFPBase::size() const {
 }
 
 Eigen::ArrayXd SSFPSequence::weights(const double f0) const {
-    Eigen::ArrayXd offset  = PhaseInc + 2. * M_PI * f0 * TR;
+    Eigen::ArrayXd offset  = PhaseInc + M_PI * f0 * TR;
     Eigen::ArrayXd weights = 0.75 * (offset / 2).sin().square();
     QI_DBVEC(PhaseInc);
     QI_DB(f0);
