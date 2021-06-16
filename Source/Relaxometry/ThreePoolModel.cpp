@@ -72,10 +72,9 @@ std::vector<Eigen::ArrayXd> ThreePoolModel::signals(const Eigen::ArrayXd &v,
 
 Eigen::ArrayXd ThreePoolModel::signal(const Eigen::ArrayXd &v,
                                       const QI_ARRAYN(double, NF) & f) const {
-    auto           sigs   = signals(v, f);
     Eigen::ArrayXd sig    = Eigen::ArrayXd::Zero(spgr.size() + ssfp.size());
-    sig.head(spgr.size()) = sigs[0];
-    sig.tail(ssfp.size()) = sigs[1];
+    sig.head(spgr.size()) = spgr_signal(v, f);
+    sig.tail(ssfp.size()) = ssfp_signal(v, f);
     QI_DBVEC(sig);
     return sig;
 }
@@ -92,8 +91,6 @@ Eigen::ArrayXd ThreePoolModel::spgr_signal(const Eigen::ArrayXd &v,
     QI_DBVEC(m_ab);
     QI_DBVEC(m_c);
     QI_DBVEC(signal);
-    // std::cout << "SPGR\n" << m_ab.transpose() << "\n" << m_c.transpose() << "\n" <<
-    // signal.transpose() << std::endl;
     if (scale_to_mean) {
         signal /= signal.mean();
     }

@@ -11,10 +11,8 @@
 
 #pragma once
 
-#include "Macro.h"
 #include "SPGRSequence.h"
 #include "SSFPSequence.h"
-#include <Eigen/Core>
 
 namespace QI {
 

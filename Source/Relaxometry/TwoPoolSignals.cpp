@@ -1,7 +1,12 @@
 #include "TwoPoolSignals.h"
 
-#include "Helpers.h"
+// #define QI_DEBUG_BUILD
+#include "Macro.h"
+
+#include <Eigen/Dense>
 #include <unsupported/Eigen/MatrixFunctions>
+
+#include "Helpers.h"
 
 namespace QI {
 
@@ -37,6 +42,20 @@ Eigen::ArrayXcd SPGR2(double const            PD,
         Mxy.noalias()  = echo * PD * Mz * sin(a);
         signal(i)      = Mxy(0) + Mxy(1);
     }
+    QI_DBMSG("SPGR2\n");
+    QI_DB(PD);
+    QI_DB(T1_a);
+    QI_DB(T2_a);
+    QI_DB(T1_b);
+    QI_DB(T2_b);
+    QI_DB(tau_a);
+    QI_DB(f_a);
+    QI_DB(f0);
+    QI_DB(B1);
+    QI_DB(spgr.TR);
+    QI_DB(spgr.TE);
+    QI_DBVEC(spgr.FA);
+    QI_DBVEC(signal);
     return signal;
 }
 
@@ -56,7 +75,7 @@ Eigen::ArrayXcd SSFP2(double const            PD,
     const double  E2_a = exp(-TR / T2_a);
     const double  E2_b = exp(-TR / T2_b);
     double        f_b, k_ab, k_ba;
-    QI::CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
+    CalcExchange(tau_a, f_a, f_b, k_ab, k_ba);
     const double   E_ab  = exp(-TR * k_ab / f_b);
     const double   K1    = E_ab * f_b + f_a;
     const double   K2    = E_ab * f_a + f_b;
@@ -66,15 +85,15 @@ Eigen::ArrayXcd SSFP2(double const            PD,
     Eigen::ArrayXd theta = s.PhaseInc + 2. * M_PI * f0 * TR;
 
     // TR Evolution
-    Eigen::MatrixXd             M(4, s.size());
-    Eigen::Matrix<double, 6, 6> LHS;
-    Eigen::Vector<double, 6>    RHS;
+    Eigen::MatrixXd M(4, s.size());
+    Eigen::Matrix6d LHS;
+    Eigen::Vector6d RHS;
     RHS << 0, 0, 0, 0, -E1_b * K3 * f_b + f_a * (-E1_a * K1 + 1),
         -E1_a * K4 * f_a + f_b * (-E1_b * K2 + 1);
 
     // TE Evolution
-    const double sE2_a    = sqrt(E2_a);
-    const double sE2_b    = sqrt(E2_b);
+    const double sE2_a    = exp(-TR / (2. * T2_a));
+    const double sE2_b    = exp(-TR / (2. * T2_b));
     const double sqrtE_ab = exp(-TR * k_ab / (2 * f_b));
     const double K1e      = sqrtE_ab * f_b + f_a;
     const double K2e      = sqrtE_ab * f_a + f_b;
@@ -108,6 +127,20 @@ Eigen::ArrayXcd SSFP2(double const            PD,
     mce.real() = PD * (M.row(0) + M.row(1));
     mce.imag() = PD * (M.row(2) + M.row(3));
 
+    QI_DBMSG("SSFP2\n");
+    QI_DB(PD);
+    QI_DB(T1_a);
+    QI_DB(T2_a);
+    QI_DB(T1_b);
+    QI_DB(T2_b);
+    QI_DB(tau_a);
+    QI_DB(f_a);
+    QI_DB(f0);
+    QI_DB(B1);
+    QI_DB(s.TR);
+    QI_DBVEC(s.PhaseInc);
+    QI_DBVEC(s.FA);
+    QI_DBVEC(mce);
     return mce;
 }
 
