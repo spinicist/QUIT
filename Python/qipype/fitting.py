@@ -273,8 +273,8 @@ MTSat, MTSatSim, MTSatFitIS, MTSatFitOS, MTSatSimIS, MTSatSimOS = Command(
 
 qMT, qMTSim, qMTFitIS, qMTFitOS, qMTSimIS, qMTSimOS = Command(
     'qMT', 'qi qmt', 'QMT',
-    varying=['M0_f', 'F_over_R1_f', 'T2_b', 'T1_f_over_T2_f', 'k'],
-    derived=['PD', 'T1_f', 'T2_f', 'T2_b', 'k_bf', 'f_b'],
+    varying=['M0_f', 'f_b', 'T2_b', 'T2_f', 'k'],
+    derived=['T1_f', 'k_bf'],
     fixed=['f0', 'B1', 'T1'],
     extra={'lineshape': traits.String(argstr='--lineshape=%s', mandatory=True,
                                       desc='Gauss/Lorentzian/SuperLorentzian/path to JSON file')})

@@ -97,12 +97,12 @@ class MT(unittest.TestCase):
 
         NewImage(out_file='M0_f.nii.gz', verbose=vb, img_size=img_sz,
                  fill=1.0).run()
-        NewImage(out_file='F_over_R1_f.nii.gz', verbose=vb, img_size=img_sz,
-                 fill=0.1).run()
+        NewImage(out_file='f_b.nii.gz', verbose=vb, img_size=img_sz,
+                 grad_dim=1, grad_vals=(0.01, 0.15)).run()
         NewImage(out_file='T2_b.nii.gz', verbose=vb, img_size=img_sz,
                  fill=12e-6).run()
-        NewImage(out_file='T1_f_over_T2_f.nii.gz', verbose=vb, img_size=img_sz,
-                 grad_dim=0, grad_vals=(5, 15)).run()
+        NewImage(out_file='T2_f.nii.gz', verbose=vb, img_size=img_sz,
+                 grad_dim=0, grad_vals=(0.05, 0.15)).run()
         NewImage(out_file='k.nii.gz', verbose=vb, img_size=img_sz,
                  fill=4.0).run()
         NewImage(out_file=t1app, verbose=vb, img_size=img_sz,
@@ -111,21 +111,21 @@ class MT(unittest.TestCase):
         qMTSim(sequence=qmt, out_file=qmt_file, T1_map=t1app, lineshape=lineshape_file,
                noise=noise, verbose=vb,
                M0_f_map='M0_f.nii.gz',
-               F_over_R1_f_map='F_over_R1_f.nii.gz',
+               f_b_map='f_b.nii.gz',
                T2_b_map='T2_b.nii.gz',
-               T1_f_over_T2_f_map='T1_f_over_T2_f.nii.gz',
+               T2_f_map='T2_f.nii.gz',
                k_map='k.nii.gz').run()
         qMT(sequence=qmt, in_file=qmt_file, T1_map=t1app,
             lineshape=lineshape_file, verbose=vb).run()
 
         diff_PD = Diff(in_file='QMT_M0_f.nii.gz', baseline='M0_f.nii.gz',
                        noise=noise, verbose=vb).run()
-        diff_F = Diff(in_file='QMT_F_over_R1_f.nii.gz', baseline='F_over_R1_f.nii.gz',
-                      noise=noise, verbose=vb).run()
+        diff_f_b = Diff(in_file='QMT_f_b.nii.gz', baseline='f_b.nii.gz',
+                        noise=noise, verbose=vb).run()
         diff_k = Diff(in_file='QMT_k.nii.gz', baseline='k.nii.gz',
                       noise=noise, verbose=vb).run()
         self.assertLessEqual(diff_PD.outputs.out_diff, 10)
-        self.assertLessEqual(diff_F.outputs.out_diff, 30)
+        self.assertLessEqual(diff_f_b.outputs.out_diff, 30)
         self.assertLessEqual(diff_k.outputs.out_diff, 35)
 
     def test_ZSpec(self):
