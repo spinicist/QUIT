@@ -175,11 +175,13 @@ int lorentzian_main(args::Subparser &parser) {
                                          mask.Get(),
                                          verbose,
                                          simulate.Get(),
+                                         threads.Get(),
                                          subregion.Get());
         } else {
             LFit fit{model};
             auto fit_filter =
-                QI::ModelFitFilter<LFit>::New(&fit, verbose, covar, resids, subregion.Get());
+                QI::ModelFitFilter<LFit>::New(
+                    &fit, verbose, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + "LTZ_");

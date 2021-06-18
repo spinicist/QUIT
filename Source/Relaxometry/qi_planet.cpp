@@ -116,11 +116,13 @@ int planet_main(args::Subparser &parser) {
                                              mask.Get(),
                                              verbose,
                                              simulate.Get(),
+                                             threads.Get(),
                                              subregion.Get());
     } else {
         PLANETFit fit{model};
         auto      fit_filter =
-            QI::ModelFitFilter<PLANETFit>::New(&fit, verbose, false, false, subregion.Get());
+            QI::ModelFitFilter<PLANETFit>::New(
+                &fit, verbose, false, false, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get()}, mask.Get());
         fit_filter->SetBlocks(ssfp.size());
         fit_filter->Update();

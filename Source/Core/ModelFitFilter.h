@@ -102,6 +102,7 @@ class ModelFitFilter
                    const bool         verbose,
                    const bool         covar,
                    const bool         allResids,
+                   const int          nThreads,
                    std::string const &subregion) :
         m_fit(f),
         m_verbose(verbose), m_allResiduals(allResids), m_covar(covar) {
@@ -119,6 +120,7 @@ class ModelFitFilter
             m_hasSubregion = true;
         }
         this->DynamicMultiThreadingOn();
+        this->SetNumberOfWorkUnits(nThreads);
     }
 
     void SetInput(unsigned int i, const TInputImage *image) override {

@@ -26,8 +26,12 @@ void SimulateModel(json &                                    json,
                    std::string const &                       mask_path,
                    bool const                                verbose,
                    double const                              noise,
+                   int const                                 nThreads,
                    std::string const &                       subRegion) {
-    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, verbose, subRegion);
+    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model,
+                                                                 verbose,
+                                                                 nThreads,
+                                                                 subRegion);
     simulator->SetNoise(noise);
     for (auto i = 0; i < Model::NV; i++) {
         const std::string vname = fmt::format("{}_map", model.varying_names[i]);

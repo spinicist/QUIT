@@ -206,11 +206,13 @@ int despot1hifi_main(args::Subparser &parser) {
                                            mask.Get(),
                                            verbose,
                                            simulate.Get(),
+                                           threads.Get(),
                                            subregion.Get());
     } else {
         HIFIFit hifi_fit{model};
         auto    fit_filter =
-            QI::ModelFitFilter<HIFIFit>::New(&hifi_fit, verbose, covar, resids, subregion.Get());
+            QI::ModelFitFilter<HIFIFit>::New(
+                &hifi_fit, verbose, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, {}, mask.Get());
         fit_filter->Update();

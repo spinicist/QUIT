@@ -306,11 +306,13 @@ int jsr_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         JSRFit jsr_fit{model, npsi.Get()};
         auto   fit_filter =
-            QI::ModelFitFilter<JSRFit>::New(&jsr_fit, verbose, covar, resids, subregion.Get());
+            QI::ModelFitFilter<JSRFit>::New(
+                &jsr_fit, verbose, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "JSR_");

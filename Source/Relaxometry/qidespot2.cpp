@@ -254,6 +254,7 @@ int despot2_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         DESPOT2Fit *d2 = nullptr;
@@ -275,7 +276,8 @@ int despot2_main(args::Subparser &parser) {
             QI::Log(verbose, "GS Mode selected");
             d2->model.elliptical = true;
         }
-        auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(d2, verbose, covar, resids, subregion.Get());
+        auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(
+            d2, verbose, covar, resids, threads.Get(), subregion.Get());
         fit->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D2_");

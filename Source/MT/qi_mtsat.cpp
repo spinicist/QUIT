@@ -45,6 +45,7 @@ int mtsat_main(args::Subparser &parser) {
             mask.Get(),
             verbose,
             simulate.Get(),
+            threads.Get(),
             subregion.Get());
     } else {
         auto pdw_img = QI::ReadImage(QI::CheckPos(pdw_path), verbose);

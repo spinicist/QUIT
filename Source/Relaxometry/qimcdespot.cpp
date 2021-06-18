@@ -169,6 +169,7 @@ int mcdespot_main(args::Subparser &parser) {
                                                      mask.Get(),
                                                      verbose,
                                                      simulate.Get(),
+                                                     threads.Get(),
                                                      subregion.Get());
         } else {
             using FitType = SRCFit<decltype(model)>;
@@ -182,9 +183,8 @@ int mcdespot_main(args::Subparser &parser) {
             QI::Log(verbose, "High bounds: {}", src.model.bounds_hi.transpose());
 
             auto fit_filter =
-                QI::ModelFitFilter<FitType>::New(&src, verbose, covar, resids, subregion.Get());
-            if (threads)
-                fit_filter->SetNumberOfWorkUnits(threads.Get());
+                QI::ModelFitFilter<FitType>::New(
+                    &src, verbose, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs(
                 {spgr_path.Get(), ssfp_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();

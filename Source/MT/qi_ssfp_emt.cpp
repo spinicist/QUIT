@@ -212,6 +212,7 @@ int ssfp_emt_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         // First calculate T2_f
@@ -241,7 +242,8 @@ int ssfp_emt_main(args::Subparser &parser) {
 
         EMTFit fit{model};
         auto   fit_filter =
-            QI::ModelFitFilter<EMTFit>::New(&fit, verbose, covar, resids, subregion.Get());
+            QI::ModelFitFilter<EMTFit>::New(
+                &fit, verbose, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get(), ""}, mask.Get());
         fit_filter->SetFixed(1, T2_f_calc);

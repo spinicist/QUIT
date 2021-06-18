@@ -203,11 +203,13 @@ int ssfp_ellipse_main(args::Subparser &parser) {
                                                mask.Get(),
                                                verbose,
                                                simulate.Get(),
+                                               threads.Get(),
                                                subregion.Get());
     } else {
         EllipseFit fit{model};
         auto       fit_filter =
-            QI::ModelFitFilter<EllipseFit>::New(&fit, verbose, covar, resids, subregion.Get());
+            QI::ModelFitFilter<EllipseFit>::New(
+                &fit, verbose, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({sequence_path.Get()}, {}, mask.Get());
         fit_filter->SetBlocks(fit_filter->GetInput(0)->GetNumberOfComponentsPerPixel() /
                               sequence.size());

@@ -188,13 +188,15 @@ int despot2fm_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         FMNLLS fm{model};
         fm.max_iterations = its.Get();
         fm.asymmetric     = asym.Get();
         auto fit_filter =
-            QI::ModelFitFilter<FMNLLS>::New(&fm, verbose, covar, resids, subregion.Get());
+            QI::ModelFitFilter<FMNLLS>::New(
+                &fm, verbose, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit_filter->Update();
