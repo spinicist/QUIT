@@ -253,7 +253,8 @@ int mpm_r2s_main(args::Subparser &parser) {
                                           subregion.Get());
     } else {
         auto fit_filter =
-            QI::ModelFitFilter<MPMFit>::New(&mpm_fit, verbose, covar, resids, subregion.Get());
+            QI::ModelFitFilter<MPMFit>::New(
+                &mpm_fit, verbose, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "MPM_");

@@ -61,7 +61,8 @@ int transient_main(args::Subparser &parser) {
             using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;
             FitType fit{model};
             auto    fit_filter =
-                QI::ModelFitFilter<FitType>::New(&fit, verbose, covar, resids, subregion.Get());
+                QI::ModelFitFilter<FitType>::New(
+                    &fit, verbose, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs({input_path.Get()}, fixed, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + model_name);

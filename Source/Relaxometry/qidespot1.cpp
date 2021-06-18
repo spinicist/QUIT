@@ -218,7 +218,8 @@ int despot1_main(args::Subparser &parser) {
         default:
             QI::Fail("Unknown algorithm type: {}", algorithm.Get());
         }
-        auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(d1, verbose, covar, resids, subregion.Get());
+        auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(
+            d1, verbose, covar, resids, threads.Get(), subregion.Get());
         fit->ReadInputs({QI::CheckPos(spgr_path)}, {B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D1_");

@@ -206,7 +206,8 @@ int multiecho_main(args::Subparser &parser) {
             QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
         auto fit =
-            QI::ModelFitFilter<MultiEchoFit>::New(me, verbose, covar, resids, subregion.Get());
+            QI::ModelFitFilter<MultiEchoFit>::New(
+                me, verbose, covar, resids, threads.Get(), subregion.Get());
         fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
         const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
         if (nvols % sequence.size() == 0) {
