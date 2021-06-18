@@ -206,6 +206,7 @@ int despot1hifi_main(args::Subparser &parser) {
                                            mask.Get(),
                                            verbose,
                                            simulate.Get(),
+                                           threads.Get(),
                                            subregion.Get());
     } else {
         HIFIFit hifi_fit{model};

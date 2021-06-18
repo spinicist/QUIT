@@ -199,6 +199,7 @@ int despot1_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         DESPOT1Fit *d1 = nullptr;

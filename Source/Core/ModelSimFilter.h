@@ -39,7 +39,10 @@ class ModelSimFilter
     QI_ForwardNewMacro(Self);
     itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
-    ModelSimFilter(ModelType const &m, bool const vb, std::string const &subregion) :
+    ModelSimFilter(ModelType const &m,
+                   bool const vb,
+                   const int nThreads,
+                   std::string const &subregion) :
         m_model{m}, m_verbose{vb} {
         this->SetNumberOfRequiredInputs(ModelType::NV);
         if constexpr (MultiOutput) {
@@ -55,6 +58,8 @@ class ModelSimFilter
             m_subregion    = RegionFromString<RegionType>(subregion);
             m_hasSubregion = true;
         }
+        this->DynamicMultiThreadingOn();
+        this->SetNumberOfWorkUnits(nThreads);
     }
 
     void SetVarying(unsigned int i, const QI::VolumeF *image) {

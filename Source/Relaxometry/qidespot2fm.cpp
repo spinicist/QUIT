@@ -188,6 +188,7 @@ int despot2fm_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         FMNLLS fm{model};

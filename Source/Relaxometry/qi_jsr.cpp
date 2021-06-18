@@ -306,6 +306,7 @@ int jsr_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         JSRFit jsr_fit{model, npsi.Get()};

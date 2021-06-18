@@ -116,6 +116,7 @@ int planet_main(args::Subparser &parser) {
                                              mask.Get(),
                                              verbose,
                                              simulate.Get(),
+                                             threads.Get(),
                                              subregion.Get());
     } else {
         PLANETFit fit{model};

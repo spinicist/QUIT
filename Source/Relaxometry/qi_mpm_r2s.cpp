@@ -250,6 +250,7 @@ int mpm_r2s_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         auto fit_filter =

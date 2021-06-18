@@ -165,6 +165,7 @@ int ase_oef_main(args::Subparser &parser) {
                                                      mask.Get(),
                                                      verbose,
                                                      simulate.Get(),
+                                                     threads.Get(),
                                                      subregion.Get());
         } else {
             ASEModel model{{}, sequence, B0.Get()};
@@ -175,6 +176,7 @@ int ase_oef_main(args::Subparser &parser) {
                                                mask.Get(),
                                                verbose,
                                                simulate.Get(),
+                                               threads.Get(),
                                                subregion.Get());
         }
     } else {

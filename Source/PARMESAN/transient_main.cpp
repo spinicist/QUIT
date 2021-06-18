@@ -56,6 +56,7 @@ int transient_main(args::Subparser &parser) {
                                                       mask.Get(),
                                                       verbose,
                                                       simulate.Get(),
+                                                      threads.Get(),
                                                       subregion.Get());
         } else {
             using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;

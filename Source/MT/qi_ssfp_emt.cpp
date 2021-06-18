@@ -212,6 +212,7 @@ int ssfp_emt_main(args::Subparser &parser) {
                                           mask.Get(),
                                           verbose,
                                           simulate.Get(),
+                                          threads.Get(),
                                           subregion.Get());
     } else {
         // First calculate T2_f
