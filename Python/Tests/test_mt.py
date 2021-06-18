@@ -104,7 +104,7 @@ class MT(unittest.TestCase):
         NewImage(out_file='T2_f.nii.gz', verbose=vb, img_size=img_sz,
                  grad_dim=0, grad_vals=(0.05, 0.15)).run()
         NewImage(out_file='k.nii.gz', verbose=vb, img_size=img_sz,
-                 fill=4.0).run()
+                 fill=40.0).run()
         NewImage(out_file=t1app, verbose=vb, img_size=img_sz,
                  fill=1.0).run()
 
@@ -121,12 +121,12 @@ class MT(unittest.TestCase):
         diff_PD = Diff(in_file='QMT_M0_f.nii.gz', baseline='M0_f.nii.gz',
                        noise=noise, verbose=vb).run()
         diff_f_b = Diff(in_file='QMT_f_b.nii.gz', baseline='f_b.nii.gz',
-                        noise=noise, verbose=vb).run()
+                        abs_diff=True, noise=noise, verbose=vb).run()
         diff_k = Diff(in_file='QMT_k.nii.gz', baseline='k.nii.gz',
                       noise=noise, verbose=vb).run()
         self.assertLessEqual(diff_PD.outputs.out_diff, 10)
-        self.assertLessEqual(diff_f_b.outputs.out_diff, 30)
-        self.assertLessEqual(diff_k.outputs.out_diff, 35)
+        self.assertLessEqual(diff_f_b.outputs.out_diff, 50)
+        self.assertLessEqual(diff_k.outputs.out_diff, 50)
 
     def test_ZSpec(self):
         NewImage(out_file='zspec_linear.nii.gz', verbose=vb, img_size=[8, 8, 8, 4],
