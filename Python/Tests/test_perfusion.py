@@ -62,8 +62,8 @@ class Perfusion(unittest.TestCase):
                         noise=noise, verbose=vb).run()
         diff_DBV = Diff(in_file='ASE_DBV.nii.gz', baseline='DBV.nii.gz',
                         noise=noise, verbose=vb).run()
-        self.assertLessEqual(diff_R2p.outputs.out_diff, 12)
-        self.assertLessEqual(diff_DBV.outputs.out_diff, 50)
+        self.assertLessEqual(diff_R2p.outputs.out_diff, 20)
+        self.assertLessEqual(diff_DBV.outputs.out_diff, 75)
 
     def test_oef_fixed_dbv(self):
         # Use MultiEchoFlex as a proxy for ASE
