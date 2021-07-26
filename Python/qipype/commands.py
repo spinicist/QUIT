@@ -7,13 +7,14 @@ Requires that the QUIT tools are in your your system path
 """
 
 from os import path
+from copy import deepcopy
 from nipype.interfaces.base import TraitedSpec, DynamicTraitedSpec, File, traits, isdefined
-from . import base
+from qipype.base import InputBaseSpec, InputSpec, BaseCommand, CommandLine
 
 ############################ qinewimage ############################
 
 
-class NewImageInputSpec(base.InputBaseSpec):
+class NewImageInputSpec(InputBaseSpec):
     # Options
     img_size = traits.List(minsize=2, maxsize=4, mandatory=True,
                            desc='Image size', argstr='--size=%s', sep=',')
@@ -38,7 +39,7 @@ class NewImageOutputSpec(TraitedSpec):
     out_file = File(desc="Simulated Image")
 
 
-class NewImage(base.CommandLine):
+class NewImage(CommandLine):
     """
     Produce a new image with qinewimage
 
@@ -66,7 +67,7 @@ class NewImage(base.CommandLine):
 ############################ qidiff ############################
 
 
-class DiffInputSpec(base.InputBaseSpec):
+class DiffInputSpec(InputBaseSpec):
 
     # Options
     in_file = File(desc='Input file', argstr='--input=%s',
@@ -82,7 +83,7 @@ class DiffOutputSpec(TraitedSpec):
     out_diff = traits.Float(desc='Image difference')
 
 
-class Diff(base.CommandLine):
+class Diff(CommandLine):
     """
     Compare two images
     """
@@ -100,7 +101,7 @@ class Diff(base.CommandLine):
 ############################ NOISE ESTIMATION ############################
 
 
-class NoiseInputSpec(base.InputBaseSpec):
+class NoiseInputSpec(InputBaseSpec):
     in_file = File(desc='Input file', argstr='%s',
                    position=0, mandatory=True, exists=True)
     mask_file = File(desc='Noise mark', argstr='--mask=%s', exists=True)
@@ -114,7 +115,7 @@ class NoiseOutputSpec(TraitedSpec):
     noise = traits.Float(desc='Measured noise')
 
 
-class Noise(base.CommandLine):
+class Noise(CommandLine):
     """
     Calculate noise levels in an image
     """
@@ -133,7 +134,7 @@ class Noise(base.CommandLine):
 ############################ qidream ############################
 
 
-class DreamInputSpec(base.InputSpec):
+class DreamInputSpec(InputSpec):
     # Inputs
     dream_file = File(exists=True, argstr='%s', mandatory=True,
                       position=0, desc='Input file. Must have 2 volumes (FID and STE)')
@@ -156,7 +157,7 @@ class DreamOutputSpec(TraitedSpec):
     b1_act_map = File(desc="The actual achieved angle in each voxel.")
 
 
-class Dream(base.BaseCommand):
+class Dream(BaseCommand):
     _cmd = 'qi dream'
     input_spec = DreamInputSpec
     output_spec = DreamOutputSpec
@@ -178,7 +179,7 @@ class Dream(base.BaseCommand):
 # Implemented but not tested #
 
 
-class AFIInputSpec(base.InputSpec):
+class AFIInputSpec(InputSpec):
     # Inputs
     afi_file = File(exists=True, argstr='%s', mandatory=True,
                     position=0, desc='Input file')
@@ -202,7 +203,7 @@ class AFIOutputSpec(TraitedSpec):
     b1_act_map = File(desc="The actual flip-angle map.")
 
 
-class AFI(base.BaseCommand):
+class AFI(BaseCommand):
     _cmd = 'qi afi'
     input_spec = AFIInputSpec
     output_spec = AFIOutputSpec
@@ -223,7 +224,7 @@ class AFI(base.BaseCommand):
 # Implemented but not tested #
 
 
-class B1MinusInputSpec(base.InputSpec):
+class B1MinusInputSpec(InputSpec):
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Input file')
 
@@ -233,7 +234,7 @@ class B1MinusOutputSpec(TraitedSpec):
                     desc="The B1 minus map.", usedefault=True)
 
 
-class B1Minus(base.BaseCommand):
+class B1Minus(BaseCommand):
     _cmd = 'qi b1_papp'
     input_spec = B1MinusInputSpec
     output_spec = B1MinusOutputSpec
@@ -242,7 +243,7 @@ class B1Minus(base.BaseCommand):
 ############################ FieldMap ############################
 
 
-class FieldmapInputSpec(base.InputSpec):
+class FieldmapInputSpec(InputSpec):
     # Inputs
     input_file = File(exists=True,
                       argstr='%s',
@@ -263,7 +264,7 @@ class FieldmapOutputSpec(TraitedSpec):
     fieldmap = File(desc="Path to fieldmap")
 
 
-class Fieldmap(base.BaseCommand):
+class Fieldmap(BaseCommand):
     """
     Fieldmap via complex division
 
@@ -286,7 +287,7 @@ class Fieldmap(base.BaseCommand):
 ############################ qi_lineshape ############################
 
 
-class LineshapeInputSpec(base.InputBaseSpec):
+class LineshapeInputSpec(InputBaseSpec):
     # Options
     out_file = traits.File(argstr='%s', mandatory=True,
                            exists=False, position=-1, desc='Output file')
@@ -306,7 +307,7 @@ class LineshapeOutputSpec(TraitedSpec):
     out_file = File(desc='JSON Lineshape file')
 
 
-class Lineshape(base.BaseCommand):
+class Lineshape(BaseCommand):
     """
     Pre-calculate lineshapes and write them out for use with qMT
     """
@@ -323,7 +324,7 @@ class Lineshape(base.BaseCommand):
 ############################ qi_zspec ############################
 
 
-class ZSpecInputSpec(base.InputSpec):
+class ZSpecInputSpec(InputSpec):
     # Input nifti
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-1, desc='Input file')
@@ -343,7 +344,7 @@ class ZSpecOutputSpec(TraitedSpec):
     out_file = File(desc="Path to interpolated Z-spectrum/MTA-spectrum")
 
 
-class ZSpec(base.BaseCommand):
+class ZSpec(BaseCommand):
     """
     Interpolate a Z-spectrum (with correction for off-resonance)
 
@@ -369,7 +370,7 @@ class ZSpec(base.BaseCommand):
 ############################ MTR ############################
 
 
-class MTRInputSpec(base.InputSpec):
+class MTRInputSpec(InputSpec):
     # Options
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=-1, desc='Input file')
@@ -379,7 +380,7 @@ class MTROutputSpec(DynamicTraitedSpec):
     pass
 
 
-class MTR(base.BaseCommand):
+class MTR(BaseCommand):
     """
     Calculate Magnetization Transfer Ratios
     """
@@ -413,7 +414,7 @@ class MTR(base.BaseCommand):
 ############################ Z-SHIM ############################
 
 
-class ZShimInputSpec(base.InputBaseSpec):
+class ZShimInputSpec(InputBaseSpec):
     in_file = File(argstr='%s', mandatory=True, exists=True,
                    position=-1, desc='Input file to fit polynomial to')
     zshims = traits.Int(argstr='--zshims=%d', desc='Number of Z-shims')
@@ -428,7 +429,7 @@ class ZShimOutputSpec(TraitedSpec):
     out_file = File(desc="Shimmed Image")
 
 
-class ZShim(base.BaseCommand):
+class ZShim(BaseCommand):
     """
     Combine an EPI image with Z/Y-shimming
     """
@@ -448,7 +449,7 @@ class ZShim(base.BaseCommand):
 ############################ MP2RAGE ############################
 
 
-class MP2RAGEInputSpec(base.InputSpec):
+class MP2RAGEInputSpec(InputSpec):
     # Inputs
     in_file = File(exists=True, argstr='%s', mandatory=True,
                    position=0, desc='Path to complex MP-RAGE data')
@@ -468,7 +469,7 @@ class MP2RAGEOutputSpec(TraitedSpec):
     T1_map = File('MP2_T1.nii.gz', desc='T1 Map', usedefault=True)
 
 
-class MP2RAGE(base.BaseCommand):
+class MP2RAGE(BaseCommand):
     """
     Interface for qimp2rage
 
@@ -482,3 +483,7 @@ class MP2RAGE(base.BaseCommand):
     _cmd = 'qi mp2rage'
     input_spec = MP2RAGEInputSpec
     output_spec = MP2RAGEOutputSpec
+
+    def __init__(self, sequence={}, **kwargs):
+        self._json = deepcopy(sequence)
+        BaseCommand.__init__(self, **kwargs)
