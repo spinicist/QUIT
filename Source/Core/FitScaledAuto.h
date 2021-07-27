@@ -36,7 +36,8 @@ template <typename ModelType_, typename FlagType_ = int> struct ScaledAutoDiffFi
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ModelType::NV>;
         auto *cost      = new Cost{this->model, fixed, data};
         auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
-        problem.AddResidualBlock(auto_cost, NULL, varying.data());
+        auto *loss      = new ceres::HuberLoss(1.0);
+        problem.AddResidualBlock(auto_cost, loss, varying.data());
         for (int i = 0; i < ModelType::NV; i++) {
             problem.SetParameterLowerBound(varying.data(), i, this->model.bounds_lo[i]);
             problem.SetParameterUpperBound(varying.data(), i, this->model.bounds_hi[i]);
