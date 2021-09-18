@@ -96,9 +96,9 @@ def init_mpm_b1_wf(me_params, mtsat_params):
 
 
 def init_mpm_wf(me_params, mtsat_params):
-    inputnode = Node(IdentityInterface(fields=['PDw_file', 'T1w_file', 'MTw_file']),
+    inputnode = Node(IdentityInterface(fields=['PDw_file', 'T1w_file', 'MTw_file', 'B1_map']),
                      name='inputnode')
-    outputnode = Node(IdentityInterface(fields=['PD_map', 'R1_map', 'R2s_map', 'mtsat_map']),
+    outputnode = Node(IdentityInterface(fields=['PD_map', 'R1_map', 'R2s_map', 'mtsat_map', 'brain_mask']),
                       name='outputnode')
 
     wf = Workflow(name='Multi-Parametric-Mapping')
@@ -143,5 +143,6 @@ def init_mpm_wf(me_params, mtsat_params):
                 (mpm, outputnode, [('R2s_map', 'R2s_map')]),
                 (mtsat, outputnode, [('PD_map', 'PD_map'),
                                      ('R1_map', 'R1_map'),
-                                     ('delta_map', 'mtsat_map')])])
+                                     ('delta_map', 'mtsat_map')]),
+                (bet, outputnode, [('mask_file', 'brain_mask')])])
     return wf
