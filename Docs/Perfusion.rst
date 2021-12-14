@@ -96,6 +96,15 @@ Estimates the Oxygen Extraction Fraction (OEF) from Asymmetric Spin-Echo (ASE) d
         }
     }
 
+Or:
+
+.. code-block:: json
+    {
+        "MultiEcho" : {
+            "TR" : 2.0,
+            "TE" : [-0.004, -0.002, 0.0, 0.002, 0.004, 0.006]
+        }
+    }
 
 ``TR`` must be provided but is not used in the calculation. Echo-times below the critical time (Tc) will be excluded from the R2' calculation.
 
