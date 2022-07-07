@@ -1,12 +1,37 @@
-#!/bin/bash -eux
+#!/bin/bash -eu
 
-# This script will configure and build the project using vcpkg for
-# dependency management. If you want to build with sanitizer support
-# then change the CMAKE_TOOLCHAIN_FILE below to point to the relevant
-# .toolchain.cmake file in the cmake/ submodule (or provide your own)
+USAGE="Usage: $0 [options]
+
+Bootstraps the riesling build system (specifies the toolchain for CMake)
+
+Options:
+  -f FILE : Use a set of flags for dependency compilation. Currently provided
+            options are avx2, abi (for pre-C++11 ABI), and native
+"
 
 git submodule update --init --recursive
-cmake -B build -S . \
-    -GNinja -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_TOOLCHAIN_FILE=cmake/x64-osx-native.toolchain.cmake
-cmake --build build
+
+FLAGS="base"
+while getopts "f:h" opt; do
+    case $opt in
+        f) export FLAGS="$OPTARG";;
+        h) echo "$USAGE"
+           return;;
+    esac
+done
+shift $((OPTIND - 1))
+
+# Use Ninja if available, otherwise CMake default
+if [ -x "$( command -v ninja )" ]; then
+  GEN="-GNinja"
+else
+  GEN=""
+fi
+
+mkdir -p build
+cd build
+cmake -S ../ $GEN \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="cmake/toolchain.cmake" \
+  -DFLAGS_FILE="${FLAGS}"
+cmake --build .
