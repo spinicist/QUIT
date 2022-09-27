@@ -27,7 +27,7 @@ template <typename TInput> class MeanImageFilter : public ImageToImageFilter<TIn
     typedef ImageToImageFilter<TInput, TOutput> Superclass;
     typedef itk::SmartPointer<Self>             Pointer;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(MeanImageFilter, ImageToImageFilter);
 
     void SetNumberOfImages(size_t n);

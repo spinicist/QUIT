@@ -36,7 +36,7 @@ template <typename TImage> class NegateFilter : public InPlaceImageFilter<TImage
     typedef typename TImage::RegionType        TRegion;
     typedef typename TImage::InternalPixelType TPixel;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(NegateFilter, InPlaceImageFilter);
 
   private:

@@ -30,7 +30,7 @@ class PolynomialImage : public ImageSource<QI::VolumeF> {
     typedef ImageSource<TImage> Superclass;
     typedef SmartPointer<Self>  Pointer;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, ImageSource);
 
     void SetReferenceImage(const SmartPointer<TImage> img) { m_reference = img; }

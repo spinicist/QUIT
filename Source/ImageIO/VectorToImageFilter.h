@@ -23,7 +23,7 @@ public:
 	typedef itk::ImageToImageFilter<TInput, TOutput> Superclass;
 	typedef itk::SmartPointer<Self>                  Pointer;
 
-	itkNewMacro(Self);
+	itkNewMacro(Self)
 	itkTypeMacro(Self, Superclass);
 
     void SetInput(const TInput *img) ITK_OVERRIDE;

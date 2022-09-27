@@ -137,7 +137,7 @@ class ContrastsFilter : public itk::ImageToImageFilter<QI::VectorVolumeF, QI::Vo
     typedef itk::SmartPointer<Self>                            Pointer;
     typedef typename QI::VolumeF::RegionType                   RegionType;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, Superclass);
 
     void GenerateOutputInformation() ITK_OVERRIDE {

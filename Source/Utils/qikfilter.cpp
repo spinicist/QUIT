@@ -64,7 +64,7 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
     bool                                           m_Highpass = false;
 
   public:
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, ImageSource);
     void SetKernel(const std::shared_ptr<QI::FilterKernel> &k) {
         m_kernels.clear();

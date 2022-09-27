@@ -30,7 +30,7 @@ public:
     using Superclass = ImageToImageFilter<TImage, TImage>;
     using Pointer    = SmartPointer<Self>;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, Superclass);
 
 protected:

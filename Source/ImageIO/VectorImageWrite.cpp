@@ -93,12 +93,12 @@ template void WriteImage<VectorVolumeF>(const VectorVolumeF *img, const std::str
                                         const bool verbose);
 template void WriteImage<VectorVolumeXF>(const VectorVolumeXF *img, const std::string &path,
                                          const bool verbose);
+template void WriteImage<VectorVolumeI>(const VectorVolumeI *ptr,
+                                        const std::string &path, const bool verbose);
 template void WriteImage<VectorVolumeF>(const itk::SmartPointer<VectorVolumeF> &ptr,
                                         const std::string &path, const bool verbose);
 template void WriteImage<VectorVolumeXF>(const itk::SmartPointer<VectorVolumeXF> &ptr,
                                          const std::string &path, const bool verbose);
-template void WriteImage<VectorVolumeI>(const itk::SmartPointer<VectorVolumeI> &ptr,
-                                        const std::string &path, const bool verbose);
 template void WriteMagnitudeImage<VectorVolumeXF>(const VectorVolumeXF *ptr,
                                                   const std::string &path, const bool verbose);
 template void WriteMagnitudeImage<VectorVolumeXF>(const itk::SmartPointer<VectorVolumeXF> &ptr,

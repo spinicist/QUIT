@@ -44,7 +44,6 @@ int affine_angle_main(args::Subparser &parser) {
         }
     }
 
-    QI::Log(verbose, "Composite:\n{}", composite);
     itk::CovariantVector<double> Z0;
     Z0[0] = 0.;
     Z0[1] = 0.;

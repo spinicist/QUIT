@@ -22,7 +22,7 @@ class GenericMonitor : public itk::Command {
     typedef itk::Command            Superclass;
     typedef itk::SmartPointer<Self> Pointer;
     itkTypeMacro(GenericMonitor, Superclass);
-    itkNewMacro(Self);
+    itkNewMacro(Self)
 
   protected:
     GenericMonitor() {}

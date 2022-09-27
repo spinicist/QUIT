@@ -31,7 +31,7 @@ class CoilCombineFilter : public itk::ImageToImageFilter<QI::VectorVolumeXF, QI:
     typedef typename TImage::RegionType        RegionType;
     typedef typename TImage::PixelType         PixelType;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, Superclass);
 
     void GenerateOutputInformation() ITK_OVERRIDE {
@@ -109,7 +109,7 @@ class HammondCombineFilter
     typedef typename TImage::RegionType        RegionType;
     typedef typename TImage::PixelType         PixelType;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, Superclass);
 
     void GenerateOutputInformation() ITK_OVERRIDE {
@@ -184,7 +184,7 @@ class ComplexVectorMeanFilter
     typedef typename TImage::RegionType        RegionType;
     typedef typename TImage::PixelType         PixelType;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, Superclass);
 
     const PixelType &GetResult() const { return m_mean; }

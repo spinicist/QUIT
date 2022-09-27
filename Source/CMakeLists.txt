@@ -1,14 +1,15 @@
 add_executable(qi qi_main.cpp)
 set_target_properties(qi PROPERTIES
-    CXX_STANDARD 17
+    CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF)
+    CXX_EXTENSIONS OFF
+    CXX_VISIBILITY_PRESET hidden)
 target_link_libraries(qi PRIVATE
     taywee::args
     nlohmann_json nlohmann_json::nlohmann_json
     fmt::fmt
     ITKCommon ITKStatistics ITKTransform ITKSpatialObjects ITKLabelMap
-    ITKIOImageBase ITKIONIFTI
+    ITKIOImageBase ITKIONIFTI ITKFFT
     ITKTransformFactory ITKIOTransformBase ITKIOTransformInsightLegacy
     ceres
     Eigen3::Eigen

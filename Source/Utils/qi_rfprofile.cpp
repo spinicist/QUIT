@@ -33,7 +33,7 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
     using TRegion    = QI::VectorVolumeF::RegionType;
     using Pointer    = SmartPointer<Self>;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, ImageSource);
 
     void SetReference(const SmartPointer<QI::VolumeF> ref) { m_reference = ref; }

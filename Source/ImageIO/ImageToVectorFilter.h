@@ -22,7 +22,7 @@ public:
 	typedef ImageToImageFilter<TInput, TOutput> Superclass;
 	typedef itk::SmartPointer<Self>             Pointer;
 
-	itkNewMacro(Self);
+	itkNewMacro(Self)
 	itkTypeMacro(ImageToVectorFilter, ImageToImageFilter);
 
     itkSetMacro(BlockStart, size_t);

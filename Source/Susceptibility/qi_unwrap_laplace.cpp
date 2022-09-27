@@ -45,7 +45,7 @@ class DiscreteLaplacePhaseFilter : public ImageToImageFilter<QI::VolumeF, QI::Vo
     typedef SmartPointer<Self>                 Pointer;
     typedef typename TImage::RegionType        RegionType;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, Superclass);
 
     void SetInput(const TImage *img) ITK_OVERRIDE {
@@ -127,7 +127,7 @@ class DiscreteInverseLaplace : public ImageSource<QI::VolumeF> {
     typedef ImageSource<TImage>    Superclass;
     typedef SmartPointer<Self>     Pointer;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(DiscreteInverseLaplace, ImageSource);
 
     void SetImageProperties(const TImage *img) {
@@ -185,7 +185,7 @@ class DiscreteInverseLaplace2 : public ImageSource<QI::VolumeF> {
     typedef ImageSource<TImage>     Superclass;
     typedef SmartPointer<Self>      Pointer;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(DiscreteInverseLaplace2, ImageSource);
 
     void SetImageProperties(const TImage *img) {

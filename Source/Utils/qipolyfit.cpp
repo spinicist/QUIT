@@ -35,7 +35,7 @@ class PolynomialFitImageFilter : public ImageToImageFilter<QI::VolumeF, QI::Volu
     typedef SmartPointer<Self>                 Pointer;
     typedef typename TImage::RegionType        RegionType;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(Self, Superclass);
 
     itkSetMacro(Robust, bool);

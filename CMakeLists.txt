@@ -11,7 +11,7 @@ find_package(Ceres REQUIRED)
 find_package(fmt REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(args REQUIRED)
-find_package(ITK 5.0.0 REQUIRED
+find_package(ITK 5.3.0 REQUIRED
               COMPONENTS
                 ITKBinaryMathematicalMorphology
                 ITKCommon
@@ -27,11 +27,8 @@ find_package(ITK 5.0.0 REQUIRED
                 ITKMathematicalMorphology
                 ITKThresholding
                 ITKIOTransformInsightLegacy
-                ITKIONIFTI )
+                ITKIONIFTI
+             )
 include( ${ITK_USE_FILE} )
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory( Source )

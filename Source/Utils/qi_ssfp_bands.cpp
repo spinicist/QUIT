@@ -218,7 +218,7 @@ class MinEnergyFilter : public ImageToImageFilter<QI::VectorVolumeXF, QI::Vector
     typedef ImageToImageFilter<TInputImage, TOutputImage> Superclass;
     typedef SmartPointer<Self>                            Pointer;
 
-    itkNewMacro(Self);
+    itkNewMacro(Self)
     itkTypeMacro(MinEnergyFilter, ImageToImageFilter);
 
     void setReorderPhase(const bool p) { m_reorderPhase = p; }
