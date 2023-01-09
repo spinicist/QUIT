@@ -15,17 +15,17 @@ jobs:
         config:
         - {
           name: "Ubuntu GCC", artifact: "qi-linux.tar.gz",
-          os: ubuntu-16.04,
-          cc: "gcc-9", cxx: "g++-9"
+          os: ubuntu-22.04,
+          cc: "gcc-11", cxx: "g++-11"
         }
         - {
           name: "macOS", artifact: "qi-macos.tar.gz",
-          os: macos-10.15,
+          os: macos-12,
           cc: "clang", cxx: "clang++"
         }
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
           fetch-depth: 0
@@ -39,16 +39,10 @@ jobs:
 
       - name: Restore vcpkg binary cache
         id: cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cache/vcpkg/
           key: ${{runner.os}}-${{hashFiles( 'vcpkg.json' ) }}-${{hashFiles( '.git/modules/cmake/HEAD' )}}-vcpkg-cache
-
-      - name: Check name
-        run: |
-          git status
-          git describe --tags --dirty
-        shell: bash
 
       - name: Build
         shell: bash
@@ -56,15 +50,14 @@ jobs:
           CC: ${{matrix.config.cc}}
           CXX: ${{matrix.config.cxx}}
         run: |
-          if [ "${{runner.os}}" == "macOS" ]; then
-            TC="${{github.workspace}}/cmake/x64-osx-avx2.toolchain.cmake"
-          else
-            TC="${{github.workspace}}/cmake/x64-linux-avx2.toolchain.cmake"
-          fi
-          cmake -B ${{github.workspace}}/build -S ${{github.workspace}} \
+          TC="${{github.workspace}}/cmake/toolchain.cmake"
+          export VCPKG_OVERLAY_TRIPLETS="${{github.workspace}}/cmake/triplets"
+          export FLAGS="ci"
+          cd ${{github.workspace}}
+          cmake -B build -S . \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="$TC"
-          cmake --build ${{github.workspace}}/build
+          cmake --build build
 
       - name: Set up Python
         uses: actions/setup-python@v1
