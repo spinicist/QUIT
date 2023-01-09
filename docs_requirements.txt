@@ -1,2 +1,2 @@
-mkdocs==0.17.3
+mkdocs==1.2.3
 python-markdown-math==0.5
