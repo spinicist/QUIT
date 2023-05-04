@@ -558,7 +558,7 @@ qi irtse
 Calculates a T1 and M0 map from inversion recovery data.
 
 **Example JSON File**
-This is an example with multiple inversion times with the same TR, 30 deg navigator flip angle and real valued data (magnitude=0).
+This is an example with multiple inversion times with the same TR, 30 deg navigator flip angle.
 
 .. code-block:: json
 
@@ -572,7 +572,6 @@ This is an example with multiple inversion times with the same TR, 30 deg naviga
             "ESP": 0.005,
             "TD1": 0.3,
             "theta": 30,
-            "magnitude": 0
         }
     }
 

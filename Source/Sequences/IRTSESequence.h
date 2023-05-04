@@ -21,7 +21,6 @@ struct IRTSESequence : SequenceBase {
     double         ETL;
     double         TD1;
     double         theta;
-    int            magnitude;
     Eigen::ArrayXd TR;
     Eigen::ArrayXd TI;
     Eigen::ArrayXd TD2;
