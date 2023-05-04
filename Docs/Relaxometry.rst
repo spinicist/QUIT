@@ -16,6 +16,7 @@ The following commands are available:
 * `qi mpm_r2s`_
 * `qi ssfp_ellipse`_
 * `qi planet`_
+* `qi irtse` _
 
 qi despot1
 ---------
@@ -550,3 +551,34 @@ Converts the SSFP Ellipse parameters into relaxation times.
 **References**
 
 - `PLANET <http://dx.doi.org/10.1002/mrm.26717>`_
+
+qi irtse
+--------------
+
+Calculates a T1 and M0 map from inversion recovery data.
+
+**Example JSON File**
+This is an example with multiple inversion times with the same TR, 30 deg navigator flip angle and real valued data (magnitude=0).
+
+.. code-block:: json
+
+    {
+        "IRTSE":
+        {
+            "TI":[0.1, 0.4, 0.6, 0.8, 1.0],
+            "TR":[1.5, 1.5, 1.5, 1.5, 3.0],
+            "Q": [-1.0, -1.0,  -1.0, -1.0, -1.0],
+            "ETL": 48,
+            "ESP": 0.005,
+            "TD1": 0.3,
+            "theta": 30,
+            "magnitude": 0
+        }
+    }
+
+**Outputs**
+- ``IR_T1.nii.gz`` - Longitudinal relaxation time
+- ``IR_M0.nii.gz`` - Apparent Proton Density
+
+**References**
+- `Padormo, F. et al. <https://onlinelibrary.wiley.com/doi/10.1002/mrm.29509>`_
