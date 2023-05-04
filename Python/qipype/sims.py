@@ -61,7 +61,7 @@ def make_phantom(parameters, subsamp=1, mask=None, B1=True, f0=False):
     if mask:
         mask_data = np.choose(
             class_data[::subsamp, ::subsamp, ::subsamp], np.array(mask))
-        img = nib.nifti1.Nifti1Image(mask_data, affine=classes.affine, dtype=np.int16)
+        img = nib.nifti1.Nifti1Image(np.array(mask_data, dtype=np.int16), affine=classes.affine)
         nib.save(img, 'mask.nii.gz')
         print('Wrote mask.nii.gz')
 
