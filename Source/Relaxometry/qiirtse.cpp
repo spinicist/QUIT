@@ -44,12 +44,7 @@ struct IRTSE : QI::Model<double, double, 2, 0> {
         const T &T1 = p[1];
         auto M = PD * (1. - exp(-sequence.TI/T1)) + sequence.Q * PD*exp(-sequence.TI/T1)*((1. - exp(-sequence.TD1/T1))*exp(-sequence.TD2/T1)*cos(sequence.theta) + (1. - exp(-sequence.TD2/T1)));
         
-        if (sequence.magnitude == 1){
-            return abs(M);
-        }
-        else{
-            return M;
-        }
+        return M;
     }
 };
 
@@ -112,14 +107,12 @@ struct IRTSENLLS : IRTSEFit {
 //******************************************************************************
 int irtse_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Input multi-TI data");
-    args::Flag mag(parser, "MAG", "Data is magnitude", {'M', "mag"});
     QI_COMMON_ARGS;
     parser.Parse();
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence parameters");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("IRTSE").get<QI::IRTSESequence>();
-    QI::Log(verbose, "Magnitude {}", sequence.magnitude);
     IRTSE model{{}, sequence};
     if (simulate) {
         QI::SimulateModel<IRTSE, false>(input,
