@@ -50,6 +50,7 @@ int main(int argc, char **argv) {
     ADD(multiecho, relax, "Multi-echo T2/T2*");
     ADD(planet, relax, "PLANET method of T1/T2 mapping");
     ADD(ssfp_ellipse, relax, "Calculuate the SSFP ellipse properties");
+    ADD(irtse, relax, "Inversion Recovery TSE");
 #endif
 #ifdef BUILD_PARMESAN
     args::Group parmesan(parser, "PARMESAN");

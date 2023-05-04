@@ -37,6 +37,7 @@ int mcdespot_main(args::Subparser &parser);
 int mp2rage_main(args::Subparser &parser);
 int multiecho_main(args::Subparser &parser);
 int planet_main(args::Subparser &parser);
+int irtse_main(args::Subparser &parser);
 #endif
 #ifdef BUILD_PARMESAN
 int transient_main(args::Subparser &parser);
