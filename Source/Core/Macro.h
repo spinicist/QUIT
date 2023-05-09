@@ -17,6 +17,8 @@
 #ifndef QI_MACRO_H
 #define QI_MACRO_H
 
+#define FMT_DEPRECATED_OSTREAM
+
 #include "fmt/format.h"
 #include "fmt/ostream.h"
 #include <Eigen/Core>

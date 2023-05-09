@@ -12,6 +12,8 @@
 
 #pragma once
 
+#define FMT_DEPRECATED_OSTREAM
+
 #include "fmt/chrono.h"
 #include "fmt/color.h"
 #include "fmt/ostream.h"

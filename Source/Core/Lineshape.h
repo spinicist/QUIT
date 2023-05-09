@@ -26,11 +26,11 @@ namespace QI {
 enum class Lineshapes { Gaussian, Lorentzian, SuperLorentzian, Interpolated };
 
 template <typename T> QI_ARRAY(T) Gaussian(const Eigen::ArrayXd &f0, const T T2b) {
-    return sqrt(1.0 / (2.0 * M_PI)) * T2b * exp(-pow(2.0 * M_PI * f0 * T2b, 2.0) / 2.0);
+    return sqrt(1.0 / (2.0 * M_PI)) * T2b * (-(2.0 * M_PI * f0.cast<T>() * T2b).square() / 2.0).exp();
 }
 
 template <typename T> QI_ARRAY(T) Lorentzian(const Eigen::ArrayXd &f0, const T T2b) {
-    return T2b / (1.0 + pow(2.0 * M_PI * f0 * T2b, 2.0));
+    return T2b / (1.0 + (2.0 * M_PI * f0.cast<T>() * T2b).square());
 }
 
 template <typename T> struct SLFunctor {
