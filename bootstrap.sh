@@ -12,11 +12,12 @@ Options:
 git submodule update --init --recursive
 
 FLAGS="base"
-while getopts "f:h" opt; do
+while getopts "f:hj:" opt; do
     case $opt in
         f) export FLAGS="$OPTARG";;
         h) echo "$USAGE"
            return;;
+        j) export VCPKG_MAX_CONCURRENCY="$OPTARG";;
     esac
 done
 shift $((OPTIND - 1))
