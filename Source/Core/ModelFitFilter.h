@@ -99,13 +99,13 @@ class ModelFitFilter
     static constexpr int TotalOutputs    = ResidualsOffset + ModelType::NI;
 
     ModelFitFilter(FitType const *    f,
-                   const bool         verbose,
+                   const bool         v,
                    const bool         covar,
                    const bool         allResids,
                    const int          nThreads,
                    std::string const &subregion) :
         m_fit(f),
-        m_verbose(verbose), m_allResiduals(allResids), m_covar(covar) {
+        m_verbose(v), m_allResiduals(allResids), m_covar(covar) {
         this->SetNumberOfRequiredInputs(ModelType::NI);
         this->SetNumberOfRequiredOutputs(TotalOutputs);
         for (int i = 0; i < TotalOutputs; i++) {

@@ -167,7 +167,7 @@ struct EMTFit {
             problem.Evaluate(ceres::Problem::EvaluateOptions(), NULL, &r_temp, NULL, NULL);
             for (int i = 0; i < G.size(); i++)
                 residuals[i] = r_temp[i];
-            Eigen::ArrayXd as = (-model.sequence.TR / fixed[2]).exp();
+            Eigen::ArrayXd as = (-model.sequence.TR / fixed[1]).exp();
             for (int i = 0; i < a.size(); i++) {
                 residuals[i + G.size()] = as[i] - a[i];
             }

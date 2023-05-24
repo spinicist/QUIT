@@ -111,10 +111,10 @@ int zspec_b1_main(args::Subparser &parser) {
                         for (Eigen::Index ib = 0; ib < b1_rms.rows(); ib++) {
                             Z[ib] = in_z[ib][iz];
                         }
-                        Eigen::VectorXd slope = (Z.transpose() * Z)
+                        Eigen::VectorXd const slope = (Z.transpose() * Z)
                                                     .partialPivLu()
                                                     .solve(Z.transpose() * B1 * b1_rms.matrix());
-                        Eigen::VectorXd Zcorrected = slope[0] * b1_rms;
+                        Eigen::VectorXd const Zcorrected = slope[0] * b1_rms;
                         for (Eigen::Index ib = 0; ib < b1_rms.rows(); ib++) {
                             out_z[ib][iz] = Zcorrected[ib];
                         }

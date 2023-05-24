@@ -35,6 +35,7 @@ namespace Eigen
  */
 }
 
+#include <cassert>
 #include <iomanip>
 #include <Eigen/Eigenvalues>
 // #include <unsupported/Eigen/MPRealSupport>

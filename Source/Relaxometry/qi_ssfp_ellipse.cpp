@@ -147,11 +147,11 @@ struct EllipseFit {
         options.gradient_tolerance  = 1e-6;
         options.parameter_tolerance = 1e-3;
         options.logging_type        = ceres::SILENT;
-        double th0, psi0, best_cost = std::numeric_limits<double>::infinity();
+        double th0 = 0.0, psi0 = 0.0, best_cost = std::numeric_limits<double>::infinity();
         for (const auto &th0_try : {-M_PI, 0., M_PI}) {
             const double psi0_try = arg(c_mean / std::polar(1.0, th0_try / 2));
             p << abs(c_mean), 0.5, 0.5, th0_try, psi0_try;
-            double cost;
+            double cost = 0.0;
             problem.Evaluate(ceres::Problem::EvaluateOptions(), &cost, NULL, NULL, NULL);
             if (cost < best_cost) {
                 best_cost = cost;

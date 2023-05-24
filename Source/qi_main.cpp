@@ -93,10 +93,10 @@ int main(int argc, char **argv) {
 
     try {
         parser.ParseCLI(argc, argv);
-    } catch (args::Help) {
+    } catch (args::Help &) {
         std::cerr << parser << '\n';
         exit(EXIT_SUCCESS);
-    } catch (args::Error e) {
+    } catch (args::Error &e) {
         if (version) {
             std::cout << QI::GetVersion() << '\n';
             exit(EXIT_SUCCESS);

@@ -128,8 +128,7 @@ int polyimg_main(args::Subparser &parser) {
 
     QI::Polynomial<3> poly(order.Get());
     if (coeffs.rows() != poly.nterms()) {
-        QI::Fail("Require " + std::to_string(poly.nterms()) + " terms for " +
-                 std::to_string(order.Get()) + " order polynomial");
+        QI::Fail("Require {} terms for {} order polynomial", poly.nterms(), order.Get());
     }
     poly.setCoeffs(coeffs);
     QI::Log(verbose, "Generating image");
