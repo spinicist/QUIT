@@ -3,84 +3,22 @@ Utilities
 
 QUIT contains a number of utilities. Note that these are actually compiled in two separate modules - ``CoreProgs`` contains the bare minimum of commands for the QUIT tests to run, while the actual ``Utils`` modules contains a larger number of useful tools for neuro-imaging pipelines. Their documentation is combined here.
 
-* `qi coil_combine`_
-* `qi rfprofile`_
+
 * `qi affine`_
+* `qi coil_combine`_
 * `qi complex`_
+* `qi diff`_
 * `qi hdr`_
 * `qi kfilter`_
 * `qi mask`_
-* `qi polyfit/qi polyimg`_
-* `qi diff`_
 * `qi newimage`_
+* `qi pca`_
+* `qi polyfit/qi polyimg`_
+* `qi rfprofile`_
 * `qi select`_
-
-qi coil_combine
----------------
-
-The command implements both the COMPOSER and Hammond methods for coil combination. For COMPOSER, a wrapper script that includes registration and resampling of low resolution reference data to the image data can be found in ``qi composer.sh``.
-
-**Example Command Line**
-
-.. code-block:: bash
-
-    qi coil_combine multicoil_data.nii.gz --composer=composer_reference.nii.gz
-
-
-Both the input multi-coil file and the reference file must be complex valued. Does not read input from ``stdin``. If a COMPOSER reference file is not specifed, then the Hammond coil combination method is used.
-
-**Outputs**
-
-* ``input_combined.nii.gz`` - The combined complex-valued image.
-
-**Important Options**
-
-* ``--composer, -c``
-
-    Use the COMPOSER method. The reference file should be from a short-echo time reference scan, e.g. UTE or ZTE. If
-
-* ``--coils, -C``
-
-    If your input data is a timeseries consisting of multiple volumes, then use this option to specify the number of coils used in the acquisition. Must match the number of volumes in the reference image. Does not currently work with the Hammond method.
-
-
-* ``--region, -r``
-
-    The reference region for the Hammond method. Default is an 8x8x8 cube in the center of the acquisition volume.
-
-**References**
-
-- `COMPOSER <http://doi.wiley.com/10.1002/mrm.26093>`_
-- `Hammond Method <http://linkinghub.elsevier.com/retrieve/pii/S1053811907009998>`_
-
-qi rfprofile
-------------
-
-This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excitation slab profile from ``stdin``. The two are multiplied together along the slab direction (assumed to be Z), to produce a relative flip-angle or B1 map.
-
-**Example Command Line**
-
-.. code-block:: bash
-
-    qi rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.json
-
-**Example Command Line**
-
-.. code-block:: json
-
-    {
-        "rf_pos" : [ -5, 0, 5],
-        "rf_vals" : [[0, 1, 0],
-                    [0, 2, 0]]
-    }
-
-``rf_pos`` specifies the positions that values of the RF slab have been calculated at, which are specified in ``rf_vals``. Note that ``rf_vals`` is an array of arrays - this allows ``qi rfprofile`` to calculate profiles for multiple flip-angles in a single pass. The units for ``rf_pos`` are the same as image spacing in the header (usually mm). ``rf_vals`` is a unitless fraction, relative to the nominal flip-angle.
-
-These values should be generated with a Bloch simulation. Internally, they are used to create a spline to represent the slab profile. This is then interpolated to each voxel's Z position, and the value multiplied by the input B1+ value at that voxel to produce the output.
-
-**Outputs**
-
-* ``output_b1map.nii.gz`` - The relative flip-angle/B1 map
+* `qi ssfp_bands`_
+* `qi tgv`_
+* `qi tvmask`_
 
 qi affine
 --------
@@ -131,6 +69,45 @@ Upper case arguments ``--MAG, -M, --PHA, -P, --REAL, -R, --IMAG, -I, --COMPLEX, 
 An additional input argument, ``--realimag`` is for Bruker "complex" data, which consists of all real volumes followed by all imaginary volumes, instead of a true complex datatype.
 
 The ``--fixge`` argument fixes the lack of an FFT shift in the slab direction on GE data by multiplying alternate slices by -1. ``--negate`` multiplies the entire volume by -1. ``--double`` reads and writes double precision data instead of floats.
+
+qi coil_combine
+---------------
+
+The command implements both the COMPOSER and Hammond methods for coil combination. For COMPOSER, a wrapper script that includes registration and resampling of low resolution reference data to the image data can be found in ``qi composer.sh``.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi coil_combine multicoil_data.nii.gz --composer=composer_reference.nii.gz
+
+
+Both the input multi-coil file and the reference file must be complex valued. Does not read input from ``stdin``. If a COMPOSER reference file is not specifed, then the Hammond coil combination method is used.
+
+**Outputs**
+
+* ``input_combined.nii.gz`` - The combined complex-valued image.
+
+**Important Options**
+
+* ``--composer, -c``
+
+    Use the COMPOSER method. The reference file should be from a short-echo time reference scan, e.g. UTE or ZTE. If
+
+* ``--coils, -C``
+
+    If your input data is a timeseries consisting of multiple volumes, then use this option to specify the number of coils used in the acquisition. Must match the number of volumes in the reference image. Does not currently work with the Hammond method.
+
+
+* ``--region, -r``
+
+    The reference region for the Hammond method. Default is an 8x8x8 cube in the center of the acquisition volume.
+
+**References**
+
+- `COMPOSER <http://doi.wiley.com/10.1002/mrm.26093>`_
+- `Hammond Method <http://linkinghub.elsevier.com/retrieve/pii/S1053811907009998>`_
+
 
 qi hdr
 -----
@@ -245,6 +222,35 @@ In this case an intensity value of 10 will be used as the threshold, RATs will b
 
 - `RATs algorithm <http://dx.doi.org/10.1016/j.jneumeth.2013.09.021>`_
 
+qi pca
+------------
+
+Denoise a 4D dataset by applying PCA on the time dimension and then retaining a fixed number of Principal Components. See `Does et al <https://onlinelibrary.wiley.com/doi/abs/10.1002/mrm.27658>`_
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi pca images.nii.gz --nretain=4 --mask=mask.nii.gz
+
+**Important Options**
+
+- ``--nretain=N``
+
+    The number of PCs to retain (default 3)
+
+- ``--project=filename.nii.gz``
+
+    Save the projection of the dataset onto the PCs (basis images) into the specified file
+
+- ``--save_pcs=filename.json``
+
+    Save the PCs into the specified JSON file
+
+**Outputs**
+
+* ``output_pca.nii.gz`` - The denoised dataset.
+
 qi polyfit/qi polyimg
 -------------------
 
@@ -273,6 +279,35 @@ With the above command-line the output of ``qi polyfit`` is piped directly to th
 - ``--robust`` (``qi polyimg`` only)
 
     Use Robust Polynomial Fitting with Huber weights. There is a good discussion of this topic in the Matlab help files.
+
+qi rfprofile
+------------
+
+This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excitation slab profile from ``stdin``. The two are multiplied together along the slab direction (assumed to be Z), to produce a relative flip-angle or B1 map.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi rfprofile b1plus_map.nii.gz output_b1_map.nii.gz < input.json
+
+**Example Input File**
+
+.. code-block:: json
+
+    {
+        "rf_pos" : [ -5, 0, 5],
+        "rf_vals" : [[0, 1, 0],
+                    [0, 2, 0]]
+    }
+
+``rf_pos`` specifies the positions that values of the RF slab have been calculated at, which are specified in ``rf_vals``. Note that ``rf_vals`` is an array of arrays - this allows ``qi rfprofile`` to calculate profiles for multiple flip-angles in a single pass. The units for ``rf_pos`` are the same as image spacing in the header (usually mm). ``rf_vals`` is a unitless fraction, relative to the nominal flip-angle.
+
+These values should be generated with a Bloch simulation. Internally, they are used to create a spline to represent the slab profile. This is then interpolated to each voxel's Z position, and the value multiplied by the input B1+ value at that voxel to produce the output.
+
+**Outputs**
+
+* ``output_b1map.nii.gz`` - The relative flip-angle/B1 map
 
 qi ssfp_bands
 -------------
@@ -419,3 +454,37 @@ Selects a set of volumes from a 4D file and writes them to a new 4D file (a reim
     qi select in_file.nii out_file.nii 2,4,6,8
 
 The last argument is a comma-separated list of the volumes you wish to select.
+
+qi tgv
+------
+
+Applies `Total Generalized Variation <http://doi.wiley.com/10.1002/mrm.22595>`_ denoising.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi tgv --alpha=2e-5 image.nii.gz
+
+**Important Options**
+
+- ``--alpha``
+
+    The regularization parameter. A value of 2e-5 seems to work well with typical images from a GE scanner.
+
+qi tvmask
+---------
+
+Calculate a mask by thresholding the Total Variation in a 4D image.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi tvmask images.nii.gz
+
+**Important Options**
+
+- ``--thresh``
+
+    The threshold on the TV to define the mask.
