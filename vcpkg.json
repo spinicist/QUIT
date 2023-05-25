@@ -8,5 +8,9 @@
         "itk",
         "ceres",
         "nlohmann-json"
+    ],
+    "builtin-baseline":"78a727b60864afa46c3c73148e6780b02de25ef5",
+    "overrides": [
+        { "name": "fmt", "version": "9.1.0" }
     ]
 }
