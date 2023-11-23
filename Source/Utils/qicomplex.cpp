@@ -166,7 +166,6 @@ int complex_main(args::Subparser &parser) {
             auto img_both                       = QI::ReadImage<TImage>(in_realimag.Get(), verbose);
             auto real_region                    = img_both->GetLargestPossibleRegion();
             auto imag_region                    = img_both->GetLargestPossibleRegion();
-            real_region.GetModifiableStride();
             real_region.GetModifiableSize()[3]  = real_region.GetSize()[3] / 2;
             imag_region.GetModifiableSize()[3]  = real_region.GetSize()[3];
             imag_region.GetModifiableIndex()[3] = real_region.GetSize()[3];
