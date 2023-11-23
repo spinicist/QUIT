@@ -22,6 +22,7 @@
 #include "itkMagnitudeAndPhaseToComplexImageFilter.h"
 #include "itkMultiplyImageFilter.h"
 #include "itkRegionOfInterestImageFilter.h"
+#include "itkSliceImageFilter.h"
 
 #include "Args.h"
 #include "ImageIO.h"
@@ -110,7 +111,8 @@ int complex_main(args::Subparser &parser) {
     args::ValueFlag<std::string> in_complex(
         parser, "IN_CPLX", "Input complex file", {'x', "complex"});
     args::ValueFlag<std::string> in_realimag(
-        parser, "IN_REALIMAG", "Input real & imaginary file", {'l', "realimag"});
+        parser, "IN_REALIMAG", "Input all real then all imaginary (Bruker) file", {'l', "realimag"});
+    args::ValueFlag<std::string> in_interleaved(parser, "IN_INTERLEAVED", "Input interleaved real and imaginary (dcm2niix) file)", {"interleave"});
 
     args::ValueFlag<std::string> out_mag(parser, "OUT_MAG", "Output magnitude file", {'M', "MAG"});
     args::ValueFlag<std::string> out_pha(parser, "OUT_PHA", "Output phase file", {'P', "PHA"});
@@ -164,6 +166,7 @@ int complex_main(args::Subparser &parser) {
             auto img_both                       = QI::ReadImage<TImage>(in_realimag.Get(), verbose);
             auto real_region                    = img_both->GetLargestPossibleRegion();
             auto imag_region                    = img_both->GetLargestPossibleRegion();
+            real_region.GetModifiableStride();
             real_region.GetModifiableSize()[3]  = real_region.GetSize()[3] / 2;
             imag_region.GetModifiableSize()[3]  = real_region.GetSize()[3];
             imag_region.GetModifiableIndex()[3] = real_region.GetSize()[3];
@@ -177,6 +180,25 @@ int complex_main(args::Subparser &parser) {
             extract_imag->Update();
             /* Hack round ITK changing the origin */
             extract_imag->GetOutput()->SetOrigin(extract_real->GetOutput()->GetOrigin());
+            auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
+            compose->SetInput(0, extract_real->GetOutput());
+            compose->SetInput(1, extract_imag->GetOutput());
+            compose->Update();
+            imgX = compose->GetOutput();
+            imgX->DisconnectPipeline();
+        } else if (in_interleaved) {
+            auto img_interleaved = QI::ReadImage<TImage>(in_interleaved.Get(), verbose);
+            auto const interleaved_region = img_interleaved->GetLargestPossibleRegion();
+            auto extract_real = itk::SliceImageFilter<TImage, TImage>::New();
+            extract_real->SetStart(0);
+            extract_real->SetStep(2);
+            extract_real->SetStop(interleaved_region.GetSize()[3]);
+            extract_real->Update();
+            auto extract_imag = itk::SliceImageFilter<TImage, TImage>::New();
+            extract_imag->SetStart(1);
+            extract_imag->SetStep(2);
+            extract_imag->SetStop(interleaved_region.GetSize()[3]);
+            extract_imag->Update();
             auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
             compose->SetInput(0, extract_real->GetOutput());
             compose->SetInput(1, extract_imag->GetOutput());
