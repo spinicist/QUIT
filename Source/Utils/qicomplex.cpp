@@ -195,7 +195,7 @@ int complex_main(args::Subparser &parser) {
             auto       compose_imag       = itk::JoinSeriesImageFilter<TVolume, TImage>::New();
             auto       extract_region     = interleaved_region;
             extract_region.GetModifiableSize()[3] = 0;
-            for (auto iv = 0; iv < nv; iv++) {
+            for (size_t iv = 0; iv < nv; iv++) {
                 auto extract_real = itk::ExtractImageFilter<TImage, TVolume>::New();
                 extract_region.GetModifiableIndex()[3] = 2 * iv;
                 extract_real->SetExtractionRegion(extract_region);
