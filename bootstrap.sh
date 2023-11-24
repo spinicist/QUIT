@@ -12,12 +12,16 @@ Options:
 git submodule update --init --recursive
 
 FLAGS="base"
-while getopts "f:hj:" opt; do
+PAR=""
+PREFIX=""
+while getopts "f:hi:j:" opt; do
     case $opt in
-        f) export FLAGS="$OPTARG";;
+        f) FLAGS="$OPTARG";;
+        i) PREFIX="-DCMAKE_INSTALL_PREFIX=$OPTARG -DCMAKE_PREFIX_PATH=$OPTARG";;
+        j) export VCPKG_MAX_CONCURRENCY=$OPTARG
+           PAR="-j $OPTARG";;
         h) echo "$USAGE"
            return;;
-        j) export VCPKG_MAX_CONCURRENCY="$OPTARG";;
     esac
 done
 shift $((OPTIND - 1))
@@ -34,5 +38,10 @@ cd build
 cmake -S ../ $GEN \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="cmake/toolchain.cmake" \
-  -DFLAGS_FILE="${FLAGS}"
-cmake --build .
+  -DFLAGS_FILE="${FLAGS}" \
+  $PREFIX
+cmake --build . $PAR
+
+if [ -n "$PREFIX" ]; then
+  cmake --install .
+fi
