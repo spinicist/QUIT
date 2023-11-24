@@ -327,7 +327,9 @@ class ComplexInputSpec(base.InputSpec):
                          argstr='--imag=%s', exists=True)
     x = traits.String(desc='Complex input', argstr='--complex=%s', exists=True)
     realimag = traits.String(
-        desc='Real/Imaginary input', argstr='--realimag=%s', exists=True)
+        desc='Sequential real then imag input', argstr='--realimag=%s', exists=True)
+    interleaved = traits.String(
+        desc='Interleaved real/imag input', argstr='--interleaved=%s', exists=True)
 
     magnitude_out_file = File(
         argstr='--MAG=%s', desc='Output magnitude file', hash_files=False)
