@@ -14,15 +14,16 @@
 #include "itkComplexToPhaseImageFilter.h"
 #include "itkComplexToRealImageFilter.h"
 #include "itkComposeImageFilter.h"
+#include "itkExtractImageFilter.h"
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkImageSliceConstIteratorWithIndex.h"
 #include "itkImageSliceIteratorWithIndex.h"
+#include "itkJoinSeriesImageFilter.h"
 #include "itkMagnitudeAndPhaseToComplexImageFilter.h"
 #include "itkMultiplyImageFilter.h"
 #include "itkRegionOfInterestImageFilter.h"
-#include "itkSliceImageFilter.h"
 
 #include "Args.h"
 #include "ImageIO.h"
@@ -37,8 +38,7 @@ template <typename TImage> class NegateFilter : public InPlaceImageFilter<TImage
     typedef typename TImage::RegionType        TRegion;
     typedef typename TImage::InternalPixelType TPixel;
 
-    itkNewMacro(Self)
-    itkTypeMacro(NegateFilter, InPlaceImageFilter);
+    itkNewMacro(Self) itkTypeMacro(NegateFilter, InPlaceImageFilter);
 
   private:
     NegateFilter(const Self &);   // purposely not implemented
@@ -111,8 +111,9 @@ int complex_main(args::Subparser &parser) {
     args::ValueFlag<std::string> in_complex(
         parser, "IN_CPLX", "Input complex file", {'x', "complex"});
     args::ValueFlag<std::string> in_realimag(
-        parser, "IN_REALIMAG", "Input all real then all imaginary (Bruker) file", {'l', "realimag"});
-    args::ValueFlag<std::string> in_interleaved(parser, "IN_INTERLEAVED", "Input interleaved real and imaginary (dcm2niix) file)", {"interleave"});
+        parser, "IN_RI", "Input all real then all imaginary (Bruker) file", {'l', "realimag"});
+    args::ValueFlag<std::string> in_interleaved(
+        parser, "IN_INT", "Input interleaved real/imag (dcm2niix) file)", {"interleaved"});
 
     args::ValueFlag<std::string> out_mag(parser, "OUT_MAG", "Output magnitude file", {'M', "MAG"});
     args::ValueFlag<std::string> out_pha(parser, "OUT_PHA", "Output phase file", {'P', "PHA"});
@@ -125,6 +126,7 @@ int complex_main(args::Subparser &parser) {
 
     auto run = [&]<typename TPixel>() {
         typedef itk::Image<TPixel, 4>               TImage;
+        typedef itk::Image<TPixel, 3>               TVolume;
         typedef itk::Image<std::complex<TPixel>, 4> TXImage;
         typedef itk::ImageFileWriter<TImage>        TWriter;
 
@@ -186,21 +188,35 @@ int complex_main(args::Subparser &parser) {
             imgX = compose->GetOutput();
             imgX->DisconnectPipeline();
         } else if (in_interleaved) {
-            auto img_interleaved = QI::ReadImage<TImage>(in_interleaved.Get(), verbose);
+            auto       img_interleaved    = QI::ReadImage<TImage>(in_interleaved.Get(), verbose);
             auto const interleaved_region = img_interleaved->GetLargestPossibleRegion();
-            auto extract_real = itk::SliceImageFilter<TImage, TImage>::New();
-            extract_real->SetStart(0);
-            extract_real->SetStep(2);
-            extract_real->SetStop(interleaved_region.GetSize()[3]);
-            extract_real->Update();
-            auto extract_imag = itk::SliceImageFilter<TImage, TImage>::New();
-            extract_imag->SetStart(1);
-            extract_imag->SetStep(2);
-            extract_imag->SetStop(interleaved_region.GetSize()[3]);
-            extract_imag->Update();
+            auto const nv                 = interleaved_region.GetSize()[3] / 2;
+            auto       compose_real       = itk::JoinSeriesImageFilter<TVolume, TImage>::New();
+            auto       compose_imag       = itk::JoinSeriesImageFilter<TVolume, TImage>::New();
+            auto       extract_region     = interleaved_region;
+            extract_region.GetModifiableSize()[3] = 0;
+            for (auto iv = 0; iv < nv; iv++) {
+                auto extract_real = itk::ExtractImageFilter<TImage, TVolume>::New();
+                extract_region.GetModifiableIndex()[3] = 2 * iv;
+                extract_real->SetExtractionRegion(extract_region);
+                extract_real->SetInput(img_interleaved);
+                extract_real->SetDirectionCollapseToSubmatrix();
+                extract_real->Update();
+                compose_real->SetInput(iv, extract_real->GetOutput());
+                auto extract_imag = itk::ExtractImageFilter<TImage, TVolume>::New();
+                extract_region.GetModifiableIndex()[3] = 2 * iv + 1;
+                extract_imag->SetExtractionRegion(extract_region);
+                extract_imag->SetInput(img_interleaved);
+                extract_imag->SetDirectionCollapseToSubmatrix();
+                extract_imag->Update();
+                compose_imag->SetInput(iv, extract_imag->GetOutput());
+            }
+            compose_real->Update();
+            compose_imag->Update();
+
             auto compose = itk::ComposeImageFilter<TImage, TXImage>::New();
-            compose->SetInput(0, extract_real->GetOutput());
-            compose->SetInput(1, extract_imag->GetOutput());
+            compose->SetInput(0, compose_real->GetOutput());
+            compose->SetInput(1, compose_imag->GetOutput());
             compose->Update();
             imgX = compose->GetOutput();
             imgX->DisconnectPipeline();
