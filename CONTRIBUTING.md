@@ -6,7 +6,7 @@ These guidelines exist to make it easy to get involved and ensure that QUIT is w
 
 ## Asking Questions / Reporting Bugs
 
-If you have general questions about how to use QUIT programs, you can either open an [issue](https://github.com/spinicist/QUIT/issues) or ask a question on (Neurostars)[https://neurostars.org].
+If you have general questions about how to use QUIT programs, you can either open an [issue](https://github.com/spinicist/QUIT/issues) or ask a question on [Neurostars](https://neurostars.org).
 
 If you think you have found a bug, then opening a Github issue is the preferred avenue. Please check whether an identical or similar issue already exists first. When opening a new issue, please give as much information as you can, including
 - The version of QUIT you are using. Either give the version number if you downloaded the binaries, or a branch/git commit id if you compiled from source.
@@ -15,13 +15,9 @@ If you think you have found a bug, then opening a Github issue is the preferred 
 
 ## Contributing Changes
 
-If you want to edit the QUIT code yourself to fix a problem or implement a new feature, you are very welcome to! Please follow this model for submitting a Pull Request:
-- (Fork)[https://help.github.com/articles/fork-a-repo/] the QUIT repo to your Github profile.
-- Clone this repo, and checkout the `development` branch, then create a new branch.
-- Make your changes on this own branch. At the start of your commit messages, please state whether something is a bug (BUG), enhancement (ENH), style change (STYLE) or documentation edit (DOC). This convention follows from ITK.
-- When you are finished, make sure your copy of the `development` branch is up to date, and if necessary `rebase` your branch to the latest `development` commit.
-- Push your branch to Github.
-- Open a (Pull Request)[https://help.github.com/articles/fork-a-repo/].
+If you want to edit the QUIT code yourself to fix a problem or implement a new feature, you are very welcome to! To do so, please:
+1. Open an issue on the [QUIT Github page](https://github.com/spinicist/QUIT/issues)
+2. Follow the [Forking workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/forking-workflow) to fix the issue. 
 
 To date, QUIT has one main developer (@spinicist). Hence the above is a suggested model for how changes can be contributed, and will be edited if and when a better model is suggested.
 
