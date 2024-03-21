@@ -10,13 +10,13 @@ auto MTSatModel::fit(QI_ARRAYN(DataType, NI) const &     in,
     auto const &s    = sequence;
 
     auto const R1 =
-        std::clamp((B1 * B1 / 2.) * (S_t1 * s.al_t1 / s.TR_t1 - S_pd * s.al_pd / s.TR_pd) /
-                       (S_pd / s.al_pd - S_t1 / s.al_t1),
+        std::clamp(2 * (S_t1 * tan(B1 * s.al_t1 / 2) / s.TR_t1 - S_pd * tan(B1 * s.al_pd / 2) / s.TR_pd) /
+                       (S_pd / tan(B1 * s.al_pd / 2) - S_t1 / tan(B1 * s.al_t1 / 2)),
                    0.,
                    10.);
     auto const A =
-        std::max((S_pd * S_t1 / B1) * (s.TR_pd * s.al_t1 / s.al_pd - s.TR_t1 * s.al_pd / s.al_t1) /
-                     (S_t1 * s.TR_pd * s.al_t1 - S_pd * s.TR_t1 * s.al_pd),
+        std::max(0.5 * S_pd * S_t1 * (s.TR_pd * tan(B1 * s.al_t1 / 2) / tan(B1 * s.al_pd / 2) - s.TR_t1 * tan(B1 * s.al_pd / 2) / tan(B1 * s.al_t1 / 2)) /
+                     (S_t1 * s.TR_pd * tan(B1 * s.al_t1 / 2) - S_pd * s.TR_t1 * tan(B1 * s.al_pd / 2)),
                  0.);
     auto const d           = (A * s.al_mt / S_mt - 1.0) * R1 * s.TR_mt - s.al_mt * s.al_mt / 2;
     auto const d_corrected = std::clamp(d * (1.0 - C) / (1.0 - C * B1), 0., 0.1);
