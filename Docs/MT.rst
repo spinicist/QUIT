@@ -249,7 +249,7 @@ If you use a custom contrasts file then the outputs will have the names specifie
 qi mtsat
 -----------
 
-Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and the semi-quantitative MT-Saturation parameter "delta". This is the fractional reduction in the longitudinal magnetization during one TR, expressed as a percentage. Arguably could be included in the :doc:`Relaxometry` module instead. Outputs R1 instead of T1 as this is more common in the MTSat / MPM literature. If using multi-echo input data the input should be passed through `qi mpm_r2s` first and the output ``S0`` files used as input to `qi mtsat`.
+Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and the semi-quantitative MT-Saturation parameter "delta". This is the fractional reduction in the longitudinal magnetization during one TR, expressed as a percentage. Arguably could be included in the :doc:`Relaxometry` module instead. Outputs R1 instead of T1 as this is more common in the MTSat / MPM literature. If using multi-echo input data the input should be passed through `qi mpm_r2s` first and the output ``S0`` files used as input to `qi mtsat`. Incorporate the removal of the small flip angle approximation for PDw and T1w images, as suggested in Edwards et al., 2021.
 
 **Example Command Line**
 
@@ -282,6 +282,7 @@ Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and t
 
 - `Helms et al <http://doi.wiley.com/10.1002/mrm.21732>`_
 - `Erratum <http://doi.wiley.com/10.1002/mrm.22607>`_
+- `Edwards et al <http://doi.org/10.1007/s10334-021-00947-8>`
 
 qi ssfp_emt
 -----------
