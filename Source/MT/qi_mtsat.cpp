@@ -29,13 +29,14 @@ int mtsat_main(args::Subparser &parser) {
     args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
     args::ValueFlag<double>      C(
         parser, "C", "Correction factor for delta (default 0.4)", {'C', "C"}, 0.4);
+    args::Flag smallangle(parser, "smallangle", "Use small flip angle approx for R1 and PD calculation", {'s', "smallangle"});
     parser.Parse();
-
+    
     QI::Log(verbose, "Reading sequence parameters");
     json              input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MTSatSequence seq(input["MTSat"]);
 
-    MTSatModel model{{}, seq, C.Get()};
+    MTSatModel model{{}, seq, C.Get(), smallangle};
     if (simulate) {
         QI::SimulateModel<MTSatModel, true>(
             input,
