@@ -44,7 +44,7 @@ file to somewhere on your `$PATH`, for instance `/usr/local/bin`. That's it.
   which prevents them being run as the binary is unsigned. It is possible to 
   remove the quarantine flag with `xattr`, but downloading with `curl` is more 
   straightforward.
-- The Linux executable is compiled on Ubuntu 16.04 with GLIBC version 2.3 and a 
+- The Linux executable is compiled on Ubuntu 22.04 with GLIBC version 2.35 and a 
   statically linked libc++. This means it will hopefully run on most modern 
   Linux distributions. Let me know if it doesn't.
 
