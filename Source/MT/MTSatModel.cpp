@@ -20,12 +20,12 @@ auto MTSatModel::fit(QI_ARRAYN(DataType, NI) const &     in,
         std::clamp(0.5 * (S_t1 * al_t1_b1corr / s.TR_t1 - S_pd * al_pd_b1corr / s.TR_pd) /
                        (S_pd / al_pd_b1corr - S_t1 / al_t1_b1corr),
                    0.,
-                   10.);
+                   r1_max);
     auto const A =
         std::max((S_pd * S_t1) * (s.TR_pd * al_t1_b1corr / al_pd_b1corr - s.TR_t1 * al_pd_b1corr / al_t1_b1corr) /
                      (S_t1 * s.TR_pd * al_t1_b1corr - S_pd * s.TR_t1 * al_pd_b1corr),
                  0.);
     auto const d           = (A * s.al_mt / S_mt - 1.0) * R1 * s.TR_mt - s.al_mt * s.al_mt / 2;
-    auto const d_corrected = std::clamp(d * (1.0 - C) / (1.0 - C * B1), 0., 0.1);
+    auto const d_corrected = std::clamp(d * (1.0 - C) / (1.0 - C * B1), 0., delta_max/100.);
     return {A, R1, d_corrected * 100};
 }
