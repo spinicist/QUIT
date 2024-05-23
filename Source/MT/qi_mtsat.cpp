@@ -41,7 +41,7 @@ int mtsat_main(args::Subparser &parser) {
     json              input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MTSatSequence seq(input["MTSat"]);
 
-    MTSatModel model{{}, seq, C.Get(), smallangle, delta_max.Get()};
+    MTSatModel model{{}, seq, C.Get(), smallangle, delta_max.Get(), r1_max.Get()};
     if (simulate) {
         QI::SimulateModel<MTSatModel, true>(
             input,
