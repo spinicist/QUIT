@@ -26,17 +26,22 @@ int mtsat_main(args::Subparser &parser) {
     args::Positional<std::string> t1w_path(parser, "T1w", "Input T1-weighted file");
     args::Positional<std::string> mtw_path(parser, "MTw", "Input MT-weighted file");
     QI_COMMON_ARGS;
-    args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
-    args::ValueFlag<double>      C(
+    args::ValueFlag<std::string>  b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
+    args::ValueFlag<double>       C(
         parser, "C", "Correction factor for delta (default 0.4)", {'C', "C"}, 0.4);
-    args::Flag smallangle(parser, "smallangle", "Use small flip angle approx for R1 and PD calculation", {'s', "smallangle"});
+    args::Flag                    smallangle(
+        parser, "smallangle", "Use small flip angle approx for R1 and PD calculation", {'s', "smallangle"});
+    args::ValueFlag<double>       delta_max(
+        parser, "delta_max", "Values of delta (MTsat) above this are clamped, in % (default 10%)", {'d', "delta-max"}, 10);
+    args::ValueFlag<double>       r1_max(
+        parser, "r1_max", "Values of R1 above this are clamped, in 1/s (default 10 1/s)", {'r', "r1-max"}, 10);
     parser.Parse();
     
     QI::Log(verbose, "Reading sequence parameters");
     json              input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MTSatSequence seq(input["MTSat"]);
 
-    MTSatModel model{{}, seq, C.Get(), smallangle};
+    MTSatModel model{{}, seq, C.Get(), smallangle, delta_max.Get()};
     if (simulate) {
         QI::SimulateModel<MTSatModel, true>(
             input,

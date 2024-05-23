@@ -8,6 +8,8 @@ struct MTSatModel : QI::Model<double, double, 3, 1, 3, 0> {
     QI::MTSatSequence const &sequence;
     double const             C;
     bool const               smallangle;
+    double const             delta_max;
+    double const             r1_max;
 
     std::array<const std::string, NV> const varying_names{{"PD"s, "R1"s, "delta"s}};
     std::array<const std::string, 3> const  derived_names{};
