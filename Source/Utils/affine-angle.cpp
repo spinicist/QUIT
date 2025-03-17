@@ -34,7 +34,7 @@ int affine_angle_main(args::Subparser &parser) {
 
         auto const &tfm  = *(reader->GetTransformList()->begin());
         auto const &atfm = static_cast<Tfm *>(tfm.GetPointer());
-        QI::Log(verbose, "{}", *atfm);
+        QI::Log(verbose, "{}", fmt::streamed(*atfm));
         if (inverse) {
             auto itfm = Tfm::New();
             atfm->GetInverse(itfm);

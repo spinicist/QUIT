@@ -193,7 +193,6 @@ int ssfp_ellipse_main(args::Subparser &parser) {
     QI::Log(verbose, "Reading sequence information");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("SSFP").get<QI::SSFPSequence>();
-    QI::Log(verbose, "{}", sequence);
     EllipseModel model{{}, sequence};
     if (simulate) {
         QI::SimulateModel<EllipseModel, false>(input,

@@ -1,0 +1,5 @@
+// Get version number from CMAKE
+#pragma once
+
+#define VERSION "@GIT_VERSION@"
+#define DATETIME "@DATETIME@"

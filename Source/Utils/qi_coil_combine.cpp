@@ -279,7 +279,7 @@ int coil_combine_main(args::Subparser &parser) {
             region.GetModifiableIndex() = index;
             region.GetModifiableSize()  = {{8, 8, 8}};
         }
-        QI::Log(verbose, "Reference region is:\n{}", region);
+        QI::Log(verbose, "Reference region is:\n{}", fmt::streamed(region));
         auto roi = itk::RegionOfInterestImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF>::New();
         roi->SetRegionOfInterest(region);
         roi->SetInput(input_image);
@@ -287,7 +287,7 @@ int coil_combine_main(args::Subparser &parser) {
         mean_filter->SetInput(roi->GetOutput());
         mean_filter->Update();
         auto roi_mean = mean_filter->GetResult();
-        QI::Log(verbose, "Mean values: {}", roi_mean);
+        QI::Log(verbose, "Mean values: {}", fmt::streamed(roi_mean));
 
         Eigen::Map<const Eigen::ArrayXcf> mean(roi_mean.GetDataPointer(), roi_mean.Size(), 1);
         Eigen::ArrayXcf                   hammond_ref(coils_arg.Get());
@@ -295,7 +295,7 @@ int coil_combine_main(args::Subparser &parser) {
         for (int i = 0; i < coils_arg.Get(); i++) {
             hammond_ref(i) = mean(ref_vol.Get() + i * images_per_coil);
         }
-        QI::Log(verbose, "Hammond ref: {}", hammond_ref.transpose());
+        QI::Log(verbose, "Hammond ref: {}", fmt::streamed(hammond_ref.transpose()));
         auto hammond = HammondCombineFilter::New();
         hammond->SetInput(input_image);
         hammond->SetHammondRef(hammond_ref);

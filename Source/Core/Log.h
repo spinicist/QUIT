@@ -16,6 +16,7 @@
 
 #include "fmt/chrono.h"
 #include "fmt/color.h"
+#include "fmt/ranges.h"
 #include "fmt/ostream.h"
 using namespace fmt::literals;
 

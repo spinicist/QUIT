@@ -1,6 +1,13 @@
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
-cmake_policy(VERSION 3.12)
-project(QUIT CXX)
+cmake_minimum_required(VERSION 3.29 FATAL_ERROR)
+cmake_policy(VERSION 3.29)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
+include(CheckCXXCompilerFlag)
+if(CCACHE_PROGRAM)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+endif()
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF) # Why not? Because it takes forever, that's why
+
+project(QUIT LANGUAGES CXX)
 
 # Configure directory paths
 set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
