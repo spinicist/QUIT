@@ -21,17 +21,16 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-#include "transient_b1_model.h"
-#include "transient_model.h"
-#include "transient_mt_model.h"
+#include "transient_qmt_model.h"
 
 /*
  * Main
  */
 int transient_main(args::Subparser &parser) {
-    args::Positional<std::string> input_path(parser, "INPUT", "Input MUPA file");
+    args::Positional<std::string> input_path(parser, "INPUT", "Input file");
+    args::Positional<std::string> basis_path(parser, "BASIS", "Basis file");
     QI_COMMON_ARGS;
-    args::Flag                   mt(parser, "MT", "Use MT model", {"mt"});
+
     args::ValueFlag<double>      T2_b(parser, "T2_b", "T2 of bound pool", {"T2b"}, 12e-6);
     args::ValueFlag<std::string> ls_arg(
         parser, "LINESHAPE", "Path to lineshape file", {"lineshape"});
@@ -43,7 +42,7 @@ int transient_main(args::Subparser &parser) {
     QI::Log(verbose, "Reading sequence parameters");
     json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
-    RUFISSequence sequence(doc["MUPA"]);
+    PrepSequence sequence(doc["Prep"]);
 
     auto process = [&](auto                                       model,
                        const std::string &                        model_name,

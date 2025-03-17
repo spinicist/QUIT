@@ -4,14 +4,12 @@
 #include "rf_pulse.h"
 #include <unordered_map>
 
-struct RUFISSequence : QI::SequenceBase {
-    double                                     TR, Tramp;
-    Eigen::ArrayXd                             FA, Trf;
-    Eigen::ArrayXi                             groups_per_seg;
-    int                                        spokes_per_seg;
-    std::unordered_map<std::string, PrepPulse> prep_pulses;
-    std::vector<std::string>                   prep;
-    QI_SEQUENCE_DECLARE(RUFIS);
-    Eigen::Index size() const override { return prep.size(); };
+struct PrepSequence : QI::SequenceBase {
+    double                                     TR, Tramp, Trf, Tprep;
+    Eigen::ArrayXd                             FA, FAprep;
+    int                                        SPS, spoilers;
+    QI_SEQUENCE_DECLARE(PrepSequence);
+    Eigen::Index preps() const { return FAprep.size(); };
+    Eigen::Index size() const override { return preps() * SPS; };
 };
 void from_json(const json &j, RUFISSequence &s);

@@ -9,8 +9,7 @@ if( ${BUILD_PARMESAN} )
             ${CMAKE_CURRENT_SOURCE_DIR}/ss_mt.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/ss_main.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/transient_sequence.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/transient_b1_model.cpp
-            ${CMAKE_CURRENT_SOURCE_DIR}/transient_mt_model.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/transient_qmt_model.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/transient_main.cpp
         )
     target_sources(qi PRIVATE ${SOURCES})
