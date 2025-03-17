@@ -5,12 +5,22 @@
         "args",
         "eigen3",
         "fmt",
+        {
+            "name": "hdf5",
+            "default-features": false,
+            "features": [
+                "zlib"
+            ]
+        },
         "itk",
         "ceres",
         "nlohmann-json"
     ],
-    "builtin-baseline":"78a727b60864afa46c3c73148e6780b02de25ef5",
+    "builtin-baseline": "043abf2fa419c288d594a6b96b98a811457bd9b5",
     "overrides": [
-        { "name": "fmt", "version": "9.1.0" }
+        {
+            "name": "hdf5",
+            "version": "1.12.0"
+        }
     ]
 }

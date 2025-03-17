@@ -186,7 +186,7 @@ int affine_main(args::Subparser &parser) {
 
         img_tfm->Compose(tfm);
         itk::CenteredAffineTransform<double, 3>::MatrixType fmat = img_tfm->GetMatrix();
-        QI::Log(verbose, "Final transform:\n{}", fmat);
+        QI::Log(verbose, "Final transform:\n{}", fmt::streamed(fmat));
         for (int i = 0; i < 3; i++) {
             fullOrigin[i] = img_tfm->GetOffset()[i];
         }
@@ -218,7 +218,7 @@ int affine_main(args::Subparser &parser) {
 
     switch (dtype) {
     case itk::ImageIOBase::UNKNOWNCOMPONENTTYPE:
-        QI::Fail("Unknown component type in image {}", source_path);
+        QI::Fail("Unknown component type in image {}", source_path.Get());
     /*case itk::ImageIOBase::UCHAR:  DIM_SWITCH( unsigned char ); break;
     case itk::ImageIOBase::CHAR:   DIM_SWITCH( char ); break;
     case itk::ImageIOBase::USHORT: DIM_SWITCH( unsigned short ); break;
@@ -250,7 +250,7 @@ int affine_main(args::Subparser &parser) {
         }
         break;
     default:
-        QI::Fail("Unimplemented component type: {} in image {}", dtype, source_path);
+        QI::Fail("Unimplemented component type: {} in image {}", fmt::streamed(dtype), source_path.Get());
     }
     return EXIT_SUCCESS;
 }

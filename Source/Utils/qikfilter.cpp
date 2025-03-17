@@ -157,7 +157,7 @@ int kfilter_main(args::Subparser &parser) {
     if (filters) {
         for (const auto &f : filters.Get()) {
             kernels.push_back(QI::ReadKernel(f));
-            QI::Log(verbose, "Read kernel: {}", *(kernels.back()));
+            QI::Log(verbose, "Read kernel: {}", fmt::streamed(*(kernels.back())));
         }
     } else {
         kernels.push_back(std::make_shared<QI::TukeyKernel>());
@@ -209,7 +209,7 @@ int kfilter_main(args::Subparser &parser) {
     if (!filter_per_volume) {
         QI::Info(verbose, "Kernels:");
         for (auto const &k : kernels) {
-            QI::Info(verbose, "{}", *k);
+            QI::Info(verbose, "{}", fmt::streamed(*k));
         }
         tkernel->SetKernels(kernels);
     }
@@ -262,7 +262,7 @@ int kfilter_main(args::Subparser &parser) {
         }
         if (filter_per_volume) {
             tkernel->SetKernel(kernels.at(i));
-            QI::Log(verbose, "Setting kernel to: {}", *kernels.at(i));
+            QI::Log(verbose, "Setting kernel to: {}", fmt::streamed(*kernels.at(i)));
         }
         auto forward = TFFT::New();
         forward->SetInput(fft_pad->GetOutput());

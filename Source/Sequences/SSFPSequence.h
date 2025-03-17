@@ -65,7 +65,7 @@ namespace fmt {
 template <> struct formatter<QI::SSFPSequence> {
     template <typename ParseContext> constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
 
-    template <typename FormatContext> auto format(const QI::SSFPSequence &s, FormatContext &ctx) {
+    template <typename FormatContext> auto format(const QI::SSFPSequence &s, FormatContext &ctx) const {
         return format_to(ctx.out(),
                          "SSFP:\n\tTR: {}\n\tFA: {}\n\tPhaseInc: {}",
                          s.TR,

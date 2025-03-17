@@ -46,7 +46,7 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
     }
     void SetRF(const Eigen::ArrayXd pos, const Eigen::ArrayXd vals) {
         m_spline = QI::SplineInterpolator(pos, vals);
-        QI::Log(m_debug, "{}", m_spline);
+        QI::Log(m_debug, "{}", fmt::streamed(m_spline));
     }
 
     void SetMask(const QI::VolumeF *mask) { this->SetNthInput(1, const_cast<QI::VolumeF *>(mask)); }

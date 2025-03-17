@@ -67,7 +67,6 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
         QI_ARRAY(T) S = QI_ARRAY(T)::Constant(sequence.sat_f0.rows(), T(Zref));
         QI_ARRAY(T) F;
 
-        QI_ARRAY(T) const Z = QI_ARRAY(T)::Zero(sequence.sat_f0.rows());
         for (auto i = 0; i < NP; i++) {
             auto const indN = NVpP * i;
             T const &  df   = v[indN + 0];
@@ -76,8 +75,8 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
             if (use_bandwidth[i]) {
                 auto const x   = (sequence.sat_f0 - df - sequence.pulse.bandwidth / 2);
                 auto const y   = (sequence.sat_f0 - df + sequence.pulse.bandwidth / 2);
-                auto const xHx = (x > Z).select(x, Z);
-                auto const yHy = (y < Z).select(y, Z);
+                auto const xHx = x.max(T(0));
+                auto const yHy = y.min(T(0));
                 F              = xHx + yHy;
             } else {
                 F = (sequence.sat_f0 - df - v[1]);
