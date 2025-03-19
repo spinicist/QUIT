@@ -2,7 +2,6 @@
 #include "Log.h"
 
 void from_json(const json &j, PrepZTESequence &s) {
-    fmt::print(stderr, "{}\n", fmt::streamed(j));
     QI::GetJSON(j, "TR", s.TR);
     QI::GetJSON(j, "Trf", s.Trf);
     QI::GetJSON(j, "Tprep", s.Tprep);

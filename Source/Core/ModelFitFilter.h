@@ -17,7 +17,6 @@
 #include <tuple>
 #include <vector>
 
-#include "itkCommand.h"
 #include "itkImageRegionConstIterator.h"
 #include "itkImageRegionIterator.h"
 #include "itkImageRegionIteratorWithIndex.h"

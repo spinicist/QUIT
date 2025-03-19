@@ -17,7 +17,7 @@ auto QMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
     T const R2_f = 1. / f[0];
     T const R1_s = 1. / f[1];
     T const R2_s = 1. / f[2];
-    T const Rx    = f[3];
+    T const Rx   = f[3];
 
     T const M0_s = f_s * M0;
     T const M0_f = M0 - M0_s;
@@ -110,7 +110,7 @@ auto QMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
     AugVec const m_ss = SolveSteadyState(X);
 
     // Now loop through the segments and record the signal for each
-    Eigen::ArrayXd sig(sequence.size());
+    Eigen::ArrayXd sig(sequence.SPS * sequence.FAprep.size());
     QI_DBVEC(m_ss);
     AugVec m  = m_ss;
     int    ii = 0;
