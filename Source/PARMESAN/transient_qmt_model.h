@@ -13,7 +13,7 @@ struct QMTModel : QI::Model<double, double, 4, 4, 1, 0> {
     VaryingArray const lo{0.1, 0.5, 0.01, 0.5};
     VaryingArray const hi{100.0, 5.0, 0.5, 1.5};
 
-    std::array<std::string, NF> const fixed_names{"T2_f", "T1_s", "T2_s", "k"};
+    std::array<std::string, NF> const fixed_names{"T2_f", "T1_s", "T2_s", "Rx"};
     FixedArray const                  fixed_defaults{0.07, 0.35, 14e-6, 14.0};
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
