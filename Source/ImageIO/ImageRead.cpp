@@ -44,7 +44,7 @@ auto ReadMagnitudeImage(const std::string &path, const bool verbose) -> typename
     magFilter->SetInput(x_img);
     QI::Log(verbose, "Converting to magnitude");
     magFilter->Update();
-    auto img = magFilter->GetOutput();
+    typename TImg::Pointer img = magFilter->GetOutput();
     img->DisconnectPipeline();
     return img;
 }
