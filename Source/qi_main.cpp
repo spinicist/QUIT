@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
 #ifdef BUILD_PARMESAN
     args::Group parmesan(parser, "PARMESAN");
     ADD(transient, parmesan, "Transient type PARMESAN");
-    ADD(ss, parmesan, "Steady-state PARMESAN");
     ADD(rf_sim, parmesan, "Calculate RF pulse properties for PARMESAN");
 #endif
 #ifdef BUILD_STATS

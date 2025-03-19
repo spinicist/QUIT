@@ -30,19 +30,12 @@ int transient_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
     args::Positional<std::string> basis_path(parser, "BASIS", "Basis file");
     QI_COMMON_ARGS;
-
-    args::ValueFlag<double>      T2_b(parser, "T2_b", "T2 of bound pool", {"T2b"}, 12e-6);
-    args::ValueFlag<std::string> ls_arg(
-        parser, "LINESHAPE", "Path to lineshape file", {"lineshape"});
-
     parser.Parse();
-
     QI::CheckPos(input_path);
-
     QI::Log(verbose, "Reading sequence parameters");
     json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
-    PrepSequence sequence(doc["Prep"]);
+    PrepZTESequence sequence(doc["PrepZTE"]);
 
     auto process = [&](auto                                       model,
                        const std::string &                        model_name,
@@ -69,13 +62,8 @@ int transient_main(args::Subparser &parser) {
         }
     };
 
-    if (mt) {
-        MUPAMTModel model{{}, sequence};
-        process(model, "MUPAMT_", {});
-    } else {
-        MUPAB1Model model{{}, sequence};
-        process(model, "MUPAB1_", {});
-    }
+    QMTModel model{{}, sequence};
+    process(model, "PARMESAN_", {});
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }

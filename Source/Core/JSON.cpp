@@ -50,7 +50,7 @@ void WriteJSON(std::string const &path, json const &doc) {
 
 template <typename T>
 Eigen::Array<T, -1, 1>
-ArrayFromJSON(json const &val, std::string const &key, T const &scale, Eigen::Index const &sz) {
+ArrayFromJSON(json const &val, std::string const &key, T const scale, Eigen::Index const sz) {
     try {
         std::vector<T> json_array;
         json_array = val[key].get<std::vector<T>>();
@@ -67,9 +67,58 @@ ArrayFromJSON(json const &val, std::string const &key, T const &scale, Eigen::In
     }
 }
 template Eigen::ArrayXd
-ArrayFromJSON(json const &val, std::string const &key, double const &scale, Eigen::Index const &sz);
+ArrayFromJSON(json const &val, std::string const &key, double const scale, Eigen::Index const sz);
 template Eigen::ArrayXi
-ArrayFromJSON(json const &val, std::string const &key, int const &scale, Eigen::Index const &sz);
+ArrayFromJSON(json const &val, std::string const &key, int const scale, Eigen::Index const sz);
+
+template <typename T>
+Eigen::Array<T, -1, -1> MatrixFromJSON(json const        &val,
+                                       std::string const &key,
+                                       T const            scale,
+                                       Eigen::Index const irows,
+                                       Eigen::Index const icols) {
+    try {
+        auto const json_rows = val[key];
+        auto const nrows     = json_rows.size();
+        if (irows > -1 && nrows != irows) {
+            QI::Fail("JSON matrix {} had {} rows, expected {}", key, nrows, irows);
+        }
+        if (nrows < 1) {
+            QI::Fail("JSON matrix {} must have at least 1 row", key);
+        }
+        auto const ncols = json_rows.front().size();
+        if (icols > -1 && ncols != icols) {
+            QI::Fail("JSON matrix {} had {} columns, expected {}", key, ncols, icols);
+        }
+        Eigen::Array<T, -1, -1> matrix(nrows, ncols);
+        for (int ir = 0; ir < nrows; ir++) {
+            if (json_rows[ir].size() != ncols) {
+                QI::Fail("JSON matrix {} row {} had {} columns, expected {}",
+                         key,
+                         ir,
+                         json_rows[ir].size(),
+                         ncols);
+            }
+            std::vector<T> const row = json_rows[ir].get<std::vector<T>>();
+            for (int ic = 0; ic < ncols; ic++) {
+                matrix(ir, ic) = row[ic];
+            }
+        }
+        return matrix;
+    } catch (std::exception &e) {
+        QI::Fail("Error reading from JSON array {}: {}", key, e.what());
+    }
+}
+template Eigen::Array<double, -1, -1> MatrixFromJSON(json const        &val,
+                                                     std::string const &key,
+                                                     double const       scale,
+                                                     Eigen::Index const rows,
+                                                     Eigen::Index const cols);
+template Eigen::Array<int, -1, -1>    MatrixFromJSON(json const        &val,
+                                                     std::string const &key,
+                                                     int const          scale,
+                                                     Eigen::Index const rows,
+                                                     Eigen::Index const cols);
 
 template <typename T> void GetJSON(json const &j, std::string const &key, T &val) {
     try {

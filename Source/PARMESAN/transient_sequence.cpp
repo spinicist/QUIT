@@ -1,7 +1,8 @@
 #include "transient_sequence.h"
 #include "Log.h"
 
-void from_json(const json &j, RUFISSequence &s) {
+void from_json(const json &j, PrepZTESequence &s) {
+    fmt::print(stderr, "{}\n", fmt::streamed(j));
     QI::GetJSON(j, "TR", s.TR);
     QI::GetJSON(j, "Trf", s.Trf);
     QI::GetJSON(j, "Tprep", s.Tprep);
@@ -10,9 +11,12 @@ void from_json(const json &j, RUFISSequence &s) {
     QI::GetJSON(j, "spoilers", s.spoilers);
     s.FA     = QI::ArrayFromJSON(j, "FA", M_PI / 180.0);
     s.FAprep = QI::ArrayFromJSON(j, "FAprep", M_PI / 180.0);
-
-    if (s.FA.rows() != static_cast<long>(s.prep.size())) {
-        QI::Fail(
-            "Number preps {} does not match number of flip-angles {}", s.prep.size(), s.FA.rows());
+    if (j.contains("basis")) {
+        s.basis = QI::MatrixFromJSON(j, "basis", 1.0, -1, s.SPS * s.FAprep.size());
+    }
+    if (s.FA.rows() != static_cast<long>(s.FAprep.size())) {
+        QI::Fail("Number preps {} does not match number of flip-angles {}",
+                 s.FAprep.size(),
+                 s.FA.rows());
     }
 }

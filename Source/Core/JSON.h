@@ -26,10 +26,17 @@ std::ostream &WriteJSON(std::ostream &os, json const &doc);
 void          WriteJSON(std::string const &path, json const &doc);
 
 template <typename T>
-extern Eigen::Array<T, -1, 1> ArrayFromJSON(json const &        json,
-                                            std::string const & key,
-                                            T const &           scale = 1,
-                                            Eigen::Index const &sz    = -1);
+extern Eigen::Array<T, -1, 1> ArrayFromJSON(json const        &json,
+                                            std::string const &key,
+                                            T const            scale = 1,
+                                            Eigen::Index const sz    = -1);
+
+template <typename T>
+extern Eigen::Array<T, -1, -1> MatrixFromJSON(json const        &json,
+                                              std::string const &key,
+                                              T const            scale = 1,
+                                              Eigen::Index const rows  = -1,
+                                              Eigen::Index const cols  = -1);
 
 template <typename T> extern void GetJSON(json const &j, std::string const &key, T &val);
 

@@ -50,7 +50,7 @@ def make_phantom(parameters, subsamp=1, mask=None, B1=True, f0=False):
     # 8=Glial Matter
     # 9=Connective
     classes = nib.load('classes.mnc')
-    class_data = classes.get_data().astype('int32')
+    class_data = classes.get_fdata().astype('int32')
     for key, vals in parameters.items():
         data = np.choose(
             class_data[::subsamp, ::subsamp, ::subsamp], np.array(vals)).astype('float32')
@@ -67,7 +67,7 @@ def make_phantom(parameters, subsamp=1, mask=None, B1=True, f0=False):
 
     if B1:
         b1_img = nib.load('rf20_C.mnc')
-        b1_data = b1_img.get_data().astype(
+        b1_data = b1_img.get_fdata().astype(
             'float32')[::subsamp, ::subsamp, ::subsamp]
         img = nib.nifti1.Nifti1Image(b1_data, affine=b1_img.affine)
         nib.save(img, 'B1.nii.gz')
