@@ -51,11 +51,9 @@ int main(int argc, char **argv) {
     ADD(planet, relax, "PLANET method of T1/T2 mapping");
     ADD(ssfp_ellipse, relax, "Calculuate the SSFP ellipse properties");
     ADD(irtse, relax, "Inversion Recovery TSE");
-#endif
 #ifdef BUILD_PARMESAN
-    args::Group parmesan(parser, "PARMESAN");
-    ADD(transient, parmesan, "Transient type PARMESAN");
-    ADD(rf_sim, parmesan, "Calculate RF pulse properties for PARMESAN");
+    ADD(parmesan, parmesan, "PARMESAN");
+#endif
 #endif
 #ifdef BUILD_STATS
     args::Group stats(parser, "STATS");

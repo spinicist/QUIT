@@ -1,12 +1,12 @@
 // #define QI_DEBUG_BUILD 1
-#include "transient_qmt_model.h"
+#include "prep_qmt_model.h"
 #include "Macro.h"
 #include "parmesan.hpp"
 
 using AugMat = Eigen::Matrix<double, 6, 6>; // Short for Augmented Matrix
 using AugVec = Eigen::Vector<double, 6>;
 
-auto QMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> QI_ARRAY(double) {
+auto PrepQMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> QI_ARRAY(double) {
     using T = double;
 
     T const M0   = v[0];
@@ -69,6 +69,7 @@ auto QMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
     std::vector<AugMat> A_mats(sequence.FA.rows());
     std::vector<AugMat> R_mats(sequence.FA.rows());
     std::vector<AugMat> seg_mats(sequence.FA.rows());
+    std::vector<AugMat> prep_mats(sequence.preps());
     for (int ip = 0; ip < sequence.FA.rows(); ip++) {
         double const B1x  = B1 * sequence.FA[ip] / sequence.Trf;
         double const r2sl = 0;
@@ -81,27 +82,21 @@ auto QMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
         A_mats[ip]   = ((RpK + rf) * sequence.Trf).exp();
         R_mats[ip]   = (RpK * (sequence.TR - sequence.Trf)).exp();
         seg_mats[ip] = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS);
-    }
 
-    // Setup pulse matrices
-    std::vector<AugMat> prep_mats(sequence.preps());
-    for (int ip = 0; ip < sequence.preps(); ip++) {
-        double const B1x  = B1 * sequence.FAprep[ip] / sequence.Tprep;
-        double const r2sl = 8e3;
-        AugMat       rf;
-        rf << 0, 0, 0, 0, 0, 0,     //
-            0, 0, B1x, 0, 0, 0,     //
-            0, -B1x, 0, 0, 0, 0,    //
-            0, 0, 0, -r2sl, B1x, 0, //
-            0, 0, 0, -B1x, 0, 0,    //
+        double const B1p  = B1 * sequence.FAprep[ip] / sequence.Tprep;
+        AugMat       rfp;
+        rfp << 0, 0, 0, 0, 0, 0,    //
+            0, 0, B1p, 0, 0, 0,     //
+            0, -B1p, 0, 0, 0, 0,    //
+            0, 0, 0, -r2sl, B1p, 0, //
+            0, 0, 0, -B1p, 0, 0,    //
             0, 0, 0, 0, 0, 0;
         QI_DBMAT(RpK);
-        QI_DBMAT(rf);
+        QI_DBMAT(rfp);
         QI_DB(sequence.Tprep);
-        prep_mats[ip] = ((RpK + rf) * sequence.Tprep).exp();
+        prep_mats[ip] = ((RpK + rfp) * sequence.Tprep).exp();
         QI_DBMAT(prep_mats[ip]);
     }
-
     // First calculate the system matrix
     AugMat X = AugMat::Identity();
     for (int ip = 0; ip < sequence.preps(); ip++) {

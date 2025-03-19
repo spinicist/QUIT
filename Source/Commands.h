@@ -40,9 +40,7 @@ int planet_main(args::Subparser &parser);
 int irtse_main(args::Subparser &parser);
 #endif
 #ifdef BUILD_PARMESAN
-int transient_main(args::Subparser &parser);
-int rf_sim_main(args::Subparser &parser);
-int ss_main(args::Subparser &parser);
+int parmesan_main(args::Subparser &parser);
 #endif
 #ifdef BUILD_STATS
 int glm_contrasts_main(args::Subparser &parser);

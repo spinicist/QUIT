@@ -1,8 +1,6 @@
 #pragma once
 
 #include "SequenceBase.h"
-#include "rf_pulse.h"
-#include <unordered_map>
 
 struct PrepZTESequence : QI::SequenceBase {
     double          TR, Tramp, Trf, Tprep;

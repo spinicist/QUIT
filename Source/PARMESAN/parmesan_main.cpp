@@ -21,15 +21,17 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-#include "transient_qmt_model.h"
+#include "prep_b1_model.h"
+#include "prep_qmt_model.h"
 
 /*
  * Main
  */
-int transient_main(args::Subparser &parser) {
+int parmesan_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
     args::Positional<std::string> basis_path(parser, "BASIS", "Basis file");
     QI_COMMON_ARGS;
+    args::Flag mt(parser, "MT", "Use MT model", {"mt"});
     parser.Parse();
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence parameters");
@@ -38,7 +40,7 @@ int transient_main(args::Subparser &parser) {
     PrepZTESequence sequence(doc["PrepZTE"]);
 
     auto process = [&](auto                                       model,
-                       const std::string &                        model_name,
+                       const std::string                         &model_name,
                        typename decltype(model)::FixedNames const fixed) {
         if (simulate) {
             QI::SimulateModel<decltype(model), false>(doc,
@@ -53,17 +55,21 @@ int transient_main(args::Subparser &parser) {
         } else {
             using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;
             FitType fit{model};
-            auto    fit_filter =
-                QI::ModelFitFilter<FitType>::New(
-                    &fit, verbose, covar, resids, threads.Get(), subregion.Get());
+            auto    fit_filter = QI::ModelFitFilter<FitType>::New(
+                &fit, verbose, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs({input_path.Get()}, fixed, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + model_name);
         }
     };
 
-    QMTModel model{{}, sequence};
-    process(model, "PARMESAN_", {});
+    if (mt) {
+        PrepQMTModel model{{}, sequence};
+        process(model, "PARMESAN_", {});
+    } else {
+        PrepB1Model model{{}, sequence};
+        process(model, "PARMESAN_", {});
+    }
     QI::Log(verbose, "Finished.");
     return EXIT_SUCCESS;
 }
