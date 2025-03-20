@@ -3,6 +3,8 @@
 #include "Macro.h"
 #include "parmesan.hpp"
 
+namespace QI {
+
 using AugMat = Eigen::Matrix<double, 6, 6>; // Short for Augmented Matrix
 using AugVec = Eigen::Vector<double, 6>;
 
@@ -46,7 +48,7 @@ auto PrepQMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> Q
     R << -R2_f, 0, 0, 0, 0, 0,          //
         0, -R2_f, 0, 0, 0, 0,           //
         0, 0, -R1_f, 0, 0, M0_f * R1_f, //
-        0, 0, 0, 0, 0, 0,               //
+        0, 0, 0, -R2_s, 0, 0,               //
         0, 0, 0, 0, -R1_s, M0_s * R1_s, //
         0, 0, 0, 0, 0, 0;
     AugMat K;
@@ -77,13 +79,14 @@ auto PrepQMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> Q
         rf << 0, 0, 0, 0, 0, 0,                          //
             0, 0, B1x, 0, 0, 0,                          //
             0, -B1x, 0, 0, 0, 0,                         //
-            0, 0, 0, -r2sl, B1x, 0, 0, 0, 0, -B1x, 0, 0, //
+            0, 0, 0, -R2_s, B1x, 0, //
+            0, 0, 0, -B1x, 0, 0, //
             0, 0, 0, 0, 0, 0;
         A_mats[ip]   = ((RpK + rf) * sequence.Trf).exp();
         R_mats[ip]   = (RpK * (sequence.TR - sequence.Trf)).exp();
         seg_mats[ip] = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS);
 
-        double const B1p  = B1 * sequence.FAprep[ip] / sequence.Tprep;
+        double const B1p = B1 * sequence.FAprep[ip] / sequence.Tprep;
         AugMat       rfp;
         rfp << 0, 0, 0, 0, 0, 0,    //
             0, 0, B1p, 0, 0, 0,     //
@@ -129,3 +132,5 @@ auto PrepQMTModel::signal(VaryingArray const &v, FixedArray const &f) const -> Q
         return sig;
     }
 }
+
+} // namespace QI

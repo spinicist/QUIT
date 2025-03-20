@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     ADD(ssfp_ellipse, relax, "Calculuate the SSFP ellipse properties");
     ADD(irtse, relax, "Inversion Recovery TSE");
 #ifdef BUILD_PARMESAN
-    ADD(parmesan, parmesan, "PARMESAN");
+    ADD(parmesan, relax, "PARMESAN");
 #endif
 #endif
 #ifdef BUILD_STATS

@@ -1,12 +1,14 @@
 #pragma once
 
+#include "GridInterp.h"
 #include "Model.h"
 #include "prep_sequence.h"
 
-struct PrepQMTModel : QI::Model<double, double, 4, 4, 1, 0> {
-    static int const NS = 1;
+namespace QI {
+struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
+    static int const NS = 1; // Number of parameters that need to be scaled
     PrepZTESequence &sequence;
-
+    RegularGrid     &R2sl;
     // Pools are "free" and "semi-solid"
     std::array<std::string, NV> const varying_names{"M0", "T1_f", "f_s", "B1"};
     VaryingArray const                start{30.0, 2.0, 0.1, 1.0};
@@ -22,4 +24,5 @@ struct PrepQMTModel : QI::Model<double, double, 4, 4, 1, 0> {
     void derived(const VaryingArray &varying, const FixedArray &, DerivedArray &derived) const;
 };
 
-template <> struct QI::NoiseFromModelType<PrepQMTModel> : QI::RealNoise {};
+template <> struct NoiseFromModelType<PrepQMTModel> : RealNoise {};
+} // namespace QI

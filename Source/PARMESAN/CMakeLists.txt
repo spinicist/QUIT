@@ -5,6 +5,7 @@ if( ${BUILD_PARMESAN} )
             ${CMAKE_CURRENT_SOURCE_DIR}/prep_b1_model.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/prep_qmt_model.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/parmesan_main.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/GridInterp.cpp
         )
     target_sources(qi PRIVATE ${SOURCES})
     target_compile_definitions(qi PRIVATE "-DBUILD_PARMESAN")

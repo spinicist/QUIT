@@ -31,7 +31,7 @@ int parmesan_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
     args::Positional<std::string> basis_path(parser, "BASIS", "Basis file");
     QI_COMMON_ARGS;
-    args::Flag mt(parser, "MT", "Use MT model", {"mt"});
+    args::ValueFlag<std::string> mt(parser, "MT", "Use MT model (provide interp table for linearized GBM)", {"mt"});
     parser.Parse();
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence parameters");
@@ -64,7 +64,9 @@ int parmesan_main(args::Subparser &parser) {
     };
 
     if (mt) {
-        PrepQMTModel model{{}, sequence};
+        json lgbm = QI::ReadJSON(mt.Get());
+        QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "tau"), QI::ArrayFromJSON<double>(lgbm, "omega"), QI::MatrixFromJSON<double>(lgbm, "R2sl"));
+        QI::PrepQMTModel model{{}, sequence, R2sl};
         process(model, "PARMESAN_", {});
     } else {
         PrepB1Model model{{}, sequence};
