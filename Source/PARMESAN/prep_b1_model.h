@@ -79,7 +79,7 @@ struct PrepB1Model : QI::Model<double, double, 3, 0> {
             m = ramp * prep_mats[ip] * m;
             for (int is = 0; is < sequence.SPS; is++) {
                 m         = A_mats[ip] * m;
-                sig[ii++] = m[1];
+                sig[ii++] = m[0];
                 m         = S * R_mats[ip] * m;
             }
             m = ramp * m;
