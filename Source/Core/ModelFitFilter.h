@@ -22,6 +22,7 @@
 #include "itkImageRegionIteratorWithIndex.h"
 #include "itkImageToImageFilter.h"
 #include "itkTimeProbe.h"
+#include "itkTotalProgressReporter.h"
 #include "itkVariableLengthVector.h"
 #include "itkVectorImage.h"
 
@@ -97,14 +98,13 @@ class ModelFitFilter
     static constexpr int ResidualsOffset = CovarOffset + ModelType::NCov;
     static constexpr int TotalOutputs    = ResidualsOffset + ModelType::NI;
 
-    ModelFitFilter(FitType const *    f,
+    ModelFitFilter(FitType const     *f,
                    const bool         v,
                    const bool         covar,
                    const bool         allResids,
                    const int          nThreads,
                    std::string const &subregion) :
-        m_fit(f),
-        m_verbose(v), m_allResiduals(allResids), m_covar(covar) {
+        m_fit(f), m_verbose(v), m_allResiduals(allResids), m_covar(covar) {
         this->SetNumberOfRequiredInputs(ModelType::NI);
         this->SetNumberOfRequiredOutputs(TotalOutputs);
         for (int i = 0; i < TotalOutputs; i++) {
@@ -119,6 +119,7 @@ class ModelFitFilter
             m_hasSubregion = true;
         }
         this->DynamicMultiThreadingOn();
+        this->ThreaderUpdateProgressOff();
         this->SetNumberOfWorkUnits(nThreads);
     }
 
@@ -243,9 +244,9 @@ class ModelFitFilter
      * I would prefer this to go in the constructor, but the ForwardNew macro can't cope with
      * container construction, i.e. {} in the call itself.
      */
-    void ReadInputs(std::vector<std::string> const &      inputs,
+    void ReadInputs(std::vector<std::string> const       &inputs,
                     typename ModelType::FixedNames const &fixed,
-                    std::string const &                   mask) {
+                    std::string const                    &mask) {
         if (static_cast<size_t>(ModelType::NI) != inputs.size()) {
             QI::Fail("Number of input file paths did not match number of inputs for model");
         }
@@ -511,7 +512,9 @@ class ModelFitFilter
 
         VaryingArray outputs;
         FixedArray   fixed;
-        CovarArray * covar = m_covar ? new CovarArray : nullptr;
+        CovarArray  *covar = m_covar ? new CovarArray : nullptr;
+
+        itk::TotalProgressReporter progress(this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 20);
 
         while (!input_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {
@@ -657,6 +660,7 @@ class ModelFitFilter
             }
             ++flag_iter;
             ++rmse_iter;
+            progress.CompletedPixel();
         }
     }
 }; // namespace QI

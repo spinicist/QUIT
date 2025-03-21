@@ -90,12 +90,13 @@ template <typename Model> struct ModelCost {
     const DataArray  data;
 
     template <typename T> bool operator()(const T *const vin, T *rin) const {
-        Eigen::Map<QI_ARRAYN(T, Model::NV) const> const v(vin);
+        Eigen::Map<QI_ARRAYN(T, Model::NV) const> const varying(vin);
 
-        auto const signal = model.signal(v, fixed);
+        auto const signal = model.signal(varying, fixed);
 
         Eigen::Map<QI_ARRAY(T)> residual(rin, data.rows());
         residual = data - signal;
+        QI_DBVEC(varying)
         QI_DBVEC(data);
         QI_DBVEC(signal);
         QI_DBVEC(residual);

@@ -65,6 +65,9 @@ struct ScaledNumericDiffFit : FitFunction<ModelType, int> {
 
         varying = this->model.start;
         ceres::Solve(options, &problem, &summary);
+        #ifdef QI_DEBUG_BUILD
+            fmt::print(stderr, "Summary\n{}\n", summary.FullReport());
+        #endif
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }

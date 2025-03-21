@@ -49,8 +49,8 @@ struct ASEModel : QI::Model<double, double, 4, 0, 1, 3> {
     const std::array<const std::string, ND> derived_names{"Tc"s, "OEF"s, "dHb"s};
 
     const VaryingArray start{0.98, 0., 5.0, 0.025};
-    const VaryingArray bounds_lo{0.1, -0.1, 0.25, 0.001};
-    const VaryingArray bounds_hi{2., 0.1, 50.0, 0.5};
+    const VaryingArray lo{0.1, -0.1, 0.25, 0.001};
+    const VaryingArray hi{2., 0.1, 50.0, 0.5};
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
 
@@ -109,8 +109,8 @@ struct ASEFixDBVModel : QI::Model<double, double, 3, 0, 1, 3> {
     const std::array<const std::string, ND> derived_names{"Tc"s, "OEF"s, "dHb"s};
 
     const VaryingArray start{0.98, 0., 5.0};
-    const VaryingArray bounds_lo{0.1, -0.1, 0.25};
-    const VaryingArray bounds_hi{2., 0.1, 50.0};
+    const VaryingArray lo{0.1, -0.1, 0.25};
+    const VaryingArray hi{2., 0.1, 50.0};
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
 

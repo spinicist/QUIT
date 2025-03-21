@@ -14,6 +14,7 @@
 // #define QI_DEBUG_BUILD 1
 
 #include "Args.h"
+#include "FitScaledAuto.h"
 #include "FitScaledNumeric.h"
 #include "ImageIO.h"
 #include "Macro.h"
@@ -53,7 +54,7 @@ int parmesan_main(args::Subparser &parser) {
                                                       threads.Get(),
                                                       subregion.Get());
         } else {
-            using FitType = QI::ScaledNumericDiffFit<decltype(model), decltype(model)::NS>;
+            using FitType = QI::ScaledNumericDiffFit<decltype(model)>;
             FitType fit{model};
             auto    fit_filter = QI::ModelFitFilter<FitType>::New(
                 &fit, verbose, covar, resids, threads.Get(), subregion.Get());

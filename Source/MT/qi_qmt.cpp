@@ -39,8 +39,8 @@ struct RamaniModel : QI::Model<double, double, 5, 3, 1, 2> {
     std::array<const std::string, NF> const fixed_names{{"f0"s, "B1"s, "T1_app"}};
 
     FixedArray const   fixed_defaults{0.0, 1.0, 1.0};
-    VaryingArray const bounds_lo{0.1, 1.e-6, 0.1e-6, 0.01, 1.};
-    VaryingArray const bounds_hi{10., 0.99, 100.e-6, 1., 100.};
+    VaryingArray const lo{0.1, 1.e-6, 0.1e-6, 0.01, 1.};
+    VaryingArray const hi{10., 0.99, 100.e-6, 1., 100.};
     VaryingArray const start{1., 0.1, 10.e-6, 0.1, 10.};
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
