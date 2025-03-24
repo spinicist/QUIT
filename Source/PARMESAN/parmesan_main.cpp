@@ -34,6 +34,10 @@ int parmesan_main(args::Subparser &parser) {
     QI_COMMON_ARGS;
     args::ValueFlag<std::string> mt(
         parser, "MT", "Use MT model (provide interp table for linearized GBM)", {"mt"});
+    args::ValueFlag<double> T2_f(parser, "T2_f", "Fix T2_f", {"T2_f"}, 0.07);
+    args::ValueFlag<double> T1_s(parser, "T1_s", "Fix T1_s", {"T1_s"}, 0.35);
+    args::ValueFlag<double> T2_s(parser, "T2_s", "Fix T2_s", {"T2_s"}, 14e-6);
+    args::ValueFlag<double> R_x(parser, "T2_f", "Fix R_x", {"R_x"}, 14);
     parser.Parse();
     QI::CheckPos(input_path);
     QI::Log(verbose, "Reading sequence parameters");
@@ -60,18 +64,27 @@ int parmesan_main(args::Subparser &parser) {
             auto    fit_filter = QI::ModelFitFilter<FitType>::New(
                 &fit, verbose, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs({input_path.Get()}, fixed, mask.Get());
+            fit_filter->SetRequestedRegionFromString(subregion.Get());
             fit_filter->Update();
+            fmt::print(stderr, "Returned from update\n");
             fit_filter->WriteOutputs(prefix.Get() + model_name);
+            fmt::print(stderr, "Wrote outputs\n");
         }
     };
 
     if (mt) {
-        json             lgbm = QI::ReadJSON(mt.Get());
-        QI::RegularGrid  R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),QI::ArrayFromJSON<double>(lgbm, "τ"),
-                             
+        json            lgbm = QI::ReadJSON(mt.Get());
+        QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
+                             QI::ArrayFromJSON<double>(lgbm, "τ"),
                              QI::MatrixFromJSON<double>(lgbm, "A"));
-        QI::PrepQMTModel model{{}, sequence, R2sl};
-        process(model, "PARMESAN_", {});
+        if (T2_f || T1_s || T2_s || R_x) {
+            QI::PrepQMTModel model{
+                {}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()};
+            process(model, "PARMESAN_", {});
+        } else {
+            QI::PrepQMTFullModel model{{}, sequence, R2sl};
+            process(model, "PARMESAN_full_", {});
+        }
     } else {
         PrepB1Model model{{}, sequence};
         process(model, "PARMESAN_", {});
