@@ -21,7 +21,7 @@
 
 using namespace std::literals;
 
-struct PLANETModel : QI::Model<double, double, 3, 1, 3> {
+struct PLANETModel : QI::Model<double, double, 3, 1, 3, 0, QI::RealNoise<double>> {
     const QI::SSFPSequence &sequence;
 
     static std::array<const std::string, NV> varying_names;

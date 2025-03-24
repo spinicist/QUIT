@@ -10,8 +10,8 @@ void from_json(const json &j, PrepZTESequence &s) {
     QI::GetJSON(j, "Dseg", s.Dseg);
     QI::GetJSON(j, "SPS", s.SPS);
     QI::GetJSON(j, "spoilers", s.spoilers);
-    s.FA     = QI::ArrayFromJSON(j, "FA", M_PI / 180.0);
-    s.FAprep = QI::ArrayFromJSON(j, "FAprep", M_PI / 180.0);
+    s.FA     = QI::ArrayFromJSON(j, "FA", (M_PI / 180.0));
+    s.FAprep = QI::ArrayFromJSON(j, "FAprep", (M_PI / 180.0));
     if (j.contains("basis")) {
         s.basis = QI::MatrixFromJSON(j, "basis", 1.0, -1, s.SPS * s.FAprep.size());
     }

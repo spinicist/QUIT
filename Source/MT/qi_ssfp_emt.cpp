@@ -25,9 +25,9 @@
 
 using namespace std::literals;
 
-struct EMTModel : QI::Model<double, double, 4, 2, 3> {
+struct EMTModel : QI::Model<double, double, 4, 2, 3, 0, QI::RealNoise<double>> {
     QI::SSFPMTSequence const &sequence;
-    Eigen::ArrayXd const &    W;
+    Eigen::ArrayXd const     &W;
 
     std::array<std::string, NV> const varying_names{"PD"s, "f_b"s, "k_bf"s, "T1_f"s};
     std::array<std::string, NF> const fixed_names{"B1"s, "T2_f"s};
@@ -45,12 +45,12 @@ struct EMTModel : QI::Model<double, double, 4, 2, 3> {
         -> std::vector<QI_ARRAY(typename Derived::Scalar)> {
         using T            = typename Derived::Scalar;
         using ArrayXT      = Eigen::Array<T, Eigen::Dynamic, 1>;
-        const T &     M0   = v[0];
-        const T &     f_b  = v[1];
-        const T &     f_f  = 1.0 - f_b;
-        const T &     k_bf = v[2];
-        const T &     T1_f = v[3];
-        const T &     T1_b = T1_f;
+        const T      &M0   = v[0];
+        const T      &f_b  = v[1];
+        const T      &f_f  = 1.0 - f_b;
+        const T      &k_bf = v[2];
+        const T      &T1_f = v[3];
+        const T      &T1_b = T1_f;
         double const &B1   = f[0];
         double const &T2_f = f[1];
 
@@ -124,12 +124,12 @@ struct EMTFit {
     int n_outputs() const { return 5; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          ModelType::FixedArray const &      fixed,
-                          ModelType::VaryingArray &          p,
-                          ModelType::CovarArray *            cov,
-                          RMSErrorType &                     rmse,
-                          std::vector<Eigen::ArrayXd> &      residuals,
-                          FlagType &                         iterations) const {
+                          ModelType::FixedArray const       &fixed,
+                          ModelType::VaryingArray           &p,
+                          ModelType::CovarArray             *cov,
+                          RMSErrorType                      &rmse,
+                          std::vector<Eigen::ArrayXd>       &residuals,
+                          FlagType                          &iterations) const {
         const double          scale = inputs[0].mean();
         const Eigen::ArrayXd &G     = inputs[0] / scale;
         const Eigen::ArrayXd &a     = inputs[1];
@@ -241,9 +241,8 @@ int ssfp_emt_main(args::Subparser &parser) {
             nullptr);
 
         EMTFit fit{model};
-        auto   fit_filter =
-            QI::ModelFitFilter<EMTFit>::New(
-                &fit, verbose, covar, resids, threads.Get(), subregion.Get());
+        auto   fit_filter = QI::ModelFitFilter<EMTFit>::New(
+            &fit, verbose, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get(), ""}, mask.Get());
         fit_filter->SetFixed(1, T2_f_calc);

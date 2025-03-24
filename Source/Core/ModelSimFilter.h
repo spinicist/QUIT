@@ -221,7 +221,7 @@ class ModelSimFilter
 
         while (!output_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {
-                QI_ARRAYN(double, ModelType::NV) varying;
+                QI_ARRAYN(typename ModelType::ParameterType, ModelType::NV) varying;
                 for (int i = 0; i < ModelType::NV; i++) {
                     varying[i] = varying_iters[i].Get();
                 }
@@ -240,7 +240,7 @@ class ModelSimFilter
                     const auto signals = m_model.signals(varying, fixed);
                     for (size_t i = 0; i < signals.size(); i++) {
                         const auto output =
-                            NoiseFromModelType<ModelType>::add_noise(signals[i], m_sigma);
+                            ModelType::NoiseType::Add(signals[i], m_sigma);
                         const auto output_io = output.template cast<OutputPixelType>().eval();
                         itk::VariableLengthVector<OutputPixelType> data_out(output_io.data(),
                                                                             output_io.rows());
@@ -248,7 +248,7 @@ class ModelSimFilter
                     }
                 } else {
                     const auto signal = m_model.signal(varying, fixed);
-                    const auto output = NoiseFromModelType<ModelType>::add_noise(signal, m_sigma);
+                    const auto output = ModelType::NoiseType::Add(signal, m_sigma);
                     const auto output_io = output.template cast<OutputPixelType>().eval();
                     itk::VariableLengthVector<OutputPixelType> data_out(output_io.data(),
                                                                         output_io.rows());

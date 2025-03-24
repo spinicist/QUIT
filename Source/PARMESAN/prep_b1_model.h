@@ -5,7 +5,7 @@
 #include "parmesan.hpp"
 #include "prep_sequence.h"
 
-struct PrepB1Model : QI::Model<double, double, 3, 0> {
+struct PrepB1Model : QI::Model<double, double, 3, 0, 1, 0, QI::RealNoise<double>> {
     static int const                  NS = 1;
     PrepZTESequence                  &sequence;
     std::array<std::string, NV> const varying_names{"M0", "T1", "B1"};
@@ -14,15 +14,16 @@ struct PrepB1Model : QI::Model<double, double, 3, 0> {
     VaryingArray const                hi{100., 5.0, 1.5};
     int input_size(const int /* Unused */) const { return sequence.size(); }
 
-    auto signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(double) {
-        using T      = double;
+    using PT = ParameterType;
+    using T = DataType;
+    auto signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(DataType) {
         using AugMat = Eigen::Matrix<T, 3, 3>;
         using AugVec = Eigen::Vector<T, 3>;
 
-        T const      M0 = v[0];
-        T const      R1 = 1. / v[1];
-        double const R2 = 10.;
-        T const      B1 = v[2];
+        PT const M0 = v[0];
+        PT const R1 = 1. / v[1];
+        PT const R2 = 10.;
+        PT const B1 = v[2];
 
         QI_DBVEC(v);
         // QI_DB(sequence.Trf)
@@ -36,7 +37,7 @@ struct PrepB1Model : QI::Model<double, double, 3, 0> {
             0, 0, 0;
         // QI_DBMAT(R);
         AugMat const Rrd  = (R * sequence.TR).exp();
-        using DT          = Eigen::DiagonalMatrix<double, 3, 3>;
+        using DT          = Eigen::DiagonalMatrix<T, 3, 3>;
         AugMat const S    = DT(DT::DiagonalVectorType{0., 1., 1.}).toDenseMatrix();
         AugMat const ramp = S * (R * sequence.Tramp).exp();
 
@@ -71,7 +72,7 @@ struct PrepB1Model : QI::Model<double, double, 3, 0> {
         AugVec const m_ss = SolveSteadyState(X);
 
         // Now loop through the segments and record the signal for each
-        Eigen::ArrayXd sig(sequence.SPS * sequence.FAprep.size());
+        QI_ARRAY(T) sig(sequence.SPS * sequence.FAprep.size());
         QI_DBVEC(m_ss);
         AugVec m  = m_ss;
         int    ii = 0;
@@ -92,4 +93,3 @@ struct PrepB1Model : QI::Model<double, double, 3, 0> {
         }
     }
 };
-template <> struct QI::NoiseFromModelType<PrepB1Model> : QI::RealNoise {};

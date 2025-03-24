@@ -18,7 +18,7 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-struct EllipseModel : QI::Model<std::complex<double>, double, 5, 0> {
+struct EllipseModel : QI::Model<std::complex<double>, double, 5, 0, 1, 0, QI::ComplexNoise<double>> {
     QI::SSFPSequence const &sequence;
 
     std::array<const std::string, NV> const varying_names{"G", "a", "b", "theta_0", "phi_rf"};

@@ -66,6 +66,8 @@ ArrayFromJSON(json const &val, std::string const &key, T const scale, Eigen::Ind
         QI::Fail("Error reading from JSON array {}: {}", key, e.what());
     }
 }
+template Eigen::ArrayXf
+ArrayFromJSON(json const &val, std::string const &key, float const scale, Eigen::Index const sz);
 template Eigen::ArrayXd
 ArrayFromJSON(json const &val, std::string const &key, double const scale, Eigen::Index const sz);
 template Eigen::ArrayXi
@@ -109,6 +111,11 @@ Eigen::Array<T, -1, -1> MatrixFromJSON(json const        &val,
         QI::Fail("Error reading from JSON array {}: {}", key, e.what());
     }
 }
+template Eigen::Array<float, -1, -1>  MatrixFromJSON(json const        &val,
+                                                     std::string const &key,
+                                                     float const        scale,
+                                                     Eigen::Index const rows,
+                                                     Eigen::Index const cols);
 template Eigen::Array<double, -1, -1> MatrixFromJSON(json const        &val,
                                                      std::string const &key,
                                                      double const       scale,
@@ -127,7 +134,7 @@ template <typename T> void GetJSON(json const &j, std::string const &key, T &val
         QI::Fail("Error reading from JSON value {}: {}", key, e.what());
     }
 }
-
+template void GetJSON<float>(json const &j, std::string const &key, float &val);
 template void GetJSON<double>(json const &j, std::string const &key, double &val);
 template void GetJSON<int>(json const &j, std::string const &key, int &val);
 

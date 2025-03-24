@@ -20,11 +20,34 @@
 namespace QI {
 
 /*
+ *  Noise distributions for simulations
+ */
+template <typename T> struct RealNoise {
+    static auto Add(QI_ARRAY(T) const &s, T const sigma) -> QI_ARRAY(T);
+};
+
+template <typename T> struct RicianNoise {
+    static auto Add(QI_ARRAY(T) const &s, T const sigma) -> QI_ARRAY(T);
+};
+
+template <typename T> struct ComplexNoise {
+    static auto Add(QI_ARRAY(std::complex<T>) const &s, T const sigma) -> QI_ARRAY(std::complex<T>);
+};
+
+/*
  *  Standard Model interface
  */
-template <typename DT_, typename PT_, int NV_, int NF_, int NI_ = 1, int ND_ = 0> struct Model {
+template <typename DT_,
+          typename PT_,
+          int NV_,
+          int NF_,
+          int NI_      = 1,
+          int ND_      = 0,
+          typename NT_ = RicianNoise<DT_>>
+struct Model {
     using DataType      = DT_;
     using ParameterType = PT_;
+    using NoiseType     = NT_;
 
     static constexpr int NV = NV_; // Number of varying parameters
     static constexpr int NF = NF_; // Number of fixed parameters (fixed per voxel, e.g. B1)
@@ -54,10 +77,10 @@ template <typename DT_, typename PT_, int NV_, int NF_, int NI_ = 1, int ND_ = 0
  * the standard deviation of each variable to get the correlation.
  */
 template <typename Model>
-void GetModelCovariance(ceres::Problem &                    p,
+void GetModelCovariance(ceres::Problem                     &p,
                         typename Model::VaryingArray const &v,
-                        double const &                      scale,
-                        typename Model::CovarArray *        ptr) {
+                        double const                       &scale,
+                        typename Model::CovarArray         *ptr) {
     ceres::Covariance::Options cov_options;
     ceres::Covariance          cov_c(cov_options);
     cov_c.Compute({std::make_pair(v.data(), v.data())}, &p);
@@ -85,7 +108,7 @@ template <typename Model> struct ModelCost {
     using VaryingArray = typename Model::VaryingArray;
     using FixedArray   = typename Model::FixedArray;
     using DataArray    = QI_ARRAY(typename Model::DataType);
-    const Model &    model;
+    const Model     &model;
     const FixedArray fixed;
     const DataArray  data;
 
@@ -109,10 +132,15 @@ template <typename Model> struct ModelCost {
  *  Helper struct for converting between double/float for processing & IO
  */
 template <typename DataType> struct IOPrecision;
-
-template <> struct IOPrecision<double> { using Type = float; };
-
-template <> struct IOPrecision<std::complex<double>> { using Type = std::complex<float>; };
+template <> struct IOPrecision<float> {
+    using Type = float;
+};
+template <> struct IOPrecision<double> {
+    using Type = float;
+};
+template <> struct IOPrecision<std::complex<double>> {
+    using Type = std::complex<float>;
+};
 
 /*
  *  Helper struct for blocked filter output types
@@ -126,25 +154,5 @@ template <int ImageDimension, typename T> struct BlockTypes<true, ImageDimension
 template <int ImageDimension, typename T> struct BlockTypes<false, ImageDimension, T> {
     using Type = itk::Image<T, ImageDimension>;
 };
-
-/*
- *  Which noise type to choose
- */
-template <typename DataType> struct NoiseFromDataType;
-
-template <> struct NoiseFromDataType<double> {
-    static Eigen::ArrayXd add_noise(Eigen::ArrayXd const &s, double const sigma);
-};
-
-template <> struct NoiseFromDataType<std::complex<double>> {
-    static Eigen::ArrayXcd add_noise(Eigen::ArrayXcd const &s, double const sigma);
-};
-
-struct RealNoise {
-    static Eigen::ArrayXd add_noise(Eigen::ArrayXd const &s, double const sigma);
-};
-
-template <typename ModelType>
-struct NoiseFromModelType : NoiseFromDataType<typename ModelType::DataType> {};
 
 } // End namespace QI

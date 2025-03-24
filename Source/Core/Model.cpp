@@ -4,32 +4,37 @@
 
 namespace QI {
 
-Eigen::ArrayXd NoiseFromDataType<double>::add_noise(Eigen::ArrayXd const &s, double const sigma) {
-    Eigen::ArrayXcd noise(s.rows());
+template <typename T>
+auto RicianNoise<T>::Add(QI_ARRAY(T) const &s, T const sigma) -> QI_ARRAY(T) {
+    QI_ARRAY(T) noise(s.rows());
     // Simple Box Muller transform
-    Eigen::ArrayXd U = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
-    Eigen::ArrayXd V = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
-    noise.real()     = (sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
-    noise.imag()     = (sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
-    Eigen::ArrayXcd coutput(s.rows());
-    coutput.real() = s + noise.real();
-    coutput.imag() = noise.imag();
-    return coutput.abs();
+    QI_ARRAY(T) U = (QI_ARRAY(T)::Random(s.rows()) * 0.5) + 0.5;
+    QI_ARRAY(T) V = (QI_ARRAY(T)::Random(s.rows()) * 0.5) + 0.5;
+    QI_ARRAY(T) real     = (sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
+    QI_ARRAY(T) imag     = (sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
+    return ((s + real).abs2() + imag.abs2()).sqrt();
 }
+template struct RicianNoise<float>;
+template struct RicianNoise<double>;
 
-Eigen::ArrayXcd NoiseFromDataType<std::complex<double>>::add_noise(Eigen::ArrayXcd const &s,
-                                                                   double const           sigma) {
-    Eigen::ArrayXcd noise(s.rows());
+template <typename T>
+auto ComplexNoise<T>::Add(QI_ARRAY(std::complex<T>) const &s,
+                                             T const sigma) -> QI_ARRAY(std::complex<T>) {
+    QI_ARRAY(std::complex<T>) noise(s.rows());
     // Simple Box Muller transform
-    Eigen::ArrayXd U = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
-    Eigen::ArrayXd V = (Eigen::ArrayXd::Random(s.rows()) * 0.5) + 0.5;
+    QI_ARRAY(T) U = (QI_ARRAY(T)::Random(s.rows()) * 0.5) + 0.5;
+    QI_ARRAY(T) V = (QI_ARRAY(T)::Random(s.rows()) * 0.5) + 0.5;
     noise.real()     = (sigma / M_SQRT2) * (-2. * U.log()).sqrt() * cos(2. * M_PI * V);
     noise.imag()     = (sigma / M_SQRT2) * (-2. * V.log()).sqrt() * sin(2. * M_PI * U);
     return s + noise;
 }
+template struct ComplexNoise<float>;
+template struct ComplexNoise<double>;
 
-Eigen::ArrayXd RealNoise::add_noise(Eigen::ArrayXd const &s, double const sigma) {
-    return s + Eigen::ArrayXd::Random(s.rows()) * sigma;
+template <typename T> auto RealNoise<T>::Add(QI_ARRAY(T) const &s, T const sigma) -> QI_ARRAY(T) {
+    return s + QI_ARRAY(T)::Random(s.rows()) * sigma;
 }
+template struct RealNoise<float>;
+template struct RealNoise<double>;
 
 } // namespace QI

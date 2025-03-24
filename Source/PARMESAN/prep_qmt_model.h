@@ -6,7 +6,7 @@
 #include "prep_sequence.h"
 
 namespace QI {
-struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
+struct PrepQMTModel : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
     static int const NS = 1; // Number of parameters that need to be scaled
     PrepZTESequence &sequence;
     RegularGrid     &A_sl;
@@ -21,13 +21,17 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
 
-    using T      = double;
-    using AugMat = Eigen::Matrix<T, 6, 6>; // Short for Augmented Matrix
-    using AugVec = Eigen::Vector<T, 6>;
+    using PT     = ParameterType;
+    using MT     = double;                   // Do the matrix maths at reduced precision for speed
+    using AugMat = Eigen::Matrix<MT, 6, 6>; // Short for Augmented Matrix
+    using AugVec = Eigen::Vector<MT, 6>;
 
-    auto
-    Relax(T const M0_f, T const R1_f, T const R2_f, T const M0_s, T const R1_s, T const R2_s) const
-        -> AugMat {
+    auto Relax(PT const M0_f,
+               PT const R1_f,
+               PT const R2_f,
+               PT const M0_s,
+               PT const R1_s,
+               PT const R2_s) const -> AugMat {
         AugMat R;
         R.setZero();
         R(0, 0) = -R2_f;
@@ -40,7 +44,7 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
         return R;
     }
 
-    auto Exchange(T const R_fs, T const R_sf) const -> AugMat {
+    auto Exchange(PT const R_fs, PT const R_sf) const -> AugMat {
         AugMat K;
         K.setZero();
         K(2, 2) = -R_fs;
@@ -50,10 +54,10 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
         return K;
     }
 
-    auto RF(T const flip, T const pw, T const B1, T const R2_s) const -> AugMat {
-        T const B1x = B1 * flip / pw;
-        T const τ   = pw * R2_s;
-        T const ω   = B1 * flip / τ;
+    auto RF(PT const flip, PT const pw, PT const B1, PT const R2_s) const -> AugMat {
+        PT const B1x = B1 * flip / pw;
+        PT const τ   = pw * R2_s;
+        PT const ω   = B1 * flip / τ;
         AugMat  rf;
         rf.setZero();
         rf(1, 2) = B1x;
@@ -73,20 +77,20 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
         return S;
     }
 
-    auto signal(VaryingArray const &v, FixedArray const &f) const -> QI_ARRAY(T) {
-        T const M0   = v[0];
-        T const R1_f = 1. / v[1];
-        T const f_s  = v[2];
-        T const f_f  = 1.0 - f_s;
-        T const B1   = v[3];
-        T const R2_f = T(1) / f[0];
-        T const R1_s = T(1) / f[1];
-        T const R2_s = T(1) / f[2];
-        T const Rx   = T(f[3]);
-        T const M0_s = f_s * M0;
-        T const M0_f = M0 - M0_s;
-        T const R_fs = Rx * f_s;
-        T const R_sf = Rx * f_f;
+    auto signal(VaryingArray const &v, FixedArray const &f) const -> QI_ARRAY(DataType) {
+        PT const M0   = v[0];
+        PT const R1_f = 1. / v[1];
+        PT const f_s  = v[2];
+        PT const f_f  = 1.0 - f_s;
+        PT const B1   = v[3];
+        PT const R2_f = PT(1) / f[0];
+        PT const R1_s = PT(1) / f[1];
+        PT const R2_s = PT(1) / f[2];
+        PT const Rx   = PT(f[3]);
+        PT const M0_s = f_s * M0;
+        PT const M0_f = M0 - M0_s;
+        PT const R_fs = Rx * f_s;
+        PT const R_sf = Rx * f_f;
 
         // State vector is [x_f y_f z_f x_s z_s 1]
         AugMat       R        = Relax(M0_f, R1_f, R2_f, M0_s, R1_s, R2_s);
@@ -95,8 +99,8 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
         AugMat const S        = Spoil();
         AugMat const ramp     = S * (RpK * sequence.Tramp).exp();
         AugMat const spoilTRs = S * (RpK * sequence.TR * sequence.spoilers).exp();
-        AugMat const Dprep = (RpK * sequence.Dprep).exp();
-        AugMat const Dseg = (RpK * sequence.Dseg).exp();
+        AugMat const Dprep    = (RpK * sequence.Dprep).exp();
+        AugMat const Dseg     = (RpK * sequence.Dseg).exp();
         // QI_DBMAT(R)
         // QI_DBMAT(K)
         // QI_DBMAT(S)
@@ -108,7 +112,7 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
             auto const rfa = RF(sequence.FA[ip], sequence.Trf, B1, R2_s);
             A_mats[ip]     = ((RpK + rfa) * sequence.Trf).exp();
             R_mats[ip]     = (RpK * (sequence.TR - sequence.Trf)).exp();
-            seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(T(sequence.SPS)) * spoilTRs;
+            seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
             AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s);
             prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep).exp();
         }
@@ -120,11 +124,11 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
         AugVec const m_ss = SolveSteadyState(X);
         QI_DBVEC(m_ss);
         // Now loop through the segments and record the signal for each
-        QI_ARRAY(T) sig(sequence.SPS * sequence.FAprep.size());
+        QI_ARRAY(DataType) sig(sequence.SPS * sequence.FAprep.size());
         AugVec m  = m_ss;
         int    ii = 0;
         for (int ip = 0; ip < sequence.preps(); ip++) {
-            m =  spoilTRs * ramp * Dprep * prep_mats[ip] * m;
+            m = spoilTRs * ramp * Dprep * prep_mats[ip] * m;
             for (int is = 0; is < sequence.SPS; is++) {
                 m         = A_mats[ip] * m;
                 sig[ii++] = m[1];
@@ -140,5 +144,4 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
     }
 };
 
-template <> struct NoiseFromModelType<PrepQMTModel> : RealNoise {};
 } // namespace QI

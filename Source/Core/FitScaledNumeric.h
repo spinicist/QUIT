@@ -18,17 +18,17 @@ struct ScaledNumericDiffFit : FitFunction<ModelType, int> {
     // on Blocked/Indexed. The return type is a simple struct indicating success, and on failure
     // also the reason for failure
     QI::FitReturnType
-    fit(std::vector<Eigen::ArrayXd> const &   inputs,  // Input: signal data
-        typename ModelType::FixedArray const &fixed,   // Input: Fixed parameters
-        typename ModelType::VaryingArray &    varying, // Output: Varying parameters
-        typename ModelType::CovarArray *      cov,
-        RMSErrorType &                        rmse,      // Output: root-mean-square error
-        std::vector<Eigen::ArrayXd> &         residuals, // Optional output: point residuals
-        int &                                 iterations /* Usually iterations */) const override {
+    fit(std::vector<QI_ARRAY(InputType)> const &inputs,  // Input: signal data
+        typename ModelType::FixedArray const   &fixed,   // Input: Fixed parameters
+        typename ModelType::VaryingArray       &varying, // Output: Varying parameters
+        typename ModelType::CovarArray         *cov,
+        RMSErrorType                           &rmse,      // Output: root-mean-square error
+        std::vector<QI_ARRAY(InputType)>       &residuals, // Optional output: point residuals
+        int &iterations /* Usually iterations */) const override {
         // First scale down the raw data so that PD will be roughly the same magnitude as other
         // parameters This is important for numerical stability in the optimiser
-        double scale = inputs[0].maxCoeff();
-        if (scale < std::numeric_limits<double>::epsilon()) {
+        InputType scale = inputs[0].maxCoeff();
+        if (scale < std::numeric_limits<InputType>::epsilon()) {
             varying = ModelType::VaryingArray::Zero();
             rmse    = 0.0;
             return {false, "Maximum data value was zero or less"};
@@ -65,15 +65,15 @@ struct ScaledNumericDiffFit : FitFunction<ModelType, int> {
 
         varying = this->model.start;
         ceres::Solve(options, &problem, &summary);
-        #ifdef QI_DEBUG_BUILD
-            fmt::print(stderr, "Summary\n{}\n", summary.FullReport());
-        #endif
+#ifdef QI_DEBUG_BUILD
+        fmt::print(stderr, "Summary\n{}\n", summary.FullReport());
+#endif
         if (!summary.IsSolutionUsable()) {
             return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
-        double              var;
-        std::vector<double> rs(data.size());
+        InputType              var;
+        std::vector<InputType> rs(data.size());
         problem.Evaluate(ceres::Problem::EvaluateOptions(), &var, &rs, nullptr, nullptr);
         rmse = sqrt(var / data.rows()) * scale;
         if (residuals.size() > 0) {
