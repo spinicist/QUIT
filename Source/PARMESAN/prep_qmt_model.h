@@ -12,8 +12,8 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
     RegularGrid     &A_sl;
     // Pools are "free" and "semi-solid"
     std::array<std::string, NV> const varying_names{"M0", "T1_f", "f_s", "B1"};
-    VaryingArray const                start{30.0, 2.0, 0.1, 1.0};
-    VaryingArray const                lo{0.1, 0.5, 0.01, 0.5};
+    VaryingArray const                start{1.0, 2.0, 0.1, 1.0};
+    VaryingArray const                lo{0.01, 0.5, 0.01, 0.5};
     VaryingArray const                hi{100.0, 5.0, 0.5, 1.5};
 
     std::array<std::string, NF> const fixed_names{"T2_f", "T1_s", "T2_s", "Rx"};
@@ -89,11 +89,14 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
         T const R_sf = Rx * f_f;
 
         // State vector is [x_f y_f z_f x_s z_s 1]
-        AugMat              R    = Relax(M0_f, R1_f, R2_f, M0_s, R1_s, R2_s);
-        AugMat              K    = Exchange(R_fs, R_sf);
-        AugMat const        RpK  = R + K;
-        AugMat const        S    = Spoil();
-        AugMat const        ramp = S * (RpK * sequence.Tramp).exp();
+        AugMat       R        = Relax(M0_f, R1_f, R2_f, M0_s, R1_s, R2_s);
+        AugMat       K        = Exchange(R_fs, R_sf);
+        AugMat const RpK      = R + K;
+        AugMat const S        = Spoil();
+        AugMat const ramp     = S * (RpK * sequence.Tramp).exp();
+        AugMat const spoilTRs = S * (RpK * sequence.TR * sequence.spoilers).exp();
+        AugMat const Dprep = (RpK * sequence.Dprep).exp();
+        AugMat const Dseg = (RpK * sequence.Dseg).exp();
         // QI_DBMAT(R)
         // QI_DBMAT(K)
         // QI_DBMAT(S)
@@ -105,14 +108,14 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
             auto const rfa = RF(sequence.FA[ip], sequence.Trf, B1, R2_s);
             A_mats[ip]     = ((RpK + rfa) * sequence.Trf).exp();
             R_mats[ip]     = (RpK * (sequence.TR - sequence.Trf)).exp();
-            seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(T(sequence.SPS));
+            seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(T(sequence.SPS)) * spoilTRs;
             AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s);
             prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep).exp();
         }
         // First calculate the system matrix
         AugMat X = AugMat::Identity();
         for (int ip = 0; ip < sequence.preps(); ip++) {
-            X = ramp * seg_mats[ip] * ramp * prep_mats[ip] * X;
+            X = Dseg * ramp * seg_mats[ip] * ramp * Dprep * prep_mats[ip] * X;
         }
         AugVec const m_ss = SolveSteadyState(X);
         QI_DBVEC(m_ss);
@@ -121,13 +124,13 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0> {
         AugVec m  = m_ss;
         int    ii = 0;
         for (int ip = 0; ip < sequence.preps(); ip++) {
-            m = ramp * prep_mats[ip] * m;
+            m =  spoilTRs * ramp * Dprep * prep_mats[ip] * m;
             for (int is = 0; is < sequence.SPS; is++) {
                 m         = A_mats[ip] * m;
                 sig[ii++] = m[1];
                 m         = S * R_mats[ip] * m;
             }
-            m = ramp * m;
+            m = Dseg * ramp * m;
         }
         if (sequence.basis.size()) {
             return sequence.basis * sig.matrix();

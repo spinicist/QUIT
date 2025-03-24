@@ -6,6 +6,8 @@ void from_json(const json &j, PrepZTESequence &s) {
     QI::GetJSON(j, "Trf", s.Trf);
     QI::GetJSON(j, "Tprep", s.Tprep);
     QI::GetJSON(j, "Tramp", s.Tramp);
+    QI::GetJSON(j, "Dprep", s.Dprep);
+    QI::GetJSON(j, "Dseg", s.Dseg);
     QI::GetJSON(j, "SPS", s.SPS);
     QI::GetJSON(j, "spoilers", s.spoilers);
     s.FA     = QI::ArrayFromJSON(j, "FA", M_PI / 180.0);

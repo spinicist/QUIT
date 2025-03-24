@@ -3,7 +3,7 @@
 #include "SequenceBase.h"
 
 struct PrepZTESequence : QI::SequenceBase {
-    double          TR, Tramp, Trf, Tprep;
+    double          TR, Tramp, Trf, Tprep, Dprep, Dseg;
     int             SPS, spoilers;
     Eigen::ArrayXd  FA, FAprep;
     Eigen::MatrixXd basis;
