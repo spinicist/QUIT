@@ -104,19 +104,17 @@ class ModelFitFilter
                    const bool         allResids,
                    const int          nThreads,
                    std::string const &subregion) :
-        m_fit(f), m_verbose(v), m_allResiduals(allResids), m_covar(covar) {
+        m_fit(f),
+        m_verbose(v), m_allResiduals(allResids), m_covar(covar) {
         this->SetNumberOfRequiredInputs(ModelType::NI);
         this->SetNumberOfRequiredOutputs(TotalOutputs);
         for (int i = 0; i < TotalOutputs; i++) {
             this->SetNthOutput(i, this->MakeOutput(i));
         }
+        this->SetRequestedRegionFromString(subregion);
         if (m_verbose) {
             auto monitor = QI::GenericMonitor::New();
             this->AddObserver(itk::ProgressEvent(), monitor);
-        }
-        if (subregion != "") {
-            m_subregion    = RegionFromString<TRegion>(subregion);
-            m_hasSubregion = true;
         }
         this->DynamicMultiThreadingOn();
         this->ThreaderUpdateProgressOff();
@@ -175,9 +173,16 @@ class ModelFitFilter
     void SetOutputAllResiduals(const bool r) { m_allResiduals = r; }
     void SetOutputCovar(const bool covar) { m_covar = covar; }
 
-    void SetSubregion(const TRegion &sr) {
-        m_subregion    = sr;
-        m_hasSubregion = true;
+    void SetRequestedRegion(const TRegion &sr) {
+        for (int i = 0; i < ModelType::NV; i++) {
+            this->GetOutput(i)->SetRequestedRegion(sr);
+        }
+    }
+
+    void SetRequestedRegionFromString(std::string const &sr) {
+        if (sr != "") {
+            this->SetRequestedRegion(RegionFromString<TRegion>(sr));
+        }
     }
 
     void SetBlocks(const int &nb) {
@@ -265,29 +270,29 @@ class ModelFitFilter
     void WriteOutputs(std::string const &prefix) {
         for (int i = 0; i < ModelType::NV; i++) {
             QI::WriteImage(
-                GetOutput(i), prefix + m_fit->model.varying_names.at(i) + QI::OutExt(), m_verbose);
+                this->GetOutput(i), prefix + m_fit->model.varying_names.at(i) + QI::OutExt(), m_verbose);
         }
         if constexpr (ModelType::ND > 0) {
             for (int i = 0; i < ModelType::ND; i++) {
-                QI::WriteImage(GetDerivedOutput(i),
+                QI::WriteImage(this->GetDerivedOutput(i),
                                prefix + m_fit->model.derived_names.at(i) + QI::OutExt(),
                                m_verbose);
             }
         }
-        QI::WriteImage(GetRMSErrorOutput(), prefix + "rmse" + QI::OutExt(), m_verbose);
-        QI::WriteImage(GetFlagOutput(), prefix + "iterations" + QI::OutExt(), m_verbose);
+        QI::WriteImage(this->GetRMSErrorOutput(), prefix + "rmse" + QI::OutExt(), m_verbose);
+        QI::WriteImage(this->GetFlagOutput(), prefix + "iterations" + QI::OutExt(), m_verbose);
         if (m_covar) {
             for (int ii = 0; ii < ModelType::NV; ii++) {
                 auto const &name = m_fit->model.varying_names.at(ii);
                 QI::WriteImage(
-                    GetCovarOutput(ii), prefix + "CoV_" + name + QI::OutExt(), m_verbose);
+                    this->GetCovarOutput(ii), prefix + "CoV_" + name + QI::OutExt(), m_verbose);
             }
             int index = ModelType::NV;
             for (int ii = 0; ii < ModelType::NV; ii++) {
                 auto const &name1 = m_fit->model.varying_names.at(ii);
                 for (int jj = ii + 1; jj < ModelType::NV; jj++) {
                     auto const &name2 = m_fit->model.varying_names.at(jj);
-                    QI::WriteImage(GetCovarOutput(index++),
+                    QI::WriteImage(this->GetCovarOutput(index++),
                                    prefix + "Corr_" + name1 + "_" + name2 + QI::OutExt(),
                                    m_verbose);
                 }
@@ -295,7 +300,7 @@ class ModelFitFilter
         }
         if (m_allResiduals) {
             for (int i = 0; i < ModelType::NI; i++) {
-                QI::WriteImage(GetResidualsOutput(i),
+                QI::WriteImage(this->GetResidualsOutput(i),
                                prefix + "residuals_" + std::to_string(i) + QI::OutExt(),
                                m_verbose);
             }
@@ -333,8 +338,6 @@ class ModelFitFilter
 
     const FitType *m_fit;
     const bool     m_verbose, m_allResiduals, m_covar;
-    bool           m_hasSubregion = false;
-    TRegion        m_subregion;
     int            m_blocks = 1;
 
     virtual void GenerateOutputInformation() override {
@@ -359,7 +362,7 @@ class ModelFitFilter
             }
         }
 
-        Log(m_verbose, "Allocating output image memory");
+        Log(m_verbose, "Setting output information");
         auto input     = this->GetInput(0);
         auto region    = input->GetLargestPossibleRegion();
         auto spacing   = input->GetSpacing();
@@ -368,60 +371,107 @@ class ModelFitFilter
 
         for (int i = 0; i < ModelType::NV; i++) {
             auto op = this->GetOutput(i);
-            op->SetRegions(region);
+            op->SetLargestPossibleRegion(region);
             op->SetSpacing(spacing);
             op->SetOrigin(origin);
             op->SetDirection(direction);
             if constexpr (Blocked) {
                 op->SetNumberOfComponentsPerPixel(m_blocks);
             }
-            op->Allocate(true);
         }
 
         if constexpr (HasDerived) {
             for (int i = 0; i < ModelType::ND; i++) {
                 auto op = this->GetDerivedOutput(i);
-                op->SetRegions(region);
+                op->SetLargestPossibleRegion(region);
                 op->SetSpacing(spacing);
                 op->SetOrigin(origin);
                 op->SetDirection(direction);
                 if constexpr (Blocked) {
                     op->SetNumberOfComponentsPerPixel(m_blocks);
                 }
-                op->Allocate(true);
             }
         }
 
         auto f = this->GetFlagOutput();
-        f->SetRegions(region);
+        f->SetLargestPossibleRegion(region);
         f->SetSpacing(spacing);
         f->SetOrigin(origin);
         f->SetDirection(direction);
         if constexpr (Blocked) {
             f->SetNumberOfComponentsPerPixel(m_blocks);
         }
-        f->Allocate(true);
 
         auto rms = this->GetRMSErrorOutput();
-        rms->SetRegions(region);
+        rms->SetLargestPossibleRegion(region);
         rms->SetSpacing(spacing);
         rms->SetOrigin(origin);
         rms->SetDirection(direction);
         if constexpr (Blocked) {
             rms->SetNumberOfComponentsPerPixel(m_blocks);
         }
-        rms->Allocate(true);
 
         if (m_covar) {
             for (int ii = 0; ii < ModelType::NCov; ii++) {
                 auto op = this->GetCovarOutput(ii);
-                op->SetRegions(region);
+                op->SetLargestPossibleRegion(region);
                 op->SetSpacing(spacing);
                 op->SetOrigin(origin);
                 op->SetDirection(direction);
                 if constexpr (Blocked) {
                     op->SetNumberOfComponentsPerPixel(m_blocks);
                 }
+            }
+        }
+
+        if (m_allResiduals) {
+            for (int i = 0; i < ModelType::NI; i++) {
+                auto res = this->GetResidualsOutput(i);
+                res->SetLargestPossibleRegion(region);
+                res->SetSpacing(spacing);
+                res->SetOrigin(origin);
+                res->SetDirection(direction);
+                res->SetNumberOfComponentsPerPixel(m_fit->input_size(i) * m_blocks);
+            }
+        }
+    }
+
+    virtual void AllocateOutputs() override {
+        auto const lr = this->GetOutput(0)->GetLargestPossibleRegion();
+        auto const rr = this->GetOutput(0)->GetRequestedRegion();
+
+        Log(m_verbose, "Allocating output image memory");
+        for (int i = 0; i < ModelType::NV; i++) {
+            auto op = this->GetOutput(i);
+            op->SetBufferedRegion(lr);
+            op->SetRequestedRegion(rr);
+            op->Allocate(true);
+        }
+
+        if constexpr (HasDerived) {
+            for (int i = 0; i < ModelType::ND; i++) {
+                auto op = this->GetDerivedOutput(i);
+                op->SetBufferedRegion(lr);
+                op->SetRequestedRegion(rr);
+                op->Allocate(true);
+            }
+        }
+
+        auto f = this->GetFlagOutput();
+        f->SetBufferedRegion(lr);
+        f->SetRequestedRegion(rr);
+        f->Allocate(true);
+
+        auto rms = this->GetRMSErrorOutput();
+        rms->SetBufferedRegion(lr);
+        rms->SetRequestedRegion(rr);
+        rms->Allocate(true);
+
+        if (m_covar) {
+            for (int ii = 0; ii < ModelType::NCov; ii++) {
+                auto op = this->GetCovarOutput(ii);
+                op->SetBufferedRegion(lr);
+                op->SetRequestedRegion(rr);
                 op->Allocate(true);
             }
         }
@@ -429,35 +479,19 @@ class ModelFitFilter
         if (m_allResiduals) {
             for (int i = 0; i < ModelType::NI; i++) {
                 auto res = this->GetResidualsOutput(i);
-                res->SetRegions(region);
-                res->SetSpacing(spacing);
-                res->SetOrigin(origin);
-                res->SetDirection(direction);
-                res->SetNumberOfComponentsPerPixel(m_fit->input_size(i) * m_blocks);
+                res->SetBufferedRegion(lr);
+                res->SetRequestedRegion(rr);
                 res->Allocate(true);
             }
         }
     }
 
-    virtual void GenerateData() override {
-        auto region = this->GetInput(0)->GetLargestPossibleRegion();
-        if (m_hasSubregion) {
-            if (region.IsInside(m_subregion)) {
-                region = m_subregion;
-            } else {
-                itkExceptionMacro("Specified subregion is not entirely inside image.");
-            }
-        }
+    virtual void BeforeThreadedGenerateData() override {
+        QI::Info(m_verbose, "Starting model fit");
+    }
 
-        Info(m_verbose, "Processing...");
-        this->GetMultiThreader()->SetNumberOfWorkUnits(this->GetNumberOfWorkUnits());
-        this->GetMultiThreader()->template ParallelizeImageRegion<ImageDim>(
-            region,
-            [this](const typename TOutputImage::RegionType &outputRegion) {
-                this->DynamicThreadedGenerateData(outputRegion);
-            },
-            this);
-        Info(m_verbose, "Finished processing.");
+    virtual void AfterThreadedGenerateData() override {
+        QI::Info(m_verbose, "Finished model fit");
     }
 
     virtual void DynamicThreadedGenerateData(const TRegion &region) override {
@@ -514,7 +548,8 @@ class ModelFitFilter
         FixedArray   fixed;
         CovarArray  *covar = m_covar ? new CovarArray : nullptr;
 
-        itk::TotalProgressReporter progress(this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 20);
+        itk::TotalProgressReporter progress(
+            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 100);
 
         while (!input_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {
