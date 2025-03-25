@@ -76,7 +76,7 @@ void make_image(args::Positional<std::string> &fName,
         QI::Log(verbose, "Fill starts at {}, ends at {}", end_vals[0], end_vals[1]);
         if (steps_arg) {
             deltaVal    = (end_vals[1] - end_vals[0]) / steps_arg.Get();
-            step_length = (imgSize[grad_dim.Get()] - 1) / steps_arg.Get();
+            step_length = std::max((imgSize[grad_dim.Get()] - 1) / steps_arg.Get(), 1UL);
             QI::Log(verbose,
                     "Number of steps is {}, step length is {}, step value is {}",
                     steps_arg.Get(),
@@ -134,7 +134,7 @@ int newimage_main(args::Subparser &parser) {
     args::ValueFlag<int>         grad_dim(
         parser, "GRAD DIM", "Fill with a gradient along this axis", {'g', "grad_dim"}, 0);
     args::ValueFlag<std::string> grad_arg(
-        parser, "GRAD END", "Gradient low/high values (low, high)", {'v', "grad_vals"}, "0,0");
+        parser, "GRAD END", "Gradient low/high values (low, high)", {'l', "grad_vals"}, "0,0");
     args::ValueFlag<int> steps_arg(
         parser, "STEPS", "Number of discrete steps (steps)", {'t', "steps"}, 1);
     args::ValueFlag<float> wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
