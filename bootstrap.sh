@@ -30,7 +30,7 @@ else
 fi
 
 # If vcpkg is not installed, install it
-if [[ (-x "$( command -v vcpkg )") && (-n $VCPKG_ROOT) ]]; then
+if [[ (-x "$( command -v vcpkg )") && (-n "${VCPKG_ROOT:-}") ]]; then
   echo "vcpkg installed"
 else
   git clone https://github.com/microsoft/vcpkg.git .vcpkg
