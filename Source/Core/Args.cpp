@@ -12,6 +12,8 @@
 #include "Args.h"
 #include "Util.h"
 
+#include "itkMultiThreaderBase.h"
+
 args::Group          global_group("GLOBAL OPTIONS");
 args::HelpFlag       help(global_group, "HELP", "Show this help message", {'h', "help"});
 args::Flag           verbose(global_group, "VERBOSE", "Talk more", {'v', "verbose"});
@@ -20,3 +22,9 @@ args::ValueFlag<int> threads(global_group,
                              "Use N threads (default=hardware limit or $QUIT_THREADS)",
                              {'T', "threads"},
                              QI::GetDefaultThreads());
+
+void Parse(args::Subparser &parser) {
+    parser.Parse();
+    QI::SetVerbose(verbose.Get());
+    itk::MultiThreaderBase::SetGlobalDefaultNumberOfThreads(threads.Get());
+}

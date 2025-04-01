@@ -13,6 +13,7 @@
 #include <thread>
 
 #include "itkDivideImageFilter.h"
+#include "itkMultiThreaderBase.h"
 #include "itkMultiplyImageFilter.h"
 #include "itkVectorMagnitudeImageFilter.h"
 
@@ -50,7 +51,7 @@ const std::string &GetVersion() {
  * returned.
  */
 const std::string &OutExt() {
-    static char *      env_ext = getenv("QUIT_EXT");
+    static char       *env_ext = getenv("QUIT_EXT");
     static std::string ext;
     static bool        checked = false;
     if (!checked) {

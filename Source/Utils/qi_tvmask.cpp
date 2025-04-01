@@ -24,11 +24,6 @@
  */
 int tvmask_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<float> thresh(

@@ -67,6 +67,8 @@ template <typename TArray, const int size> void ArrayArgF(const std::string &a, 
 
 } // End namespace QI
 
+void Parse(args::Subparser &parser);
+
 extern args::Group          global_group;
 extern args::HelpFlag       help;
 extern args::Flag           verbose;

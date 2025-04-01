@@ -93,12 +93,7 @@ template <typename TImage> class NegateFilter : public InPlaceImageFilter<TImage
 } // End namespace itk
 
 int complex_main(args::Subparser &parser) {
-    args::ValueFlag<int> threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
-    args::Flag           use_double(
+    args::Flag use_double(
         parser, "DOUBLE", "Process & output at double precision", {'d', "double"});
     args::Flag fixge(
         parser, "FIX_GE", "Negate alternate slices (fixes lack of FFT shift)", {"fixge"});

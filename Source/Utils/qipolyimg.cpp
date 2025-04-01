@@ -99,11 +99,6 @@ int polyimg_main(args::Subparser &parser) {
     args::Positional<std::string> ref_path(
         parser, "REFERENCE", "Reference image space to create the polynomial");
     args::Positional<std::string> out_path(parser, "OUTPUT", "Output image path");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                          {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<int>          order(
         parser, "ORDER", "Specify the polynomial order (default 2)", {'o', "order"}, 2);
     args::ValueFlag<std::string> mask(
@@ -118,11 +113,10 @@ int polyimg_main(args::Subparser &parser) {
     Eigen::Array3d const center = QI::ArrayFromJSON(input, "center", 1.);
     double const         scale  = input.at("scale").get<double>();
     Eigen::ArrayXd const coeffs = QI::ArrayFromJSON(input, "coeffs", 1.);
-    QI::Info(
-            "Center point is: {} Scale is: {}\nCoeffs are: {}",
-            center.transpose(),
-            scale,
-            coeffs.transpose());
+    QI::Info("Center point is: {} Scale is: {}\nCoeffs are: {}",
+             center.transpose(),
+             scale,
+             coeffs.transpose());
 
     QI::Polynomial<3> poly(order.Get());
     if (coeffs.rows() != poly.nterms()) {

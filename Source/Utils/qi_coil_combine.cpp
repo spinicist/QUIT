@@ -223,11 +223,6 @@ class ComplexVectorMeanFilter
 
 int coil_combine_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT_FILE", "Input file to coil-combine");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> region_arg(

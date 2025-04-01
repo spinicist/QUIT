@@ -30,11 +30,6 @@ using namespace std::literals;
 
 int pca_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input 4D file");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPUT", "Change ouput filename (default is input_pca)", {'o', "out"});
     args::ValueFlag<std::string> project(

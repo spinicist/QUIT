@@ -130,11 +130,6 @@ template <typename TImage> class KernelSource : public ImageSource<TImage> {
 
 int kfilter_main(args::Subparser &parser) {
     args::Positional<std::string> in_path(parser, "INPUT", "Input file.");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  out_prefix(
         parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<int> zero_padding(

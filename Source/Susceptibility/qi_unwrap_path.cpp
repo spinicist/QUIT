@@ -32,11 +32,6 @@
  */
 int unwrap_path_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPUT PREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<std::string> maskarg(

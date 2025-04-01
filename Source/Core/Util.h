@@ -23,6 +23,7 @@
 #include "itkVector.h"
 
 #include "Log.h"
+#include "Args.h"
 
 /*
  * Print a std::vector
