@@ -21,16 +21,11 @@
 
 int b1_papp_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  out_prefix(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     parser.Parse();
 
-    auto inFile    = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
+    auto inFile    = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     auto body_coil = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto head_coil = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto region    = inFile->GetLargestPossibleRegion();
@@ -48,7 +43,7 @@ int b1_papp_main(args::Subparser &parser) {
     auto ratio = itk::DivideImageFilter<QI::VolumeF, QI::VolumeF, QI::VolumeF>::New();
     ratio->SetInput(0, head_coil->GetOutput());
     ratio->SetInput(1, body_coil->GetOutput());
-    QI::WriteImage(ratio->GetOutput(), out_prefix.Get() + "B1minus" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Finished.");
+    QI::WriteImage(ratio->GetOutput(), out_prefix.Get() + "B1minus" + QI::OutExt());
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

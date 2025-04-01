@@ -30,7 +30,7 @@ int select_main(args::Subparser &parser) {
                                  QI::GetDefaultThreads());
     parser.Parse();
 
-    auto in_file        = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
+    auto in_file        = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     auto volume_indices = QI::IntsFromString(volume_list.Get());
 
     auto tiler  = itk::TileImageFilter<QI::VolumeF, QI::SeriesF>::New();
@@ -52,7 +52,7 @@ int select_main(args::Subparser &parser) {
         if (volume_index > max_index) {
             QI::Fail("Invalid volume index {}, max is {}", volume_index, max_index);
         }
-        QI::Info(verbose, "Out volume {} = in volume {}", ii, volume_index);
+        QI::Info("Out volume {} = in volume {}", ii, volume_index);
         region.GetModifiableIndex()[3] = volume_index;
         auto volume                    = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
         volume->SetExtractionRegion(region);
@@ -66,7 +66,7 @@ int select_main(args::Subparser &parser) {
     out_file->SetSpacing(in_file->GetSpacing());
     out_file->SetOrigin(in_file->GetOrigin());
     out_file->SetDirection(in_file->GetDirection());
-    QI::WriteImage(out_file, output_path.Get(), verbose);
-    QI::Log(verbose, "Finished.");
+    QI::WriteImage(out_file, output_path.Get());
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

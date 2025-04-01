@@ -20,7 +20,7 @@
 namespace QI {
 
 template <typename TVectorImg>
-auto ReadImage(const std::string &path, const bool verbose) -> typename TVectorImg::Pointer {
+auto ReadImage(const std::string &path) -> typename TVectorImg::Pointer {
 
     using TPixel    = typename TVectorImg::InternalPixelType;
     using TSeries   = itk::Image<TPixel, 4>;
@@ -29,12 +29,12 @@ auto ReadImage(const std::string &path, const bool verbose) -> typename TVectorI
 
     auto file = TReader::New();
     file->SetFileName(path);
-    QI::Log(verbose, "Reading image: {}", path);
+    QI::Info("Reading image: {}", path);
     file->Update();
 
     auto convert = TToVector::New();
     convert->SetInput(file->GetOutput());
-    QI::Log(verbose, "Converting to vector image");
+    QI::Info("Converting to vector image");
     convert->Update();
     typename TVectorImg::Pointer vols = convert->GetOutput();
     if (!vols) {
@@ -44,10 +44,8 @@ auto ReadImage(const std::string &path, const bool verbose) -> typename TVectorI
     return vols;
 }
 
-template auto ReadImage<QI::VectorVolumeF>(const std::string &path, const bool verbose)
-    -> QI::VectorVolumeF::Pointer;
-template auto ReadImage<QI::VectorVolumeXF>(const std::string &path, const bool verbose)
-    -> QI::VectorVolumeXF::Pointer;
+template auto ReadImage<QI::VectorVolumeF>(const std::string &path) -> QI::VectorVolumeF::Pointer;
+template auto ReadImage<QI::VectorVolumeXF>(const std::string &path) -> QI::VectorVolumeXF::Pointer;
 
 } // namespace QI
 

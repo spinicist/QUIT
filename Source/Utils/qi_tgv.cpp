@@ -48,7 +48,7 @@ int tgv_main(args::Subparser &parser) {
 
     auto pipeline = [&]<typename T>() {
         using TT        = Eigen::Tensor<T, 4>;
-        auto const iimg = QI::ReadImage<itk::Image<T, 4>>(iname.Get(), verbose);
+        auto const iimg = QI::ReadImage<itk::Image<T, 4>>(iname.Get());
         auto const sz   = iimg->GetLargestPossibleRegion().GetSize();
 
         typename TT::Dimensions dims;
@@ -56,7 +56,7 @@ int tgv_main(args::Subparser &parser) {
         Eigen::TensorMap<TT> input(iimg->GetBufferPointer(), dims);
         TT                   output(dims);
         for (long ii = 0; ii < dims[3]; ii++) {
-            QI::Log(verbose, "Processing volume {}", ii);
+            QI::Info("Processing volume {}", ii);
             Eigen::Tensor<T, 3> vol     = input.template chip<3>(ii);
             output.template chip<3>(ii) = tgvdenoise(vol,
                                                      its.Get(),
@@ -64,7 +64,6 @@ int tgv_main(args::Subparser &parser) {
                                                      alpha.Get(),
                                                      alpha_reduction.Get(),
                                                      step_size.Get(),
-                                                     verbose,
                                                      device);
         }
         using Importer                    = itk::ImportImageFilter<T, 4>;
@@ -78,7 +77,7 @@ int tgv_main(args::Subparser &parser) {
 
         std::string outname =
             outarg ? outarg.Get() : QI::StripExt(QI::Basename(iname.Get())) + "_tgv" + QI::OutExt();
-        QI::WriteImage(import->GetOutput(), outname, verbose);
+        QI::WriteImage(import->GetOutput(), outname);
     };
 
     if (complex) {

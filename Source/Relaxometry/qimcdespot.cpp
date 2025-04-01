@@ -155,7 +155,7 @@ int mcdespot_main(args::Subparser &parser) {
     QI::CheckPos(spgr_path);
     QI::CheckPos(ssfp_path);
 
-    QI::Log(verbose, "Reading sequences");
+    QI::Info("Reading sequences");
     auto input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto spgr  = input.at("SPGR").get<QI::SPGREchoSequence>();
     auto ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
@@ -167,7 +167,6 @@ int mcdespot_main(args::Subparser &parser) {
                                                      {f0.Get(), B1.Get()},
                                                      {spgr_path.Get(), ssfp_path.Get()},
                                                      mask.Get(),
-                                                     verbose,
                                                      simulate.Get(),
                                                      threads.Get(),
                                                      subregion.Get());
@@ -179,17 +178,17 @@ int mcdespot_main(args::Subparser &parser) {
                 src.model.bounds_lo = QI::ArrayFromJSON<double>(input, "lower_bounds");
                 src.model.bounds_hi = QI::ArrayFromJSON<double>(input, "upper_bounds");
             }
-            QI::Log(verbose, "Low bounds: {}", src.model.bounds_lo.transpose());
-            QI::Log(verbose, "High bounds: {}", src.model.bounds_hi.transpose());
+            QI::Info("Low bounds: {}", src.model.bounds_lo.transpose());
+            QI::Info("High bounds: {}", src.model.bounds_hi.transpose());
 
             auto fit_filter =
                 QI::ModelFitFilter<FitType>::New(
-                    &src, verbose, covar, resids, threads.Get(), subregion.Get());
+                    &src, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs(
                 {spgr_path.Get(), ssfp_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + model_name);
-            QI::Log(verbose, "Finished.");
+            QI::Info("Finished.");
         }
     };
     switch (modelarg.Get()) {

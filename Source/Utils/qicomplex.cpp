@@ -134,9 +134,9 @@ int complex_main(args::Subparser &parser) {
         typename TXImage::Pointer imgX = ITK_NULLPTR;
 
         if (in_real) {
-            img1 = QI::ReadImage<TImage>(in_real.Get(), verbose);
+            img1 = QI::ReadImage<TImage>(in_real.Get());
             if (in_imag) {
-                img2 = QI::ReadImage<TImage>(in_imag.Get(), verbose);
+                img2 = QI::ReadImage<TImage>(in_imag.Get());
             } else {
                 QI::Fail("Must set real and imaginary inputs together");
             }
@@ -147,11 +147,11 @@ int complex_main(args::Subparser &parser) {
             imgX = compose->GetOutput();
             imgX->DisconnectPipeline();
         } else if (in_mag) {
-            QI::Log(verbose, "Reading magnitude file: {}", in_mag.Get());
-            img1 = QI::ReadImage<TImage>(in_mag.Get(), verbose);
+            QI::Info("Reading magnitude file: {}", in_mag.Get());
+            img1 = QI::ReadImage<TImage>(in_mag.Get());
             if (in_pha) {
-                QI::Log(verbose, "Reading phase file: {}", in_pha.Get());
-                img2 = QI::ReadImage<TImage>(in_pha.Get(), verbose);
+                QI::Info("Reading phase file: {}", in_pha.Get());
+                img2 = QI::ReadImage<TImage>(in_pha.Get());
             } else {
                 QI::Fail("Must set magnitude and phase inputs together");
             }
@@ -163,9 +163,9 @@ int complex_main(args::Subparser &parser) {
             imgX = compose->GetOutput();
             imgX->DisconnectPipeline();
         } else if (in_complex) {
-            imgX = QI::ReadImage<TXImage>(in_complex.Get(), verbose);
+            imgX = QI::ReadImage<TXImage>(in_complex.Get());
         } else if (in_realimag) {
-            auto img_both                       = QI::ReadImage<TImage>(in_realimag.Get(), verbose);
+            auto img_both                       = QI::ReadImage<TImage>(in_realimag.Get());
             auto real_region                    = img_both->GetLargestPossibleRegion();
             auto imag_region                    = img_both->GetLargestPossibleRegion();
             real_region.GetModifiableSize()[3]  = real_region.GetSize()[3] / 2;
@@ -188,7 +188,7 @@ int complex_main(args::Subparser &parser) {
             imgX = compose->GetOutput();
             imgX->DisconnectPipeline();
         } else if (in_interleaved) {
-            auto       img_interleaved    = QI::ReadImage<TImage>(in_interleaved.Get(), verbose);
+            auto       img_interleaved    = QI::ReadImage<TImage>(in_interleaved.Get());
             auto const interleaved_region = img_interleaved->GetLargestPossibleRegion();
             auto const nv                 = interleaved_region.GetSize()[3] / 2;
             auto       compose_real       = itk::JoinSeriesImageFilter<TVolume, TImage>::New();
@@ -237,43 +237,43 @@ int complex_main(args::Subparser &parser) {
             imgX->DisconnectPipeline();
         }
 
-        QI::Log(verbose, "Writing output files");
+        QI::Info("Writing output files");
         typename TWriter::Pointer write = TWriter::New();
 
         if (out_mag) {
             auto o = itk::ComplexToModulusImageFilter<TXImage, TImage>::New();
             o->SetInput(imgX);
             o->Update();
-            QI::WriteImage(o->GetOutput(), out_mag.Get(), verbose);
+            QI::WriteImage(o->GetOutput(), out_mag.Get());
         }
         if (out_pha) {
             auto o = itk::ComplexToPhaseImageFilter<TXImage, TImage>::New();
             o->SetInput(imgX);
             o->Update();
-            QI::WriteImage(o->GetOutput(), out_pha.Get(), verbose);
+            QI::WriteImage(o->GetOutput(), out_pha.Get());
         }
         if (out_real) {
             auto o = itk::ComplexToRealImageFilter<TXImage, TImage>::New();
             o->SetInput(imgX);
             o->Update();
-            QI::WriteImage(o->GetOutput(), out_real.Get(), verbose);
+            QI::WriteImage(o->GetOutput(), out_real.Get());
         }
         if (out_imag) {
             auto o = itk::ComplexToImaginaryImageFilter<TXImage, TImage>::New();
             o->SetInput(imgX);
             o->Update();
-            QI::WriteImage(o->GetOutput(), out_imag.Get(), verbose);
+            QI::WriteImage(o->GetOutput(), out_imag.Get());
         }
         if (out_complex) {
-            QI::WriteImage(imgX, out_complex.Get(), verbose);
+            QI::WriteImage(imgX, out_complex.Get());
         }
     };
 
     if (use_double) {
-        QI::Log(verbose, "Using double precision");
+        QI::Info("Using double precision");
         run.operator()<double>();
     } else {
-        QI::Log(verbose, "Using float precision");
+        QI::Info("Using float precision");
         run.operator()<float>();
     }
     return EXIT_SUCCESS;

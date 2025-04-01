@@ -135,22 +135,22 @@ int qmt_main(args::Subparser &parser) {
         parser, "R1b", "R1 (not T1) of the bound pool. Default 2.5s^-1", {'r', "R1b"}, 2.5f);
     parser.Parse();
     QI::CheckPos(mtsat_path);
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json           input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto           mtsat_sequence = input.at("MTSat").get<QI::ZSpecSequence>();
     QI::Lineshapes lineshape;
     std::shared_ptr<QI::InterpLineshape> interp = nullptr;
     if (lineshape_arg.Get() == "Gaussian") {
-        QI::Log(verbose, "Using a Gaussian lineshape");
+        QI::Info("Using a Gaussian lineshape");
         lineshape = QI::Lineshapes::Gaussian;
     } else if (lineshape_arg.Get() == "Lorentzian") {
-        QI::Log(verbose, "Using a Lorentzian lineshape");
+        QI::Info("Using a Lorentzian lineshape");
         lineshape = QI::Lineshapes::Lorentzian;
     } else if (lineshape_arg.Get() == "Superlorentzian") {
-        QI::Log(verbose, "Using a Super-Lorentzian lineshape");
+        QI::Info("Using a Super-Lorentzian lineshape");
         lineshape = QI::Lineshapes::SuperLorentzian;
     } else {
-        QI::Log(verbose, "Reading lineshape file: {}", lineshape_arg.Get());
+        QI::Info("Reading lineshape file: {}", lineshape_arg.Get());
         json ls_file = QI::ReadJSON(lineshape_arg.Get());
         interp       = std::make_shared<QI::InterpLineshape>(
             ls_file.at("lineshape").get<QI::InterpLineshape>());
@@ -164,7 +164,6 @@ int qmt_main(args::Subparser &parser) {
                                               {f0.Get(), B1.Get(), QI::CheckValue(T1)},
                                               {mtsat_path.Get()},
                                               mask.Get(),
-                                              verbose,
                                               simulate.Get(),
                                               threads.Get(),
                                               subregion.Get());
@@ -172,12 +171,12 @@ int qmt_main(args::Subparser &parser) {
         RamaniFitFunction fit{model};
 
         auto fit_filter = QI::ModelFitFilter<RamaniFitFunction>::New(
-            &fit, verbose, covar, resids, threads.Get(), subregion.Get());
+            &fit, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {mtsat_path.Get()}, {f0.Get(), B1.Get(), QI::CheckValue(T1)}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "QMT_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

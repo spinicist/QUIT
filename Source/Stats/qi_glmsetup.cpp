@@ -53,7 +53,7 @@ int glm_setup_main(args::Subparser &parser) {
     parser.Parse();
 
     std::ifstream group_file(QI::CheckValue(group_path));
-    QI::Log(verbose, "Reading group file");
+    QI::Info("Reading group file");
     std::vector<int> group_list;
     int              temp;
     while (group_file >> temp) {
@@ -69,7 +69,7 @@ int glm_setup_main(args::Subparser &parser) {
     }
 
     std::vector<std::vector<QI::VolumeF::Pointer>> groups(n_groups);
-    QI::Log(verbose, "Groups = {}, Images = {}", n_groups, n_images);
+    QI::Info("Groups = {}, Images = {}", n_groups, n_images);
     itk::FixedArray<unsigned int, 4> layout;
     layout[0] = layout[1] = layout[2] = 1;
     layout[3]                         = n_images;
@@ -78,18 +78,18 @@ int glm_setup_main(args::Subparser &parser) {
 
     std::ofstream design_file;
     if (design_path) {
-        QI::Log(verbose, "Design matrix will be saved to: {}", design_path.Get());
+        QI::Info("Design matrix will be saved to: {}", design_path.Get());
         design_file = std::ofstream(design_path.Get());
     }
     std::vector<std::vector<std::vector<std::string>>> covars(n_groups);
     std::vector<std::ifstream>                         covars_files;
     if (covars_path) {
-        QI::Log(verbose, "All covariates: {}", covars_path.Get());
+        QI::Info("All covariates: {}", covars_path.Get());
         std::istringstream stream_covars(covars_path.Get());
         while (!stream_covars.eof()) {
             std::string path;
             getline(stream_covars, path, ',');
-            QI::Log(verbose, "Opening covariate file: {}", path);
+            QI::Info("Opening covariate file: {}", path);
             std::ifstream covars_file(path);
             if (!covars_file) {
                 QI::Fail("Failed to open covariate file: {}", path);
@@ -101,8 +101,8 @@ int glm_setup_main(args::Subparser &parser) {
     for (size_t i = 0; i < group_list.size(); i++) {
         const int group = group_list.at(i);
         if (group > 0) { // Ignore entries with a 0
-            QI::Log(verbose, "File: {} Group: {}", file_paths.Get().at(i), group);
-            QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.Get().at(i), verbose);
+            QI::Info("File: {} Group: {}", file_paths.Get().at(i), group);
+            QI::VolumeF::Pointer ptr = QI::ReadImage(file_paths.Get().at(i));
             groups.at(group - 1).push_back(ptr);
             std::vector<std::string> covar;
             if (covars_path) {
@@ -133,7 +133,7 @@ int glm_setup_main(args::Subparser &parser) {
                 }
             }
         } else {
-            QI::Log(verbose, "Ignoring file: {}", file_paths.Get().at(i));
+            QI::Info("Ignoring file: {}", file_paths.Get().at(i));
             // Eat a line in each covariates file
             for (auto &f : covars_files) {
                 std::string dummy;
@@ -142,7 +142,7 @@ int glm_setup_main(args::Subparser &parser) {
         }
     }
     if (sort) {
-        QI::Log(verbose, "Sorting.");
+        QI::Info("Sorting.");
         for (int g = 0; g < n_groups; g++) {
             for (size_t i = 0; i < groups.at(g).size(); i++) {
                 tiler->SetInput(out_index, groups.at(g).at(i));
@@ -167,7 +167,7 @@ int glm_setup_main(args::Subparser &parser) {
     }
     int n_covars = covars_path ? covars.front().front().size() : 0;
     if (contrasts_path) {
-        QI::Log(verbose, "Generating contrasts");
+        QI::Info("Generating contrasts");
         std::ofstream con_file(contrasts_path.Get());
         for (int g = 0; g < n_groups; g++) {
             for (int g2 = 0; g2 < n_groups; g2++) {
@@ -199,7 +199,7 @@ int glm_setup_main(args::Subparser &parser) {
         }
     }
     if (ftests_path) {
-        QI::Log(verbose, "Generating F-tests");
+        QI::Info("Generating F-tests");
         std::ofstream fts_file(ftests_path.Get());
         for (int g = 0; g < n_groups; g++) { // Individual group comparisons
             for (int g2 = 0; g2 < n_groups; g2++) {
@@ -241,6 +241,6 @@ int glm_setup_main(args::Subparser &parser) {
     output->SetSpacing(spacing);
     output->SetOrigin(origin);
     output->SetDirection(direction);
-    QI::WriteImage<QI::SeriesF>(output, QI::CheckValue(output_path), verbose);
+    QI::WriteImage<QI::SeriesF>(output, QI::CheckValue(output_path));
     return EXIT_SUCCESS;
 }

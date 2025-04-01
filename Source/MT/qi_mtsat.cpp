@@ -37,7 +37,7 @@ int mtsat_main(args::Subparser &parser) {
         parser, "r1_max", "Values of R1 above this are clamped, in 1/s (default 10 1/s)", {'r', "r1-max"}, 10);
     parser.Parse();
     
-    QI::Log(verbose, "Reading sequence parameters");
+    QI::Info("Reading sequence parameters");
     json              input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MTSatSequence seq(input["MTSat"]);
 
@@ -49,24 +49,23 @@ int mtsat_main(args::Subparser &parser) {
             {b1_path.Get()},
             {QI::CheckPos(pdw_path), QI::CheckPos(t1w_path), QI::CheckPos(mtw_path)},
             mask.Get(),
-            verbose,
             simulate.Get(),
             threads.Get(),
             subregion.Get());
     } else {
-        auto pdw_img = QI::ReadImage(QI::CheckPos(pdw_path), verbose);
-        auto t1w_img = QI::ReadImage(QI::CheckPos(t1w_path), verbose);
-        auto mtw_img = QI::ReadImage(QI::CheckPos(mtw_path), verbose);
+        auto pdw_img = QI::ReadImage(QI::CheckPos(pdw_path));
+        auto t1w_img = QI::ReadImage(QI::CheckPos(t1w_path));
+        auto mtw_img = QI::ReadImage(QI::CheckPos(mtw_path));
 
         QI::VolumeF::Pointer B1_img = nullptr, mask_img = nullptr;
         if (b1_path) {
-            B1_img = QI::ReadImage(b1_path.Get(), verbose);
+            B1_img = QI::ReadImage(b1_path.Get());
         }
         if (mask) {
-            mask_img = QI::ReadImage(mask.Get(), verbose);
+            mask_img = QI::ReadImage(mask.Get());
         }
 
-        QI::Info(verbose, "Allocating output memory");
+        QI::Info("Allocating output memory");
         auto A_img  = QI::NewImageLike<QI::VolumeF>(pdw_img);
         auto R1_img = QI::NewImageLike<QI::VolumeF>(pdw_img);
         auto d_img  = QI::NewImageLike<QI::VolumeF>(pdw_img);
@@ -74,10 +73,10 @@ int mtsat_main(args::Subparser &parser) {
         std::array<QI::VolumeF::Pointer, 3> outs{A_img, R1_img, d_img};
 
         QI::ModelFunc(model, {pdw_img, t1w_img, mtw_img}, {B1_img}, mask_img, threads.Get(), outs);
-        QI::Info(verbose, "Finished");
-        QI::WriteImage(A_img, prefix.Get() + "MTSat_PD" + QI::OutExt(), verbose);
-        QI::WriteImage(R1_img, prefix.Get() + "MTSat_R1" + QI::OutExt(), verbose);
-        QI::WriteImage(d_img, prefix.Get() + "MTSat_delta" + QI::OutExt(), verbose);
+        QI::Info("Finished");
+        QI::WriteImage(A_img, prefix.Get() + "MTSat_PD" + QI::OutExt());
+        QI::WriteImage(R1_img, prefix.Get() + "MTSat_R1" + QI::OutExt());
+        QI::WriteImage(d_img, prefix.Get() + "MTSat_delta" + QI::OutExt());
     }
     return EXIT_SUCCESS;
 }

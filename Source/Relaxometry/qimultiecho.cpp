@@ -173,7 +173,7 @@ int multiecho_main(args::Subparser &parser) {
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/a/n)", {'a', "algo"}, 'l');
     parser.Parse();
     QI::CheckPos(input_path);
-    QI::Log(verbose, "Reading sequence parameters");
+    QI::Info("Reading sequence parameters");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("MultiEcho").get<QI::MultiEchoSequence>();
 
@@ -184,7 +184,6 @@ int multiecho_main(args::Subparser &parser) {
                                             {},
                                             {QI::CheckPos(input_path)},
                                             mask.Get(),
-                                            verbose,
                                             simulate.Get(),
                                             threads.Get(),
                                             subregion.Get());
@@ -193,22 +192,22 @@ int multiecho_main(args::Subparser &parser) {
         switch (algorithm.Get()) {
         case 'l':
             me = new MultiEchoLogLin(model);
-            QI::Log(verbose, "LogLin algorithm selected.");
+            QI::Info("LogLin algorithm selected.");
             break;
         case 'a':
             me = new MultiEchoARLO(model);
-            QI::Log(verbose, "ARLO algorithm selected.");
+            QI::Info("ARLO algorithm selected.");
             break;
         case 'n':
             me = new MultiEchoNLLS(model);
-            QI::Log(verbose, "Non-linear algorithm (Levenberg Marquardt) selected.");
+            QI::Info("Non-linear algorithm (Levenberg Marquardt) selected.");
             break;
         default:
             QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
         auto fit =
             QI::ModelFitFilter<MultiEchoFit>::New(
-                me, verbose, covar, resids, threads.Get(), subregion.Get());
+                me, covar, resids, threads.Get(), subregion.Get());
         fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
         const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
         if (nvols % sequence.size() == 0) {
@@ -219,7 +218,7 @@ int multiecho_main(args::Subparser &parser) {
         }
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "ME_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

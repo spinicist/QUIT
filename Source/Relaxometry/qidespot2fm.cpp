@@ -176,7 +176,7 @@ int despot2fm_main(args::Subparser &parser) {
     args::Flag asym(parser, "ASYM", "Fit +/- off-resonance frequency", {'A', "asym"});
     parser.Parse();
 
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto    ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
     FMModel model{{}, ssfp};
@@ -186,7 +186,6 @@ int despot2fm_main(args::Subparser &parser) {
                                           {QI::CheckValue(t1_path), B1.Get()},
                                           {QI::CheckPos(ssfp_path)},
                                           mask.Get(),
-                                          verbose,
                                           simulate.Get(),
                                           threads.Get(),
                                           subregion.Get());
@@ -196,12 +195,12 @@ int despot2fm_main(args::Subparser &parser) {
         fm.asymmetric     = asym.Get();
         auto fit_filter =
             QI::ModelFitFilter<FMNLLS>::New(
-                &fm, verbose, covar, resids, threads.Get(), subregion.Get());
+                &fm, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "FM_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

@@ -66,7 +66,8 @@ int hdr_main(args::Subparser &parser) {
             dims = 3;
         if (print_all || print_size) {
             if (print_size.Get() > dims) {
-                QI::Fail("Invalid dimension {} for image {}", print_size.Get(), fname);
+                QI::Log(
+                    QI::Level::Fail, "Invalid dimension {} for image {}", print_size.Get(), fname);
             } else {
                 int start_dim, end_dim;
                 if (print_size.Get() == 0) {
@@ -160,10 +161,11 @@ int hdr_main(args::Subparser &parser) {
                 } else if (ExposeMetaData(header, hf, double_value)) {
                     std::cout << double_value << std::endl;
                 } else {
-                    QI::Fail("Could not determine type of rename header field: {}", hf);
+                    QI::Log(
+                        QI::Level::Fail, "Could not determine type of rename header field: {}", hf);
                 }
             } else {
-                QI::Log(verbose, "Header field not found: {}", hf);
+                QI::Info("Header field not found: {}", hf);
             }
         }
     }

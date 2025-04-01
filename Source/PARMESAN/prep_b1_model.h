@@ -36,7 +36,6 @@ struct PrepB1Model : QI::Model<double, double, 3, 0, 1, 0, QI::RealNoise<double>
             0, -R1, R1 * M0, //
             0, 0, 0;
         // QI_DBMAT(R);
-        AugMat const Rrd  = (R * sequence.TR).exp();
         using DT          = Eigen::DiagonalMatrix<T, 3, 3>;
         AugMat const S    = DT(DT::DiagonalVectorType{0., 1., 1.}).toDenseMatrix();
         AugMat const ramp = S * (R * sequence.Tramp).exp();

@@ -186,7 +186,7 @@ int despot1_main(args::Subparser &parser) {
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
     parser.Parse();
     QI::CheckPos(spgr_path);
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json input        = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto spgrSequence = input.at("SPGR").get<QI::SPGRSequence>();
 
@@ -197,7 +197,6 @@ int despot1_main(args::Subparser &parser) {
                                           {B1.Get()},
                                           {spgr_path.Get()},
                                           mask.Get(),
-                                          verbose,
                                           simulate.Get(),
                                           threads.Get(),
                                           subregion.Get());
@@ -206,25 +205,25 @@ int despot1_main(args::Subparser &parser) {
         switch (algorithm.Get()) {
         case 'l':
             d1 = new DESPOT1LLS(model);
-            QI::Log(verbose, "LLS algorithm selected.");
+            QI::Info("LLS algorithm selected.");
             break;
         case 'w':
             d1 = new DESPOT1WLLS(model);
-            QI::Log(verbose, "WLLS algorithm selected.");
+            QI::Info("WLLS algorithm selected.");
             break;
         case 'n':
             d1 = new DESPOT1NLLS(model);
-            QI::Log(verbose, "NLLS algorithm selected.");
+            QI::Info("NLLS algorithm selected.");
             break;
         default:
             QI::Fail("Unknown algorithm type: {}", algorithm.Get());
         }
         auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(
-            d1, verbose, covar, resids, threads.Get(), subregion.Get());
+            d1, covar, resids, threads.Get(), subregion.Get());
         fit->ReadInputs({QI::CheckPos(spgr_path)}, {B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D1_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

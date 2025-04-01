@@ -66,9 +66,9 @@ int mask_main(args::Subparser &parser) {
 
     QI::SeriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {
-        vols = QI::ReadMagnitudeImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
+        vols = QI::ReadMagnitudeImage<QI::SeriesF>(QI::CheckPos(input_path));
     } else {
-        vols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
+        vols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     }
 
     std::string out_path;
@@ -82,7 +82,7 @@ int mask_main(args::Subparser &parser) {
     auto region = vols->GetLargestPossibleRegion();
     if (static_cast<size_t>(std::abs(volume.Get())) < region.GetSize()[3]) {
         int volume_to_get = (region.GetSize()[3] + volume.Get()) % region.GetSize()[3];
-        QI::Log(verbose, "Masking volume {}...", volume_to_get);
+        QI::Info("Masking volume {}...", volume_to_get);
         region.GetModifiableIndex()[3] = volume_to_get;
     } else {
         QI::Fail("Specified mask volume was invalid {} ", volume.Get());
@@ -101,11 +101,11 @@ int mask_main(args::Subparser &parser) {
      */
     QI::VolumeI::Pointer mask_image = ITK_NULLPTR;
     if (lower_threshold || upper_threshold) {
-        QI::Log(verbose, "Thresholding range: {}-{}", lower_threshold.Get(), upper_threshold.Get());
+        QI::Info("Thresholding range: {}-{}", lower_threshold.Get(), upper_threshold.Get());
         mask_image =
             QI::ThresholdMask(intensity_image, lower_threshold.Get(), upper_threshold.Get());
     } else {
-        QI::Log(verbose, "Generating Otsu mask");
+        QI::Info("Generating Otsu mask");
         mask_image = QI::OtsuMask(intensity_image);
     }
 
@@ -118,7 +118,7 @@ int mask_main(args::Subparser &parser) {
         typedef itk::BinaryDilateImageFilter<QI::VolumeI, QI::VolumeI, TBall> TDilate;
         float mask_volume  = std::numeric_limits<float>::infinity();
         float voxel_volume = QI::VoxelVolume(mask_image);
-        QI::Log(verbose, "Voxel volume: {}", voxel_volume);
+        QI::Info("Voxel volume: {}", voxel_volume);
         int                  radius = rats_radius.Get();
         QI::VolumeI::Pointer mask_rats;
         while (mask_volume > rats.Get()) {
@@ -147,9 +147,9 @@ int mask_main(args::Subparser &parser) {
 
             QI::FindLabels(dilate->GetOutput(), 0, 1, mask_rats);
 
-            QI::Log(verbose, "Ran RATS iteration, radius = {} volume = {}", radius, new_volume);
+            QI::Info("Ran RATS iteration, radius = {} volume = {}", radius, new_volume);
             if (new_volume > mask_volume) {
-                QI::Log(verbose, "Mask volume increased, terminating");
+                QI::Info("Mask volume increased, terminating");
                 break;
             }
             mask_volume = new_volume;
@@ -163,7 +163,7 @@ int mask_main(args::Subparser &parser) {
      */
     QI::VolumeI::Pointer finalMask = ITK_NULLPTR;
     if (fillh_radius) {
-        QI::Log(verbose, "Filling holes");
+        QI::Info("Filling holes");
         auto fillHoles = itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::New();
         itk::VotingBinaryIterativeHoleFillingImageFilter<QI::VolumeI>::InputSizeType radius;
         radius.Fill(fillh_radius.Get());
@@ -178,7 +178,7 @@ int mask_main(args::Subparser &parser) {
         mask_image->DisconnectPipeline();
     }
 
-    QI::WriteImage(mask_image, out_path, verbose);
-    QI::Log(verbose, "Finished.");
+    QI::WriteImage(mask_image, out_path);
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

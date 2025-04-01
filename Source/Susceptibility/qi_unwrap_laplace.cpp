@@ -268,11 +268,6 @@ class DiscreteInverseLaplace2 : public ImageSource<QI::VolumeF> {
 //******************************************************************************
 int unwrap_laplace_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "PHASE", "Wrapped phase image");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> mask(
@@ -282,17 +277,17 @@ int unwrap_laplace_main(args::Subparser &parser) {
     args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
     parser.Parse();
 
-    auto        inFile = QI::ReadImage(QI::CheckPos(input_path), verbose);
+    auto        inFile = QI::ReadImage(QI::CheckPos(input_path));
     std::string prefix = (outarg ? outarg.Get() : QI::StripExt(input_path.Get()));
 
     auto calcLaplace = itk::DiscreteLaplacePhaseFilter::New();
     calcLaplace->SetInput(inFile);
     calcLaplace->Update();
     if (debug)
-        QI::WriteImage(calcLaplace->GetOutput(), prefix + "_step1_laplace" + QI::OutExt(), verbose);
+        QI::WriteImage(calcLaplace->GetOutput(), prefix + "_step1_laplace" + QI::OutExt());
 
     QI::VolumeF::Pointer lap = calcLaplace->GetOutput();
-    auto mask_img = mask ? QI::ReadImage<QI::VolumeUC>(mask.Get(), verbose) : ITK_NULLPTR;
+    auto mask_img = mask ? QI::ReadImage<QI::VolumeUC>(mask.Get()) : ITK_NULLPTR;
     if (mask) {
         auto masker = itk::MaskImageFilter<QI::VolumeF, QI::VolumeUC>::New();
         masker->SetInput(calcLaplace->GetOutput());
@@ -307,7 +302,7 @@ int unwrap_laplace_main(args::Subparser &parser) {
             radii[2]                      = ceil(erode.Get() / spacing[2]);
             structuringElement.SetRadius(radii);
             structuringElement.CreateStructuringElement();
-            QI::Log(verbose, "Eroding mask by {} mm ({} voxels)", erode.Get(), radii);
+            QI::Info("Eroding mask by {} mm ({} voxels)", erode.Get(), radii);
             typedef itk::BinaryErodeImageFilter<QI::VolumeUC, QI::VolumeUC, ElementType>
                                                 BinaryErodeImageFilterType;
             BinaryErodeImageFilterType::Pointer erodeFilter = BinaryErodeImageFilterType::New();
@@ -318,26 +313,26 @@ int unwrap_laplace_main(args::Subparser &parser) {
             masker->SetMaskImage(erodeFilter->GetOutput());
             if (debug)
                 QI::WriteImage(
-                    erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt(), verbose);
+                    erodeFilter->GetOutput(), prefix + "_eroded_mask" + QI::OutExt());
         } else {
             masker->SetMaskImage(mask_img);
         }
-        QI::Log(verbose, "Applying mask");
+        QI::Info("Applying mask");
         masker->Update();
         lap = masker->GetOutput();
         lap->DisconnectPipeline();
         if (debug)
-            QI::WriteImage(lap, prefix + "_step1_laplace_masked" + QI::OutExt(), verbose);
+            QI::WriteImage(lap, prefix + "_step1_laplace_masked" + QI::OutExt());
     }
 
-    QI::Log(verbose, "Padding image to valid FFT size.");
+    QI::Info("Padding image to valid FFT size.");
     typedef itk::FFTPadImageFilter<QI::VolumeF> PadFFTType;
     auto                                        padFFT = PadFFTType::New();
     padFFT->SetInput(lap);
     padFFT->Update();
     if (debug)
-        QI::WriteImage(padFFT->GetOutput(), prefix + "_step2_padFFT" + QI::OutExt(), verbose);
-    QI::Log(verbose,
+        QI::WriteImage(padFFT->GetOutput(), prefix + "_step2_padFFT" + QI::OutExt());
+    QI::Info(
             "Padded image size: {}\nCalculating Forward FFT.",
             padFFT->GetOutput()->GetLargestPossibleRegion().GetSize());
     typedef itk::ForwardFFTImageFilter<QI::VolumeF> FFFTType;
@@ -346,48 +341,47 @@ int unwrap_laplace_main(args::Subparser &parser) {
     forwardFFT->Update();
     if (debug)
         QI::WriteImage(
-            forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Generating Inverse Laplace Kernel.");
+            forwardFFT->GetOutput(), prefix + "_step3_forwardFFT" + QI::OutExt());
+    QI::Info("Generating Inverse Laplace Kernel.");
     auto inverseLaplace = itk::DiscreteInverseLaplace::New();
     inverseLaplace->SetImageProperties(padFFT->GetOutput());
     inverseLaplace->Update();
     if (debug)
         QI::WriteImage(inverseLaplace->GetOutput(),
-                       prefix + "_inverse_laplace_filter" + QI::OutExt(),
-                       verbose);
-    QI::Log(verbose, "Multiplying.");
+                       prefix + "_inverse_laplace_filter" + QI::OutExt());
+    QI::Info("Multiplying.");
     auto mult = itk::MultiplyImageFilter<QI::VolumeXF, QI::VolumeF, QI::VolumeXF>::New();
     mult->SetInput1(forwardFFT->GetOutput());
     mult->SetInput2(inverseLaplace->GetOutput());
     if (debug)
-        QI::WriteImage(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Inverse FFT.");
+        QI::WriteImage(mult->GetOutput(), prefix + "_step3_multFFT" + QI::OutExt());
+    QI::Info("Inverse FFT.");
     auto inverseFFT = itk::InverseFFTImageFilter<QI::VolumeXF, QI::VolumeF>::New();
     inverseFFT->SetInput(mult->GetOutput());
     inverseFFT->Update();
     if (debug)
         QI::WriteImage(
-            inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Extracting original size image");
+            inverseFFT->GetOutput(), prefix + "_step4_inverseFFT" + QI::OutExt());
+    QI::Info("Extracting original size image");
     auto extract = itk::ExtractImageFilter<QI::VolumeF, QI::VolumeF>::New();
     extract->SetInput(inverseFFT->GetOutput());
     extract->SetDirectionCollapseToSubmatrix();
     extract->SetExtractionRegion(calcLaplace->GetOutput()->GetLargestPossibleRegion());
     extract->Update();
     if (debug)
-        QI::WriteImage(extract->GetOutput(), prefix + "_step5_extract" + QI::OutExt(), verbose);
+        QI::WriteImage(extract->GetOutput(), prefix + "_step5_extract" + QI::OutExt());
     std::string outname = prefix + "_unwrap" + QI::OutExt();
-    QI::Log(verbose, "Output filename: {}", outname);
+    QI::Info("Output filename: {}", outname);
     if (mask) {
-        QI::Log(verbose, "Re-applying mask");
+        QI::Info("Re-applying mask");
         auto masker = itk::MaskImageFilter<QI::VolumeF, QI::VolumeUC>::New();
         masker->SetMaskImage(mask_img);
         masker->SetInput(extract->GetOutput());
         masker->Update();
-        QI::WriteImage(masker->GetOutput(), outname, verbose);
+        QI::WriteImage(masker->GetOutput(), outname);
     } else {
-        QI::WriteImage(extract->GetOutput(), outname, verbose);
+        QI::WriteImage(extract->GetOutput(), outname);
     }
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

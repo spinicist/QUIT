@@ -137,8 +137,7 @@ class ContrastsFilter : public itk::ImageToImageFilter<QI::VectorVolumeF, QI::Vo
     typedef itk::SmartPointer<Self>                            Pointer;
     typedef typename QI::VolumeF::RegionType                   RegionType;
 
-    itkNewMacro(Self)
-    itkTypeMacro(Self, Superclass);
+    itkNewMacro(Self) itkTypeMacro(Self, Superclass);
 
     void GenerateOutputInformation() ITK_OVERRIDE {
         Superclass::GenerateOutputInformation();
@@ -220,12 +219,11 @@ int glm_contrasts_main(args::Subparser &parser) {
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     parser.Parse();
 
-    QI::Log(verbose, "Reading input file {}", QI::CheckPos(input_path));
-    QI::VectorVolumeF::Pointer merged =
-        QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
-    QI::Log(verbose, "Reading design matrix {}", QI::CheckPos(design_path));
+    QI::Info("Reading input file {}", QI::CheckPos(input_path));
+    QI::VectorVolumeF::Pointer merged = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
+    QI::Info("Reading design matrix {}", QI::CheckPos(design_path));
     Eigen::ArrayXXd design_matrix = QI::ReadArrayFile(QI::CheckPos(design_path));
-    QI::Log(verbose, "Reading contrasts file {}", QI::CheckPos(contrasts_path));
+    QI::Info("Reading contrasts file {}", QI::CheckPos(contrasts_path));
     Eigen::ArrayXXd contrasts = QI::ReadArrayFile(QI::CheckPos(contrasts_path));
     if (design_matrix.rows() != merged->GetNumberOfComponentsPerPixel()) {
         QI::Fail(
@@ -242,13 +240,12 @@ int glm_contrasts_main(args::Subparser &parser) {
     auto con_filter = ContrastsFilter::New();
     con_filter->SetMatrix(design_matrix, contrasts, fraction);
     con_filter->SetInput(0, merged);
-    QI::Log(verbose, "Calculating contrasts");
+    QI::Info("Calculating contrasts");
     con_filter->Update();
     for (int c = 0; c < contrasts.rows(); c++) {
-        QI::Log(verbose, "Writing contrast {}", c + 1);
+        QI::Info("Writing contrast {}", c + 1);
         QI::WriteImage(con_filter->GetOutput(c),
-                       outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt(),
-                       verbose);
+                       outarg.Get() + "con" + std::to_string(c + 1) + QI::OutExt());
     }
     return EXIT_SUCCESS;
 }

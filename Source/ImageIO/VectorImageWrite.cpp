@@ -22,8 +22,7 @@
 
 namespace QI {
 
-template <typename TVImg>
-void WriteImage(const TVImg *img, const std::string &path, const bool verbose) {
+template <typename TVImg> void WriteImage(const TVImg *img, const std::string &path) {
     using TToSeries = itk::VectorToImageFilter<TVImg>;
     using TWriter   = itk::ImageFileWriter<typename TToSeries::TOutput>;
 
@@ -34,17 +33,16 @@ void WriteImage(const TVImg *img, const std::string &path, const bool verbose) {
     typename TWriter::Pointer file = TWriter::New();
     file->SetFileName(path);
     file->SetInput(convert->GetOutput());
-    QI::Log(verbose, "Writing image: {}", path);
+    QI::Info("Writing image: {}", path);
     file->Update();
 }
 
 template <typename TVImg>
-void WriteImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path, const bool verbose) {
-    WriteImage(ptr.GetPointer(), path, verbose);
+void WriteImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path) {
+    WriteImage(ptr.GetPointer(), path);
 }
 
-template <typename TVImg>
-void WriteMagnitudeImage(const TVImg *img, const std::string &path, const bool verbose) {
+template <typename TVImg> void WriteMagnitudeImage(const TVImg *img, const std::string &path) {
     using TToSeries   = itk::VectorToImageFilter<TVImg>;
     using TPixel      = typename TVImg::InternalPixelType;
     using TReal       = typename TPixel::value_type;
@@ -62,50 +60,46 @@ void WriteMagnitudeImage(const TVImg *img, const std::string &path, const bool v
     auto file     = TWriter::New();
     file->SetFileName(path);
     file->SetInput(mag->GetOutput());
-    QI::Log(verbose, "Writing magnitude image: {}", path);
+    QI::Info("Writing magnitude image: {}", path);
     file->Update();
 }
 
 template <typename TVImg>
-void WriteMagnitudeImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path,
-                         const bool verbose) {
-    WriteMagnitudeImage(ptr.GetPointer(), path, verbose);
+void WriteMagnitudeImage(const itk::SmartPointer<TVImg> &ptr, const std::string &path) {
+    WriteMagnitudeImage(ptr.GetPointer(), path);
 }
 
 template <typename TVImg>
-void WriteScaledImage(const TVImg *img, const QI::VolumeF *simg, const std::string &path,
-                      const bool verbose) {
+void WriteScaledImage(const TVImg *img, const QI::VolumeF *simg, const std::string &path) {
     auto scaleFilter = itk::DivideImageFilter<TVImg, QI::VolumeF, TVImg>::New();
     scaleFilter->SetInput1(img);
     scaleFilter->SetInput2(simg);
     scaleFilter->Update();
-    WriteImage(scaleFilter->GetOutput(), path, verbose);
+    WriteImage(scaleFilter->GetOutput(), path);
 }
 
 template <typename TVImg>
-void WriteScaledImage(const itk::SmartPointer<TVImg> &      ptr,
-                      const itk::SmartPointer<QI::VolumeF> &sptr, const std::string &path,
-                      const bool verbose) {
-    WriteScaledImage(ptr.GetPointer(), sptr.GetPointer(), path, verbose);
+void WriteScaledImage(const itk::SmartPointer<TVImg>       &ptr,
+                      const itk::SmartPointer<QI::VolumeF> &sptr,
+                      const std::string                    &path) {
+    WriteScaledImage(ptr.GetPointer(), sptr.GetPointer(), path);
 }
 
-template void WriteImage<VectorVolumeF>(const VectorVolumeF *img, const std::string &path,
-                                        const bool verbose);
-template void WriteImage<VectorVolumeXF>(const VectorVolumeXF *img, const std::string &path,
-                                         const bool verbose);
-template void WriteImage<VectorVolumeI>(const VectorVolumeI *ptr,
-                                        const std::string &path, const bool verbose);
+template void WriteImage<VectorVolumeF>(const VectorVolumeF *img, const std::string &path);
+template void WriteImage<VectorVolumeXF>(const VectorVolumeXF *img, const std::string &path);
+template void WriteImage<VectorVolumeI>(const VectorVolumeI *ptr, const std::string &path);
 template void WriteImage<VectorVolumeF>(const itk::SmartPointer<VectorVolumeF> &ptr,
-                                        const std::string &path, const bool verbose);
+                                        const std::string                      &path);
 template void WriteImage<VectorVolumeXF>(const itk::SmartPointer<VectorVolumeXF> &ptr,
-                                         const std::string &path, const bool verbose);
+                                         const std::string                       &path);
 template void WriteMagnitudeImage<VectorVolumeXF>(const VectorVolumeXF *ptr,
-                                                  const std::string &path, const bool verbose);
+                                                  const std::string    &path);
 template void WriteMagnitudeImage<VectorVolumeXF>(const itk::SmartPointer<VectorVolumeXF> &ptr,
-                                                  const std::string &path, const bool verbose);
-template void WriteScaledImage<VectorVolumeF>(const VectorVolumeF *img, const VolumeF *simg,
-                                              const std::string &path, const bool verbose);
+                                                  const std::string                       &path);
+template void WriteScaledImage<VectorVolumeF>(const VectorVolumeF *img,
+                                              const VolumeF       *simg,
+                                              const std::string   &path);
 template void WriteScaledImage<VectorVolumeF>(const itk::SmartPointer<VectorVolumeF> &ptr,
-                                              const itk::SmartPointer<VolumeF> &      sptr,
-                                              const std::string &path, const bool verbose);
+                                              const itk::SmartPointer<VolumeF>       &sptr,
+                                              const std::string                      &path);
 } // namespace QI

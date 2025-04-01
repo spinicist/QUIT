@@ -99,23 +99,19 @@ class ModelFitFilter
     static constexpr int TotalOutputs    = ResidualsOffset + ModelType::NI;
 
     ModelFitFilter(FitType const     *f,
-                   const bool         v,
                    const bool         covar,
                    const bool         allResids,
                    const int          nThreads,
                    std::string const &subregion) :
         m_fit(f),
-        m_verbose(v), m_allResiduals(allResids), m_covar(covar) {
+        m_allResiduals(allResids), m_covar(covar) {
         this->SetNumberOfRequiredInputs(ModelType::NI);
         this->SetNumberOfRequiredOutputs(TotalOutputs);
         for (int i = 0; i < TotalOutputs; i++) {
             this->SetNthOutput(i, this->MakeOutput(i));
         }
         this->SetRequestedRegionFromString(subregion);
-        if (m_verbose) {
-            auto monitor = QI::GenericMonitor::New();
-            this->AddObserver(itk::ProgressEvent(), monitor);
-        }
+        this->AddObserver(itk::ProgressEvent(), QI::GenericMonitor::New());
         this->DynamicMultiThreadingOn();
         this->ThreaderUpdateProgressOff();
         this->SetNumberOfWorkUnits(nThreads);
@@ -257,35 +253,33 @@ class ModelFitFilter
         }
 
         for (int i = 0; i < ModelType::NI; i++) {
-            SetInput(i, QI::ReadImage<TInputImage>(inputs[i], m_verbose));
+            SetInput(i, QI::ReadImage<TInputImage>(inputs[i]));
         }
         for (int f = 0; f < ModelType::NF; f++) {
             if (fixed[f] != "")
-                SetFixed(f, QI::ReadImage<TFixedImage>(fixed[f], m_verbose));
+                SetFixed(f, QI::ReadImage<TFixedImage>(fixed[f]));
         }
         if (mask != "")
-            SetMask(QI::ReadImage<TMaskImage>(mask, m_verbose));
+            SetMask(QI::ReadImage<TMaskImage>(mask));
     }
 
     void WriteOutputs(std::string const &prefix) {
         for (int i = 0; i < ModelType::NV; i++) {
-            QI::WriteImage(
-                this->GetOutput(i), prefix + m_fit->model.varying_names.at(i) + QI::OutExt(), m_verbose);
+            QI::WriteImage(this->GetOutput(i),
+                           prefix + m_fit->model.varying_names.at(i) + QI::OutExt());
         }
         if constexpr (ModelType::ND > 0) {
             for (int i = 0; i < ModelType::ND; i++) {
                 QI::WriteImage(this->GetDerivedOutput(i),
-                               prefix + m_fit->model.derived_names.at(i) + QI::OutExt(),
-                               m_verbose);
+                               prefix + m_fit->model.derived_names.at(i) + QI::OutExt());
             }
         }
-        QI::WriteImage(this->GetRMSErrorOutput(), prefix + "rmse" + QI::OutExt(), m_verbose);
-        QI::WriteImage(this->GetFlagOutput(), prefix + "iterations" + QI::OutExt(), m_verbose);
+        QI::WriteImage(this->GetRMSErrorOutput(), prefix + "rmse" + QI::OutExt());
+        QI::WriteImage(this->GetFlagOutput(), prefix + "iterations" + QI::OutExt());
         if (m_covar) {
             for (int ii = 0; ii < ModelType::NV; ii++) {
                 auto const &name = m_fit->model.varying_names.at(ii);
-                QI::WriteImage(
-                    this->GetCovarOutput(ii), prefix + "CoV_" + name + QI::OutExt(), m_verbose);
+                QI::WriteImage(this->GetCovarOutput(ii), prefix + "CoV_" + name + QI::OutExt());
             }
             int index = ModelType::NV;
             for (int ii = 0; ii < ModelType::NV; ii++) {
@@ -293,16 +287,14 @@ class ModelFitFilter
                 for (int jj = ii + 1; jj < ModelType::NV; jj++) {
                     auto const &name2 = m_fit->model.varying_names.at(jj);
                     QI::WriteImage(this->GetCovarOutput(index++),
-                                   prefix + "Corr_" + name1 + "_" + name2 + QI::OutExt(),
-                                   m_verbose);
+                                   prefix + "Corr_" + name1 + "_" + name2 + QI::OutExt());
                 }
             }
         }
         if (m_allResiduals) {
             for (int i = 0; i < ModelType::NI; i++) {
                 QI::WriteImage(this->GetResidualsOutput(i),
-                               prefix + "residuals_" + std::to_string(i) + QI::OutExt(),
-                               m_verbose);
+                               prefix + "residuals_" + std::to_string(i) + QI::OutExt());
             }
         }
     }
@@ -337,7 +329,7 @@ class ModelFitFilter
     }
 
     const FitType *m_fit;
-    const bool     m_verbose, m_allResiduals, m_covar;
+    const bool     m_allResiduals, m_covar;
     int            m_blocks = 1;
 
     virtual void GenerateOutputInformation() override {
@@ -362,7 +354,7 @@ class ModelFitFilter
             }
         }
 
-        Log(m_verbose, "Setting output information");
+        Info("Setting output information");
         auto input     = this->GetInput(0);
         auto region    = input->GetLargestPossibleRegion();
         auto spacing   = input->GetSpacing();
@@ -440,7 +432,7 @@ class ModelFitFilter
         auto const lr = this->GetOutput(0)->GetLargestPossibleRegion();
         auto const rr = this->GetOutput(0)->GetRequestedRegion();
 
-        Log(m_verbose, "Allocating output image memory");
+        Info("Allocating output image memory");
         for (int i = 0; i < ModelType::NV; i++) {
             auto op = this->GetOutput(i);
             op->SetBufferedRegion(lr);
@@ -486,13 +478,9 @@ class ModelFitFilter
         }
     }
 
-    virtual void BeforeThreadedGenerateData() override {
-        QI::Info(m_verbose, "Starting model fit");
-    }
+    virtual void BeforeThreadedGenerateData() override { Info("Starting model fit"); }
 
-    virtual void AfterThreadedGenerateData() override {
-        QI::Info(m_verbose, "Finished model fit");
-    }
+    virtual void AfterThreadedGenerateData() override { Info("Finished model fit"); }
 
     virtual void DynamicThreadedGenerateData(const TRegion &region) override {
         itk::ImageRegionConstIterator<TMaskImage> mask_iter;
@@ -606,7 +594,7 @@ class ModelFitFilter
                         status = m_fit->fit(inputs, fixed, outputs, covar, rmse, rs, flag);
                     }
 
-                    if (!status.success && m_verbose) {
+                    if (!status.success) {
                         QI::Warn(
                             "Fit failed for voxel {}: {}", rmse_iter.GetIndex(), status.message);
                     }

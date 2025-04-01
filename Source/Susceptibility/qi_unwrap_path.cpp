@@ -43,7 +43,7 @@ int unwrap_path_main(args::Subparser &parser) {
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     parser.Parse();
 
-    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
 
     typedef itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF> TExtract;
     typedef itk::TileImageFilter<QI::VolumeF, QI::SeriesF>    TTile;
@@ -65,13 +65,13 @@ int unwrap_path_main(args::Subparser &parser) {
     auto unwrapFilter      = itk::UnwrapPathPhaseFilter::New();
     for (size_t i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
-        QI::Log(verbose, "Processing volume {}", i);
+        QI::Info("Processing volume {}", i);
         extract->SetExtractionRegion(region);
         extract->Update();
-        QI::Log(verbose, "Calculating reliabilty");
+        QI::Info("Calculating reliabilty");
         reliabilityFilter->SetInput(extract->GetOutput());
         reliabilityFilter->Update();
-        QI::Log(verbose, "Unwrapping phase");
+        QI::Info("Unwrapping phase");
         unwrapFilter->SetInput(extract->GetOutput());
         unwrapFilter->SetReliability(reliabilityFilter->GetOutput());
         unwrapFilter->Update();
@@ -89,7 +89,7 @@ int unwrap_path_main(args::Subparser &parser) {
 
     std::string outname =
         (outarg ? outarg.Get() : (QI::StripExt(input_path.Get())) + "_unwrapped" + QI::OutExt());
-    QI::WriteImage(inFile, outname, verbose);
+    QI::WriteImage(inFile, outname);
 
     return EXIT_SUCCESS;
 }

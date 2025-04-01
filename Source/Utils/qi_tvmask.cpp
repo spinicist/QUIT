@@ -35,13 +35,13 @@ int tvmask_main(args::Subparser &parser) {
         parser, "THRESH", "Threshold for TV mask (default 2)", {'t', "thresh"}, 2.0);
 
     parser.Parse();
-    auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
+    auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     const int         insize    = input->GetNumberOfComponentsPerPixel();
 
     auto output = QI::NewImageLike(input);
 
-    QI::Log(verbose, "Processing");
+    QI::Info("Processing");
     auto mt = itk::MultiThreaderBase::New();
     mt->ParallelizeImageRegion<3>(
         input->GetBufferedRegion(),
@@ -59,6 +59,6 @@ int tvmask_main(args::Subparser &parser) {
         },
         nullptr);
     const std::string fname = outPrefix + "tvmask" + QI::OutExt();
-    QI::WriteImage(output, fname, verbose);
+    QI::WriteImage(output, fname);
     return EXIT_SUCCESS;
 }

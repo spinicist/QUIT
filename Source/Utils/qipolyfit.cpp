@@ -76,7 +76,6 @@ class PolynomialFitImageFilter : public ImageToImageFilter<QI::VolumeF, QI::Volu
         ImageRegionConstIterator<TImage> maskIter;
         int                              N = 0;
         if (mask) {
-            // if (m_verbose) std::cout << "Counting voxels in mask..." );
             maskIter = ImageRegionConstIterator<TImage>(mask, region);
             maskIter.GoToBegin();
             while (!maskIter.IsAtEnd()) {
@@ -128,7 +127,7 @@ int polyfit_main(args::Subparser &parser) {
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     parser.Parse();
 
-    auto input = QI::ReadImage(QI::CheckPos(input_path), verbose);
+    auto input = QI::ReadImage(QI::CheckPos(input_path));
     auto fit   = itk::PolynomialFitImageFilter::New();
 
     QI::Polynomial<3> poly(order.Get());
@@ -137,13 +136,13 @@ int polyfit_main(args::Subparser &parser) {
     fit->SetRobust(robust);
     Eigen::Array3d center = Eigen::Array3d::Zero();
     if (mask_path) {
-        auto mask_image = QI::ReadImage(mask_path.Get(), verbose);
+        auto mask_image = QI::ReadImage(mask_path.Get());
         fit->SetMask(mask_image);
         auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
         moments->SetImage(mask_image);
         moments->Compute();
         // ITK seems to put a minus sign on CoG
-        QI::Log(verbose, "Mask CoG is: {}", -moments->GetCenterOfGravity());
+        QI::Info("Mask CoG is: {}", -moments->GetCenterOfGravity());
         center = QI::Eigenify(-moments->GetCenterOfGravity());
     }
     fit->SetCenter(center);
@@ -161,7 +160,7 @@ int polyfit_main(args::Subparser &parser) {
     if (print_terms)
         doc["terms"] = fit->GetPolynomial().get_terms();
     QI::WriteJSON(std::cout, doc);
-    QI::Log(verbose, "Residual: {}", fit->GetResidual());
-    QI::Log(verbose, "Finished.");
+    QI::Info("Residual: {}", fit->GetResidual());
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

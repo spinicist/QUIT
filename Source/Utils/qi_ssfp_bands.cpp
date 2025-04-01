@@ -361,11 +361,6 @@ int ssfp_bands_main(args::Subparser &parser) {
 
     args::ValueFlag<std::string> out_arg(
         parser, "OUTPREFIX", "Change output prefix (default input filename)", {'o', "out"});
-    args::ValueFlag<int>         threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 4);
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::Flag alt_order(
@@ -395,15 +390,15 @@ int ssfp_bands_main(args::Subparser &parser) {
         parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2', "2pass"});
     parser.Parse();
 
-    QI::Log(verbose, "Opening input file: {}", QI::CheckPos(input_path));
-    auto         inFile = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);
+    QI::Info("Opening input file: {}", QI::CheckPos(input_path));
+    auto         inFile = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path));
     const size_t nVols  = inFile->GetNumberOfComponentsPerPixel();
-    QI::Log(verbose, "Phase increments = {} Number of volumes = {}", ph_incs.Get(), nVols);
+    QI::Info("Phase increments = {} Number of volumes = {}", ph_incs.Get(), nVols);
     QI::VectorVolumeXF::Pointer output = ITK_NULLPTR;
     std::string                 suffix = "";
     if (method.Get() == "G") {
         suffix = "GS";
-        QI::Log(verbose, "Geometric solution selected");
+        QI::Info("Geometric solution selected");
         QI::GSFunctor gs(nVols, ph_incs.Get(), ph_order, alt_order);
         if (regularise.Get() == "L") {
             suffix += "L";
@@ -416,7 +411,7 @@ int ssfp_bands_main(args::Subparser &parser) {
         } else {
             QI::Fail("Invalid regularisation {}", regularise.Get());
         }
-        QI::Log(verbose, "Regularisation = {}", suffix);
+        QI::Info("Regularisation = {}", suffix);
         auto pass1 = itk::
             UnaryFunctorImageFilter<QI::VectorVolumeXF, QI::VectorVolumeXF, QI::GSFunctor>::New();
         pass1->SetFunctor(gs);
@@ -473,23 +468,20 @@ int ssfp_bands_main(args::Subparser &parser) {
         pass2->SetInput(inFile);
         pass2->SetPass1(output);
         if (mask)
-            pass2->SetMask(QI::ReadImage(mask.Get(), verbose));
-        QI::Log(verbose, "2nd pass");
-        if (verbose) {
-            auto monitor = QI::GenericMonitor::New();
-            pass2->AddObserver(itk::ProgressEvent(), monitor);
-        }
+            pass2->SetMask(QI::ReadImage(mask.Get()));
+        QI::Info("2nd pass");
+        pass2->AddObserver(itk::ProgressEvent(), QI::GenericMonitor::New());
         pass2->Update();
         output = pass2->GetOutput();
     }
     std::string prefix  = (out_arg ? out_arg.Get() : QI::StripExt(input_path.Get()));
     std::string outname = prefix + "_" + suffix + QI::OutExt();
-    QI::Log(verbose, "Writing output file: {}", outname);
+    QI::Info("Writing output file: {}", outname);
     if (magnitude) {
-        QI::WriteMagnitudeImage(output, outname, verbose);
+        QI::WriteMagnitudeImage(output, outname);
     } else {
-        QI::WriteImage(output, outname, verbose);
+        QI::WriteImage(output, outname);
     }
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

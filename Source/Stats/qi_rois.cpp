@@ -42,11 +42,11 @@ int rois_main(args::Subparser &parser) {
     args::Flag                   print_names(parser,
                            "PRINT_NAMES",
                            "Print label names in first column/row (labels must be specified)",
-                           {'n', "print_names"});
+                                             {'n', "print_names"});
     args::Flag                   transpose(parser,
                          "TRANSPOSE",
                          "Transpose output table (values go in rows instead of columns",
-                         {'t', "transpose"});
+                                           {'t', "transpose"});
     args::Flag                   ignore_zero(
         parser, "IGNORE_ZERO", "Ignore 0 label (background)", {'z', "ignore_zero"});
     args::Flag           sigma(parser, "SIGMA", "Print ±std along with mean", {'s', "sigma"});
@@ -55,7 +55,7 @@ int rois_main(args::Subparser &parser) {
     args::ValueFlag<std::string>     delim(parser,
                                        "DELIMITER",
                                        "Specify delimiter to use between entries (default ,)",
-                                       {'d', "delim"},
+                                           {'d', "delim"},
                                        ",");
     args::ValueFlagList<std::string> header_paths(
         parser, "HEADER", "Add a header (can be specified multiple times)", {'H', "header"});
@@ -70,14 +70,14 @@ int rois_main(args::Subparser &parser) {
 
     size_t n_files = QI::CheckList(in_paths).size();
     if (volumes) {
-        QI::Log(verbose, "There are {} input images, finding ROI volumes", n_files);
+        QI::Info("There are {} input images, finding ROI volumes", n_files);
     } else {
         // For ROI values, we have label and value image pairs
         if (n_files % 2 != 0) {
             QI::Fail("Require an even number of input images when finding ROI values");
         }
         n_files = n_files / 2;
-        QI::Log(verbose, "There are {} input image pairs, finding mean ROI values", n_files);
+        QI::Info("There are {} input image pairs, finding mean ROI values", n_files);
     }
 
     //**********************************************************************************************
@@ -85,7 +85,7 @@ int rois_main(args::Subparser &parser) {
     Tlabels                  labels;
     std::vector<std::string> label_names;
     if (label_list_path) {
-        QI::Log(verbose, "Opening label list file: {}", label_list_path.Get());
+        QI::Info("Opening label list file: {}", label_list_path.Get());
         std::ifstream file(label_list_path.Get());
         if (!file) {
             QI::Fail("Could not open label list file: {}", label_list_path.Get());
@@ -97,17 +97,14 @@ int rois_main(args::Subparser &parser) {
             temp.erase(std::remove(temp.begin(), temp.end(), '\r'),
                        temp.end()); // Deal with rogue ^M characters
             label_names.push_back(temp);
-            QI::Log(verbose, "Read label: {}, name: {}", labels.back(), label_names.back());
+            QI::Info("Read label: {}, name: {}", labels.back(), label_names.back());
         }
     } else {
         TStatsFilter::Pointer label_filter = TStatsFilter::New();
-        QI::Log(verbose,
-                "Reading first label file to determine labels: {}",
-                QI::CheckList(in_paths).at(0));
-        label_filter->SetLabelInput(
-            QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0), verbose));
+        QI::Info("Reading first label file to determine labels: {}", QI::CheckList(in_paths).at(0));
+        label_filter->SetLabelInput(QI::ReadImage<QI::VolumeI>(QI::CheckList(in_paths).at(0)));
         // Dummy value because ITK complains input primary is not set
-        label_filter->SetInput(QI::ReadImage<QI::VolumeF>(QI::CheckList(in_paths).at(0), verbose));
+        label_filter->SetInput(QI::ReadImage<QI::VolumeF>(QI::CheckList(in_paths).at(0)));
         label_filter->Update();
         labels = label_filter->GetValidLabelValues();
         std::sort(labels.begin(), labels.end());
@@ -119,7 +116,7 @@ int rois_main(args::Subparser &parser) {
         }
     }
     if (ignore_zero) {
-        QI::Log(verbose, "Removing zero from label list.");
+        QI::Info("Removing zero from label list.");
         labels.erase(std::remove(labels.begin(), labels.end(), 0), labels.end());
     }
 
@@ -132,7 +129,7 @@ int rois_main(args::Subparser &parser) {
                                                   std::vector<std::string>());
     for (size_t h = 0; h < headers.size(); h++) {
         const std::string header_path = header_paths.Get().at(h);
-        QI::Log(verbose, "Reading header file: {}", header_path);
+        QI::Info("Reading header file: {}", header_path);
         std::ifstream header_file(header_path);
         if (!header_file) {
             QI::Fail("Failed to open header file: {}", header_path);
@@ -177,14 +174,14 @@ int rois_main(args::Subparser &parser) {
     QI::VolumeF::Pointer  value_img    = ITK_NULLPTR;
     for (size_t f = 0; f < n_files; f++) {
         if (volumes) {
-            QI::Log(verbose, "Reading label file: {}", in_paths.Get().at(f));
-            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f), verbose);
-            value_img = QI::ReadImage(in_paths.Get().at(f), verbose); // Dummy image
+            QI::Info("Reading label file: {}", in_paths.Get().at(f));
+            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
+            value_img = QI::ReadImage(in_paths.Get().at(f)); // Dummy image
         } else {
-            QI::Log(verbose, "Reading label file: {}", in_paths.Get().at(f));
-            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f), verbose);
-            QI::Log(verbose, "Reading value file: {}", in_paths.Get().at(f + n_files));
-            value_img = QI::ReadImage(in_paths.Get().at(f + n_files), verbose);
+            QI::Info("Reading label file: {}", in_paths.Get().at(f));
+            label_img = QI::ReadImage<QI::VolumeI>(in_paths.Get().at(f));
+            QI::Info("Reading value file: {}", in_paths.Get().at(f + n_files));
+            value_img = QI::ReadImage(in_paths.Get().at(f + n_files));
         }
         double vox_volume = QI::VoxelVolume(label_img);
         label_filter->SetLabelInput(label_img);
@@ -198,7 +195,7 @@ int rois_main(args::Subparser &parser) {
     }
 
     //**********************************************************************************************
-    QI::Log(verbose, "Writing CSV: ");
+    QI::Info("Writing CSV: ");
     if (precision)
         std::cout << std::fixed << std::setprecision(precision.Get());
     if (transpose) {

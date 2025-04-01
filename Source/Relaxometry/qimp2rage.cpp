@@ -62,11 +62,6 @@ One_MP2RAGE(const double &M0, const double &T1, const double &B1, const QI::MP2R
 
 int mp2rage_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Path to complex MP-RAGE data");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<std::string> json_file(
@@ -80,7 +75,7 @@ int mp2rage_main(args::Subparser &parser) {
         0.0);
     parser.Parse();
 
-    auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path), verbose);
+    auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
 
     auto ti_1                     = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
     auto ti_2                     = itk::ExtractImageFilter<QI::SeriesXF, QI::VolumeXF>::New();
@@ -94,7 +89,7 @@ int mp2rage_main(args::Subparser &parser) {
     ti_2->SetDirectionCollapseToSubmatrix();
     ti_2->SetInput(inFile);
 
-    QI::Log(verbose, "Generating MP2 contrasts");
+    QI::Info("Generating MP2 contrasts");
     using BinaryFilter = itk::BinaryGeneratorImageFilter<QI::VolumeXF, QI::VolumeXF, QI::VolumeF>;
     auto MP2Filter     = BinaryFilter::New();
     MP2Filter->SetInput1(ti_1->GetOutput());
@@ -105,12 +100,12 @@ int mp2rage_main(args::Subparser &parser) {
     });
     MP2Filter->Update();
     const std::string out_prefix = outarg.Get() + "MP2";
-    QI::WriteImage(MP2Filter->GetOutput(), out_prefix + "_UNI" + QI::OutExt(), verbose);
+    QI::WriteImage(MP2Filter->GetOutput(), out_prefix + "_UNI" + QI::OutExt());
 
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("MP2RAGE").get<QI::MP2RAGESequence>();
-    QI::Log(verbose, "Building look-up spline");
+    QI::Info("Building look-up spline");
     int            num_entries = 100;
     Eigen::ArrayXd T1_values   = Eigen::ArrayXd::LinSpaced(num_entries, 0.25, 4.0);
     Eigen::ArrayXd MP2_values(num_entries);
@@ -124,10 +119,10 @@ int mp2rage_main(args::Subparser &parser) {
             MP2_values[i] = mp2;
         }
     }
-    QI::Log(verbose, "Lookup table length = {}", num_entries);
+    QI::Info("Lookup table length = {}", num_entries);
     QI::SplineInterpolator mp2_to_t1(MP2_values.head(num_entries), T1_values.head(num_entries));
     if (beta) {
-        QI::Log(verbose, "Recalculating unregularised MP2 image");
+        QI::Info("Recalculating unregularised MP2 image");
         MP2Filter->SetFunctor([&](const std::complex<float> &p1, const std::complex<float> &p2) {
             return MP2Contrast(p1, p2, 0.0);
         });
@@ -138,10 +133,10 @@ int mp2rage_main(args::Subparser &parser) {
     T1LookupFilter->SetInput(MP2Filter->GetOutput());
     auto lookup = [&](const float &p) { return mp2_to_t1(p); };
     T1LookupFilter->SetFunctor(lookup);
-    QI::Log(verbose, "Calculating T1");
+    QI::Info("Calculating T1");
     T1LookupFilter->Update();
-    QI::WriteImage(T1LookupFilter->GetOutput(), out_prefix + "_T1" + QI::OutExt(), verbose);
+    QI::WriteImage(T1LookupFilter->GetOutput(), out_prefix + "_T1" + QI::OutExt());
 
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

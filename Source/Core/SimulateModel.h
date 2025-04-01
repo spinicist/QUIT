@@ -19,25 +19,21 @@
 namespace QI {
 
 template <typename Model, bool MultiOutput>
-void SimulateModel(json &                                    json,
-                   Model const &                             model,
-                   typename Model::FixedNames const &        fixedpaths,
+void SimulateModel(json                                     &json,
+                   Model const                              &model,
+                   typename Model::FixedNames const         &fixedpaths,
                    std::array<std::string, Model::NI> const &outpaths,
-                   std::string const &                       mask_path,
-                   bool const                                verbose,
+                   std::string const                        &mask_path,
                    double const                              noise,
                    int const                                 nThreads,
-                   std::string const &                       subRegion) {
-    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model,
-                                                                 verbose,
-                                                                 nThreads,
-                                                                 subRegion);
+                   std::string const                        &subRegion) {
+    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, nThreads, subRegion);
     simulator->SetNoise(noise);
     for (auto i = 0; i < Model::NV; i++) {
         const std::string vname = fmt::format("{}_map", model.varying_names[i]);
         const std::string vfile = json.at(vname).get<std::string>();
-        QI::Log(verbose, "Reading {} from file: {}", vname, vfile);
-        simulator->SetVarying(i, QI::ReadImage(vfile, false));
+        QI::Info("Reading {} from file: {}", vname, vfile);
+        simulator->SetVarying(i, QI::ReadImage(vfile));
     }
     if constexpr (Model::NF > 0) {
         if (fixedpaths.size() != Model::NF) {
@@ -49,18 +45,18 @@ void SimulateModel(json &                                    json,
             if (fixedpaths[i].size() > 0) {
                 std::string const &fname = model.fixed_names[i];
                 std::string const &ffile = fixedpaths[i];
-                QI::Log(verbose, "Reading {} from file: {}", fname, ffile);
-                simulator->SetFixed(i, QI::ReadImage(ffile, false));
+                QI::Info("Reading {} from file: {}", fname, ffile);
+                simulator->SetFixed(i, QI::ReadImage(ffile));
             }
         }
     }
     if (mask_path != "") {
-        simulator->SetMask(QI::ReadImage(mask_path, verbose));
+        simulator->SetMask(QI::ReadImage(mask_path));
     }
-    QI::Log(verbose, "Noise level is {}\nSimulating model...", noise);
+    QI::Info("Noise level is {}\nSimulating model...", noise);
     srand((unsigned int)time(0));
     simulator->Update();
-    QI::Log(verbose, "Finished");
+    QI::Info("Finished");
     if constexpr (MultiOutput) {
         if (outpaths.size() != model.num_outputs()) {
             QI::Fail("Number of output paths {} does not match number of outputs {}",
@@ -68,10 +64,64 @@ void SimulateModel(json &                                    json,
                      model.num_outputs());
         }
         for (size_t i = 0; i < model.num_outputs(); i++) {
-            QI::WriteImage(simulator->GetOutput(i), outpaths[i], verbose);
+            QI::WriteImage(simulator->GetOutput(i), outpaths[i]);
         }
     } else {
-        QI::WriteImage(simulator->GetOutput(0), outpaths[0], verbose);
+        QI::WriteImage(simulator->GetOutput(0), outpaths[0]);
+    }
+}
+
+template <typename Model, bool MultiOutput>
+void SimulateModel2(Model const                              &model,
+                    std::vector<std::string> const           &varyingPaths,
+                    typename Model::FixedNames const         &fixedpaths,
+                    std::array<std::string, Model::NI> const &outpaths,
+                    std::string const                        &mask_path,
+                    double const                              noise,
+                    int const                                 nThreads,
+                    std::string const                        &subRegion) {
+    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, nThreads, subRegion);
+    simulator->SetNoise(noise);
+    if (varyingPaths.size() != Model::NV) {
+        QI::Fail("Expected {} varying inputs, not {}", Model::NV, varyingPaths.size());
+    }
+    for (auto i = 0; i < Model::NV; i++) {
+        QI::Info("Parameter {}", model.varying_names[i]);
+        simulator->SetVarying(i, QI::ReadImage(varyingPaths[i]));
+    }
+    if constexpr (Model::NF > 0) {
+        if (fixedpaths.size() != Model::NF) {
+            QI::Fail("Number of fixed paths {} does not match number of parameters {}",
+                     fixedpaths.size(),
+                     Model::NF);
+        }
+        for (auto i = 0; i < Model::NF; i++) {
+            if (fixedpaths[i].size() > 0) {
+                std::string const &fname = model.fixed_names[i];
+                std::string const &ffile = fixedpaths[i];
+                QI::Info("Reading {} from file: {}", fname, ffile);
+                simulator->SetFixed(i, QI::ReadImage(ffile));
+            }
+        }
+    }
+    if (mask_path != "") {
+        simulator->SetMask(QI::ReadImage(mask_path));
+    }
+    QI::Info("Noise level is {}\nSimulating model...", noise);
+    srand((unsigned int)time(0));
+    simulator->Update();
+    QI::Info("Finished");
+    if constexpr (MultiOutput) {
+        if (outpaths.size() != model.num_outputs()) {
+            QI::Fail("Number of output paths {} does not match number of outputs {}",
+                     outpaths.size(),
+                     model.num_outputs());
+        }
+        for (size_t i = 0; i < model.num_outputs(); i++) {
+            QI::WriteImage(simulator->GetOutput(i), outpaths[i]);
+        }
+    } else {
+        QI::WriteImage(simulator->GetOutput(0), outpaths[0]);
     }
 }
 

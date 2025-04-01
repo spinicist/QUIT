@@ -41,11 +41,6 @@ template <class TPixel> class AFI {
 
 int afi_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  out_prefix(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<double> nom_flip(
@@ -56,9 +51,9 @@ int afi_main(args::Subparser &parser) {
         parser, "SAVE ANGLE", "Write out the actual flip-angle as well as B1", {'s', "save"});
     parser.Parse();
 
-    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path), verbose);
-    QI::Log(verbose, "Nominal flip-angle = {} degrees", nom_flip.Get());
-    QI::Log(verbose, "TR2:TR1 ratio = {}", tr_ratio.Get());
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
+    QI::Info("Nominal flip-angle = {} degrees", nom_flip.Get());
+    QI::Info("TR2:TR1 ratio = {}", tr_ratio.Get());
     auto volume1                   = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto volume2                   = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto region                    = inFile->GetLargestPossibleRegion();
@@ -83,9 +78,9 @@ int afi_main(args::Subparser &parser) {
     B1->SetInput1(afi->GetOutput());
     B1->SetConstant2(nom_flip.Get());
     B1->Update();
-    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "AFI_B1" + QI::OutExt(), verbose);
+    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "AFI_B1" + QI::OutExt());
     if (save_angle)
-        QI::WriteImage(afi->GetOutput(), out_prefix.Get() + "AFI_angle" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Finished.");
+        QI::WriteImage(afi->GetOutput(), out_prefix.Get() + "AFI_angle" + QI::OutExt());
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

@@ -195,13 +195,13 @@ int ssfp_emt_main(args::Subparser &parser) {
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);
 
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
     QI::SSFPMTSequence   ssfp(input.at("SSFPMT"));
     Eigen::ArrayXd const W =
         M_PI * G0.Get() * (ssfp.pulse.p2 / pow(ssfp.pulse.p1, 2)) * pow(ssfp.FA / ssfp.Trf, 2);
-    QI::Log(verbose, "Calculated saturation rate W = {}\n", W.transpose());
+    QI::Info("Calculated saturation rate W = {}\n", W.transpose());
 
     EMTModel model{{}, ssfp, W};
     if (simulate) {
@@ -210,17 +210,16 @@ int ssfp_emt_main(args::Subparser &parser) {
                                           {B1.Get(), T2_f.Get()},
                                           {G_path.Get(), a_path.Get(), b_path.Get()},
                                           mask.Get(),
-                                          verbose,
                                           simulate.Get(),
                                           threads.Get(),
                                           subregion.Get());
     } else {
         // First calculate T2_f
-        auto a_input = QI::ReadImage<QI::VectorVolumeF>(a_path.Get(), verbose);
+        auto a_input = QI::ReadImage<QI::VectorVolumeF>(a_path.Get());
 
         auto T2_f_calc = QI::NewImageLike(a_input);
 
-        QI::Info(verbose, "Calculating T2_f");
+        QI::Info("Calculating T2_f");
         auto mt = itk::MultiThreaderBase::New();
         mt->SetNumberOfWorkUnits(threads.Get());
         mt->ParallelizeImageRegion<3>(
@@ -242,14 +241,14 @@ int ssfp_emt_main(args::Subparser &parser) {
 
         EMTFit fit{model};
         auto   fit_filter = QI::ModelFitFilter<EMTFit>::New(
-            &fit, verbose, covar, resids, threads.Get(), subregion.Get());
+            &fit, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get(), ""}, mask.Get());
         fit_filter->SetFixed(1, T2_f_calc);
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "EMT_");
-        QI::WriteImage(T2_f_calc, prefix.Get() + "EMT_T2_f" + QI::OutExt(), verbose);
-        QI::Log(verbose, "Finished.");
+        QI::WriteImage(T2_f_calc, prefix.Get() + "EMT_T2_f" + QI::OutExt());
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

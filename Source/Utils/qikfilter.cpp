@@ -157,7 +157,7 @@ int kfilter_main(args::Subparser &parser) {
     if (filters) {
         for (const auto &f : filters.Get()) {
             kernels.push_back(QI::ReadKernel(f));
-            QI::Log(verbose, "Read kernel: {}", fmt::streamed(*(kernels.back())));
+            QI::Info("Read kernel: {}", fmt::streamed(*(kernels.back())));
         }
     } else {
         kernels.push_back(std::make_shared<QI::TukeyKernel>());
@@ -165,11 +165,11 @@ int kfilter_main(args::Subparser &parser) {
 
     QI::SeriesXF::Pointer vols;
     if (complex_in) {
-        QI::Log(verbose, "Reading complex file: {}", QI::CheckPos(in_path));
-        vols = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(in_path), verbose);
+        QI::Info("Reading complex file: {}", QI::CheckPos(in_path));
+        vols = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(in_path));
     } else {
-        QI::Log(verbose, "Reading real file: {}", QI::CheckPos(in_path));
-        QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(in_path), verbose);
+        QI::Info("Reading real file: {}", QI::CheckPos(in_path));
+        QI::SeriesF::Pointer rvols = QI::ReadImage<QI::SeriesF>(QI::CheckPos(in_path));
         auto                 cast  = itk::CastImageFilter<QI::SeriesF, QI::SeriesXF>::New();
         cast->SetInput(rvols);
         cast->Update();
@@ -207,15 +207,15 @@ int kfilter_main(args::Subparser &parser) {
 
     auto tkernel = TKernel::New();
     if (!filter_per_volume) {
-        QI::Info(verbose, "Kernels:");
+        QI::Info("Kernels:");
         for (auto const &k : kernels) {
-            QI::Info(verbose, "{}", fmt::streamed(*k));
+            QI::Info("{}", fmt::streamed(*k));
         }
         tkernel->SetKernels(kernels);
     }
     if (highpass) {
         tkernel->SetHighpass(highpass);
-        QI::Log(verbose, "Set highpass filter");
+        QI::Info("Set highpass filter");
     }
 
     auto                             tile = TTile::New();
@@ -226,7 +226,7 @@ int kfilter_main(args::Subparser &parser) {
 
     for (size_t i = 0; i < nvols; i++) {
         region.GetModifiableIndex()[3] = i;
-        QI::Log(verbose, "Processing volume {}", i);
+        QI::Info("Processing volume {}", i);
 
         auto extract = TExtract::New();
         extract->SetInput(vols);
@@ -247,7 +247,7 @@ int kfilter_main(args::Subparser &parser) {
             fft_pad->SetInput(extract->GetOutput());
         }
         fft_pad->Update(); // Need to know the size of this to set up the kernel properly
-        QI::Log(verbose,
+        QI::Info(
                 "After FFT padding size is: {}",
                 fft_pad->GetOutput()->GetLargestPossibleRegion().GetSize());
         if (i == 0) {
@@ -256,13 +256,13 @@ int kfilter_main(args::Subparser &parser) {
             tkernel->SetOrigin(fft_pad->GetOutput()->GetOrigin());
             tkernel->SetDirection(fft_pad->GetOutput()->GetDirection());
             tkernel->Update();
-            QI::Log(verbose,
+            QI::Info(
                     "Created kernel filter, size is: {}",
                     tkernel->GetOutput()->GetLargestPossibleRegion().GetSize());
         }
         if (filter_per_volume) {
             tkernel->SetKernel(kernels.at(i));
-            QI::Log(verbose, "Setting kernel to: {}", fmt::streamed(*kernels.at(i)));
+            QI::Info("Setting kernel to: {}", fmt::streamed(*kernels.at(i)));
         }
         auto forward = TFFT::New();
         forward->SetInput(fft_pad->GetOutput());
@@ -276,14 +276,14 @@ int kfilter_main(args::Subparser &parser) {
         auto inverse = TFFT::New();
         inverse->SetTransformDirection(TFFT::INVERSE);
         inverse->SetInput(mult->GetOutput());
-        QI::Log(verbose, "Filtering k-space");
+        QI::Info("Filtering k-space");
         inverse->Update(); // If we don't have this update, next step fails
 
         auto unpadder = TUnpad::New();
         unpadder->SetDirectionCollapseToSubmatrix();
         unpadder->SetExtractionRegion(unpad_region);
         unpadder->SetInput(inverse->GetOutput());
-        QI::Log(verbose, "Unpadding & tiling output");
+        QI::Info("Unpadding & tiling output");
         unpadder->Update();
 
         QI::VolumeXF::Pointer v = unpadder->GetOutput();
@@ -297,14 +297,14 @@ int kfilter_main(args::Subparser &parser) {
             cast_filter->SetInput(shift_filter->GetOutput());
             cast_filter->Update();
             QI::WriteMagnitudeImage(
-                cast_filter->GetOutput(), out_base + "_kspace_before" + QI::OutExt(), verbose);
+                cast_filter->GetOutput(), out_base + "_kspace_before" + QI::OutExt());
             shift_filter->SetInput(mult->GetOutput());
             cast_filter->Update();
             QI::WriteMagnitudeImage(
-                cast_filter->GetOutput(), out_base + "_kspace_after" + QI::OutExt(), verbose);
+                cast_filter->GetOutput(), out_base + "_kspace_after" + QI::OutExt());
         }
     }
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     tile->Update();
     auto dir = vols->GetDirection();
     auto spc = vols->GetSpacing();
@@ -315,9 +315,9 @@ int kfilter_main(args::Subparser &parser) {
 
     const std::string out_path = out_base + "_filtered" + QI::OutExt();
     if (complex_out) {
-        QI::WriteImage(vols, out_path, verbose);
+        QI::WriteImage(vols, out_path);
     } else {
-        QI::WriteMagnitudeImage(vols, out_path, verbose);
+        QI::WriteMagnitudeImage(vols, out_path);
     }
     if (save_kernel) {
         auto shift_filter = itk::FFTShiftImageFilter<QI::VolumeD, QI::VolumeD>::New();
@@ -325,7 +325,7 @@ int kfilter_main(args::Subparser &parser) {
         auto cast_filter = itk::CastImageFilter<QI::VolumeD, QI::VolumeF>::New();
         cast_filter->SetInput(shift_filter->GetOutput());
         cast_filter->Update();
-        QI::WriteImage(cast_filter->GetOutput(), out_base + "_kernel" + QI::OutExt(), verbose);
+        QI::WriteImage(cast_filter->GetOutput(), out_base + "_kernel" + QI::OutExt());
     }
     return EXIT_SUCCESS;
 }

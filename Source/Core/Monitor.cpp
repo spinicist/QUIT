@@ -10,9 +10,10 @@ void GenericMonitor::Execute(itk::Object *caller, const itk::EventObject &event)
 void GenericMonitor::Execute(const itk::Object *object, const itk::EventObject &event) {
     const itk::ProcessObject *filter = static_cast<const itk::ProcessObject *>(object);
     if (typeid(event) == typeid(itk::ProgressEvent)) {
-        QI::Info(true, "Progress: {}% complete", round(filter->GetProgress() * 100));
+        float const p = std::round(filter->GetProgress() * 100);
+        QI::Info("Progress: {}% complete", p);
     } else {
-        QI::Info(true, "Received event: {}", typeid(event).name());
+        QI::Info("Received event: {}", typeid(event).name());
     }
 }
 

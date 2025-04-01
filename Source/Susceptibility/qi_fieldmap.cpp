@@ -22,11 +22,6 @@
 
 int fieldmap_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input multi-echo GRE file");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<double> delta_te(parser, "ΔTE", "Echo time difference (ms)", {"delta_te"});
@@ -34,9 +29,9 @@ int fieldmap_main(args::Subparser &parser) {
         parser, "B0", "Field-strength in Tesla. Output will be in PPM", {"B0"});
     parser.Parse();
 
-    QI::Log(verbose, "Opening file: {}", QI::CheckPos(input_path));
-    auto input = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path), verbose);
-    QI::Log(verbose, "ΔTE = {} ms", QI::CheckValue(delta_te));
+    QI::Info("Opening file: {}", QI::CheckPos(input_path));
+    auto input = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path));
+    QI::Info("ΔTE = {} ms", QI::CheckValue(delta_te));
 
     auto fieldmap = QI::VolumeF::New();
     fieldmap->CopyInformation(input);
@@ -44,7 +39,7 @@ int fieldmap_main(args::Subparser &parser) {
     fieldmap->Allocate(true);
 
     auto mt = itk::MultiThreaderBase::New();
-    QI::Log(verbose, "Processing");
+    QI::Info("Processing");
     const int N     = input->GetNumberOfComponentsPerPixel();
     auto      scale = 1e3 / (2. * M_PI * delta_te.Get()); // Convert to Hz
     if (B0) {
@@ -66,7 +61,7 @@ int fieldmap_main(args::Subparser &parser) {
         },
         nullptr);
 
-    QI::WriteImage(fieldmap, outarg.Get() + "Fieldmap" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Finished.");
+    QI::WriteImage(fieldmap, outarg.Get() + "Fieldmap" + QI::OutExt());
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

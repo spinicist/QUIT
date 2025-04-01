@@ -39,11 +39,8 @@ class ModelSimFilter
     QI_ForwardNewMacro(Self);
     itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
-    ModelSimFilter(ModelType const &m,
-                   bool const vb,
-                   const int nThreads,
-                   std::string const &subregion) :
-        m_model{m}, m_verbose{vb} {
+    ModelSimFilter(ModelType const &m, const int nThreads, std::string const &subregion) :
+        m_model{m} {
         this->SetNumberOfRequiredInputs(ModelType::NV);
         if constexpr (MultiOutput) {
             this->SetNumberOfRequiredOutputs(m_model.num_outputs());
@@ -125,8 +122,7 @@ class ModelSimFilter
 
   protected:
     ModelType  m_model;
-    double     m_sigma = 0.0;
-    const bool m_verbose;
+    double     m_sigma        = 0.0;
     bool       m_hasSubregion = false;
     RegionType m_subregion;
 
@@ -182,7 +178,7 @@ class ModelSimFilter
             }
         }
 
-        Info(m_verbose, "Simulating...");
+        Info("Simulating...");
         this->GetMultiThreader()->SetNumberOfWorkUnits(this->GetNumberOfWorkUnits());
         this->GetMultiThreader()->template ParallelizeImageRegion<ImageDim>(
             region,
@@ -190,7 +186,7 @@ class ModelSimFilter
                 this->DynamicThreadedGenerateData(outputRegion);
             },
             this);
-        Info(m_verbose, "Finished simulating.");
+        Info("Finished simulating.");
     }
 
     void DynamicThreadedGenerateData(const RegionType &region) override {
@@ -239,16 +235,15 @@ class ModelSimFilter
                 if constexpr (MultiOutput) {
                     const auto signals = m_model.signals(varying, fixed);
                     for (size_t i = 0; i < signals.size(); i++) {
-                        const auto output =
-                            ModelType::NoiseType::Add(signals[i], m_sigma);
+                        const auto output    = ModelType::NoiseType::Add(signals[i], m_sigma);
                         const auto output_io = output.template cast<OutputPixelType>().eval();
                         itk::VariableLengthVector<OutputPixelType> data_out(output_io.data(),
                                                                             output_io.rows());
                         output_iters[i].Set(data_out);
                     }
                 } else {
-                    const auto signal = m_model.signal(varying, fixed);
-                    const auto output = ModelType::NoiseType::Add(signal, m_sigma);
+                    const auto signal    = m_model.signal(varying, fixed);
+                    const auto output    = ModelType::NoiseType::Add(signal, m_sigma);
                     const auto output_io = output.template cast<OutputPixelType>().eval();
                     itk::VariableLengthVector<OutputPixelType> data_out(output_io.data(),
                                                                         output_io.rows());

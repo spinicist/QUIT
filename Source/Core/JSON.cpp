@@ -28,6 +28,7 @@ json ReadJSON(std::istream &is) {
 json ReadJSON(std::string const &path) {
     std::ifstream ifs(path);
     if (ifs) {
+        QI::Info("Reading JSON from file: {}", path);
         return ReadJSON(ifs);
     } else {
         QI::Fail("Error opening file for reading: {}", path);

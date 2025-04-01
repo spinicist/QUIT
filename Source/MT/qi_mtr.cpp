@@ -60,11 +60,6 @@ void to_json(json &j, const MTContrast &s) {
 int mtr_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(
         parser, "INPUT", "Input file with different MT contrasts");
-    args::ValueFlag<int>         threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string> outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<std::string> mask_path(
@@ -74,13 +69,12 @@ int mtr_main(args::Subparser &parser) {
     args::ValueFlag<std::string> reference(parser, "REF", "External reference image", {"ref", 'r'});
     parser.Parse();
 
-    auto const input_img = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
-    QI::VolumeF::Pointer const ref_img =
-        reference ? QI::ReadImage(reference.Get(), verbose) : nullptr;
+    auto const input_img               = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
+    QI::VolumeF::Pointer const ref_img = reference ? QI::ReadImage(reference.Get()) : nullptr;
 
     std::vector<MTContrast> contrasts;
     if (json_file) {
-        QI::Log(verbose, "Reading contrasts");
+        QI::Info("Reading contrasts");
         json doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
         doc["contrasts"].get_to(contrasts);
     } else {
@@ -89,16 +83,16 @@ int mtr_main(args::Subparser &parser) {
 
     QI::VolumeF::Pointer mask_img = nullptr;
     if (mask_path) {
-        mask_img = QI::ReadImage(mask_path.Get(), verbose);
+        mask_img = QI::ReadImage(mask_path.Get());
     }
 
-    QI::Info(verbose, "Allocating output memory");
+    QI::Info("Allocating output memory");
     std::vector<QI::VolumeF::Pointer> out_imgs;
     for (size_t ii = 0; ii < contrasts.size(); ii++) {
         out_imgs.push_back(QI::NewImageLike<QI::VolumeF>(input_img));
     }
 
-    QI::Info(verbose, "Processing");
+    QI::Info("Processing");
     auto mt = itk::MultiThreaderBase::New();
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
@@ -167,9 +161,9 @@ int mtr_main(args::Subparser &parser) {
         },
         nullptr);
 
-    QI::Info(verbose, "Finished");
+    QI::Info("Finished");
     for (size_t ii = 0; ii < contrasts.size(); ii++) {
-        QI::WriteImage(out_imgs[ii], outarg.Get() + contrasts[ii].name + QI::OutExt(), verbose);
+        QI::WriteImage(out_imgs[ii], outarg.Get() + contrasts[ii].name + QI::OutExt());
     }
     return EXIT_SUCCESS;
 }

@@ -240,7 +240,7 @@ int despot2_main(args::Subparser &parser) {
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
     parser.Parse();
 
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto    ssfp  = input.at("SSFP").get<QI::SSFPSequence>();
     DESPOT2 model{{}, ssfp, its.Get()};
@@ -252,7 +252,6 @@ int despot2_main(args::Subparser &parser) {
                                           {QI::CheckValue(t1_path), B1.Get()},
                                           {QI::CheckPos(ssfp_path)},
                                           mask.Get(),
-                                          verbose,
                                           simulate.Get(),
                                           threads.Get(),
                                           subregion.Get());
@@ -261,27 +260,27 @@ int despot2_main(args::Subparser &parser) {
         switch (algorithm.Get()) {
         case 'l':
             d2 = new DESPOT2LLS(model);
-            QI::Log(verbose, "LLS algorithm selected.");
+            QI::Info("LLS algorithm selected.");
             break;
         case 'w':
             d2 = new DESPOT2WLLS(model);
-            QI::Log(verbose, "WLLS algorithm selected.");
+            QI::Info("WLLS algorithm selected.");
             break;
         case 'n':
             d2 = new DESPOT2NLLS(model);
-            QI::Log(verbose, "NLLS algorithm selected.");
+            QI::Info("NLLS algorithm selected.");
             break;
         }
         if (gs_arg) {
-            QI::Log(verbose, "GS Mode selected");
+            QI::Info("GS Mode selected");
             d2->model.elliptical = true;
         }
         auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(
-            d2, verbose, covar, resids, threads.Get(), subregion.Get());
+            d2, covar, resids, threads.Get(), subregion.Get());
         fit->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D2_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

@@ -67,30 +67,29 @@ template <typename TArray, const int size> void ArrayArgF(const std::string &a, 
 
 } // End namespace QI
 
-extern args::Group    global_group;
-extern args::HelpFlag help;
-extern args::Flag     verbose;
+extern args::Group          global_group;
+extern args::HelpFlag       help;
+extern args::Flag           verbose;
+extern args::ValueFlag<int> threads;
+
+#define QI_CORE_ARGS                                                                 \
+    args::ValueFlag<std::string> mask(                                               \
+        parser, "MASK", "Only process voxels within the given mask", {'m', "mask"}); \
+    args::ValueFlag<std::string> subregion(                                          \
+        parser,                                                                      \
+        "SUBREGION",                                                                 \
+        "Process voxels in a block from I,J,K with size SI,SJ,SK",                   \
+        {'s', "subregion"});                                                         \
+    args::ValueFlag<std::string> prefix(                                             \
+        parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});
 
 #define QI_COMMON_ARGS                                                                         \
+    QI_CORE_ARGS                                                                               \
     args::Flag resids(parser, "RESIDS", "Write point residuals", {'r', "resids"});             \
     args::Flag covar(                                                                          \
         parser, "COVAR", "Write out covariance matrix (CoV and Corr) images", {"covar"});      \
                                                                                                \
-    args::ValueFlag<int>   threads(parser,                                                     \
-                                 "THREADS",                                                  \
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",  \
-                                 {'T', "threads"},                                           \
-                                 QI::GetDefaultThreads());                                   \
     args::ValueFlag<float> simulate(                                                           \
         parser, "SIMULATE", "Simulate sequence (argument is noise level)", {"simulate"}, 0.0); \
-    args::ValueFlag<std::string> mask(                                                         \
-        parser, "MASK", "Only process voxels within the given mask", {'m', "mask"});           \
-    args::ValueFlag<std::string> subregion(                                                    \
-        parser,                                                                                \
-        "SUBREGION",                                                                           \
-        "Process voxels in a block from I,J,K with size SI,SJ,SK",                             \
-        {'s', "subregion"});                                                                   \
-    args::ValueFlag<std::string> prefix(                                                       \
-        parser, "PREFIX", "Add a prefix to output filenames", {'o', "out"});                   \
     args::ValueFlag<std::string> json_file(                                                    \
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});

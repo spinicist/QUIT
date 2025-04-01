@@ -9,6 +9,12 @@ int main(int argc, char **argv) {
 
 #define ADD(CMD, GROUP, HELP) args::Command CMD(GROUP, #CMD, HELP, &CMD##_main);
 
+#define ADD2(CMD, GROUP, HELP)                                         \
+    void          CMD##_fit(args::Subparser &parser);                  \
+    args::Command CMD##_fit_cmd(GROUP, #CMD "-fit", HELP, &CMD##_fit); \
+    void          CMD##_sim(args::Subparser &parser);                  \
+    args::Command CMD##_sim_cmd(GROUP, #CMD "-sim", HELP, &CMD##_sim);
+
     args::Group core(parser, "CORE");
     args::Flag  version(core, "VERSION", "Print the version of QUIT", {"version"});
     ADD(newimage, core, "Create a new image");
@@ -52,7 +58,7 @@ int main(int argc, char **argv) {
     ADD(ssfp_ellipse, relax, "Calculuate the SSFP ellipse properties");
     ADD(irtse, relax, "Inversion Recovery TSE");
 #ifdef BUILD_PARMESAN
-    ADD(parmesan, relax, "PARMESAN");
+    ADD2(parmesan, relax, "PARMESAN");
 #endif
 #endif
 #ifdef BUILD_STATS

@@ -46,17 +46,17 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
     bool                        additive;
 
     LorentzModel() {}
-    LorentzModel(SequenceType const &               s,
+    LorentzModel(SequenceType const                &s,
                  std::array<std::string, NV> const &v,
-                 VaryingArray const &               lo,
-                 VaryingArray const &               hi,
-                 VaryingArray const &               st,
-                 std::array<bool, NP> const &       ub,
-                 double const &                     Z,
-                 bool const &                       a) :
+                 VaryingArray const                &lo,
+                 VaryingArray const                &hi,
+                 VaryingArray const                &st,
+                 std::array<bool, NP> const        &ub,
+                 double const                      &Z,
+                 bool const                        &a) :
         sequence{s},
-        varying_names{v}, bounds_lo{lo}, bounds_hi{hi}, start{st},
-        use_bandwidth{ub}, Zref{Z}, additive{a} {}
+        varying_names{v}, bounds_lo{lo}, bounds_hi{hi}, start{st}, use_bandwidth{ub}, Zref{Z},
+        additive{a} {}
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
 
@@ -69,9 +69,9 @@ template <int NP_> struct LorentzModel : QI::Model<double, double, NP_ * 3, 0> {
 
         for (auto i = 0; i < NP; i++) {
             auto const indN = NVpP * i;
-            T const &  df   = v[indN + 0];
-            T const &  fwhm = v[indN + 1];
-            T const &  A    = v[indN + 2];
+            T const   &df   = v[indN + 0];
+            T const   &fwhm = v[indN + 1];
+            T const   &A    = v[indN + 2];
             if (use_bandwidth[i]) {
                 auto const x   = (sequence.sat_f0 - df - sequence.pulse.bandwidth / 2);
                 auto const y   = (sequence.sat_f0 - df + sequence.pulse.bandwidth / 2);
@@ -105,7 +105,7 @@ int lorentzian_main(args::Subparser &parser) {
 
     QI::CheckPos(input_path);
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     auto sequence = input.at("MTSat").get<QI::ZSpecSequence>();
 
     auto process = [&]<int N>() {
@@ -158,11 +158,10 @@ int lorentzian_main(args::Subparser &parser) {
             }
         }
 
-        QI::Log(verbose,
-                "Fitting check:\nLow:   {}\nHigh:  {}\nStart:  {}",
-                low.transpose(),
-                high.transpose(),
-                start.transpose());
+        QI::Info("Fitting check:\nLow:   {}\nHigh:  {}\nStart:  {}",
+                 low.transpose(),
+                 high.transpose(),
+                 start.transpose());
 
         LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
 
@@ -172,19 +171,17 @@ int lorentzian_main(args::Subparser &parser) {
                                          {},
                                          {input_path.Get()},
                                          mask.Get(),
-                                         verbose,
                                          simulate.Get(),
                                          threads.Get(),
                                          subregion.Get());
         } else {
             LFit fit{model};
-            auto fit_filter =
-                QI::ModelFitFilter<LFit>::New(
-                    &fit, verbose, covar, resids, threads.Get(), subregion.Get());
+            auto fit_filter = QI::ModelFitFilter<LFit>::New(
+                &fit, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + "LTZ_");
-            QI::Log(verbose, "Finished.");
+            QI::Info("Finished.");
         }
     };
 

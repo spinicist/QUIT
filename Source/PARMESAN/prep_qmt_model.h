@@ -13,7 +13,7 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
     double const T2_f = 0.07;
     double const T1_s = 0.35;
     double const T2_s = 14e-6;
-    double const Rx = 14;
+    double const R_x = 14;
     // Pools are "free" and "semi-solid"
     std::array<std::string, NV> const varying_names{"M0", "T1_f", "f_s", "B1"};
     VaryingArray const                start{1.0, 2.0, 0.1, 1.0};
@@ -21,7 +21,7 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
     VaryingArray const                hi{100.0, 5.0, 0.5, 1.5};
 
     std::array<std::string, NF> const fixed_names{"T2_f", "T1_s", "T2_s", "R_x"};
-    FixedArray const                  fixed_defaults{T2_f, T1_s, T2_s, Rx};
+    FixedArray const                  fixed_defaults{T2_f, T1_s, T2_s, R_x};
 
     int input_size(const int /* Unused */) const { return sequence.size(); }
 
@@ -90,14 +90,11 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
         PT const R2_f = PT(1) / f[0];
         PT const R1_s = PT(1) / f[1];
         PT const R2_s = PT(1) / f[2];
-        PT const Rx   = PT(f[3]);
-        PT const M0_s = f_s * M0;
-        PT const M0_f = M0 - M0_s;
-        PT const R_fs = Rx * f_s;
-        PT const R_sf = Rx * f_f;
+        PT const R_fs = f[3] * f_s;
+        PT const R_sf = f[3] * f_f;
 
         // State vector is [x_f y_f z_f x_s z_s 1]
-        AugMat       R        = Relax(M0_f, R1_f, R2_f, M0_s, R1_s, R2_s);
+        AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s);
         AugMat       K        = Exchange(R_fs, R_sf);
         AugMat const RpK      = R + K;
         AugMat const S        = Spoil();
@@ -135,7 +132,7 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
             m = spoilTRs * ramp * Dprep * prep_mats[ip] * m;
             for (int is = 0; is < sequence.SPS; is++) {
                 m         = A_mats[ip] * m;
-                sig[ii++] = m[1];
+                sig[ii++] = M0 * m[1];
                 m         = S * R_mats[ip] * m;
             }
             m = Dseg * ramp * m;
@@ -227,16 +224,13 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
             PT const R1_s = PT(1) / v[2];
             PT const R2_s = PT(1) / v[3];
             PT const f_s  = v[4];
-            PT const Rx   = v[5];
             PT const f_f  = 1.0 - f_s;
+            PT const R_fs = v[5] * f_s;
+            PT const R_sf = v[5] * f_f;
             PT const B1   = v[6];
-            PT const M0_s = f_s * M0;
-            PT const M0_f = M0 - M0_s;
-            PT const R_fs = Rx * f_s;
-            PT const R_sf = Rx * f_f;
-    
+
             // State vector is [x_f y_f z_f x_s z_s 1]
-            AugMat       R        = Relax(M0_f, R1_f, R2_f, M0_s, R1_s, R2_s);
+            AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s);
             AugMat       K        = Exchange(R_fs, R_sf);
             AugMat const RpK      = R + K;
             AugMat const S        = Spoil();
@@ -274,7 +268,7 @@ struct PrepQMTModel : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
                 m = spoilTRs * ramp * Dprep * prep_mats[ip] * m;
                 for (int is = 0; is < sequence.SPS; is++) {
                     m         = A_mats[ip] * m;
-                    sig[ii++] = m[1];
+                    sig[ii++] = M0 * m[1];
                     m         = S * R_mats[ip] * m;
                 }
                 m = Dseg * ramp * m;

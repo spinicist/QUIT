@@ -23,11 +23,6 @@
  */
 int zshim_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "ZSHIM_FILE", "Input Z-Shimmed file");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     args::ValueFlag<int> zshims(
@@ -40,7 +35,7 @@ int zshim_main(args::Subparser &parser) {
         parser, "NOISE REGION", "Subtract noise measured in region", {'n', "noiseregion"});
 
     parser.Parse();
-    auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
+    auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     const int         insize    = input->GetNumberOfComponentsPerPixel();
     const auto        gridsize  = zshims.Get() * yshims.Get();
@@ -55,7 +50,7 @@ int zshim_main(args::Subparser &parser) {
     double noise_mean = 0., noise_sqr_mean = 0., noise_sigma = 0.;
     if (noise) {
         // As per https://linkinghub.elsevier.com/retrieve/pii/0730725X93902253
-        QI::Log(verbose, "Calculating noise statistics");
+        QI::Info("Calculating noise statistics");
         auto mt           = itk::MultiThreaderBase::New();
         auto noise_region = QI::RegionFromString<QI::VectorVolumeF::RegionType>(noise.Get());
         itk::ImageRegionConstIterator<QI::VectorVolumeF> noise_it(input, noise_region);
@@ -73,16 +68,15 @@ int zshim_main(args::Subparser &parser) {
         noise_mean     = noise_mean / samples;
         noise_sqr_mean = noise_sqr_mean / samples;
         noise_sigma    = sqrt(noise_sqr_mean - noise_mean * noise_mean);
-        QI::Log(verbose,
-                "Noise samples {} mean {:.2f} sd {:.2f} ratio {:.2f} squared mean {:.2f}",
-                samples,
-                noise_mean,
-                noise_sigma,
-                noise_mean / noise_sigma,
-                noise_sqr_mean);
+        QI::Info("Noise samples {} mean {:.2f} sd {:.2f} ratio {:.2f} squared mean {:.2f}",
+                 samples,
+                 noise_mean,
+                 noise_sigma,
+                 noise_mean / noise_sigma,
+                 noise_sqr_mean);
     }
 
-    QI::Log(verbose, "Processing");
+    QI::Info("Processing");
     auto mt = itk::MultiThreaderBase::New();
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
@@ -110,6 +104,6 @@ int zshim_main(args::Subparser &parser) {
         },
         nullptr);
     const std::string fname = outPrefix + "_zshim" + QI::OutExt();
-    QI::WriteImage(output, fname, verbose);
+    QI::WriteImage(output, fname);
     return EXIT_SUCCESS;
 }

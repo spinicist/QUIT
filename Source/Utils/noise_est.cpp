@@ -37,14 +37,14 @@ int noise_est_main(args::Subparser &parser) {
         QI::Fail("Either REGION or MASK must be specified");
     }
 
-    auto const input  = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
-    int const  insize = input->GetNumberOfComponentsPerPixel();
-    QI::VolumeF::Pointer mask_img = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
+    auto const           input    = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
+    int const            insize   = input->GetNumberOfComponentsPerPixel();
+    QI::VolumeF::Pointer mask_img = mask ? QI::ReadImage(mask.Get()) : nullptr;
 
     double noise_mean = 0., noise_sqr_mean = 0., noise_sigma = 0.;
 
     // As per https://linkinghub.elsevier.com/retrieve/pii/0730725X93902253
-    QI::Log(verbose, "Calculating noise statistics");
+    QI::Info("Calculating noise statistics");
     auto mt           = itk::MultiThreaderBase::New();
     auto noise_region = region ? QI::RegionFromString<QI::VectorVolumeF::RegionType>(region.Get()) :
                                  input->GetLargestPossibleRegion();
@@ -72,13 +72,12 @@ int noise_est_main(args::Subparser &parser) {
     noise_mean     = noise_mean / samples;
     noise_sqr_mean = noise_sqr_mean / samples;
     noise_sigma    = sqrt(noise_sqr_mean - noise_mean * noise_mean);
-    QI::Log(verbose,
-            "Noise samples {} mean {:.3g} sd {:.3g} ratio {:.3g} squared mean {:.3g}",
-            samples,
-            noise_mean,
-            noise_sigma,
-            noise_mean / noise_sigma,
-            noise_sqr_mean);
+    QI::Info("Noise samples {} mean {:.3g} sd {:.3g} ratio {:.3g} squared mean {:.3g}",
+             samples,
+             noise_mean,
+             noise_sigma,
+             noise_mean / noise_sigma,
+             noise_sqr_mean);
 
     if (mean_sqr) {
         fmt::print("{}\n", noise_sqr_mean);

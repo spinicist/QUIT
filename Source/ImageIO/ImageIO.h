@@ -16,37 +16,27 @@
 namespace QI {
 
 template <typename TImg = QI::VolumeF>
-extern auto ReadImage(const std::string &path, const bool verbose) -> typename TImg::Pointer;
+extern auto ReadImage(const std::string &path) -> typename TImg::Pointer;
 
 template <typename TImg = QI::VolumeF>
-extern auto ReadMagnitudeImage(const std::string &path, const bool verbose) ->
-    typename TImg::Pointer;
+extern auto ReadMagnitudeImage(const std::string &path) -> typename TImg::Pointer;
+
+template <typename TImg> extern void WriteImage(const TImg *ptr, const std::string &path);
 
 template <typename TImg>
-extern void WriteImage(const TImg *ptr, const std::string &path, const bool verbose);
+extern void WriteImage(const itk::SmartPointer<TImg> &ptr, const std::string &path);
+
+template <typename TImg> extern void WriteMagnitudeImage(const TImg *ptr, const std::string &path);
 
 template <typename TImg>
-extern void
-WriteImage(const itk::SmartPointer<TImg> &ptr, const std::string &path, const bool verbose);
+extern void WriteMagnitudeImage(const itk::SmartPointer<TImg> &ptr, const std::string &path);
 
 template <typename TImg>
-extern void WriteMagnitudeImage(const TImg *ptr, const std::string &path, const bool verbose);
+extern void WriteScaledImage(const TImg *img, const QI::VolumeF *simg, const std::string &path);
 
 template <typename TImg>
-extern void WriteMagnitudeImage(const itk::SmartPointer<TImg> &ptr,
-                                const std::string &            path,
-                                const bool                     verbose);
-
-template <typename TImg>
-extern void WriteScaledImage(const TImg *       img,
-                             const QI::VolumeF *simg,
-                             const std::string &path,
-                             const bool         verbose);
-
-template <typename TImg>
-extern void WriteScaledImage(const itk::SmartPointer<TImg> &       ptr,
+extern void WriteScaledImage(const itk::SmartPointer<TImg>        &ptr,
                              const itk::SmartPointer<QI::VolumeF> &sptr,
-                             const std::string &                   path,
-                             const bool                            verbose);
+                             const std::string                    &path);
 
 } // namespace QI

@@ -181,7 +181,6 @@ int ase_oef_main(args::Subparser &parser) {
                                                      {},
                                                      {input_path.Get()},
                                                      mask.Get(),
-                                                     verbose,
                                                      simulate.Get(),
                                                      threads.Get(),
                                                      subregion.Get());
@@ -192,7 +191,6 @@ int ase_oef_main(args::Subparser &parser) {
                                                {},
                                                {input_path.Get()},
                                                mask.Get(),
-                                               verbose,
                                                simulate.Get(),
                                                threads.Get(),
                                                subregion.Get());
@@ -200,7 +198,7 @@ int ase_oef_main(args::Subparser &parser) {
     } else {
         auto process = [&](auto fit_func) {
             auto fit_filter = QI::ModelFitFilter<decltype(fit_func)>::New(
-                &fit_func, verbose, covar, resids, threads.Get(), subregion.Get());
+                &fit_func, covar, resids, threads.Get(), subregion.Get());
             fit_filter->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + "ASE_");

@@ -30,8 +30,7 @@ class PolynomialImage : public ImageSource<QI::VolumeF> {
     typedef ImageSource<TImage> Superclass;
     typedef SmartPointer<Self>  Pointer;
 
-    itkNewMacro(Self)
-    itkTypeMacro(Self, ImageSource);
+    itkNewMacro(Self) itkTypeMacro(Self, ImageSource);
 
     void SetReferenceImage(const SmartPointer<TImage> img) { m_reference = img; }
 
@@ -69,7 +68,6 @@ class PolynomialImage : public ImageSource<QI::VolumeF> {
         const auto                            mask = this->GetMask();
         itk::ImageRegionConstIterator<TImage> maskIter;
         if (mask) {
-            // if (m_verbose) std::cout << "Counting voxels in mask..." );
             maskIter =
                 itk::ImageRegionConstIterator<TImage>(mask, output->GetLargestPossibleRegion());
             maskIter.GoToBegin();
@@ -104,7 +102,7 @@ int polyimg_main(args::Subparser &parser) {
     args::ValueFlag<int>          threads(parser,
                                  "THREADS",
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
+                                          {'T', "threads"},
                                  QI::GetDefaultThreads());
     args::ValueFlag<int>          order(
         parser, "ORDER", "Specify the polynomial order (default 2)", {'o', "order"}, 2);
@@ -114,13 +112,13 @@ int polyimg_main(args::Subparser &parser) {
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
     parser.Parse();
 
-    QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path), verbose);
-    QI::Log(verbose, "Reading polynomial");
+    QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));
+    QI::Info("Reading polynomial");
     json                 input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     Eigen::Array3d const center = QI::ArrayFromJSON(input, "center", 1.);
     double const         scale  = input.at("scale").get<double>();
     Eigen::ArrayXd const coeffs = QI::ArrayFromJSON(input, "coeffs", 1.);
-    QI::Log(verbose,
+    QI::Info(
             "Center point is: {} Scale is: {}\nCoeffs are: {}",
             center.transpose(),
             scale,
@@ -131,16 +129,16 @@ int polyimg_main(args::Subparser &parser) {
         QI::Fail("Require {} terms for {} order polynomial", poly.nterms(), order.Get());
     }
     poly.setCoeffs(coeffs);
-    QI::Log(verbose, "Generating image");
+    QI::Info("Generating image");
     auto image = itk::PolynomialImage::New();
     image->SetReferenceImage(reference);
     image->SetPolynomial(poly);
     if (mask)
-        image->SetMask(QI::ReadImage(mask.Get(), verbose));
+        image->SetMask(QI::ReadImage(mask.Get()));
     image->SetCenter(center);
     image->SetScale(scale);
     image->Update();
-    QI::WriteImage(image->GetOutput(), out_path.Get(), verbose);
-    QI::Log(verbose, "Finished.");
+    QI::WriteImage(image->GetOutput(), out_path.Get());
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

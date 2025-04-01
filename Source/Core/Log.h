@@ -16,46 +16,38 @@
 
 #include "fmt/chrono.h"
 #include "fmt/color.h"
-#include "fmt/ranges.h"
 #include "fmt/ostream.h"
+#include "fmt/ranges.h"
 using namespace fmt::literals;
 
 namespace QI {
 
+enum struct Level {
+    Info, Warn, Fail
+};
+
+void SetVerbose(bool const vb);
+void FormatLog(Level lvl, fmt::string_view fmt, fmt::format_args args);
+__attribute__((noreturn)) void FormatFail(fmt::string_view fmt, fmt::format_args args);
+
 template <typename... Args>
-inline void Log(const bool verbose, fmt::format_string<Args...> fmt_str, Args &&...args) {
-    if (verbose) {
-        fmt::print(stderr, fmt_str, std::forward<Args>(args)...);
-        fmt::print(stderr, "\n");
-    }
+inline void Log(Level lvl, fmt::format_string<Args...> fstr, Args &&...args) {
+        FormatLog(lvl, fstr, fmt::make_format_args(args...));
 }
 
 template <typename... Args>
-inline void Info(const bool verbose, fmt::format_string<Args...> fmt_str, Args &&...args) {
-    if (verbose) {
-        const std::time_t now = std::time(nullptr);
-        fmt::print(
-            stderr, fmt::fg(fmt::terminal_color::bright_green), "{:%T} ", *std::localtime(&now));
-        fmt::print(stderr, fmt_str, std::forward<Args>(args)...);
-        fmt::print(stderr, "\n");
-    }
+inline void Info(fmt::format_string<Args...> fstr, Args &&...args) {
+        FormatLog(Level::Info, fstr, fmt::make_format_args(args...));
 }
 
 template <typename... Args>
-inline void Warn(fmt::format_string<Args...> fmt_str, Args &...args) {
-    const std::time_t now = std::time(nullptr);
-    fmt::print(
-        stderr, fmt::fg(fmt::terminal_color::bright_yellow), "{:%T} ", *std::localtime(&now));
-    fmt::print(stderr, fmt_str, std::forward<Args>(args)...);
-    fmt::print(stderr, "\n");
+inline void Warn(fmt::format_string<Args...> fstr, Args &&...args) {
+        FormatLog(Level::Warn, fstr, fmt::make_format_args(args...));
 }
 
-template <typename... Args>
-__attribute__((noreturn)) inline void Fail(fmt::format_string<Args...> fmt_str, Args &&...args) {
-    fmt::print(stderr, fmt::fg(fmt::terminal_color::bright_red), "Error ");
-    fmt::print(stderr, fmt_str, std::forward<Args>(args)...);
-    fmt::print(stderr, "\n");
-    exit(EXIT_FAILURE);
+template <typename... Args> __attribute__((noreturn))
+inline void Fail(fmt::format_string<Args...> fstr, Args &&...args) {
+        FormatFail(fstr, fmt::make_format_args(args...));
 }
 
 } // End namespace QI

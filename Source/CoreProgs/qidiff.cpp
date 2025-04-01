@@ -28,10 +28,10 @@ int diff_main(args::Subparser &parser) {
     args::Flag              absolute(parser,
                         "ABSOLUTE",
                         "Use absolute difference, not relative (avoids 0/0 problems)",
-                        {'a', "abs"});
+                                     {'a', "abs"});
     parser.Parse();
-    auto input    = QI::ReadImage(QI::CheckValue(input_path), verbose);
-    auto baseline = QI::ReadImage(QI::CheckValue(baseline_path), verbose);
+    auto input    = QI::ReadImage(QI::CheckValue(input_path));
+    auto baseline = QI::ReadImage(QI::CheckValue(baseline_path));
 
     double accum_bias = 0.;
     double accum_var  = 0.;
@@ -61,7 +61,7 @@ int diff_main(args::Subparser &parser) {
     auto const NF        = me / noise.Get();
 
     if (absolute) {
-        QI::Log(verbose,
+        QI::Log(QI::Level::Info,
                 "Mean Bias : {}\nVariance  : {}\nSD        : {}\nMSE       : {}\nME        : "
                 "{}\nNF           : {}",
                 mean_bias,
@@ -71,7 +71,7 @@ int diff_main(args::Subparser &parser) {
                 me,
                 NF);
     } else {
-        QI::Log(verbose,
+        QI::Log(QI::Level::Info,
                 "Mean Bias (%): {}\nVariance  (%): {}\nSD        (%): {}\nMSE       (%): {}\nME    "
                 "    (%): {}\nNF    "
                 "       : {}",

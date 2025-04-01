@@ -291,7 +291,7 @@ int jsr_main(args::Subparser &parser) {
     QI::CheckPos(spgr_path);
     QI::CheckPos(ssfp_path);
 
-    QI::Log(verbose, "Reading sequence parameters");
+    QI::Info("Reading sequence parameters");
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
 
     QI::SPGREchoSequence   spgr_seq(input["SPGR"]);
@@ -304,7 +304,6 @@ int jsr_main(args::Subparser &parser) {
                                           {b1_path.Get()},
                                           {spgr_path.Get(), ssfp_path.Get()},
                                           mask.Get(),
-                                          verbose,
                                           simulate.Get(),
                                           threads.Get(),
                                           subregion.Get());
@@ -312,11 +311,11 @@ int jsr_main(args::Subparser &parser) {
         JSRFit jsr_fit{model, npsi.Get()};
         auto   fit_filter =
             QI::ModelFitFilter<JSRFit>::New(
-                &jsr_fit, verbose, covar, resids, threads.Get(), subregion.Get());
+                &jsr_fit, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "JSR_");
     }
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

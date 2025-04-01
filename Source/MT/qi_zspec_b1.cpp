@@ -30,11 +30,6 @@ int zspec_b1_main(args::Subparser &parser) {
     args::Positional<std::string>     b1_path(parser, "B1", "Path to B1-map");
     args::PositionalList<std::string> input_paths(
         parser, "INPUTS", "Input Z-spectra files (1 file per B1 level)");
-    args::ValueFlag<int>         threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string> out_suffix(
         parser, "OUTPUT", "Change ouput filenames (default is input_b1)", {'o', "out"}, "_b1");
     args::ValueFlag<std::string> json_file(
@@ -44,11 +39,11 @@ int zspec_b1_main(args::Subparser &parser) {
 
     parser.Parse();
 
-    const auto b1_image = QI::ReadImage(QI::CheckPos(b1_path), verbose);
+    const auto b1_image = QI::ReadImage(QI::CheckPos(b1_path));
     QI::CheckList(input_paths);
     std::vector<QI::VectorVolumeF::Pointer> inputs, outputs;
     for (auto const &ip : input_paths.Get()) {
-        inputs.emplace_back(QI::ReadImage<QI::VectorVolumeF>(ip, verbose));
+        inputs.emplace_back(QI::ReadImage<QI::VectorVolumeF>(ip));
         outputs.emplace_back(QI::VectorVolumeF::New());
         outputs.back()->CopyInformation(b1_image);
         outputs.back()->SetRegions(b1_image->GetBufferedRegion());
@@ -70,12 +65,12 @@ int zspec_b1_main(args::Subparser &parser) {
     if (b1_rms.rows() != static_cast<Eigen::Index>(inputs.size())) {
         QI::Fail("The number of B1 RMS entries must match the number of inputs");
     }
-    QI::Log(verbose, "B1 RMS Powers: {}", b1_rms.transpose());
+    QI::Info("B1 RMS Powers: {}", b1_rms.transpose());
 
-    QI::VolumeF::Pointer const mask_image = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
+    QI::VolumeF::Pointer const mask_image = mask ? QI::ReadImage(mask.Get()) : nullptr;
 
     auto mt = itk::MultiThreaderBase::New();
-    QI::Log(verbose, "Processing");
+    QI::Info("Processing");
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
         inputs.front()->GetBufferedRegion(),
@@ -146,8 +141,8 @@ int zspec_b1_main(args::Subparser &parser) {
     for (size_t io = 0; io < outputs.size(); io++) {
         std::string outname =
             QI::StripExt(QI::Basename(input_paths.Get()[io])) + out_suffix.Get() + QI::OutExt();
-        QI::WriteImage(outputs[io], outname, verbose);
+        QI::WriteImage(outputs[io], outname);
     }
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

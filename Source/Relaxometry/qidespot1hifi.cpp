@@ -192,7 +192,7 @@ int despot1hifi_main(args::Subparser &parser) {
                                  std::numeric_limits<float>::infinity());
     parser.Parse();
 
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json input          = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto spgrSequence   = input.at("SPGR").get<QI::SPGRSequence>();
     auto mprageSequence = input.at("MPRAGE").get<QI::MPRAGESequence>();
@@ -204,7 +204,6 @@ int despot1hifi_main(args::Subparser &parser) {
                                            {},
                                            {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)},
                                            mask.Get(),
-                                           verbose,
                                            simulate.Get(),
                                            threads.Get(),
                                            subregion.Get());
@@ -212,12 +211,12 @@ int despot1hifi_main(args::Subparser &parser) {
         HIFIFit hifi_fit{model};
         auto    fit_filter =
             QI::ModelFitFilter<HIFIFit>::New(
-                &hifi_fit, verbose, covar, resids, threads.Get(), subregion.Get());
+                &hifi_fit, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs(
             {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, {}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "HIFI_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

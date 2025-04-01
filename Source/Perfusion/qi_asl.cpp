@@ -24,12 +24,6 @@
  */
 int asl_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "ASL_FILE", "Input ASL file");
-
-    args::ValueFlag<int>         threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
     args::ValueFlag<std::string> outarg(
@@ -65,19 +59,19 @@ int asl_main(args::Subparser &parser) {
                                    0.9);
 
     parser.Parse();
-    auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
-    QI::Log(verbose, "Reading sequence parameters");
+    auto input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
+    QI::Info("Reading sequence parameters");
     json                 doc = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::CASLSequence     sequence(doc["CASL"]);
     QI::VolumeF::Pointer t1_img = nullptr, pd_img = nullptr, mask_img = nullptr;
     if (T1_tissue_path) {
-        t1_img = QI::ReadImage(T1_tissue_path.Get(), verbose);
+        t1_img = QI::ReadImage(T1_tissue_path.Get());
     }
     if (PD_path) {
-        pd_img = QI::ReadImage(PD_path.Get(), verbose);
+        pd_img = QI::ReadImage(PD_path.Get());
     }
     if (mask) {
-        mask_img = QI::ReadImage(mask.Get(), verbose);
+        mask_img = QI::ReadImage(mask.Get());
     }
 
     const auto n_slices = input->GetLargestPossibleRegion().GetSize()[2];
@@ -98,7 +92,7 @@ int asl_main(args::Subparser &parser) {
     auto const scales =
         6000 * lambda.Get() * exp(sequence.post_label_delay / T1_blood.Get()) /
         (2. * alpha.Get() * T1_blood.Get() * (1. - exp(-sequence.label_time / T1_blood.Get())));
-    QI::Info(verbose, "Processing");
+    QI::Info("Processing");
     auto mt = itk::MultiThreaderBase::New();
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
@@ -158,7 +152,7 @@ int asl_main(args::Subparser &parser) {
             }
         },
         nullptr);
-    QI::Info(verbose, "Finished");
-    QI::WriteImage(output, outarg.Get() + "CASL_CBF" + QI::OutExt(), verbose);
+    QI::Info("Finished");
+    QI::WriteImage(output, outarg.Get() + "CASL_CBF" + QI::OutExt());
     return EXIT_SUCCESS;
 }

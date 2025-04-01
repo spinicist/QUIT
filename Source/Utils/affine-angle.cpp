@@ -26,7 +26,7 @@ int affine_angle_main(args::Subparser &parser) {
     for (auto const &tfm_path : tfm_paths.Get()) {
         bool const        inverse = (tfm_path[0] == '^');
         std::string const path    = inverse ? tfm_path.substr(1) : tfm_path;
-        QI::Info(verbose, "{}Transform file: {}", inverse ? "Inverse " : "", path);
+        QI::Info("{}Transform file: {}", inverse ? "Inverse " : "", path);
 
         auto reader = itk::TransformFileReader::New();
         reader->SetFileName(path);
@@ -34,7 +34,7 @@ int affine_angle_main(args::Subparser &parser) {
 
         auto const &tfm  = *(reader->GetTransformList()->begin());
         auto const &atfm = static_cast<Tfm *>(tfm.GetPointer());
-        QI::Log(verbose, "{}", fmt::streamed(*atfm));
+        QI::Info("{}", fmt::streamed(*atfm));
         if (inverse) {
             auto itfm = Tfm::New();
             atfm->GetInverse(itfm);
@@ -50,9 +50,9 @@ int affine_angle_main(args::Subparser &parser) {
     Z0[2] = 1.;
 
     itk::CovariantVector Z1 = composite->TransformCovariantVector(Z0);
-    QI::Log(verbose, "Z0: {}\nZ1: {}", Z0, Z1);
+    QI::Info("Z0: {}\nZ1: {}", Z0, Z1);
     auto const norm = Z1.Normalize();
-    QI::Log(verbose, "Z1 norm: {}", norm);
+    QI::Info("Z1 norm: {}", norm);
     auto const angle = acos(Z0 * Z1);
     fmt::print("{}\n", angle * 180. / M_PI);
     return EXIT_SUCCESS;

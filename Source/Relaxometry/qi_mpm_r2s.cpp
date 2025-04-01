@@ -236,7 +236,7 @@ int mpm_r2s_main(args::Subparser &parser) {
     QI::CheckPos(t1w_path);
     QI::CheckPos(mtw_path);
 
-    QI::Log(verbose, "Reading sequence parameters");
+    QI::Info("Reading sequence parameters");
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MultiEchoSequence pdw_seq(input["PDw"]), t1w_seq(input["T1w"]), mtw_seq(input["MTw"]);
 
@@ -248,18 +248,17 @@ int mpm_r2s_main(args::Subparser &parser) {
                                           {},
                                           {pdw_path.Get(), t1w_path.Get(), mtw_path.Get()},
                                           mask.Get(),
-                                          verbose,
                                           simulate.Get(),
                                           threads.Get(),
                                           subregion.Get());
     } else {
         auto fit_filter =
             QI::ModelFitFilter<MPMFit>::New(
-                &mpm_fit, verbose, covar, resids, threads.Get(), subregion.Get());
+                &mpm_fit, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "MPM_");
     }
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

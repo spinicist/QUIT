@@ -29,21 +29,21 @@ int gradient_main(args::Subparser &parser) {
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
     parser.Parse();
-    QI::Log(verbose, "Reading data from: {}", QI::CheckPos(input_path));
-    auto              image     = QI::ReadImage(QI::CheckPos(input_path), verbose);
+    QI::Info("Reading data from: {}", QI::CheckPos(input_path));
+    auto              image     = QI::ReadImage(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
 
-    QI::Log(verbose, "Calculating derivatives of image");
+    QI::Info("Calculating derivatives of image");
     auto grad = itk::DerivativeImageFilter<QI::VolumeF, QI::VolumeF>::New();
     grad->SetInput(image);
     grad->SetDirection(0);
     grad->Update();
-    QI::WriteImage(grad->GetOutput(), outPrefix + "_gradx" + QI::OutExt(), verbose);
+    QI::WriteImage(grad->GetOutput(), outPrefix + "_gradx" + QI::OutExt());
     grad->SetDirection(1);
     grad->Update();
-    QI::WriteImage(grad->GetOutput(), outPrefix + "_grady" + QI::OutExt(), verbose);
+    QI::WriteImage(grad->GetOutput(), outPrefix + "_grady" + QI::OutExt());
     grad->SetDirection(2);
     grad->Update();
-    QI::WriteImage(grad->GetOutput(), outPrefix + "_gradz" + QI::OutExt(), verbose);
+    QI::WriteImage(grad->GetOutput(), outPrefix + "_gradz" + QI::OutExt());
     return EXIT_SUCCESS;
 }

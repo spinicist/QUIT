@@ -190,7 +190,7 @@ int ssfp_ellipse_main(args::Subparser &parser) {
         parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
     parser.Parse();
     QI::CheckPos(sequence_path);
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("SSFP").get<QI::SSFPSequence>();
     EllipseModel model{{}, sequence};
@@ -200,7 +200,6 @@ int ssfp_ellipse_main(args::Subparser &parser) {
                                                {},
                                                {sequence_path.Get()},
                                                mask.Get(),
-                                               verbose,
                                                simulate.Get(),
                                                threads.Get(),
                                                subregion.Get());
@@ -208,13 +207,13 @@ int ssfp_ellipse_main(args::Subparser &parser) {
         EllipseFit fit{model};
         auto       fit_filter =
             QI::ModelFitFilter<EllipseFit>::New(
-                &fit, verbose, covar, resids, threads.Get(), subregion.Get());
+                &fit, covar, resids, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({sequence_path.Get()}, {}, mask.Get());
         fit_filter->SetBlocks(fit_filter->GetInput(0)->GetNumberOfComponentsPerPixel() /
                               sequence.size());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "ES_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

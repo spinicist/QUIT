@@ -171,7 +171,6 @@ Eigen::Tensor<T, 3> tgvdenoise(Eigen::Tensor<T, 3> const &image,
                                float const                alpha,
                                float const                reduction,
                                float const                step_size,
-                               bool                       vb,
                                Eigen::ThreadPoolDevice &  dev) {
     using T3                     = Eigen::Tensor<T, 3>;
     using T4                     = Eigen::Tensor<T, 4>;
@@ -213,7 +212,7 @@ Eigen::Tensor<T, 3> tgvdenoise(Eigen::Tensor<T, 3> const &image,
     float const tau_p = 1.f / step_size;
     float const tau_d = 1.f / (step_size / 2.f);
 
-    QI::Info(vb, "TGV Scale {}", scale);
+    QI::Info("TGV Scale {}", scale);
 
     for (auto ii = 0.f; ii < max_its; ii++) {
         // log.image(u, fmt::format(FMT_STRING("tgv-u-{:02}.nii"), ii));
@@ -248,9 +247,9 @@ Eigen::Tensor<T, 3> tgvdenoise(Eigen::Tensor<T, 3> const &image,
 
         // Check for convergence
         float const delta = Norm(u - u_old);
-        QI::Info(vb, FMT_STRING("TGV {}: ɑ0 {:.2g} ɑ1 {:.2g} δ {}"), ii + 1, alpha0, alpha1, delta);
+        QI::Info(FMT_STRING("TGV {}: ɑ0 {:.2g} ɑ1 {:.2g} δ {}"), ii + 1, alpha0, alpha1, delta);
         if (delta < thresh) {
-            QI::Info(vb, "Reached threshold on delta, stopping");
+            QI::Info("Reached threshold on delta, stopping");
             break;
         }
     }

@@ -26,11 +26,6 @@
 
 int zspec_interp_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input Z-spectrum file");
-    args::ValueFlag<int>          threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPUT", "Change ouput filename (default is input_interp)", {'o', "out"});
     args::ValueFlag<std::string> json_file(
@@ -56,22 +51,21 @@ int zspec_interp_main(args::Subparser &parser) {
         {'r', "ref"});
     parser.Parse();
 
-    auto       input     = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
+    auto       input     = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     json       doc       = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto const in_freqs  = QI::ArrayFromJSON<double>(doc, "input_freqs");
     auto const out_freqs = QI::ArrayFromJSON<double>(doc, "output_freqs");
-    QI::Log(verbose, "Input frequencies: {}", in_freqs.transpose());
-    QI::Log(verbose, "Output frequencies:{}", out_freqs.transpose());
+    QI::Info("Input frequencies: {}", in_freqs.transpose());
+    QI::Info("Output frequencies:{}", out_freqs.transpose());
     if (asym)
-        QI::Log(verbose, "Asymmetry output selected");
+        QI::Info("Asymmetry output selected");
     if (order)
-        QI::Log(verbose, "Spline order: {}", order.Get());
+        QI::Info("Spline order: {}", order.Get());
 
-    const QI::VolumeF::Pointer mask_image = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
-    const QI::VolumeF::Pointer f0_image   = f0_arg ? QI::ReadImage(f0_arg.Get(), verbose) : nullptr;
-    const QI::VolumeF::Pointer ref_image =
-        ref_arg ? QI::ReadImage(ref_arg.Get(), verbose) : nullptr;
-    QI::VectorVolumeF::Pointer output = QI::VectorVolumeF::New();
+    const QI::VolumeF::Pointer mask_image = mask ? QI::ReadImage(mask.Get()) : nullptr;
+    const QI::VolumeF::Pointer f0_image   = f0_arg ? QI::ReadImage(f0_arg.Get()) : nullptr;
+    const QI::VolumeF::Pointer ref_image  = ref_arg ? QI::ReadImage(ref_arg.Get()) : nullptr;
+    QI::VectorVolumeF::Pointer output     = QI::VectorVolumeF::New();
     output->CopyInformation(input);
     output->SetRegions(input->GetBufferedRegion());
     output->SetNumberOfComponentsPerPixel(out_freqs.rows());
@@ -79,10 +73,10 @@ int zspec_interp_main(args::Subparser &parser) {
 
     std::vector<size_t> indices        = QI::SortedUniqueIndices(in_freqs);
     auto const          process_region = subregion ?
-                                    QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
-                                    input->GetBufferedRegion();
-    auto mt = itk::MultiThreaderBase::New();
-    QI::Log(verbose, "Processing");
+                                             QI::RegionFromString<QI::VolumeF::RegionType>(subregion.Get()) :
+                                             input->GetBufferedRegion();
+    auto                mt             = itk::MultiThreaderBase::New();
+    QI::Info("Processing");
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
         process_region,
@@ -133,7 +127,7 @@ int zspec_interp_main(args::Subparser &parser) {
     std::string outname =
         outarg ? outarg.Get() :
                  QI::StripExt(QI::Basename(input_path.Get())) + "_interp" + QI::OutExt();
-    QI::WriteImage(output, outname, verbose);
-    QI::Log(verbose, "Finished.");
+    QI::WriteImage(output, outname);
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

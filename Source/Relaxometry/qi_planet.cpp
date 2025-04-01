@@ -104,7 +104,7 @@ int planet_main(args::Subparser &parser) {
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);
 
-    QI::Log(verbose, "Reading sequence information");
+    QI::Info("Reading sequence information");
     json             input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::SSFPSequence ssfp(input.at("SSFP"));
     PLANETModel      model{{}, ssfp};
@@ -114,7 +114,6 @@ int planet_main(args::Subparser &parser) {
                                              {B1.Get()},
                                              {G_path.Get(), a_path.Get(), b_path.Get()},
                                              mask.Get(),
-                                             verbose,
                                              simulate.Get(),
                                              threads.Get(),
                                              subregion.Get());
@@ -122,12 +121,12 @@ int planet_main(args::Subparser &parser) {
         PLANETFit fit{model};
         auto      fit_filter =
             QI::ModelFitFilter<PLANETFit>::New(
-                &fit, verbose, false, false, threads.Get(), subregion.Get());
+                &fit, false, false, threads.Get(), subregion.Get());
         fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get()}, mask.Get());
         fit_filter->SetBlocks(ssfp.size());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "PLANET_");
-        QI::Log(verbose, "Finished.");
+        QI::Info("Finished.");
     }
     return EXIT_SUCCESS;
 }

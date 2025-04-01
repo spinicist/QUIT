@@ -47,13 +47,13 @@ int pca_main(args::Subparser &parser) {
         parser, "MASK", "Only process voxels within the mask (recommended)", {'m', "mask"});
     parser.Parse();
 
-    auto const input  = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path), verbose);
+    auto const input  = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     auto const region = input->GetLargestPossibleRegion();
 
-    QI::VolumeF::Pointer const mask_img = mask ? QI::ReadImage(mask.Get(), verbose) : nullptr;
+    QI::VolumeF::Pointer const mask_img = mask ? QI::ReadImage(mask.Get()) : nullptr;
     auto const                 Nvox     = [&]() {
         if (mask) {
-            QI::Log(verbose, "Counting voxels in mask...");
+            QI::Info("Counting voxels in mask...");
             auto         mask_it = itk::ImageRegionConstIterator<QI::VolumeF>(mask_img, region);
             Eigen::Index Nv = 0;
             while (!mask_it.IsAtEnd()) {
@@ -63,11 +63,11 @@ int pca_main(args::Subparser &parser) {
             }
             return Nv;
         } else {
-            QI::Log(verbose, "No mask, will use all voxels in image");
+            QI::Info("No mask, will use all voxels in image");
             return static_cast<Eigen::Index>(region.GetNumberOfPixels());
         }
     }();
-    QI::Log(verbose, "Total voxels = {}", Nvox);
+    QI::Info("Total voxels = {}", Nvox);
 
     Eigen::Index const Nq   = input->GetNumberOfComponentsPerPixel();
     Eigen::Index const Nret = (n_retain.Get() > Nq) ? Nq : n_retain.Get();
@@ -92,7 +92,7 @@ int pca_main(args::Subparser &parser) {
         }
     }
 
-    QI::Info(verbose, "Calculating Principal Components");
+    QI::Info("Calculating Principal Components");
     Eigen::VectorXd xmean = X.colwise().mean();
     X.rowwise() -= xmean.transpose();
     auto const cov = X.adjoint() * X / (Nq - 1);
@@ -103,7 +103,7 @@ int pca_main(args::Subparser &parser) {
     Eigen::VectorXd retained_vals = norm_eig_vals.tail(Nret).reverse();
     Eigen::MatrixXd retained_vecs =
         eig.eigenvectors().rightCols(Nret).rowwise().reverse().colwise().normalized();
-    QI::Log(verbose,
+    QI::Info(
             "Retaining {} eigenvalues with % variance: {}",
             Nret,
             (retained_vals * 100).transpose());
@@ -115,14 +115,14 @@ int pca_main(args::Subparser &parser) {
             // std::string name = "eigenvector_"s + std::to_string(v);
             doc["eigenvector"] = retained_vecs.col(v);
         }
-        QI::Log(verbose, "Saving PCs to JSON file: {}", save_pcs.Get());
+        QI::Info("Saving PCs to JSON file: {}", save_pcs.Get());
         QI::WriteJSON(save_pcs.Get(), doc);
     }
 
     auto proj_img = QI::NewImageLike<QI::VectorVolumeF>(input, Nret);
     auto out_img  = QI::NewImageLike<QI::VectorVolumeF>(input, Nq);
 
-    QI::Info(verbose, "Calculating projection...");
+    QI::Info("Calculating projection...");
     auto mt = itk::MultiThreaderBase::New();
     mt->SetNumberOfWorkUnits(threads.Get());
     mt->ParallelizeImageRegion<3>(
@@ -163,13 +163,13 @@ int pca_main(args::Subparser &parser) {
             }
         },
         nullptr);
-    QI::Info(verbose, "Finished");
+    QI::Info("Finished");
     if (project) {
-        QI::WriteImage(proj_img, project.Get(), verbose);
+        QI::WriteImage(proj_img, project.Get());
     }
     std::string outname = outarg ?
                               outarg.Get() :
                               QI::StripExt(QI::Basename(input_path.Get())) + "_pca" + QI::OutExt();
-    QI::WriteImage(out_img, outname, verbose);
+    QI::WriteImage(out_img, outname);
     return EXIT_SUCCESS;
 }

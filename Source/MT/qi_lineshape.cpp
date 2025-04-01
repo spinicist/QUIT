@@ -36,12 +36,12 @@ int lineshape_main(args::Subparser &parser) {
                                         {'p', "frq_space"},
                                         1e3);
     parser.Parse();
-    QI::Log(verbose, "Bound-pool T2: {}", T2b.Get());
+    QI::Info("Bound-pool T2: {}", T2b.Get());
     auto frqs =
         Eigen::ArrayXd::LinSpaced(frq_count.Get(),
                                   frq_start.Get(),
                                   frq_start.Get() + frq_spacing.Get() * (frq_count.Get() - 1));
-    QI::Log(verbose, "Frequency count: {}", frqs.rows());
+    QI::Info("Frequency count: {}", frqs.rows());
     Eigen::ArrayXd values;
     if (shape_arg.Get() == "Gaussian") {
         values = QI::Gaussian(frqs, T2b.Get());
@@ -56,6 +56,6 @@ int lineshape_main(args::Subparser &parser) {
         QI::InterpLineshape(frq_start.Get(), frq_spacing.Get(), frq_count.Get(), values, T2b.Get());
     json doc{{"lineshape", lineshape}};
     QI::WriteJSON(QI::CheckPos(out_path), doc);
-    QI::Log(verbose, "Finished.");
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }

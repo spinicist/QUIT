@@ -61,7 +61,7 @@ void make_image(args::Positional<std::string> &fName,
             imgOrigin[i] = -imgSpacing[i] * (imgSize[i] - 1) / 2.0;
         }
     }
-    QI::Log(verbose,
+    QI::Log(QI::Level::Info,
             "Dimensions: {} Size: {} Spacing: {} Origin: {}",
             dim,
             imgSize,
@@ -73,25 +73,25 @@ void make_image(args::Positional<std::string> &fName,
     int   step_length = 1;
     if (grad_arg) {
         QI::ArrayArgF<Eigen::Array2f, 2>(grad_arg.Get(), end_vals);
-        QI::Log(verbose, "Fill starts at {}, ends at {}", end_vals[0], end_vals[1]);
+        QI::Info("Fill starts at {}, ends at {}", end_vals[0], end_vals[1]);
         if (steps_arg) {
             deltaVal    = (end_vals[1] - end_vals[0]) / steps_arg.Get();
             step_length = std::max((imgSize[grad_dim.Get()] - 1) / steps_arg.Get(), 1UL);
-            QI::Log(verbose,
+            QI::Log(QI::Level::Info,
                     "Number of steps is {}, step length is {}, step value is {}",
                     steps_arg.Get(),
                     step_length,
                     deltaVal);
         } else {
             deltaVal = (end_vals[1] - end_vals[0]) / (imgSize[grad_dim.Get()] - 1);
-            QI::Log(verbose, "Smooth gradient, delta value {}", deltaVal);
+            QI::Info("Smooth gradient, delta value {}", deltaVal);
         }
-        QI::Log(verbose, "Along dimension {}", grad_dim.Get());
+        QI::Info("Along dimension {}", grad_dim.Get());
 
     } else if (fill_arg) {
         end_vals = fill_arg.Get();
         deltaVal = 0;
-        QI::Log(verbose, "Fill with constant value: {}", fill_arg.Get());
+        QI::Info("Fill with constant value: {}", fill_arg.Get());
     }
 
     imgRegion.SetIndex(imgIndex);
@@ -103,7 +103,7 @@ void make_image(args::Positional<std::string> &fName,
 
     itk::ImageLinearIteratorWithIndex<ImageType> it(newimg, imgRegion);
     it.SetDirection(grad_dim.Get());
-    QI::Log(verbose, "Filling...");
+    QI::Info("Filling...");
     it.GoToBegin();
     while (!it.IsAtEnd()) {
         float val = end_vals[0];
@@ -119,8 +119,8 @@ void make_image(args::Positional<std::string> &fName,
         }
         it.NextLine();
     }
-    QI::Log(verbose, "Writing file to: {}", QI::CheckPos(fName));
-    QI::WriteImage(newimg, QI::CheckPos(fName), verbose);
+    QI::Info("Writing file to: {}", QI::CheckPos(fName));
+    QI::WriteImage(newimg, QI::CheckPos(fName));
 }
 
 int newimage_main(args::Subparser &parser) {

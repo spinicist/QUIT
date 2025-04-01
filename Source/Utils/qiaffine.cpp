@@ -47,7 +47,7 @@ int affine_main(args::Subparser &parser) {
     args::ValueFlag<std::string> rotate(
         parser, "ROTATE", "Rotate by Euler angles around X,Y,Z (degrees).", {"rotate"}, "0,0,0");
     parser.Parse();
-    QI::Log(verbose, "Reading header for: {}", QI::CheckPos(source_path));
+    QI::Info("Reading header for: {}", QI::CheckPos(source_path));
     auto header = itk::ImageIOFactory::CreateImageIO(QI::CheckPos(source_path).c_str(),
                                                      itk::ImageIOFactory::ReadMode);
     if (!header) {
@@ -57,11 +57,11 @@ int affine_main(args::Subparser &parser) {
     header->ReadImageInformation();
     auto dims  = header->GetNumberOfDimensions();
     auto dtype = header->GetComponentType();
-    QI::Log(verbose, "Datatype is {}", header->GetComponentTypeAsString(dtype));
+    QI::Info("Datatype is {}", header->GetComponentTypeAsString(dtype));
 
     auto pipeline = [&]<typename T, int N>() {
         using TImage = itk::Image<T, N>;
-        auto image   = QI::ReadImage<TImage>(QI::CheckPos(source_path), verbose);
+        auto image   = QI::ReadImage<TImage>(QI::CheckPos(source_path));
 
         // Permute if required
         if (permute) {
@@ -109,7 +109,7 @@ int affine_main(args::Subparser &parser) {
             }
             if (!iss)
                 QI::Fail("Failed to read flip: {}", flip.Get());
-            QI::Log(verbose, "Flipping: {}", flip_axes);
+            QI::Info("Flipping: {}", flip_axes);
             flip_filter->SetInput(image);
             flip_filter->SetFlipAxes(flip_axes);
             flip_filter->SetFlipAboutOrigin(false);
@@ -136,7 +136,7 @@ int affine_main(args::Subparser &parser) {
         img_tfm->Scale(spacing);
         img_tfm->Translate(origin);
         if (scale) {
-            QI::Log(verbose, "Scaling by factor {}", scale.Get());
+            QI::Info("Scaling by factor {}", scale.Get());
             img_tfm->Scale(scale.Get());
         }
 
@@ -146,24 +146,24 @@ int affine_main(args::Subparser &parser) {
             QI::ArrayArg<Eigen::Array3d, 3>(rotate.Get(), angles);
             tfm->SetRotation(
                 angles[0] * M_PI / 180., angles[1] * M_PI / 180., angles[2] * M_PI / 180.);
-            QI::Log(verbose, "Rotation by: {}", angles.transpose());
+            QI::Info("Rotation by: {}", angles.transpose());
         }
         if (translate) {
             Euler::OffsetType offset;
             QI::ArrayArg<Euler::OffsetType, 3>(translate.Get(), offset);
             tfm->Translate(-offset);
-            QI::Log(verbose, "Translate by: {}", offset);
+            QI::Info("Translate by: {}", offset);
         }
         if (center) {
             Euler::OffsetType offset;
             offset.Fill(0.);
             if (center.Get() == "geo") {
-                QI::Log(verbose, "Setting geometric center");
+                QI::Info("Setting geometric center");
                 for (int i = 0; i < 3; i++) {
                     offset[i] = origin[i] - spacing[i] * size[i] / 2;
                 }
             } else if (center.Get() == "cog") {
-                QI::Log(verbose, "Setting center to center of gravity");
+                QI::Info("Setting center to center of gravity");
                 auto moments = itk::ImageMomentsCalculator<TImage>::New();
                 moments->SetImage(image);
                 moments->Compute();
@@ -180,13 +180,13 @@ int affine_main(args::Subparser &parser) {
             auto writer = itk::TransformFileWriterTemplate<double>::New();
             writer->SetInput(tfm);
             writer->SetFileName(tfm_path.Get());
-            QI::Log(verbose, "Writing transform file: {}", tfm_path.Get());
+            QI::Info("Writing transform file: {}", tfm_path.Get());
             writer->Update();
         }
 
         img_tfm->Compose(tfm);
         itk::CenteredAffineTransform<double, 3>::MatrixType fmat = img_tfm->GetMatrix();
-        QI::Log(verbose, "Final transform:\n{}", fmt::streamed(fmat));
+        QI::Info("Final transform:\n{}", fmt::streamed(fmat));
         for (int i = 0; i < 3; i++) {
             fullOrigin[i] = img_tfm->GetOffset()[i];
         }
@@ -206,9 +206,9 @@ int affine_main(args::Subparser &parser) {
 
         // Write out the edited file
         if (dest_path) {
-            QI::WriteImage(image, dest_path.Get(), verbose);
+            QI::WriteImage(image, dest_path.Get());
         } else {
-            QI::WriteImage(image, source_path.Get(), verbose);
+            QI::WriteImage(image, source_path.Get());
         }
     };
 

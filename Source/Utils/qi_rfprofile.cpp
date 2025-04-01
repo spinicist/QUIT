@@ -46,7 +46,7 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
     }
     void SetRF(const Eigen::ArrayXd pos, const Eigen::ArrayXd vals) {
         m_spline = QI::SplineInterpolator(pos, vals);
-        QI::Log(m_debug, "{}", fmt::streamed(m_spline));
+        QI::Info("{}", fmt::streamed(m_spline));
     }
 
     void SetMask(const QI::VolumeF *mask) { this->SetNthInput(1, const_cast<QI::VolumeF *>(mask)); }
@@ -99,7 +99,7 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
             auto moments = itk::ImageMomentsCalculator<QI::VolumeF>::New();
             moments->SetImage(mask);
             moments->Compute();
-            QI::Log(m_debug, "Mask CoG is: {}", moments->GetCenterOfGravity());
+            QI::Info("Mask CoG is: {}", moments->GetCenterOfGravity());
             pt_center = moments->GetCenterOfGravity();
         } else {
             // Calculate geometric center
@@ -119,7 +119,7 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
         m_reference->TransformIndexToPhysicalPoint(index1, pt1);
         m_reference->TransformIndexToPhysicalPoint(index2, pt2);
         auto const diff = pt2 - pt1;
-        QI::Log(m_debug, "Physical difference: {}", diff);
+        QI::Info("Physical difference: {}", diff);
         int phys_dim = 0;
         if ((fabs(diff[1]) > fabs(diff[0])) || (fabs(diff[2]) > fabs(diff[0]))) {
             if (fabs(diff[2]) > fabs(diff[1])) {
@@ -128,14 +128,14 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
                 phys_dim = 1;
             }
         }
-        QI::Log(m_debug, "Physical dimension: {}", phys_dim);
+        QI::Info("Physical dimension: {}", phys_dim);
 
         while (!imageIt.IsAtEnd()) {
             QI::VectorVolumeF::PointType pt, pt_rf;
             m_reference->TransformIndexToPhysicalPoint(imageIt.GetIndex(), pt);
             pt_rf     = pt - pt_center;
             float val = m_spline(pt_rf[phys_dim]);
-            QI::Log(m_debug, "Absolute co-ord: {} Relative co-ord: {} Value: {}", pt, pt_rf, val);
+            QI::Info("Absolute co-ord: {} Relative co-ord: {} Value: {}", pt, pt_rf, val);
             while (!imageIt.IsAtEndOfSlice()) {
                 while (!imageIt.IsAtEndOfLine()) {
                     if (!mask || maskIter.Get()) {
@@ -172,12 +172,6 @@ class ProfileImage : public ImageSource<QI::VolumeF> {
 int rfprofile_main(args::Subparser &parser) {
     args::Positional<std::string> b1plus_path(parser, "B1+_FILE", "Input B1+ file");
     args::Positional<std::string> output_path(parser, "B1_FILE", "Output relative B1 file");
-
-    args::ValueFlag<int>         threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string> mask(parser, "MASK", "Only process within mask", {'m', "mask"});
     args::Flag centerMask(parser, "CENTER ON MASK", "Set slab center to mask CoG", {'c', "center"});
     args::ValueFlag<std::string> subregion(
@@ -191,28 +185,25 @@ int rfprofile_main(args::Subparser &parser) {
         parser, "FILE", "Read JSON input from file instead of stdin", {"json"});
     parser.Parse();
 
-    auto reference = QI::ReadImage(QI::CheckPos(b1plus_path), verbose);
+    auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 
-    QI::Log(verbose, "Reading slab profile");
+    QI::Info("Reading slab profile");
     json       input   = infile ? QI::ReadJSON(infile.Get()) : QI::ReadJSON(std::cin);
     auto const rf_pos  = QI::ArrayFromJSON(input, "rf_pos", 1.);
     auto const rf_vals = QI::ArrayFromJSON(input, "rf_vals", 1.);
 
-    QI::Log(verbose, "Profile points = {}", rf_pos.rows());
-    QI::Log(verbose, "Generating image...");
+    QI::Info("Profile points = {}", rf_pos.rows());
+    QI::Info("Generating image...");
     auto image = itk::ProfileImage::New();
     image->SetReference(reference);
     image->SetRF(rf_pos, rf_vals);
     image->SetDim(dimension.Get());
     if (mask) {
-        image->SetMask(QI::ReadImage(mask.Get(), verbose));
+        image->SetMask(QI::ReadImage(mask.Get()));
         image->SetCenterMask(centerMask);
     }
-    if (verbose) {
-        auto monitor = QI::GenericMonitor::New();
-        image->AddObserver(itk::ProgressEvent(), monitor);
-    }
+    image->AddObserver(itk::ProgressEvent(), QI::GenericMonitor::New());
     image->Update();
-    QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path), verbose);
+    QI::WriteImage(image->GetOutput(), QI::CheckPos(output_path));
     return EXIT_SUCCESS;
 }

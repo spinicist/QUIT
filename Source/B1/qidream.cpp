@@ -37,12 +37,6 @@ template <class TPixel> class DREAM {
 int dream_main(args::Subparser &parser) {
     args::Positional<std::string> input_file(
         parser, "DREAM_FILE", "Input file. Must have 2 volumes (FID and STE)");
-
-    args::ValueFlag<int>         threads(parser,
-                                 "THREADS",
-                                 "Use N threads (default=hardware limit or $QUIT_THREADS)",
-                                 {'T', "threads"},
-                                 QI::GetDefaultThreads());
     args::ValueFlag<std::string> out_prefix(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
     args::ValueFlag<char> order(
@@ -53,7 +47,7 @@ int dream_main(args::Subparser &parser) {
         parser, "ALPHA", "Nominal flip-angle (default 55)", {'a', "alpha"}, 55);
     parser.Parse();
 
-    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file), verbose);
+    auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file));
 
     auto fid_volume               = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
     auto ste_volume               = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();
@@ -86,8 +80,8 @@ int dream_main(args::Subparser &parser) {
     B1->SetInput1(dream->GetOutput());
     B1->SetConstant2(alpha.Get());
     B1->Update();
-    QI::WriteImage(dream->GetOutput(), out_prefix.Get() + "DREAM_angle" + QI::OutExt(), verbose);
-    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "DREAM_B1" + QI::OutExt(), verbose);
-    QI::Log(verbose, "Finished.");
+    QI::WriteImage(dream->GetOutput(), out_prefix.Get() + "DREAM_angle" + QI::OutExt());
+    QI::WriteImage(B1->GetOutput(), out_prefix.Get() + "DREAM_B1" + QI::OutExt());
+    QI::Info("Finished.");
     return EXIT_SUCCESS;
 }
