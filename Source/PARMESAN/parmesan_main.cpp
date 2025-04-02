@@ -23,20 +23,20 @@
 #include "Util.h"
 
 #include "prep_b1_model.h"
-#include "prep_qmt_model.h"
+#include "prep_qmt_Rx.h"
+#include "prep_qmt_k.h"
 
 int parmesan_fit(args::Subparser &parser) {
     args::Positional<std::string> json_path(parser, "JSON", "Parameter file");
-    args::Positional<std::string> basis_path(parser, "BASIS", "Basis file");
     args::Positional<std::string> input_path(parser, "INPUT", "Input image file");
     QI_COMMON_ARGS;
-    args::ValueFlag<std::string> mt(
-        parser, "MT", "Use MT model (provide interp table for linearized GBM)", {"mt"});
-    args::ValueFlag<double> T2_f(parser, "T2_f", "Fix T2_f", {"T2_f"}, 0.07);
-    args::ValueFlag<double> T1_s(parser, "T1_s", "Fix T1_s", {"T1_s"}, 0.35);
-    args::ValueFlag<double> T2_s(parser, "T2_s", "Fix T2_s", {"T2_s"}, 14e-6);
-    args::ValueFlag<double> R_x(parser, "T2_f", "Fix R_x", {"R_x"}, 14);
-    parser.Parse();
+    args::ValueFlag<std::string> sl(parser, "MT", "Interp table for linearized GBM", {"sl"});
+    args::ValueFlag<double>      R_x(parser, "T2_f", "Fix R_x", {"R_x"}, 14);
+    args::ValueFlag<double>      k(parser, "T2_f", "Fix k", {"k"}, 1.4);
+    args::ValueFlag<double>      T2_f(parser, "T2_f", "Fix T2_f", {"T2_f"}, 0.1);
+    args::ValueFlag<double>      T1_s(parser, "T1_s", "Fix T1_s", {"T1_s"}, 0.35);
+    args::ValueFlag<double>      T2_s(parser, "T2_s", "Fix T2_s", {"T2_s"}, 14e-6);
+    Parse(parser);
     QI::CheckPos(input_path);
     PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
 
@@ -50,23 +50,20 @@ int parmesan_fit(args::Subparser &parser) {
         fit_filter->ReadInputs({input_path.Get()}, fixed, mask.Get());
         fit_filter->SetRequestedRegionFromString(subregion.Get());
         fit_filter->Update();
-        fmt::print(stderr, "Returned from update\n");
         fit_filter->WriteOutputs(prefix.Get() + model_name);
-        fmt::print(stderr, "Wrote outputs\n");
     };
 
-    if (mt) {
-        json            lgbm = QI::ReadJSON(mt.Get());
+    if (R_x || k) {
+        json            lgbm = QI::ReadJSON(sl.Get());
         QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
                              QI::ArrayFromJSON<double>(lgbm, "τ"),
                              QI::MatrixFromJSON<double>(lgbm, "A"));
-        if (T2_f || T1_s || T2_s || R_x) {
-            QI::PrepQMTModel model{
-                {}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()};
-            process(model, "PARMESAN_", {});
+        if (R_x) {
+            QI::PrepQMTRx model{{}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()};
+            process(model, "PARMESAN_R_x_", {});
         } else {
-            QI::PrepQMTFullModel model{{}, sequence, R2sl};
-            process(model, "PARMESAN_full_", {});
+            QI::PrepQMTk model{{}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), k.Get()};
+            process(model, "PARMESAN_k_", {});
         }
     } else {
         PrepB1Model model{{}, sequence};
@@ -78,7 +75,6 @@ int parmesan_fit(args::Subparser &parser) {
 
 int parmesan_sim(args::Subparser &parser) {
     args::Positional<std::string>     json_path(parser, "JSON", "Parameter file");
-    args::Positional<std::string>     basis_path(parser, "BASIS", "Basis file");
     args::Positional<std::string>     out_path(parser, "OUTPUT", "Simulation output file");
     args::PositionalList<std::string> varying_paths(parser, "INPUT", "Input parameter maps");
     QI_CORE_ARGS;
@@ -111,11 +107,10 @@ int parmesan_sim(args::Subparser &parser) {
                              QI::ArrayFromJSON<double>(lgbm, "τ"),
                              QI::MatrixFromJSON<double>(lgbm, "A"));
         if (T2_f || T1_s || T2_s || R_x) {
-            QI::PrepQMTModel model{
-                {}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()};
+            QI::PrepQMTRx model{{}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()};
             process(model, "PARMESAN_", {});
         } else {
-            QI::PrepQMTFullModel model{{}, sequence, R2sl};
+            QI::PrepQMTRxFull model{{}, sequence, R2sl};
             process(model, "PARMESAN_full_", {});
         }
     } else {
