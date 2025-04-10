@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.29 FATAL_ERROR)
-cmake_policy(VERSION 3.29)
+cmake_minimum_required(VERSION 3.26 FATAL_ERROR)
+cmake_policy(VERSION 3.26)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 include(CheckCXXCompilerFlag)
 find_program(CCACHE_PROGRAM ccache)
