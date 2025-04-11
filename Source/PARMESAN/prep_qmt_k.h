@@ -35,7 +35,7 @@ struct PrepQMTkFull : Model<double, double, 7, 1, 1, 0, RealNoise<double>> {
     std::array<std::string, NV> const varying_names{
         "M0", "T1_f", "T1_s", "T2_s", "f_s", "k", "B1"};
         VaryingArray const start{1.0, 2.0, 0.35, 14e-6, 0.1, 1.4, 1.0};
-        VaryingArray const lo{0.01, 0.5, 0.05, 10e-6, 0.01, 0.1, 0.5};
+        VaryingArray const lo{0.01, 0.5, 0.05, 12e-6, 0.01, 0.1, 0.5};
         VaryingArray const hi{100.0, 5.0, 0.5, 20e-6, 0.5, 10.0, 1.5};
 
     std::array<std::string, NF> const fixed_names{"T2_f"};

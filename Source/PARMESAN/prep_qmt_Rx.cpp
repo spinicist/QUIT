@@ -9,10 +9,14 @@ auto Relax(double const M0_f,
            double const R2_f,
            double const M0_s,
            double const R1_s,
-           double const R2_s) -> AugMat {
+           double const R2_s,
+           double const f0) -> AugMat {
     AugMat R;
     R.setZero();
+    double const ω0 = f0 * 2.0 * M_PI;
     R(0, 0) = -R2_f;
+    R(0, 1) = ω0;
+    R(1, 0) = -ω0;
     R(1, 1) = -R2_f;
     R(2, 2) = -R1_f;
     R(2, 5) = M0_f * R1_f;
@@ -79,7 +83,7 @@ auto PrepQMTRx::signal(VaryingArray const &v, FixedArray const &f) const -> QI_A
     double const R_sf = f[3] * f_f;
 
     // State vector is [x_f y_f z_f x_s z_s 1]
-    AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s);
+    AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s, 0.0);
     AugMat       K        = Exchange(R_fs, R_sf);
     AugMat const RpK      = R + K;
     AugMat const S        = Spoil();
@@ -138,17 +142,18 @@ auto PrepQMTRxFull::signal(VaryingArray const &v, FixedArray const &f) const
     // "M0", "T1_f", "T2_f", "T1_s", "T2_s", "f_s", "Rx", "B1"
     double const M0   = v[0];
     double const R1_f = 1. / v[1];
-    double const R2_f = 1. / f[0];
-    double const R1_s = 1. / v[2];
-    double const R2_s = 1. / v[3];
-    double const f_s  = v[4];
+    double const R2_f = 1. / v[2];
+    double const R1_s = 1. / v[3];
+    double const R2_s = 1. / v[4];
+    double const f_s  = v[5];
     double const f_f  = 1.0 - f_s;
-    double const R_fs = v[5] * f_s;
-    double const R_sf = v[5] * f_f;
-    double const B1   = v[6];
+    double const R_fs = v[6] * f_s;
+    double const R_sf = v[6] * f_f;
+    double const B1   = v[7];
+    double const f0   = v[8];
 
     // State vector is [x_f y_f z_f x_s z_s 1]
-    AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s);
+    AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s, f0);
     AugMat       K        = Exchange(R_fs, R_sf);
     AugMat const RpK      = R + K;
     AugMat const S        = Spoil();

@@ -11,9 +11,9 @@ int main(int argc, char **argv) {
 
 #define ADD2(CMD, GROUP, HELP)                                         \
     void          CMD##_fit(args::Subparser &parser);                  \
-    args::Command CMD##_fit_cmd(GROUP, #CMD "-fit", HELP, &CMD##_fit); \
+    args::Command CMD##_fit_cmd(GROUP, #CMD "_fit", HELP, &CMD##_fit); \
     void          CMD##_sim(args::Subparser &parser);                  \
-    args::Command CMD##_sim_cmd(GROUP, #CMD "-sim", HELP, &CMD##_sim);
+    args::Command CMD##_sim_cmd(GROUP, #CMD "_sim", HELP, &CMD##_sim);
 
     args::Group core(parser, "CORE");
     args::Flag  version(core, "VERSION", "Print the version of QUIT", {"version"});
@@ -59,6 +59,7 @@ int main(int argc, char **argv) {
     ADD(irtse, relax, "Inversion Recovery TSE");
 #ifdef BUILD_PARMESAN
     ADD2(parmesan, relax, "PARMESAN");
+    ADD2(parmesan_qmt, relax, "PARMESAN QMT");
 #endif
 #endif
 #ifdef BUILD_STATS
