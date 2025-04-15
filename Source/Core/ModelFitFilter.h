@@ -483,6 +483,9 @@ class ModelFitFilter
     virtual void AfterThreadedGenerateData() override { Info("Finished model fit"); }
 
     virtual void DynamicThreadedGenerateData(const TRegion &region) override {
+        itk::TotalProgressReporter progress(
+            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 100);
+
         itk::ImageRegionConstIterator<TMaskImage> mask_iter;
         const auto                                mask = this->GetMask();
         if (mask) {
@@ -535,9 +538,6 @@ class ModelFitFilter
         VaryingArray outputs;
         FixedArray   fixed;
         CovarArray  *covar = m_covar ? new CovarArray : nullptr;
-
-        itk::TotalProgressReporter progress(
-            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 100);
 
         while (!input_iters[0].IsAtEnd()) {
             if (!mask || mask_iter.Get()) {

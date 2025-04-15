@@ -53,7 +53,7 @@ void SimulateModel(json                                     &json,
     if (mask_path != "") {
         simulator->SetMask(QI::ReadImage(mask_path));
     }
-    QI::Info("Noise level is {}\nSimulating model...", noise);
+    QI::Info("Noise level is {}", noise);
     srand((unsigned int)time(0));
     simulator->Update();
     QI::Info("Finished");
@@ -107,7 +107,7 @@ void SimulateModel2(Model const                              &model,
     if (mask_path != "") {
         simulator->SetMask(QI::ReadImage(mask_path));
     }
-    QI::Info("Noise level is {}\nSimulating model...", noise);
+    QI::Info("Noise level is {}", noise);
     srand((unsigned int)time(0));
     simulator->Update();
     QI::Info("Finished");

@@ -16,9 +16,11 @@
 #include "itkImageToImageFilter.h"
 #include "itkProgressReporter.h"
 #include "itkTimeProbe.h"
+#include "itkTotalProgressReporter.h"
 
 #include "ImageTypes.h"
 #include "Model.h"
+#include "Monitor.h"
 #include "Util.h"
 
 namespace QI {
@@ -51,11 +53,10 @@ class ModelSimFilter
             this->SetNumberOfRequiredOutputs(1);
             this->SetNthOutput(0, this->MakeOutput(0));
         }
-        if (subregion != "") {
-            m_subregion    = RegionFromString<RegionType>(subregion);
-            m_hasSubregion = true;
-        }
+        this->SetRequestedRegionFromString(subregion);
+        this->AddObserver(itk::ProgressEvent(), QI::GenericMonitor::New());
         this->DynamicMultiThreadingOn();
+        this->ThreaderUpdateProgressOff();
         this->SetNumberOfWorkUnits(nThreads);
     }
 
@@ -106,12 +107,26 @@ class ModelSimFilter
     }
 
     OutputImageType *GetOutput(const int i) {
-        return dynamic_cast<OutputImageType *>(this->itk::ProcessObject::GetOutput(i));
+        if (i < ModelType::NV) {
+            return dynamic_cast<OutputImageType *>(this->itk::ProcessObject::GetOutput(i));
+        } else {
+            QI::Fail("Requested varying output {} but {} has {}",
+                     i,
+                     typeid(ModelType).name(),
+                     ModelType::NV);
+        }
     }
 
-    void SetSubregion(const RegionType &sr) {
-        m_subregion    = sr;
-        m_hasSubregion = true;
+    void SetRequestedRegion(const RegionType &sr) {
+        for (int i = 0; i < ModelType::NV; i++) {
+            this->GetOutput(i)->SetRequestedRegion(sr);
+        }
+    }
+
+    void SetRequestedRegionFromString(std::string const &sr) {
+        if (sr != "") {
+            this->SetRequestedRegion(RegionFromString<RegionType>(sr));
+        }
     }
 
     void SetNoise(const double s) { m_sigma = s; }
@@ -121,10 +136,8 @@ class ModelSimFilter
     void operator=(const Self &); // purposely not implemented
 
   protected:
-    ModelType  m_model;
-    double     m_sigma        = 0.0;
-    bool       m_hasSubregion = false;
-    RegionType m_subregion;
+    ModelType m_model;
+    double    m_sigma = 0.0;
 
     ModelSimFilter() {}
     ~ModelSimFilter() {}
@@ -141,7 +154,7 @@ class ModelSimFilter
         return output.GetPointer();
     }
 
-    void GenerateOutputInformation() override {
+    virtual void GenerateOutputInformation() override {
         Superclass::GenerateOutputInformation();
 
         const auto ip = this->GetInput(0);
@@ -155,7 +168,7 @@ class ModelSimFilter
 
         for (size_t i = 0; i < this->GetNumberOfRequiredOutputs(); i++) {
             const auto op = this->GetOutput(i);
-            op->SetRegions(ip->GetLargestPossibleRegion());
+            op->SetLargestPossibleRegion(ip->GetLargestPossibleRegion());
             op->SetSpacing(ip->GetSpacing());
             op->SetOrigin(ip->GetOrigin());
             op->SetDirection(ip->GetDirection());
@@ -164,32 +177,31 @@ class ModelSimFilter
             } else {
                 op->SetNumberOfComponentsPerPixel(m_model.sequence.size());
             }
+        }
+    }
+
+    virtual void AllocateOutputs() override {
+        Info("Allocating output image memory");
+
+        auto const lr = this->GetOutput(0)->GetLargestPossibleRegion();
+        auto const rr = this->GetOutput(0)->GetRequestedRegion();
+
+        for (size_t i = 0; i < this->GetNumberOfRequiredOutputs(); i++) {
+            auto op = this->GetOutput(i);
+            op->SetBufferedRegion(lr);
+            op->SetRequestedRegion(rr);
             op->Allocate(true);
         }
     }
 
-    virtual void GenerateData() override {
-        auto region = this->GetInput(0)->GetLargestPossibleRegion();
-        if (m_hasSubregion) {
-            if (region.IsInside(m_subregion)) {
-                region = m_subregion;
-            } else {
-                itkExceptionMacro("Specified subregion is not entirely inside image.");
-            }
-        }
+    virtual void BeforeThreadedGenerateData() override { Info("Starting model sim"); }
 
-        Info("Simulating...");
-        this->GetMultiThreader()->SetNumberOfWorkUnits(this->GetNumberOfWorkUnits());
-        this->GetMultiThreader()->template ParallelizeImageRegion<ImageDim>(
-            region,
-            [this](const RegionType &outputRegion) {
-                this->DynamicThreadedGenerateData(outputRegion);
-            },
-            this);
-        Info("Finished simulating.");
-    }
+    virtual void AfterThreadedGenerateData() override { Info("Finished model sim"); }
 
-    void DynamicThreadedGenerateData(const RegionType &region) override {
+    virtual void DynamicThreadedGenerateData(const RegionType &region) override {
+        itk::TotalProgressReporter progress(
+            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 100);
+
         std::vector<itk::ImageRegionConstIterator<QI::VolumeF>> varying_iters(ModelType::NV);
         for (int i = 0; i < ModelType::NV; i++) {
             varying_iters[i] =
@@ -272,6 +284,7 @@ class ModelSimFilter
             for (size_t i = 0; i < this->GetNumberOfRequiredOutputs(); i++) {
                 ++output_iters[i];
             }
+            progress.CompletedPixel();
         }
     }
 };

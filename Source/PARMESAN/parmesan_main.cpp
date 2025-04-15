@@ -54,7 +54,8 @@ int parmesan_sim(args::Subparser &parser) {
     args::PositionalList<std::string> varying_paths(parser, "INPUT", "Input parameter maps");
     QI_CORE_ARGS;
     args::ValueFlag<float> noise(parser, "NOISE", "Noise standard deviation", {'n', "noise"}, 0.f);
-    parser.Parse();
+    Parse(parser);
+    QI::CheckPos(out_path);
     QI::Info("Reading sequence parameters");
     PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     PrepModel       model{{}, sequence};
