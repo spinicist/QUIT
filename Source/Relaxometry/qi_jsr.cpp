@@ -203,7 +203,7 @@ struct JSRFit {
         if (scale < std::numeric_limits<double>::epsilon()) {
             best_varying = ModelType::VaryingArray::Zero();
             rmse         = 0.0;
-            return {false, "Maximum data value was zero or less"};
+            return {false, "Maximum data value was not positive"};
         }
         Eigen::ArrayXd const spgr_data = inputs[0] / scale;
         Eigen::ArrayXd const ssfp_data = inputs[1] / scale;

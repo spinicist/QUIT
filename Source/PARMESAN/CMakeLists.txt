@@ -6,6 +6,7 @@ if( ${BUILD_PARMESAN} )
             GridInterp.cpp
             prep_qmt_Rx.cpp
             prep_qmt_k.cpp
+            prep_sc.cpp
         )
     target_sources(qi PRIVATE ${SOURCES})
     target_compile_definitions(qi PRIVATE "-DBUILD_PARMESAN")

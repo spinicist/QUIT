@@ -128,7 +128,7 @@ struct HIFIFit {
         if (scale < std::numeric_limits<double>::epsilon()) {
             v << 0.0, 0.0, 0.0;
             rmse = 0.0;
-            return {false, "Maximum data value was zero or less"};
+            return {false, "Maximum data value was not positive"};
         }
         const Eigen::ArrayXd spgr_data   = inputs[0] / scale;
         const Eigen::ArrayXd mprage_data = inputs[1] / scale;

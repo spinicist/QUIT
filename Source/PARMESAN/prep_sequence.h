@@ -5,7 +5,7 @@
 struct PrepZTESequence : QI::SequenceBase {
     double          TR, Tramp, Trf, Tprep, Dprep, Dseg;
     int             SPS, spoilers;
-    Eigen::ArrayXd  FA, FAprep;
+    Eigen::ArrayXd  FA, FAprep, fprep;
     Eigen::MatrixXd basis;
     QI_SEQUENCE_DECLARE(PrepZTE);
     Eigen::Index preps() const { return FAprep.size(); }

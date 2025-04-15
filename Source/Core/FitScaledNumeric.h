@@ -31,7 +31,7 @@ struct ScaledNumericDiffFit : FitFunction<ModelType, int> {
         if (scale < std::numeric_limits<InputType>::epsilon()) {
             varying = ModelType::VaryingArray::Zero();
             rmse    = 0.0;
-            return {false, "Maximum data value was zero or less"};
+            return {false, "Maximum data value was not positive"};
         }
         Eigen::ArrayXd const data = inputs[0] / scale;
 

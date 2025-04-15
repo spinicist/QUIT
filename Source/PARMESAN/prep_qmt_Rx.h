@@ -33,7 +33,7 @@ struct PrepQMTRxFull : Model<double, double, 9, 0, 1, 0, RealNoise<double>> {
     RegularGrid const     &A_sl;
     // Pools are "free" and "semi-solid"
     std::array<std::string, NV> const varying_names{
-        "M0", "T1_f", "T2_f", "T1_s", "T2_s", "f_s", "R_x", "B1", "f0"};
+        "M0", "T1_f", "T2_f", "T1_s", "T2_s", "f_s", "R_x", "B1", "df0"};
     VaryingArray const start{1.0, 2.0, 0.07, 0.35, 14e-6, 0.1, 14.0, 1.0, 0.0};
     VaryingArray const lo{0.01, 0.5, 0.02, 0.05, 12e-6, 0.01, 1.0, 0.5, -150.0};
     VaryingArray const hi{100.0, 5.0, 2.5, 0.5, 20e-6, 0.5, 50.0, 1.5, 150.0};

@@ -167,7 +167,7 @@ struct MPMFit {
         if (scale < std::numeric_limits<double>::epsilon()) {
             v    = ModelType::VaryingArray::Zero();
             rmse = 0.0;
-            return {false, "Maximum data value was zero or less"};
+            return {false, "Maximum data value was not positive"};
         }
         Eigen::ArrayXd const pdw_data = inputs[0] / scale;
         Eigen::ArrayXd const t1w_data = inputs[1] / scale;

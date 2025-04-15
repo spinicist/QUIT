@@ -12,6 +12,11 @@ void from_json(const json &j, PrepZTESequence &s) {
     QI::GetJSON(j, "spoilers", s.spoilers);
     s.FA     = QI::ArrayFromJSON(j, "FA", (M_PI / 180.0));
     s.FAprep = QI::ArrayFromJSON(j, "FAprep", (M_PI / 180.0));
+    if (j.contains("fprep")) {
+        s.fprep = QI::ArrayFromJSON(j, "fprep", 1.0);
+    } else {
+        s.fprep = Eigen::ArrayXd::Zero(s.FAprep.size());
+    }
     if (j.contains("basis")) {
         s.basis = QI::MatrixFromJSON(j, "basis", 1.0, -1, s.SPS * s.FAprep.size());
     }

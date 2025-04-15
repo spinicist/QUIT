@@ -22,9 +22,9 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-#include "prep_b1_model.h"
 #include "prep_qmt_Rx.h"
 #include "prep_qmt_k.h"
+#include "prep_sc.h"
 
 int parmesan_fit(args::Subparser &parser) {
     args::Positional<std::string> json_path(parser, "JSON", "Parameter file");
@@ -34,7 +34,7 @@ int parmesan_fit(args::Subparser &parser) {
     QI::CheckPos(input_path);
     PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
 
-    PrepB1Model model{{}, sequence};
+    PrepModel model{{}, sequence};
     using FitType = QI::ScaledNumericDiffFit<decltype(model)>;
     FitType fit{model};
     auto    fit_filter =
@@ -57,7 +57,7 @@ int parmesan_sim(args::Subparser &parser) {
     parser.Parse();
     QI::Info("Reading sequence parameters");
     PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-    PrepB1Model     model{{}, sequence};
+    PrepModel       model{{}, sequence};
     QI::SimulateModel2<decltype(model), false>(model,
                                                varying_paths.Get(),
                                                {},

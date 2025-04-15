@@ -10,19 +10,19 @@ auto Relax(double const M0_f,
            double const M0_s,
            double const R1_s,
            double const R2_s,
-           double const f0) -> AugMat {
+           double const df0) -> AugMat {
     AugMat R;
     R.setZero();
-    double const ω0 = f0 * 2.0 * M_PI;
-    R(0, 0) = -R2_f;
-    R(0, 1) = ω0;
-    R(1, 0) = -ω0;
-    R(1, 1) = -R2_f;
-    R(2, 2) = -R1_f;
-    R(2, 5) = M0_f * R1_f;
-    R(3, 3) = -R2_s;
-    R(4, 4) = -R1_s;
-    R(4, 5) = M0_s * R1_s;
+    double const dω0 = df0 * 2.0 * M_PI;
+    R(0, 0)          = -R2_f;
+    R(0, 1)          = dω0;
+    R(1, 0)          = -dω0;
+    R(1, 1)          = -R2_f;
+    R(2, 2)          = -R1_f;
+    R(2, 5)          = M0_f * R1_f;
+    R(3, 3)          = -R2_s;
+    R(4, 4)          = -R1_s;
+    R(4, 5)          = M0_s * R1_s;
     return R;
 }
 
@@ -36,10 +36,10 @@ auto Exchange(double const R_fs, double const R_sf) -> AugMat {
     return K;
 }
 
-auto RF(double const       flip,
-        double const       pw,
-        double const       B1,
-        double const       R2_s,
+auto RF(double const           flip,
+        double const           pw,
+        double const           B1,
+        double const           R2_s,
         QI::RegularGrid const &A_sl) -> AugMat {
     double const B1x = B1 * flip / pw;
     double const τ   = pw * R2_s;
@@ -83,8 +83,8 @@ auto PrepQMTRx::signal(VaryingArray const &v, FixedArray const &f) const -> QI_A
     double const R_sf = f[3] * f_f;
 
     // State vector is [x_f y_f z_f x_s z_s 1]
-    AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s, 0.0);
-    AugMat       K        = Exchange(R_fs, R_sf);
+    AugMat const R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s, 0.0);
+    AugMat const K        = Exchange(R_fs, R_sf);
     AugMat const RpK      = R + K;
     AugMat const S        = Spoil();
     AugMat const ramp     = S * (RpK * sequence.Tramp).exp();
@@ -99,11 +99,11 @@ auto PrepQMTRx::signal(VaryingArray const &v, FixedArray const &f) const -> QI_A
     std::vector<AugMat> seg_mats(sequence.FA.rows());
     std::vector<AugMat> prep_mats(sequence.preps());
     for (int ip = 0; ip < sequence.FA.rows(); ip++) {
-        auto const rfa = RF(sequence.FA[ip], sequence.Trf, B1, R2_s, A_sl);
+        AugMat const rfa = RF(sequence.FA[ip], sequence.Trf, B1, R2_s, A_sl);
         A_mats[ip]     = ((RpK + rfa) * sequence.Trf).exp();
         R_mats[ip]     = (RpK * (sequence.TR - sequence.Trf)).exp();
         seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
-        AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s, A_sl);
+        AugMat const rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s, A_sl);
         prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep).exp();
     }
     // First calculate the system matrix
@@ -137,8 +137,7 @@ int PrepQMTRxFull::input_size(const int /* Unused */) const {
     return sequence.size();
 }
 
-auto PrepQMTRxFull::signal(VaryingArray const &v, FixedArray const &f) const
-    -> QI_ARRAY(DataType) {
+auto PrepQMTRxFull::signal(VaryingArray const &v, FixedArray const &f) const -> QI_ARRAY(DataType) {
     // "M0", "T1_f", "T2_f", "T1_s", "T2_s", "f_s", "Rx", "B1"
     double const M0   = v[0];
     double const R1_f = 1. / v[1];
@@ -150,10 +149,10 @@ auto PrepQMTRxFull::signal(VaryingArray const &v, FixedArray const &f) const
     double const R_fs = v[6] * f_s;
     double const R_sf = v[6] * f_f;
     double const B1   = v[7];
-    double const f0   = v[8];
+    double const df0  = v[8];
 
     // State vector is [x_f y_f z_f x_s z_s 1]
-    AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s, f0);
+    AugMat       R        = Relax(f_f, R1_f, R2_f, f_s, R1_s, R2_s, df0);
     AugMat       K        = Exchange(R_fs, R_sf);
     AugMat const RpK      = R + K;
     AugMat const S        = Spoil();
