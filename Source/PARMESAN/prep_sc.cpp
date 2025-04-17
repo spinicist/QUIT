@@ -1,6 +1,6 @@
 // #define QI_DEBUG_BUILD 1
 #include "prep_sc.h"
-
+#include "Log.h"
 namespace {
 using AugMat = Eigen::Matrix<double, 4, 4>;
 using AugVec = Eigen::Vector<double, 4>;
@@ -14,13 +14,13 @@ auto Relax(double const M0, double const R1, double const R2, double const df0) 
     R(1, 0)          = -dω0;
     R(1, 1)          = -R2;
     R(2, 2)          = -R1;
-    R(2, 3)          = R1*M0;
+    R(2, 3)          = R1 * M0;
     return R;
 }
 
 auto RF(double const flip, double const pw, double const B1, double const f0) -> AugMat {
     double const B1x = B1 * flip / pw;
-    double const ω0 = f0 * 2.0 * M_PI;
+    double const ω0  = f0 * 2.0 * M_PI;
     AugMat       rf;
     rf.setZero();
     rf(0, 1) = ω0;
@@ -39,6 +39,14 @@ auto Spoil() -> AugMat {
 }
 
 } // namespace
+
+auto PrepModel::input_size(const int /* Unused */) const -> int {
+    if (basis.size()) {
+        return basis.rows();
+    } else {
+        return sequence.size();
+    }
+}
 
 auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_ARRAY(DataType) {
 
@@ -59,9 +67,9 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
     QI_DBVEC(sequence.FA * 180 / M_PI)
     QI_DBVEC(sequence.FAprep * 180 / M_PI)
 
-    AugMat const R    = Relax(1.0, R1, R2, df0);
-    AugMat const S    = Spoil();
-    AugMat const ramp = S * (R * sequence.Tramp).exp();
+    AugMat const R        = Relax(1.0, R1, R2, df0);
+    AugMat const S        = Spoil();
+    AugMat const ramp     = S * (R * sequence.Tramp).exp();
     AugMat const spoilTRs = S * (R * sequence.TR * sequence.spoilers).exp();
     AugMat const Dprep    = (R * sequence.Dprep).exp();
     AugMat const Dseg     = (R * sequence.Dseg).exp();
@@ -117,8 +125,11 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
     }
     QI_DBVEC(sig);
     // exit(EXIT_FAILURE);
-    if (sequence.basis.size()) {
-        return sequence.basis * sig.matrix();
+    if (basis.size()) {
+        if (basis.cols() != sig.size()) {
+            QI::Fail("Basis had {} columns, should be {}", basis.cols(), sig.size());
+        }
+        return basis * sig.matrix();
     } else {
         return sig;
     }
