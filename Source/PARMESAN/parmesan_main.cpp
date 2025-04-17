@@ -44,7 +44,7 @@ int parmesan_fit(args::Subparser &parser) {
     QI_COMMON_ARGS;
     Parse(parser);
     QI::CheckPos(input_path);
-    PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
 
     PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
     using FitType = QI::ScaledNumericDiffFit<PrepModel>;
@@ -69,7 +69,7 @@ int parmesan_sim(args::Subparser &parser) {
     Parse(parser);
     QI::CheckPos(out_path);
     QI::Info("Reading sequence parameters");
-    PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     PrepModel       model{{}, sequence, ReadBasis(bpath.Get())};
     QI::SimulateModel2<decltype(model), false>(
         model, varying_paths.Get(), {}, {out_path.Get()}, mask.Get(), noise.Get(), subregion.Get());
@@ -130,7 +130,7 @@ int parmesan_basis(args::Subparser &parser) {
     QI::CheckPos(json_path);
     QI::CheckPos(out_path);
     QI::Info("Reading sequence parameters");
-    PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     PrepModel       model{{}, sequence};
 
     auto const pars = ParameterGrid(5,
@@ -178,7 +178,7 @@ int parmesan_qmt_fit(args::Subparser &parser) {
     args::ValueFlag<double> T2_s(parser, "T2_s", "Fix T2_s", {"T2_s"}, 14e-6);
     Parse(parser);
     QI::CheckPos(input_path);
-    PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     json            lgbm = QI::ReadJSON(sl.Get());
     QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
                          QI::ArrayFromJSON<double>(lgbm, "τ"),
@@ -225,7 +225,7 @@ int parmesan_qmt_sim(args::Subparser &parser) {
     args::ValueFlag<std::string> k(parser, "k", "k map", {"k"});
     Parse(parser);
     QI::Info("Reading sequence parameters");
-    PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     json            lgbm = QI::ReadJSON(mt.Get());
     QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
                          QI::ArrayFromJSON<double>(lgbm, "τ"),

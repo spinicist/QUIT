@@ -7,7 +7,7 @@
 
 struct PrepModel : QI::Model<double, double, 5, 0, 1, 0, QI::RealNoise<double>> {
     static int const                  NS = 1;
-    PrepZTESequence const            &sequence;
+    PrepSequence const               &sequence;
     Eigen::MatrixXd const             basis = Eigen::MatrixXd();
     std::array<std::string, NV> const varying_names{"M0", "T1", "T2", "B1", "df"};
     VaryingArray const                start{1., 1., 0.1, 1.0, 0.0};

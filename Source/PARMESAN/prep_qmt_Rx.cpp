@@ -100,11 +100,11 @@ auto PrepQMTRx::signal(VaryingArray const &v, FixedArray const &f) const -> QI_A
     std::vector<AugMat> prep_mats(sequence.preps());
     for (int ip = 0; ip < sequence.FA.rows(); ip++) {
         AugMat const rfa = RF(sequence.FA[ip], sequence.Trf, B1, R2_s, A_sl);
-        A_mats[ip]     = ((RpK + rfa) * sequence.Trf).exp();
-        R_mats[ip]     = (RpK * (sequence.TR - sequence.Trf)).exp();
-        seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
-        AugMat const rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s, A_sl);
-        prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep).exp();
+        A_mats[ip]       = ((RpK + rfa) * sequence.Trf).exp();
+        R_mats[ip]       = (RpK * (sequence.TR - sequence.Trf)).exp();
+        seg_mats[ip]     = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
+        AugMat const rfp = RF(sequence.FAprep[ip], sequence.Tprep[ip], B1, R2_s, A_sl);
+        prep_mats[ip]    = ((RpK + rfp) * sequence.Tprep[ip]).exp();
     }
     // First calculate the system matrix
     AugMat X = AugMat::Identity();
@@ -126,8 +126,8 @@ auto PrepQMTRx::signal(VaryingArray const &v, FixedArray const &f) const -> QI_A
         }
         m = Dseg * ramp * m;
     }
-    if (sequence.basis.size()) {
-        return sequence.basis * sig.matrix();
+    if (basis.size()) {
+        return basis * sig.matrix();
     } else {
         return sig;
     }
@@ -172,8 +172,8 @@ auto PrepQMTRxFull::signal(VaryingArray const &v, FixedArray const &f) const -> 
         A_mats[ip]     = ((RpK + rfa) * sequence.Trf).exp();
         R_mats[ip]     = (RpK * (sequence.TR - sequence.Trf)).exp();
         seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
-        AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s, A_sl);
-        prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep).exp();
+        AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep[ip], B1, R2_s, A_sl);
+        prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep[ip]).exp();
     }
     // First calculate the system matrix
     AugMat X = AugMat::Identity();
@@ -195,8 +195,8 @@ auto PrepQMTRxFull::signal(VaryingArray const &v, FixedArray const &f) const -> 
         }
         m = Dseg * ramp * m;
     }
-    if (sequence.basis.size()) {
-        return sequence.basis * sig.matrix();
+    if (basis.size()) {
+        return basis * sig.matrix();
     } else {
         return sig;
     }

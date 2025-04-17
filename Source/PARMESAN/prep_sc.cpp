@@ -93,8 +93,8 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
         QI_DBMAT(A_mats[ip]);
         QI_DBMAT(R_mats[ip]);
         QI_DBMAT(seg_mats[ip]);
-        AugMat const rfp = RF(sequence.FAprep[ip], sequence.Tprep, B1, sequence.fprep[ip]);
-        prep_mats[ip]    = ((R + rfp) * sequence.Tprep).exp();
+        AugMat const rfp = RF(sequence.FAprep[ip], sequence.Tprep[ip], B1, sequence.fprep[ip]);
+        prep_mats[ip]    = ((R + rfp) * sequence.Tprep[ip]).exp();
         QI_DBMAT(prep_mats[ip]);
     }
     // First calculate the system matrix

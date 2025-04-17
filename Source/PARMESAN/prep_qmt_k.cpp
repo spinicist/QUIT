@@ -99,8 +99,8 @@ auto PrepQMTk::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
         A_mats[ip]     = ((RpK + rfa) * sequence.Trf).exp();
         R_mats[ip]     = (RpK * (sequence.TR - sequence.Trf)).exp();
         seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
-        AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s, A_sl);
-        prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep).exp();
+        AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep[ip], B1, R2_s, A_sl);
+        prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep[ip]).exp();
     }
     // First calculate the system matrix
     AugMat X = AugMat::Identity();
@@ -122,8 +122,8 @@ auto PrepQMTk::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
         }
         m = Dseg * ramp * m;
     }
-    if (sequence.basis.size()) {
-        return sequence.basis * sig.matrix();
+    if (basis.size()) {
+        return basis * sig.matrix();
     } else {
         return sig;
     }
@@ -168,8 +168,8 @@ auto PrepQMTkFull::signal(VaryingArray const &v, FixedArray const &f) const
         A_mats[ip]     = ((RpK + rfa) * sequence.Trf).exp();
         R_mats[ip]     = (RpK * (sequence.TR - sequence.Trf)).exp();
         seg_mats[ip]   = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
-        AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep, B1, R2_s, A_sl);
-        prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep).exp();
+        AugMat rfp     = RF(sequence.FAprep[ip], sequence.Tprep[ip], B1, R2_s, A_sl);
+        prep_mats[ip]  = ((RpK + rfp) * sequence.Tprep[ip]).exp();
     }
     // First calculate the system matrix
     AugMat X = AugMat::Identity();
@@ -191,8 +191,8 @@ auto PrepQMTkFull::signal(VaryingArray const &v, FixedArray const &f) const
         }
         m = Dseg * ramp * m;
     }
-    if (sequence.basis.size()) {
-        return sequence.basis * sig.matrix();
+    if (basis.size()) {
+        return basis * sig.matrix();
     } else {
         return sig;
     }
