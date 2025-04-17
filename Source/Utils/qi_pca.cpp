@@ -40,7 +40,7 @@ int pca_main(args::Subparser &parser) {
         parser, "RETAIN", "Number of PCs to retain, default 3", {'r', "retain"}, 3);
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask (recommended)", {'m', "mask"});
-    parser.Parse();
+    Parse(parser);
 
     auto const input  = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     auto const region = input->GetLargestPossibleRegion();

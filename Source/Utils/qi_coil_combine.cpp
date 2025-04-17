@@ -245,7 +245,7 @@ int coil_combine_main(args::Subparser &parser) {
                                  "Volume to use as reference for Hammond method (default is 1)",
                                  {'V', "vol"},
                                  1);
-    parser.Parse();
+    Parse(parser);
 
     auto input_image = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path));
 

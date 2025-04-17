@@ -36,7 +36,7 @@ int hdr_main(args::Subparser &parser) {
         "METADATA",
         "Print a header metadata field (can be specified multiple times)",
         {'m', "meta"});
-    parser.Parse();
+    Parse(parser);
     bool print_all = !(print_direction || print_origin || print_spacing || print_size ||
                        print_voxvol || print_type || print_dims || header_fields);
     for (const std::string &fname : QI::CheckList(filenames)) {

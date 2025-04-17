@@ -119,11 +119,11 @@ struct HIFIFit {
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           HIFIModel::FixedArray const & /* Unused */,
-                          HIFIModel::VaryingArray &    v,
-                          HIFIModel::CovarArray *      cov,
-                          RMSErrorType &               rmse,
+                          HIFIModel::VaryingArray     &v,
+                          HIFIModel::CovarArray       *cov,
+                          RMSErrorType                &rmse,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const {
+                          FlagType                    &iterations) const {
         double scale = std::max(inputs[0].maxCoeff(), inputs[1].maxCoeff());
         if (scale < std::numeric_limits<double>::epsilon()) {
             v << 0.0, 0.0, 0.0;
@@ -190,7 +190,7 @@ int despot1hifi_main(args::Subparser &parser) {
                                  "Clamp output T1 values to this value",
                                  {'c', "clamp"},
                                  std::numeric_limits<float>::infinity());
-    parser.Parse();
+    Parse(parser);
 
     QI::Info("Reading sequence information");
     json input          = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -205,13 +205,11 @@ int despot1hifi_main(args::Subparser &parser) {
                                            {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)},
                                            mask.Get(),
                                            simulate.Get(),
-                                           threads.Get(),
                                            subregion.Get());
     } else {
         HIFIFit hifi_fit{model};
         auto    fit_filter =
-            QI::ModelFitFilter<HIFIFit>::New(
-                &hifi_fit, covar, resids, threads.Get(), subregion.Get());
+            QI::ModelFitFilter<HIFIFit>::New(&hifi_fit, covar, resids, subregion.Get());
         fit_filter->ReadInputs(
             {QI::CheckPos(spgr_path), QI::CheckPos(mprage_path)}, {}, mask.Get());
         fit_filter->Update();

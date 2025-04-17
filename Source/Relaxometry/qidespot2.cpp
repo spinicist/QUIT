@@ -26,7 +26,7 @@
 using namespace std::literals;
 
 struct DESPOT2 : QI::Model<double, double, 2, 2> {
-    QI::SSFPSequence const &         sequence;
+    QI::SSFPSequence const          &sequence;
     long const                       max_iterations;
     std::array<const std::string, 2> varying_names{{"PD"s, "T2"s}};
 
@@ -42,8 +42,8 @@ struct DESPOT2 : QI::Model<double, double, 2, 2> {
     auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
         -> QI_ARRAY(typename Derived::Scalar) {
         using T          = typename Derived::Scalar;
-        const T &     PD = v[0];
-        const T &     T2 = v[1];
+        const T      &PD = v[0];
+        const T      &T2 = v[1];
         const double &T1 = f[0];
         const double &B1 = f[1];
         const double  E1 = exp(-sequence.TR / T1);
@@ -62,16 +62,16 @@ using DESPOT2Fit = QI::FitFunction<DESPOT2>;
 struct DESPOT2LLS : DESPOT2Fit {
     using DESPOT2Fit::DESPOT2Fit;
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
-                          DESPOT2::FixedArray const &             fixed,
-                          DESPOT2::VaryingArray &                 outputs,
+                          DESPOT2::FixedArray const              &fixed,
+                          DESPOT2::VaryingArray                  &outputs,
                           DESPOT2::CovarArray * /* Unused */,
-                          RMSErrorType &                    residual,
+                          RMSErrorType                     &residual,
                           std::vector<QI_ARRAY(InputType)> &residuals,
-                          FlagType &                        iterations) const override {
+                          FlagType                         &iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
-        const double &        T1   = fixed[0];
-        const double &        B1   = fixed[1];
-        const double &        TR   = model.sequence.TR;
+        const double         &T1   = fixed[0];
+        const double         &B1   = fixed[1];
+        const double         &TR   = model.sequence.TR;
         const double          E1   = exp(-TR / T1);
         double                PD, T2, E2;
         const Eigen::ArrayXd  angles = (model.sequence.FA * B1);
@@ -105,15 +105,15 @@ struct DESPOT2LLS : DESPOT2Fit {
 struct DESPOT2WLLS : DESPOT2Fit {
     using DESPOT2Fit::DESPOT2Fit;
     QI::FitReturnType fit(const std::vector<QI_ARRAY(InputType)> &inputs,
-                          DESPOT2::FixedArray const &             fixed,
-                          DESPOT2::VaryingArray &                 outputs,
+                          DESPOT2::FixedArray const              &fixed,
+                          DESPOT2::VaryingArray                  &outputs,
                           DESPOT2::CovarArray * /* Unused*/,
-                          RMSErrorType &                    residual,
+                          RMSErrorType                     &residual,
                           std::vector<QI_ARRAY(InputType)> &residuals,
-                          FlagType &                        iterations) const override {
+                          FlagType                         &iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
-        const double &        T1   = fixed[0];
-        const double &        B1   = fixed[1];
+        const double         &T1   = fixed[0];
+        const double         &B1   = fixed[1];
         const double          TR   = model.sequence.TR;
         const double          E1   = exp(-TR / T1);
         double                PD, T2, E2;
@@ -172,12 +172,12 @@ struct DESPOT2NLLS : DESPOT2Fit {
     DESPOT2NLLS(DESPOT2 &m) : DESPOT2Fit{m} {}
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          DESPOT2::FixedArray const &        fixed,
-                          DESPOT2::VaryingArray &            p,
-                          DESPOT2::CovarArray *              cov,
-                          RMSErrorType &                     rmse,
-                          std::vector<Eigen::ArrayXd> &      residuals,
-                          FlagType &                         iterations) const override {
+                          DESPOT2::FixedArray const         &fixed,
+                          DESPOT2::VaryingArray             &p,
+                          DESPOT2::CovarArray               *cov,
+                          RMSErrorType                      &rmse,
+                          std::vector<Eigen::ArrayXd>       &residuals,
+                          FlagType                          &iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
@@ -238,7 +238,7 @@ int despot2_main(args::Subparser &parser) {
         parser, "GS", "Data is band-free geometric solution / ellipse data", {'g', "gs"});
     args::ValueFlag<int> its(
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
-    parser.Parse();
+    Parse(parser);
 
     QI::Info("Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -253,7 +253,6 @@ int despot2_main(args::Subparser &parser) {
                                           {QI::CheckPos(ssfp_path)},
                                           mask.Get(),
                                           simulate.Get(),
-                                          threads.Get(),
                                           subregion.Get());
     } else {
         DESPOT2Fit *d2 = nullptr;
@@ -275,8 +274,7 @@ int despot2_main(args::Subparser &parser) {
             QI::Info("GS Mode selected");
             d2->model.elliptical = true;
         }
-        auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(
-            d2, covar, resids, threads.Get(), subregion.Get());
+        auto fit = QI::ModelFitFilter<DESPOT2Fit>::New(d2, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D2_");

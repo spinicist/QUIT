@@ -46,7 +46,7 @@ int affine_main(args::Subparser &parser) {
         parser, "TRANSLATE", "Translate image by X,Y,Z (mm)", {"trans"}, "0,0,0");
     args::ValueFlag<std::string> rotate(
         parser, "ROTATE", "Rotate by Euler angles around X,Y,Z (degrees).", {"rotate"}, "0,0,0");
-    parser.Parse();
+    Parse(parser);
     QI::Info("Reading header for: {}", QI::CheckPos(source_path));
     auto header = itk::ImageIOFactory::CreateImageIO(QI::CheckPos(source_path).c_str(),
                                                      itk::ImageIOFactory::ReadMode);

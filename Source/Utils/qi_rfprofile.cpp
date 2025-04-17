@@ -183,7 +183,7 @@ int rfprofile_main(args::Subparser &parser) {
         parser, "DIMENSION", "Which dimension to calculate the profile over", {"dim"}, 2);
     args::ValueFlag<std::string> infile(
         parser, "FILE", "Read JSON input from file instead of stdin", {"json"});
-    parser.Parse();
+    Parse(parser);
 
     auto reference = QI::ReadImage(QI::CheckPos(b1plus_path));
 

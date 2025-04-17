@@ -67,7 +67,7 @@ int mtr_main(args::Subparser &parser) {
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read custom contrasts from JSON file", {"json"});
     args::ValueFlag<std::string> reference(parser, "REF", "External reference image", {"ref", 'r'});
-    parser.Parse();
+    Parse(parser);
 
     auto const input_img               = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     QI::VolumeF::Pointer const ref_img = reference ? QI::ReadImage(reference.Get()) : nullptr;

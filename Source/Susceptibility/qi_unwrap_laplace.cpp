@@ -275,7 +275,7 @@ int unwrap_laplace_main(args::Subparser &parser) {
     args::ValueFlag<int> erode(
         parser, "ERODE", "Erode mask by N mm (default 1)", {'e', "erode"}, 1);
     args::Flag debug(parser, "DEBUG", "Output debugging images", {'d', "debug"});
-    parser.Parse();
+    Parse(parser);
 
     auto        inFile = QI::ReadImage(QI::CheckPos(input_path));
     std::string prefix = (outarg ? outarg.Get() : QI::StripExt(input_path.Get()));

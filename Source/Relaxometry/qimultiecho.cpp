@@ -51,12 +51,12 @@ using MultiEchoFit = QI::BlockFitFunction<MultiEcho>;
 struct MultiEchoLogLin : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          MultiEcho::FixedArray const &      fixed,
-                          MultiEcho::VaryingArray &          outputs,
+                          MultiEcho::FixedArray const       &fixed,
+                          MultiEcho::VaryingArray           &outputs,
                           MultiEcho::CovarArray * /* Unused */,
-                          RMSErrorType &               residual,
+                          RMSErrorType                &residual,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations,
+                          FlagType                    &iterations,
                           const int /*Unused*/) const override {
         const Eigen::ArrayXd &data = inputs[0];
         Eigen::MatrixXd       X(model.sequence.size(), 2);
@@ -78,12 +78,12 @@ struct MultiEchoLogLin : MultiEchoFit {
 struct MultiEchoARLO : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          MultiEcho::FixedArray const &      fixed,
-                          MultiEcho::VaryingArray &          outputs,
+                          MultiEcho::FixedArray const       &fixed,
+                          MultiEcho::VaryingArray           &outputs,
                           MultiEcho::CovarArray * /*Unused*/,
-                          RMSErrorType &               residual,
+                          RMSErrorType                &residual,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations,
+                          FlagType                    &iterations,
                           const int /*Unused*/) const override {
         const Eigen::ArrayXd &data   = inputs[0];
         const double          ESP    = model.sequence.TE[1] - model.sequence.TE[0];
@@ -112,12 +112,12 @@ struct MultiEchoARLO : MultiEchoFit {
 struct MultiEchoNLLS : MultiEchoFit {
     using MultiEchoFit::MultiEchoFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          MultiEcho::FixedArray const &      fixed,
-                          MultiEcho::VaryingArray &          p,
-                          MultiEcho::CovarArray *            cov,
-                          RMSErrorType &                     rmse,
-                          std::vector<Eigen::ArrayXd> &      residuals,
-                          FlagType &                         iterations,
+                          MultiEcho::FixedArray const       &fixed,
+                          MultiEcho::VaryingArray           &p,
+                          MultiEcho::CovarArray             *cov,
+                          RMSErrorType                      &rmse,
+                          std::vector<Eigen::ArrayXd>       &residuals,
+                          FlagType                          &iterations,
                           const int /*Unused*/) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
@@ -171,7 +171,7 @@ int multiecho_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Input multi-echo data");
     QI_COMMON_ARGS;
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/a/n)", {'a', "algo"}, 'l');
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(input_path);
     QI::Info("Reading sequence parameters");
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -185,7 +185,6 @@ int multiecho_main(args::Subparser &parser) {
                                             {QI::CheckPos(input_path)},
                                             mask.Get(),
                                             simulate.Get(),
-                                            threads.Get(),
                                             subregion.Get());
     } else {
         MultiEchoFit *me = nullptr;
@@ -205,9 +204,7 @@ int multiecho_main(args::Subparser &parser) {
         default:
             QI::Fail("Unknown algorithm type {}", algorithm.Get());
         }
-        auto fit =
-            QI::ModelFitFilter<MultiEchoFit>::New(
-                me, covar, resids, threads.Get(), subregion.Get());
+        auto fit = QI::ModelFitFilter<MultiEchoFit>::New(me, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
         const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
         if (nvols % sequence.size() == 0) {

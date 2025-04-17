@@ -117,7 +117,7 @@ int complex_main(args::Subparser &parser) {
         parser, "OUT_IMAG", "Output imaginary file", {'I', "IMAG"});
     args::ValueFlag<std::string> out_complex(
         parser, "OUT_CPLX", "Output complex file", {'X', "COMPLEX"});
-    parser.Parse();
+    Parse(parser);
 
     auto run = [&]<typename TPixel>() {
         typedef itk::Image<TPixel, 4>               TImage;

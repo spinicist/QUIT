@@ -17,10 +17,10 @@
 
 #include "Args.h"
 #include "FitFunction.h"
+#include "IRTSESequence.h"
 #include "ImageIO.h"
 #include "Model.h"
 #include "ModelFitFilter.h"
-#include "IRTSESequence.h"
 #include "SimulateModel.h"
 #include "Util.h"
 
@@ -42,8 +42,12 @@ struct IRTSE : QI::Model<double, double, 2, 0> {
         using T     = typename Derived::Scalar;
         const T &PD = p[0];
         const T &T1 = p[1];
-        auto M = PD * (1. - exp(-sequence.TI/T1)) + sequence.Q * PD*exp(-sequence.TI/T1)*((1. - exp(-sequence.TD1/T1))*exp(-sequence.TD2/T1)*cos(sequence.theta) + (1. - exp(-sequence.TD2/T1)));
-        
+        auto     M =
+            PD * (1. - exp(-sequence.TI / T1)) +
+            sequence.Q * PD * exp(-sequence.TI / T1) *
+                ((1. - exp(-sequence.TD1 / T1)) * exp(-sequence.TD2 / T1) * cos(sequence.theta) +
+                 (1. - exp(-sequence.TD2 / T1)));
+
         return M;
     }
 };
@@ -53,18 +57,18 @@ using IRTSEFit = QI::BlockFitFunction<IRTSE>;
 struct IRTSENLLS : IRTSEFit {
     using IRTSEFit::IRTSEFit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          IRTSE::FixedArray const &      fixed,
-                          IRTSE::VaryingArray &          p,
-                          IRTSE::CovarArray *            cov,
-                          RMSErrorType &                     rmse,
-                          std::vector<Eigen::ArrayXd> &      residuals,
-                          FlagType &                         iterations,
+                          IRTSE::FixedArray const           &fixed,
+                          IRTSE::VaryingArray               &p,
+                          IRTSE::CovarArray                 *cov,
+                          RMSErrorType                      &rmse,
+                          std::vector<Eigen::ArrayXd>       &residuals,
+                          FlagType                          &iterations,
                           const int /*Unused*/) const override {
-        
-        const double scale = std::abs(inputs[0].maxCoeff());
-        const Eigen::ArrayXd data = inputs[0] / scale;
-        
-        p                         = model.start;
+
+        const double         scale = std::abs(inputs[0].maxCoeff());
+        const Eigen::ArrayXd data  = inputs[0] / scale;
+
+        p = model.start;
         ceres::Problem problem;
         using Cost      = QI::ModelCost<IRTSE>;
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, IRTSE::NV>;
@@ -87,7 +91,7 @@ struct IRTSENLLS : IRTSEFit {
             return {false, summary.FullReport()};
         }
         iterations = summary.iterations.size();
-        
+
         Eigen::ArrayXd const rs  = (data - model.signal(p, fixed));
         double const         var = rs.square().sum();
         rmse                     = sqrt(var / data.rows()) * scale;
@@ -108,30 +112,27 @@ struct IRTSENLLS : IRTSEFit {
 int irtse_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT FILE", "Input multi-TI data");
     QI_COMMON_ARGS;
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(input_path);
     QI::Info("Reading sequence parameters");
-    json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    auto sequence = input.at("IRTSE").get<QI::IRTSESequence>();
+    json  input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto  sequence = input.at("IRTSE").get<QI::IRTSESequence>();
     IRTSE model{{}, sequence};
     if (simulate) {
         QI::SimulateModel<IRTSE, false>(input,
-                                            model,
-                                            {},
-                                            {QI::CheckPos(input_path)},
-                                            mask.Get(),
-                                            simulate.Get(),
-                                            threads.Get(),
-                                            subregion.Get());
+                                        model,
+                                        {},
+                                        {QI::CheckPos(input_path)},
+                                        mask.Get(),
+                                        simulate.Get(),
+                                        subregion.Get());
     } else {
         IRTSEFit *me = nullptr;
 
         me = new IRTSENLLS(model);
         QI::Info("Non-linear algorithm (Levenberg Marquardt) selected.");
-        
-        auto fit =
-            QI::ModelFitFilter<IRTSEFit>::New(
-                me, covar, resids, threads.Get(), subregion.Get());
+
+        auto fit = QI::ModelFitFilter<IRTSEFit>::New(me, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
         const int nvols = fit->GetInput(0)->GetNumberOfComponentsPerPixel();
         if (nvols % sequence.size() == 0) {

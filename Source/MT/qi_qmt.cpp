@@ -28,7 +28,7 @@
 using namespace std::literals;
 
 struct RamaniModel : QI::Model<double, double, 5, 3, 1, 2> {
-    QI::ZSpecSequence const &                  sequence;
+    QI::ZSpecSequence const                   &sequence;
     ParameterType const                        R1_b;
     QI::Lineshapes const                       lineshape;
     std::shared_ptr<QI::InterpLineshape> const interp = nullptr;
@@ -133,7 +133,7 @@ int qmt_main(args::Subparser &parser) {
         "Gaussian");
     args::ValueFlag<float> R1_b(
         parser, "R1b", "R1 (not T1) of the bound pool. Default 2.5s^-1", {'r', "R1b"}, 2.5f);
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(mtsat_path);
     QI::Info("Reading sequence information");
     json           input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -165,13 +165,12 @@ int qmt_main(args::Subparser &parser) {
                                               {mtsat_path.Get()},
                                               mask.Get(),
                                               simulate.Get(),
-                                              threads.Get(),
                                               subregion.Get());
     } else {
         RamaniFitFunction fit{model};
 
-        auto fit_filter = QI::ModelFitFilter<RamaniFitFunction>::New(
-            &fit, covar, resids, threads.Get(), subregion.Get());
+        auto fit_filter =
+            QI::ModelFitFilter<RamaniFitFunction>::New(&fit, covar, resids, subregion.Get());
         fit_filter->ReadInputs(
             {mtsat_path.Get()}, {f0.Get(), B1.Get(), QI::CheckValue(T1)}, mask.Get());
         fit_filter->Update();

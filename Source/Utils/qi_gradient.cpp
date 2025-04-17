@@ -23,7 +23,7 @@ int gradient_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "FILE", "Input file");
     args::ValueFlag<std::string>  outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
-    parser.Parse();
+    Parse(parser);
     QI::Info("Reading data from: {}", QI::CheckPos(input_path));
     auto              image     = QI::ReadImage(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());

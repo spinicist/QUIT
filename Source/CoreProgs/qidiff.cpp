@@ -29,7 +29,7 @@ int diff_main(args::Subparser &parser) {
                         "ABSOLUTE",
                         "Use absolute difference, not relative (avoids 0/0 problems)",
                                      {'a', "abs"});
-    parser.Parse();
+    Parse(parser);
     auto input    = QI::ReadImage(QI::CheckValue(input_path));
     auto baseline = QI::ReadImage(QI::CheckValue(baseline_path));
 

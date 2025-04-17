@@ -45,7 +45,7 @@ int dream_main(args::Subparser &parser) {
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<double> alpha(
         parser, "ALPHA", "Nominal flip-angle (default 55)", {'a', "alpha"}, 55);
-    parser.Parse();
+    Parse(parser);
 
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_file));
 

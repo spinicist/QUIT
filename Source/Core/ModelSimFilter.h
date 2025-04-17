@@ -41,8 +41,7 @@ class ModelSimFilter
     QI_ForwardNewMacro(Self);
     itkTypeMacro(Self, Superclass); /** Run-time type information (and related methods). */
 
-    ModelSimFilter(ModelType const &m, const int nThreads, std::string const &subregion) :
-        m_model{m} {
+    ModelSimFilter(ModelType const &m, std::string const &subregion) : m_model{m} {
         this->SetNumberOfRequiredInputs(ModelType::NV);
         if constexpr (MultiOutput) {
             this->SetNumberOfRequiredOutputs(m_model.num_outputs());
@@ -57,7 +56,6 @@ class ModelSimFilter
         this->AddObserver(itk::ProgressEvent(), QI::GenericMonitor::New());
         this->DynamicMultiThreadingOn();
         this->ThreaderUpdateProgressOff();
-        this->SetNumberOfWorkUnits(nThreads);
     }
 
     void SetVarying(unsigned int i, const QI::VolumeF *image) {
@@ -175,7 +173,7 @@ class ModelSimFilter
             if constexpr (MultiOutput) {
                 op->SetNumberOfComponentsPerPixel(m_model.output_size(i));
             } else {
-                op->SetNumberOfComponentsPerPixel(m_model.sequence.size());
+                op->SetNumberOfComponentsPerPixel(m_model.input_size(i));
             }
         }
     }
@@ -200,7 +198,7 @@ class ModelSimFilter
 
     virtual void DynamicThreadedGenerateData(const RegionType &region) override {
         itk::TotalProgressReporter progress(
-            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 100);
+            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels());
 
         std::vector<itk::ImageRegionConstIterator<QI::VolumeF>> varying_iters(ModelType::NV);
         for (int i = 0; i < ModelType::NV; i++) {

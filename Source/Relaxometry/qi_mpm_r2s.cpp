@@ -158,11 +158,11 @@ struct MPMFit {
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
                           const Eigen::ArrayXd & /* Unused */,
-                          ModelType::VaryingArray &    v,
-                          ModelType::CovarArray *      cov,
-                          RMSErrorType &               rmse,
+                          ModelType::VaryingArray     &v,
+                          ModelType::CovarArray       *cov,
+                          RMSErrorType                &rmse,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const {
+                          FlagType                    &iterations) const {
         double scale = std::max({inputs[0].maxCoeff(), inputs[1].maxCoeff(), inputs[2].maxCoeff()});
         if (scale < std::numeric_limits<double>::epsilon()) {
             v    = ModelType::VaryingArray::Zero();
@@ -231,7 +231,7 @@ int mpm_r2s_main(args::Subparser &parser) {
     args::ValueFlag<double>       rician_noise(
         parser, "RICIAN", "Mean squared noise level for Rician correction", {"rician"}, 0.);
     QI_COMMON_ARGS;
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(pdw_path);
     QI::CheckPos(t1w_path);
     QI::CheckPos(mtw_path);
@@ -249,12 +249,9 @@ int mpm_r2s_main(args::Subparser &parser) {
                                           {pdw_path.Get(), t1w_path.Get(), mtw_path.Get()},
                                           mask.Get(),
                                           simulate.Get(),
-                                          threads.Get(),
                                           subregion.Get());
     } else {
-        auto fit_filter =
-            QI::ModelFitFilter<MPMFit>::New(
-                &mpm_fit, covar, resids, threads.Get(), subregion.Get());
+        auto fit_filter = QI::ModelFitFilter<MPMFit>::New(&mpm_fit, covar, resids, subregion.Get());
         fit_filter->ReadInputs({pdw_path.Get(), t1w_path.Get(), mtw_path.Get()}, {}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "MPM_");

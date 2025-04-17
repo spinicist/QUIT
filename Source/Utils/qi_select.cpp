@@ -23,7 +23,7 @@ int select_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
     args::Positional<std::string> output_path(parser, "OUTPUT", "Output file");
     args::Positional<std::string> volume_list(parser, "VOLUMES", "Comma separated list of volumes");
-    parser.Parse();
+    Parse(parser);
 
     auto in_file        = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     auto volume_indices = QI::IntsFromString(volume_list.Get());

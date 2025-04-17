@@ -101,7 +101,7 @@ int lorentzian_main(args::Subparser &parser) {
         parser, "ADDITIVE", "Use an additive model instead of subtractive", {'a', "add"}, false);
     args::ValueFlag<double> Zref(
         parser, "Zref", "Reference value for Z-spectra, default 1.0", {'z', "zref"}, 1.0);
-    parser.Parse();
+    Parse(parser);
 
     QI::CheckPos(input_path);
     json input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -166,18 +166,11 @@ int lorentzian_main(args::Subparser &parser) {
         LM model{sequence, varying_names, low, high, start, use_bandwidth, Zref.Get(), additive};
 
         if (simulate) {
-            QI::SimulateModel<LM, false>(input,
-                                         model,
-                                         {},
-                                         {input_path.Get()},
-                                         mask.Get(),
-                                         simulate.Get(),
-                                         threads.Get(),
-                                         subregion.Get());
+            QI::SimulateModel<LM, false>(
+                input, model, {}, {input_path.Get()}, mask.Get(), simulate.Get(), subregion.Get());
         } else {
             LFit fit{model};
-            auto fit_filter = QI::ModelFitFilter<LFit>::New(
-                &fit, covar, resids, threads.Get(), subregion.Get());
+            auto fit_filter = QI::ModelFitFilter<LFit>::New(&fit, covar, resids, subregion.Get());
             fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + "LTZ_");

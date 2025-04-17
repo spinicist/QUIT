@@ -190,7 +190,7 @@ int ssfp_emt_main(args::Subparser &parser) {
     args::ValueFlag<std::string> T2_f(parser, "T2f", "T2 Free map (for simulation only)", {"T2f"});
     args::ValueFlag<double>      G0(
         parser, "G0", "Lineshape value at resonance (default 1.4e-5)", {"G0"}, 1.4e-5);
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(G_path);
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);
@@ -211,7 +211,6 @@ int ssfp_emt_main(args::Subparser &parser) {
                                           {G_path.Get(), a_path.Get(), b_path.Get()},
                                           mask.Get(),
                                           simulate.Get(),
-                                          threads.Get(),
                                           subregion.Get());
     } else {
         // First calculate T2_f
@@ -240,8 +239,7 @@ int ssfp_emt_main(args::Subparser &parser) {
             nullptr);
 
         EMTFit fit{model};
-        auto   fit_filter = QI::ModelFitFilter<EMTFit>::New(
-            &fit, covar, resids, threads.Get(), subregion.Get());
+        auto   fit_filter = QI::ModelFitFilter<EMTFit>::New(&fit, covar, resids, subregion.Get());
         fit_filter->ReadInputs(
             {G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get(), ""}, mask.Get());
         fit_filter->SetFixed(1, T2_f_calc);

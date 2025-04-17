@@ -125,7 +125,7 @@ int polyfit_main(args::Subparser &parser) {
         parser, "ORDER", "Specify the polynomial order (default 4)", {'o', "order"}, 4);
     args::ValueFlag<std::string> mask_path(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    parser.Parse();
+    Parse(parser);
 
     auto input = QI::ReadImage(QI::CheckPos(input_path));
     auto fit   = itk::PolynomialFitImageFilter::New();

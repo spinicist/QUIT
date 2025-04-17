@@ -105,7 +105,7 @@ int polyimg_main(args::Subparser &parser) {
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
     args::ValueFlag<std::string> json_file(
         parser, "JSON", "Read JSON from file instead of stdin", {"json"});
-    parser.Parse();
+    Parse(parser);
 
     QI::VolumeF::Pointer reference = QI::ReadImage(QI::CheckPos(ref_path));
     QI::Info("Reading polynomial");

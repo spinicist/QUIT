@@ -18,13 +18,14 @@
 #include "SimulateModel.h"
 #include "Util.h"
 
-struct EllipseModel : QI::Model<std::complex<double>, double, 5, 0, 1, 0, QI::ComplexNoise<double>> {
-    QI::SSFPSequence const &sequence;
-
+struct EllipseModel
+    : QI::Model<std::complex<double>, double, 5, 0, 1, 0, QI::ComplexNoise<double>> {
+    QI::SSFPSequence const                 &sequence;
     std::array<const std::string, NV> const varying_names{"G", "a", "b", "theta_0", "phi_rf"};
 
-    QI_ARRAY(std::complex<double>)
-    signal(VaryingArray const &v, FixedArray const & /* Unused */) const {
+    auto input_size(const int /* Unused */) const -> int { return sequence.size(); }
+    auto signal(VaryingArray const &v, FixedArray const & /* Unused */) const
+        -> QI_ARRAY(std::complex<double>) {
         const double &G = v[0];
         const double &a = v[1];
         const double &b = v[2];
@@ -53,11 +54,11 @@ struct EllipseModel : QI::Model<std::complex<double>, double, 5, 0, 1, 0, QI::Co
     auto signal(const Eigen::ArrayBase<Derived> &v) const -> QI_ARRAY(typename Derived::Scalar) {
         using T               = typename Derived::Scalar;
         using ArrayXT         = Eigen::Array<T, Eigen::Dynamic, 1>;
-        const T &     G       = v[0];
-        const T &     a       = v[1];
-        const T &     b       = v[2];
-        const T &     theta0  = v[3];
-        const T &     psi0    = v[4];
+        const T      &G       = v[0];
+        const T      &a       = v[1];
+        const T      &b       = v[2];
+        const T      &theta0  = v[3];
+        const T      &psi0    = v[4];
         const ArrayXT theta   = theta0 - sequence.PhaseInc;
         const T       psi     = theta0 / 2.0 + psi0;
         const ArrayXT cos_th  = cos(theta);
@@ -111,12 +112,12 @@ struct EllipseFit {
     int n_outputs() const { return model.NV; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXcd> &inputs,
-                          EllipseModel::FixedArray const &    fixed,
-                          EllipseModel::VaryingArray &        p,
-                          EllipseModel::CovarArray *          cov,
-                          double &                            rmse,
-                          std::vector<Eigen::ArrayXcd> &      residuals,
-                          FlagType &                          iterations,
+                          EllipseModel::FixedArray const     &fixed,
+                          EllipseModel::VaryingArray         &p,
+                          EllipseModel::CovarArray           *cov,
+                          double                             &rmse,
+                          std::vector<Eigen::ArrayXcd>       &residuals,
+                          FlagType                           &iterations,
                           const int /* Unused */) const {
         const double               scale  = inputs[0].abs().maxCoeff();
         const Eigen::ArrayXcd      data   = inputs[0] / scale;
@@ -188,26 +189,18 @@ int ssfp_ellipse_main(args::Subparser &parser) {
     QI_COMMON_ARGS;
     args::ValueFlag<char> algorithm(
         parser, "ALGO", "Choose algorithm (h)yper/(d)irect, default d", {'a', "algo"}, 'd');
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(sequence_path);
     QI::Info("Reading sequence information");
-    json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
-    auto sequence = input.at("SSFP").get<QI::SSFPSequence>();
+    json         input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
+    auto         sequence = input.at("SSFP").get<QI::SSFPSequence>();
     EllipseModel model{{}, sequence};
     if (simulate) {
-        QI::SimulateModel<EllipseModel, false>(input,
-                                               model,
-                                               {},
-                                               {sequence_path.Get()},
-                                               mask.Get(),
-                                               simulate.Get(),
-                                               threads.Get(),
-                                               subregion.Get());
+        QI::SimulateModel<EllipseModel, false>(
+            input, model, {}, {sequence_path.Get()}, mask.Get(), simulate.Get(), subregion.Get());
     } else {
         EllipseFit fit{model};
-        auto       fit_filter =
-            QI::ModelFitFilter<EllipseFit>::New(
-                &fit, covar, resids, threads.Get(), subregion.Get());
+        auto fit_filter = QI::ModelFitFilter<EllipseFit>::New(&fit, covar, resids, subregion.Get());
         fit_filter->ReadInputs({sequence_path.Get()}, {}, mask.Get());
         fit_filter->SetBlocks(fit_filter->GetInput(0)->GetNumberOfComponentsPerPixel() /
                               sequence.size());

@@ -17,7 +17,7 @@
 
 int affine_angle_main(args::Subparser &parser) {
     args::PositionalList<std::string> tfm_paths(parser, "TRANSFORM", "List of transform files");
-    parser.Parse();
+    Parse(parser);
 
     using Tfm      = itk::AffineTransform<double, 3>;
     auto composite = Tfm::New();

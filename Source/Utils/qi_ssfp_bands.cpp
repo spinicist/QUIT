@@ -388,7 +388,7 @@ int ssfp_bands_main(args::Subparser &parser) {
         "L");
     args::Flag two_pass(
         parser, "SECOND PASS", "Use energy-minimisation 2nd pass scheme", {'2', "2pass"});
-    parser.Parse();
+    Parse(parser);
 
     QI::Info("Opening input file: {}", QI::CheckPos(input_path));
     auto         inFile = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path));

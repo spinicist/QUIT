@@ -28,7 +28,6 @@
 #include <Eigen/SVD>
 #include <functional>
 
-
 auto ReadBasis(std::string const &path) -> Eigen::MatrixXd {
     if (path.size()) {
         auto bj = QI::ReadJSON(path);
@@ -41,7 +40,7 @@ auto ReadBasis(std::string const &path) -> Eigen::MatrixXd {
 int parmesan_fit(args::Subparser &parser) {
     args::Positional<std::string> json_path(parser, "JSON", "Parameter file");
     args::Positional<std::string> input_path(parser, "INPUT", "Input image file");
-    args::ValueFlag<std::string> bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
+    args::ValueFlag<std::string>  bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
     QI_COMMON_ARGS;
     Parse(parser);
     QI::CheckPos(input_path);
@@ -50,8 +49,7 @@ int parmesan_fit(args::Subparser &parser) {
     PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
     using FitType = QI::ScaledNumericDiffFit<PrepModel>;
     FitType fit{model};
-    auto    fit_filter =
-        QI::ModelFitFilter<FitType>::New(&fit, covar, resids, threads.Get(), subregion.Get());
+    auto    fit_filter = QI::ModelFitFilter<FitType>::New(&fit, covar, resids, subregion.Get());
     fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
     fit_filter->SetRequestedRegionFromString(subregion.Get());
     fit_filter->Update();
@@ -73,14 +71,8 @@ int parmesan_sim(args::Subparser &parser) {
     QI::Info("Reading sequence parameters");
     PrepZTESequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     PrepModel       model{{}, sequence, ReadBasis(bpath.Get())};
-    QI::SimulateModel2<decltype(model), false>(model,
-                                               varying_paths.Get(),
-                                               {},
-                                               {out_path.Get()},
-                                               mask.Get(),
-                                               noise.Get(),
-                                               threads.Get(),
-                                               subregion.Get());
+    QI::SimulateModel2<decltype(model), false>(
+        model, varying_paths.Get(), {}, {out_path.Get()}, mask.Get(), noise.Get(), subregion.Get());
     QI::Info("Finished.");
     return EXIT_SUCCESS;
 }
@@ -153,15 +145,15 @@ int parmesan_basis(args::Subparser &parser) {
     auto const svd = signals.bdcSvd<Eigen::ComputeThinV>();
 
     QI::Info("Computing projection");
-    Eigen::MatrixXd          temp = signals * svd.matrixV().leftCols(N.Get());
-    Eigen::MatrixXd proj = temp * svd.matrixV().leftCols(N.Get()).transpose();
-    auto resid = (signals - proj).stableNorm() / signals.stableNorm();
+    Eigen::MatrixXd temp  = signals * svd.matrixV().leftCols(N.Get());
+    Eigen::MatrixXd proj  = temp * svd.matrixV().leftCols(N.Get()).transpose();
+    auto            resid = (signals - proj).stableNorm() / signals.stableNorm();
     QI::Info("Residual {}%", 100 * resid);
 
     auto bj = json::array();
     for (int ii = 0; ii < N.Get(); ii++) {
         Eigen::VectorXd bc = svd.matrixV().col(ii);
-        if (bc.dot(signals.row(pars.cols()/2)) < 0) {
+        if (bc.dot(signals.row(pars.cols() / 2)) < 0) {
             bc = -bc; // Flip it
         }
         bj.push_back(bc);
@@ -196,8 +188,7 @@ int parmesan_qmt_fit(args::Subparser &parser) {
                        typename decltype(model)::FixedNames const fixed) {
         using FitType = QI::ScaledNumericDiffFit<decltype(model)>;
         FitType fit{model};
-        auto    fit_filter =
-            QI::ModelFitFilter<FitType>::New(&fit, covar, resids, threads.Get(), subregion.Get());
+        auto    fit_filter = QI::ModelFitFilter<FitType>::New(&fit, covar, resids, subregion.Get());
         fit_filter->ReadInputs({input_path.Get()}, fixed, mask.Get());
         fit_filter->SetRequestedRegionFromString(subregion.Get());
         fit_filter->Update();
@@ -247,7 +238,6 @@ int parmesan_qmt_sim(args::Subparser &parser) {
                                                    {out_path.Get()},
                                                    mask.Get(),
                                                    noise.Get(),
-                                                   threads.Get(),
                                                    subregion.Get());
     };
 

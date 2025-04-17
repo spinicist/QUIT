@@ -27,7 +27,7 @@ int fieldmap_main(args::Subparser &parser) {
     args::ValueFlag<double> delta_te(parser, "ΔTE", "Echo time difference (ms)", {"delta_te"});
     args::ValueFlag<double> B0(
         parser, "B0", "Field-strength in Tesla. Output will be in PPM", {"B0"});
-    parser.Parse();
+    Parse(parser);
 
     QI::Info("Opening file: {}", QI::CheckPos(input_path));
     auto input = QI::ReadImage<QI::VectorVolumeXF>(QI::CheckPos(input_path));

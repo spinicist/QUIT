@@ -50,14 +50,14 @@ using DESPOT1Fit = QI::FitFunction<DESPOT1>;
 struct DESPOT1LLS : DESPOT1Fit {
     using DESPOT1Fit::DESPOT1Fit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          DESPOT1::FixedArray const &        fixed,
-                          DESPOT1::VaryingArray &            outputs,
+                          DESPOT1::FixedArray const         &fixed,
+                          DESPOT1::VaryingArray             &outputs,
                           DESPOT1::CovarArray * /* Unused */,
-                          RMSErrorType &               residual,
+                          RMSErrorType                &residual,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const override {
+                          FlagType                    &iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
-        const double &        B1   = fixed[0];
+        const double         &B1   = fixed[0];
         Eigen::ArrayXd        flip = model.sequence.FA * B1;
         Eigen::VectorXd       Y    = data / flip.sin();
         Eigen::MatrixXd       X(Y.rows(), 2);
@@ -79,14 +79,14 @@ struct DESPOT1LLS : DESPOT1Fit {
 struct DESPOT1WLLS : DESPOT1Fit {
     using DESPOT1Fit::DESPOT1Fit;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          DESPOT1::FixedArray const &        fixed,
-                          DESPOT1::VaryingArray &            outputs,
+                          DESPOT1::FixedArray const         &fixed,
+                          DESPOT1::VaryingArray             &outputs,
                           DESPOT1::CovarArray * /* Unused */,
-                          RMSErrorType &               residual,
+                          RMSErrorType                &residual,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const override {
+                          FlagType                    &iterations) const override {
         const Eigen::ArrayXd &data = inputs[0];
-        const double &        B1   = fixed[0];
+        const double         &B1   = fixed[0];
         Eigen::ArrayXd        flip = model.sequence.FA * B1;
         Eigen::VectorXd       Y    = data / flip.sin();
         Eigen::MatrixXd       X(Y.rows(), 2);
@@ -122,12 +122,12 @@ struct DESPOT1NLLS : DESPOT1Fit {
     DESPOT1NLLS(DESPOT1 &m) : DESPOT1Fit(m) {}
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          DESPOT1::FixedArray const &        fixed,
-                          DESPOT1::VaryingArray &            p,
-                          DESPOT1::CovarArray *              cov,
-                          RMSErrorType &                     rmse,
-                          std::vector<Eigen::ArrayXd> &      residuals,
-                          FlagType &                         iterations) const override {
+                          DESPOT1::FixedArray const         &fixed,
+                          DESPOT1::VaryingArray             &p,
+                          DESPOT1::CovarArray               *cov,
+                          RMSErrorType                      &rmse,
+                          std::vector<Eigen::ArrayXd>       &residuals,
+                          FlagType                          &iterations) const override {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
             p << 0.0, 0.0;
@@ -184,7 +184,7 @@ int despot1_main(args::Subparser &parser) {
     args::ValueFlag<char> algorithm(parser, "ALGO", "Choose algorithm (l/w/n)", {'a', "algo"}, 'l');
     args::ValueFlag<int>  its(
         parser, "ITERS", "Max iterations for WLLS/NLLS (default 15)", {'i', "its"}, 15);
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(spgr_path);
     QI::Info("Reading sequence information");
     json input        = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -198,7 +198,6 @@ int despot1_main(args::Subparser &parser) {
                                           {spgr_path.Get()},
                                           mask.Get(),
                                           simulate.Get(),
-                                          threads.Get(),
                                           subregion.Get());
     } else {
         DESPOT1Fit *d1 = nullptr;
@@ -218,8 +217,7 @@ int despot1_main(args::Subparser &parser) {
         default:
             QI::Fail("Unknown algorithm type: {}", algorithm.Get());
         }
-        auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(
-            d1, covar, resids, threads.Get(), subregion.Get());
+        auto fit = QI::ModelFitFilter<DESPOT1Fit>::New(d1, covar, resids, subregion.Get());
         fit->ReadInputs({QI::CheckPos(spgr_path)}, {B1.Get()}, mask.Get());
         fit->Update();
         fit->WriteOutputs(prefix.Get() + "D1_");

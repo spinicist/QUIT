@@ -35,7 +35,7 @@ int lineshape_main(args::Subparser &parser) {
                                         "Spacing of frequencies (default 1000 Hz)",
                                         {'p', "frq_space"},
                                         1e3);
-    parser.Parse();
+    Parse(parser);
     QI::Info("Bound-pool T2: {}", T2b.Get());
     auto frqs =
         Eigen::ArrayXd::LinSpaced(frq_count.Get(),

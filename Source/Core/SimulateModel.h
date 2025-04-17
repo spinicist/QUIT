@@ -25,9 +25,8 @@ void SimulateModel(json                                     &json,
                    std::array<std::string, Model::NI> const &outpaths,
                    std::string const                        &mask_path,
                    double const                              noise,
-                   int const                                 nThreads,
                    std::string const                        &subRegion) {
-    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, nThreads, subRegion);
+    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, subRegion);
     simulator->SetNoise(noise);
     for (auto i = 0; i < Model::NV; i++) {
         const std::string vname = fmt::format("{}_map", model.varying_names[i]);
@@ -78,9 +77,8 @@ void SimulateModel2(Model const                              &model,
                     std::array<std::string, Model::NI> const &outpaths,
                     std::string const                        &mask_path,
                     double const                              noise,
-                    int const                                 nThreads,
                     std::string const                        &subRegion) {
-    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, nThreads, subRegion);
+    auto simulator = QI::ModelSimFilter<Model, MultiOutput>::New(model, subRegion);
     simulator->SetNoise(noise);
     if (varyingPaths.size() != Model::NV) {
         QI::Fail("Expected {} varying inputs, not {}", Model::NV, varyingPaths.size());

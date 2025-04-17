@@ -26,7 +26,7 @@
 
 struct JSRModel : QI::Model<double, double, 4, 1, 2> {
     // Sequence paramter structs
-    QI::SPGREchoSequence &  spgr;
+    QI::SPGREchoSequence   &spgr;
     QI::SSFPFiniteSequence &ssfp;
 
     // Fitting start point and bounds
@@ -134,7 +134,7 @@ struct JSRModel : QI::Model<double, double, 4, 1, 2> {
 
 // Cost functors. These need to calculate the residuals
 struct SPGRCost {
-    JSRModel const &     model;
+    JSRModel const      &model;
     JSRModel::FixedArray fixed;
     QI_ARRAY(double) const data;
 
@@ -148,7 +148,7 @@ struct SPGRCost {
 };
 
 struct SSFPCost {
-    JSRModel const &     model;
+    JSRModel const      &model;
     JSRModel::FixedArray fixed;
     QI_ARRAY(double) const data;
 
@@ -190,12 +190,12 @@ struct JSRFit {
     // also the reason for failure
     QI::FitReturnType
     fit(std::vector<Eigen::ArrayXd> const &inputs,       // Input: signal data
-        ModelType::FixedArray const &      fixed,        // Input: Fixed parameters
-        ModelType::VaryingArray &          best_varying, // Output: Varying parameters
-        ModelType::CovarArray *            covar,
-        RMSErrorType &                     rmse,      // Output: root-mean-square error
-        std::vector<Eigen::ArrayXd> &      residuals, // Optional output: point residuals
-        FlagType &                         iterations /* Usually iterations */) const {
+        ModelType::FixedArray const       &fixed,        // Input: Fixed parameters
+        ModelType::VaryingArray           &best_varying, // Output: Varying parameters
+        ModelType::CovarArray             *covar,
+        RMSErrorType                      &rmse,      // Output: root-mean-square error
+        std::vector<Eigen::ArrayXd>       &residuals, // Optional output: point residuals
+        FlagType                          &iterations /* Usually iterations */) const {
         // First scale down the raw data so that PD will be roughly the same magnitude as other
         // parameters This is important for numerical stability in the optimiser
 
@@ -286,7 +286,7 @@ int jsr_main(args::Subparser &parser) {
     args::ValueFlag<int>         npsi(
         parser, "N PSI", "Number of starts for psi/off-resonance, default 2", {'p', "npsi"}, 2);
 
-    parser.Parse();
+    Parse(parser);
 
     QI::CheckPos(spgr_path);
     QI::CheckPos(ssfp_path);
@@ -305,13 +305,10 @@ int jsr_main(args::Subparser &parser) {
                                           {spgr_path.Get(), ssfp_path.Get()},
                                           mask.Get(),
                                           simulate.Get(),
-                                          threads.Get(),
                                           subregion.Get());
     } else {
         JSRFit jsr_fit{model, npsi.Get()};
-        auto   fit_filter =
-            QI::ModelFitFilter<JSRFit>::New(
-                &jsr_fit, covar, resids, threads.Get(), subregion.Get());
+        auto fit_filter = QI::ModelFitFilter<JSRFit>::New(&jsr_fit, covar, resids, subregion.Get());
         fit_filter->ReadInputs({spgr_path.Get(), ssfp_path.Get()}, {b1_path.Get()}, mask.Get());
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "JSR_");

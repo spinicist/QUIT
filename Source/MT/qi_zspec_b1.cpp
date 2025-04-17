@@ -37,7 +37,7 @@ int zspec_b1_main(args::Subparser &parser) {
     args::ValueFlag<std::string> mask(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
 
-    parser.Parse();
+    Parse(parser);
 
     const auto b1_image = QI::ReadImage(QI::CheckPos(b1_path));
     QI::CheckList(input_paths);

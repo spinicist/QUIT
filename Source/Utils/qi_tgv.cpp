@@ -38,7 +38,7 @@ int tgv_main(args::Subparser &parser) {
     args::ValueFlag<float> step_size(
         parser, "STEP SIZE", "Inverse of step size (default 8)", {"step"}, 8.f);
     args::Flag complex(parser, "COMPLEX", "Input is complex valued", {"complex", 'x'});
-    parser.Parse();
+    Parse(parser);
     if (!iname) {
         QI::Fail("Input filename must be set");
     }

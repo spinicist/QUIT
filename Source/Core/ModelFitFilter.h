@@ -101,7 +101,6 @@ class ModelFitFilter
     ModelFitFilter(FitType const     *f,
                    const bool         covar,
                    const bool         allResids,
-                   const int          nThreads,
                    std::string const &subregion) :
         m_fit(f),
         m_allResiduals(allResids), m_covar(covar) {
@@ -114,7 +113,6 @@ class ModelFitFilter
         this->AddObserver(itk::ProgressEvent(), QI::GenericMonitor::New());
         this->DynamicMultiThreadingOn();
         this->ThreaderUpdateProgressOff();
-        this->SetNumberOfWorkUnits(nThreads);
     }
 
     void SetInput(unsigned int i, const TInputImage *image) override {
@@ -484,7 +482,7 @@ class ModelFitFilter
 
     virtual void DynamicThreadedGenerateData(const TRegion &region) override {
         itk::TotalProgressReporter progress(
-            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels(), 100);
+            this, this->GetOutput(0)->GetRequestedRegion().GetNumberOfPixels());
 
         itk::ImageRegionConstIterator<TMaskImage> mask_iter;
         const auto                                mask = this->GetMask();

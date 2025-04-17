@@ -73,7 +73,7 @@ int mp2rage_main(args::Subparser &parser) {
         "(https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0099676)",
         {'b', "beta"},
         0.0);
-    parser.Parse();
+    Parse(parser);
 
     auto inFile = QI::ReadImage<QI::SeriesXF>(QI::CheckPos(input_path));
 

@@ -66,7 +66,7 @@ int rois_main(args::Subparser &parser) {
         {"header_name"});
     args::ValueFlagList<double> scales(
         parser, "SCALE", "Divide ROI values by scale (must be same order as paths)", {"scale"});
-    parser.Parse();
+    Parse(parser);
 
     size_t n_files = QI::CheckList(in_paths).size();
     if (volumes) {

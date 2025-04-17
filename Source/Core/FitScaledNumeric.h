@@ -43,7 +43,7 @@ struct ScaledNumericDiffFit : FitFunction<ModelType, int> {
                                                     ModelType::NV>;
         auto *cost = new Diff(new QI::ModelCost<ModelType>{this->model, fixed, data},
                               ceres::TAKE_OWNERSHIP,
-                              this->model.sequence.size());
+                              this->model.input_size(0));
         auto *loss = new ceres::HuberLoss(1.0); // Don't know if this helps
 
         // This is where the parameters and cost functions actually get added to Ceres

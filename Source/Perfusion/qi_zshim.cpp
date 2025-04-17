@@ -34,7 +34,7 @@ int zshim_main(args::Subparser &parser) {
     args::ValueFlag<std::string> noise(
         parser, "NOISE REGION", "Subtract noise measured in region", {'n', "noiseregion"});
 
-    parser.Parse();
+    Parse(parser);
     auto              input = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     const std::string outPrefix = outarg ? outarg.Get() : QI::Basename(input_path.Get());
     const int         insize    = input->GetNumberOfComponentsPerPixel();

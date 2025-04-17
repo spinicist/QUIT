@@ -138,7 +138,7 @@ int newimage_main(args::Subparser &parser) {
     args::ValueFlag<int> steps_arg(
         parser, "STEPS", "Number of discrete steps (steps)", {'t', "steps"}, 1);
     args::ValueFlag<float> wrap_arg(parser, "WRAP", "Wrap image values", {'w', "wrap"});
-    parser.Parse();
+    Parse(parser);
 
     if (dims_arg.Get() == 3) {
         make_image<3>(fName,

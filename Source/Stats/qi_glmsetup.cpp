@@ -50,7 +50,7 @@ int glm_setup_main(args::Subparser &parser) {
         parser, "CONTRASTS", "Generate and save contrasts", {'c', "contrasts"});
     args::ValueFlag<std::string> ftests_path(
         parser, "FTESTS", "Generate and save F-tests", {'f', "ftests"});
-    parser.Parse();
+    Parse(parser);
 
     std::ifstream group_file(QI::CheckValue(group_path));
     QI::Info("Reading group file");

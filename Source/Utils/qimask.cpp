@@ -62,7 +62,7 @@ int mask_main(args::Subparser &parser) {
         parser, "RATS START RADIUS", "Starting radius for RATS, default 1", {"rats_radius"}, 1);
     args::ValueFlag<int> fillh_radius(
         parser, "FILL HOLES", "Fill holes in thresholded mask with radius N", {'F', "fillh"}, 0);
-    parser.Parse();
+    Parse(parser);
 
     QI::SeriesF::Pointer vols = ITK_NULLPTR;
     if (is_complex) {

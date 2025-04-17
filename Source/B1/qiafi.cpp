@@ -49,7 +49,7 @@ int afi_main(args::Subparser &parser) {
         parser, "TR RATIO", "Specify TR2:TR1 ratio, default 5", {'r', "ratio"}, 5.0);
     args::Flag save_angle(
         parser, "SAVE ANGLE", "Write out the actual flip-angle as well as B1", {'s', "save"});
-    parser.Parse();
+    Parse(parser);
 
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     QI::Info("Nominal flip-angle = {} degrees", nom_flip.Get());

@@ -36,7 +36,7 @@ int unwrap_path_main(args::Subparser &parser) {
         parser, "OUTPUT PREFIX", "Change output prefix (default input filename)", {'o', "out"});
     args::ValueFlag<std::string> maskarg(
         parser, "MASK", "Only process voxels within the mask", {'m', "mask"});
-    parser.Parse();
+    Parse(parser);
 
     auto inFile = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
 

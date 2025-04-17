@@ -33,10 +33,10 @@ struct PLANETModel : QI::Model<double, double, 3, 1, 3, 0, QI::RealNoise<double>
 
     auto signals(const Eigen::ArrayBase<QI_ARRAYN(double, NV)> &v,
                  const QI_ARRAYN(double, NF) & f) const -> std::vector<QI_ARRAY(double)> {
-        const double &                PD      = v[0];
-        const double &                T1      = v[1];
-        const double &                T2      = v[2];
-        const double &                B1      = f[0];
+        const double                 &PD      = v[0];
+        const double                 &T1      = v[1];
+        const double                 &T2      = v[2];
+        const double                 &B1      = f[0];
         const double                  E1      = exp(-sequence.TR / T1);
         const double                  E2      = exp(-sequence.TR / T2);
         const Eigen::ArrayXd          alpha   = B1 * sequence.FA;
@@ -66,8 +66,8 @@ struct PLANETFit {
     int n_outputs() const { return 3; }
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          const Eigen::ArrayXd &             fixed,
-                          PLANETModel::VaryingArray &        out,
+                          const Eigen::ArrayXd              &fixed,
+                          PLANETModel::VaryingArray         &out,
                           PLANETModel::CovarArray * /* Unused */,
                           RMSErrorType & /* Unused */,
                           std::vector<Eigen::ArrayXd> & /* Unused */,
@@ -99,7 +99,7 @@ int planet_main(args::Subparser &parser) {
     args::Positional<std::string> b_path(parser, "b", "Ellipse parameter b");
     args::ValueFlag<std::string>  B1(parser, "B1", "B1 map (ratio) file", {'b', "B1"});
     QI_COMMON_ARGS;
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(G_path);
     QI::CheckPos(a_path);
     QI::CheckPos(b_path);
@@ -115,13 +115,10 @@ int planet_main(args::Subparser &parser) {
                                              {G_path.Get(), a_path.Get(), b_path.Get()},
                                              mask.Get(),
                                              simulate.Get(),
-                                             threads.Get(),
                                              subregion.Get());
     } else {
         PLANETFit fit{model};
-        auto      fit_filter =
-            QI::ModelFitFilter<PLANETFit>::New(
-                &fit, false, false, threads.Get(), subregion.Get());
+        auto fit_filter = QI::ModelFitFilter<PLANETFit>::New(&fit, false, false, subregion.Get());
         fit_filter->ReadInputs({G_path.Get(), a_path.Get(), b_path.Get()}, {B1.Get()}, mask.Get());
         fit_filter->SetBlocks(ssfp.size());
         fit_filter->Update();

@@ -146,7 +146,7 @@ int kfilter_main(args::Subparser &parser) {
                                  {"filter_per_volume"});
     args::ValueFlagList<std::string> filters(
         parser, "FILTER", "Specify a filter to use (can be multiple)", {'f', "filter"});
-    parser.Parse();
+    Parse(parser);
 
     std::vector<std::shared_ptr<QI::FilterKernel>> kernels;
     if (filters) {

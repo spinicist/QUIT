@@ -58,10 +58,10 @@ struct ASEModel : QI::Model<double, double, 4, 0, 1, 3> {
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
         -> QI_ARRAY(typename Derived::Scalar) {
         using T        = typename Derived::Scalar;
-        const T &  S0  = varying[0];
-        const T &  dT  = varying[1];
-        const T &  R2p = varying[2];
-        const T &  DBV = varying[3];
+        const T   &S0  = varying[0];
+        const T   &dT  = varying[1];
+        const T   &R2p = varying[2];
+        const T   &DBV = varying[3];
         const auto dw  = R2p / DBV;
 
         Eigen::Integrator<T> integrator(5);
@@ -118,9 +118,9 @@ struct ASEFixDBVModel : QI::Model<double, double, 3, 0, 1, 3> {
     auto signal(const Eigen::ArrayBase<Derived> &varying, const FixedArray & /* Unused */) const
         -> QI_ARRAY(typename Derived::Scalar) {
         using T        = typename Derived::Scalar;
-        const T &  S0  = varying[0];
-        const T &  dT  = varying[1];
-        const T &  R2p = varying[2];
+        const T   &S0  = varying[0];
+        const T   &dT  = varying[1];
+        const T   &R2p = varying[2];
         const auto dw  = R2p / DBV;
 
         Eigen::Integrator<T> integrator(5);
@@ -168,37 +168,24 @@ int ase_oef_main(args::Subparser &parser) {
     args::ValueFlag<double> B0(parser, "B0", "Field-strength (Tesla), default 3", {'B', "B0"}, 3.0);
     args::ValueFlag<double> Hct(parser, "HCT", "Hematocrit (default 0.34)", {'h', "Hct"}, 0.34);
     args::ValueFlag<double> DBV(parser, "DBV", "Fix DBV and only fit R2'", {'d', "DBV"}, 0.0);
-
-    parser.Parse();
+    Parse(parser);
     json input    = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     auto sequence = input.at("MultiEcho").get<QI::MultiEchoSequence>();
 
     if (simulate) {
         if (DBV) {
             ASEFixDBVModel model{{}, sequence, B0.Get(), Hct.Get(), DBV.Get()};
-            QI::SimulateModel<ASEFixDBVModel, false>(input,
-                                                     model,
-                                                     {},
-                                                     {input_path.Get()},
-                                                     mask.Get(),
-                                                     simulate.Get(),
-                                                     threads.Get(),
-                                                     subregion.Get());
+            QI::SimulateModel<ASEFixDBVModel, false>(
+                input, model, {}, {input_path.Get()}, mask.Get(), simulate.Get(), subregion.Get());
         } else {
             ASEModel model{{}, sequence, B0.Get(), Hct.Get()};
-            QI::SimulateModel<ASEModel, false>(input,
-                                               model,
-                                               {},
-                                               {input_path.Get()},
-                                               mask.Get(),
-                                               simulate.Get(),
-                                               threads.Get(),
-                                               subregion.Get());
+            QI::SimulateModel<ASEModel, false>(
+                input, model, {}, {input_path.Get()}, mask.Get(), simulate.Get(), subregion.Get());
         }
     } else {
         auto process = [&](auto fit_func) {
             auto fit_filter = QI::ModelFitFilter<decltype(fit_func)>::New(
-                &fit_func, covar, resids, threads.Get(), subregion.Get());
+                &fit_func, covar, resids, subregion.Get());
             fit_filter->ReadInputs({QI::CheckPos(input_path)}, {}, mask.Get());
             fit_filter->Update();
             fit_filter->WriteOutputs(prefix.Get() + "ASE_");

@@ -49,7 +49,7 @@ int zspec_interp_main(args::Subparser &parser) {
         "REFERENCE",
         "Divide output by reference and multiply by 100 (output %)",
         {'r', "ref"});
-    parser.Parse();
+    Parse(parser);
 
     auto       input     = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));
     json       doc       = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);

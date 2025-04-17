@@ -32,7 +32,7 @@ int noise_est_main(args::Subparser &parser) {
                         "MEAN^2",
                         "Return the mean of the squared values (for Rician correction)",
                         {"meansqr"});
-    parser.Parse();
+    Parse(parser);
     if (!region && !mask) {
         QI::Fail("Either REGION or MASK must be specified");
     }

@@ -26,17 +26,26 @@ int mtsat_main(args::Subparser &parser) {
     args::Positional<std::string> t1w_path(parser, "T1w", "Input T1-weighted file");
     args::Positional<std::string> mtw_path(parser, "MTw", "Input MT-weighted file");
     QI_COMMON_ARGS;
-    args::ValueFlag<std::string>  b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
-    args::ValueFlag<double>       C(
+    args::ValueFlag<std::string> b1_path(parser, "B1", "Path to B1 map", {'b', "B1"});
+    args::ValueFlag<double>      C(
         parser, "C", "Correction factor for delta (default 0.4)", {'C', "C"}, 0.4);
-    args::Flag                    smallangle(
-        parser, "smallangle", "Use small flip angle approx for R1 and PD calculation", {'s', "smallangle"});
-    args::ValueFlag<double>       delta_max(
-        parser, "delta_max", "Values of delta (MTsat) above this are clamped, in % (default 10%)", {'d', "delta-max"}, 10);
-    args::ValueFlag<double>       r1_max(
-        parser, "r1_max", "Values of R1 above this are clamped, in 1/s (default 10 1/s)", {'r', "r1-max"}, 10);
-    parser.Parse();
-    
+    args::Flag              smallangle(parser,
+                          "smallangle",
+                          "Use small flip angle approx for R1 and PD calculation",
+                                       {'s', "smallangle"});
+    args::ValueFlag<double> delta_max(
+        parser,
+        "delta_max",
+        "Values of delta (MTsat) above this are clamped, in % (default 10%)",
+        {'d', "delta-max"},
+        10);
+    args::ValueFlag<double> r1_max(parser,
+                                   "r1_max",
+                                   "Values of R1 above this are clamped, in 1/s (default 10 1/s)",
+                                   {'r', "r1-max"},
+                                   10);
+    Parse(parser);
+
     QI::Info("Reading sequence parameters");
     json              input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
     QI::MTSatSequence seq(input["MTSat"]);
@@ -50,7 +59,6 @@ int mtsat_main(args::Subparser &parser) {
             {QI::CheckPos(pdw_path), QI::CheckPos(t1w_path), QI::CheckPos(mtw_path)},
             mask.Get(),
             simulate.Get(),
-            threads.Get(),
             subregion.Get());
     } else {
         auto pdw_img = QI::ReadImage(QI::CheckPos(pdw_path));
@@ -72,7 +80,7 @@ int mtsat_main(args::Subparser &parser) {
 
         std::array<QI::VolumeF::Pointer, 3> outs{A_img, R1_img, d_img};
 
-        QI::ModelFunc(model, {pdw_img, t1w_img, mtw_img}, {B1_img}, mask_img, threads.Get(), outs);
+        QI::ModelFunc(model, {pdw_img, t1w_img, mtw_img}, {B1_img}, mask_img, outs);
         QI::Info("Finished");
         QI::WriteImage(A_img, prefix.Get() + "MTSat_PD" + QI::OutExt());
         QI::WriteImage(R1_img, prefix.Get() + "MTSat_R1" + QI::OutExt());

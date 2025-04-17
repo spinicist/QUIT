@@ -6,14 +6,13 @@
 
 namespace QI {
 template <typename ModelType>
-void ModelFunc(ModelType const &                                  model,
+void ModelFunc(ModelType const                                   &model,
                std::array<VolumeF::Pointer, ModelType::NI> const &inputs,
                std::array<VolumeF::Pointer, ModelType::NF> const &fixed,
-               VolumeF::Pointer const &                           mask,
-               itk::ThreadIdType const                            nThreads,
-               std::array<VolumeF::Pointer, ModelType::NV> &      outputs) {
+               VolumeF::Pointer const                            &mask,
+               std::array<VolumeF::Pointer, ModelType::NV>       &outputs) {
     auto mt = itk::MultiThreaderBase::New();
-    mt->SetNumberOfWorkUnits(nThreads);
+    // mt->SetNumberOfWorkUnits(nThreads);
     mt->ParallelizeImageRegion<3>(
         inputs.at(0)->GetBufferedRegion(),
         [&](const QI::VolumeF::RegionType &region) {

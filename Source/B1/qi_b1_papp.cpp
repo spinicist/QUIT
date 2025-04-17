@@ -23,7 +23,7 @@ int b1_papp_main(args::Subparser &parser) {
     args::Positional<std::string> input_path(parser, "INPUT", "Input file");
     args::ValueFlag<std::string>  out_prefix(
         parser, "OUTPREFIX", "Add a prefix to output filenames", {'o', "out"});
-    parser.Parse();
+    Parse(parser);
 
     auto inFile    = QI::ReadImage<QI::SeriesF>(QI::CheckPos(input_path));
     auto body_coil = itk::ExtractImageFilter<QI::SeriesF, QI::VolumeF>::New();

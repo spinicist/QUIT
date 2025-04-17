@@ -83,12 +83,12 @@ template <typename Model> struct SRCFit {
     bool   src_gauss = true;
 
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          typename Model::FixedArray const & fixed,
-                          typename Model::VaryingArray &     v,
+                          typename Model::FixedArray const  &fixed,
+                          typename Model::VaryingArray      &v,
                           typename Model::CovarArray * /*Unused */,
-                          RMSErrorType &               residual,
+                          RMSErrorType                &residual,
                           std::vector<Eigen::ArrayXd> &residuals,
-                          FlagType &                   iterations) const {
+                          FlagType                    &iterations) const {
         Eigen::ArrayXd data = Eigen::ArrayXd::Zero(model.ssfp.size() + model.spgr.size());
         if (model.scale_to_mean) {
             QI_DBMSG("Scaling\n");
@@ -100,7 +100,7 @@ template <typename Model> struct SRCFit {
         }
         QI_DBVEC(data);
         QI_ARRAYN(double, Model::NV) thresh = QI_ARRAYN(double, Model::NV)::Constant(0.05);
-        const double & f0                   = fixed[0];
+        const double  &f0                   = fixed[0];
         Eigen::ArrayXd weights(model.spgr.size() + model.ssfp.size());
         weights.head(model.spgr.size()) = 1;
         weights.tail(model.ssfp.size()) = model.ssfp.weights(f0);
@@ -151,7 +151,7 @@ int mcdespot_main(args::Subparser &parser) {
         parser, "SRC", "Use flat prior (stochastic region contraction), not gaussian", {"SRC"});
     args::ValueFlag<int> its(parser, "ITERS", "Max iterations, default 4", {'i', "its"}, 4);
     args::Flag           bounds(parser, "BOUNDS", "Specify bounds in input", {"bounds"});
-    parser.Parse();
+    Parse(parser);
     QI::CheckPos(spgr_path);
     QI::CheckPos(ssfp_path);
 
@@ -168,7 +168,6 @@ int mcdespot_main(args::Subparser &parser) {
                                                      {spgr_path.Get(), ssfp_path.Get()},
                                                      mask.Get(),
                                                      simulate.Get(),
-                                                     threads.Get(),
                                                      subregion.Get());
         } else {
             using FitType = SRCFit<decltype(model)>;
@@ -181,9 +180,7 @@ int mcdespot_main(args::Subparser &parser) {
             QI::Info("Low bounds: {}", src.model.bounds_lo.transpose());
             QI::Info("High bounds: {}", src.model.bounds_hi.transpose());
 
-            auto fit_filter =
-                QI::ModelFitFilter<FitType>::New(
-                    &src, covar, resids, threads.Get(), subregion.Get());
+            auto fit_filter = QI::ModelFitFilter<FitType>::New(&src, covar, resids, subregion.Get());
             fit_filter->ReadInputs(
                 {spgr_path.Get(), ssfp_path.Get()}, {f0.Get(), B1.Get()}, mask.Get());
             fit_filter->Update();

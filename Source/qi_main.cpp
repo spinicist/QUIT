@@ -9,6 +9,10 @@ int main(int argc, char **argv) {
 
 #define ADD(CMD, GROUP, HELP) args::Command CMD(GROUP, #CMD, HELP, &CMD##_main);
 
+#define ADD1(CMD, GROUP, HELP)                  \
+    void          CMD(args::Subparser &parser); \
+    args::Command CMD##_cmd(GROUP, #CMD, HELP, &CMD);
+
 #define ADD2(CMD, GROUP, HELP)                                         \
     void          CMD##_fit(args::Subparser &parser);                  \
     args::Command CMD##_fit_cmd(GROUP, #CMD "_fit", HELP, &CMD##_fit); \
@@ -58,6 +62,7 @@ int main(int argc, char **argv) {
     ADD(ssfp_ellipse, relax, "Calculuate the SSFP ellipse properties");
     ADD(irtse, relax, "Inversion Recovery TSE");
 #ifdef BUILD_PARMESAN
+    ADD1(parmesan_basis, relax, "Create PARMESAN basis");
     ADD2(parmesan, relax, "PARMESAN");
     ADD2(parmesan_qmt, relax, "PARMESAN QMT");
 #endif

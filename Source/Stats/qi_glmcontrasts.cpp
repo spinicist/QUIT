@@ -217,7 +217,7 @@ int glm_contrasts_main(args::Subparser &parser) {
         parser, "FRACTION", "Output contrasts as fraction of grand mean", {'F', "frac"});
     args::ValueFlag<std::string> outarg(
         parser, "OUTPREFIX", "Add a prefix to output filename", {'o', "out"});
-    parser.Parse();
+    Parse(parser);
 
     QI::Info("Reading input file {}", QI::CheckPos(input_path));
     QI::VectorVolumeF::Pointer merged = QI::ReadImage<QI::VectorVolumeF>(QI::CheckPos(input_path));

@@ -39,12 +39,12 @@ struct FMModel : QI::Model<double, double, 3, 2> {
     auto signal(const Eigen::ArrayBase<Derived> &v, const QI_ARRAYN(double, NF) & f) const
         -> QI_ARRAY(typename Derived::Scalar) {
         using T          = typename Derived::Scalar;
-        const T &     PD = v[0];
-        const T &     T2 = v[1];
-        const T &     f0 = v[2];
+        const T      &PD = v[0];
+        const T      &T2 = v[1];
+        const T      &f0 = v[2];
         const double &T1 = f[0];
         const double &B1 = f[1];
-        auto const &  s  = sequence;
+        auto const   &s  = sequence;
 
         const double E1 = exp(-s.TR / T1);
         const T      E2 = exp(-s.TR / T2);
@@ -78,12 +78,12 @@ struct FMNLLS : FMFit {
     long              max_iterations;
     bool              asymmetric = false;
     QI::FitReturnType fit(const std::vector<Eigen::ArrayXd> &inputs,
-                          FMModel::FixedArray const &        fixed,
-                          FMModel::VaryingArray &            bestP,
-                          FMModel::CovarArray *              cov,
-                          RMSErrorType &                     rmse,
-                          std::vector<Eigen::ArrayXd> &      residuals,
-                          FlagType &                         iterations) const override {
+                          FMModel::FixedArray const         &fixed,
+                          FMModel::VaryingArray             &bestP,
+                          FMModel::CovarArray               *cov,
+                          RMSErrorType                      &rmse,
+                          std::vector<Eigen::ArrayXd>       &residuals,
+                          FlagType                          &iterations) const override {
         const double &T1 = fixed[0];
         if (std::isfinite(T1) && (T1 > model.sequence.TR)) {
             // Improve scaling by dividing the PD down to something sensible.
@@ -174,7 +174,7 @@ int despot2fm_main(args::Subparser &parser) {
     args::ValueFlag<int>         its(
         parser, "ITERS", "Max iterations for NLLS (default 75)", {'i', "its"}, 75);
     args::Flag asym(parser, "ASYM", "Fit +/- off-resonance frequency", {'A', "asym"});
-    parser.Parse();
+    Parse(parser);
 
     QI::Info("Reading sequence information");
     json    input = json_file ? QI::ReadJSON(json_file.Get()) : QI::ReadJSON(std::cin);
@@ -187,15 +187,12 @@ int despot2fm_main(args::Subparser &parser) {
                                           {QI::CheckPos(ssfp_path)},
                                           mask.Get(),
                                           simulate.Get(),
-                                          threads.Get(),
                                           subregion.Get());
     } else {
         FMNLLS fm{model};
         fm.max_iterations = its.Get();
         fm.asymmetric     = asym.Get();
-        auto fit_filter =
-            QI::ModelFitFilter<FMNLLS>::New(
-                &fm, covar, resids, threads.Get(), subregion.Get());
+        auto fit_filter   = QI::ModelFitFilter<FMNLLS>::New(&fm, covar, resids, subregion.Get());
         fit_filter->ReadInputs(
             {QI::CheckPos(ssfp_path)}, {QI::CheckValue(t1_path), B1.Get()}, mask.Get());
         fit_filter->Update();
