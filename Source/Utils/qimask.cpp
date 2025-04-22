@@ -36,7 +36,7 @@ int mask_main(args::Subparser &parser) {
         parser,
         "VOLUME",
         "Choose volume to mask in multi-volume file. Default 0, -1 selects last volume",
-        {'v', "volume"},
+        {"vol"},
         0);
     args::Flag is_complex(
         parser, "COMPLEX", "Input data is complex, take magnitude first", {'x', "complex"});
