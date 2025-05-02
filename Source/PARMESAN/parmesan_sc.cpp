@@ -22,8 +22,6 @@
 
 #include "Basis.h"
 #include "ParameterGrid.h"
-#include "prep_qmt_Rx.h"
-#include "prep_qmt_k.h"
 #include "prep_sc.h"
 
 #include <Eigen/Core>
@@ -82,10 +80,8 @@ int parmesan_basis(args::Subparser &parser) {
     PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     PrepModel    model{{}, sequence};
 
-    auto const pars = ParameterGrid(5,
-                                    Eigen::Array<double, 5, 1>{1.0, 0.1, 0.01, 0.5, -100.0},
-                                    Eigen::Array<double, 5, 1>{1.0, 5.0, 1.00, 1.5, 100.0},
-                                    Eigen::Array<int, 5, 1>{1, 10, 10, 10, 10});
+    auto const pars =
+        ParameterGrid(5, model.lo, model.hi, Eigen::Array<int, 5, 1>{1, 10, 10, 10, 10});
 
     Eigen::MatrixXd signals(pars.cols(), sequence.size());
     for (int ii = 0; ii < pars.cols(); ii++) {
