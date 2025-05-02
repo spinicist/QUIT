@@ -105,19 +105,27 @@ class ModelSimFilter
     }
 
     OutputImageType *GetOutput(const int i) {
-        if (i < ModelType::NV) {
-            return dynamic_cast<OutputImageType *>(this->itk::ProcessObject::GetOutput(i));
+    		if constexpr (MultiOutput) {
+		        if (i < m_model.num_outputs()) {
+		            return dynamic_cast<OutputImageType *>(this->itk::ProcessObject::GetOutput(i));
+		        } else {
+	            QI::Fail("Requested varying output {} but {} has {}",
+	                     i,
+	                     typeid(ModelType).name(),
+	                     ModelType::NV);
+	          }
         } else {
-            QI::Fail("Requested varying output {} but {} has {}",
-                     i,
-                     typeid(ModelType).name(),
-                     ModelType::NV);
+        	return dynamic_cast<OutputImageType *>(this->itk::ProcessObject::GetOutput(0));
         }
     }
 
     void SetRequestedRegion(const RegionType &sr) {
-        for (int i = 0; i < ModelType::NV; i++) {
-            this->GetOutput(i)->SetRequestedRegion(sr);
+    		if constexpr (MultiOutput) {
+	        for (int i = 0; i < m_model.num_outputs(); i++) {
+	            this->GetOutput(i)->SetRequestedRegion(sr);
+	        }
+        } else {
+        	this->GetOutput(0)->SetRequestedRegion(sr);
         }
     }
 
