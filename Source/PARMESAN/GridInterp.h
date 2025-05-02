@@ -16,15 +16,17 @@
 
 namespace QI {
 
-struct RegularGrid {
-    RegularGrid(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y, Eigen::ArrayXXd const &z);
+struct InterpGrid {
+    InterpGrid(Eigen::ArrayXd const &x, Eigen::ArrayXd const &y, Eigen::ArrayXXd const &z);
     double operator()(const double &x, const double &y) const;
 
   protected:
-    struct IndexPair { Eigen::Index lo, hi; };
-    static auto FindIndices(Eigen::ArrayXd const &a, double const x) -> IndexPair;
-    Eigen::ArrayXd  m_x, m_y;
-    Eigen::ArrayXXd m_z;
+    struct IndexPair {
+        Eigen::Index lo, hi;
+    };
+    static auto        FindIndices(Eigen::ArrayXd const &a, double const x) -> IndexPair;
+    Eigen::ArrayXd     m_x, m_y;
+    Eigen::ArrayXXd    m_z;
     Eigen::Index const nX, nY;
 };
 

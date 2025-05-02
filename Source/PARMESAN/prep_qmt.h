@@ -9,7 +9,7 @@ namespace QI {
 struct PrepQMTRx : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
     static int const      NS = 1; // Number of parameters that need to be scaled
     PrepSequence const   &sequence;
-    RegularGrid const    &A_sl;
+    InterpGrid const    &A_sl;
     Eigen::MatrixXd const basis = Eigen::MatrixXd();
     double const          T2_f  = 0.07;
     double const          T1_s  = 0.35;
@@ -32,7 +32,7 @@ struct PrepQMTRx : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
 struct PrepQMTRxFull : Model<double, double, 9, 0, 1, 0, RealNoise<double>> {
     static int const      NS = 1; // Number of parameters that need to be scaled
     PrepSequence const   &sequence;
-    RegularGrid const    &A_sl;
+    InterpGrid const    &A_sl;
     Eigen::MatrixXd const basis = Eigen::MatrixXd();
     // Pools are "free" and "semi-solid"
     std::array<std::string, NV> const varying_names{
@@ -48,7 +48,7 @@ struct PrepQMTRxFull : Model<double, double, 9, 0, 1, 0, RealNoise<double>> {
 struct PrepQMTk : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
     static int const      NS = 1; // Number of parameters that need to be scaled
     PrepSequence const   &sequence;
-    RegularGrid const    &A_sl;
+    InterpGrid const    &A_sl;
     Eigen::MatrixXd const basis = Eigen::MatrixXd();
     double const          T2_f  = 0.07;
     double const          T1_s  = 0.35;
@@ -71,7 +71,7 @@ struct PrepQMTk : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
 struct PrepQMTkFull : Model<double, double, 7, 1, 1, 0, RealNoise<double>> {
     static int const      NS = 1; // Number of parameters that need to be scaled
     PrepSequence const   &sequence;
-    RegularGrid const    &A_sl;
+    InterpGrid const    &A_sl;
     Eigen::MatrixXd const basis = Eigen::MatrixXd();
     // Pools are "free" and "semi-solid"
     std::array<std::string, NV> const varying_names{"M0", "T1_f", "T1_s", "T2_s", "f_s", "k", "B1"};

@@ -43,12 +43,12 @@ int parmesan_qmt_fit(args::Subparser &parser) {
     args::Flag                   kfull(parser, "k", "Use full k model", {"kfull"});
     Parse(parser);
     QI::CheckPos(input_path);
-    PrepSequence    sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-    json            lgbm = QI::ReadJSON(sl.Get());
-    QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
-                         QI::ArrayFromJSON<double>(lgbm, "τ"),
-                         QI::MatrixFromJSON<double>(lgbm, "A"));
-    auto            process = [&](auto                                       model,
+    PrepSequence   sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    json           lgbm = QI::ReadJSON(sl.Get());
+    QI::InterpGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
+                        QI::ArrayFromJSON<double>(lgbm, "τ"),
+                        QI::MatrixFromJSON<double>(lgbm, "A"));
+    auto           process = [&](auto                                       model,
                        const std::string                         &model_name,
                        typename decltype(model)::FixedNames const fixed) {
         using FitType = QI::ScaledNumericDiffFit<decltype(model)>;
@@ -108,12 +108,12 @@ int parmesan_qmt_sim(args::Subparser &parser) {
     args::Flag                   kfull(parser, "k", "Use full k model", {"kfull"});
     Parse(parser);
     QI::Info("Reading sequence parameters");
-    PrepSequence    sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-    json            lgbm = QI::ReadJSON(sl.Get());
-    QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
-                         QI::ArrayFromJSON<double>(lgbm, "τ"),
-                         QI::MatrixFromJSON<double>(lgbm, "A"));
-    auto const      basis = ReadBasis(bpath.Get());
+    PrepSequence   sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    json           lgbm = QI::ReadJSON(sl.Get());
+    QI::InterpGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
+                        QI::ArrayFromJSON<double>(lgbm, "τ"),
+                        QI::MatrixFromJSON<double>(lgbm, "A"));
+    auto const     basis = ReadBasis(bpath.Get());
 
     auto process = [&](auto model, typename decltype(model)::FixedNames const fixed) {
         QI::SimulateModel2<decltype(model), false>(model,
@@ -146,58 +146,75 @@ int parmesan_qmt_basis(args::Subparser &parser) {
     args::Positional<std::string> json_path(parser, "JSON", "Parameter JSON file");
     args::Positional<std::string> out_path(parser, "OUTPUT", "Basis JSON file");
     args::Positional<std::string> sl(parser, "SL", "Super-Lorentzian Interp Table", {"sl"});
-    args::ValueFlag<int>          N(parser, "N", "Basis size (8)", {'n', "N"}, 8);
+    args::ValueFlag<int>          B(parser, "B", "Basis size (8)", {'b', "B"}, 8);
+    args::ValueFlag<int>          N(parser, "N", "Use N random samples", {'n', "N"}, 16384);
     args::Flag                    k(parser, "k", "Use k instead of R_x", {'k', "k"});
-    QI_CORE_ARGS;
+
     Parse(parser);
     QI::CheckPos(json_path);
     QI::CheckPos(out_path);
     QI::Info("Reading sequence parameters");
     PrepSequence    sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
     json            lgbm = QI::ReadJSON(sl.Get());
-    QI::RegularGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
-                         QI::ArrayFromJSON<double>(lgbm, "τ"),
-                         QI::MatrixFromJSON<double>(lgbm, "A"));
+    QI::InterpGrid  R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
+                        QI::ArrayFromJSON<double>(lgbm, "τ"),
+                        QI::MatrixFromJSON<double>(lgbm, "A"));
     Eigen::MatrixXd signals;
     Eigen::VectorXd ref;
     if (k) {
         QI::PrepQMTkFull model{{}, sequence, R2sl};
-        auto const       pars = ParameterGrid(
-            9, model.lo, model.hi, Eigen::Array<int, 9, 1>{1, 5, 5, 5, 5, 5, 5, 5, 5});
+        auto const       pars = N ? QI::RandomPars(model.lo, model.hi, N.Get()) :
+                                    QI::RegularPars(model.lo,
+                                              model.hi,
+                                              Eigen::Array<int, 9, 1>{1, 5, 5, 5, 5, 5, 5, 5, 5});
         signals.resize(pars.cols(), sequence.size());
-        Eigen::MatrixXd signals(pars.cols(), sequence.size());
         for (int ii = 0; ii < pars.cols(); ii++) {
             signals.row(ii) = model.signal(pars.col(ii), Eigen::ArrayXd{});
         }
         ref = signals.row(pars.cols() / 2);
     } else {
         QI::PrepQMTRxFull model{{}, sequence, R2sl};
-        auto const        pars = ParameterGrid(
-            9, model.lo, model.hi, Eigen::Array<int, 9, 1>{1, 5, 5, 5, 5, 5, 5, 5, 5});
+        auto const        pars = N ? QI::RandomPars(model.lo, model.hi, N.Get()) :
+                                     QI::RegularPars(model.lo,
+                                              model.hi,
+                                              Eigen::Array<int, 9, 1>{1, 5, 5, 5, 5, 5, 5, 5, 5});
         signals.resize(pars.cols(), sequence.size());
-        Eigen::MatrixXd signals(pars.cols(), sequence.size());
         for (int ii = 0; ii < pars.cols(); ii++) {
-            signals.row(ii) = model.signal(pars.col(ii), Eigen::ArrayXd{});
+            auto sig = model.signal(pars.col(ii), Eigen::ArrayXd{});
+            if (sig.isFinite().all()) {
+                signals.row(ii) = sig;
+            } else {
+                QI::Info("Parameters {} generated non-finite signal", pars.col(ii).transpose());
+                signals.row(ii).setZero();
+            }
         }
         ref = signals.row(pars.cols() / 2);
     }
     auto const svd = signals.bdcSvd<Eigen::ComputeThinV>();
 
     QI::Info("Computing projection");
-    Eigen::MatrixXd temp  = signals * svd.matrixV().leftCols(N.Get());
-    Eigen::MatrixXd proj  = temp * svd.matrixV().leftCols(N.Get()).transpose();
+    Eigen::MatrixXd temp  = signals * svd.matrixV().leftCols(B.Get());
+    Eigen::MatrixXd proj  = temp * svd.matrixV().leftCols(B.Get()).transpose();
     auto            resid = (signals - proj).stableNorm() / signals.stableNorm();
     QI::Info("Residual {}%", 100 * resid);
 
+    // This will implicitly transpose
     auto bj = json::array();
-    for (int ii = 0; ii < N.Get(); ii++) {
+    for (int ii = 0; ii < B.Get(); ii++) {
         Eigen::VectorXd bc = svd.matrixV().col(ii);
         if (bc.dot(ref) < 0) {
             bc = -bc; // Flip it
         }
         bj.push_back(bc);
     }
-    auto j = json{{"basis", bj}};
+    auto sj = json::array();
+    for (int ii = 0; ii < signals.rows(); ii++) {
+        sj.push_back(signals.row(ii));
+    }
+    json j = {
+        {"basis", bj},
+        {"signals", sj},
+    };
     QI::WriteJSON(out_path.Get(), j);
 
     QI::Info("Finished.");

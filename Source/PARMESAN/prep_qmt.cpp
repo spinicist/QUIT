@@ -42,7 +42,7 @@ auto RF(double const           flip,
         double const           pw,
         double const           B1,
         double const           R2_s,
-        QI::RegularGrid const &A_sl) -> AugMat {
+        QI::InterpGrid const &A_sl) -> AugMat {
     double const B1x = B1 * flip / pw;
     double const τ   = pw * R2_s;
     double const ω   = B1 * flip / τ;
@@ -66,7 +66,7 @@ auto Spoil() -> AugMat {
 }
 
 auto Signal(PrepSequence const    &sequence,
-            RegularGrid const     &A_sl,
+            InterpGrid const     &A_sl,
             Eigen::MatrixXd const &basis,
             double const           M0,
             double const           f_s,
@@ -148,11 +148,7 @@ auto PrepQMTRx::signal(VaryingArray const &v, FixedArray const &f) const -> QI_A
     double const f_s  = v[2];
     double const B1   = v[3];
 
-    // "T2_f", "T1_s", "T2_s", "R_x"
-    double const T2_f = f[0];
-    double const T1_s = f[1];
-    double const T2_s = f[2];
-    double const R_x  = f[3];
+    // "T2_f", "T1_s", "T2_s", "R_x" come from the class members
     double const df0  = 0;
 
     return Signal(sequence, A_sl, basis, M0, f_s, R_x, T1_f, T2_f, T1_s, T2_s, B1, df0);
@@ -189,9 +185,6 @@ auto PrepQMTk::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
     double const B1   = v[3];
 
     // "T2_f", "T1_s", "T2_s", "k"
-    double const T2_f = f[0];
-    double const T1_s = f[1];
-    double const T2_s = f[2];
     double const R_x  = f[3] / (f_s * (1. - f_s)); // Convert from k to R_x
     double const df0  = 0;
 

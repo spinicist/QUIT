@@ -71,8 +71,9 @@ int parmesan_sim(args::Subparser &parser) {
 int parmesan_basis(args::Subparser &parser) {
     args::Positional<std::string> json_path(parser, "JSON", "Parameter JSON file");
     args::Positional<std::string> out_path(parser, "OUTPUT", "Basis JSON file");
-    args::ValueFlag<int>          N(parser, "N", "Basis size (4)", {'n', "N"}, 4);
-    QI_CORE_ARGS;
+    args::ValueFlag<int>          B(parser, "B", "Basis size (8)", {'b', "B"}, 8);
+    args::ValueFlag<int>          N(parser, "N", "Use N random samples", {'n', "N"}, 16384);
+
     Parse(parser);
     QI::CheckPos(json_path);
     QI::CheckPos(out_path);
@@ -81,7 +82,8 @@ int parmesan_basis(args::Subparser &parser) {
     PrepModel    model{{}, sequence};
 
     auto const pars =
-        ParameterGrid(5, model.lo, model.hi, Eigen::Array<int, 5, 1>{1, 10, 10, 10, 10});
+        N ? QI::RandomPars(model.lo, model.hi, N.Get()) :
+            QI::RegularPars(model.lo, model.hi, Eigen::Array<int, 5, 1>{1, 10, 10, 10, 10});
 
     Eigen::MatrixXd signals(pars.cols(), sequence.size());
     for (int ii = 0; ii < pars.cols(); ii++) {
@@ -90,13 +92,13 @@ int parmesan_basis(args::Subparser &parser) {
     auto const svd = signals.bdcSvd<Eigen::ComputeThinV>();
 
     QI::Info("Computing projection");
-    Eigen::MatrixXd temp  = signals * svd.matrixV().leftCols(N.Get());
-    Eigen::MatrixXd proj  = temp * svd.matrixV().leftCols(N.Get()).transpose();
+    Eigen::MatrixXd temp  = signals * svd.matrixV().leftCols(B.Get());
+    Eigen::MatrixXd proj  = temp * svd.matrixV().leftCols(B.Get()).transpose();
     auto            resid = (signals - proj).stableNorm() / signals.stableNorm();
     QI::Info("Residual {}%", 100 * resid);
 
     auto bj = json::array();
-    for (int ii = 0; ii < N.Get(); ii++) {
+    for (int ii = 0; ii < B.Get(); ii++) {
         Eigen::VectorXd bc = svd.matrixV().col(ii);
         if (bc.dot(signals.row(pars.cols() / 2)) < 0) {
             bc = -bc; // Flip it

@@ -3,7 +3,7 @@
 
 namespace QI {
 
-RegularGrid::RegularGrid(Eigen::ArrayXd const  &x,
+InterpGrid::InterpGrid(Eigen::ArrayXd const  &x,
                          Eigen::ArrayXd const  &y,
                          Eigen::ArrayXXd const &z) :
     m_x(x),
@@ -16,7 +16,7 @@ RegularGrid::RegularGrid(Eigen::ArrayXd const  &x,
     }
 }
 
-auto RegularGrid::FindIndices(Eigen::ArrayXd const &a, double const x) -> RegularGrid::IndexPair {
+auto InterpGrid::FindIndices(Eigen::ArrayXd const &a, double const x) -> InterpGrid::IndexPair {
     int i0 = 0, i1 = 0;
     for (; i1 < a.size(); i1++) {
         if (x < a[i1])
@@ -32,7 +32,7 @@ auto RegularGrid::FindIndices(Eigen::ArrayXd const &a, double const x) -> Regula
     return {i0, i1};
 }
 
-double RegularGrid::operator()(const double &x, const double &y) const {
+double InterpGrid::operator()(const double &x, const double &y) const {
     auto const ix = FindIndices(m_x, x);
     auto const iy = FindIndices(m_y, y);
 

@@ -1,7 +1,12 @@
 #pragma once
 #include <Eigen/Dense>
 
-auto ParameterGrid(int const nPar,
-    Eigen::ArrayXd const &lo,
-    Eigen::ArrayXd const &hi,
-    Eigen::ArrayXi const &N) -> Eigen::ArrayXXd;
+namespace QI {
+
+auto RegularPars(Eigen::ArrayXd const &lo, Eigen::ArrayXd const &hi, Eigen::ArrayXi const &N)
+    -> Eigen::ArrayXXd;
+
+auto RandomPars(Eigen::ArrayXd const &lo, Eigen::ArrayXd const &hi, Eigen::Index const N)
+    -> Eigen::ArrayXXd;
+
+} // namespace QI
