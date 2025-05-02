@@ -10,11 +10,12 @@ struct PrepQMTRx : Model<double, double, 4, 4, 1, 0, RealNoise<double>> {
     static int const      NS = 1; // Number of parameters that need to be scaled
     PrepSequence const   &sequence;
     RegularGrid const    &A_sl;
+    Eigen::MatrixXd const basis = Eigen::MatrixXd();
     double const          T2_f  = 0.07;
     double const          T1_s  = 0.35;
     double const          T2_s  = 14e-6;
     double const          R_x   = 14;
-    Eigen::MatrixXd const basis = Eigen::MatrixXd();
+    
     // Pools are "free" and "semi-solid"
     std::array<std::string, NV> const varying_names{"M0", "T1_f", "f_s", "B1"};
     VaryingArray const                start{1.0, 2.0, 0.1, 1.0};

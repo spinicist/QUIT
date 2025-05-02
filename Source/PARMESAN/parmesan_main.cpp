@@ -35,6 +35,7 @@ int parmesan_qmt_fit(args::Subparser &parser) {
     args::Positional<std::string> sl(parser, "MT", "Interp table for linearized GBM", {"sl"});
     QI_COMMON_ARGS;
 
+    args::ValueFlag<std::string>  bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
     args::ValueFlag<double> R_x(parser, "T2_f", "Fix R_x", {"R_x"}, 14);
     args::ValueFlag<double> k(parser, "T2_f", "Fix k", {"k"}, 1.4);
     args::ValueFlag<double> T2_f(parser, "T2_f", "Fix T2_f", {"T2_f"}, 0.1);
@@ -60,10 +61,10 @@ int parmesan_qmt_fit(args::Subparser &parser) {
     };
 
     if (R_x) {
-        QI::PrepQMTRx model{{}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()};
+        QI::PrepQMTRx model{{}, sequence, R2sl, ReadBasis(bpath.Get()), T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()};
         process(model, "PARMESAN_R_x_", {});
     } else if (k) {
-        QI::PrepQMTk model{{}, sequence, R2sl, T2_f.Get(), T1_s.Get(), T2_s.Get(), k.Get()};
+        QI::PrepQMTk model{{}, sequence, R2sl, ReadBasis(bpath.Get()), T2_f.Get(), T1_s.Get(), T2_s.Get(), k.Get()};
         process(model, "PARMESAN_k_", {});
     } else {
         QI::PrepQMTRxFull model{{}, sequence, R2sl};
@@ -81,7 +82,7 @@ int parmesan_qmt_sim(args::Subparser &parser) {
 
     QI_CORE_ARGS;
     args::ValueFlag<float> noise(parser, "NOISE", "Noise standard deviation", {'n', "noise"}, 0.f);
-
+    args::ValueFlag<std::string>  bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
     args::ValueFlag<std::string> T2_f(parser, "T2_f", "T2_f map", {"T2_f"});
     args::ValueFlag<std::string> T1_s(parser, "T1_s", "T1_s map", {"T1_s"});
     args::ValueFlag<std::string> T2_s(parser, "T2_s", "T2_s map", {"T2_s"});
@@ -106,10 +107,10 @@ int parmesan_qmt_sim(args::Subparser &parser) {
     };
 
     if (R_x) {
-        QI::PrepQMTRx model{{}, sequence, R2sl};
+        QI::PrepQMTRx model{{}, sequence, R2sl, ReadBasis(bpath.Get())};
         process(model, {T2_f.Get(), T1_s.Get(), T2_s.Get(), R_x.Get()});
     } else if (k) {
-        QI::PrepQMTk model{{}, sequence, R2sl};
+        QI::PrepQMTk model{{}, sequence, R2sl, ReadBasis(bpath.Get())};
         process(model, {T2_f.Get(), T1_s.Get(), T2_s.Get(), k.Get()});
     } else {
         QI::PrepQMTRxFull model{{}, sequence, R2sl};
