@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
     ADD(irtse, relax, "Inversion Recovery TSE");
 #ifdef BUILD_PARMESAN
     ADD1(parmesan_basis, relax, "PARMESAN basis");
+    ADD1(parmesan_opt, relax, "PARMESAN optimization");
     ADD2(parmesan, relax, "PARMESAN");
     ADD1(parmesan_qmt_basis, relax, "PARMESAN QMT basis");
     ADD2(parmesan_qmt, relax, "PARMESAN QMT");

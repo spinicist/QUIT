@@ -134,3 +134,14 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
         return sig;
     }
 }
+
+auto PrepModel::dsdθ(VaryingArray const &v, FixedArray const &f, int i) const -> QI_ARRAY(DataType) {
+    // Central differences
+    double const h = std::max(std::abs(v(i)) * 1e-8, 1e-8); // From second answer on https://math.stackexchange.com/questions/815113/is-there-a-general-formula-for-estimating-the-step-size-h-in-numerical-different
+    auto vph = v, vmh = v;
+    vph(i) += h;
+    vmh(i) -= h;
+    QI_ARRAY(DataType) const d = (signal(vph, f) - signal(vmh, f)) / (2 * h);
+    QI_DBVEC(d);
+    return d;
+}
