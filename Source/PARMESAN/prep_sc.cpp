@@ -71,24 +71,24 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
     AugMat const S        = Spoil();
     AugMat const ramp     = S * (R * sequence.Tramp).exp();
     AugMat const spoilTRs = S * (R * sequence.TR * sequence.spoilers).exp();
-    AugMat const Dprep    = (R * sequence.Dprep).exp();
-    AugMat const Dseg     = (R * sequence.Dseg).exp();
 
     QI_DBMAT(R);
     QI_DBMAT(S);
     QI_DBMAT(ramp);
     QI_DBMAT(spoilTRs);
-    QI_DBMAT(Dprep);
-    QI_DBMAT(Dseg);
     // Setup pulse matrices
     std::vector<AugMat> A_mats(sequence.FA.rows());
     std::vector<AugMat> R_mats(sequence.FA.rows());
     std::vector<AugMat> seg_mats(sequence.FA.rows());
     std::vector<AugMat> prep_mats(sequence.preps());
+    std::vector<AugMat> pre_mats(sequence.preps());
+    std::vector<AugMat> post_mats(sequence.preps());
     for (int ip = 0; ip < sequence.preps(); ip++) {
         AugMat const rfa = RF(sequence.FA[ip], sequence.Trf, B1, 0);
         A_mats[ip]       = ((R + rfa) * sequence.Trf).exp();
         R_mats[ip]       = (R * (sequence.TR - sequence.Trf)).exp();
+        pre_mats[ip]     = (R * sequence.Tpreseg[ip]).exp();
+        post_mats[ip]    = (R * sequence.Tpostseg[ip]).exp();
         seg_mats[ip]     = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
         QI_DBMAT(A_mats[ip]);
         QI_DBMAT(R_mats[ip]);
@@ -101,7 +101,7 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
     AugMat X = AugMat::Identity();
     for (int ip = 0; ip < sequence.preps(); ip++) {
         QI_DBMAT(X);
-        X = Dseg * ramp * seg_mats[ip] * ramp * Dprep * prep_mats[ip] * X;
+        X = post_mats[ip] * ramp * seg_mats[ip] * ramp * pre_mats[ip] * prep_mats[ip] * X;
     }
     AugVec const m_ss = SolveSteadyState(X);
     QI_DBMAT(X);
@@ -114,14 +114,14 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
     for (int ip = 0; ip < sequence.preps(); ip++) {
         QI_DBVEC(prep_mats[ip] * m);
         QI_DBVEC(ramp * prep_mats[ip] * m);
-        m = spoilTRs * ramp * Dprep * prep_mats[ip] * m;
+        m = spoilTRs * ramp * pre_mats[ip] * prep_mats[ip] * m;
         QI_DBVEC(m);
         for (int is = 0; is < sequence.SPS; is++) {
             m         = A_mats[ip] * m;
             sig[ii++] = M0 * m[1];
             m         = S * R_mats[ip] * m;
         }
-        m = Dseg * ramp * m;
+        m = post_mats[ip] * ramp * m;
     }
     QI_DBVEC(sig);
     // exit(EXIT_FAILURE);
@@ -135,9 +135,13 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
     }
 }
 
-auto PrepModel::dsdθ(VaryingArray const &v, FixedArray const &f, int i) const -> QI_ARRAY(DataType) {
+auto PrepModel::dsdθ(VaryingArray const &v, FixedArray const &f, int i) const
+    -> QI_ARRAY(DataType) {
     // Central differences
-    double const h = std::max(std::abs(v(i)) * 1e-8, 1e-8); // From second answer on https://math.stackexchange.com/questions/815113/is-there-a-general-formula-for-estimating-the-step-size-h-in-numerical-different
+    double const h = std::max(
+        std::abs(v(i)) * 1e-8,
+        1e-8); // From second answer on
+               // https://math.stackexchange.com/questions/815113/is-there-a-general-formula-for-estimating-the-step-size-h-in-numerical-different
     auto vph = v, vmh = v;
     vph(i) += h;
     vmh(i) -= h;

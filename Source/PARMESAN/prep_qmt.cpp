@@ -38,10 +38,10 @@ auto Exchange(double const R_fs, double const R_sf) -> AugMat {
     return K;
 }
 
-auto RF(double const           flip,
-        double const           pw,
-        double const           B1,
-        double const           R2_s,
+auto RF(double const          flip,
+        double const          pw,
+        double const          B1,
+        double const          R2_s,
         QI::InterpGrid const &A_sl) -> AugMat {
     double const B1x = B1 * flip / pw;
     double const τ   = pw * R2_s;
@@ -66,7 +66,7 @@ auto Spoil() -> AugMat {
 }
 
 auto Signal(PrepSequence const    &sequence,
-            InterpGrid const     &A_sl,
+            InterpGrid const      &A_sl,
             Eigen::MatrixXd const &basis,
             double const           M0,
             double const           f_s,
@@ -91,8 +91,6 @@ auto Signal(PrepSequence const    &sequence,
     AugMat const S        = Spoil();
     AugMat const ramp     = S * (RpK * sequence.Tramp).exp();
     AugMat const spoilTRs = S * (RpK * sequence.TR * sequence.spoilers).exp();
-    AugMat const Dprep    = (RpK * sequence.Dprep).exp();
-    AugMat const Dseg     = (RpK * sequence.Dseg).exp();
     // QI_DBMAT(R)
     // QI_DBMAT(K)
     // QI_DBMAT(S)
@@ -100,10 +98,14 @@ auto Signal(PrepSequence const    &sequence,
     std::vector<AugMat> R_mats(sequence.FA.rows());
     std::vector<AugMat> seg_mats(sequence.FA.rows());
     std::vector<AugMat> prep_mats(sequence.preps());
+    std::vector<AugMat> pre_mats(sequence.preps());
+    std::vector<AugMat> post_mats(sequence.preps());
     for (int ip = 0; ip < sequence.FA.rows(); ip++) {
         AugMat const rfa = RF(sequence.FA[ip], sequence.Trf, B1, R2_s, A_sl);
         A_mats[ip]       = ((RpK + rfa) * sequence.Trf).exp();
         R_mats[ip]       = (RpK * (sequence.TR - sequence.Trf)).exp();
+        pre_mats[ip]     = (R * sequence.Tpreseg[ip]).exp();
+        post_mats[ip]    = (R * sequence.Tpostseg[ip]).exp();
         seg_mats[ip]     = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
         AugMat const rfp = RF(sequence.FAprep[ip], sequence.Tprep[ip], B1, R2_s, A_sl);
         prep_mats[ip]    = ((RpK + rfp) * sequence.Tprep[ip]).exp();
@@ -111,7 +113,7 @@ auto Signal(PrepSequence const    &sequence,
     // First calculate the system matrix
     AugMat X = AugMat::Identity();
     for (int ip = 0; ip < sequence.preps(); ip++) {
-        X = Dseg * ramp * seg_mats[ip] * ramp * Dprep * prep_mats[ip] * X;
+        X = post_mats[ip] * ramp * seg_mats[ip] * ramp * pre_mats[ip] * prep_mats[ip] * X;
     }
     AugVec const m_ss = SolveSteadyState(X);
     QI_DBVEC(m_ss);
@@ -120,13 +122,13 @@ auto Signal(PrepSequence const    &sequence,
     AugVec m  = m_ss;
     int    ii = 0;
     for (int ip = 0; ip < sequence.preps(); ip++) {
-        m = spoilTRs * ramp * Dprep * prep_mats[ip] * m;
+        m = spoilTRs * ramp * pre_mats[ip] * prep_mats[ip] * m;
         for (int is = 0; is < sequence.SPS; is++) {
             m         = A_mats[ip] * m;
             sig[ii++] = M0 * m[1];
             m         = S * R_mats[ip] * m;
         }
-        m = Dseg * ramp * m;
+        m = post_mats[ip] * ramp * m;
     }
     if (basis.size()) {
         return basis * sig.matrix();
@@ -149,7 +151,7 @@ auto PrepQMTRx::signal(VaryingArray const &v, FixedArray const &f) const -> QI_A
     double const B1   = v[3];
 
     // "T2_f", "T1_s", "T2_s", "R_x" come from the class members
-    double const df0  = 0;
+    double const df0 = 0;
 
     return Signal(sequence, A_sl, basis, M0, f_s, R_x, T1_f, T2_f, T1_s, T2_s, B1, df0);
 }
@@ -185,8 +187,8 @@ auto PrepQMTk::signal(VaryingArray const &v, FixedArray const &f) const -> QI_AR
     double const B1   = v[3];
 
     // "T2_f", "T1_s", "T2_s", "k"
-    double const R_x  = f[3] / (f_s * (1. - f_s)); // Convert from k to R_x
-    double const df0  = 0;
+    double const R_x = f[3] / (f_s * (1. - f_s)); // Convert from k to R_x
+    double const df0 = 0;
 
     return Signal(sequence, A_sl, basis, M0, f_s, R_x, T1_f, T2_f, T1_s, T2_s, B1, df0);
 }
