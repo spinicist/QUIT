@@ -5,6 +5,7 @@ if( ${BUILD_PARMESAN} )
             GridInterp.cpp
             ParameterGrid.cpp
             parmesan_sc.cpp
+            parmesan_opt.cpp
             parmesan_qmt.cpp
             prep_sc.cpp
             prep_qmt.cpp
