@@ -9,7 +9,7 @@
  *
  */
 
-#define QI_DEBUG_BUILD 1
+// #define QI_DEBUG_BUILD 1
 
 #include "Args.h"
 #include "Macro.h"
@@ -39,10 +39,9 @@ struct Annealer {
     }
 
     auto time(PrepSequence const &seq) -> double {
-        double const tAcq = (seq.TR * seq.SPS) * seq.preps();
+        double const tAcq   = (seq.TR * seq.SPS) * seq.preps();
         double const tTotal = tAcq + seq.Tpreseg.sum() + seq.Tpostseg.sum();
-        double const time = tTotal / tAcq;
-        return time;
+        return tTotal;
     }
 
     auto nCRB(PrepSequence const &seq) -> Eigen::ArrayXd {
@@ -64,31 +63,41 @@ struct Annealer {
         PrepSequence nseq = pseq;
         int const    N    = pseq.preps();
         nseq.SPS          = std::clamp(int(nseq.SPS + perturbation(1, step * 10)(0)), 32, 512);
-        nseq.FA       = (nseq.FA + perturbation(N, step * M_PI / 180)).max(M_PI * 0.5 / 180).min(M_PI * 4. / 180.);
-        nseq.FAprep   = (nseq.FAprep + perturbation(N, step * 1 * M_PI / 180)).max(0).min(2 * M_PI);
-        nseq.Tpreseg  = (nseq.Tpreseg + perturbation(N, step * 1e-3)).max(0);
-        nseq.Tpostseg = (nseq.Tpostseg + perturbation(N, step * 1e-3)).max(0);
+        nseq.FA           = (nseq.FA + perturbation(N, step * M_PI / 180))
+                      .max(M_PI * 0.5 / 180)
+                      .min(M_PI * 4. / 180.);
+        nseq.FAprep   = (nseq.FAprep + perturbation(N, step * 1 * M_PI / 180)).max(0).min(6 * M_PI);
+        // nseq.Tpreseg  = (nseq.Tpreseg + perturbation(N, step * 1e-3)).max(0);
+        // nseq.Tpostseg = (nseq.Tpostseg + perturbation(N, step * 1e-3)).max(0);
         nseq.fprep    = nseq.fprep + perturbation(N, step * 1);
         nseq.Tprep    = (nseq.Tprep + perturbation(N, step * 1e-3)).max(0.5e-3).min(50.e-3);
 
         nseq.FAprep(0) = M_PI;
         nseq.fprep(0)  = 0;
+        nseq.Tprep(0)  = 1e-3;
 
         return nseq;
     }
 
     auto run(PrepSequence const &s0) -> PrepSequence {
         PrepSequence s    = s0;
-        double       c    = cost(s);
-        double const T0   = c / 1e3;
+        double const c0   = cost(s);
+        double const T0   = 1e-1;
         double       step = 1.;
+        double       c    = 1;
         for (int ik = 0; ik < nK; ik++) {
             double const T = T0 / (1 + ik);
             for (int ij = 0; ij < 128; ij++) {
                 auto const sp = perturb(s, step);
-                auto       cp = cost(sp);
+                auto       cp = cost(sp) / c0;
                 if (cp < c || ((Eigen::ArrayXd::Random(1)(0) + 1.) / 2) < std::exp((c - cp) / T)) {
-                    fmt::print(stderr, "k {} T {} New cost {} Time {}\n", ik, T, c, cp, time(sp));
+                    fmt::print(stderr,
+                               "k {:04d} T {:8.6f} Cost {:8.6f} Time {:8.3f} nCRB {}\n",
+                               ik,
+                               T,
+                               cp,
+                               time(sp),
+                               nCRB(sp).transpose());
                     c = cp;
                     s = sp;
                     // step /= 2.;
@@ -123,14 +132,18 @@ int parmesan_opt(args::Subparser &parser) {
                     trf.Get(),
                     128,
                     spoils.Get(),
-                    Eigen::ArrayXd::Ones(nP.Get()),
-                    Eigen::ArrayXd::Ones(nP.Get()) * 360.,
-                    Eigen::ArrayXd::Ones(nP.Get()) * 1e-3,
+                    Eigen::ArrayXd::Ones(nP.Get()) * 4,
+                    Eigen::ArrayXd::Ones(nP.Get()) * 80.,
+                    Eigen::ArrayXd::Ones(nP.Get()) * 20e-3,
                     Eigen::ArrayXd::Zero(nP.Get()),
                     Eigen::ArrayXd::Zero(nP.Get()),
-                    Eigen::ArrayXd::LinSpaced(nP.Get(), -500., 500.));
+                    Eigen::ArrayXd::LinSpaced(nP.Get(), -100, 100.));
     s0.FAprep(0) = M_PI;
     s0.fprep(0)  = 0;
+    s0.Tprep(0)  = 1e-3;
+
+    s0.FA(0)              = 1 * M_PI / 180.;
+    s0.FA(s0.preps() - 1) = 1 * M_PI / 180.;
 
     ModelType               model{{}, s0};
     ModelType::VaryingArray v = (model.lo + model.hi) / 2.;

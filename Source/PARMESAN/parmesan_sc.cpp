@@ -9,7 +9,7 @@
  *
  */
 
-#define QI_DEBUG_BUILD 1
+// #define QI_DEBUG_BUILD 1
 
 #include "Args.h"
 #include "FitScaledAuto.h"

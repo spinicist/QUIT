@@ -17,8 +17,8 @@ struct PrepSequence : QI::SequenceBase {
                  Eigen::ArrayXd FA,
                  Eigen::ArrayXd FAprep,
                  Eigen::ArrayXd Tprep,
-                 Eigen::ArrayXd Tpreseg_,
-                 Eigen::ArrayXd Tpostseg_,
+                 Eigen::ArrayXd Tpreseg,
+                 Eigen::ArrayXd Tpostseg,
                  Eigen::ArrayXd fprep);
 };
 void from_json(const json &j, PrepSequence &s);
