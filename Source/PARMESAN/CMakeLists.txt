@@ -13,4 +13,8 @@ if( ${BUILD_PARMESAN} )
         )
     target_sources(qi PRIVATE ${SOURCES})
     target_compile_definitions(qi PRIVATE "-DBUILD_PARMESAN")
+    find_package(pagmo REQUIRED)
+    target_link_libraries(qi PRIVATE
+        Pagmo::pagmo
+    )
 endif()

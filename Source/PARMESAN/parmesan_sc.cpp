@@ -13,7 +13,7 @@
 
 #include "Args.h"
 #include "FitScaledAuto.h"
-#include "FitScaledNumeric.h"
+#include "FitScaledNumericMultiStart.h"
 #include "ImageIO.h"
 #include "Macro.h"
 #include "ModelFitFilter.h"
@@ -38,8 +38,10 @@ int parmesan_fit(args::Subparser &parser) {
     PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
 
     PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
-    using FitType = QI::ScaledNumericDiffFit<PrepModel>;
-    FitType fit{model};
+    using FitType = QI::ScaledNumericDiffMultiStartFit<PrepModel>;
+    Eigen::ArrayXd f0_starts(3);
+    f0_starts << -25., 0., 25.;
+    FitType fit{model, f0_starts};
     auto    fit_filter = QI::ModelFitFilter<FitType>::New(&fit, covar, resids, subregion.Get());
     fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
     fit_filter->SetRequestedRegionFromString(subregion.Get());

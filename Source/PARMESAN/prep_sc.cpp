@@ -2,6 +2,7 @@
 #include "prep_sc.h"
 #include "Log.h"
 namespace {
+
 using AugMat = Eigen::Matrix<double, 4, 4>;
 using AugVec = Eigen::Vector<double, 4>;
 
@@ -39,6 +40,11 @@ auto Spoil() -> AugMat {
 }
 
 } // namespace
+
+std::array<std::string, PrepModel::NV> const PrepModel::varying_names{"M0", "T1", "T2", "B1", "df"};
+PrepModel::VaryingArray const                PrepModel::start{1., 1., 0.1, 1.0, 0.0};
+PrepModel::VaryingArray const                PrepModel::lo{0.01, 0.01, 0.01, 0.5, -250.0};
+PrepModel::VaryingArray const                PrepModel::hi{1000., 5.0, 3.5, 1.5, 260.0};
 
 auto PrepModel::input_size(const int /* Unused */) const -> int {
     if (basis.size()) {

@@ -11,9 +11,9 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF) # Why not? Because it takes forever,
 project(QUIT LANGUAGES CXX)
 
 # Configure directory paths
-set( External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
-     CACHE PATH "Path to external library includes (usually External/include" )
-include_directories( SYSTEM ${External_Include_DIR} )
+set(External_Include_DIR "${PROJECT_SOURCE_DIR}/External/include"
+    CACHE PATH "Path to external library includes (usually External/include")
+include_directories(SYSTEM ${External_Include_DIR})
 find_package(Eigen3 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(fmt REQUIRED)
