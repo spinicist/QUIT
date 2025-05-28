@@ -40,7 +40,7 @@ int parmesan_fit(args::Subparser &parser) {
     PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
     using FitType = QI::ScaledNumericDiffMultiStartFit<PrepModel>;
     Eigen::ArrayXd f0_starts(3);
-    f0_starts << -25., 0., 25.;
+    f0_starts << -50., 0., 50.;
     FitType fit{model, f0_starts};
     auto    fit_filter = QI::ModelFitFilter<FitType>::New(&fit, covar, resids, subregion.Get());
     fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());

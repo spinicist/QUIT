@@ -13,6 +13,7 @@
 
 #include "Args.h"
 #include "Macro.h"
+#include "ParameterGrid.h"
 #include "Util.h"
 
 #include "prep_sc.h"
@@ -20,17 +21,32 @@
 #include <Eigen/Core>
 
 #include <pagmo/algorithm.hpp>
+#include <pagmo/algorithms/cmaes.hpp>
+#include <pagmo/algorithms/compass_search.hpp>
 #include <pagmo/algorithms/de1220.hpp>
 #include <pagmo/algorithms/mbh.hpp>
-#include <pagmo/algorithms/nsga2.hpp>
 #include <pagmo/population.hpp>
 #include <pagmo/problem.hpp>
 #include <pagmo/types.hpp>
 
+namespace {
+auto RoundDP(double x, int N) -> double {
+    return std::round(x * std::pow(10, N)) / std::pow(10, N);
+}
+
+auto B1toFlip(double b1, double t) {
+    // ɣ = 42.5777 Hz per uT
+    double flip = b1 * 42.577478 * 2 * M_PI * t;
+    // fmt::print(stderr, "b1 {} t {} flip {}\n", b1, t, flip);
+    return flip;
+}
+
+} // namespace
+
 struct PrepProblem {
-    PrepSequence                         s0;
-    double                               maxFA, maxFAprep, maxTprep;
-    std::vector<PrepModel::VaryingArray> vs;
+    PrepSequence    s0;
+    double          maxFA, maxB1prep, maxTprep;
+    Eigen::ArrayXXd vs;
 
     auto FIM(PrepSequence const &seq, PrepModel::VaryingArray const &v) const -> Eigen::MatrixXd {
         PrepModel                   m{{}, seq};
@@ -59,13 +75,17 @@ struct PrepProblem {
         return nCRB;
     }
 
-    auto cost(PrepSequence const &s) const -> double {
-        double sum = 0;
-        for (auto const &v : vs) {
-            double const c = nCRB(s, v).square().sum();
-            sum += c;
+    auto averageCRB(PrepSequence const &s) const -> Eigen::VectorXd {
+        PrepModel::VaryingArray c = PrepModel::VaryingArray::Zero();
+        for (int ic = 0; ic < vs.cols(); ic++) {
+            c += nCRB(s, vs.col(ic));
         }
-        return std::sqrt(sum);
+        c /= vs.size();
+        return c;
+    }
+
+    auto cost(PrepSequence const &s) const -> double {
+        return std::sqrt(averageCRB(s).squaredNorm() / PrepModel::NV);
     }
 
     pagmo::vector_double fitness(const pagmo::vector_double &dv) const {
@@ -73,9 +93,9 @@ struct PrepProblem {
         int const    N = s0.preps() - 1;
         for (int ii = 0; ii < N; ii++) {
             s.FA(ii + 1)     = dv[ii] * M_PI / 180.0;
-            s.FAprep(ii + 1) = dv[N + ii] * M_PI / 180.0;
             s.Tprep(ii + 1)  = dv[2 * N + ii];
             s.fprep(ii + 1)  = dv[3 * N + ii];
+            s.FAprep(ii + 1) = B1toFlip(dv[N + ii], s.Tprep(ii + 1));
         }
 
         return {cost(s)};
@@ -94,7 +114,7 @@ struct PrepProblem {
         std::fill_n(hi.begin(), N, maxFA);
         // FAprep
         std::fill_n(lo.begin() + N, N, 0.0);
-        std::fill_n(hi.begin() + N, N, maxFAprep);
+        std::fill_n(hi.begin() + N, N, maxB1prep);
         // Tprep
         std::fill_n(lo.begin() + 2 * N, N, 1e-3);
         std::fill_n(hi.begin() + 2 * N, N, maxTprep);
@@ -107,24 +127,18 @@ struct PrepProblem {
 };
 
 int parmesan_crb(args::Subparser &parser) {
-    args::Positional<std::string> json_path(parser, "JSON", "Parameter file");
+    args::PositionalList<std::string> json_paths(parser, "JSON", "Parameter files");
+    args::ValueFlag<int>              N(parser, "N", "Number of random samples", {"N", 'N'}, 128);
     Parse(parser);
-    QI::CheckPos(json_path);
-    PrepSequence            s0(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-    PrepProblem             pp{s0};
-    PrepModel::VaryingArray v;
-    v << 1.0, 1.0, 0.1, 1.0, 10.0; // M0, T1, T2, B1, f0
-    pp.vs.push_back(v);
-    v << 1.0, 1.0, 0.1, 1.0, -50.0;
-    pp.vs.push_back(v);
-    v << 1.0, 1.0, 0.1, 1.0, 50.0;
-    pp.vs.push_back(v);
 
-    fmt::print("CRB {:4.3f} Time {:4.3f}\n", pp.cost(s0), pp.time(s0));
-    fmt::print("[{}]\n", fmt::join(PrepModel::varying_names, ", "));
-    fmt::print("[{:4.3f}]\n", fmt::join(pp.nCRB(s0, pp.vs.front()), ", "));
-    
-
+    fmt::print("[{}] [CRB]\n", fmt::join(PrepModel::varying_names, ", "));
+    auto const v = QI::RandomPars(PrepModel::lo, PrepModel::hi, N.Get());
+    for (auto const &p : json_paths.Get()) {
+        PrepSequence s0(QI::ReadJSON(p)["PrepZTE"]);
+        PrepProblem  pp{s0};
+        pp.vs = v;
+        fmt::print("[{:4.3E}] {:4.3E} {}\n", fmt::join(pp.averageCRB(s0), ", "), pp.cost(s0), p);
+    }
     QI::Info("Finished.");
     return EXIT_SUCCESS;
 }
@@ -140,9 +154,11 @@ int parmesan_opt(args::Subparser &parser) {
     args::ValueFlag<int>   nP(parser, "NPrep", "Number of preps", {"nprep"}, 8);
 
     args::ValueFlag<double> maxFA(parser, "FA", "Maximum FA", {"maxFA"}, 4.);
-    args::ValueFlag<double> maxFAprep(parser, "FA", "Maximum FA", {"maxFAprep"}, 90.);
+    args::ValueFlag<double> maxB1prep(parser, "FA", "Maximum B1prep μT", {"maxB1prep"}, 20.);
     args::ValueFlag<double> maxTprep(parser, "T", "Maximum Tprep", {"maxTprep"}, 50.);
 
+    args::ValueFlag<int> N(
+        parser, "N", "Number of varying parameters to optimize over", {"N", 'N'}, 128);
     args::ValueFlag<int> nPop(parser, "P", "Population size", {'p', "pop"}, 1024);
     args::ValueFlag<int> nGen(parser, "G", "Number of generations", {'g', "gen"}, 64);
 
@@ -168,28 +184,25 @@ int parmesan_opt(args::Subparser &parser) {
     s0.fprep(0)  = 0;
     s0.Tprep(0)  = 1e-3;
 
-    PrepProblem             pp{s0, maxFA.Get(), maxFAprep.Get(), maxTprep.Get()};
-    ModelType::VaryingArray v;
-    v << 1.0, 1.0, 0.1, 1.0, 10.0; // M0, T1, T2, B1, f0
-    pp.vs.push_back(v);
-    v << 1.0, 1.0, 0.1, 1.0, -50.0;
-    pp.vs.push_back(v);
-    v << 1.0, 1.0, 0.1, 1.0, 50.0;
-    pp.vs.push_back(v);
+    PrepProblem pp{s0, maxFA.Get(), maxB1prep.Get(), maxTprep.Get()};
+    pp.vs = QI::RandomPars(PrepModel::lo, PrepModel::hi, N.Get());
     pagmo::problem    prob{pp};
     pagmo::population pop(prob, nPop.Get());
-    pagmo::algorithm  algo{pagmo::mbh()};
+    pagmo::algorithm  algo = nGen ? pagmo::algorithm{pagmo::cmaes(
+                                       nGen.Get(), -1, -1, -1, -1, 0.5, 1e-6, 1e-6, false, true)} :
+                                    pagmo::algorithm{pagmo::mbh(pagmo::compass_search(), 16, 0.1)};
 
     algo.set_verbosity(1);
     pop = algo.evolve(pop);
 
-    int const            N  = s0.preps() - 1;
+    int const            Nv = s0.preps() - 1;
     pagmo::vector_double dv = pop.champion_x();
-    for (int ii = 0; ii < N; ii++) {
-        s0.FA(ii + 1)     = dv[ii] * M_PI / 180.0;
-        s0.FAprep(ii + 1) = dv[N + ii] * M_PI / 180.0;
-        s0.Tprep(ii + 1)  = dv[2 * N + ii];
-        s0.fprep(ii + 1)  = dv[3 * N + ii];
+    for (int ii = 0; ii < Nv; ii++) {
+        s0.FA(ii + 1)    = RoundDP(dv[ii], 1) * M_PI / 180.0;
+        s0.Tprep(ii + 1) = RoundDP(dv[2 * Nv + ii], 3);
+        s0.FAprep(ii + 1) =
+            RoundDP(B1toFlip(dv[Nv + ii], s0.Tprep(ii + 1)) * 180 / M_PI, 1) * M_PI / 180.0;
+        s0.fprep(ii + 1) = RoundDP(dv[3 * Nv + ii], 0);
     }
     auto j = json{{"PrepZTE", s0}};
     QI::WriteJSON(json_path.Get(), j);
