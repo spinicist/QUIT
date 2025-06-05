@@ -19,10 +19,8 @@ auto Relax(double const M0, double const R1, double const R2, double const df0) 
     return R;
 }
 
-auto RF(double const flip, double const pw, double const f0) -> AugMat {
-    double const ω1x = flip / pw;
-    double const ω0  = f0 * 2.0 * M_PI;
-    AugMat       rf;
+auto RF(double const ω0, double const ω1x) -> AugMat {
+    AugMat rf;
     rf.setZero();
     rf(0, 1) = ω0;
     rf(1, 0) = -ω0;
@@ -30,6 +28,18 @@ auto RF(double const flip, double const pw, double const f0) -> AugMat {
     rf(2, 1) = -ω1x;
     return rf;
 }
+
+auto BlockPulse(double const flip, double const pw, double const f0, AugMat const R) -> AugMat {
+    double const ω1 = flip / pw;
+    double const ω0 = f0 * 2.0 * M_PI;
+    return ((RF(ω0, ω1) + R) * pw).exp();
+}
+
+// auto GaussPulse(double const flip, double const pw, double const f0) -> AugMat {
+//     double const ω1x = flip / pw;
+//     double const ω0  = f0 * 2.0 * M_PI;
+//     return RF(ω0, ω1);
+// }
 
 auto Spoil() -> AugMat {
     AugMat S;
@@ -90,17 +100,16 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
     std::vector<AugMat> pre_mats(sequence.preps());
     std::vector<AugMat> post_mats(sequence.preps());
     for (int ip = 0; ip < sequence.preps(); ip++) {
-        AugMat const rfa = RF(sequence.FA[ip] * B1, sequence.Trf, 0);
-        A_mats[ip]       = ((R + rfa) * sequence.Trf).exp();
-        R_mats[ip]       = (R * (sequence.TR - sequence.Trf)).exp();
-        pre_mats[ip]     = (R * sequence.Tpreseg[ip]).exp();
-        post_mats[ip]    = (R * sequence.Tpostseg[ip]).exp();
-        seg_mats[ip]     = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
+        A_mats[ip]    = BlockPulse(sequence.FA[ip] * B1, sequence.Trf, 0, R);
+        R_mats[ip]    = (R * (sequence.TR - sequence.Trf)).exp();
+        pre_mats[ip]  = (R * sequence.Tpreseg[ip]).exp();
+        post_mats[ip] = (R * sequence.Tpostseg[ip]).exp();
+        seg_mats[ip]  = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
         QI_DBMAT(A_mats[ip]);
         QI_DBMAT(R_mats[ip]);
         QI_DBMAT(seg_mats[ip]);
-        AugMat const rfp = RF(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip]);
-        prep_mats[ip]    = ((R + rfp) * sequence.Tprep[ip]).exp();
+        prep_mats[ip] =
+            BlockPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
         QI_DBMAT(prep_mats[ip]);
     }
     // First calculate the system matrix
@@ -161,7 +170,7 @@ PrepModel2::VaryingArray const                PrepModel2::start{1., 1., 0.1, 1.0
 PrepModel2::VaryingArray const                PrepModel2::lo{0.01, 0.01, 0.01, 0.5};
 PrepModel2::VaryingArray const                PrepModel2::hi{1000., 5.0, 3.5, 1.5};
 std::array<std::string, PrepModel2::NF> const PrepModel2::fixed_names{"df"};
-PrepModel2::FixedArray const PrepModel2::fixed_defaults{0.0};
+PrepModel2::FixedArray const                  PrepModel2::fixed_defaults{0.0};
 
 auto PrepModel2::input_size(const int /* Unused */) const -> int {
     if (basis.size()) {
@@ -207,17 +216,16 @@ auto PrepModel2::signal(VaryingArray const &v, FixedArray const &f) const -> QI_
     std::vector<AugMat> pre_mats(sequence.preps());
     std::vector<AugMat> post_mats(sequence.preps());
     for (int ip = 0; ip < sequence.preps(); ip++) {
-        AugMat const rfa = RF(sequence.FA[ip] * B1, sequence.Trf, 0);
-        A_mats[ip]       = ((R + rfa) * sequence.Trf).exp();
-        R_mats[ip]       = (R * (sequence.TR - sequence.Trf)).exp();
-        pre_mats[ip]     = (R * sequence.Tpreseg[ip]).exp();
-        post_mats[ip]    = (R * sequence.Tpostseg[ip]).exp();
-        seg_mats[ip]     = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
+        A_mats[ip]    = BlockPulse(sequence.FA[ip] * B1, sequence.Trf, 0, R);
+        R_mats[ip]    = (R * (sequence.TR - sequence.Trf)).exp();
+        pre_mats[ip]  = (R * sequence.Tpreseg[ip]).exp();
+        post_mats[ip] = (R * sequence.Tpostseg[ip]).exp();
+        seg_mats[ip]  = (S * R_mats[ip] * A_mats[ip]).pow(sequence.SPS) * spoilTRs;
         QI_DBMAT(A_mats[ip]);
         QI_DBMAT(R_mats[ip]);
         QI_DBMAT(seg_mats[ip]);
-        AugMat const rfp = RF(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip]);
-        prep_mats[ip]    = ((R + rfp) * sequence.Tprep[ip]).exp();
+        prep_mats[ip] =
+            BlockPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
         QI_DBMAT(prep_mats[ip]);
     }
     // First calculate the system matrix
