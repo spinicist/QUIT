@@ -35,11 +35,36 @@ auto BlockPulse(double const flip, double const pw, double const f0, AugMat cons
     return ((RF(ω0, ω1) + R) * pw).exp();
 }
 
-// auto GaussPulse(double const flip, double const pw, double const f0) -> AugMat {
-//     double const ω1x = flip / pw;
-//     double const ω0  = f0 * 2.0 * M_PI;
-//     return RF(ω0, ω1);
-// }
+auto GaussPulse(double const flip, double const pw, double const f0, AugMat const R) -> AugMat {
+    double const sigma = 0.3;
+    double const ω0    = f0 * 2.0 * M_PI;
+    AugMat       gp    = AugMat::Identity();
+    int const    N     = 64;
+    double const tau   = pw / N;
+
+    // Get the pulse area
+    double a = 0.0;
+    for (int ii = 0; ii < N; ii++) {
+        double const t = tau * ii;
+        a += std::exp(-0.5 * std::pow((t - (pw / 2.0)) / (sigma * (pw / 2.0)), 2)) * tau;
+    }
+
+    for (int ii = 0; ii < N; ii++) {
+        double const t = tau * ii;
+        double const ω1 =
+            std::exp(-0.5 * std::pow((t - (pw / 2.0)) / (sigma * (pw / 2.0)), 2)) * flip / a;
+        QI_DB(ω1);
+        gp = ((RF(ω0, ω1) + R) * tau).exp() * gp;
+    }
+    QI_DB(tau);
+    QI_DB(flip);
+    QI_DB(pw);
+    QI_DB(a);
+    QI_DB(f0);
+    QI_DBMAT(R);
+    QI_DBMAT(gp);
+    return gp;
+}
 
 auto Spoil() -> AugMat {
     AugMat S;
@@ -109,7 +134,7 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
         QI_DBMAT(R_mats[ip]);
         QI_DBMAT(seg_mats[ip]);
         prep_mats[ip] =
-            BlockPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
+            GaussPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
         QI_DBMAT(prep_mats[ip]);
     }
     // First calculate the system matrix
@@ -225,7 +250,7 @@ auto PrepModel2::signal(VaryingArray const &v, FixedArray const &f) const -> QI_
         QI_DBMAT(R_mats[ip]);
         QI_DBMAT(seg_mats[ip]);
         prep_mats[ip] =
-            BlockPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
+            GaussPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
         QI_DBMAT(prep_mats[ip]);
     }
     // First calculate the system matrix
