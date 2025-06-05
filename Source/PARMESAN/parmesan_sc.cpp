@@ -13,6 +13,7 @@
 
 #include "Args.h"
 #include "FitScaledAuto.h"
+#include "FitScaledNumeric.h"
 #include "FitScaledNumericMultiStart.h"
 #include "ImageIO.h"
 #include "Macro.h"
@@ -32,65 +33,92 @@ int parmesan_fit(args::Subparser &parser) {
     args::Positional<std::string> json_path(parser, "JSON", "Parameter file");
     args::Positional<std::string> input_path(parser, "INPUT", "Input image file");
     args::ValueFlag<std::string>  bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
+    args::Flag                    nodf(parser, "F", "No off-resonance", {'f', "nodf"});
+
     QI_COMMON_ARGS;
     Parse(parser);
     QI::CheckPos(input_path);
     PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
 
-    PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
-    using FitType = QI::ScaledNumericDiffMultiStartFit<PrepModel>;
-    Eigen::ArrayXd f0_starts(3);
-    f0_starts << -50., 0., 50.;
-    FitType fit{model, f0_starts};
-    auto    fit_filter = QI::ModelFitFilter<FitType>::New(&fit, covar, resids, subregion.Get());
-    fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
-    fit_filter->SetRequestedRegionFromString(subregion.Get());
-    fit_filter->Update();
-    fit_filter->WriteOutputs(prefix.Get() + "PARMESAN_");
-
+    if (nodf) {
+        PrepModel2 model{{}, sequence, ReadBasis(bpath.Get())};
+        using FitType = QI::ScaledNumericDiffFit<PrepModel2>;
+        FitType fit{model};
+        auto    fit_filter = QI::ModelFitFilter<FitType>::New(&fit, covar, resids, subregion.Get());
+        fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
+        fit_filter->SetRequestedRegionFromString(subregion.Get());
+        fit_filter->Update();
+        fit_filter->WriteOutputs(prefix.Get() + "PARMESAN_");
+    } else {
+        PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
+        using FitType = QI::ScaledNumericDiffMultiStartFit<PrepModel>;
+        Eigen::ArrayXd f0_starts(1);
+        f0_starts << 0.;
+        FitType fit{model, f0_starts};
+        auto    fit_filter = QI::ModelFitFilter<FitType>::New(&fit, covar, resids, subregion.Get());
+        fit_filter->ReadInputs({input_path.Get()}, {}, mask.Get());
+        fit_filter->SetRequestedRegionFromString(subregion.Get());
+        fit_filter->Update();
+        fit_filter->WriteOutputs(prefix.Get() + "PARMESAN_");
+    }
     QI::Info("Finished.");
     return EXIT_SUCCESS;
 }
 
 int parmesan_sim(args::Subparser &parser) {
     args::Positional<std::string>     json_path(parser, "JSON", "Parameter file");
-    args::Positional<std::string>     out_path(parser, "OUTPUT", "Simulation output file");
-    args::PositionalList<std::string> varying_paths(parser, "INPUT", "Input parameter maps");
+    args::Positional<std::string>     opath(parser, "OUTPUT", "Simulation output file");
+    args::PositionalList<std::string> vpaths(parser, "INPUT", "Input parameter maps");
     args::ValueFlag<float> noise(parser, "NOISE", "Noise standard deviation", {'n', "noise"}, 0.f);
     args::ValueFlag<std::string> bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
+    args::Flag                   nodf(parser, "F", "No off-resonance", {'f', "nodf"});
     QI_CORE_ARGS;
     Parse(parser);
-    QI::CheckPos(out_path);
+    QI::CheckPos(opath);
     QI::Info("Reading sequence parameters");
     PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-    PrepModel    model{{}, sequence, ReadBasis(bpath.Get())};
-    QI::SimulateModel2<decltype(model), false>(
-        model, varying_paths.Get(), {}, {out_path.Get()}, mask.Get(), noise.Get(), subregion.Get());
+    if (nodf) {
+        PrepModel2 model{{}, sequence, ReadBasis(bpath.Get())};
+        QI::SimulateModel2<decltype(model), false>(
+            model, vpaths.Get(), {}, {opath.Get()}, mask.Get(), noise.Get(), subregion.Get());
+    } else {
+        PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
+        QI::SimulateModel2<decltype(model), false>(
+            model, vpaths.Get(), {}, {opath.Get()}, mask.Get(), noise.Get(), subregion.Get());
+    }
     QI::Info("Finished.");
     return EXIT_SUCCESS;
 }
 
-int parmesan_basis(args::Subparser &parser) {
-    args::Positional<std::string> json_path(parser, "JSON", "Parameter JSON file");
-    args::Positional<std::string> out_path(parser, "OUTPUT", "Basis JSON file");
-    args::ValueFlag<int>          B(parser, "B", "Basis size (8)", {'b', "B"}, 8);
-    args::ValueFlag<int>          N(parser, "N", "Use N random samples", {'n', "N"}, 16384);
-
-    Parse(parser);
-    QI::CheckPos(json_path);
-    QI::CheckPos(out_path);
-    QI::Info("Reading sequence parameters");
-    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-    PrepModel    model{{}, sequence};
+template <typename ModelT>
+auto RunBasis(PrepSequence const &sequence, int const N) -> Eigen::MatrixXd {
+    ModelT model{{}, sequence};
 
     auto const pars =
-        N ? QI::RandomPars(model.lo, model.hi, N.Get()) :
-            QI::RegularPars(model.lo, model.hi, Eigen::Array<int, 5, 1>{1, 10, 10, 10, 10});
+        (N > 0) ? QI::RandomPars(model.lo, model.hi, N) :
+                  QI::RegularPars(model.lo, model.hi, Eigen::Array<int, 5, 1>{1, 10, 10, 10, 10});
 
     Eigen::MatrixXd signals(pars.cols(), sequence.size());
     for (int ii = 0; ii < pars.cols(); ii++) {
         signals.row(ii) = model.signal(pars.col(ii), Eigen::ArrayXd{});
     }
+    return signals;
+}
+
+int parmesan_basis(args::Subparser &parser) {
+    args::Positional<std::string> json_path(parser, "JSON", "Parameter JSON file");
+    args::Positional<std::string> opath(parser, "OUTPUT", "Basis JSON file");
+    args::ValueFlag<int>          B(parser, "B", "Basis size (8)", {'b', "B"}, 8);
+    args::ValueFlag<int>          N(parser, "N", "Use N random samples", {'n', "N"}, 0);
+    args::Flag                    nodf(parser, "F", "No off-resonance", {'f', "nodf"});
+
+    Parse(parser);
+    QI::CheckPos(json_path);
+    QI::CheckPos(opath);
+
+    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    auto const   signals =
+        nodf ? RunBasis<PrepModel2>(sequence, N.Get()) : RunBasis<PrepModel>(sequence, N.Get());
     auto const svd = signals.bdcSvd<Eigen::ComputeThinV>();
 
     QI::Info("Computing projection");
@@ -102,13 +130,13 @@ int parmesan_basis(args::Subparser &parser) {
     auto bj = json::array();
     for (int ii = 0; ii < B.Get(); ii++) {
         Eigen::VectorXd bc = svd.matrixV().col(ii);
-        if (bc.dot(signals.row(pars.cols() / 2)) < 0) {
+        if (bc.dot(signals.row(signals.rows() / 2)) < 0) {
             bc = -bc; // Flip it
         }
         bj.push_back(bc);
     }
     auto j = json{{"basis", bj}};
-    QI::WriteJSON(out_path.Get(), j);
+    QI::WriteJSON(opath.Get(), j);
 
     QI::Info("Finished.");
     return EXIT_SUCCESS;

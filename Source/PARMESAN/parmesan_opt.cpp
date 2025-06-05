@@ -43,14 +43,17 @@ auto B1toFlip(double b1, double t) {
 
 } // namespace
 
-struct PrepProblem {
+template <typename ModelT> struct PrepProblem {
     PrepSequence    s0;
     double          maxFA, maxB1prep, maxTprep;
     Eigen::ArrayXXd vs;
 
-    auto FIM(PrepSequence const &seq, PrepModel::VaryingArray const &v) const -> Eigen::MatrixXd {
-        PrepModel                   m{{}, seq};
-        PrepModel::FixedArray const f = m.fixed_defaults;
+    using VaryingArray = typename ModelT::VaryingArray;
+    using FixedArray   = typename ModelT::FixedArray;
+
+    auto FIM(PrepSequence const &seq, VaryingArray const &v) const -> Eigen::MatrixXd {
+        ModelT           m{{}, seq};
+        FixedArray const f = m.fixed_defaults;
 
         Eigen::MatrixXd FIM(m.NV, m.NV);
         for (int ij = 0; ij < m.NV; ij++) {
@@ -69,14 +72,14 @@ struct PrepProblem {
         return tTotal;
     }
 
-    auto nCRB(PrepSequence const &seq, PrepModel::VaryingArray const &v) const -> Eigen::ArrayXd {
+    auto nCRB(PrepSequence const &seq, VaryingArray const &v) const -> Eigen::ArrayXd {
         Eigen::VectorXd const CRB  = FIM(seq, v).inverse().diagonal();
         Eigen::VectorXd const nCRB = CRB.array() * time(seq) / v.square();
         return nCRB;
     }
 
     auto averageCRB(PrepSequence const &s) const -> Eigen::VectorXd {
-        PrepModel::VaryingArray c = PrepModel::VaryingArray::Zero();
+        VaryingArray c = VaryingArray::Zero();
         for (int ic = 0; ic < vs.cols(); ic++) {
             c += nCRB(s, vs.col(ic));
         }
@@ -85,7 +88,7 @@ struct PrepProblem {
     }
 
     auto cost(PrepSequence const &s) const -> double {
-        return std::sqrt(averageCRB(s).squaredNorm() / PrepModel::NV);
+        return std::sqrt(averageCRB(s).squaredNorm() / ModelT::NV);
     }
 
     pagmo::vector_double fitness(const pagmo::vector_double &dv) const {
@@ -126,18 +129,27 @@ struct PrepProblem {
     }
 };
 
+template <typename ModelT> void RunCRB(std::vector<std::string> const &jp, int const N) {
+    fmt::print("[{}] [CRB]\n", fmt::join(ModelT::varying_names, ", "));
+    auto const v = QI::RandomPars(ModelT::lo, ModelT::hi, N);
+    for (auto const &p : jp) {
+        PrepSequence        s0(QI::ReadJSON(p)["PrepZTE"]);
+        PrepProblem<ModelT> pp{s0};
+        pp.vs = v;
+        fmt::print("[{:4.3E}] {:4.3E} {}\n", fmt::join(pp.averageCRB(s0), ", "), pp.cost(s0), p);
+    }
+}
+
 int parmesan_crb(args::Subparser &parser) {
     args::PositionalList<std::string> json_paths(parser, "JSON", "Parameter files");
     args::ValueFlag<int>              N(parser, "N", "Number of random samples", {"N", 'N'}, 128);
+    args::Flag                        nodf(parser, "F", "No off-resonance", {'f', "nodf"});
     Parse(parser);
 
-    fmt::print("[{}] [CRB]\n", fmt::join(PrepModel::varying_names, ", "));
-    auto const v = QI::RandomPars(PrepModel::lo, PrepModel::hi, N.Get());
-    for (auto const &p : json_paths.Get()) {
-        PrepSequence s0(QI::ReadJSON(p)["PrepZTE"]);
-        PrepProblem  pp{s0};
-        pp.vs = v;
-        fmt::print("[{:4.3E}] {:4.3E} {}\n", fmt::join(pp.averageCRB(s0), ", "), pp.cost(s0), p);
+    if (nodf) {
+        RunCRB<PrepModel2>(json_paths.Get(), N.Get());
+    } else {
+        RunCRB<PrepModel>(json_paths.Get(), N.Get());
     }
     QI::Info("Finished.");
     return EXIT_SUCCESS;
@@ -167,7 +179,6 @@ int parmesan_opt(args::Subparser &parser) {
     // QI::CheckPos(out_path);
     QI::Info("Reading sequence parameters");
 
-    using ModelType = PrepModel;
     PrepSequence s0(tr.Get(),
                     tramp.Get(),
                     trf.Get(),
@@ -184,7 +195,7 @@ int parmesan_opt(args::Subparser &parser) {
     s0.fprep(0)  = 0;
     s0.Tprep(0)  = 1e-3;
 
-    PrepProblem pp{s0, maxFA.Get(), maxB1prep.Get(), maxTprep.Get()};
+    PrepProblem<PrepModel> pp{s0, maxFA.Get(), maxB1prep.Get(), maxTprep.Get()};
     pp.vs = QI::RandomPars(PrepModel::lo, PrepModel::hi, N.Get());
     pagmo::problem    prob{pp};
     pagmo::population pop(prob, nPop.Get());
