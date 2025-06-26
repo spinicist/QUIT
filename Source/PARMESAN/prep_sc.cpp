@@ -80,6 +80,8 @@ std::array<std::string, PrepModel::NV> const PrepModel::varying_names{"M0", "T1"
 PrepModel::VaryingArray const                PrepModel::start{1., 1., 0.1, 1.0, 0.0};
 PrepModel::VaryingArray const                PrepModel::lo{0.01, 0.01, 0.01, 0.5, -250.0};
 PrepModel::VaryingArray const                PrepModel::hi{1000., 5.0, 3.5, 1.5, 260.0};
+std::array<std::string, PrepModel::NF> const PrepModel::fixed_names{};
+PrepModel::FixedArray const                  PrepModel::fixed_defaults{};
 
 auto PrepModel::input_size(const int /* Unused */) const -> int {
     if (basis.size()) {
@@ -134,7 +136,9 @@ auto PrepModel::signal(VaryingArray const &v, FixedArray const &) const -> QI_AR
         QI_DBMAT(R_mats[ip]);
         QI_DBMAT(seg_mats[ip]);
         prep_mats[ip] =
-            GaussPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
+            gauss ?
+                GaussPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R) :
+                BlockPulse(sequence.FAprep[ip] * B1, sequence.Tprep[ip], sequence.fprep[ip], R);
         QI_DBMAT(prep_mats[ip]);
     }
     // First calculate the system matrix

@@ -29,7 +29,7 @@
 #include <functional>
 
 int parmesan_qmt_fit(args::Subparser &parser) {
-    args::Positional<std::string> json_path(parser, "JSON", "Parameter file");
+    args::Positional<std::string> jpath(parser, "JSON", "Parameter file");
     args::Positional<std::string> input_path(parser, "INPUT", "Input image file");
     args::Positional<std::string> sl(parser, "SL", "Super-Lorentzian Interp Table", {"sl"});
     QI_COMMON_ARGS;
@@ -43,7 +43,7 @@ int parmesan_qmt_fit(args::Subparser &parser) {
     args::Flag                   kfull(parser, "k", "Use full k model", {"kfull"});
     Parse(parser);
     QI::CheckPos(input_path);
-    PrepSequence   sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence   sequence(QI::ReadJSON(jpath.Get())["PrepZTE"]);
     json           lgbm = QI::ReadJSON(sl.Get());
     QI::InterpGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
                         QI::ArrayFromJSON<double>(lgbm, "τ"),
@@ -92,7 +92,7 @@ int parmesan_qmt_fit(args::Subparser &parser) {
 }
 
 int parmesan_qmt_sim(args::Subparser &parser) {
-    args::Positional<std::string>     json_path(parser, "JSON", "Parameter file");
+    args::Positional<std::string>     jpath(parser, "JSON", "Parameter file");
     args::Positional<std::string>     out_path(parser, "OUTPUT", "Simulation output file");
     args::Positional<std::string>     sl(parser, "SL", "Super-Lorentzian Interp Table", {"sl"});
     args::PositionalList<std::string> varying_paths(parser, "INPUT", "Input parameter maps");
@@ -108,7 +108,7 @@ int parmesan_qmt_sim(args::Subparser &parser) {
     args::Flag                   kfull(parser, "k", "Use full k model", {"kfull"});
     Parse(parser);
     QI::Info("Reading sequence parameters");
-    PrepSequence   sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence   sequence(QI::ReadJSON(jpath.Get())["PrepZTE"]);
     json           lgbm = QI::ReadJSON(sl.Get());
     QI::InterpGrid R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
                         QI::ArrayFromJSON<double>(lgbm, "τ"),
@@ -143,7 +143,7 @@ int parmesan_qmt_sim(args::Subparser &parser) {
 }
 
 int parmesan_qmt_basis(args::Subparser &parser) {
-    args::Positional<std::string> json_path(parser, "JSON", "Parameter JSON file");
+    args::Positional<std::string> jpath(parser, "JSON", "Parameter JSON file");
     args::Positional<std::string> out_path(parser, "OUTPUT", "Basis JSON file");
     args::Positional<std::string> sl(parser, "SL", "Super-Lorentzian Interp Table", {"sl"});
     args::ValueFlag<int>          B(parser, "B", "Basis size (8)", {'b', "B"}, 8);
@@ -151,10 +151,10 @@ int parmesan_qmt_basis(args::Subparser &parser) {
     args::Flag                    k(parser, "k", "Use k instead of R_x", {'k', "k"});
 
     Parse(parser);
-    QI::CheckPos(json_path);
+    QI::CheckPos(jpath);
     QI::CheckPos(out_path);
     QI::Info("Reading sequence parameters");
-    PrepSequence    sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence    sequence(QI::ReadJSON(jpath.Get())["PrepZTE"]);
     json            lgbm = QI::ReadJSON(sl.Get());
     QI::InterpGrid  R2sl(QI::ArrayFromJSON<double>(lgbm, "ω"),
                         QI::ArrayFromJSON<double>(lgbm, "τ"),

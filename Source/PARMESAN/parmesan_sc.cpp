@@ -30,16 +30,15 @@
 #include <functional>
 
 int parmesan_fit(args::Subparser &parser) {
-    args::Positional<std::string> json_path(parser, "JSON", "Parameter file");
+    args::Positional<std::string> jpath(parser, "JSON", "Parameter file");
     args::Positional<std::string> input_path(parser, "INPUT", "Input image file");
     args::ValueFlag<std::string>  bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
     args::Flag                    nodf(parser, "F", "No off-resonance", {'f', "nodf"});
-
+    args::Flag                    gauss(parser, "G", "Gauss Prep Pulses", {'g', "gauss"});
     QI_COMMON_ARGS;
     Parse(parser);
     QI::CheckPos(input_path);
-    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-
+    PrepSequence sequence(QI::ReadJSON(jpath.Get())["PrepZTE"]);
     if (nodf) {
         PrepModel2 model{{}, sequence, ReadBasis(bpath.Get())};
         using FitType = QI::ScaledNumericDiffFit<PrepModel2>;
@@ -50,7 +49,7 @@ int parmesan_fit(args::Subparser &parser) {
         fit_filter->Update();
         fit_filter->WriteOutputs(prefix.Get() + "PARMESAN_");
     } else {
-        PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
+        PrepModel model{{}, sequence, ReadBasis(bpath.Get()), gauss};
         using FitType = QI::ScaledNumericDiffMultiStartFit<PrepModel>;
         Eigen::ArrayXd f0_starts(1);
         f0_starts << 0.;
@@ -66,23 +65,24 @@ int parmesan_fit(args::Subparser &parser) {
 }
 
 int parmesan_sim(args::Subparser &parser) {
-    args::Positional<std::string>     json_path(parser, "JSON", "Parameter file");
+    args::Positional<std::string>     jpath(parser, "JSON", "Parameter file");
     args::Positional<std::string>     opath(parser, "OUTPUT", "Simulation output file");
     args::PositionalList<std::string> vpaths(parser, "INPUT", "Input parameter maps");
     args::ValueFlag<float> noise(parser, "NOISE", "Noise standard deviation", {'n', "noise"}, 0.f);
     args::ValueFlag<std::string> bpath(parser, "BASIS", "Path to basis JSON file", {'b', "basis"});
     args::Flag                   nodf(parser, "F", "No off-resonance", {'f', "nodf"});
+    args::Flag                   gauss(parser, "G", "Gauss Prep Pulses", {'g', "gauss"});
     QI_CORE_ARGS;
     Parse(parser);
     QI::CheckPos(opath);
     QI::Info("Reading sequence parameters");
-    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
+    PrepSequence sequence(QI::ReadJSON(jpath.Get())["PrepZTE"]);
     if (nodf) {
         PrepModel2 model{{}, sequence, ReadBasis(bpath.Get())};
         QI::SimulateModel2<decltype(model), false>(
             model, vpaths.Get(), {}, {opath.Get()}, mask.Get(), noise.Get(), subregion.Get());
     } else {
-        PrepModel model{{}, sequence, ReadBasis(bpath.Get())};
+        PrepModel model{{}, sequence, ReadBasis(bpath.Get()), gauss};
         QI::SimulateModel2<decltype(model), false>(
             model, vpaths.Get(), {}, {opath.Get()}, mask.Get(), noise.Get(), subregion.Get());
     }
@@ -91,8 +91,8 @@ int parmesan_sim(args::Subparser &parser) {
 }
 
 template <typename ModelT>
-auto RunBasis(PrepSequence const &sequence, int const N) -> Eigen::MatrixXd {
-    ModelT model{{}, sequence};
+auto RunBasis(PrepSequence const &sequence, int const N, bool const gauss) -> Eigen::MatrixXd {
+    ModelT model{{}, sequence, Eigen::MatrixXd(), gauss};
 
     auto const pars =
         (N > 0) ? QI::RandomPars(model.lo, model.hi, N) :
@@ -106,20 +106,20 @@ auto RunBasis(PrepSequence const &sequence, int const N) -> Eigen::MatrixXd {
 }
 
 int parmesan_basis(args::Subparser &parser) {
-    args::Positional<std::string> json_path(parser, "JSON", "Parameter JSON file");
+    args::Positional<std::string> jpath(parser, "JSON", "Parameter JSON file");
     args::Positional<std::string> opath(parser, "OUTPUT", "Basis JSON file");
     args::ValueFlag<int>          B(parser, "B", "Basis size (8)", {'b', "B"}, 8);
     args::ValueFlag<int>          N(parser, "N", "Use N random samples", {'n', "N"}, 0);
     args::Flag                    nodf(parser, "F", "No off-resonance", {'f', "nodf"});
-
+    args::Flag                    gauss(parser, "G", "Gauss Prep Pulses", {'g', "gauss"});
     Parse(parser);
-    QI::CheckPos(json_path);
+    QI::CheckPos(jpath);
     QI::CheckPos(opath);
 
-    PrepSequence sequence(QI::ReadJSON(json_path.Get())["PrepZTE"]);
-    auto const   signals =
-        nodf ? RunBasis<PrepModel2>(sequence, N.Get()) : RunBasis<PrepModel>(sequence, N.Get());
-    auto const svd = signals.bdcSvd<Eigen::ComputeThinV>();
+    PrepSequence sequence(QI::ReadJSON(jpath.Get())["PrepZTE"]);
+    auto const   signals = nodf ? RunBasis<PrepModel2>(sequence, N.Get(), gauss) :
+                                  RunBasis<PrepModel>(sequence, N.Get(), gauss);
+    auto const   svd     = signals.bdcSvd<Eigen::ComputeThinV>();
 
     QI::Info("Computing projection");
     Eigen::MatrixXd temp  = signals * svd.matrixV().leftCols(B.Get());

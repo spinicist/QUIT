@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     ADD(lorentzian, mt, "Lorentzian fitting for CEST");
     ADD(mtr, mt, "Calculate Magnetization Transfer Ratios");
     ADD(mtsat, mt, "Calculate MTsat");
-    ADD(qmt, mt, "Fit qMT data with Ramani model");
+    ADD2(qmt, mt, "qMT data with Ramani model");
     ADD(ssfp_emt, mt, "Fit qMT SSFP data with Wood model");
     ADD(zspec_b1, mt, "B1 correction for Z-spectra");
     ADD(zspec_interp, mt, "Interpolate Z-spectra (B0 correction etc.)");

@@ -45,6 +45,7 @@ auto B1toFlip(double b1, double t) {
 
 template <typename ModelT> struct PrepProblem {
     PrepSequence    s0;
+    bool            gauss;
     double          maxFA, maxB1prep, maxTprep;
     Eigen::ArrayXXd vs;
 
@@ -52,7 +53,7 @@ template <typename ModelT> struct PrepProblem {
     using FixedArray   = typename ModelT::FixedArray;
 
     auto FIM(PrepSequence const &seq, VaryingArray const &v) const -> Eigen::MatrixXd {
-        ModelT           m{{}, seq};
+        ModelT           m{{}, seq, Eigen::MatrixXd(), gauss};
         FixedArray const f = m.fixed_defaults;
 
         Eigen::MatrixXd FIM(m.NV, m.NV);
@@ -129,13 +130,15 @@ template <typename ModelT> struct PrepProblem {
     }
 };
 
-template <typename ModelT> void RunCRB(std::vector<std::string> const &jp, int const N) {
+template <typename ModelT>
+void RunCRB(std::vector<std::string> const &jp, int const N, bool const gauss) {
     fmt::print("[{}] [CRB]\n", fmt::join(ModelT::varying_names, ", "));
-    auto const v = QI::RandomPars(ModelT::lo, ModelT::hi, N);
+    // auto const v = QI::RandomPars(ModelT::lo, ModelT::hi, N);
     for (auto const &p : jp) {
         PrepSequence        s0(QI::ReadJSON(p)["PrepZTE"]);
-        PrepProblem<ModelT> pp{s0};
-        pp.vs = v;
+        PrepProblem<ModelT> pp{s0, gauss};
+        // pp.vs = v;
+        pp.vs = (ModelT::lo + ModelT::hi) / 2;
         fmt::print("[{:4.3E}] {:4.3E} {}\n", fmt::join(pp.averageCRB(s0), ", "), pp.cost(s0), p);
     }
 }
@@ -144,19 +147,19 @@ int parmesan_crb(args::Subparser &parser) {
     args::PositionalList<std::string> json_paths(parser, "JSON", "Parameter files");
     args::ValueFlag<int>              N(parser, "N", "Number of random samples", {"N", 'N'}, 128);
     args::Flag                        nodf(parser, "F", "No off-resonance", {'f', "nodf"});
+    args::Flag                        gauss(parser, "G", "Gauss Prep Pulses", {'g', "gauss"});
     Parse(parser);
-
     if (nodf) {
-        RunCRB<PrepModel2>(json_paths.Get(), N.Get());
+        RunCRB<PrepModel2>(json_paths.Get(), N.Get(), gauss);
     } else {
-        RunCRB<PrepModel>(json_paths.Get(), N.Get());
+        RunCRB<PrepModel>(json_paths.Get(), N.Get(), gauss);
     }
     QI::Info("Finished.");
     return EXIT_SUCCESS;
 }
 
 int parmesan_opt(args::Subparser &parser) {
-    args::Positional<std::string> json_path(parser, "JSON", "Output JSON file");
+    args::Positional<std::string> jpath(parser, "JSON", "Output JSON file");
     // args::Positional<std::string> out_path(parser, "OUTPUT", "Basis JSON file");
 
     args::ValueFlag<float> tr(parser, "TR", "TR", {"tr"}, 2.e-3);
@@ -174,8 +177,10 @@ int parmesan_opt(args::Subparser &parser) {
     args::ValueFlag<int> nPop(parser, "P", "Population size", {'p', "pop"}, 1024);
     args::ValueFlag<int> nGen(parser, "G", "Number of generations", {'g', "gen"}, 64);
 
+    args::Flag gauss(parser, "G", "Gauss Prep Pulses", {'g', "gauss"});
+
     Parse(parser);
-    QI::CheckPos(json_path);
+    QI::CheckPos(jpath);
     // QI::CheckPos(out_path);
     QI::Info("Reading sequence parameters");
 
@@ -195,7 +200,7 @@ int parmesan_opt(args::Subparser &parser) {
     s0.fprep(0)  = 0;
     s0.Tprep(0)  = 1e-3;
 
-    PrepProblem<PrepModel> pp{s0, maxFA.Get(), maxB1prep.Get(), maxTprep.Get()};
+    PrepProblem<PrepModel> pp{s0, gauss, maxFA.Get(), maxB1prep.Get(), maxTprep.Get()};
     pp.vs = QI::RandomPars(PrepModel::lo, PrepModel::hi, N.Get());
     pagmo::problem    prob{pp};
     pagmo::population pop(prob, nPop.Get());
@@ -216,7 +221,7 @@ int parmesan_opt(args::Subparser &parser) {
         s0.fprep(ii + 1) = RoundDP(dv[3 * Nv + ii], 0);
     }
     auto j = json{{"PrepZTE", s0}};
-    QI::WriteJSON(json_path.Get(), j);
+    QI::WriteJSON(jpath.Get(), j);
     QI::Info("Finished.");
     return EXIT_SUCCESS;
 }
