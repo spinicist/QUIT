@@ -28,7 +28,7 @@
 using namespace std::literals;
 
 struct RamaniModel : QI::Model<double, double, 5, 3, 1, 2> {
-    QI::ZSpecSequence const &                  sequence;
+    QI::ZSpecSequence const                   &sequence;
     ParameterType const                        R1_b;
     QI::Lineshapes const                       lineshape;
     std::shared_ptr<QI::InterpLineshape> const interp = nullptr;
@@ -133,6 +133,7 @@ int qmt_main(args::Subparser &parser) {
         "Gaussian");
     args::ValueFlag<float> R1_b(
         parser, "R1b", "R1 (not T1) of the bound pool. Default 2.5s^-1", {'r', "R1b"}, 2.5f);
+    args::ValueFlag<float> hloss(parser, "H", "Huber Loss parameter (1)", {'h', "hloss"}, 1.f);
     parser.Parse();
     QI::CheckPos(mtsat_path);
     QI::Log(verbose, "Reading sequence information");
@@ -169,7 +170,7 @@ int qmt_main(args::Subparser &parser) {
                                               threads.Get(),
                                               subregion.Get());
     } else {
-        RamaniFitFunction fit{model};
+        RamaniFitFunction fit{model, hloss.Get()};
 
         auto fit_filter = QI::ModelFitFilter<RamaniFitFunction>::New(
             &fit, verbose, covar, resids, threads.Get(), subregion.Get());

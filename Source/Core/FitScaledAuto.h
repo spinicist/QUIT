@@ -13,17 +13,18 @@ template <typename ModelType_, typename FlagType_ = int> struct ScaledAutoDiffFi
     static const bool Blocked = false;
     static const bool Indexed = false;
 
-    ModelType model;
-    long      input_size(long const &i) const { return model.input_size(i); }
+    ModelType const model;
+    float const     huber_loss = 1.f;
+    long            input_size(long const &i) const { return model.input_size(i); }
 
     FitReturnType fit(std::vector<QI_ARRAY(InputType)> const &inputs,
-                      typename ModelType::FixedArray const &  fixed,
-                      typename ModelType::VaryingArray &      varying,
-                      typename ModelType::DerivedArray &      derived,
-                      typename ModelType::CovarArray *        cov,
-                      RMSErrorType &                          rmse,
-                      std::vector<QI_ARRAY(InputType)> &      residuals,
-                      FlagType &                              iterations) const {
+                      typename ModelType::FixedArray const   &fixed,
+                      typename ModelType::VaryingArray       &varying,
+                      typename ModelType::DerivedArray       &derived,
+                      typename ModelType::CovarArray         *cov,
+                      RMSErrorType                           &rmse,
+                      std::vector<QI_ARRAY(InputType)>       &residuals,
+                      FlagType                               &iterations) const {
         const double &scale = inputs[0].maxCoeff();
         if (scale < std::numeric_limits<double>::epsilon()) {
             varying = ModelType::VaryingArray::Zero();
@@ -36,7 +37,7 @@ template <typename ModelType_, typename FlagType_ = int> struct ScaledAutoDiffFi
         using AutoCost  = ceres::AutoDiffCostFunction<Cost, ceres::DYNAMIC, ModelType::NV>;
         auto *cost      = new Cost{this->model, fixed, data};
         auto *auto_cost = new AutoCost(cost, this->model.sequence.size());
-        auto *loss      = new ceres::HuberLoss(1.0);
+        auto *loss      = new ceres::HuberLoss(huber_loss);
         problem.AddResidualBlock(auto_cost, loss, varying.data());
         for (int i = 0; i < ModelType::NV; i++) {
             problem.SetParameterLowerBound(varying.data(), i, this->model.bounds_lo[i]);

@@ -79,7 +79,7 @@ extern args::Flag     verbose;
     args::ValueFlag<int>   threads(parser,                                                     \
                                  "THREADS",                                                  \
                                  "Use N threads (default=hardware limit or $QUIT_THREADS)",  \
-                                 {'T', "threads"},                                           \
+                                   {'T', "threads"},                                           \
                                  QI::GetDefaultThreads());                                   \
     args::ValueFlag<float> simulate(                                                           \
         parser, "SIMULATE", "Simulate sequence (argument is noise level)", {"simulate"}, 0.0); \
