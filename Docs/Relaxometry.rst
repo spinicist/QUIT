@@ -481,8 +481,8 @@ For regularly spaced echoes:
 
 * ``MPM_R2s.nii.gz`` - The R2* map. Same units as ``TE``.
 * ``MPM_S0_PDw.nii.gz`` - The PD-weighted signal at ``TE=0``.
-* ``MPM_S0_T1w.nii.gz`` - The PD-weighted signal at ``TE=0``.
-* ``MPM_S0_MTw.nii.gz`` - The PD-weighted signal at ``TE=0``.
+* ``MPM_S0_T1w.nii.gz`` - The T1-weighted signal at ``TE=0``.
+* ``MPM_S0_MTw.nii.gz`` - The MT-weighted signal at ``TE=0``.
 
 **References**
 
