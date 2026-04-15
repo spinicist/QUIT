@@ -16,7 +16,7 @@ The following commands are available:
 * `qi mpm_r2s`_
 * `qi ssfp_ellipse`_
 * `qi planet`_
-* `qi irtse` _
+* `qi irtse`_
 
 qi despot1
 ---------
@@ -532,15 +532,29 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. The length of ``PhaseInc``
 - `PLANET <http://dx.doi.org/10.1002/mrm.26717>`_
 
 qi planet
---------------
+---------
 
-Converts the SSFP Ellipse parameters into relaxation times.
+Converts the SSFP Ellipse parameters, i.e. the output of ``qi ssfp_ellipse``, into relaxation times.
 
 **Example Command Line**
 
 .. code-block:: bash
 
     qi planet ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
+
+**Example JSON File**
+
+.. code-block:: json
+
+    {
+        "SSFP": {
+            "TR": 0.005,
+            "PhaseInc": [0],
+            "FA": [12]
+        }
+    }
+
+The length of ``PhaseInc`` and ``FA`` must match, but the value of ``PhaseInc`` is unused. There should be one value of ``FA`` for each ellipse. This means a different input file is required than for ``ssfp_ellipse``.
 
 **Outputs**
 
@@ -553,7 +567,7 @@ Converts the SSFP Ellipse parameters into relaxation times.
 - `PLANET <http://dx.doi.org/10.1002/mrm.26717>`_
 
 qi irtse
---------------
+--------
 
 Calculates a T1 and M0 map from inversion recovery data.
 
