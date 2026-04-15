@@ -9,28 +9,30 @@ jobs:
   build:
     name: ${{matrix.config.name}}
     runs-on: ${{matrix.config.os}}
+    env:
+      VCPKG_CACHE_IMAGE: ${{matrix.config.cache_id}}
     strategy:
       fail-fast: false
       matrix:
         config:
         - {
           name: "Ubuntu 24.04 GCC", artifact: "qi-linux-ubuntu24.04.tar.gz",
-          os: ubuntu-24.04,
+          os: ubuntu-24.04, cache_id: ubuntu-24.04,
           cc: "gcc", cxx: "g++"
         }
         - {
           name: "Ubuntu 22.04 GCC", artifact: "qi-linux-ubuntu22.04.tar.gz",
-          os: ubuntu-22.04,
+          os: ubuntu-22.04, cache_id: ubuntu-22.04,
           cc: "gcc", cxx: "g++"
         }
         - {
           name: "Ubuntu 20.04 GCC", artifact: "qi-linux-ubuntu20.04.tar.gz",
-          os: ubuntu-20.04,
+          os: ubuntu-20.04, cache_id: ubuntu-20.04,
           cc: "gcc", cxx: "g++"
         }
         - {
           name: "macOS", artifact: "qi-macos.tar.gz",
-          os: macos-12,
+          os: macos-12, cache_id: macos-12,
           cc: "clang", cxx: "clang++"
         }
 
