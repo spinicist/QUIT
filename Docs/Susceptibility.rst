@@ -1,10 +1,46 @@
 Susceptibility
 ==============
 
-Susceptibility is a fundamental magnetic property of a material, and determines whether materials are paramagnetic (positive susceptibility) or diamagnetic (negative susceptibility). Quantitative Susceptibility Mapping (QSM) is a branch of MRI that aims to measure the susceptiblity of objects from the phase of the MR data. QUIT currently does not contain a full QSM processing pipeline, but does contain some phase unwrapping tools.
+Susceptibility is a fundamental magnetic property of a material, and determines whether materials are paramagnetic (positive susceptibility) or diamagnetic (negative susceptibility). Quantitative Susceptibility Mapping (QSM) is a branch of MRI that aims to measure the susceptiblity of objects from the phase of the MR data. QUIT currently does not contain a full QSM processing pipeline, but does contain tools for calculating fieldmaps and phase unwrapping.
 
+* `qi fieldmap`_
 * `qi unwrap_path`_
 * `qi unwrap_laplace`_
+
+qi fieldmap
+-----------
+
+Calculates a B0 fieldmap from multi-echo GRE complex data by computing the phase difference between consecutive echoes.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi fieldmap multi_echo_gre.nii.gz --delta_te=2.0 --out=my_fieldmap < input.json
+
+The input file should be complex-valued multi-echo GRE data. Does not read input from ``stdin``.
+
+*Important Options*
+
+* ``--delta_te``
+
+    The echo time difference between consecutive echoes, in milliseconds. Required.
+
+* ``--B0``
+
+    Field-strength in Tesla. If specified, the output will be in PPM instead of Hertz.
+
+* ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).
+
+* ``--out, -o``
+
+    Add a prefix to output filenames.
+
+**Outputs**
+
+* ``Fieldmap.nii.gz`` - The fieldmap in Hertz (or PPM if ``--B0`` is specified).
 
 qi unwrap_path
 --------------
@@ -17,11 +53,21 @@ An implementation of the quality-guided path-based unwrapping of Abdul-Rahman et
 
     qi unwrap_path phase_file.nii.gz
 
-The phase file must be specified in radians (i.e. between :math:`-\pi` and :math:`+\pi`). Does not read input from ``stdin``, and currently there are no arguments to control the algorithms behaviour.
+The phase file must be specified in radians (i.e. between :math:`-\pi` and :math:`+\pi`). Does not read input from ``stdin``.
 
 **Outputs**
 
-* ``input_unwrapped.nii.gz`` - The unwrapped phase value, in radians.
+* ``{input}_unwrapped.nii.gz`` - The unwrapped phase value, in radians.
+
+*Important Options*
+
+* ``--out, -o``
+
+    Change the output filename prefix.
+
+* ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).
 
 **References**
 
@@ -43,7 +89,7 @@ The phase file must be specified in radians (i.e. between -pi and +pi). Does not
 
 **Outputs**
 
-* ``input_unwrapped.nii.gz`` The unwrapped phase, in radians.
+* ``{input}_unwrap.nii.gz`` - The unwrapped phase, in radians.
 
 **Important Options**
 
@@ -54,6 +100,18 @@ The phase file must be specified in radians (i.e. between -pi and +pi). Does not
 * ``--erode, -e``
 
     Radius to erode the input mask by (default 1 mm).
+
+* ``--debug, -d``
+
+    Output intermediate debugging images showing the unwrapping steps.
+
+* ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).
+
+* ``--out, -o``
+
+    Add a prefix to output filenames.
 
 **References**
 

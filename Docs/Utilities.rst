@@ -5,13 +5,16 @@ QUIT contains a number of utilities. Note that these are actually compiled in tw
 
 
 * `qi affine`_
+* `qi affine_angle`_
 * `qi coil_combine`_
 * `qi complex`_
 * `qi diff`_
+* `qi gradient`_
 * `qi hdr`_
 * `qi kfilter`_
 * `qi mask`_
 * `qi newimage`_
+* `qi noise_est`_
 * `qi pca`_
 * `qi polyfit/qi polyimg`_
 * `qi rfprofile`_
@@ -29,7 +32,7 @@ This tool applies simple affine transformations to the header data of an image, 
 
 .. code-block:: bash
 
-    qi affine input_image.nii.gz --scale=10.0 --rotX=90
+    qi affine input_image.nii.gz --scale=10.0 --rotate=90,0,0
 
 If no output image is specified, the output will be written back to the input filename.
 
@@ -37,19 +40,31 @@ If no output image is specified, the output will be written back to the input fi
 
 - ``--scale, -s``
 
-    Multiply the voxel spacing by a constant factor.
+    Multiply the voxel spacing by a constant factor. Default is 1.0.
 
-- ``--rotX, --rotY, --rotZ``
+- ``--rotate``
 
-    Rotate about the specified axis by the specified number of degrees. Note that currently, each rotation can only be specified once and the order will always be X, Y, then Z.
+    Rotate by Euler angles around X,Y,Z axes (degrees). E.g. ``--rotate=90,0,0`` for 90 degrees around X.
 
-- ``--offX, --offY, --offZ``
+- ``--trans``
 
-    Add the specified offset to the origin.
+    Translate image by X,Y,Z (mm). E.g. ``--trans=0,0,5``.
 
 - ``--center, -c``
 
-    Set the image origin to be the Center of Gravity of the image.
+    Set the image origin. Argument must be ``geo`` (geometric center) or ``cog`` (center of gravity).
+
+- ``--permute``
+
+    Permute axes in data-space, e.g. ``2,0,1``. Negative values mean flip as well.
+
+- ``--flip``
+
+    Flip axes in data-space, e.g. ``0,1,0``. Occurs after any permutation.
+
+- ``--tfm, -t``
+
+    Write out the transformation to a file.
 
 qi complex
 ---------
@@ -66,9 +81,9 @@ Lower case arguments ``--mag, -m, --pha, -p, --real, -r, --imag, -i, --complex, 
 
 Upper case arguments ``--MAG, -M, --PHA, -P, --REAL, -R, --IMAG, -I, --COMPLEX, -X`` are outputs, any or all of which can be specified.
 
-An additional input argument, ``--realimag`` is for Bruker "complex" data, which consists of all real volumes followed by all imaginary volumes, instead of a true complex datatype.
+An additional input argument, ``--realimag`` (short ``-l``) is for Bruker "complex" data, which consists of all real volumes followed by all imaginary volumes, instead of a true complex datatype. Another input option, ``--interleaved``, is for dcm2niix interleaved real/imaginary data.
 
-The ``--fixge`` argument fixes the lack of an FFT shift in the slab direction on GE data by multiplying alternate slices by -1. ``--negate`` multiplies the entire volume by -1. ``--double`` reads and writes double precision data instead of floats.
+The ``--fixge`` argument fixes the lack of an FFT shift in the slab direction on GE data by multiplying alternate slices by -1. ``--negate`` multiplies the entire volume by -1. ``--conjugate`` takes the complex conjugate of the data. ``--double`` reads and writes double precision data instead of floats.
 
 qi coil_combine
 ---------------
@@ -96,12 +111,20 @@ Both the input multi-coil file and the reference file must be complex valued. Do
 
 * ``--coils, -C``
 
-    If your input data is a timeseries consisting of multiple volumes, then use this option to specify the number of coils used in the acquisition. Must match the number of volumes in the reference image. Does not currently work with the Hammond method.
+    Specify the number of coils. Used with the Hammond method. Default is the number of volumes in the input.
 
 
 * ``--region, -r``
 
     The reference region for the Hammond method. Default is an 8x8x8 cube in the center of the acquisition volume.
+
+* ``--vol, -V``
+
+    Volume to use as reference for the Hammond method. Default is 1.
+
+* ``--out, -o``
+
+    Add a prefix to output filenames.
 
 **References**
 
@@ -126,9 +149,13 @@ Multiple files can be queried at the same time. The ``--verbose`` flag will make
 
 If any of the following options are specified, then only those fields will be printed instead of the full header. This is useful if you want to use a header field in a script:
 * ``--origin, -o``
-* ``--spacing, -S`` - The voxel spacing
-* ``--size, -s`` - The matrix size
+* ``--direction, -d`` - Print the image direction/orientation matrix
+* ``--spacing, -S`` - The voxel spacing (optionally specify a single dimension)
+* ``--size, -s`` - The matrix size (optionally specify a single dimension)
 * ``--voxvol, -v`` - The volume of one voxel
+* ``--dtype, -T`` - Print the data type
+* ``--dims, -D`` - Print the number of dimensions
+* ``--3D, -3`` - Treat input as 3D (discard higher dimensions)
 
 Another useful option is ``--meta, -m``. This will let you query specific image meta-data from the header. You must know the exact name of the meta-data field you wish to obtain.
 
@@ -151,7 +178,7 @@ MR images often required smoothing or filtering. While this is best done during 
 
 - ``--filter,-f``
 
-    Specify the filter to use. For all filters below the value \(r\) is the fractional distance from k-Space center, i.e. :math:`r = \sqrt(((k_x / s_x)^2 + (k_y / s_y)^2 + (k_z / s_z)^2) / 3)`. Valid filters are:
+    Specify the filter to use. Default is Tukey. For all filters below the value \(r\) is the fractional distance from k-Space center, i.e. :math:`r = \sqrt(((k_x / s_x)^2 + (k_y / s_y)^2 + (k_z / s_z)^2) / 3)`. Valid filters are:
 
     - ``Tukey,a,q``
 
@@ -182,6 +209,26 @@ MR images often required smoothing or filtering. While this is best done during 
 - ``--complex_in`` and ``--complex_out``
 
     Read / write complex data.
+
+- ``--zero_pad, -z``
+
+    Zero-pad volume by N voxels in each direction. Default is 0.
+
+- ``--highpass``
+
+    Use a high-pass filter instead of the default low-pass.
+
+- ``--save_kernel``
+
+    Save filter kernels as images.
+
+- ``--save_kspace``
+
+    Save k-space before and after filtering.
+
+- ``--out, -o``
+
+    Change output filename prefix.
 
 qi mask
 ------
@@ -218,6 +265,22 @@ In this case an intensity value of 10 will be used as the threshold, RATs will b
 
     Fill holes in the mask up to radius N voxels.
 
+- ``--out, -o``
+
+    Set output filename. Default is input filename with ``_mask`` suffix.
+
+- ``--vol``
+
+    Choose which volume to mask. Default is 0. -1 selects the last volume.
+
+- ``--complex, -x``
+
+    Input data is complex, take magnitude first before masking.
+
+- ``--rats_radius``
+
+    Starting radius for the RATS algorithm. Default is 1.
+
 **References**
 
 - `RATs algorithm <http://dx.doi.org/10.1016/j.jneumeth.2013.09.021>`_
@@ -231,21 +294,29 @@ Denoise a 4D dataset by applying PCA on the time dimension and then retaining a 
 
 .. code-block:: bash
 
-    qi pca images.nii.gz --nretain=4 --mask=mask.nii.gz
+    qi pca images.nii.gz --retain=4 --mask=mask.nii.gz
 
 **Important Options**
 
-- ``--nretain=N``
+- ``--retain, -r``
 
     The number of PCs to retain (default 3)
 
-- ``--project=filename.nii.gz``
+- ``--project, -p``
 
     Save the projection of the dataset onto the PCs (basis images) into the specified file
 
-- ``--save_pcs=filename.json``
+- ``--save_pcs, -s``
 
     Save the PCs into the specified JSON file
+
+- ``--mask, -m``
+
+    Only process voxels within the specified mask.
+
+- ``--out, -o``
+
+    Change output filename.
 
 **Outputs**
 
@@ -270,20 +341,28 @@ With the above command-line the output of ``qi polyfit`` is piped directly to th
 
 - ``--order, -o``
 
-    The order of the fitted polynomial. Default is 2 (quadratic)
+    The order of the fitted polynomial. Default is 4 for ``qi polyfit`` and 2 for ``qi polyimg``.
 
 - ``--mask, -m``
 
     Only fit the data within a mask. This is usually the brain or only white-matter.
 
-- ``--robust`` (``qi polyimg`` only)
+- ``--robust, -r`` (``qi polyfit`` only)
 
     Use Robust Polynomial Fitting with Huber weights. There is a good discussion of this topic in the Matlab help files.
+
+- ``--print-terms`` (``qi polyfit`` only)
+
+    Print out the polynomial terms.
+
+- ``--json`` (``qi polyimg`` only)
+
+    Read polynomial coefficients from a JSON file instead of stdin.
 
 qi rfprofile
 ------------
 
-This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excitation slab profile from ``stdin``. The two are multiplied together along the slab direction (assumed to be Z), to produce a relative flip-angle or B1 map.
+This utility takes a B1+ (transmit field inhomogeneity) map, and reads an excitation slab profile from ``stdin``. The two are multiplied together along the slab direction (default Z), to produce a relative flip-angle or B1 map.
 
 **Example Command Line**
 
@@ -309,6 +388,28 @@ These values should be generated with a Bloch simulation. Internally, they are u
 
 * ``output_b1map.nii.gz`` - The relative flip-angle/B1 map
 
+*Important Options*
+
+* ``--mask, -m``
+
+    Only process voxels within the specified mask.
+
+* ``--center, -c``
+
+    Set the slab center to the mask center of gravity.
+
+* ``--dim``
+
+    Which dimension to calculate the profile over. Default is 2 (Z).
+
+* ``--subregion, -s``
+
+    Process a subregion starting at I,J,K with size SI,SJ,SK.
+
+* ``--json``
+
+    Read JSON input from a file instead of stdin.
+
 qi ssfp_bands
 -------------
 
@@ -318,7 +419,7 @@ There are several different methods for removing SSFP bands in the literature. M
 
 .. code-block:: bash
 
-    qi ssfpbands ssfp.nii.gz --method=G --2pass --magnitude
+    qi ssfp_bands ssfp.nii.gz --method=G --2pass --magnitude
 
 The SSFP file must be complex-valued to use the Geometric Solution or Complex Average methods. For the other methods magnitude data is sufficient. Phase-increments should be in opposing pairs, e.g. 180 & 0 degrees, 90 & 270 degrees. These should either be ordered in two blocks, e.g. 180, 90, 0, 270, or alternating, e.g. 180, 0, 90, 270.
 
@@ -364,6 +465,18 @@ The output filename is the input filename with a suffix that will depend on the 
 
     The data order is phase-increment varying fastest, flip-angle slowest. The default is the opposite.
 
+- ``--magnitude``
+
+    Output a magnitude image only.
+
+- ``--mask, -m``
+
+    Only process voxels within the specified mask. Used with the 2-pass filter.
+
+- ``--out, -o``
+
+    Change output filename prefix.
+
 **References**
 
 - `Geometric Solution <http://doi.wiley.com/10.1002/mrm.25098>`_
@@ -371,7 +484,7 @@ The output filename is the input filename with a suffix that will depend on the 
 qi diff
 ------
 
-Calculates the mean square difference between two images and checks if it is below a tolerance value. Used in the QUIT tests to ensure that calculated parameter maps are close to their baseline values.
+Calculates the mean square difference between two images. Used in the QUIT tests to ensure that calculated parameter maps are close to their baseline values.
 
 **Example Command Line**
 
@@ -379,7 +492,7 @@ Calculates the mean square difference between two images and checks if it is bel
 
     qi diff --baseline=original.nii --input=calculated.nii --noise=0.01
 
-The command returns the dimensionless noise factor on `stdout`, which is read by the test suite. Note, to make useage clearer, unlike most other QUIT commands all input is specified as arguments.
+The command returns the dimensionless noise factor on ``stdout``, which is read by the test suite. Note, to make usage clearer, unlike most other QUIT commands all input is specified as arguments.
 
 **Important Options**
 
@@ -387,17 +500,13 @@ The command returns the dimensionless noise factor on `stdout`, which is read by
 
     The baseline image. Required.
 
-- ``--image``
+- ``--input``
 
     The image to compare to the baseline. Required.
 
 - ``--noise``
 
-    The added noise level.
-
-- ``--tolerance``
-
-    The tolerance is relative to the added noise level (i.e. it is a noise amplification factor).
+    The added noise level. Default is 0.
 
 - ``--abs, -a``
 
@@ -412,7 +521,7 @@ Creates new images filled with specified patterns. Used for generating test data
 
 .. code-block:: bash
 
-    qi newimage --size 32,32,32 --grad "0 0.5 1.5" output_image.nii.gz
+    qi newimage --size 32,32,32 --grad_dim 0 --grad_vals 0.5,1.5 output_image.nii.gz
 
 The file specified on the command line is the *output* file.
 
@@ -420,7 +529,7 @@ The file specified on the command line is the *output* file.
 
 - ``--dims, -d``
 
-    The output dimension. Valid values are 3 and 4.
+    The output dimension. Valid values are 3 and 4. Default is 3.
 
 - ``--size, -s``
 
@@ -430,17 +539,94 @@ The file specified on the command line is the *output* file.
 
     Set all voxels in the image to the specified value.
 
-- ``--grad, -g "DIM,LOW,HIGH"``
+- ``--grad_dim, -g``
 
-    Fill voxels with a gradient along the specified dimension, starting at the low value at one edge and finishing at the high value on the other. It is recommended to encase ``DIM,LOW,HIGH`` with quotation marks as they must be passed as a single string to be interpreted properly.
+    The dimension along which to fill with a gradient.
 
-- ``--step, -t "DIM,LOW,HIGH,STEPS"``
+- ``--grad_vals, -v``
 
-    Similar to ``--grad``, but instead of a smooth gradient will with a number of discrete steps.
+    The low and high values for the gradient, comma-separated. E.g. ``--grad_vals 0.5,1.5``.
+
+- ``--steps, -t``
+
+    Number of discrete steps for the gradient. Default is 1 (smooth).
+
+- ``--spacing, -p``
+
+    Voxel spacing, comma-separated for each dimension.
+
+- ``--origin, -o``
+
+    Image origin, comma-separated.
 
 - ``--wrap, -w``
 
     Wrap output voxels at the specified value. Useful for simulating phase data.
+
+qi affine_angle
+--------------
+
+Calculates the angle between the Z-axis and the transformed Z-axis from one or more transform files. This is useful for verifying the orientation of transform compositions.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi affine_angle transform1.tfm transform2.tfm
+
+Multiple transform files can be specified. Prefix a filename with ``^`` to use the inverse of that transform. All transforms are composed and the resulting angle (in degrees) is printed to stdout.
+
+qi gradient
+-----------
+
+Calculates the derivative of a 3D image along each axis using ``itk::DerivativeImageFilter``.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi gradient input_file.nii.gz
+
+**Outputs**
+
+Three images are written with suffixes ``_gradx``, ``_grady``, and ``_gradz``.
+
+*Important Options*
+
+* ``--out, -o``
+
+    Change output filename prefix.
+
+* ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).
+
+qi noise_est
+------------
+
+Estimates noise statistics from a 4D image within a specified region or mask. Outputs noise mean, standard deviation, and sigma to stdout.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi noise_est 4d_file.nii.gz --mask=mask.nii.gz
+
+Either ``--region`` or ``--mask`` must be specified.
+
+*Important Options*
+
+* ``--region, -r``
+
+    Measure noise in the specified region.
+
+* ``--mask, -m``
+
+    Measure noise within the specified mask.
+
+* ``--meansqr``
+
+    Return the mean of squared values instead of sigma. Useful for Rician noise correction.
 
 qi select
 ---------
@@ -468,9 +654,33 @@ Applies `Total Generalized Variation <http://doi.wiley.com/10.1002/mrm.22595>`_ 
 
 **Important Options**
 
-- ``--alpha``
+- ``--alpha, -a``
 
-    The regularization parameter. A value of 2e-5 seems to work well with typical images from a GE scanner.
+    The regularization parameter. Default is 1e-5. A value of 2e-5 seems to work well with typical images from a GE scanner.
+
+- ``--max_its, -i``
+
+    Maximum number of iterations. Default is 16.
+
+- ``--thresh``
+
+    Threshold for termination. Default is 1e-10.
+
+- ``--reduce, -r``
+
+    Reduce alpha by this factor. Default is 1.0.
+
+- ``--step``
+
+    Inverse of step size. Default is 8.0.
+
+- ``--complex, -x``
+
+    Input is complex valued.
+
+- ``--out, -o``
+
+    Change output filename.
 
 qi tvmask
 ---------
@@ -485,6 +695,14 @@ Calculate a mask by thresholding the Total Variation in a 4D image.
 
 **Important Options**
 
-- ``--thresh``
+- ``--thresh, -t``
 
-    The threshold on the TV to define the mask.
+    The threshold on the TV to define the mask. Default is 2.0.
+
+- ``--out, -o``
+
+    Change output filename prefix.
+
+- ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).

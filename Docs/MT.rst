@@ -9,6 +9,7 @@ MR voxels often contain complex microstructure with multiple different component
 * `qi mtsat`_
 * `qi ssfp_emt`_
 * `qi qmt`_
+* `qi zspec_b1`_
 * `qi zspec_interp`_
 
 qi lineshape
@@ -28,15 +29,23 @@ The output will be written to the file specified on the command-line (in this ca
 
 * ``--lineshape, -l``
 
-    Choose from a Gaussian, a Lorentzian or the Super-Lorentzian
+    Choose from a Gaussian, a Lorentzian or the Super-Lorentzian. Default is Gaussian.
 
 * ``--T2b, -t``
 
-    Specify the nominal T2 of the lineshape. During fitting in `qi qmt`_ scaling will be used to find the actual value. Should be specified in seconds.
+    Specify the nominal T2 of the lineshape. During fitting in `qi qmt`_ scaling will be used to find the actual value. Should be specified in seconds. Default is 10e-6 (10 us).
 
-* ``--frq_count``, ``--frq_start``, ``--frq_space``
+* ``--frq_count, -n``
 
-    These Control the position and number of samples to take on the lineshape. ``frq_start`` and ``frq_space`` should be in Hertz.
+    Number of frequency samples. Default is 10.
+
+* ``--frq_start, -s``
+
+    First saturation frequency, in Hertz. Default is 1000.
+
+* ``--frq_space, -p``
+
+    Spacing of frequencies, in Hertz. Default is 1000.
 
 qi qmt
 ------
@@ -79,13 +88,33 @@ Note that the T1 map argument is required input to stabilise the fitting.
 - ``QMT_T1_f.nii.gz`` - T1 of the free pool
 - ``QMT_T2_f.nii.gz`` - T2 of the free pool
 - ``QMT_T2_b.nii.gz`` - T2 of the bound pool
-- ``QMT_PD.nii.gz`` - The apparent Proton Density / size of the free pool
+- ``QMT_M0_f.nii.gz`` - The apparent Proton Density / size of the free pool
 
 *Important Options*
 
 * ``--R1b, -r``
 
     Specify the relaxation rate of the bound pool. Default is 2.5 per second.
+
+* ``--T1``
+
+    Path to a T1 map (in seconds). Required input to stabilise the fitting.
+
+* ``--f0, -f``
+
+    Path to an off-resonance map (in Hertz).
+
+* ``--B1, -b``
+
+    Path to a B1 map (ratio).
+
+* ``--lineshape, -l``
+
+    Specify the lineshape to use: Gaussian, Lorentzian, Superlorentzian, or a path to a JSON lineshape file. Default is Gaussian.
+
+* ``--hloss, -h``
+
+    Huber Loss parameter. Default is 1.0.
 
 **References**
 
@@ -131,7 +160,50 @@ The off-resonance map units must match the input frequencies (e.g. either PPM or
 
 * ``-a, --asym``
 
-    Output asymmetry (:math`Z(+f) - Z(-f)`) values.
+    Output asymmetry (:math:`Z(-f) - Z(+f)`) values.
+
+* ``--ref, -r``
+
+    Divide output by reference image and multiply by 100 to output percentages.
+
+* ``--mask, -m``
+
+    Only process voxels within the specified mask.
+
+qi zspec_b1
+-----------
+
+Corrects Z-spectra for B1 inhomogeneity using linear regression across multiple B1 levels.
+
+**Example Command Line**
+
+.. code-block:: bash
+
+    qi zspec_b1 b1_map.nii.gz zspec_b1level1.nii.gz zspec_b1level2.nii.gz zspec_b1level3.nii.gz < input.json
+
+The first positional argument is a B1 map. Subsequent arguments are Z-spectrum files, one for each B1 level. The number of input files must match the length of ``b1_rms`` in the JSON.
+
+**Example JSON File**
+
+.. code-block:: json
+
+    {
+        "b1_rms": [1.0, 2.0, 3.0]
+    }
+
+**Outputs**
+
+* ``{input}_b1.nii.gz`` - The B1-corrected Z-spectrum.
+
+*Important Options*
+
+* ``--out, -o``
+
+    Change output suffix. Default is ``_b1``.
+
+* ``--mask, -m``
+
+    Only process voxels within the specified mask.
 
 qi lorentzian
 -------------
@@ -161,7 +233,7 @@ The Z-spectrum must be a 4D file with each volume acquired at a different offset
             "TR": 4,
             "FA": 5,
             "sat_f0": [0, 1, 2, 3, 4, 5],
-            "sat_angle": [180, 180, 180, 180, 180],
+            "sat_angle": [180, 180, 180, 180, 180, 180]
         },
         "pools" :
         [
@@ -181,9 +253,13 @@ The Z-spectrum must be a 4D file with each volume acquired at a different offset
         ]
     }
 
-The input needs to include both the sequence parameters and the characteristics of the Lorentzian "pools" that you wish to fit. Currently the only important information used from the sequence are the saturation offsets, and optionally the bandwidth of the pulse. For each pool a name is required, and then triples of values representing the starting, lower and upper bound for the center frequency ``df0``, the Full-Width Half-Maximum ``fwhm`` and amplitude ``A`` of the Lorentzian. You can also specify that the modified Lorentzian including the pulse bandwidth should be used `"use_bandwith" : True`. See the reference for details.
+The input needs to include both the sequence parameters and the characteristics of the Lorentzian "pools" that you wish to fit. Currently the only important information used from the sequence are the saturation offsets, and optionally the bandwidth of the pulse. For each pool a name is required, and then triples of values representing the starting, lower and upper bound for the center frequency ``df0``, the Full-Width Half-Maximum ``fwhm`` and amplitude ``A`` of the Lorentzian. You can also specify that the modified Lorentzian including the pulse bandwidth should be used ``"use_bandwidth": True``. See the reference for details.
 
 *Important Options*
+
+* ``--pools, -p``
+
+    Number of Lorentzian pools to fit. Default is 1.
 
 * ``--add, -a``
 
@@ -196,11 +272,11 @@ The input needs to include both the sequence parameters and the characteristics 
 
 **Outputs**
 
-For each pool three outputs will be written, prefixed by the pool name. For a single pool representing direct-saturation (DS), the following will be written:
+For each pool three outputs will be written, with an ``LTZ_`` prefix followed by the pool name. For a single pool representing direct-saturation (DS), the following will be written:
 
-* ``DS_f0.nii.gz``  - The center frequency of the fitted Lorentzian.
-* ``DS_fwhm.nii.gz``   - The width of the fitted Lorentzian.
-* ``DS_A.nii.gz`` - The amplitdue of the fitted Lorentzian.
+* ``LTZ_DS_f0.nii.gz``  - The center frequency of the fitted Lorentzian.
+* ``LTZ_DS_fwhm.nii.gz``   - The width of the fitted Lorentzian.
+* ``LTZ_DS_A.nii.gz`` - The amplitude of the fitted Lorentzian.
 
 **References**
 
@@ -232,7 +308,13 @@ By default only the MTR is calculated, assuming that the input contains one MT-w
       ]
     }
 
-The fields `ref`, `add`, `sub` refer to the indices of volumes that should be used as a reference, added or subtracted. `reverse` means that the contrast is reversed, i.e. it should be subtracted from the reference value before output (which is standard for MTR because it is a negative quantity).
+The fields `ref`, `add`, `sub` refer to the indices of volumes that should be used as a reference, added or subtracted. `reverse` means that the contrast is reversed, i.e. it should be subtracted from the reference value before output (which is standard for MTR because it is a negative quantity). Additional supported fields are `scale` (a multiplicative factor, default 1.0) and `inverse` (boolean, default false). When `inverse` is true, harmonic means are used for averaging and the difference is multiplied by the reference instead of divided. An index of -1 in `ref` will use an external reference image specified with ``--ref``.
+
+*Important Options*
+
+* ``--ref, -r``
+
+    Specify an external reference image. Can be used in contrast definitions with a ref index of -1.
 
 **Outputs**
 
@@ -275,7 +357,7 @@ Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and t
 **Outputs**
 
 - ``MTSat_R1.nii.gz`` - Apparent longitudinal relaxation rate
-- ``MTSat_S0.nii.gz`` - Apparent proton density / equilibrium magnetization
+- ``MTSat_PD.nii.gz`` - Apparent proton density / equilibrium magnetization
 - ``MTSat_delta.nii.gz`` - MT-Sat parameter, see above.
 
 *Important Options*
@@ -283,6 +365,22 @@ Implementation of Gunther Helm's MT-Sat method. Calculates R1, apparent PD and t
 * ``--smallangle, -s``
 
     If this flag is specified, use the small flip angle approximation from the original Helms et al paper. Else, do not use the approximation, as suggested in Edwards et al (default).
+
+* ``--B1, -b``
+
+    Path to a B1 map (ratio).
+
+* ``--C, -C``
+
+    Correction factor for delta. Default is 0.4.
+
+* ``--delta-max, -d``
+
+    Clamp delta values above this value (percentage). Default is 10.
+
+* ``--r1-max, -r``
+
+    Clamp R1 values above this value (per second). Default is 10.
 
 **References**
 
@@ -301,13 +399,36 @@ Due to the short TR commonly used with SSFP, at high flip-angles the sequence be
 
     qi ssfp_emt ES_G.nii.gz ES_a.nii.gz ES_b.nii.gz
 
+**Example JSON File**
+
+.. code-block:: json
+
+    {
+        "SSFPMT": {
+            "FA": [15, 35],
+            "TR": 0.005,
+            "Trf": 0.002,
+            "pulse": { "name": "Gauss", "bandwidth": 100, "p1": 0.416, "p2": 0.295 }
+        }
+    }
+
 **Outputs**
 
-- ``EMT_T1f.nii.gz`` - Longitudinal relaxation time of the free water bool
-- ``EMT_T2f.nii.gz`` - Transverse relaxation time of the free water pool
-- ``EMT_M0.nii.gz`` - Apparent Proton Density
-- ``EMT_F.nii.gz`` - Bound pool fraction
-- ``EMT_kf.nii.gz`` - Forward exchange rate
+- ``EMT_T1_f.nii.gz`` - Longitudinal relaxation time of the free water pool
+- ``EMT_T2_f.nii.gz`` - Transverse relaxation time of the free water pool
+- ``EMT_PD.nii.gz`` - Apparent Proton Density
+- ``EMT_f_b.nii.gz`` - Bound pool fraction
+- ``EMT_k_bf.nii.gz`` - Forward exchange rate
+
+*Important Options*
+
+* ``--B1, -b``
+
+    Path to a B1 map (ratio).
+
+* ``--G0``
+
+    Lineshape value at resonance. Default is 1.4e-5.
 
 **References**
 

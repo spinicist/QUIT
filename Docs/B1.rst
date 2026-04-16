@@ -25,6 +25,7 @@ Does not read any input from ``stdin``. The input file should contain two volume
 **Outputs**
 
 * ``AFI_B1.nii.gz`` - The relative flip-angle map.
+* ``AFI_angle.nii.gz`` - The actual achieved angle in each voxel. Only written if ``--save`` is specified.
 
 *Important Options*
 
@@ -38,7 +39,15 @@ Does not read any input from ``stdin``. The input file should contain two volume
 
 * ``--save, -s``
 
-    Output AFI_angle.nii.gz, the actual achieved angle in each voxel.
+    Output ``AFI_angle.nii.gz``, the actual achieved angle in each voxel.
+
+* ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).
+
+* ``--out, -o``
+
+    Add a prefix to output filenames.
 
 **References**
 
@@ -72,9 +81,23 @@ Does not read any input from `stdin`. The input file should contain two volumes,
 
 * ``--order, -O``
 
+    Specify the volume order. Default is ``f``.
+
     * f - FID is the first volume, STE is second
     * s - STE is the first volume, FID is second
     * v - VST (Virtual Stimulated Echo) is the first volume, FID is second
+
+* ``--mask, -m``
+
+    Only process voxels within the specified mask.
+
+* ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).
+
+* ``--out, -o``
+
+    Add a prefix to output filenames.
 
 **References**
 
@@ -97,6 +120,16 @@ Does not read any input from ``stdin``. The input file should contain two volume
 **Outputs**
 
 * ``B1minus.nii.gz`` - The relative receive coil intensity. Images should be divided by this to correct for receive coil profile.
+
+*Important Options*
+
+* ``--threads, -T``
+
+    Use N threads (default is hardware limit or ``$QUIT_THREADS``).
+
+* ``--out, -o``
+
+    Add a prefix to output filenames.
 
 **References**
 

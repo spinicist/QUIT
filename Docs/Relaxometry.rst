@@ -58,6 +58,10 @@ This command implements the classic Driven Equilibrium Single-Pulse Observation 
 
     This specifies which precise algorithm to use. There are 3 choices, classic linear least-squares (l), weighted linear least-squares (w), and non-linear least-squares (n). If you only have 2 flip-angles then LLS is the only meaningful choice. The other 2 choices should produce better (less noisy, more accurate) T1 maps when you have more input flip-angles. WLLS is faster than NLLS for the same number of iterations. However, modern processors are sufficiently powerful that the difference is bearable. Hence NLLS is recommended for the highest possible quality.
 
+* ``--its, -i``
+
+    Maximum iterations for WLLS/NLLS algorithms. Default is 15.
+
 **References**
 
 - `Christen et al, the original paper <http://pubs.acs.org/doi/abs/10.1021/j100612a022>`_
@@ -95,7 +99,13 @@ This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / I
         }
     }
 
-For the MPRAGE sequence, the TR is the spacing between readouts/echoes, not the overall segment TR. TI is the Inversion Time, and TD is the Delay Time after the echo-train (often 0). Eta is the Inversion Efficiency, which should be set to 1. ETL is the Echo-Train Length - usually the number of phase encode steps in one segment. k0 defines the position in the echo-train that the center line of k-space is acquired. This is 0 for centric acquisition and ETL/2 for linear.
+For the MPRAGE sequence, the TR is the spacing between readouts/echoes, not the overall segment TR. TI is the Inversion Time, and TD is the Delay Time after the echo-train (often 0). Eta is the Inversion Efficiency. Note that this value is currently hardcoded to -1.0 in the source code and the JSON value is ignored. ETL is the Echo-Train Length - usually the number of phase encode steps in one segment. k0 defines the position in the echo-train that the center line of k-space is acquired. This is 0 for centric acquisition and ETL/2 for linear.
+
+*Important Options*
+
+* ``--clamp, -c``
+
+    Clamp output T1 values to this value.
 
 **Outputs**
 
@@ -119,7 +129,7 @@ DESPOT2 uses SSFP data and a separate T1 map to calculate T2, using the same mat
 
 .. code-block:: bash
 
-    qi despot2 t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
+    qi despot2 input_file.nii.gz --T1=t1_map.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 
 **Example JSON File**
 
@@ -133,7 +143,7 @@ DESPOT2 uses SSFP data and a separate T1 map to calculate T2, using the same mat
         }
     }
 
-Both ``PhaseInc`` and ``FA`` are measured in degrees. If the ellipse option is specified, then the sequence type must be ``SSFPGS``, which does not require a ``PhaseInc``. The units of ``TR`` must match the input T1 map.
+Both ``PhaseInc`` and ``FA`` are measured in degrees. The ``SSFP`` sequence type always requires a ``PhaseInc`` entry, even when using the ``--gs`` option. The units of ``TR`` must match the input T1 map.
 
 **Outputs**
 
@@ -150,9 +160,13 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. If the ellipse option is s
 
     This specifies which precise algorithm to use. There are 3 choices, classic linear least-squares (l), weighted linear least-squares (w), and non-linear least-squares (n). If you only have 2 flip-angles then LLS is the only meaningful choice. The other 2 choices should produce better (less noisy, more accurate) T1 maps when you have more input flip-angles. WLLS is faster than NLLS for the same number of iterations. However, modern processors are sufficiently powerful that the difference is bearable. Hence NLLS is recommended for the highest possible quality.
 
-* ``--ellipse, -e``
+* ``--gs, -g``
 
-    This specifies that the input data is the SSFP Ellipse Geometric Solution, i.e. that multiple phase-increment data has already been combined to produce band free images.
+    This specifies that the input data is the SSFP Ellipse Geometric Solution, i.e. that multiple phase-increment data has already been combined to produce band free images. When this option is specified, the elliptical signal equation is used.
+
+* ``--its, -i``
+
+    Maximum iterations for WLLS/NLLS algorithms. Default is 15.
 
 **References**
 
@@ -167,7 +181,7 @@ DESPOT2-FM uses SSFP data with mulitple phase-increments (also called phase-cycl
 
 .. code-block:: bash
 
-    qi despot2fm t1_map.nii.gz input_file.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
+    qi despot2fm input_file.nii.gz --T1=t1_map.nii.gz --mask=mask_file.nii.gz --B1=b1_file.nii.gz < input.json
 
 The input file should contain all SSFP images concatenated together as a 4D file. The preferred ordering is flip-angle, then phase-increment (i.e. all flip-angles at one phase-increment, then all flip-angles at the next phase-increment).
 
@@ -189,6 +203,7 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. The length of ``PhaseInc``
 
 * ``FM_T2.nii.gz`` - The T2 map. Units are the same as those used for TR in the input.
 * ``FM_PD.nii.gz`` - The apparent Proton Density map. No units. Will be corrected for T2 decay at the echo time.
+* ``FM_f0.nii.gz`` - The off-resonance frequency map.
 
 *Important Options*
 
@@ -199,6 +214,10 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. The length of ``PhaseInc``
 * ``--asym, -A``
 
     With the commonly used phase-increments of 180 and 0 degrees, due to symmetries in the SSFP magnitude profile, it is not possible to distinguish positive and negative off-resonance. Hence by default ``qi despot2fm`` only tries to fit for positive off-resonance frequences. If you acquire most phase-increments, e.g. 180, 0, 90 & 270, then add this switch to fit both negative and positive off-resonance frequencies.
+
+* ``--its, -i``
+
+    Maximum iterations for NLLS. Default is 75.
 
 **References**
 
@@ -243,6 +262,16 @@ Note that the pulse-length for SSFP is required in order to apply to finite-puls
 * ``JSR_T2.nii.gz`` - The T2 map. Units are the same as those used for TR in the input.
 * ``JSR_f0.nii.gz`` - The off-resonance map.
 
+*Important Options*
+
+* ``--B1, -b``
+
+    Path to a B1 map file.
+
+* ``--npsi, -p``
+
+    Number of starting points for psi/off-resonance fitting. Default is 2.
+
 **References**
 
 - `Teixeira et al <http://doi.wiley.com/10.1002/mrm.26670>`_
@@ -271,18 +300,15 @@ The SSFP input file should contain all SSFP images concatenated together as a 4D
 .. code-block:: json
 
     {
-        {
-            "SPGR": {
-                "TR": 0.01,
-                "FA": [3,4,5,7,9,12,15,18]
-            }
+        "SPGR": {
+            "TR": 0.01,
+            "FA": [3,4,5,7,9,12,15,18],
+            "TE": 0.003
         },
-        {
-            "SSFP": {
-                "TR": 0.05,
-                "FA": [12,16,20,24,30,40,50,60,12,16,20,24,30,40,50,60],
-                "PhaseInc": [180,180,180,180,180,180,180,180,0,0,0,0,0,0,0,0]
-            }
+        "SSFP": {
+            "TR": 0.05,
+            "FA": [12,16,20,24,30,40,50,60,12,16,20,24,30,40,50,60],
+            "PhaseInc": [180,180,180,180,180,180,180,180,0,0,0,0,0,0,0,0]
         }
     }
 
@@ -306,24 +332,28 @@ The intra/extra-cellular water fraction is not output, as it is not a free param
 
 *Important Options*
 
-* ``--algo, -a``
+* ``--SRC``
 
-    * S - Stochastic Region Contraction
-    * G - Gaussian Region Contraction
-    
-    Gaussian is recommended.
+    Use Stochastic Region Contraction (flat prior) instead of the default Gaussian Region Contraction.
 
-* ``--tesla, -t``
+* ``--model, -M``
 
-    Specify the field-strength so sensible fitting ranges can be used. Currently only ranges for (3) and (7)T are defined. If you wish to specify your own ranges, set this option as (u) and then the ranges will be read from your input file.
-
-* ``--model, -m``
-    * 1 - 1 component model (no fractions, just a single T1/T2)
     * 2 - 2 component model. Myelin and intra/extra-cellular water
-    * 2nex - 2 component model without exchange
     * 3 - 3 component model. Myelin water, IE water & CSF
-    * 3nex - 3 component model without exchange
-    * 3f0 - 3 component model, allow an additional off-resonance offset between myelin and IE water pools
+
+    Default is 3.
+
+* ``--scale, -S``
+
+    Normalize signals to mean before fitting. Recommended.
+
+* ``--its, -i``
+
+    Maximum iterations for Region Contraction. Default is 4.
+
+* ``--bounds``
+
+    Specify that bounds are included in the input JSON file.
 
 **References**
 
@@ -340,7 +370,7 @@ MP2RAGE adds a second inversion time to the standard T1w MPRAGE sequence. Combin
 
 .. code-block:: bash
 
-    qi mp2rage input_file.nii.gz --mask=mask_file.nii.gz < input.json
+    qi mp2rage input_file.nii.gz < input.json
 
 The input file must be complex-valued.
 
@@ -363,8 +393,8 @@ The input file must be complex-valued.
 
 **Outputs**
 
-* ``{input}_contrast.nii.gz`` - The MP2 contrast image. The range of this image is -0.5 to 0.5.
-* ``{input}_T1.nii.gz`` - The T1 map. Units are the same as `TR` and `SegTR`.
+* ``MP2_UNI.nii.gz`` - The MP2 contrast image. The range of this image is -0.5 to 0.5.
+* ``MP2_T1.nii.gz`` - The T1 map. Units are the same as `TR` and `TRPrep`.
 
 *Important Options*
 
@@ -484,6 +514,12 @@ For regularly spaced echoes:
 * ``MPM_S0_T1w.nii.gz`` - The T1-weighted signal at ``TE=0``.
 * ``MPM_S0_MTw.nii.gz`` - The MT-weighted signal at ``TE=0``.
 
+*Important Options*
+
+* ``--rician``
+
+    Specify the mean squared noise level for Rician noise correction. When specified, the residuals use :math:`data^2 - noise - signal^2` instead of :math:`data - signal`. Default is 0 (no Rician correction).
+
 **References**
 
 - `Weiskopf et al <http://journal.frontiersin.org/article/10.3389/fnins.2014.00278/abstract>`_
@@ -585,13 +621,13 @@ This is an example with multiple inversion times with the same TR, 30 deg naviga
             "ETL": 48,
             "ESP": 0.005,
             "TD1": 0.3,
-            "theta": 30,
+            "theta": 30
         }
     }
 
 **Outputs**
-- ``IR_T1.nii.gz`` - Longitudinal relaxation time
-- ``IR_M0.nii.gz`` - Apparent Proton Density
+- ``IRTSE_T1.nii.gz`` - Longitudinal relaxation time
+- ``IRTSE_PD.nii.gz`` - Apparent Proton Density
 
 **References**
 - `Padormo, F. et al. <https://onlinelibrary.wiley.com/doi/10.1002/mrm.29509>`_
