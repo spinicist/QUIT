@@ -19,7 +19,7 @@ The following commands are available:
 * `qi irtse`_
 
 qi despot1
----------
+----------
 
 This command implements the classic Driven Equilibrium Single-Pulse Observation of T1 (DESPOT1) algorithm, also known as the Variable Flip-Angle (VFA) method in the literature. This is a fast way to measure longitudinal relaxation using a spoiled steady-state sequence, which is know by a different name by every scanner manufacturer just to be helpful. On GE, it's SPoiled Gradient Recalled echo (SPGR), on Siemens it's Fast Low-Angle SHot (FLASH) and on Phillips the sequence is Fast Field Echo (FFE).
 
@@ -69,7 +69,7 @@ This command implements the classic Driven Equilibrium Single-Pulse Observation 
 - `Wood, Optimum Flip-Angle Formulas <http://doi.wiley.com/10.1002/mrm.25592>`_
 
 qi despot1hifi
--------------
+--------------
 
 This is an extension of DESPOT1 to fit a map simultaneously using an MP-RAGE / IR-SPGR type sequence. Although DESPOT1-HIFI can produce a rough estimate of B1, it often fails to produce reasonable values in the ventricles, and the fact that the MP-RAGE image is often acquired at lower resolution than the SPGR/FLASH data can also cause problems. Hence you should either smooth the B1 map produced as output, or fit it with a polynomial (:doc:`Utilities`), then recalculate T1 using the `qi despot1`_ command. Note that if your MP-RAGE image is not acquired at the same resolution as your SPGR data, it must be resampled to the same spacing before processing (and it should also be registered to your SPGR data).
 
@@ -118,7 +118,7 @@ For the MPRAGE sequence, the TR is the spacing between readouts/echoes, not the 
 - `Original HIFI Paper <http://doi.wiley.com/10.1002/jmri.21130>`_
 
 qi despot2
----------
+----------
 
 DESPOT2 uses SSFP data and a separate T1 map to calculate T2, using the same maths as DESPOT1. It does not account for the banding artefacts present in SSFP data at field-strengths of 3T and above. See `qi despot2fm`_ for a method that does account for them, or if you have at least 4 phase-increments and complex data then see `qi ssfp_bands` in :doc:`Utilities` for a way to remove them before using this command.
 
@@ -173,7 +173,7 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. The ``SSFP`` sequence type
 - `Original DESPOT2 Paper <http://doi.wiley.com/10.1002/mrm.10407>`_
 
 qi despot2fm
------------
+------------
 
 DESPOT2-FM uses SSFP data with mulitple phase-increments (also called phase-cycles or phase-cycling patterns) to produce T2 maps without banding artefacts.
 
@@ -224,7 +224,7 @@ Both ``PhaseInc`` and ``FA`` are measured in degrees. The length of ``PhaseInc``
 - `Orignal FM Paper <http://doi.wiley.com/10.1002/jmri.21849>`_
 
 qi jsr
--------------
+------
 
 Join-System Relaxometry fits T1 and T2 to spoiled and balanced gradient echo (SPGR and SSFP) data simultaneously, which improves the accuracy and precision in the fit of both.
 
@@ -278,7 +278,7 @@ Note that the pulse-length for SSFP is required in order to apply to finite-puls
 - `Crooijmans et al <http://doi.wiley.com/10.1002/mrm.22661>`_
 
 qi mcdespot
-----------
+-----------
 
 Multi-component DESPOT aims to separate SPGR and SSFP signals into multiple discrete pools with different T1 and T2. In the brain, the pool with shorter values is attributed to myelin water, while pools with longer values can be either intra/extra-cellular water or CSF.
 
@@ -362,7 +362,7 @@ The intra/extra-cellular water fraction is not output, as it is not a free param
 - `Stochastic/Gaussian Region Contraction <http://doi.wiley.com/10.1002/mrm.25108>`_
 
 qi mp2rage
----------
+----------
 
 MP2RAGE adds a second inversion time to the standard T1w MPRAGE sequence. Combining the (complex) images with the expression :math:`S_1 S_2^*/(|S_1^2 + S_2^2|)` produces a real-valued image that is corrected for receive coil (B1-) inhomogeneity. In addition, if the two inversion times are carefully selected, a one-to-one mapping exists between the values in that image and T1, which is also robust to transmit (B1+) inhomogeneity. Finally, as the two images are implicitly registered, this method has several advantages over DESPOT1.
 
@@ -408,7 +408,7 @@ The input file must be complex-valued.
 - `Robust contrast <https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0099676>`_
 
 qi multiecho
------------
+------------
 
 Classic monoexponential decay fitting. Can be used to fit either T2 or T2*.
 
@@ -440,7 +440,7 @@ For irregularly spaced echoes:
 .. code-block:: json
 
     {
-        "MultiEchoFlex" : {
+        "MultiEcho" : {
             "TR" : 2.5,
             "TE" : [0.005, 0.01, 0.03, 0.05]
         }
@@ -468,7 +468,7 @@ For irregularly spaced echoes:
 - `ARLO <http://doi.wiley.com/10.1002/mrm.25137>`_
 
 qi mpm_r2s
------------
+----------
 
 Implements the ECSTATICS method for estimating R2*, part of Multi-Parametric Mapping (MPM). This performs a simultaneous fit to PD-, T1- and MT-weighted multi-echo data for R2*, improving the SNR of the resulting fit compared to individual fits. In contrast to the original paper, which used linear least-squares, a bounded non-linear fit is used.
 

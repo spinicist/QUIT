@@ -24,7 +24,7 @@ QUIT contains a number of utilities. Note that these are actually compiled in tw
 * `qi tvmask`_
 
 qi affine
---------
+---------
 
 This tool applies simple affine transformations to the header data of an image, i.e. rotations or scalings. It was written because of the inconsistent definitions of co-ordinate systems in pre-clinical imaging. Non-primate mammals are usually scanned prone instead of supine, and are quadrupeds instead of bipeds. This means the definitions of superior/inferior and anterior/posterior are different than in clinical scanning. However, several pre-clinical atlases, e.g. Dorr et al, rotate their data so that the clinical conventions apply. It is hence useful as a pre-processing step to adopt the same co-ordinate system. In addition, packages such as SPM or ANTs have several hard-coded assumptions about their input images that are only appropriate for human brains. It can hence be useful to scale up rodent brains by a factor of 10 so that they have roughly human dimensions.
 
@@ -67,7 +67,7 @@ If no output image is specified, the output will be written back to the input fi
     Write out the transformation to a file.
 
 qi complex
----------
+----------
 
 Manipulate complex/real/imaginary/magnitude/phase data. Created because I was fed up with how ``fslcomplex`` works.
 
@@ -133,7 +133,7 @@ Both the input multi-coil file and the reference file must be complex valued. Do
 
 
 qi hdr
------
+------
 
 Prints the header of input files as seen by ITK to ``stdout``. Can extract single header fields or print the entirety.
 
@@ -160,7 +160,7 @@ If any of the following options are specified, then only those fields will be pr
 Another useful option is ``--meta, -m``. This will let you query specific image meta-data from the header. You must know the exact name of the meta-data field you wish to obtain.
 
 qi kfilter
----------
+----------
 
 MR images often required smoothing or filtering. While this is best done during reconstruction, sometimes it is required as a post-processing step. Instead of filtering by performing a convolution in image space, this tool takes the Fourier Transfrom of input volumes, multiplies k-Space by the specified filter, and transforms back.
 
@@ -231,7 +231,7 @@ MR images often required smoothing or filtering. While this is best done during 
     Change output filename prefix.
 
 qi mask
-------
+-------
 
 Implements several different masking strategies. For human data, BET, antsBrainExtraction of 3dSkullStrip are likely better ideas. For pre-clinical data, the strategies below can provide a reasonable mask with some tweaking. There are potentially three stages to generating the mask:
 
@@ -286,7 +286,7 @@ In this case an intensity value of 10 will be used as the threshold, RATs will b
 - `RATs algorithm <http://dx.doi.org/10.1016/j.jneumeth.2013.09.021>`_
 
 qi pca
-------------
+------
 
 Denoise a 4D dataset by applying PCA on the time dimension and then retaining a fixed number of Principal Components. See `Does et al <https://onlinelibrary.wiley.com/doi/abs/10.1002/mrm.27658>`_
 
@@ -323,7 +323,7 @@ Denoise a 4D dataset by applying PCA on the time dimension and then retaining a 
 * ``output_pca.nii.gz`` - The denoised dataset.
 
 qi polyfit/qi polyimg
--------------------
+---------------------
 
 These tools work together to fit Nth order polynomials to images. This is typically used for smoothing a B1 field.
 
@@ -482,7 +482,7 @@ The output filename is the input filename with a suffix that will depend on the 
 - `Geometric Solution <http://doi.wiley.com/10.1002/mrm.25098>`_
 
 qi diff
-------
+-------
 
 Calculates the mean square difference between two images. Used in the QUIT tests to ensure that calculated parameter maps are close to their baseline values.
 
@@ -513,7 +513,7 @@ The command returns the dimensionless noise factor on ``stdout``, which is read 
     Use absolute difference instead of fractional difference (i.e. do not divide by the baseline image). Useful when images contain genuine zeros (e.g. off resonance maps).
 
 qi newimage
-----------
+-----------
 
 Creates new images filled with specified patterns. Used for generating test data.
 
@@ -564,7 +564,7 @@ The file specified on the command line is the *output* file.
     Wrap output voxels at the specified value. Useful for simulating phase data.
 
 qi affine_angle
---------------
+---------------
 
 Calculates the angle between the Z-axis and the transformed Z-axis from one or more transform files. This is useful for verifying the orientation of transform compositions.
 

@@ -8,7 +8,7 @@ QUIT contains a few tools to help prepare your data for statistical analysis wit
 * `qi rois`_
 
 qi glm_setup
------------
+------------
 
 FSL randomise takes a single 4D file with one volume per subject/timepoint as input, along with some simple text files that represent the GLM. Creating these files can be tedious, particularly with the FSL GUI. This tool makes it quick to create the relevant files.
 
@@ -64,7 +64,7 @@ The design matrix corresponding to the specified groups will be saved to the ``g
     Sort merged file and design matrix in ascending group order.
 
 qi glm_contrasts
----------------
+----------------
 
 Randomise does not save any ``contrast`` files, i.e. group difference maps, it only saves the statistical maps. For quantitative imaging, the contrasts can be informative to look at, as if scaled correctly, they can be interpreted as effect size maps. A group difference in human white matter T1 of only tens of milliseconds, even if it has a high p-value, is perhaps not terribly interesting as it corresponds to a change of about 1%. These contrast maps are particularly useful if used with the `dual-coding <https://github.com/spinicist/nanslice>`_ visualisation technique.
 

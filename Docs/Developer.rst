@@ -67,6 +67,6 @@ The ModelFitFilter
 The core part of QUIT is the ``ModelFitFilter`` and its dependent type ``FitFunction``, found in ``Source/Core/``. This is a sub-class of the ITK ``ImageToImageFilter``. The vast majority of QUIT commands declare an `Model` and `FitFunction` sub-class and use these to process the data. ``ModelFitFilter`` abstracts out most of the heavy lifting of extracting voxel-wise data from multiple inputs and writing it out to multiple outputs, leaving the ``FitFunction`` to process a single-voxel. A ``Model`` defines the number of expected inputs and their size, the number of fixed & varying parameters, and the number of outputs.
 
 Example: ``qi despot1``
-----------------------
+-----------------------
 
 The structure of ``qi despot1`` is similar to most QUIT commands, and is a good example of most features. At the start are the includes (obviously). After that several ``FitFunction`` subclasses are defined, as well as a Ceres cost-function. The Ceres documentation is excellent, so refer to that for more information. After all the ``FitFunction`` classes are defined, the main command body begins. At the start of the command, all the command-line options are defined and then parsed. Then the various inputs are read and passed to the ``ModelFitFilter``, which is then updated. Finally, the outputs are written back to disk.

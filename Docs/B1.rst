@@ -10,7 +10,7 @@ The following commands are available:
 * `qi b1_papp`_
 
 qi afi
------
+------
 
 Calculates a B1+ map using the Actual Flip-angle Imaging method.
 
@@ -56,7 +56,7 @@ Does not read any input from ``stdin``. The input file should contain two volume
 - `Steady-State Conditions <http://doi.wiley.com/10.1002/mrm.21592>`_
 
 qi dream
--------
+--------
 
 Calculates a B1+ map using the DREAM method.
 
@@ -105,7 +105,7 @@ Does not read any input from `stdin`. The input file should contain two volumes,
 - `Virtual Stimulated Echo <http://doi.wiley.com/10.1002/mrm.24667>`_
 
 qi b1_papp
------
+----------
 
 Implements the method of measuring B1- from Papp et al, which takes the ratio of an image acquired with the body coil as receiver and one with the receive coil that was used to acquire the quantitative images.
 

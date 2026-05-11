@@ -114,6 +114,7 @@ Estimates the Oxygen Extraction Fraction (OEF) from Asymmetric Spin-Echo (ASE) d
 Or:
 
 .. code-block:: json
+
     {
         "MultiEcho" : {
             "TR" : 2.0,
