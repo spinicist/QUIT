@@ -332,10 +332,11 @@ class ModelFitFilter
     }
 
     const FitType *m_fit;
-    const bool     m_verbose, m_allResiduals, m_covar;
-    bool           m_hasSubregion = false;
-    TRegion        m_subregion;
-    int            m_blocks = 1;
+
+    bool     m_verbose, m_allResiduals, m_covar;
+    bool     m_hasSubregion = false;
+    TRegion  m_subregion;
+    int      m_blocks = 1;
 
     virtual void GenerateOutputInformation() override {
         Superclass::GenerateOutputInformation();
@@ -560,7 +561,7 @@ class ModelFitFilter
                         status = m_fit->fit(
                             inputs, fixed, outputs, covar, rmse, rs, flag, rmse_iter.GetIndex());
                     } else if constexpr (HasDerived) {
-                        typename ModelType::DerivedArray derived;
+                        typename ModelType::DerivedArray derived = ModelType::DerivedArray::Zero();
                         status = m_fit->fit(inputs, fixed, outputs, derived, covar, rmse, rs, flag);
                         for (int i = 0; i < ModelType::ND; i++) {
                             derived_iters[i].Set(derived[i]);

@@ -5,19 +5,26 @@ USAGE="Usage: $0 [options]
 Bootstraps the QUIT build system (specifies the toolchain for CMake)
 
 Options:
+  -h     Print this message
   -i DIR Install riesling to this directory, e.g. $HOME/.local
   -j N   Restrict parallel build to this many threads
-  -h     Print this message
+
 "
 PAR=""
 PREFIX=""
-while getopts "f:hi:j:" opt; do
+ALL=""
+DEBUG=""
+RELDBG="-O2 -g -DNDEBUG"
+while getopts "hi:j:w" opt; do
     case $opt in
-        i) PREFIX="-DCMAKE_INSTALL_PREFIX=$OPTARG -DCMAKE_PREFIX_PATH=$OPTARG";;
-        j) export VCPKG_MAX_CONCURRENCY=$OPTARG
-           PAR="-j $OPTARG";;
         h) echo "$USAGE"
            return;;
+        i) PREFIX="-DCMAKE_INSTALL_PREFIX=$OPTARG";;
+        j) export VCPKG_MAX_CONCURRENCY=$OPTARG
+           PAR="-j $OPTARG";;
+        w) ALL="$ALL -Wall -Wshadow"
+           DEBUG="-g -fsanitize=address,undefined"
+           RELDBG="-O2 -g -DNDEBUG -fsanitize=address,undefined";;
     esac
 done
 shift $((OPTIND - 1))
@@ -44,7 +51,9 @@ cmake -S . -B build $GEN \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" \
   -DVCPKG_INSTALL_OPTIONS="--no-print-usage" \
-  $PREFIX
+  -DCMAKE_CXX_FLAGS="$ALL" -DCMAKE_CXX_FLAGS_DEBUG="$DEBUG" -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="$RELDBG"\
+  ${PREFIX}
+
 cmake --build build $PAR
 
 if [ -n "$PREFIX" ]; then

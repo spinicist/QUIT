@@ -16,11 +16,5 @@
         "ceres",
         "nlohmann-json"
     ],
-    "builtin-baseline": "38d9cf0bd45404cd25aeb03f79bcb0af256de343",
-    "overrides": [
-        {
-            "name": "hdf5",
-            "version": "1.12.0"
-        }
-    ]
+    "builtin-baseline": "a7eda31dc16994fcaa8587982eb833a8695f1b6f"
 }
