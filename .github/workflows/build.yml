@@ -9,18 +9,30 @@ jobs:
   build:
     name: ${{matrix.config.name}}
     runs-on: ${{matrix.config.os}}
+    env:
+      VCPKG_CACHE_IMAGE: ${{matrix.config.cache_id}}
     strategy:
       fail-fast: false
       matrix:
         config:
         - {
-          name: "Ubuntu GCC", artifact: "qi-linux.tar.gz",
-          os: ubuntu-22.04,
-          cc: "gcc-11", cxx: "g++-11"
+          name: "Ubuntu 24.04 GCC", artifact: "qi-linux-ubuntu24.04.tar.gz",
+          os: ubuntu-24.04, cache_id: ubuntu-24.04,
+          cc: "gcc", cxx: "g++"
+        }
+        - {
+          name: "Ubuntu 22.04 GCC", artifact: "qi-linux-ubuntu22.04.tar.gz",
+          os: ubuntu-22.04, cache_id: ubuntu-22.04,
+          cc: "gcc", cxx: "g++"
+        }
+        - {
+          name: "Ubuntu 20.04 GCC", artifact: "qi-linux-ubuntu20.04.tar.gz",
+          os: ubuntu-20.04, cache_id: ubuntu-20.04,
+          cc: "gcc", cxx: "g++"
         }
         - {
           name: "macOS", artifact: "qi-macos.tar.gz",
-          os: macos-12,
+          os: macos-12, cache_id: macos-12,
           cc: "clang", cxx: "clang++"
         }
 
@@ -37,7 +49,7 @@ jobs:
             brew install gnu-tar automake autoconf autoconf-archive
           else
             sudo apt-get update
-            sudo apt-get install automake autoconf autoconf-archive
+            sudo apt-get install -y automake autoconf autoconf-archive make
           fi
 
       - name: Restore vcpkg binary cache
@@ -104,4 +116,3 @@ jobs:
           artifacts: ${{github.workspace}}/${{matrix.config.artifact}}
           artifactErrorsFailBuild: true
           draft: true
-  
